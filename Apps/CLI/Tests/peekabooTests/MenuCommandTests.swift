@@ -2,6 +2,26 @@ import Foundation
 import Testing
 @testable import peekaboo
 
+// Import the necessary types from the menu command
+private struct MenuListData: Codable {
+    let app: String
+    let bundle_id: String?
+    let menu_structure: [MenuData]
+}
+
+private struct MenuData: Codable {
+    let title: String
+    let enabled: Bool
+    let items: [MenuItemData]?
+}
+
+private struct MenuItemData: Codable {
+    let title: String
+    let enabled: Bool
+    let key_equivalent: String?
+    let submenu: [MenuItemData]?
+}
+
 @Suite("Menu Command Tests", .serialized)
 struct MenuCommandTests {
     @Test("Menu command exists")
@@ -112,16 +132,16 @@ struct MenuCommandIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
-        #expect(data.success == true)
+        let response = try JSONDecoder().decode(CodableJSONResponse<MenuListData>.self, from: output.data(using: .utf8)!)
+        #expect(response.success == true)
 
-        if let menuData = data.data,
-           let dict = menuData.value as? [String: Any],
-           let structure = dict["menu_structure"] as? [[String: Any]] {
+        let menuData = response.data
+        let structure = menuData.menu_structure
+        if !structure.isEmpty {
             #expect(!structure.isEmpty)
 
             // Check for standard menus
-            let menuTitles = structure.compactMap { $0["title"] as? String }
+            let menuTitles = structure.map { $0.title }
             #expect(menuTitles.contains("File"))
             #expect(menuTitles.contains("Edit"))
             #expect(menuTitles.contains("View"))

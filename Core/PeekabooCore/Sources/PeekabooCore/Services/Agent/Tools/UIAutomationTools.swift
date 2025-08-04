@@ -379,15 +379,19 @@ extension PeekabooAgentService {
         let parameters = ToolParameters(
             properties: [
                 "target": ToolParameterProperty(
+                    name: "target",
                     type: .string,
                     description: "Element to click - can be button text, element label (clicks center), or 'x,y' coordinates"),
                 "app": ToolParameterProperty(
+                    name: "app",
                     type: .string,
                     description: "Optional: Application name to search within"),
                 "double_click": ToolParameterProperty(
+                    name: "double_click",
                     type: .boolean,
                     description: "Whether to double-click (default: false)"),
                 "right_click": ToolParameterProperty(
+                    name: "right_click",
                     type: .boolean,
                     description: "Whether to right-click (default: false)"),
             ],
@@ -456,15 +460,19 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "text": ToolParameterProperty(
+                        name: "text",
                         type: .string,
                         description: "Text to type. Supports escape sequences: \\n (newline), \\t (tab), \\b (backspace), \\e (escape), \\\\ (literal backslash)"),
                     "field": ToolParameterProperty(
+                        name: "field",
                         type: .string,
                         description: "Optional: Label or identifier of the text field to type into"),
                     "app": ToolParameterProperty(
+                        name: "app",
                         type: .string,
                         description: "Optional: Application name to search within"),
                     "clear_first": ToolParameterProperty(
+                        name: "clear_first",
                         type: .boolean,
                         description: "Whether to clear the field before typing (default: false)"),
                 ],
@@ -533,16 +541,20 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "direction": ToolParameterProperty(
+                        name: "direction",
                         type: .string,
                         description: "Scroll direction",
                         enumValues: ["up", "down", "left", "right"]),
                     "amount": ToolParameterProperty(
+                        name: "amount",
                         type: .integer,
                         description: "Number of scroll units (default: 5)"),
                     "target": ToolParameterProperty(
+                        name: "target",
                         type: .string,
                         description: "Optional: Element to scroll within (label or identifier)"),
                     "app": ToolParameterProperty(
+                        name: "app",
                         type: .string,
                         description: "Optional: Application name"),
                 ],
@@ -598,9 +610,11 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "key": ToolParameterProperty(
+                        name: "key",
                         type: .string,
                         description: "Key to press: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help"),
                     "count": ToolParameterProperty(
+                        name: "count",
                         type: .integer,
                         description: "Number of times to press the key (default: 1)"),
                 ],
@@ -673,9 +687,11 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "key": ToolParameterProperty(
+                        name: "key",
                         type: .string,
                         description: "Main key to press (e.g., 'a', 'space', 'return', 'escape', 'tab', 'delete', 'arrow_up')"),
                     "modifiers": ToolParameterProperty(
+                        name: "modifiers",
                         type: .array,
                         description: "Modifier keys to hold (e.g., ['command', 'shift'])",
                         enumValues: ["command", "control", "option", "shift", "function"]),
@@ -683,8 +699,13 @@ extension PeekabooAgentService {
                 required: ["key"]),
             execute: { params, context in
                 let keyStr = try params.stringValue("key")
-                // Get modifiers array using the new array parameter support
-                let modifierStrs = params.stringArrayValue("modifiers", default: [])
+                // Get modifiers array - use arrayValue with transform
+                let modifierStrs: [String] = (try? params.arrayValue("modifiers") { arg in
+                    switch arg {
+                    case .string(let s): return s
+                    default: throw TachikomaError.invalidInput("modifiers must be array of strings")
+                    }
+                }) ?? []
 
                 // Map key names to match what hotkey expects
                 let mappedKey: String = switch keyStr.lowercased() {

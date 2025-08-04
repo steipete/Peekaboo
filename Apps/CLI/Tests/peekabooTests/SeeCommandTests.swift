@@ -93,6 +93,7 @@ struct SeeCommandTests {
             ui_map: "/tmp/map.json",
             application_name: "TestApp",
             window_title: "Test Window",
+            is_dialog: false,
             element_count: 10,
             interactable_count: 5,
             capture_mode: "frontmost",

@@ -1,5 +1,6 @@
 import SwiftUI
 import PeekabooCore
+import Tachikoma
 
 // MARK: - Header Components
 
@@ -106,7 +107,7 @@ struct SessionDurationView: View {
 
 /// Token usage display
 struct TokenUsageView: View {
-    let usage: TokenUsage
+    let usage: Usage
 
     var body: some View {
         HStack(spacing: 2) {

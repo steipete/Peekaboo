@@ -18,28 +18,34 @@ extension UnifiedToolDefinition {
             let property = switch param.type {
             case .string:
                 ToolParameterProperty(
+                    name: param.name,
                     type: .string,
                     description: param.description,
                     enumValues: param.options)
             case .integer:
                 ToolParameterProperty(
+                    name: param.name,
                     type: .integer,
                     description: param.description)
             case .boolean:
                 ToolParameterProperty(
+                    name: param.name,
                     type: .boolean,
                     description: param.description)
             case .enumeration:
                 ToolParameterProperty(
+                    name: param.name,
                     type: .string,
                     description: param.description,
                     enumValues: param.options ?? [])
             case .object:
                 ToolParameterProperty(
+                    name: param.name,
                     type: .object,
                     description: param.description)
             case .array:
                 ToolParameterProperty(
+                    name: param.name,
                     type: .array,
                     description: param.description)
             }

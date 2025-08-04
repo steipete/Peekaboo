@@ -168,19 +168,19 @@ struct MCPCommandErrorHandlingTests {
         // They should fail with appropriate error messages
 
         let list = MCPCommand.List()
-        #expect(throws: ExitCode.self) {
+        await #expect(throws: ExitCode.self) {
             try await list.run()
         }
 
-        let call = MCPCommand.Call()
+        var call = MCPCommand.Call()
         call.server = "test"
         call.tool = "echo"
-        #expect(throws: ExitCode.self) {
+        await #expect(throws: ExitCode.self) {
             try await call.run()
         }
 
         let inspect = MCPCommand.Inspect()
-        #expect(throws: ExitCode.self) {
+        await #expect(throws: ExitCode.self) {
             try await inspect.run()
         }
     }
@@ -202,7 +202,7 @@ struct MCPServerBehaviorTests {
 
     @Test("Server validates transport types")
     func serverTransportValidation() async throws {
-        let serve = MCPCommand.Serve()
+        var serve = MCPCommand.Serve()
 
         // Test that invalid transport types are handled
         serve.transport = "invalid"

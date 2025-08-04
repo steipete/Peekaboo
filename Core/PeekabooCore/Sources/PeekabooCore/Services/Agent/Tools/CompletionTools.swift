@@ -14,12 +14,13 @@ public enum CompletionTools {
             parameters: ToolParameters(
                 properties: [
                     "summary": ToolParameterProperty(
+                        name: "summary",
                         type: .string,
                         description: "Summary of what was accomplished"),
                 ],
                 required: ["summary"]),
             execute: { args in
-                let summary = try args.getString("summary")
+                let summary = try args.stringValue("summary")
                 return .string("✅ Task completed: \(summary)")
             })
     }
@@ -32,16 +33,18 @@ public enum CompletionTools {
             parameters: ToolParameters(
                 properties: [
                     "question": ToolParameterProperty(
+                        name: "question",
                         type: .string,
                         description: "The question to ask the user"),
                     "context": ToolParameterProperty(
+                        name: "context",
                         type: .string,
                         description: "Additional context for the question"),
                 ],
                 required: ["question"]),
             execute: { args in
-                let question = try args.getString("question")
-                let context = args.getStringOptional("context")
+                let question = try args.stringValue("question")
+                let context = (try? args.stringValue("context")) ?? nil
 
                 var response = "❓ Need more information: \(question)"
                 if let context {
@@ -56,19 +59,19 @@ public enum CompletionTools {
     public static func createDoneTool<Services>() -> Tool<Services> {
         Tool(
             name: "done",
-            description: "Mark the task as completed with a summary of what was accomplished",
-            execute: { params, _ in
-                let summary = try params.stringValue("summary")
-                return ToolOutput.success("✅ Task completed: \(summary)")
-            })
+            description: "Mark the task as completed with a summary of what was accomplished"
+        ) { params, _ in
+            let summary = try params.stringValue("summary")
+            return ToolOutput.success("✅ Task completed: \(summary)")
+        }
     }
 
     /// Create the need info tool for requesting more information (legacy Tool<Context> version)
     public static func createNeedInfoTool<Services>() -> Tool<Services> {
         Tool(
             name: "need_info",
-            description: "Request additional information from the user when the task is unclear or missing details",
-            execute: { params, _ in
+            description: "Request additional information from the user when the task is unclear or missing details"
+        ) { params, _ in
                 let question = try params.stringValue("question")
                 let context = params.stringValue("context", default: nil)
 
@@ -78,6 +81,6 @@ public enum CompletionTools {
                 }
 
                 return ToolOutput.success(response)
-            })
+        }
     }
 }

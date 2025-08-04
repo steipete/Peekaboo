@@ -20,6 +20,7 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "app": ToolParameterProperty(
+                        name: "app",
                         type: .string,
                         description: "Optional: Filter windows by application name"),
                 ],
@@ -150,12 +151,15 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "title": ToolParameterProperty(
+                        name: "title",
                         type: .string,
                         description: "Window title to search for (partial match supported)"),
                     "app": ToolParameterProperty(
+                        name: "app",
                         type: .string,
                         description: "Application name"),
                     "window_id": ToolParameterProperty(
+                        name: "window_id",
                         type: .integer,
                         description: "Specific window ID"),
                 ],
@@ -282,36 +286,47 @@ extension PeekabooAgentService {
         let parameters = ToolParameters(
             properties: [
                 "title": ToolParameterProperty(
+                    name: "title",
                     type: .string,
                     description: "Window title (partial match)"),
                 "app": ToolParameterProperty(
+                    name: "app",
                     type: .string,
                     description: "Application name"),
                 "window_id": ToolParameterProperty(
+                    name: "window_id",
                     type: .integer,
                     description: "Specific window ID"),
                 "frontmost": ToolParameterProperty(
+                    name: "frontmost",
                     type: .boolean,
                     description: "Use the frontmost window"),
                 "width": ToolParameterProperty(
+                    name: "width",
                     type: .integer,
                     description: "New width in pixels"),
                 "height": ToolParameterProperty(
+                    name: "height",
                     type: .integer,
                     description: "New height in pixels"),
                 "x": ToolParameterProperty(
+                    name: "x",
                     type: .integer,
                     description: "New X position"),
                 "y": ToolParameterProperty(
+                    name: "y",
                     type: .integer,
                     description: "New Y position"),
                 "preset": ToolParameterProperty(
+                    name: "preset",
                     type: .string,
                     description: "Preset size/position (maximize, center, left_half, right_half, top_half, bottom_half)"),
                 "target_screen": ToolParameterProperty(
+                    name: "target_screen",
                     type: .integer,
                     description: "Move window to specific screen (0-based index)"),
                 "screen_preset": ToolParameterProperty(
+                    name: "screen_preset",
                     type: .string,
                     description: "Move window relative to screens (same, next, previous, primary)"),
             ],
@@ -716,6 +731,7 @@ extension PeekabooAgentService {
      parameters: ToolParameters(
      properties: [
      "space_number": ToolParameterProperty(
+     name: "space_number",
      type: .integer,
      description: "Space number to switch to (1-based)"),
      ],
@@ -752,12 +768,15 @@ extension PeekabooAgentService {
      parameters: ToolParameters(
      properties: [
      "window_id": ToolParameterProperty(
+     name: "window_id",
      type: .integer,
      description: "Window ID to move"),
      "space_number": ToolParameterProperty(
+     name: "space_number",
      type: .integer,
      description: "Target space number (1-based)"),
      "bring_to_current": ToolParameterProperty(
+     name: "bring_to_current",
      type: .boolean,
      description: "Move window to current space instead"),
      ],

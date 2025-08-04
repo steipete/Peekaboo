@@ -418,12 +418,15 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "title": ToolParameterProperty(
+                        name: "title",
                         type: .string,
                         description: "Window title to search for (partial match supported)"),
                     "window_id": ToolParameterProperty(
+                        name: "window_id",
                         type: .integer,
                         description: "Specific window ID to capture"),
                     "save_path": ToolParameterProperty(
+                        name: "save_path",
                         type: .string,
                         description: "Optional: Path to save the screenshot"),
                 ],

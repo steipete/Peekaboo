@@ -1,5 +1,6 @@
 import SwiftUI
 import PeekabooCore
+import Tachikoma
 
 // MARK: - Session Components
 
@@ -56,7 +57,7 @@ struct SessionRowCompact: View {
 /// Current session preview with messages and stats
 struct CurrentSessionPreview: View {
     let session: ConversationSession
-    let tokenUsage: TokenUsage?
+    let tokenUsage: Usage?
     let onOpenMainWindow: () -> Void
 
     var body: some View {

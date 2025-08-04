@@ -81,7 +81,7 @@ struct RunCommandTests {
                 stepNumber: 1,
                 command: "see",
                 success: true,
-                output: AnyCodable(["success": true]),
+                output: .success("Step completed successfully"),
                 error: nil,
                 executionTime: 1.5
             ),

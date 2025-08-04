@@ -16,12 +16,15 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "label": ToolParameterProperty(
+                        name: "label",
                         type: .string,
                         description: "Label or text to search for"),
                     "app": ToolParameterProperty(
+                        name: "app",
                         type: .string,
                         description: "Optional: Application name to search within"),
                     "element_type": ToolParameterProperty(
+                        name: "element_type",
                         type: .string,
                         description: "Optional: Specific element type to find",
                         enumValues: ["button", "text_field", "menu", "checkbox", "radio", "link"]),
@@ -93,9 +96,11 @@ extension PeekabooAgentService {
             parameters: ToolParameters(
                 properties: [
                     "app": ToolParameterProperty(
+                        name: "app",
                         type: .string,
                         description: "Optional: Application name to search within"),
                     "element_type": ToolParameterProperty(
+                        name: "element_type",
                         type: .string,
                         description: "Optional: Filter by element type",
                         enumValues: ["button", "text_field", "menu", "checkbox", "radio", "link", "all"]),

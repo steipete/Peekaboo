@@ -88,6 +88,7 @@ struct DialogCommandTests {
     }
 
     @Test("Dialog  service integration")
+    @MainActor
     func dialogServiceIntegration() {
         // Verify that PeekabooServices includes the dialog service
         let services = PeekabooServices.shared

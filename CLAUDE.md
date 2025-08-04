@@ -22,6 +22,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Ollama Timeout Requirements**: When testing Ollama integration, use longer timeouts (300000ms or 5+ minutes) for Bash tool commands, as Ollama can be slow to load models and process requests, especially on first use.
 
+**File Headers**: Use minimal file headers without author attribution or creation dates:
+- Swift files: `//\n//  FileName.swift\n//  PeekabooCore\n//` (adapt module name: PeekabooCore, AXorcist, etc.)
+- TypeScript files: `//\n//  filename.ts\n//  Peekaboo\n//`
+- Omit "Created by" comments and dates to keep headers clean and focused
+
 To test this project interactive we can use:
 `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp@beta`
 

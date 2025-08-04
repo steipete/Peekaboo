@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SwiftUI
 
@@ -57,30 +58,6 @@ struct SessionDurationText: View {
     }
 }
 
-struct TimeIntervalText: View {
-    let startTime: Date
-    @State private var currentTime = Date()
-
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    var body: some View {
-        Text(formatTimeInterval(currentTime.timeIntervalSince(startTime)))
-            .onReceive(timer) { _ in
-                currentTime = Date()
-            }
-    }
-
-    private func formatTimeInterval(_ interval: TimeInterval) -> String {
-        let seconds = Int(interval)
-        if seconds < 60 {
-            return "\(seconds)s"
-        } else {
-            let minutes = seconds / 60
-            let remainingSeconds = seconds % 60
-            return "\(minutes):\(String(format: "%02d", remainingSeconds))"
-        }
-    }
-}
 
 // MARK: - Data Extraction Utilities
 

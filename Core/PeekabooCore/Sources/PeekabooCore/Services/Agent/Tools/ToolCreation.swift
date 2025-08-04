@@ -13,8 +13,10 @@ public func createSimpleTool<Context>(
 {
     Tool(
         name: name,
-        description: description,
-        execute: execute)
+        description: description
+    ) { input, context in
+        try await execute(input, context)
+    }
 }
 
 /// Create a tool with full control over the definition
@@ -26,18 +28,22 @@ public func createTool<Context>(
 {
     Tool(
         name: name,
-        description: description,
-        execute: execute)
+        description: description
+    ) { input, context in
+        try await execute(input, context)
+    }
 }
 
 // MARK: - ToolParameterProperty Helpers
 
 /// Create a string parameter property
 public func stringParam(
+    name: String,
     description: String,
     enumValues: [String]? = nil) -> ToolParameterProperty
 {
     ToolParameterProperty(
+        name: name,
         type: .string,
         description: description,
         enumValues: enumValues)
@@ -45,33 +51,36 @@ public func stringParam(
 
 /// Create a number parameter property
 public func numberParam(
+    name: String,
     description: String,
     minimum: Double? = nil,
     maximum: Double? = nil) -> ToolParameterProperty
 {
     ToolParameterProperty(
+        name: name,
         type: .number,
         description: description,
-        minimum: minimum,
-        maximum: maximum)
+        enumValues: nil)
 }
 
 /// Create an integer parameter property
 public func integerParam(
+    name: String,
     description: String,
     minimum: Double? = nil,
     maximum: Double? = nil) -> ToolParameterProperty
 {
     ToolParameterProperty(
+        name: name,
         type: .integer,
         description: description,
-        minimum: minimum,
-        maximum: maximum)
+        enumValues: nil)
 }
 
 /// Create a boolean parameter property
-public func boolParam(description: String) -> ToolParameterProperty {
+public func boolParam(name: String, description: String) -> ToolParameterProperty {
     ToolParameterProperty(
+        name: name,
         type: .boolean,
         description: description)
 }
