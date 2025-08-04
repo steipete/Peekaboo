@@ -3,7 +3,7 @@
   "projectType": "mixed",
   "targets": [
     {
-      "name": "peekaboo-cli",
+      "name": "peekaboo",
       "type": "executable",
       "enabled": true,
       "buildCommand": "./scripts/build-swift-debug.sh",
