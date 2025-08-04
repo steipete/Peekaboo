@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.9.0"),
         .package(url: "https://github.com/steipete/TermKit", branch: "macos-14"),
         .package(path: "../../Core/PeekabooCore"),
-        .package(url: "https://github.com/steipete/tachikoma", from: "4.0.0"),
+        .package(url: "https://github.com/steipete/tachikoma", branch: "main"),
     ],
     targets: [
         .executableTarget(
