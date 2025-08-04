@@ -1197,8 +1197,8 @@ extension PeekabooAgentService {
             throw error
         }
 
-        // Create tools for the model (convert to SimpleTool format)
-        let tools = self.createSimpleTools()
+        // Create tools for the model using the bridge (native tools -> SimpleTool format)
+        let tools = self.createBridgedSimpleTools()
 
         // Only log tool debug info in verbose mode
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
@@ -1306,8 +1306,8 @@ extension PeekabooAgentService {
             throw error
         }
 
-        // Create tools for the model (convert to SimpleTool format)
-        let tools = self.createSimpleTools()
+        // Create tools for the model using the bridge (native tools -> SimpleTool format)
+        let tools = self.createBridgedSimpleTools()
 
         // Only log tool debug info in verbose mode
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
