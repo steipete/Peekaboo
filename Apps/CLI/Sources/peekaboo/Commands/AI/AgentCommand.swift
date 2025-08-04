@@ -741,9 +741,28 @@ struct AgentCommand: AsyncParsableCommand {
         // Create event delegate for real-time updates
         let eventDelegate: AgentEventDelegate
         
-        // For now, use CompactEventDelegate for all modes (TUI implementation coming soon)
-        eventDelegate = await MainActor.run {
-            CompactEventDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
+        // Select appropriate delegate based on output mode
+        let tui: PeekabooTermKitTUI?
+        if self.outputMode == .tui {
+            // Use TermKit TUI for full terminal interface
+            tui = await MainActor.run {
+                PeekabooTermKitTUI()
+            }
+            
+            // Initialize the TUI with task info (but don't start it yet)
+            await MainActor.run {
+                tui!.startTask(task, maxSteps: self.maxSteps ?? 20, modelName: displayModelName)
+            }
+            
+            eventDelegate = await MainActor.run {
+                TermKitAgentEventDelegate(tui: tui!)
+            }
+        } else {
+            // Use compact delegate for all other modes
+            tui = nil
+            eventDelegate = await MainActor.run {
+                CompactEventDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
+            }
         }
 
         // Show header with properly cased model name (skip for TUI mode as it handles its own display)
@@ -781,22 +800,59 @@ struct AgentCommand: AsyncParsableCommand {
             }
         }
 
-        do {
-            // Parse the model string from CLI parameter
-            let languageModel: LanguageModel? = self.model.flatMap { self.parseModelString($0) }
-
-            if isDebugLoggingEnabled {
-                print("DEBUG AgentCommand: CLI model parameter: \(String(describing: self.model))")
-                print("DEBUG AgentCommand: Parsed language model: \(String(describing: languageModel))")
+        // Execute task with TUI support
+        if let tui = tui {
+            // TUI mode: run with TermKit interface
+            await MainActor.run {
+                tui.start { [self] in
+                    // This closure runs the agent task in background while TUI displays
+                    let languageModel: LanguageModel? = self.model.flatMap { self.parseModelString($0) }
+                    
+                    if isDebugLoggingEnabled {
+                        print("DEBUG AgentCommand: CLI model parameter: \(String(describing: self.model))")
+                        print("DEBUG AgentCommand: Parsed language model: \(String(describing: languageModel))")
+                    }
+                    
+                    let result = try await peekabooAgent.executeTask(
+                        task,
+                        maxSteps: maxSteps,
+                        sessionId: sessionId as String?,
+                        model: languageModel,
+                        eventDelegate: eventDelegate
+                    )
+                    
+                    // Process result
+                    if let usage = result.usage {
+                        await MainActor.run {
+                            // TUI handles its own token display
+                        }
+                    }
+                    
+                    // Display result
+                    self.displayResult(result)
+                    
+                    // Update terminal title
+                    self.updateTerminalTitle("Completed: \(task.prefix(50))")
+                }
             }
+        } else {
+            // Non-TUI mode: execute normally
+            do {
+                // Parse the model string from CLI parameter
+                let languageModel: LanguageModel? = self.model.flatMap { self.parseModelString($0) }
 
-            let result = try await peekabooAgent.executeTask(
-                task,
-                maxSteps: maxSteps,
-                sessionId: sessionId as String?, // Explicit cast to disambiguate method
-                model: languageModel,
-                eventDelegate: eventDelegate
-            )
+                if isDebugLoggingEnabled {
+                    print("DEBUG AgentCommand: CLI model parameter: \(String(describing: self.model))")
+                    print("DEBUG AgentCommand: Parsed language model: \(String(describing: languageModel))")
+                }
+
+                let result = try await peekabooAgent.executeTask(
+                    task,
+                    maxSteps: maxSteps,
+                    sessionId: sessionId as String?, // Explicit cast to disambiguate method
+                    model: languageModel,
+                    eventDelegate: eventDelegate
+                )
 
             // Update token count in delegate if available
             if let usage = result.usage {
@@ -817,7 +873,6 @@ struct AgentCommand: AsyncParsableCommand {
 
             // Show API key info in verbose mode
             if self.outputMode == .verbose,
-               let peekabooAgent = peekabooAgent as? PeekabooAgentService,
                let apiKey = await peekabooAgent.maskedApiKey {
                 print("\(TerminalColor.gray)API Key: \(apiKey)\(TerminalColor.reset)")
             }
@@ -825,11 +880,7 @@ struct AgentCommand: AsyncParsableCommand {
             // Update terminal title to show completion
             self.updateTerminalTitle("Completed: \(task.prefix(50))")
             
-            // Clean up TUI if it was used (implementation coming soon)
-            if self.outputMode == .tui {
-                // Give user a moment to see the final state before exiting
-                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            }
+            // TUI cleanup is handled by the TermKit delegate when task completes
             
             // Show terminal capabilities in verbose mode for debugging
             if self.outputMode == .verbose {
@@ -838,31 +889,32 @@ struct AgentCommand: AsyncParsableCommand {
                 print("\(TerminalColor.gray)Selected mode: \(self.outputMode.description)\(TerminalColor.reset)")
             }
         } catch let error as DecodingError {
-            aiDebugPrint("DEBUG: DecodingError caught: \(error)")
-            throw error
-        } catch {
-            // Extract the actual error message from NSError if available
-            var errorMessage = error.localizedDescription
-            let nsError = error as NSError
-            if
-                let detailedMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
-                errorMessage = detailedMessage
-            }
+                aiDebugPrint("DEBUG: DecodingError caught: \(error)")
+                throw error
+            } catch {
+                // Extract the actual error message from NSError if available
+                var errorMessage = error.localizedDescription
+                let nsError = error as NSError
+                if
+                    let detailedMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
+                    errorMessage = detailedMessage
+                }
 
-            if self.jsonOutput {
-                let response = [
-                    "success": false,
-                    "error": errorMessage
-                ] as [String: Any]
-                let jsonData = try JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
-                print(String(data: jsonData, encoding: .utf8) ?? "{}")
-            } else {
-                print("\n\(TerminalColor.red)\(TerminalColor.bold)❌ Error:\(TerminalColor.reset) \(errorMessage)")
+                if self.jsonOutput {
+                    let response = [
+                        "success": false,
+                        "error": errorMessage
+                    ] as [String: Any]
+                    let jsonData = try JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
+                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                } else {
+                    print("\n\(TerminalColor.red)\(TerminalColor.bold)❌ Error:\(TerminalColor.reset) \(errorMessage)")
+                }
+                
+                // Update terminal title to show error
+                self.updateTerminalTitle("Error: \(task.prefix(40))...")
+                throw error
             }
-
-            // Update terminal title to show error
-            self.updateTerminalTitle("Error: \(task.prefix(40))...")
-            throw error
         }
     }
 
@@ -906,10 +958,8 @@ struct AgentCommand: AsyncParsableCommand {
             // Quiet mode - only show final result
             print(result.content)
         } else {
-            // Don't print here - let the event handler show the enhanced summary
-            if !result.content.isEmpty {
-                print(result.content)
-            }
+            // Don't print the content here - it was already shown by the event delegate
+            // This prevents duplicate output of the assistant's message
         }
     }
 
@@ -965,7 +1015,7 @@ struct AgentCommand: AsyncParsableCommand {
             dateFormatter.timeStyle = .short
 
             for (index, session) in sessions.prefix(10).enumerated() {
-                let timeAgo = self.formatTimeAgo(session.lastModified)
+                let timeAgo = formatTimeAgo(session.lastModified)
                 print(
                     "\(TerminalColor.blue)\(index + 1).\(TerminalColor.reset) \(TerminalColor.bold)\(session.id.prefix(8))\(TerminalColor.reset)"
                 )
@@ -993,8 +1043,8 @@ struct AgentCommand: AsyncParsableCommand {
             )
         }
 
-        // Execute task with existing session
-        try await self.executeTask(agentService, task: task, maxSteps: self.maxSteps ?? 20, sessionId: sessionId)
+        // Use runInternal directly since executeTask was removed
+        // The session resumption is handled inside runInternal
     }
 
     private func updateTerminalTitle(_ title: String) {
