@@ -15,12 +15,10 @@ jobs:
         node-version: [20.x, 22.x]
     
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
     
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: recursive
     
     - name: Set up Xcode
       run: |
@@ -98,12 +96,10 @@ jobs:
     timeout-minutes: 30
     
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
     
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: recursive
     
     - name: Set up Xcode
       run: |
