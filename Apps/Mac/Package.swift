@@ -16,7 +16,7 @@ let package = Package(
     dependencies: [
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Core/PeekabooUICore"),
-        .package(url: "https://github.com/steipete/tachikoma", branch: "main"),
+        .package(path: "../../Tachikoma"),
         .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0"),
     ],
     targets: [
