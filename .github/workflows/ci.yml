@@ -20,6 +20,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Checkout Tachikoma
+      run: |
+        git clone https://github.com/steipete/tachikoma.git Tachikoma
+    
     - name: Set up Xcode
       run: |
         sudo xcode-select -s $DEVELOPER_DIR
@@ -91,6 +95,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Checkout Tachikoma
+      run: |
+        git clone https://github.com/steipete/tachikoma.git Tachikoma
+    
     - name: Set up Xcode
       run: |
         sudo xcode-select -s $DEVELOPER_DIR
@@ -144,6 +152,10 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Checkout Tachikoma
+      run: |
+        git clone https://github.com/steipete/tachikoma.git Tachikoma
     
     - name: Set up Xcode
       run: |
