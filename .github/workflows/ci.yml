@@ -165,6 +165,6 @@ jobs:
     
     - name: Build Mac App
       run: |
-        xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration Debug build
+        xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration Debug build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
       env:
         CI: true
