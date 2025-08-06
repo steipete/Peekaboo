@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.9.0"),
         .package(path: "../AXorcist"),
-        .package(url: "https://github.com/steipete/tachikoma", branch: "main"),
+        .package(path: "../../Tachikoma"),
     ],
     targets: [
         .target(
