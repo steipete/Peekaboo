@@ -14,7 +14,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.9.0"),
-        .package(url: "https://github.com/steipete/TermKit", branch: "macos-14"),
+        .package(url: "https://github.com/migueldeicaza/TermKit", branch: "main"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Tachikoma"),
