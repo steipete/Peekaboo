@@ -7,7 +7,7 @@ import Tachikoma
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Handle tool errors with consistent formatting and error enhancement
-    func handleToolError(_ error: Error, for toolName: String, in context: PeekabooServices) async -> ToolOutput {
+    func handleToolError(_ error: Error, for toolName: String, in context: PeekabooServices) async -> AgentToolArgument {
         // Log the error
         context.logging.error("Tool \(toolName) failed: \(error.localizedDescription)", category: "Tool")
 
@@ -35,7 +35,7 @@ extension PeekabooAgentService {
             }
         }
 
-        return ToolOutput.failure(peekabooError)
+        return .string("Error: \(errorMessage)")
     }
 
     /// Enhance error with context-specific information

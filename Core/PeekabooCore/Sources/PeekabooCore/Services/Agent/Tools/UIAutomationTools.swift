@@ -9,7 +9,7 @@ import Tachikoma
 
 @available(macOS 14.0, *)
 public struct UIAutomationToolDefinitions {
-    public static let click = UnifiedToolDefinition(
+    public static let click = PeekabooToolDefinition(
         name: "click",
         commandName: nil,
         abstract: "Click on UI elements or coordinates",
@@ -153,7 +153,7 @@ public struct UIAutomationToolDefinitions {
             - Check element IDs from 'see' output for precision
         """)
 
-    public static let type = UnifiedToolDefinition(
+    public static let type = PeekabooToolDefinition(
         name: "type",
         commandName: nil,
         abstract: "Type text into the currently focused element",
@@ -217,7 +217,7 @@ public struct UIAutomationToolDefinitions {
             #"{"text": "username@example.com", "press_return": true}"#,
         ])
 
-    public static let scroll = UnifiedToolDefinition(
+    public static let scroll = PeekabooToolDefinition(
         name: "scroll",
         commandName: nil,
         abstract: "Scroll the view in a specified direction",
@@ -270,7 +270,7 @@ public struct UIAutomationToolDefinitions {
             #"{"direction": "up", "x": 500, "y": 300}"#,
         ])
 
-    public static let press = UnifiedToolDefinition(
+    public static let press = PeekabooToolDefinition(
         name: "press",
         commandName: nil,
         abstract: "Press individual keys or key sequences",
@@ -329,7 +329,7 @@ public struct UIAutomationToolDefinitions {
             #"{"keys": ["escape"]}"#,
         ])
 
-    public static let hotkey = UnifiedToolDefinition(
+    public static let hotkey = PeekabooToolDefinition(
         name: "hotkey",
         commandName: nil,
         abstract: "Press keyboard shortcuts",
@@ -372,40 +372,22 @@ public struct UIAutomationToolDefinitions {
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the click tool
-    func createClickTool() -> Tool<PeekabooServices> {
+    func createClickTool() -> Tachikoma.AgentTool {
         let definition = UIAutomationToolDefinitions.click
 
-        // Custom parameter mapping for agent tool
-        let parameters = ToolParameters(
-            properties: [
-                "target": ToolParameterProperty(
-                    name: "target",
-                    type: .string,
-                    description: "Element to click - can be button text, element label (clicks center), or 'x,y' coordinates"),
-                "app": ToolParameterProperty(
-                    name: "app",
-                    type: .string,
-                    description: "Optional: Application name to search within"),
-                "double_click": ToolParameterProperty(
-                    name: "double_click",
-                    type: .boolean,
-                    description: "Whether to double-click (default: false)"),
-                "right_click": ToolParameterProperty(
-                    name: "right_click",
-                    type: .boolean,
-                    description: "Whether to right-click (default: false)"),
-            ],
-            required: ["target"])
-
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: parameters,
-            execute: { params, context in
-                let target = try params.stringValue("target")
-                let appName = params.stringValue("app", default: nil)
-                let doubleClick = params.boolValue("double_click", default: false)
-                let rightClick = params.boolValue("right_click", default: false)
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                let target = params.optionalStringValue("query") ?? params.optionalStringValue("target")
+                guard let target else {
+                    throw PeekabooError.invalidInput("Either 'query' or 'target' parameter is required")
+                }
+                
+                let appName = params.optionalStringValue("app")
+                let doubleClick = params.optionalBooleanValue("double") ?? false
+                let rightClick = params.optionalBooleanValue("right") ?? false
 
                 let startTime = Date()
 
@@ -417,7 +399,7 @@ extension PeekabooAgentService {
                     let coordinates = CGPoint(x: coordParts[0], y: coordParts[1])
                     let clickType = rightClick ? ClickType.right : (doubleClick ? ClickType.double : ClickType.single)
 
-                    try await context.automation.click(
+                    try await services.automation.click(
                         target: .coordinates(coordinates),
                         clickType: clickType,
                         sessionId: nil as String?)
@@ -425,18 +407,18 @@ extension PeekabooAgentService {
                     let duration = Date().timeIntervalSince(startTime)
 
                     // Get the frontmost app for better feedback
-                    let frontmostApp = try? await context.applications.getFrontmostApplication()
+                    let frontmostApp = try? await services.applications.getFrontmostApplication()
                     let targetApp = appName ?? frontmostApp?.name ?? "unknown"
 
                     let actionType = rightClick ? "Right-clicked" : (doubleClick ? "Double-clicked" : "Clicked")
-                    return ToolOutput.success(
+                    return .string(
                         "\(actionType) at (\(Int(coordinates.x)), \(Int(coordinates.y))) in \(targetApp)")
                 }
 
                 // Try to click using the target as a query
                 let clickType = rightClick ? ClickType.right : (doubleClick ? ClickType.double : ClickType.single)
 
-                try await context.automation.click(
+                try await services.automation.click(
                     target: .query(target),
                     clickType: clickType,
                     sessionId: nil as String?)
@@ -444,51 +426,37 @@ extension PeekabooAgentService {
                 let duration = Date().timeIntervalSince(startTime)
 
                 // Get the frontmost app for better feedback
-                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let frontmostApp = try? await services.applications.getFrontmostApplication()
                 let targetApp = appName ?? frontmostApp?.name ?? "unknown"
 
                 let actionType = rightClick ? "Right-clicked" : (doubleClick ? "Double-clicked" : "Clicked")
-                return ToolOutput.success("\(actionType) on '\(target)' in \(targetApp)")
+                return .string("\(actionType) on '\(target)' in \(targetApp)")
             })
     }
 
     /// Create the type tool
-    func createTypeTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "type",
-            description: "Type text at the current cursor position or into a specific field. Supports escape sequences: \\n (newline), \\t (tab), \\b (backspace), \\e (escape), \\\\ (literal backslash)",
-            parameters: ToolParameters(
-                properties: [
-                    "text": ToolParameterProperty(
-                        name: "text",
-                        type: .string,
-                        description: "Text to type. Supports escape sequences: \\n (newline), \\t (tab), \\b (backspace), \\e (escape), \\\\ (literal backslash)"),
-                    "field": ToolParameterProperty(
-                        name: "field",
-                        type: .string,
-                        description: "Optional: Label or identifier of the text field to type into"),
-                    "app": ToolParameterProperty(
-                        name: "app",
-                        type: .string,
-                        description: "Optional: Application name to search within"),
-                    "clear_first": ToolParameterProperty(
-                        name: "clear_first",
-                        type: .boolean,
-                        description: "Whether to clear the field before typing (default: false)"),
-                ],
-                required: ["text"]),
-            execute: { params, context in
-                let text = try params.stringValue("text")
-                let fieldLabel = params.stringValue("field", default: nil)
-                let appName = params.stringValue("app", default: nil)
-                let clearFirst = params.boolValue("clear_first", default: false)
+    func createTypeTool() -> Tachikoma.AgentTool {
+        let definition = UIAutomationToolDefinitions.type
+
+        return Tachikoma.AgentTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let text = params.optionalStringValue("text") else {
+                    throw PeekabooError.invalidInput("Text parameter is required")
+                }
+                
+                let fieldLabel = params.optionalStringValue("field")
+                let appName = params.optionalStringValue("app")
+                let clearFirst = params.optionalBooleanValue("clear") ?? false
 
                 let startTime = Date()
 
                 // If a specific field is targeted, click it first
                 if let fieldLabel {
                     // Click on the field to focus it
-                    try await context.automation.click(
+                    try await services.automation.click(
                         target: ClickTarget.query(fieldLabel),
                         clickType: ClickType.single,
                         sessionId: nil as String?)
@@ -498,17 +466,17 @@ extension PeekabooAgentService {
                 }
 
                 // Type the text using the automation service
-                try await context.automation.type(
+                try await services.automation.type(
                     text: text,
                     target: fieldLabel,
                     clearExisting: clearFirst,
-                    typingDelay: 0,
+                    typingDelay: params.optionalIntegerValue("delay") ?? 0,
                     sessionId: nil as String?)
 
                 let duration = Date().timeIntervalSince(startTime)
 
                 // Get the frontmost app for better feedback
-                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let frontmostApp = try? await services.applications.getFrontmostApplication()
                 let targetApp = appName ?? frontmostApp?.name ?? "unknown"
 
                 let characterCount = text.count
@@ -529,41 +497,27 @@ extension PeekabooAgentService {
                     output += " (cleared first)"
                 }
 
-                return ToolOutput.success(output)
+                return .string(output)
             })
     }
 
     /// Create the scroll tool
-    func createScrollTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "scroll",
-            description: "Scroll in a window or element",
-            parameters: ToolParameters(
-                properties: [
-                    "direction": ToolParameterProperty(
-                        name: "direction",
-                        type: .string,
-                        description: "Scroll direction",
-                        enumValues: ["up", "down", "left", "right"]),
-                    "amount": ToolParameterProperty(
-                        name: "amount",
-                        type: .integer,
-                        description: "Number of scroll units (default: 5)"),
-                    "target": ToolParameterProperty(
-                        name: "target",
-                        type: .string,
-                        description: "Optional: Element to scroll within (label or identifier)"),
-                    "app": ToolParameterProperty(
-                        name: "app",
-                        type: .string,
-                        description: "Optional: Application name"),
-                ],
-                required: ["direction"]),
-            execute: { params, context in
-                let directionStr = try params.stringValue("direction")
-                let amount = params.intValue("amount", default: nil as Int?) ?? 5
-                let target = params.stringValue("target", default: nil)
-                let appName = params.stringValue("app", default: nil)
+    func createScrollTool() -> Tachikoma.AgentTool {
+        let definition = UIAutomationToolDefinitions.scroll
+
+        return Tachikoma.AgentTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let directionStr = params.optionalStringValue("direction") else {
+                    throw PeekabooError.invalidInput("Direction parameter is required")
+                }
+                
+                let amount = params.optionalIntegerValue("amount") ?? 5
+                let target = params.optionalStringValue("on")
+                let appName = params.optionalStringValue("app")
+                let smooth = params.optionalBooleanValue("smooth") ?? false
 
                 let startTime = Date()
 
@@ -578,18 +532,18 @@ extension PeekabooAgentService {
                 }
 
                 // Use the automation service scroll method
-                try await context.automation.scroll(
+                try await services.automation.scroll(
                     direction: direction,
                     amount: amount,
                     target: target,
-                    smooth: false,
+                    smooth: smooth,
                     delay: 0,
                     sessionId: nil as String?)
 
                 let duration = Date().timeIntervalSince(startTime)
 
                 // Get the frontmost app for better feedback
-                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let frontmostApp = try? await services.applications.getFrontmostApplication()
                 let targetApp = appName ?? frontmostApp?.name ?? "unknown"
 
                 var output = "Scrolled \(directionStr) by \(amount) units"
@@ -598,163 +552,143 @@ extension PeekabooAgentService {
                 }
                 output += " - \(targetApp)"
 
-                return ToolOutput.success(output)
+                return .string(output)
             })
     }
 
     /// Create the press tool
-    func createPressTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "press",
-            description: "Press individual keys like Enter, Tab, Escape, arrow keys, etc. Use this instead of type when you just need to press special keys.",
-            parameters: ToolParameters(
-                properties: [
-                    "key": ToolParameterProperty(
-                        name: "key",
-                        type: .string,
-                        description: "Key to press: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help"),
-                    "count": ToolParameterProperty(
-                        name: "count",
-                        type: .integer,
-                        description: "Number of times to press the key (default: 1)"),
-                ],
-                required: ["key"]),
-            execute: { params, context in
-                let keyStr = try params.stringValue("key")
-                let count = params.intValue("count", default: nil as Int?) ?? 1
+    func createPressTool() -> Tachikoma.AgentTool {
+        let definition = UIAutomationToolDefinitions.press
+
+        return Tachikoma.AgentTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                // Handle array of keys or single key
+                let keys: [String]
+                if params["keys"] != nil {
+                    keys = try params.arrayValue("keys") { argument in
+                        switch argument {
+                        case .string(let s): return s
+                        default: throw PeekabooError.invalidInput("Array elements must be strings")
+                        }
+                    }
+                } else if let singleKey = params.optionalStringValue("key") {
+                    keys = [singleKey]
+                } else {
+                    throw PeekabooError.invalidInput("Either 'keys' array or single 'key' parameter is required")
+                }
+                
+                let count = params.optionalIntegerValue("count") ?? 1
+                let delay = params.optionalIntegerValue("delay") ?? 100
 
                 let startTime = Date()
 
-                // Map key name to SpecialKey enum - handle various naming conventions
-                let normalizedKey = keyStr.lowercased()
-                    .replacingOccurrences(of: "_", with: "")
-                    .replacingOccurrences(of: "-", with: "")
-
-                let mappedKey: String = switch normalizedKey {
-                case "return", "enter": "return"
-                case "forwarddelete", "fndelete": "forward_delete"
-                case "backspace", "delete": "delete"
-                case "escape", "esc": "escape"
-                case "up", "arrowup", "uparrow": "up"
-                case "down", "arrowdown", "downarrow": "down"
-                case "left", "arrowleft", "leftarrow": "left"
-                case "right", "arrowright", "rightarrow": "right"
-                case "pageup": "pageup"
-                case "pagedown": "pagedown"
-                case "capslock": "caps_lock"
-                default: normalizedKey
-                }
-
-                guard let specialKey = SpecialKey(rawValue: mappedKey) else {
-                    throw PeekabooError
-                        .invalidInput(
-                            "Unknown key: '\(keyStr)'. Available keys: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help")
-                }
-
-                // Build type actions for the key presses
+                // Process each key
                 var actions: [TypeAction] = []
-                for _ in 0..<count {
+                for keyStr in keys {
+                    // Map key name to SpecialKey enum - handle various naming conventions
+                    let normalizedKey = keyStr.lowercased()
+                        .replacingOccurrences(of: "_", with: "")
+                        .replacingOccurrences(of: "-", with: "")
+
+                    let mappedKey: String = switch normalizedKey {
+                    case "return", "enter": "return"
+                    case "forwarddelete", "fndelete": "forward_delete"
+                    case "backspace", "delete": "delete"
+                    case "escape", "esc": "escape"
+                    case "up", "arrowup", "uparrow": "up"
+                    case "down", "arrowdown", "downarrow": "down"
+                    case "left", "arrowleft", "leftarrow": "left"
+                    case "right", "arrowright", "rightarrow": "right"
+                    case "pageup": "pageup"
+                    case "pagedown": "pagedown"
+                    case "capslock": "caps_lock"
+                    default: normalizedKey
+                    }
+
+                    guard let specialKey = SpecialKey(rawValue: mappedKey) else {
+                        throw PeekabooError
+                            .invalidInput(
+                                "Unknown key: '\(keyStr)'. Available keys: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help")
+                    }
+
                     actions.append(.key(specialKey))
+                }
+                
+                // Repeat the entire key sequence if count > 1
+                var finalActions: [TypeAction] = []
+                for _ in 0..<count {
+                    finalActions.append(contentsOf: actions)
                 }
 
                 // Execute the key presses
-                let result = try await context.automation.typeActions(
-                    actions,
-                    typingDelay: 100, // 100ms between key presses
+                let result = try await services.automation.typeActions(
+                    finalActions,
+                    typingDelay: delay,
                     sessionId: nil as String?)
 
                 let duration = Date().timeIntervalSince(startTime)
 
                 // Get the frontmost app for better feedback
-                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let frontmostApp = try? await services.applications.getFrontmostApplication()
                 let targetApp = frontmostApp?.name ?? "unknown"
 
-                var output = "Pressed '\(keyStr)'"
+                var output = "Pressed \(keys.joined(separator: ", "))"
                 if count > 1 {
                     output += " \(count) times"
                 }
                 output += " in \(targetApp)"
 
-                return ToolOutput.success(output)
+                return .string(output)
             })
     }
 
     /// Create the hotkey tool
-    func createHotkeyTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "hotkey",
-            description: "Press a keyboard shortcut or key combination",
-            parameters: ToolParameters(
-                properties: [
-                    "key": ToolParameterProperty(
-                        name: "key",
-                        type: .string,
-                        description: "Main key to press (e.g., 'a', 'space', 'return', 'escape', 'tab', 'delete', 'arrow_up')"),
-                    "modifiers": ToolParameterProperty(
-                        name: "modifiers",
-                        type: .array,
-                        description: "Modifier keys to hold (e.g., ['command', 'shift'])",
-                        enumValues: ["command", "control", "option", "shift", "function"]),
-                ],
-                required: ["key"]),
-            execute: { params, context in
-                let keyStr = try params.stringValue("key")
-                // Get modifiers array - use arrayValue with transform
-                let modifierStrs: [String] = (try? params.arrayValue("modifiers") { arg in
-                    switch arg {
-                    case .string(let s): return s
-                    default: throw TachikomaError.invalidInput("modifiers must be array of strings")
-                    }
-                }) ?? []
+    func createHotkeyTool() -> Tachikoma.AgentTool {
+        let definition = UIAutomationToolDefinitions.hotkey
 
-                // Map key names to match what hotkey expects
-                let mappedKey: String = switch keyStr.lowercased() {
-                case "return", "enter": "return"
-                case "escape", "esc": "escape"
-                case "delete", "backspace": "delete"
-                case "arrow_up", "up": "up"
-                case "arrow_down", "down": "down"
-                case "arrow_left", "left": "left"
-                case "arrow_right", "right": "right"
-                default: keyStr.lowercased()
+        return Tachikoma.AgentTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let keysString = params.optionalStringValue("keys") else {
+                    throw PeekabooError.invalidInput("Keys parameter is required")
                 }
-
-                // Map modifier strings to the expected format
-                let mappedModifiers = modifierStrs.map { mod in
-                    switch mod.lowercased() {
-                    case "command": "cmd"
-                    case "control": "ctrl"
-                    case "option": "option"
-                    case "shift": "shift"
-                    case "function": "fn"
-                    default: mod
-                    }
-                }
-
-                // Build the keys string for hotkey method
-                var keys = [String]()
-                keys.append(contentsOf: mappedModifiers)
-                keys.append(mappedKey)
-                let keysString = keys.joined(separator: ",")
+                
+                let repeatCount = params.optionalIntegerValue("repeat") ?? 1
 
                 let startTime = Date()
 
-                try await context.automation.hotkey(keys: keysString, holdDuration: 0)
+                // Repeat the hotkey if requested
+                for _ in 0..<repeatCount {
+                    try await services.automation.hotkey(keys: keysString, holdDuration: 50)
+                    
+                    // Small delay between repeats
+                    if repeatCount > 1 {
+                        try await Task.sleep(nanoseconds: UInt64(100_000_000)) // 100ms
+                    }
+                }
 
                 let duration = Date().timeIntervalSince(startTime)
 
                 // Get the frontmost app for better feedback
-                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let frontmostApp = try? await services.applications.getFrontmostApplication()
                 let targetApp = frontmostApp?.name ?? "unknown"
 
                 // Format the shortcut nicely
-                var shortcutDisplay = ""
-                if !modifierStrs.isEmpty {
-                    shortcutDisplay = modifierStrs.map(\.capitalized).joined(separator: "+") + "+"
-                }
-                shortcutDisplay += keyStr.capitalized
+                let keyParts = keysString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                let shortcutDisplay = keyParts.map(\.capitalized).joined(separator: "+")
 
-                return ToolOutput.success("Pressed \(shortcutDisplay) in \(targetApp)")
+                var output = "Pressed \(shortcutDisplay)"
+                if repeatCount > 1 {
+                    output += " \(repeatCount) times"
+                }
+                output += " in \(targetApp)"
+
+                return .string(output)
             })
     }
 }

@@ -10,6 +10,7 @@
 		7814F1902E1C0950000995F8 /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 7814F18F2E1C0950000995F8 /* AXorcist */; };
 		782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 782555012E1CA0ED00F1D8DF /* AXorcist */; };
 		782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
+		78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 78E542AC2E4178650006A8EF /* KeyboardShortcuts */; };
 		78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */ = {isa = PBXBuildFile; productRef = 78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */; };
 /* End PBXBuildFile section */
 
@@ -32,6 +33,7 @@
 			files = (
 				7814F1902E1C0950000995F8 /* AXorcist in Frameworks */,
 				782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */,
+				78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */,
 				782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */,
 				78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */,
 			);
@@ -80,6 +82,7 @@
 				782555012E1CA0ED00F1D8DF /* AXorcist */,
 				782555042E1CA10900F1D8DF /* PeekabooCore */,
 				78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */,
+				78E542AC2E4178650006A8EF /* KeyboardShortcuts */,
 			);
 			productName = Peekaboo;
 			productReference = 7814F1062E1BD4C8000995F8 /* Peekaboo.app */;
@@ -113,6 +116,7 @@
 				782555002E1CA0ED00F1D8DF /* XCLocalSwiftPackageReference "../../Core/AXorcist" */,
 				782555032E1CA10900F1D8DF /* XCLocalSwiftPackageReference "../../Core/PeekabooCore" */,
 				78EA3D0E2E3B92AB000ADFA6 /* XCLocalSwiftPackageReference "../../Core/PeekabooUICore" */,
+				78E542AB2E4178650006A8EF /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7814F1072E1BD4C8000995F8 /* Products */;
@@ -393,6 +397,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		78E542AB2E4178650006A8EF /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.3.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		7814F18F2E1C0950000995F8 /* AXorcist */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -405,6 +420,11 @@
 		782555042E1CA10900F1D8DF /* PeekabooCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PeekabooCore;
+		};
+		78E542AC2E4178650006A8EF /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 78E542AB2E4178650006A8EF /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
 		};
 		78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */ = {
 			isa = XCSwiftPackageProductDependency;

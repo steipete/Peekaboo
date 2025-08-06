@@ -59,8 +59,8 @@ struct RecentSessionsView: View {
                         onDelete: {
                             withAnimation {
                                 sessionStore.sessions.removeAll { $0.id == session.id }
-                                Task {
-                                    try? await sessionStore.saveSessions()
+                                Task { @MainActor in
+                                    sessionStore.saveSessions()
                                 }
                             }
                         })

@@ -394,31 +394,6 @@ public final class AgentSessionManager: @unchecked Sendable {
 
 // MARK: - Legacy Agent System Compatibility Stubs
 
-/// Legacy PeekabooAgent stub for compatibility during migration
-/// TODO: Replace with direct TachikomaCore generateText/streamText calls
-public struct PeekabooAgent<Context: Sendable>: Sendable {
-    public let sessionId: String
-    public let name: String
-    public let context: Context
-
-    public init(
-        model: Any, // Legacy model parameter
-        sessionId: String,
-        name: String,
-        instructions: String,
-        tools: [Any], // Legacy tools parameter
-        context: Context)
-    {
-        self.sessionId = sessionId
-        self.name = name
-        self.context = context
-    }
-
-    public func execute(_ prompt: String) async throws -> String {
-        // TODO: Replace with direct generateText call
-        throw TachikomaError.unsupportedOperation("Legacy agent system - use direct generateText calls")
-    }
-}
 
 /// Legacy ModelParameters stub for compatibility
 /// TODO: Replace with LanguageModel enum

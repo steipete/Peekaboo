@@ -64,7 +64,9 @@ private struct SessionMessageRow: View {
                 if !self.message.toolCalls.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(self.message.toolCalls) { toolCall in
-                            SessionToolCallView(toolCall: toolCall)
+                            if #available(macOS 15.0, *) {
+                                SessionToolCallView(toolCall: toolCall)
+                            }
                         }
                     }
                     .padding(.top, 4)
@@ -92,6 +94,7 @@ private struct SessionMessageRow: View {
 }
 
 // Tool call view (reused from MainWindow)
+@available(macOS 15.0, *)
 private struct SessionToolCallView: View {
     let toolCall: ConversationToolCall
 

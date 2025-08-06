@@ -15,8 +15,9 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.9.0"),
         .package(url: "https://github.com/steipete/TermKit", branch: "macos-14"),
+        .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
         .package(path: "../../Core/PeekabooCore"),
-        .package(url: "https://github.com/steipete/tachikoma", branch: "main"),
+        .package(path: "../../Tachikoma"),
     ],
     targets: [
         .executableTarget(
@@ -25,6 +26,7 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "TermKit", package: "TermKit"),
+                .product(name: "Spinner", package: "Spinner"),
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
             ],

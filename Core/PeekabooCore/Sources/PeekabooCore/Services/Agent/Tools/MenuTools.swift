@@ -7,7 +7,7 @@ import Tachikoma
 
 @available(macOS 14.0, *)
 public struct MenuToolDefinitions {
-    public static let menuClick = UnifiedToolDefinition(
+    public static let menuClick = PeekabooToolDefinition(
         name: "menu_click",
         commandName: "menu-click",
         abstract: "Click a menu item in the menu bar",
@@ -52,7 +52,7 @@ public struct MenuToolDefinitions {
             - Some menu items may be disabled depending on context
         """)
 
-    public static let listMenus = UnifiedToolDefinition(
+    public static let listMenus = PeekabooToolDefinition(
         name: "list_menus",
         commandName: "list-menus",
         abstract: "List available menu items",
@@ -104,16 +104,18 @@ public struct MenuToolDefinitions {
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the menu click tool
-    func createMenuClickTool() -> Tool<PeekabooServices> {
+    func createMenuClickTool() -> Tachikoma.AgentTool {
         let definition = MenuToolDefinitions.menuClick
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
-                let menuPath = try params.stringValue("path")
-                let appName = params.stringValue("app", default: nil)
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let menuPath = params.optionalStringValue("path") else {
+                    throw PeekabooError.invalidInput("Menu path parameter is required")
+                }
+                let appName = params.optionalStringValue("app")
 
                 // Parse menu path
                 let pathComponents = menuPath
@@ -126,11 +128,11 @@ extension PeekabooAgentService {
 
                 // Ensure app is focused if specified
                 if let appName {
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     if let app = appsOutput.data.applications
                         .first(where: { $0.name.lowercased() == appName.lowercased() })
                     {
-                        try await context.applications.activateApplication(
+                        try await services.applications.activateApplication(
                             identifier: app.bundleIdentifier ?? app.name)
                         // Small delay to ensure activation
                         try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
@@ -143,7 +145,7 @@ extension PeekabooAgentService {
                     targetApp = appName
                 } else {
                     // Get frontmost app
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     guard let frontmost = appsOutput.data.applications.first(where: { $0.isActive }) else {
                         throw PeekabooError.operationError(message: "No active application found")
                     }
@@ -151,24 +153,24 @@ extension PeekabooAgentService {
                 }
 
                 let startTime = Date()
-                try await context.menu.clickMenuItem(app: targetApp, itemPath: menuPath ?? "")
+                try await services.menu.clickMenuItem(app: targetApp, itemPath: menuPath)
                 _ = Date().timeIntervalSince(startTime)
 
-                return ToolOutput.success("Clicked \(targetApp) > \(menuPath ?? "")")
+                return .string("Clicked \(targetApp) > \(menuPath)")
             })
     }
 
     /// Create the list menus tool
-    func createListMenusTool() -> Tool<PeekabooServices> {
+    func createListMenusTool() -> Tachikoma.AgentTool {
         let definition = MenuToolDefinitions.listMenus
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
-                let appName = params.stringValue("app", default: nil)
-                let specificMenu = params.stringValue("menu", default: nil)
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                let appName = params.optionalStringValue("app")
+                let specificMenu = params.optionalStringValue("menu")
 
                 let startTime = Date()
 
@@ -177,17 +179,17 @@ extension PeekabooAgentService {
                 if let appName {
                     targetApp = appName
                 } else {
-                    let frontmostApp = try await context.applications.getFrontmostApplication()
+                    let frontmostApp = try await services.applications.getFrontmostApplication()
                     targetApp = frontmostApp.name
                 }
 
                 // Get menu structure
                 let menuStructure: MenuStructure = if let appName {
                     // Get menus for specific app
-                    try await context.menu.listMenus(for: appName)
+                    try await services.menu.listMenus(for: appName)
                 } else {
                     // Get menus for frontmost app
-                    try await context.menu.listFrontmostMenus()
+                    try await services.menu.listFrontmostMenus()
                 }
 
                 _ = Date().timeIntervalSince(startTime)
@@ -230,7 +232,7 @@ extension PeekabooAgentService {
                     summary += " (expanded '\(specificMenu)' menu with \(expandedMenuItems) items)"
                 }
 
-                return ToolOutput.success(output.trimmingCharacters(in: .whitespacesAndNewlines))
+                return .string(output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 }

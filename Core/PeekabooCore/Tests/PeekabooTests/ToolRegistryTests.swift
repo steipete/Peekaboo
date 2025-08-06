@@ -133,7 +133,7 @@ struct ToolRegistryTests {
     @Test("Tool definition properties")
     func toolDefinitionProperties() {
         // Create a test tool definition
-        let testTool = UnifiedToolDefinition(
+        let testTool = PeekabooToolDefinition(
             name: "test_tool",
             commandName: "test-cmd",
             abstract: "Test tool abstract",
@@ -177,7 +177,7 @@ struct ToolRegistryTests {
 
     @Test("Tool definition without agent guidance")
     func toolDefinitionWithoutAgentGuidance() {
-        let tool = UnifiedToolDefinition(
+        let tool = PeekabooToolDefinition(
             name: "simple_tool",
             abstract: "Simple tool",
             discussion: "Simple tool discussion",
@@ -231,7 +231,7 @@ struct ToolRegistryTests {
 
     @Test("Tool to agent parameters conversion")
     func toolToAgentParameters() {
-        let tool = UnifiedToolDefinition(
+        let tool = PeekabooToolDefinition(
             name: "test_tool",
             abstract: "Test tool",
             discussion: "Test tool discussion",
@@ -258,7 +258,7 @@ struct ToolRegistryTests {
                     options: ["fast", "slow", "medium"]),
             ])
 
-        let agentParams = tool.toAgentParameters()
+        let agentParams = tool.toAgentToolParameters()
 
         // Verify parameter conversion (dashes should be converted to underscores)
         #expect(agentParams.type == "object")

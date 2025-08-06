@@ -8,15 +8,19 @@
 import PeekabooCore
 import SwiftUI
 
+
 /// A view that displays scroll direction indicators with motion blur
 struct ScrollAnimationView: View {
     // MARK: - Properties
 
     /// Scroll direction
-    let direction: ScrollDirection
+    let direction: PeekabooCore.ScrollDirection
 
     /// Number of scroll units
     let amount: Int
+    
+    /// Animation speed multiplier (1.0 = normal, 0.5 = 2x slower, 2.0 = 2x faster)
+    var animationSpeed: Double = 1.0
 
     /// Animation states
     @State private var arrowOffset: CGFloat = 0
@@ -94,21 +98,31 @@ struct ScrollAnimationView: View {
     // MARK: - Methods
 
     private func startAnimation() {
+        // Calculate durations based on animation speed
+        // Note: animationSpeed is inverted for durations (0.5 = 2x slower, 2.0 = 2x faster)
+        let fadeInDuration = 0.3 / self.animationSpeed
+        let labelDuration = 0.2 / self.animationSpeed
+        let labelDelay = 0.1 / self.animationSpeed
+        let motionDuration = 0.4 / self.animationSpeed
+        let motionDelay = 0.3 / self.animationSpeed
+        let fadeOutDuration = 0.2 / self.animationSpeed
+        let fadeOutDelay = 0.6 / self.animationSpeed
+        
         // Fade in arrows with motion
-        withAnimation(.easeOut(duration: 0.3)) {
+        withAnimation(.easeOut(duration: fadeInDuration)) {
             self.arrowOpacity = 1.0
             self.arrowOffset = self.direction == .up || self.direction == .down ? 10 : 0
             self.blurRadius = 2
         }
 
         // Show amount label
-        withAnimation(.easeIn(duration: 0.2).delay(0.1)) {
+        withAnimation(.easeIn(duration: labelDuration).delay(labelDelay)) {
             self.amountLabelOpacity = 1.0
         }
 
         // Continue motion animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.easeInOut(duration: 0.4)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + motionDelay) {
+            withAnimation(.easeInOut(duration: motionDuration)) {
                 switch self.direction {
                 case .up:
                     self.arrowOffset = -20
@@ -122,8 +136,8 @@ struct ScrollAnimationView: View {
         }
 
         // Fade out
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            withAnimation(.easeOut(duration: 0.2)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + fadeOutDelay) {
+            withAnimation(.easeOut(duration: fadeOutDuration)) {
                 self.arrowOpacity = 0
                 self.amountLabelOpacity = 0
             }
@@ -135,25 +149,25 @@ struct ScrollAnimationView: View {
 
 #if DEBUG
 #Preview("Scroll Up") {
-    ScrollAnimationView(direction: .up, amount: 3)
+    ScrollAnimationView(direction: PeekabooCore.ScrollDirection.up, amount: 3)
         .frame(width: 150, height: 150)
         .background(Color.gray.opacity(0.1))
 }
 
 #Preview("Scroll Down") {
-    ScrollAnimationView(direction: .down, amount: 5)
+    ScrollAnimationView(direction: PeekabooCore.ScrollDirection.down, amount: 5)
         .frame(width: 150, height: 150)
         .background(Color.gray.opacity(0.1))
 }
 
 #Preview("Scroll Left") {
-    ScrollAnimationView(direction: .left, amount: 10)
+    ScrollAnimationView(direction: PeekabooCore.ScrollDirection.left, amount: 10)
         .frame(width: 150, height: 150)
         .background(Color.gray.opacity(0.1))
 }
 
 #Preview("Scroll Right") {
-    ScrollAnimationView(direction: .right, amount: 1)
+    ScrollAnimationView(direction: PeekabooCore.ScrollDirection.right, amount: 1)
         .frame(width: 150, height: 150)
         .background(Color.gray.opacity(0.1))
 }

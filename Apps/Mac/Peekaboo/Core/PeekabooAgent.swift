@@ -295,8 +295,8 @@ final class PeekabooAgent {
                    let index = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id })
                 {
                     self.sessionStore.sessions[index].modelName = self.settings.selectedModel
-                    Task {
-                        try? await self.sessionStore.saveSessions()
+                    Task { @MainActor in
+                        self.sessionStore.saveSessions()
                     }
                 }
             }
@@ -524,8 +524,8 @@ final class PeekabooAgent {
                     {
                         self.sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex]
                             .result = result
-                        Task {
-                            try? await self.sessionStore.saveSessions()
+                        Task { @MainActor in
+                            self.sessionStore.saveSessions()
                         }
                     }
                 }

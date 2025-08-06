@@ -38,7 +38,7 @@ struct LearnCommand: AsyncParsableCommand {
 
     // MARK: - Comprehensive Output
 
-    private func outputComprehensiveGuide(systemPrompt: String, tools: [UnifiedToolDefinition]) {
+    private func outputComprehensiveGuide(systemPrompt: String, tools: [PeekabooToolDefinition]) {
         print("""
         # Peekaboo Comprehensive Guide
 

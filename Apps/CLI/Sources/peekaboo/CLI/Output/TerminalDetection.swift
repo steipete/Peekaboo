@@ -22,15 +22,8 @@ struct TerminalCapabilities {
             return .minimal
         }
         
-        // Capability-based progressive enhancement
-        if supportsTUI && width >= 100 && height >= 20 {
-            return .tui
-        }
-        
-        if supportsColors && width >= 80 {
-            return .enhanced
-        }
-        
+        // Default to compact mode for consistency
+        // TUI mode must be explicitly requested with --tui flag
         return .compact
     }
 }

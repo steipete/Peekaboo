@@ -2,23 +2,6 @@ import CoreGraphics
 import Foundation
 import Tachikoma
 
-// Convenience extensions for cleaner return statements
-extension ToolOutput {
-    /// Create a successful string output
-    static func success(_ message: String) -> ToolOutput {
-        .string(message)
-    }
-
-    /// Create an error output from a PeekabooError
-    static func failure(_ error: PeekabooError) -> ToolOutput {
-        .string("Error: \(error.localizedDescription)")
-    }
-
-    /// Create an error output from any Error
-    static func failure(_ error: Error) -> ToolOutput {
-        .string("Error: \(error.localizedDescription)")
-    }
-}
 
 // MARK: - Helper Types
 
@@ -148,7 +131,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 task,
                 model: selectedModel,
                 maxSteps: maxSteps,
-                streamingDelegate: streamingDelegate)
+                streamingDelegate: streamingDelegate,
+                eventHandler: eventHandler)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -259,24 +243,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     // MARK: - Agent Creation
 
-    /// Create a Peekaboo automation agent with all available tools
-    public func createAutomationAgent(
-        name: String = "Peekaboo Assistant",
-        model: LanguageModel? = nil) async throws -> PeekabooAgent<PeekabooServices>
-    {
-        let selectedModel = model ?? self.defaultLanguageModel
-
-        let agent = PeekabooAgent<PeekabooServices>(
-            model: selectedModel,
-            sessionId: UUID().uuidString,
-            name: name,
-            instructions: AgentSystemPrompt.generate(),
-            tools: self.createPeekabooTools(),
-            context: self.services)
-
-        return agent
-    }
-
     // MARK: - Execution Methods
 
     /// Execute a task with the automation agent (with session support)
@@ -333,7 +299,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 task,
                 model: selectedModel,
                 maxSteps: maxSteps,
-                streamingDelegate: streamingDelegate)
+                streamingDelegate: streamingDelegate,
+                eventHandler: eventHandler)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -364,67 +331,11 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             task,
             model: selectedModel,
             maxSteps: 20,
-            streamingDelegate: dummyDelegate)
+            streamingDelegate: dummyDelegate,
+            eventHandler: nil)
     }
 
     // MARK: - Tool Creation
-
-    internal func createPeekabooTools() -> [Tool<PeekabooServices>] {
-        var tools: [Tool<PeekabooServices>] = []
-
-        // Vision tools
-        tools.append(createSeeTool())
-        tools.append(createScreenshotTool())
-        tools.append(createWindowCaptureTool())
-
-        // UI automation tools
-        tools.append(createClickTool())
-        tools.append(createTypeTool())
-        tools.append(createPressTool())
-        tools.append(createScrollTool())
-        tools.append(createHotkeyTool())
-
-        // Window management tools
-        tools.append(createListWindowsTool())
-        tools.append(createFocusWindowTool())
-        tools.append(createResizeWindowTool())
-        tools.append(createListScreensTool())
-
-        // Space management tools (temporarily disabled due to missing SpaceManagementService)
-        // tools.append(createListSpacesTool())
-        // tools.append(createSwitchSpaceTool())
-        // tools.append(createMoveWindowToSpaceTool())
-
-        // Application tools
-        tools.append(createListAppsTool())
-        tools.append(createLaunchAppTool())
-
-        // Element tools
-        tools.append(createFindElementTool())
-        tools.append(createListElementsTool())
-        tools.append(createFocusedTool())
-
-        // Menu tools
-        tools.append(createMenuClickTool())
-        tools.append(createListMenusTool())
-
-        // Dialog tools
-        tools.append(createDialogClickTool())
-        tools.append(createDialogInputTool())
-
-        // Dock tools
-        tools.append(createDockLaunchTool())
-        tools.append(createListDockTool())
-
-        // Shell tool
-        tools.append(createShellTool())
-
-        // Completion tools
-        tools.append(CompletionTools.createDoneTool())
-        tools.append(CompletionTools.createNeedInfoTool())
-
-        return tools
-    }
 
 
     private func buildAdditionalParameters(modelName: String, apiType: String?) -> ModelParameters? {
@@ -463,14 +374,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 // MARK: - Convenience Methods
 
 extension PeekabooAgentService {
-    /// Create a simple agent for basic tasks
-    public func createSimpleAgent(
-        model: LanguageModel? = nil) async throws -> PeekabooAgent<PeekabooServices>
-    {
-        try await self.createAutomationAgent(
-            name: "Simple Assistant",
-            model: model)
-    }
 
     /// Resume a previous session
     public func resumeSession(
@@ -598,42 +501,62 @@ private struct UnsafeTransfer<T>: @unchecked Sendable {
     }
 }
 
+
 // MARK: - Tool Creation Helpers
 
 extension PeekabooAgentService {
-    /// Create SimpleTool instances from native Peekaboo tools
-    func createSimpleTools() -> [SimpleTool] {
-        // For now, return empty array until we implement proper conversion
-        // This is a placeholder to get tests running
-        return []
-    }
-    /// Create a Tachikoma tool with full parameter support
-    func createTool(
-        name: String,
-        description: String,
-        parameters: ToolParameters,
-        execute: @escaping @Sendable (ToolInput, PeekabooServices) async throws -> ToolOutput) -> Tool<PeekabooServices>
-    {
-        Tool(
-            name: name,
-            description: description
-        ) { input, services in
-            try await execute(input, services)
-        }
-    }
-
-    /// Create a simple Tachikoma tool without parameters
-    func createSimpleTool(
-        name: String,
-        description: String,
-        execute: @escaping @Sendable (ToolInput, PeekabooServices) async throws -> ToolOutput) -> Tool<PeekabooServices>
-    {
-        Tool(
-            name: name,
-            description: description
-        ) { input, services in
-            try await execute(input, services)
-        }
+    /// Create AgentTool instances from native Peekaboo tools
+    func createAgentTools() -> [Tachikoma.AgentTool] {
+        var agentTools: [Tachikoma.AgentTool] = []
+        
+        // Vision tools
+        agentTools.append(createSeeTool())
+        agentTools.append(createScreenshotTool())
+        agentTools.append(createWindowCaptureTool())
+        
+        // TODO: Convert remaining tools to AgentTool format
+        // UI automation tools - temporarily disabled during migration
+        // agentTools.append(createClickTool())
+        // agentTools.append(createTypeTool())
+        // agentTools.append(createPressTool())
+        // agentTools.append(createScrollTool())
+        // agentTools.append(createHotkeyTool())
+        
+        // Window management tools - temporarily disabled during migration
+        // agentTools.append(createListWindowsTool())
+        // agentTools.append(createFocusWindowTool())
+        // agentTools.append(createResizeWindowTool())
+        // agentTools.append(createListScreensTool())
+        
+        // Application tools - temporarily disabled during migration
+        // agentTools.append(createListAppsTool())
+        // agentTools.append(createLaunchAppTool())
+        
+        // Element tools - temporarily disabled during migration
+        // agentTools.append(createFindElementTool())
+        // agentTools.append(createListElementsTool())
+        // agentTools.append(createFocusedTool())
+        
+        // Menu tools - temporarily disabled during migration
+        // agentTools.append(createMenuClickTool())
+        // agentTools.append(createListMenusTool())
+        
+        // Dialog tools - temporarily disabled during migration
+        // agentTools.append(createDialogClickTool())
+        // agentTools.append(createDialogInputTool())
+        
+        // Dock tools - temporarily disabled during migration
+        // agentTools.append(createDockLaunchTool())
+        // agentTools.append(createListDockTool())
+        
+        // Shell tool - temporarily disabled during migration
+        // agentTools.append(createShellTool())
+        
+        // TODO: Convert completion tools to AgentTool format
+        // agentTools.append(CompletionTools.createDoneAgentTool())
+        // agentTools.append(CompletionTools.createNeedInfoAgentTool())
+        
+        return agentTools
     }
 
     // MARK: - Helper Functions
@@ -651,7 +574,8 @@ extension PeekabooAgentService {
         _ task: String,
         model: LanguageModel,
         maxSteps: Int = 20,
-        streamingDelegate: StreamingEventDelegate) async throws -> AgentExecutionResult
+        streamingDelegate: StreamingEventDelegate,
+        eventHandler: EventHandler? = nil) async throws -> AgentExecutionResult
     {
         let startTime = Date()
         let sessionId = UUID().uuidString
@@ -685,8 +609,8 @@ extension PeekabooAgentService {
             throw error
         }
 
-        // Create tools for the model - convert native tools to SimpleTool format
-        let tools = self.createSimpleTools()
+        // Create tools for the model
+        let tools = self.createAgentTools()
 
         // Only log tool debug info in verbose mode
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
@@ -694,7 +618,10 @@ extension PeekabooAgentService {
         {
             print("DEBUG: Passing \(tools.count) tools to generateText")
             for tool in tools {
-                print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) parameters")
+                print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
+                if tool.name == "see" {
+                    print("DEBUG: 'see' tool required array: \(tool.parameters.required)")
+                }
             }
         }
 
@@ -713,6 +640,58 @@ extension PeekabooAgentService {
             messages: messages,
             tools: tools.isEmpty ? nil : tools,
             maxSteps: maxSteps)
+
+        // Process and emit tool call events from the response
+        if let eventHandler = eventHandler {
+            for step in response.steps {
+                for toolCall in step.toolCalls {
+                    // Emit tool call started event
+                    // Convert arguments to JSON string
+                    let argumentsData = try JSONEncoder().encode(toolCall.arguments)
+                    let argumentsJSON = String(data: argumentsData, encoding: .utf8) ?? "{}"
+                    
+                    let toolCallEvent = AgentEvent.toolCallStarted(
+                        name: toolCall.name,
+                        arguments: argumentsJSON
+                    )
+                    await eventHandler.send(toolCallEvent)
+                    
+                    // Small delay to ensure events are processed in order
+                    try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                    
+                    // Emit tool call completed event with result
+                    if let toolResult = step.toolResults.first(where: { $0.toolCallId == toolCall.id }) {
+                        // Convert tool result to string representation
+                        let resultString: String
+                        switch toolResult.result {
+                        case .string(let str):
+                            resultString = str
+                        case .int(let int):
+                            resultString = String(int)
+                        case .double(let double):
+                            resultString = String(double)
+                        case .bool(let bool):
+                            resultString = String(bool)
+                        case .array(let array):
+                            resultString = String(describing: array)
+                        case .object(let obj):
+                            resultString = String(describing: obj)
+                        case .null:
+                            resultString = "null"
+                        }
+                        
+                        let completedEvent = AgentEvent.toolCallCompleted(
+                            name: toolCall.name,
+                            result: resultString
+                        )
+                        await eventHandler.send(completedEvent)
+                        
+                        // Small delay between tool calls
+                        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                    }
+                }
+            }
+        }
 
         let fullContent = response.text
 
@@ -794,8 +773,8 @@ extension PeekabooAgentService {
             throw error
         }
 
-        // Create tools for the model - convert native tools to SimpleTool format
-        let tools = self.createSimpleTools()
+        // Create tools for the model
+        let tools = self.createAgentTools()
 
         // Only log tool debug info in verbose mode
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
@@ -803,7 +782,10 @@ extension PeekabooAgentService {
         {
             print("DEBUG: Passing \(tools.count) tools to generateText (non-streaming)")
             for tool in tools {
-                print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) parameters")
+                print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
+                if tool.name == "see" {
+                    print("DEBUG: 'see' tool required array: \(tool.parameters.required)")
+                }
             }
         }
 

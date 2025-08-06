@@ -8,7 +8,7 @@ import Tachikoma
 
 @available(macOS 14.0, *)
 public struct ApplicationToolDefinitions {
-    public static let listApps = UnifiedToolDefinition(
+    public static let listApps = PeekabooToolDefinition(
         name: "list_apps",
         commandName: "list-apps",
         abstract: "List all running applications",
@@ -29,7 +29,7 @@ public struct ApplicationToolDefinitions {
             - Use app names from this list for other commands
         """)
 
-    public static let launchApp = UnifiedToolDefinition(
+    public static let launchApp = PeekabooToolDefinition(
         name: "launch_app",
         commandName: "launch-app",
         abstract: "Launch an application",
@@ -79,17 +79,18 @@ public struct ApplicationToolDefinitions {
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the list apps tool
-    func createListAppsTool() -> Tool<PeekabooServices> {
+    func createListAppsTool() -> Tachikoma.AgentTool {
         let definition = ApplicationToolDefinitions.listApps
 
-        return createSimpleTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            execute: { _, context in
-                let appsOutput = try await context.applications.listApplications()
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                let appsOutput = try await services.applications.listApplications()
 
                 if appsOutput.data.applications.isEmpty {
-                    return ToolOutput.success("No running applications found")
+                    return .string("No running applications found")
                 }
 
                 var output = "Running applications:\n\n"
@@ -102,30 +103,33 @@ extension PeekabooAgentService {
                     output += "\n"
                 }
 
-                return ToolOutput.success(
+                return .string(
                     output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 
     /// Create the launch app tool
-    func createLaunchAppTool() -> Tool<PeekabooServices> {
+    func createLaunchAppTool() -> Tachikoma.AgentTool {
         let definition = ApplicationToolDefinitions.launchApp
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
-                let appName = try params.stringValue("name")
-                let waitForLaunch = params.boolValue("wait_for_launch", default: true)
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let appName = params.optionalStringValue("name") else {
+                    throw PeekabooError.invalidInput("App name parameter is required")
+                }
+                
+                let waitForLaunch = !(params.optionalBooleanValue("no-wait") ?? false)
 
                 // First check if already running
-                let runningAppsOutput = try await context.applications.listApplications()
+                let runningAppsOutput = try await services.applications.listApplications()
                 if let existingApp = runningAppsOutput.data.applications
                     .first(where: { $0.name.lowercased() == appName.lowercased() })
                 {
                     // Get window information
-                    let windows = try await context.windows.listWindows(target: .application(existingApp.name))
+                    let windows = try await services.windows.listWindows(target: .application(existingApp.name))
 
                     // Count window states
                     var normalWindows = 0
@@ -143,7 +147,7 @@ extension PeekabooAgentService {
                     }
 
                     // App is already running, just activate it
-                    try await context.applications.activateApplication(
+                    try await services.applications.activateApplication(
                         identifier: existingApp.bundleIdentifier ?? existingApp.name)
 
                     var statusMessage = "\(existingApp.name) already running"
@@ -176,23 +180,23 @@ extension PeekabooAgentService {
                         statusMessage += ")"
                     }
 
-                    return ToolOutput.success(statusMessage)
+                    return .string(statusMessage)
                 }
 
                 // Launch the app
-                let launchedApp = try await context.applications.launchApplication(identifier: appName ?? "")
+                let launchedApp = try await services.applications.launchApplication(identifier: appName)
 
                 if waitForLaunch {
                     // Wait a bit for the app to launch
                     try await Task.sleep(nanoseconds: TimeInterval.longDelay.nanoseconds)
 
                     // Verify it launched and get window info
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     if let verifiedApp = appsOutput.data.applications
                         .first(where: { $0.bundleIdentifier == launchedApp.bundleIdentifier })
                     {
                         // Get window information
-                        let windows = try await context.windows.listWindows(target: .application(verifiedApp.name))
+                        let windows = try await services.windows.listWindows(target: .application(verifiedApp.name))
 
                         let windowDescription = if windows.isEmpty {
                             "no windows"
@@ -202,12 +206,12 @@ extension PeekabooAgentService {
                             "\(windows.count) new windows"
                         }
 
-                        return ToolOutput.success("Launched \(launchedApp.name) (\(windowDescription))")
+                        return .string("Launched \(launchedApp.name) (\(windowDescription))")
                     } else {
                         throw PeekabooError.operationError(message: "\(appName) launched but is not responding")
                     }
                 } else {
-                    return ToolOutput.success("Launched \(launchedApp.name) (not waiting for completion)")
+                    return .string("Launched \(launchedApp.name) (not waiting for completion)")
                 }
             })
     }

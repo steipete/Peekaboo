@@ -478,7 +478,9 @@ struct MessageRow: View {
                 if !self.message.toolCalls.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(self.message.toolCalls) { toolCall in
-                            MainWindowToolCallView(toolCall: toolCall)
+                            if #available(macOS 15.0, *) {
+                                MainWindowToolCallView(toolCall: toolCall)
+                            }
                         }
                     }
                     .padding(.top, 4)
@@ -576,6 +578,7 @@ struct SessionListPopover: View {
 
 // MARK: - Tool Call View
 
+@available(macOS 15.0, *)
 struct MainWindowToolCallView: View {
     let toolCall: ConversationToolCall
     @State private var appeared = false

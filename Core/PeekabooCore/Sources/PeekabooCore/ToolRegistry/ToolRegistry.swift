@@ -7,8 +7,8 @@ public enum ToolRegistry {
     // MARK: - Registry Access
 
     /// All registered tools collected from various definition structs
-    public static let allTools: [UnifiedToolDefinition] = {
-        var tools: [UnifiedToolDefinition] = []
+    public static let allTools: [PeekabooToolDefinition] = {
+        var tools: [PeekabooToolDefinition] = []
 
         // Vision tools
         tools.append(VisionToolDefinitions.see)
@@ -53,17 +53,17 @@ public enum ToolRegistry {
     }()
 
     /// Get tool by name
-    public static func tool(named name: String) -> UnifiedToolDefinition? {
+    public static func tool(named name: String) -> PeekabooToolDefinition? {
         self.allTools.first { $0.name == name || $0.commandName == name }
     }
 
     /// Get tools grouped by category
-    public static func toolsByCategory() -> [ToolCategory: [UnifiedToolDefinition]] {
+    public static func toolsByCategory() -> [ToolCategory: [PeekabooToolDefinition]] {
         Dictionary(grouping: self.allTools, by: { $0.category })
     }
 
     /// Get parameter by name from a tool
-    public static func parameter(named name: String, from tool: UnifiedToolDefinition) -> ParameterDefinition? {
+    public static func parameter(named name: String, from tool: PeekabooToolDefinition) -> ParameterDefinition? {
         tool.parameters.first { $0.name == name }
     }
 }

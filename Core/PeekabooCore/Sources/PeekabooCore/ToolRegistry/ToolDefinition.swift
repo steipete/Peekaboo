@@ -4,7 +4,7 @@ import Tachikoma
 
 /// Represents a tool's complete definition used across CLI, agent, and documentation
 @available(macOS 14.0, *)
-public struct UnifiedToolDefinition: Sendable {
+public struct PeekabooToolDefinition: Sendable {
     public let name: String
     public let commandName: String? // CLI command name (if different from tool name)
     public let abstract: String // One-line description

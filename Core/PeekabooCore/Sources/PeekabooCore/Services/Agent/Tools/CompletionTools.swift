@@ -6,45 +6,58 @@ import Tachikoma
 /// Tools for task completion and status reporting
 @available(macOS 14.0, *)
 public enum CompletionTools {
-    /// Create the done tool for marking tasks as complete - SimpleTool version
-    public static func createDoneSimpleTool() -> SimpleTool {
-        SimpleTool(
+
+
+
+}
+
+// MARK: - Agent Tools Extension
+
+@available(macOS 14.0, *)
+extension PeekabooAgentService {
+    /// Create the done tool for marking tasks as complete
+    func createDoneTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "done",
             description: "Mark the task as completed with a summary of what was accomplished",
-            parameters: ToolParameters(
+            parameters: Tachikoma.AgentToolParameters(
                 properties: [
-                    "summary": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "summary",
                         type: .string,
                         description: "Summary of what was accomplished"),
                 ],
                 required: ["summary"]),
-            execute: { args in
-                let summary = try args.stringValue("summary")
+            execute: { [services] params in
+                guard let summary = params.optionalStringValue("summary") else {
+                    throw PeekabooError.invalidInput("Summary parameter is required")
+                }
                 return .string("✅ Task completed: \(summary)")
             })
     }
 
-    /// Create the need info tool for requesting more information - SimpleTool version
-    public static func createNeedInfoSimpleTool() -> SimpleTool {
-        SimpleTool(
+    /// Create the need info tool for requesting more information
+    func createNeedInfoTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "need_info",
             description: "Request additional information from the user when the task is unclear or missing details",
-            parameters: ToolParameters(
+            parameters: Tachikoma.AgentToolParameters(
                 properties: [
-                    "question": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "question",
                         type: .string,
                         description: "The question to ask the user"),
-                    "context": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "context",
                         type: .string,
                         description: "Additional context for the question"),
                 ],
                 required: ["question"]),
-            execute: { args in
-                let question = try args.stringValue("question")
-                let context = (try? args.stringValue("context")) ?? nil
+            execute: { [services] params in
+                guard let question = params.optionalStringValue("question") else {
+                    throw PeekabooError.invalidInput("Question parameter is required")
+                }
+                let context = params.optionalStringValue("context")
 
                 var response = "❓ Need more information: \(question)"
                 if let context {
@@ -53,34 +66,5 @@ public enum CompletionTools {
 
                 return .string(response)
             })
-    }
-
-    /// Create the done tool for marking tasks as complete (legacy Tool<Context> version)
-    public static func createDoneTool<Services>() -> Tool<Services> {
-        Tool(
-            name: "done",
-            description: "Mark the task as completed with a summary of what was accomplished"
-        ) { params, _ in
-            let summary = try params.stringValue("summary")
-            return ToolOutput.success("✅ Task completed: \(summary)")
-        }
-    }
-
-    /// Create the need info tool for requesting more information (legacy Tool<Context> version)
-    public static func createNeedInfoTool<Services>() -> Tool<Services> {
-        Tool(
-            name: "need_info",
-            description: "Request additional information from the user when the task is unclear or missing details"
-        ) { params, _ in
-                let question = try params.stringValue("question")
-                let context = params.stringValue("context", default: nil)
-
-                var response = "❓ Need more information: \(question)"
-                if let context {
-                    response += "\n\nContext: \(context)"
-                }
-
-                return ToolOutput.success(response)
-        }
     }
 }

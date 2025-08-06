@@ -2,6 +2,7 @@ import ArgumentParser
 import Dispatch
 import Foundation
 import PeekabooCore
+import Spinner
 import Tachikoma
 
 import TermKit
@@ -73,77 +74,30 @@ enum TerminalColor {
     static let bgRed = "\u{001B}[41m"
 }
 
-/// Ghost animator for showing thinking/syncing state
+/// Legacy animator for backwards compatibility during transition
 @available(macOS 14.0, *)
 @MainActor
 final class GhostAnimator {
-    private var animationTask: Task<(), Never>?
-    private let emojis: [String]
-    private let message: String
-
+    private let spinner: PeekabooSpinner
+    
     init() {
-        // Rotating emojis with some rare ones that appear occasionally
-        self.emojis = [
-            "👻", "👻", "👻", "👻", // Ghost appears most often
-            "💭", "💭", "💭", // Thought bubble
-            "🤔", "🤔", // Thinking face
-            "🌀", "🌀", // Swirl
-            "✨", "✨", // Sparkles
-            "🔮", // Crystal ball (rare)
-            "🧠", // Brain (rare)
-            "⚡", // Lightning (rare)
-            "🎭", // Theater masks (rare)
-            "🌟" // Glowing star (rare)
-        ]
-        self.message = "Thinking..."
+        self.spinner = PeekabooSpinner()
     }
     
     init(message: String) {
-        self.emojis = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] // Braille spinner
-        self.message = message
+        self.spinner = PeekabooSpinner()
     }
 
     func start() {
-        self.stop() // Ensure no previous animation is running
-
-        self.animationTask = Task { [weak self] in
-            guard let self else { return }
-            var frameIndex = 0
-
-            while !Task.isCancelled {
-                // Pick a random emoji from the weighted list
-                let emoji = self.emojis[frameIndex % self.emojis.count]
-
-                // Clear line and print with new emoji
-                let output = "\(TerminalColor.moveToStart)\(TerminalColor.clearLine)\(TerminalColor.cyan)\(emoji) \(self.message)\(TerminalColor.reset)"
-                print(output, terminator: "")
-                fflush(stdout)
-
-                frameIndex = (frameIndex + 1) % self.emojis.count
-
-                do {
-                    try await Task.sleep(nanoseconds: 400_000_000) // 400ms per frame for better visibility
-                } catch {
-                    break
-                }
-            }
-        }
+        spinner.start()
     }
 
     func stop() {
-        self.animationTask?.cancel()
-        self.animationTask = nil
-        // Move to next line, keeping the thinking text visible
-        print() // New line
-        fflush(stdout)
+        spinner.stop()
     }
     
     func stopWithDelay() async {
-        // Add a brief pause to make the animation less abrupt
-        do {
-            try await Task.sleep(nanoseconds: 500_000_000) // 500ms delay before clearing
-        } catch {}
-        self.stop()
+        await spinner.stopWithDelay()
     }
 }
 
@@ -157,25 +111,22 @@ func iconForTool(_ toolName: String) -> String {
         return "❓"
     }
 
-    guard let tool = AgentTool(rawValue: toolName) else {
-        return "⚙️"
-    }
-
-    switch tool {
-    case .see, .screenshot, .windowCapture: return "👁"
-    case .click, .dialogClick: return "🖱"
-    case .type, .dialogInput: return "⌨️"
-    case .listApps, .launchApp: return "📱"
-    case .listWindows, .focusWindow, .resizeWindow, .listScreens: return "🪟"
-    case .hotkey: return "⌨️"
-    case .wait: return "⏱"
-    case .scroll: return "📜"
-    case .findElement, .listElements, .focused: return "🔍"
-    case .shell: return "💻"
-    case .menuClick, .listMenus: return "📋"
-    case .listDock, .dockClick: return "📋"
-    case .listSpaces, .switchSpace, .moveWindowToSpace: return "🪟"
-    case .press: return "⌨️"
+    switch toolName {
+    case "see", "screenshot", "window_capture": return "👁"
+    case "click", "dialog_click": return "🖱"
+    case "type", "dialog_input": return "⌨️"
+    case "list_apps", "launch_app": return "📱"
+    case "list_windows", "focus_window", "resize_window", "list_screens": return "🪟"
+    case "hotkey": return "⌨️"
+    case "wait": return "⏱"
+    case "scroll": return "📜"
+    case "find_element", "list_elements", "focused": return "🔍"
+    case "shell": return "💻"
+    case "menu_click", "list_menus": return "📋"
+    case "list_dock", "dock_click": return "📋"
+    case "list_spaces", "switch_space", "move_window_to_space": return "🪟"
+    case "press": return "⌨️"
+    default: return "⚙️"
     }
 }
 
@@ -196,7 +147,7 @@ struct AgentCommand: AsyncParsableCommand {
           peekaboo agent "Find the Terminal app and run 'ls -la'"
 
           # Output control (auto-detected by default):
-          peekaboo agent --force-tui "Complex task"      # Force TUI even in limited terminals
+          peekaboo agent --tui "Complex task"             # Enable full Terminal User Interface
           peekaboo agent --simple "Basic task"           # Force simple output, no colors
           peekaboo agent --no-color "CI task"            # Disable colors only
           peekaboo agent --verbose "Debug task"          # Full JSON debug output
@@ -224,16 +175,15 @@ struct AgentCommand: AsyncParsableCommand {
         4. Verify results with screenshots
         5. Retry if needed
 
-        OUTPUT MODES (Auto-detected by default):
-        The agent automatically selects the best output mode based on your terminal capabilities:
+        OUTPUT MODES:
+        Peekaboo defaults to compact mode for consistent behavior:
         
-        • TUI Mode: Full terminal interface with progress dashboard (good terminals, 100x20+ chars)
-        • Enhanced: Rich formatting with progress indicators (color terminals, 80+ chars)  
-        • Compact: Basic colors and icons (color terminals)
+        • TUI Mode: Full terminal interface with progress dashboard (use --tui to enable)
+        • Compact: Basic colors and icons (default for interactive terminals)
         • Minimal: Plain text, CI-friendly (pipes, CI environments, no-color terminals)
         
         Manual overrides:
-        - --force-tui: Force TUI mode even in limited terminals
+        - --tui: Enable full Terminal User Interface mode
         - --simple: Force minimal output mode (no colors or rich formatting)
         - --no-color: Disable colors while keeping other formatting
         - --verbose: Full JSON debug information for troubleshooting
@@ -294,8 +244,8 @@ struct AgentCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Use real-time audio streaming (OpenAI only)")
     var realtime = false
 
-    @Flag(name: .long, help: "Force TUI mode even in limited terminals")
-    var forceTui = false
+    @Flag(name: .long, help: "Enable full Terminal User Interface mode")
+    var tui = false
 
     @Flag(name: .long, help: "Force simple output mode (no colors or rich formatting)")
     var simple = false
@@ -308,7 +258,7 @@ struct AgentCommand: AsyncParsableCommand {
         // Explicit user overrides first
         if self.quiet { return .quiet }
         if self.verbose || self.debugTerminal { return .verbose }
-        if self.forceTui { return .tui }
+        if self.tui { return .tui }
         if self.simple { return .minimal }
         if self.noColor { return .minimal }
         
@@ -1232,13 +1182,6 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
     // Extract meaningful summary from tool results
     private func getToolResultSummary(_ toolName: String, _ result: [String: Any]) -> String {
-        guard let tool = AgentTool(rawValue: toolName) else {
-            // Fallback for unknown tools
-            if let success = result["success"] as? Bool {
-                return success ? "Success" : "Failed"
-            }
-            return ""
-        }
 
         // Handle wrapped results {"type": "object", "value": {...}}
         let actualResult: [String: Any] = if result["type"] as? String == "object",
@@ -1248,8 +1191,8 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
             result
         }
 
-        switch tool {
-        case .listDock:
+        switch toolName {
+        case "list_dock":
             // Check for totalCount directly in result
             if let totalCount = actualResult["totalCount"] as? String {
                 return "\(totalCount) items"
@@ -1274,7 +1217,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                 return "\(items.count) items"
             }
 
-        case .listApps:
+        case "list_apps":
             // Check for count value first (tool result format)
             if let countValue = actualResult["count"] as? [String: Any],
                let count = countValue["value"] as? String {
@@ -1294,7 +1237,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                 return "\(apps.count) apps"
             }
 
-        case .listWindows:
+        case "list_windows":
             var parts: [String] = []
 
             // Get window count
@@ -1324,22 +1267,22 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .listElements:
+        case "list_elements":
             if let elements = actualResult["elements"] as? [[String: Any]] {
                 return "\(elements.count) elements"
             }
 
-        case .listSpaces:
+        case "list_spaces":
             if let spaces = actualResult["spaces"] as? [[String: Any]] {
                 return "\(spaces.count) spaces"
             }
 
-        case .listMenus:
+        case "list_menus":
             if let menus = actualResult["menus"] as? [[String: Any]] {
                 return "\(menus.count) menus"
             }
 
-        case .see:
+        case "see":
             var parts: [String] = []
             parts.append("Captured")
 
@@ -1401,13 +1344,13 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .screenshot, .windowCapture:
+        case "screenshot", "window_capture":
             if let path = actualResult["path"] as? String {
                 return "Saved \(URL(fileURLWithPath: path).lastPathComponent)"
             }
             return "Saved screenshot"
 
-        case .click:
+        case "click":
             var parts: [String] = []
 
             // Get click type
@@ -1474,7 +1417,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .type:
+        case "type":
             var parts: [String] = []
             parts.append("Typed")
 
@@ -1502,7 +1445,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .hotkey:
+        case "hotkey":
             var parts: [String] = []
             parts.append("Pressed")
 
@@ -1538,7 +1481,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .scroll:
+        case "scroll":
             var parts: [String] = []
             parts.append("Scrolled")
 
@@ -1569,13 +1512,13 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .focusWindow:
+        case "focus_window":
             if let app = actualResult["app"] as? String {
                 return "Focused \(app)"
             }
             return "Focused window"
 
-        case .launchApp:
+        case "launch_app":
             var parts: [String] = []
             parts.append("Launched")
 
@@ -1594,7 +1537,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .resizeWindow:
+        case "resize_window":
             var parts: [String] = []
             parts.append("Resized")
 
@@ -1608,7 +1551,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .menuClick:
+        case "menu_click":
             var parts: [String] = []
             parts.append("Clicked")
 
@@ -1641,7 +1584,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .dialogClick:
+        case "dialog_click":
             var parts: [String] = []
             parts.append("Clicked")
 
@@ -1655,7 +1598,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .findElement:
+        case "find_element":
             var parts: [String] = []
 
             // Check if found
@@ -1702,7 +1645,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .focused:
+        case "focused":
             if let label = actualResult["label"] as? String {
                 if let app = actualResult["app"] as? String {
                     return "'\(label)' field in \(app)"
@@ -1715,7 +1658,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                 return elementType
             }
 
-        case .shell:
+        case "shell":
             var parts: [String] = []
 
             // Get command

@@ -126,8 +126,8 @@ struct SessionSidebar: View {
         guard session.id != self.agent.currentSession?.id else { return }
 
         self.sessionStore.sessions.removeAll { $0.id == session.id }
-        Task {
-            try? await self.sessionStore.saveSessions()
+        Task { @MainActor in
+            self.sessionStore.saveSessions()
         }
 
         if self.selectedSessionId == session.id {
@@ -141,8 +141,8 @@ struct SessionSidebar: View {
         newSession.summary = session.summary
 
         self.sessionStore.sessions.insert(newSession, at: 0)
-        Task {
-            try? await self.sessionStore.saveSessions()
+        Task { @MainActor in
+            self.sessionStore.saveSessions()
         }
 
         self.selectedSessionId = newSession.id

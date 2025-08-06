@@ -7,7 +7,7 @@ import Tachikoma
 
 @available(macOS 14.0, *)
 public struct DialogToolDefinitions {
-    public static let dialogClick = UnifiedToolDefinition(
+    public static let dialogClick = PeekabooToolDefinition(
         name: "dialog_click",
         commandName: "dialog-click",
         abstract: "Click a button in a dialog, sheet, or alert",
@@ -53,7 +53,7 @@ public struct DialogToolDefinitions {
             - Some buttons may have keyboard shortcuts (shown in parentheses)
         """)
 
-    public static let dialogInput = UnifiedToolDefinition(
+    public static let dialogInput = PeekabooToolDefinition(
         name: "dialog_input",
         commandName: "dialog-input",
         abstract: "Enter text into a field in a dialog or sheet",
@@ -122,49 +122,53 @@ public struct DialogToolDefinitions {
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the dialog click tool
-    func createDialogClickTool() -> Tool<PeekabooServices> {
+    func createDialogClickTool() -> Tachikoma.AgentTool {
         let definition = DialogToolDefinitions.dialogClick
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
-                let buttonLabel = try params.stringValue("button")
-                let appName = params.stringValue("app", default: nil)
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let buttonLabel = params.optionalStringValue("button") else {
+                    throw PeekabooError.invalidInput("Button label parameter is required")
+                }
+                let appName = params.optionalStringValue("app")
 
                 // Get the frontmost app if not specified
                 let targetApp: String
                 if let appName {
                     targetApp = appName
                 } else {
-                    let frontmostApp = try await context.applications.getFrontmostApplication()
+                    let frontmostApp = try await services.applications.getFrontmostApplication()
                     targetApp = frontmostApp.name
                 }
 
                 let startTime = Date()
-                _ = try await context.dialogs.clickButton(
+                _ = try await services.dialogs.clickButton(
                     buttonText: buttonLabel,
                     windowTitle: appName)
                 _ = Date().timeIntervalSince(startTime)
 
-                return ToolOutput.success("Clicked '\(buttonLabel)' in dialog - \(targetApp)")
+                return .string("Clicked '\(buttonLabel)' in dialog - \(targetApp)")
             })
     }
 
     /// Create the dialog input tool
-    func createDialogInputTool() -> Tool<PeekabooServices> {
+    func createDialogInputTool() -> Tachikoma.AgentTool {
         let definition = DialogToolDefinitions.dialogInput
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
-                let text = try params.stringValue("text")
-                let fieldLabel = params.stringValue("field", default: nil)
-                let appName = params.stringValue("app", default: nil)
-                let clearFirst = params.boolValue("clear_first", default: true)
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let text = params.optionalStringValue("text") else {
+                    throw PeekabooError.invalidInput("Text parameter is required")
+                }
+                let fieldLabel = params.optionalStringValue("field")
+                let appName = params.optionalStringValue("app")
+                let clearFirst = !(params.optionalBooleanValue("no-clear") ?? false)
 
                 // For now, this is a simplified implementation
                 // Field-specific targeting is not yet supported
@@ -177,7 +181,7 @@ extension PeekabooAgentService {
                 if let appName {
                     targetApp = appName
                 } else {
-                    let frontmostApp = try await context.applications.getFrontmostApplication()
+                    let frontmostApp = try await services.applications.getFrontmostApplication()
                     targetApp = frontmostApp.name
                 }
 
@@ -185,15 +189,15 @@ extension PeekabooAgentService {
 
                 // Clear if requested
                 if clearFirst {
-                    try await context.automation.hotkey(keys: "cmd,a", holdDuration: 0)
+                    try await services.automation.hotkey(keys: "cmd,a", holdDuration: 0)
                     try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
-                    try await context.automation.hotkey(keys: "delete", holdDuration: 0)
+                    try await services.automation.hotkey(keys: "delete", holdDuration: 0)
                     try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
                 }
 
                 // Type the text
-                try await context.automation.type(
-                    text: text ?? "",
+                try await services.automation.type(
+                    text: text,
                     target: nil as String?,
                     clearExisting: false,
                     typingDelay: 0,
@@ -201,13 +205,13 @@ extension PeekabooAgentService {
 
                 _ = Date().timeIntervalSince(startTime)
 
-                var output = "Entered \"\(text ?? "")\""
+                var output = "Entered \"\(text)\""
                 if let fieldLabel {
                     output += " in '\(fieldLabel)' field"
                 }
                 output += " - \(targetApp) dialog"
 
-                return ToolOutput.success(output)
+                return .string(output)
             })
     }
 }

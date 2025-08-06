@@ -7,7 +7,7 @@ import Tachikoma
 
 @available(macOS 14.0, *)
 public struct DockToolDefinitions {
-    public static let dockLaunch = UnifiedToolDefinition(
+    public static let dockLaunch = PeekabooToolDefinition(
         name: "dock_launch",
         commandName: "dock-launch",
         abstract: "Launch an application from the Dock",
@@ -44,7 +44,7 @@ public struct DockToolDefinitions {
             - Use 'list_dock' to see available apps
         """)
 
-    public static let listDock = UnifiedToolDefinition(
+    public static let listDock = PeekabooToolDefinition(
         name: "list_dock",
         commandName: "list-dock",
         abstract: "List all items in the Dock",
@@ -89,37 +89,39 @@ public struct DockToolDefinitions {
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the dock launch tool
-    func createDockLaunchTool() -> Tool<PeekabooServices> {
+    func createDockLaunchTool() -> Tachikoma.AgentTool {
         let definition = DockToolDefinitions.dockLaunch
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
-                let appName = try params.stringValue("name")
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let appName = params.optionalStringValue("name") else {
+                    throw PeekabooError.invalidInput("App name parameter is required")
+                }
 
                 // Check if app was already running before clicking
-                let appsBeforeLaunchOutput = try await context.applications.listApplications()
+                let appsBeforeLaunchOutput = try await services.applications.listApplications()
                 let wasRunning = appsBeforeLaunchOutput.data.applications.contains {
                     $0.name.lowercased() == appName.lowercased()
                 }
 
                 let startTime = Date()
-                try await context.dock.launchFromDock(appName: appName)
+                try await services.dock.launchFromDock(appName: appName)
 
                 // Wait a moment for launch
                 try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
 
                 // Verify launch and get window info
-                let appsAfterLaunchOutput = try await context.applications.listApplications()
+                let appsAfterLaunchOutput = try await services.applications.listApplications()
                 if let launchedApp = appsAfterLaunchOutput.data.applications
                     .first(where: { $0.name.lowercased() == appName.lowercased() })
                 {
                     _ = Date().timeIntervalSince(startTime)
 
                     // Get window information
-                    let windows = try await context.windows.listWindows(target: .application(launchedApp.name))
+                    let windows = try await services.windows.listWindows(target: .application(launchedApp.name))
 
                     var output: String
                     if wasRunning {
@@ -142,31 +144,31 @@ extension PeekabooAgentService {
                         }
                     }
 
-                    return ToolOutput.success(output)
+                    return .string(output)
                 } else {
                     _ = Date().timeIntervalSince(startTime)
-                    return ToolOutput.success("Clicked \(appName) in Dock (app may be starting)")
+                    return .string("Clicked \(appName) in Dock (app may be starting)")
                 }
             })
     }
 
     /// Create the list dock tool
-    func createListDockTool() -> Tool<PeekabooServices> {
+    func createListDockTool() -> Tachikoma.AgentTool {
         let definition = DockToolDefinitions.listDock
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
-                let section = params.stringValue("section", default: "all" as String?) ?? "all"
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                let section = params.optionalStringValue("section") ?? "all"
 
                 let startTime = Date()
-                let dockItems = try await context.dock.listDockItems(includeAll: true)
+                let dockItems = try await services.dock.listDockItems(includeAll: true)
                 _ = Date().timeIntervalSince(startTime)
 
                 if dockItems.isEmpty {
-                    return ToolOutput.success("No items found in Dock")
+                    return .string("No items found in Dock")
                 }
 
                 // Filter by section if requested
@@ -242,7 +244,7 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return ToolOutput.success(output.trimmingCharacters(in: .whitespacesAndNewlines))
+                return .string(output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 }

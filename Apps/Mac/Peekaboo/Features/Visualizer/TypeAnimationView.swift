@@ -16,6 +16,9 @@ struct TypeAnimationView: View {
 
     /// Visual theme for the keyboard
     let theme: KeyboardTheme
+    
+    /// Animation speed multiplier (1.0 = normal, 0.5 = 2x slower, 2.0 = 2x faster)
+    var animationSpeed: Double = 1.0
 
     /// Current key index being animated
     @State private var currentKeyIndex = 0
@@ -184,21 +187,24 @@ struct TypeAnimationView: View {
         guard !self.keys.isEmpty else { return }
 
         // Animate typing at a realistic speed
-        self.animationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+        let typingInterval = 0.1 / self.animationSpeed
+        self.animationTimer = Timer.scheduledTimer(withTimeInterval: typingInterval, repeats: true) { _ in
             Task { @MainActor in
                 if self.currentKeyIndex < self.keys.count {
                     let key = self.keys[self.currentKeyIndex]
 
                     // Press the key
-                    _ = withAnimation(.easeIn(duration: 0.05)) {
+                    let pressDuration = 0.05 / self.animationSpeed
+                    _ = withAnimation(.easeIn(duration: pressDuration)) {
                         self.pressedKeys.insert(key.lowercased())
                     }
 
                     // Release the key
                     Task {
-                        try? await Task.sleep(nanoseconds: 80_000_000) // 0.08 seconds
+                        let releaseDelay = UInt64(80_000_000 / self.animationSpeed)
+                        try? await Task.sleep(nanoseconds: releaseDelay)
                         await MainActor.run {
-                            withAnimation(.easeOut(duration: 0.05)) {
+                            withAnimation(.easeOut(duration: pressDuration)) {
                                 _ = self.pressedKeys.remove(key.lowercased())
                             }
                         }
@@ -211,9 +217,11 @@ struct TypeAnimationView: View {
                     self.animationTimer = nil
 
                     Task {
-                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                        let fadeDelay = UInt64(500_000_000 / self.animationSpeed)
+                        try? await Task.sleep(nanoseconds: fadeDelay)
                         await MainActor.run {
-                            withAnimation(.easeOut(duration: 0.5)) {
+                            let fadeDuration = 0.5 / self.animationSpeed
+                            withAnimation(.easeOut(duration: fadeDuration)) {
                                 self.opacity = 0.0
                             }
                         }

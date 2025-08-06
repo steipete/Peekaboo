@@ -2,11 +2,9 @@ import Foundation
 import Observation
 import PeekabooCore
 import ServiceManagement
-import Carbon
+import KeyboardShortcuts
+import Tachikoma
 
-extension Notification.Name {
-    static let shortcutsChanged = Notification.Name("ShortcutsChanged")
-}
 
 /// Application settings and preferences manager.
 ///
@@ -124,27 +122,8 @@ final class PeekabooSettings {
     }
 
     // MARK: - Keyboard Shortcuts
-    
-    var togglePopoverShortcut: KeyboardShortcut? {
-        didSet { 
-            self.save()
-            NotificationCenter.default.post(name: .shortcutsChanged, object: nil)
-        }
-    }
-    
-    var showMainWindowShortcut: KeyboardShortcut? {
-        didSet { 
-            self.save()
-            NotificationCenter.default.post(name: .shortcutsChanged, object: nil)
-        }
-    }
-    
-    var showInspectorShortcut: KeyboardShortcut? {
-        didSet { 
-            self.save()
-            NotificationCenter.default.post(name: .shortcutsChanged, object: nil)
-        }
-    }
+    // Keyboard shortcuts are now managed by sindresorhus/KeyboardShortcuts library
+    // See KeyboardShortcutNames.swift for the defined shortcuts
 
     // Mac-specific UI Features
     var voiceActivationEnabled: Bool = true {
@@ -379,8 +358,7 @@ final class PeekabooSettings {
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
         self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
         
-        // Load keyboard shortcuts
-        self.loadKeyboardShortcuts()
+        // Keyboard shortcuts are automatically loaded by the KeyboardShortcuts library
 
         // Default voiceActivationEnabled to true if not previously set
         if self.userDefaults.object(forKey: "\(self.keyPrefix)voiceActivationEnabled") == nil {
@@ -469,8 +447,7 @@ final class PeekabooSettings {
         self.userDefaults.set(self.showInDock, forKey: "\(self.keyPrefix)showInDock")
         self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
         
-        // Save keyboard shortcuts
-        self.saveKeyboardShortcuts()
+        // Keyboard shortcuts are automatically saved by the KeyboardShortcuts library
 
         self.userDefaults.set(self.voiceActivationEnabled, forKey: "\(self.keyPrefix)voiceActivationEnabled")
         self.userDefaults.set(self.hapticFeedbackEnabled, forKey: "\(self.keyPrefix)hapticFeedbackEnabled")
@@ -671,6 +648,13 @@ final class PeekabooSettings {
                 return
             }
             try self.configManager.setCredential(key: key, value: value)
+            
+            // Configure Tachikoma with the new API key
+            if key == "OPENAI_API_KEY" {
+                TachikomaConfiguration.shared.setAPIKey(value, for: "openai")
+            } else if key == "ANTHROPIC_API_KEY" {
+                TachikomaConfiguration.shared.setAPIKey(value, for: "anthropic")
+            }
 
             // Refresh the agent service to pick up new API keys
             PeekabooServices.shared.refreshAgentService()
@@ -707,56 +691,4 @@ final class PeekabooSettings {
         await self.configManager.discoverModelsForCustomProvider(id: id)
     }
     
-    // MARK: - Keyboard Shortcuts Helper Methods
-    
-    private func loadKeyboardShortcuts() {
-        // Load keyboard shortcuts or set defaults
-        self.togglePopoverShortcut = loadShortcut(key: "togglePopoverShortcut") ?? KeyboardShortcut(
-            keyCode: UInt32(kVK_Space),
-            modifiers: [.command, .shift]
-        )
-        
-        self.showMainWindowShortcut = loadShortcut(key: "showMainWindowShortcut") ?? KeyboardShortcut(
-            keyCode: UInt32(kVK_ANSI_P),
-            modifiers: [.command, .shift]
-        )
-        
-        self.showInspectorShortcut = loadShortcut(key: "showInspectorShortcut") ?? KeyboardShortcut(
-            keyCode: UInt32(kVK_ANSI_I),
-            modifiers: [.command, .shift]
-        )
-    }
-    
-    private func saveKeyboardShortcuts() {
-        saveShortcut(self.togglePopoverShortcut, key: "togglePopoverShortcut")
-        saveShortcut(self.showMainWindowShortcut, key: "showMainWindowShortcut")
-        saveShortcut(self.showInspectorShortcut, key: "showInspectorShortcut")
-    }
-    
-    private func loadShortcut(key: String) -> KeyboardShortcut? {
-        guard let data = self.userDefaults.data(forKey: "\(self.keyPrefix)\(key)") else {
-            return nil
-        }
-        
-        do {
-            return try JSONDecoder().decode(KeyboardShortcut.self, from: data)
-        } catch {
-            print("Failed to decode keyboard shortcut for \(key): \(error)")
-            return nil
-        }
-    }
-    
-    private func saveShortcut(_ shortcut: KeyboardShortcut?, key: String) {
-        guard let shortcut = shortcut else {
-            self.userDefaults.removeObject(forKey: "\(self.keyPrefix)\(key)")
-            return
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(shortcut)
-            self.userDefaults.set(data, forKey: "\(self.keyPrefix)\(key)")
-        } catch {
-            print("Failed to encode keyboard shortcut for \(key): \(error)")
-        }
-    }
 }

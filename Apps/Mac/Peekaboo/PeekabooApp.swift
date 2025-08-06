@@ -1,7 +1,9 @@
 import AppKit
 import os.log
 import SwiftUI
-import Carbon
+import KeyboardShortcuts
+import Tachikoma
+import PeekabooCore
 
 @main
 struct PeekabooApp: App {
@@ -23,6 +25,46 @@ struct PeekabooApp: App {
 
     // Logger
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "PeekabooApp")
+    
+    // Configure Tachikoma with API keys from settings
+    private func configureTachikomaWithSettings() {
+        // First load API keys from credentials file if they're not already in settings
+        loadAPIKeysFromCredentials()
+        
+        // Set OpenAI API key if available
+        if !settings.openAIAPIKey.isEmpty {
+            TachikomaConfiguration.shared.setAPIKey(settings.openAIAPIKey, for: "openai")
+        }
+        
+        // Set Anthropic API key if available
+        if !settings.anthropicAPIKey.isEmpty {
+            TachikomaConfiguration.shared.setAPIKey(settings.anthropicAPIKey, for: "anthropic")
+        }
+        
+        // Set Ollama base URL if custom
+        if settings.ollamaBaseURL != "http://localhost:11434" {
+            TachikomaConfiguration.shared.setBaseURL(settings.ollamaBaseURL, for: "ollama")
+        }
+    }
+    
+    // Load API keys from credentials file if settings are empty
+    private func loadAPIKeysFromCredentials() {
+        let configManager = ConfigurationManager.shared
+        
+        // Load OpenAI key if not already set
+        if settings.openAIAPIKey.isEmpty {
+            if let apiKey = configManager.getOpenAIAPIKey(), !apiKey.isEmpty {
+                settings.openAIAPIKey = apiKey
+            }
+        }
+        
+        // Load Anthropic key if not already set
+        if settings.anthropicAPIKey.isEmpty {
+            if let apiKey = configManager.getAnthropicAPIKey(), !apiKey.isEmpty {
+                settings.anthropicAPIKey = apiKey
+            }
+        }
+    }
 
     var body: some Scene {
         // Hidden window to make Settings work in MenuBarExtra apps
@@ -37,6 +79,9 @@ struct PeekabooApp: App {
                     if self.agent == nil {
                         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
                     }
+                    
+                    // Configure Tachikoma with API keys from settings
+                    self.configureTachikomaWithSettings()
 
                     // Set up window opening handler
                     self.appDelegate.windowOpener = { windowId in
@@ -145,8 +190,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var visualizerCoordinator: VisualizerCoordinator?
     private var visualizerXPCService: VisualizerXPCService?
     
-    // Keyboard shortcut tracking
-    private var registeredShortcuts: [UInt32: EventHotKeyRef] = [:]
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
@@ -299,11 +342,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil)
         
         // Listen for keyboard shortcut changes
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(self.handleShortcutsChanged),
-            name: .shortcutsChanged,
-            object: nil)
+        // Keyboard shortcuts are now handled automatically by the KeyboardShortcuts library
     }
 
     @objc private func handleShowInspector() {
@@ -313,104 +352,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.showInspector()
     }
     
-    @objc private func handleShortcutsChanged() {
-        self.logger.info("Keyboard shortcuts changed, updating global shortcuts")
-        self.setupKeyboardShortcuts()
-    }
 
     // MARK: - Keyboard Shortcuts
 
     private func setupKeyboardShortcuts() {
-        // Unregister all existing shortcuts first
-        self.unregisterAllShortcuts()
-        
-        guard let settings = self.settings else {
-            self.logger.warning("Settings not available, cannot setup keyboard shortcuts")
-            return
+        // Set up global keyboard shortcuts using KeyboardShortcuts library
+        KeyboardShortcuts.onKeyDown(for: .togglePopover) { [weak self] in
+            self?.logger.info("Global shortcut triggered: togglePopover")
+            self?.statusBarController?.togglePopover()
         }
         
-        // Set up global keyboard shortcuts using Carbon HotKey API
-        // This provides true global shortcuts that work from any app
-        
-        // Register each shortcut if configured
-        if let shortcut = settings.togglePopoverShortcut {
-            self.registerGlobalShortcut(
-                keyCode: shortcut.keyCode,
-                modifiers: shortcut.carbonModifiers,
-                id: 1) { [weak self] in
-                    self?.logger.info("Global shortcut triggered: togglePopover")
-                    self?.statusBarController?.togglePopover()
-                }
+        KeyboardShortcuts.onKeyDown(for: .showMainWindow) { [weak self] in
+            self?.logger.info("Global shortcut triggered: showMainWindow")
+            self?.showMainWindow()
         }
         
-        if let shortcut = settings.showMainWindowShortcut {
-            self.registerGlobalShortcut(
-                keyCode: shortcut.keyCode,
-                modifiers: shortcut.carbonModifiers,
-                id: 2) { [weak self] in
-                    self?.logger.info("Global shortcut triggered: showMainWindow")  
-                    self?.showMainWindow()
-                }
-        }
-        
-        if let shortcut = settings.showInspectorShortcut {
-            self.registerGlobalShortcut(
-                keyCode: shortcut.keyCode,
-                modifiers: shortcut.carbonModifiers,
-                id: 3) { [weak self] in
-                    self?.logger.info("Global shortcut triggered: showInspector")
-                    self?.showInspector()
-                }
-        }
-    }
-    
-    private func unregisterAllShortcuts() {
-        for (id, hotKeyRef) in registeredShortcuts {
-            UnregisterEventHotKey(hotKeyRef)
-            self.logger.info("Unregistered global shortcut \(id)")
-        }
-        registeredShortcuts.removeAll()
-        
-        // Clear handlers from GlobalShortcutManager
-        GlobalShortcutManager.shared.clearAllHandlers()
-    }
-    
-    private func registerGlobalShortcut(keyCode: UInt32, modifiers: UInt32, id: UInt32, handler: @escaping () -> Void) {
-        var hotKeyRef: EventHotKeyRef?
-        var gMyHotKeyID = EventHotKeyID(signature: fourCharCodeFrom("PEEK"), id: id)
-        
-        let status = RegisterEventHotKey(
-            keyCode,
-            modifiers,
-            gMyHotKeyID,
-            GetApplicationEventTarget(),
-            0,
-            &hotKeyRef)
-        
-        if status != noErr {
-            self.logger.error("Failed to register global shortcut \(id): \(status)")
-            return
-        }
-        
-        guard let hotKeyRef = hotKeyRef else {
-            self.logger.error("Hot key reference is nil for shortcut \(id)")
-            return
-        }
-        
-        self.logger.info("Successfully registered global shortcut \(id)")
-        
-        // Track the registered shortcut
-        registeredShortcuts[id] = hotKeyRef
-        
-        // Store the handler for later use
-        GlobalShortcutManager.shared.setHandler(for: id, handler: handler)
-    }
-    
-    private func fourCharCodeFrom(_ string: String) -> FourCharCode {
-        let utf8 = Array(string.utf8)
-        let paddedBytes = utf8.prefix(4) + Array(repeating: UInt8(0), count: max(0, 4 - utf8.count))
-        return paddedBytes.withUnsafeBytes { ptr in
-            ptr.load(as: UInt32.self).bigEndian
+        KeyboardShortcuts.onKeyDown(for: .showInspector) { [weak self] in
+            self?.logger.info("Global shortcut triggered: showInspector")
+            self?.showInspector()
         }
     }
 

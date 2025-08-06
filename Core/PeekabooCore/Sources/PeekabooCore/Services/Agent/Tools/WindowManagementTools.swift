@@ -13,31 +13,31 @@ extension PeekabooAgentService {
     private static let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowManagementTools")
 
     /// Create the list windows tool
-    func createListWindowsTool() -> Tool<PeekabooServices> {
-        createTool(
+    func createListWindowsTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "list_windows",
             description: "List all visible windows across all applications. Uses fast CGWindowList API when screen recording permission is granted, with automatic fallback to accessibility API. Results are returned quickly with built-in timeout protection to prevent hangs.",
-            parameters: ToolParameters(
+            parameters: Tachikoma.AgentToolParameters(
                 properties: [
-                    "app": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "app",
                         type: .string,
                         description: "Optional: Filter windows by application name"),
                 ],
                 required: []),
-            execute: { params, context in
-                let appFilter = params.stringValue("app", default: nil)
+            execute: { [services] params in
+                let appFilter = params.optionalStringValue("app")
 
                 var windows: [ServiceWindowInfo] = []
 
                 if let appFilter {
                     // If app filter is specified, only get windows from that app
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     if let targetApp = appsOutput.data.applications
                         .first(where: { $0.name.lowercased().contains(appFilter.lowercased()) })
                     {
                         // Use applications service for UnifiedToolOutput
-                        let windowsOutput = try await context.applications.listWindows(
+                        let windowsOutput = try await services.applications.listWindows(
                             for: targetApp.name,
                             timeout: nil)
                         windows = windowsOutput.data.windows
@@ -45,7 +45,7 @@ extension PeekabooAgentService {
                 } else {
                     // For all windows, process apps sequentially to avoid AX race conditions
                     // AX elements are not thread-safe and must be accessed from main thread
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
 
                     // Filter to only regular applications (not background services)
                     var regularApps: [ServiceApplicationInfo] = []
@@ -100,7 +100,7 @@ extension PeekabooAgentService {
                         do {
                             // Use a main-thread-safe timeout mechanism
                             let windowsResult = try await withMainThreadTimeout(seconds: 5.0) {
-                                try await context.applications.listWindows(for: app.name, timeout: nil)
+                                try await services.applications.listWindows(for: app.name, timeout: nil)
                             }
 
                             if let windowsOutput = windowsResult {
@@ -121,7 +121,7 @@ extension PeekabooAgentService {
                     } else {
                         "No windows found"
                     }
-                    return ToolOutput.success(message)
+                    return .string(message)
                 }
 
                 // Since we don't have applicationName on ServiceWindowInfo, we'll display all windows
@@ -138,37 +138,37 @@ extension PeekabooAgentService {
                     output += "\n"
                 }
 
-                return ToolOutput.success(
+                return .string(
                     output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 
     /// Create the focus window tool
-    func createFocusWindowTool() -> Tool<PeekabooServices> {
-        createTool(
+    func createFocusWindowTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "focus_window",
             description: "Bring a window to the front and give it focus",
-            parameters: ToolParameters(
+            parameters: Tachikoma.AgentToolParameters(
                 properties: [
-                    "title": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "title",
                         type: .string,
                         description: "Window title to search for (partial match supported)"),
-                    "app": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "app",
                         type: .string,
                         description: "Application name"),
-                    "window_id": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "window_id",
                         type: .integer,
                         description: "Specific window ID"),
                 ],
                 required: []),
-            execute: { params, context in
+            execute: { [services] params in
                 let localLogger = Logger(subsystem: "boo.peekaboo.core", category: "WindowTools")
-                let title = params.stringValue("title", default: nil)
-                let appName = params.stringValue("app", default: nil)
-                let windowId = params.intValue("window_id", default: nil)
+                let title = params.optionalStringValue("title")
+                let appName = params.optionalStringValue("app")
+                let windowId = params.optionalIntegerValue("window_id")
 
                 // Require at least one parameter
                 guard title != nil || appName != nil || windowId != nil else {
@@ -178,12 +178,12 @@ extension PeekabooAgentService {
                 // First ensure the app is running and not hidden
                 if let appName {
                     // Get running applications
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     if let app = appsOutput.data.applications
                         .first(where: { $0.name.lowercased() == appName.lowercased() })
                     {
                         // Activate the application first
-                        try await context.applications.activateApplication(identifier: app.bundleIdentifier ?? app.name)
+                        try await services.applications.activateApplication(identifier: app.bundleIdentifier ?? app.name)
 
                         // Give it a moment to activate
                         try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
@@ -195,24 +195,24 @@ extension PeekabooAgentService {
 
                 if let appName, let title {
                     // OPTIMIZED: Use the new applicationAndTitle case for efficient searching
-                    windows = try await context.windows.listWindows(target: .applicationAndTitle(
+                    windows = try await services.windows.listWindows(target: .applicationAndTitle(
                         app: appName,
                         title: title))
                 } else if let appName {
                     // If only app is specified, get all windows from that app
-                    windows = try await context.windows.listWindows(target: .application(appName))
+                    windows = try await services.windows.listWindows(target: .application(appName))
                 } else if let title {
                     // If only title is specified, use title-based search (searches all apps)
-                    windows = try await context.windows.listWindows(target: .title(title))
+                    windows = try await services.windows.listWindows(target: .title(title))
                 } else {
                     // Only window ID specified - need to search all apps
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
 
                     // Process each app sequentially without any concurrent operations
                     // This ensures all AX operations stay on the main thread
                     for app in appsOutput.data.applications {
                         do {
-                            let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                            let appWindows = try await services.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
                         } catch {
                             // Skip apps that fail
@@ -248,14 +248,14 @@ extension PeekabooAgentService {
                 // Get app info for better feedback
                 let appInfo: ServiceApplicationInfo
                 if let appName {
-                    appInfo = try await context.applications.findApplication(identifier: appName)
+                    appInfo = try await services.applications.findApplication(identifier: appName)
                 } else {
                     // Need to find which app owns this window
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     var foundApp: ServiceApplicationInfo?
 
                     for app in appsOutput.data.applications {
-                        let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                        let appWindows = try await services.windows.listWindows(target: .application(app.name))
                         if appWindows.contains(where: { $0.windowID == window.windowID }) {
                             foundApp = app
                             break
@@ -270,85 +270,85 @@ extension PeekabooAgentService {
 
                 // Focus the window
                 let startTime = Date()
-                try await context.windows.focusWindow(target: .windowId(window.windowID))
+                try await services.windows.focusWindow(target: .windowId(window.windowID))
                 _ = Date().timeIntervalSince(startTime)
 
                 // The window.windowID is already the system window ID
                 let systemWindowID = window.windowID
 
-                return ToolOutput.success(
+                return .string(
                     "Focused \(appInfo.name) - \"\(window.title)\" (Window ID: \(systemWindowID))")
             })
     }
 
     /// Create the resize window tool
-    func createResizeWindowTool() -> Tool<PeekabooServices> {
-        let parameters = ToolParameters(
+    func createResizeWindowTool() -> Tachikoma.AgentTool {
+        let parameters = Tachikoma.AgentToolParameters(
             properties: [
-                "title": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "title",
                     type: .string,
                     description: "Window title (partial match)"),
-                "app": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "app",
                     type: .string,
                     description: "Application name"),
-                "window_id": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "window_id",
                     type: .integer,
                     description: "Specific window ID"),
-                "frontmost": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "frontmost",
                     type: .boolean,
                     description: "Use the frontmost window"),
-                "width": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "width",
                     type: .integer,
                     description: "New width in pixels"),
-                "height": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "height",
                     type: .integer,
                     description: "New height in pixels"),
-                "x": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "x",
                     type: .integer,
                     description: "New X position"),
-                "y": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "y",
                     type: .integer,
                     description: "New Y position"),
-                "preset": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "preset",
                     type: .string,
                     description: "Preset size/position (maximize, center, left_half, right_half, top_half, bottom_half)"),
-                "target_screen": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "target_screen",
                     type: .integer,
                     description: "Move window to specific screen (0-based index)"),
-                "screen_preset": ToolParameterProperty(
+                Tachikoma.AgentToolParameterProperty(
                     name: "screen_preset",
                     type: .string,
                     description: "Move window relative to screens (same, next, previous, primary)"),
             ],
             required: [])
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: "resize_window",
             description: "Resize and/or move a window",
             parameters: parameters,
-            execute: { (params: ToolInput, context: PeekabooServices) in
+            execute: { [services] params in
                 let localLogger = Logger(subsystem: "boo.peekaboo.core", category: "WindowTools")
-                let title = params.stringValue("title", default: nil)
-                let appName = params.stringValue("app", default: nil)
-                let windowId = params.intValue("window_id", default: nil)
-                let frontmost = params.boolValue("frontmost", default: false)
-                let width = params.intValue("width", default: nil)
-                let height = params.intValue("height", default: nil)
-                let x = params.intValue("x", default: nil)
-                let y = params.intValue("y", default: nil)
-                let preset = params.stringValue("preset", default: nil)
-                let targetScreen = params.intValue("target_screen", default: nil)
-                let screenPreset = params.stringValue("screen_preset", default: nil)
+                let title = params.optionalStringValue("title")
+                let appName = params.optionalStringValue("app")
+                let windowId = params.optionalIntegerValue("window_id")
+                let frontmost = params.optionalBooleanValue("frontmost") ?? false
+                let width = params.optionalIntegerValue("width")
+                let height = params.optionalIntegerValue("height")
+                let x = params.optionalIntegerValue("x")
+                let y = params.optionalIntegerValue("y")
+                let preset = params.optionalStringValue("preset")
+                let targetScreen = params.optionalIntegerValue("target_screen")
+                let screenPreset = params.optionalStringValue("screen_preset")
 
                 // Log the resize request for debugging
                 var searchCriteria: [String] = []
@@ -383,10 +383,10 @@ extension PeekabooAgentService {
 
                 if frontmost {
                     // Get the frontmost application first
-                    let frontApp = try await context.applications.getFrontmostApplication()
+                    let frontApp = try await services.applications.getFrontmostApplication()
 
                     // Then get its windows
-                    windows = try await context.windows.listWindows(target: .application(frontApp.name))
+                    windows = try await services.windows.listWindows(target: .application(frontApp.name))
 
                     guard let frontWindow = windows.first else {
                         throw PeekabooError.windowNotFound(criteria: "frontmost window for \(frontApp.name)")
@@ -394,12 +394,12 @@ extension PeekabooAgentService {
                     window = frontWindow
                 } else if let windowId {
                     // If window ID is specified, search all apps for that specific window
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     var foundWindow: ServiceWindowInfo?
 
                     for app in appsOutput.data.applications {
                         do {
-                            let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                            let appWindows = try await services.windows.listWindows(target: .application(app.name))
                             if let found = appWindows.first(where: { $0.windowID == windowId }) {
                                 foundWindow = found
                                 break
@@ -421,23 +421,23 @@ extension PeekabooAgentService {
                     // Search by title and/or app name
                     if let appName, let title {
                         // OPTIMIZED: Use the new applicationAndTitle case for efficient searching
-                        windows = try await context.windows.listWindows(target: .applicationAndTitle(
+                        windows = try await services.windows.listWindows(target: .applicationAndTitle(
                             app: appName,
                             title: title))
                         // No need to filter further - the service already filtered by title
                     } else if let appName {
                         // If only app is specified, get all windows from that app
-                        windows = try await context.windows.listWindows(target: .application(appName))
+                        windows = try await services.windows.listWindows(target: .application(appName))
                     } else if let title {
                         // If only title is specified, use title-based search (searches all apps)
-                        windows = try await context.windows.listWindows(target: .title(title))
+                        windows = try await services.windows.listWindows(target: .title(title))
                     } else {
                         // Need to search all apps - process sequentially to avoid AX race conditions
-                        let appsOutput = try await context.applications.listApplications()
+                        let appsOutput = try await services.applications.listApplications()
 
                         for app in appsOutput.data.applications {
                             do {
-                                let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                                let appWindows = try await services.windows.listWindows(target: .application(app.name))
                                 windows.append(contentsOf: appWindows)
                             } catch {
                                 // Skip apps that fail
@@ -487,15 +487,15 @@ extension PeekabooAgentService {
                 var targetScreenInfo: ScreenInfo?
                 if let targetScreen {
                     // Use specific screen index
-                    targetScreenInfo = await context.screens.screen(at: targetScreen)
+                    targetScreenInfo = await services.screens.screen(at: targetScreen)
                 } else if let screenPreset {
                     // Use screen preset
-                    let currentScreen = await context.screens.screenContainingWindow(bounds: window.bounds)
-                    let screens = await context.screens.listScreens()
+                    let currentScreen = await services.screens.screenContainingWindow(bounds: window.bounds)
+                    let screens = await services.screens.listScreens()
 
                     switch screenPreset {
                     case "primary":
-                        targetScreenInfo = await context.screens.primaryScreen
+                        targetScreenInfo = await services.screens.primaryScreen
                     case "next":
                         if let current = currentScreen, current.index < screens.count - 1 {
                             targetScreenInfo = screens[current.index + 1]
@@ -515,9 +515,9 @@ extension PeekabooAgentService {
                     }
                 } else {
                     // No screen targeting - use current screen or main
-                    targetScreenInfo = await context.screens.screenContainingWindow(bounds: window.bounds)
+                    targetScreenInfo = await services.screens.screenContainingWindow(bounds: window.bounds)
                     if targetScreenInfo == nil {
-                        targetScreenInfo = await context.screens.primaryScreen
+                        targetScreenInfo = await services.screens.primaryScreen
                     }
                 }
 
@@ -572,7 +572,7 @@ extension PeekabooAgentService {
                     // If we're moving to a different screen but no preset was specified,
                     // maintain relative position on the new screen
                     if targetScreen != nil || screenPreset != nil {
-                        let currentScreen = await context.screens.screenContainingWindow(bounds: window.bounds)
+                        let currentScreen = await services.screens.screenContainingWindow(bounds: window.bounds)
                         if let currentScreen, let targetScreenInfo, currentScreen.index != targetScreenInfo.index {
                             // Calculate relative position on current screen
                             let relativeX = (window.bounds.minX - currentScreen.frame.minX) / currentScreen.frame.width
@@ -594,16 +594,16 @@ extension PeekabooAgentService {
                 // Get app info for better feedback
                 let appInfo: ServiceApplicationInfo
                 if frontmost {
-                    appInfo = try await context.applications.getFrontmostApplication()
+                    appInfo = try await services.applications.getFrontmostApplication()
                 } else if let appName {
-                    appInfo = try await context.applications.findApplication(identifier: appName)
+                    appInfo = try await services.applications.findApplication(identifier: appName)
                 } else {
                     // Need to find which app owns this window
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     var foundApp: ServiceApplicationInfo?
 
                     for app in appsOutput.data.applications {
-                        let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                        let appWindows = try await services.windows.listWindows(target: .application(app.name))
                         if appWindows.contains(where: { $0.windowID == window.windowID }) {
                             foundApp = app
                             break
@@ -618,7 +618,7 @@ extension PeekabooAgentService {
 
                 // Apply the new bounds
                 let startTime = Date()
-                try await context.windows.setWindowBounds(
+                try await services.windows.setWindowBounds(
                     target: .windowId(window.windowID),
                     bounds: newBounds)
                 _ = Date().timeIntervalSince(startTime)
@@ -640,59 +640,24 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return ToolOutput.success(output)
+                return .string(output)
             })
     }
 
-    /*
-     /// Create the list spaces tool
-     func createListSpacesTool() -> Tool<PeekabooServices> {
-     createTool(
-     name: "list_spaces",
-     description: "List all macOS Spaces (virtual desktops)",
-     parameters: ToolParameters(
-     properties: [:],
-     required: []),
-     execute: { _, context in
-     let spaceService = SpaceManagementService()
-     let spaces = await spaceService.getAllSpaces()
-
-     if spaces.isEmpty {
-     return ToolOutput.success("No Spaces found")
-     }
-
-     var output = "Found \(spaces.count) Space(s):\n\n"
-
-     for (index, space) in spaces.enumerated() {
-     output += "Space \(index + 1):\n"
-     output += "  • ID: \(space.id)\n"
-     output += "  • Type: \(space.type.rawValue)\n"
-     output += "  • Active: \(space.isActive ? "Yes" : "No")\n"
-     if let displayID = space.displayID {
-     output += "  • Display: \(displayID)\n"
-     }
-     output += "\n"
-     }
-
-     return ToolOutput.success(
-     output.trimmingCharacters(in: .whitespacesAndNewlines))
-     })
-     }
-     */
 
     /// Create the list screens tool
-    func createListScreensTool() -> Tool<PeekabooServices> {
-        createTool(
+    func createListScreensTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "list_screens",
             description: "List all available displays/monitors with their properties",
-            parameters: ToolParameters(
-                properties: [:],
+            parameters: Tachikoma.AgentToolParameters(
+                properties: [],
                 required: []),
-            execute: { _, context in
-                let screens = await context.screens.listScreens()
+            execute: { [services] params in
+                let screens = await services.screens.listScreens()
 
                 if screens.isEmpty {
-                    return ToolOutput.success("No screens found")
+                    return .string("No screens found")
                 }
 
                 var output = "Found \(screens.count) screen(s):\n\n"
@@ -713,105 +678,11 @@ extension PeekabooAgentService {
 
                 output += "💡 Use screen index with 'see' tool to capture specific screens"
 
-                return ToolOutput.success(
+                return .string(
                     output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 
-    // MARK: - Disabled Space Management Tools
-
-    // These tools are temporarily disabled due to missing SpaceManagementService integration
-
-    /*
-     /// Create the switch space tool
-     func createSwitchSpaceTool() -> Tool<PeekabooServices> {
-     createTool(
-     name: "switch_space",
-     description: "Switch to a different macOS Space (virtual desktop)",
-     parameters: ToolParameters(
-     properties: [
-     "space_number": ToolParameterProperty(
-     name: "space_number",
-     type: .integer,
-     description: "Space number to switch to (1-based)"),
-     ],
-     required: ["space_number"]),
-     execute: { params, context in
-     let spaceNumber = try params.intValue("space_number")
-
-     // Get space info
-     let spaces = await context.spaces.listSpaces().data.spaces
-
-     guard spaceNumber > 0, spaceNumber <= spaces.count else {
-     throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
-     }
-
-     let targetSpace = spaces[spaceNumber - 1]
-     let spaceId = targetSpace.id
-
-     // Switch to space
-     try await context.spaces.switchToSpace(index: spaceNumber - 1)
-
-     // Give it time to switch
-     try? await Task.sleep(nanoseconds: 500_000_000)
-
-     return ToolOutput.success(
-     "Switched to Space \(spaceNumber)")
-     })
-     }
-
-     /// Create the move window to space tool
-     func createMoveWindowToSpaceTool() -> Tool<PeekabooServices> {
-     createTool(
-     name: "move_window_to_space",
-     description: "Move a window to a different macOS Space (virtual desktop)",
-     parameters: ToolParameters(
-     properties: [
-     "window_id": ToolParameterProperty(
-     name: "window_id",
-     type: .integer,
-     description: "Window ID to move"),
-     "space_number": ToolParameterProperty(
-     name: "space_number",
-     type: .integer,
-     description: "Target space number (1-based)"),
-     "bring_to_current": ToolParameterProperty(
-     name: "bring_to_current",
-     type: .boolean,
-     description: "Move window to current space instead"),
-     ],
-     required: []),
-     execute: { params, context in
-     let windowId = params.intValue("window_id", default: nil)
-     let spaceNumber = params.intValue("space_number", default: nil)
-     let bringToCurrent = params.boolValue("bring_to_current", default: false)
-
-     guard let windowId else {
-     throw PeekabooError.invalidInput("window_id is required")
-     }
-
-     if bringToCurrent {
-     // Move window to current space using the context service
-     try await context.spaces.moveWindowToCurrentSpace(windowId: windowId)
-     return ToolOutput.success("Moved window to current Space")
-     } else {
-     guard let spaceNumber else {
-     throw PeekabooError.invalidInput("Either space_number or bring_to_current must be specified")
-     }
-
-     let spaces = await context.spaces.listSpaces().data.spaces
-     guard spaceNumber > 0, spaceNumber <= spaces.count else {
-     throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
-     }
-
-     // Move window to specific space
-     try await context.spaces.moveWindowToSpace(windowId: windowId, spaceIndex: spaceNumber - 1)
-
-     return ToolOutput.success("Moved window to Space \(spaceNumber)")
-     }
-     })
-     }
-     */
 }
 
 // MARK: - Main Thread Timeout Utility

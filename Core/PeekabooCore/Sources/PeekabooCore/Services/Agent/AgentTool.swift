@@ -1,8 +1,8 @@
 import Foundation
 
-/// Enumeration of all available agent tools
+/// Enumeration of all available agent tools (legacy - will be removed)
 @available(macOS 14.0, *)
-public enum AgentTool: String, CaseIterable, Sendable {
+public enum LegacyAgentTool: String, CaseIterable, Sendable {
     // Vision tools
     case see
     case screenshot

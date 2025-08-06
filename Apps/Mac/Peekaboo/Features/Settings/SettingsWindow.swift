@@ -24,7 +24,7 @@ struct SettingsWindow: View {
                     Label("Visualizer", systemImage: "sparkles")
                 }
 
-            ShortcutsSettingsView()
+            ShortcutSettingsView()
                 .tabItem {
                     Label("Shortcuts", systemImage: "keyboard")
                 }
@@ -73,8 +73,6 @@ struct GeneralSettingsView: View {
 
 struct AISettingsView: View {
     @Environment(PeekabooSettings.self) private var settings
-    @State private var showingOpenAIKey = false
-    @State private var showingAnthropicKey = false
 
     private var allModels: [(provider: String, models: [(id: String, name: String)])] {
         var models: [(provider: String, models: [(id: String, name: String)])] = [
@@ -180,59 +178,25 @@ struct AISettingsView: View {
                 }
             }
 
-            // Provider-specific configuration - Always show all blocks
+            // Provider-specific configuration
             Section("OpenAI Configuration") {
-                // API Key
-                HStack {
-                    Text("API Key")
-                        .frame(width: 80, alignment: .trailing)
-
-                    if self.showingOpenAIKey {
-                        TextField("sk-...", text: Binding(
-                            get: { self.settings.openAIAPIKey },
-                            set: { self.settings.openAIAPIKey = $0 }))
-                            .textFieldStyle(.roundedBorder)
-                    } else {
-                        SecureField("sk-...", text: Binding(
-                            get: { self.settings.openAIAPIKey },
-                            set: { self.settings.openAIAPIKey = $0 }))
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    Button {
-                        self.showingOpenAIKey.toggle()
-                    } label: {
-                        Image(systemName: self.showingOpenAIKey ? "eye.slash" : "eye")
-                    }
-                    .buttonStyle(.plain)
-                }
+                APIKeyField(
+                    provider: .openai,
+                    apiKey: Binding(
+                        get: { self.settings.openAIAPIKey },
+                        set: { self.settings.openAIAPIKey = $0 }
+                    )
+                )
             }
 
             Section("Anthropic Configuration") {
-                // API Key
-                HStack {
-                    Text("API Key")
-                        .frame(width: 80, alignment: .trailing)
-
-                    if self.showingAnthropicKey {
-                        TextField("sk-ant-...", text: Binding(
-                            get: { self.settings.anthropicAPIKey },
-                            set: { self.settings.anthropicAPIKey = $0 }))
-                            .textFieldStyle(.roundedBorder)
-                    } else {
-                        SecureField("sk-ant-...", text: Binding(
-                            get: { self.settings.anthropicAPIKey },
-                            set: { self.settings.anthropicAPIKey = $0 }))
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    Button {
-                        self.showingAnthropicKey.toggle()
-                    } label: {
-                        Image(systemName: self.showingAnthropicKey ? "eye.slash" : "eye")
-                    }
-                    .buttonStyle(.plain)
-                }
+                APIKeyField(
+                    provider: .anthropic,
+                    apiKey: Binding(
+                        get: { self.settings.anthropicAPIKey },
+                        set: { self.settings.anthropicAPIKey = $0 }
+                    )
+                )
             }
 
             Section("Ollama Configuration") {
@@ -333,19 +297,6 @@ struct AISettingsView: View {
             }
 
             // API usage info
-            if self.settings.hasValidAPIKey {
-                Section {
-                    HStack {
-                        Spacer()
-                        if self.settings.selectedProvider == "openai" {
-                            Link("View API Usage", destination: URL(string: "https://platform.openai.com/usage")!)
-                        } else if self.settings.selectedProvider == "anthropic" {
-                            Link("View API Usage", destination: URL(string: "https://console.anthropic.com/usage")!)
-                        }
-                        Spacer()
-                    }
-                }
-            }
         }
         .formStyle(.grouped)
         .padding()

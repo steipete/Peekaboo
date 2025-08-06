@@ -17,6 +17,7 @@ let package = Package(
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Core/PeekabooUICore"),
         .package(path: "../../Tachikoma"),
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0"),
     ],
     targets: [
         .target(
@@ -25,6 +26,7 @@ let package = Package(
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "PeekabooUICore", package: "PeekabooUICore"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
+                .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
             ],
             path: "Peekaboo",
             exclude: ["PeekabooApp.swift", "Info.plist"],

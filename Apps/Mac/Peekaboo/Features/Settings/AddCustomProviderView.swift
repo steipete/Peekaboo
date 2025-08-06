@@ -735,6 +735,7 @@ struct ProviderTemplate: Identifiable {
     let icon: String
     let color: Color
     
+    @MainActor
     static let popular: [ProviderTemplate] = [
         ProviderTemplate(
             name: "OpenRouter",
@@ -774,6 +775,7 @@ struct ProviderTemplate: Identifiable {
         )
     ]
     
+    @MainActor
     static let custom = ProviderTemplate(
         name: "Custom Provider",
         description: "Configure your own API endpoint",

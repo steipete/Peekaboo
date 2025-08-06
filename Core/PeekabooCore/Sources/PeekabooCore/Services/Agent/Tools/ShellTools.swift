@@ -21,7 +21,7 @@ private actor TimeoutState {
 
 @available(macOS 14.0, *)
 public struct ShellToolDefinitions {
-    public static let shell = UnifiedToolDefinition(
+    public static let shell = PeekabooToolDefinition(
         name: "shell",
         commandName: "shell",
         abstract: "Execute a shell command",
@@ -84,17 +84,19 @@ public struct ShellToolDefinitions {
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the shell tool
-    func createShellTool() -> Tool<PeekabooServices> {
+    func createShellTool() -> Tachikoma.AgentTool {
         let definition = ShellToolDefinitions.shell
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, _ in
-                let command = try params.stringValue("command")
-                let workingDirectory = params.stringValue("working_directory", default: nil as String?)
-                let timeout = params.intValue("timeout", default: 30 as Int?) ?? 30
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                guard let command = params.optionalStringValue("command") else {
+                    throw PeekabooError.invalidInput("Command parameter is required")
+                }
+                let workingDirectory = params.optionalStringValue("working-directory")
+                let timeout = params.optionalIntegerValue("timeout") ?? 30
 
                 let startTime = Date()
 
@@ -195,7 +197,7 @@ extension PeekabooAgentService {
                     finalOutput += "\n" + result
                 }
 
-                return ToolOutput.success(finalOutput.trimmingCharacters(in: .whitespacesAndNewlines))
+                return .string(finalOutput.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 }

@@ -50,24 +50,30 @@ This directory contains the modular tool implementations for the Peekaboo agent.
 
 ## Tool Structure
 
-Each tool follows a consistent pattern:
+Each tool follows a consistent pattern using `Tachikoma.AgentTool`:
 
 ```swift
-func createToolNameTool() -> Tool<PeekabooServices> {
-    Tool(
+func createToolNameTool() -> Tachikoma.AgentTool {
+    Tachikoma.AgentTool(
         name: "tool_name",
         description: "What this tool does",
-        parameters: .object(
+        parameters: Tachikoma.AgentToolParameters(
             properties: [
-                "param1": .string(description: "Parameter description", required: true),
-                "param2": .boolean(description: "Optional parameter", required: false)
+                Tachikoma.AgentToolParameterProperty(
+                    name: "param1",
+                    type: .string,
+                    description: "Parameter description"),
+                Tachikoma.AgentToolParameterProperty(
+                    name: "param2",
+                    type: .boolean,
+                    description: "Optional parameter"),
             ],
-            required: ["param1"]
-        ),
-        handler: { params, context in
+            required: ["param1"]),
+        execute: { [services] params in
             // Tool implementation
-            // Access services via context (e.g., context.uiAutomation)
-            // Return .success(output: "Result") or .error("Error message")
+            // Access parameters via params.optionalStringValue("param1")
+            // Access services via captured services variable
+            // Return .string("Result") or throw errors
         }
     )
 }

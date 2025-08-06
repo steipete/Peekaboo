@@ -9,31 +9,32 @@ import Tachikoma
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the find element tool
-    func createFindElementTool() -> Tool<PeekabooServices> {
-        createTool(
+    func createFindElementTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "find_element",
             description: "Find a specific UI element by label or identifier",
-            parameters: ToolParameters(
+            parameters: Tachikoma.AgentToolParameters(
                 properties: [
-                    "label": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "label",
                         type: .string,
                         description: "Label or text to search for"),
-                    "app": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "app",
                         type: .string,
                         description: "Optional: Application name to search within"),
-                    "element_type": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "element_type",
                         type: .string,
-                        description: "Optional: Specific element type to find",
-                        enumValues: ["button", "text_field", "menu", "checkbox", "radio", "link"]),
+                        description: "Optional: Specific element type to find"),
                 ],
                 required: ["label"]),
-            execute: { params, context in
-                let searchLabel = try params.stringValue("label")
-                let appName = params.stringValue("app", default: nil as String?)
-                let elementType = params.stringValue("element_type", default: nil as String?)
+            execute: { [services] params in
+                guard let searchLabel = params.optionalStringValue("label") else {
+                    throw PeekabooError.invalidInput("Label parameter is required")
+                }
+                let appName = params.optionalStringValue("app")
+                let elementType = params.optionalStringValue("element_type")
 
                 let startTime = Date()
                 let targetDescription = appName ?? "entire screen"
@@ -42,7 +43,7 @@ extension PeekabooAgentService {
                 let searchCriteria = UIElementSearchCriteria.label(searchLabel ?? "")
 
                 do {
-                    let element = try await context.automation.findElement(
+                    let element = try await services.automation.findElement(
                         matching: searchCriteria,
                         in: appName)
 
@@ -55,7 +56,7 @@ extension PeekabooAgentService {
                             var notFoundMessage = "No elements found matching '\(searchLabel)'"
                             notFoundMessage += " of type '\(elementType)'"
                             notFoundMessage += " in \(targetDescription)"
-                            return ToolOutput.failure(PeekabooError.elementNotFound(notFoundMessage))
+                            throw PeekabooError.elementNotFound(notFoundMessage)
                         }
                     }
 
@@ -76,39 +77,39 @@ extension PeekabooAgentService {
                         description += "\n   Status: Disabled"
                     }
 
-                    return ToolOutput.success(description)
+                    return .string(description)
                 } catch {
                     var notFoundMessage = "No elements found matching '\(searchLabel)'"
                     if let elementType {
                         notFoundMessage += " of type '\(elementType)'"
                     }
                     notFoundMessage += " in \(targetDescription)"
-                    return .failure(PeekabooError.elementNotFound(notFoundMessage))
+                    return .string("Error: \(notFoundMessage)")
                 }
             })
     }
 
     /// Create the list elements tool
-    func createListElementsTool() -> Tool<PeekabooServices> {
-        createTool(
+    func createListElementsTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "list_elements",
             description: "List all interactive elements in the current view",
-            parameters: ToolParameters(
+            parameters: Tachikoma.AgentToolParameters(
                 properties: [
-                    "app": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "app",
                         type: .string,
                         description: "Optional: Application name to search within"),
-                    "element_type": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "element_type",
                         type: .string,
                         description: "Optional: Filter by element type",
                         enumValues: ["button", "text_field", "menu", "checkbox", "radio", "link", "all"]),
                 ],
                 required: []),
-            execute: { params, context in
-                let appName = params.stringValue("app", default: nil as String?)
-                let elementType = params.stringValue("element_type", default: "all")
+            execute: { [services] params in
+                let appName = params.optionalStringValue("app")
+                let elementType = params.optionalStringValue("element_type") ?? "all"
 
                 let startTime = Date()
 
@@ -119,18 +120,18 @@ extension PeekabooAgentService {
                 let targetDescription: String
                 if let appName {
                     // Capture specific application
-                    captureResult = try await context.screenCapture.captureWindow(
+                    captureResult = try await services.screenCapture.captureWindow(
                         appIdentifier: appName,
                         windowIndex: nil as Int?)
                     targetDescription = appName
                 } else {
                     // Capture entire screen
-                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil as Int?)
+                    captureResult = try await services.screenCapture.captureScreen(displayIndex: nil as Int?)
                     targetDescription = "entire screen"
                 }
 
                 // Detect elements in the screenshot
-                detectionResult = try await context.automation.detectElements(
+                detectionResult = try await services.automation.detectElements(
                     in: captureResult.imageData,
                     sessionId: nil as String?,
                     windowContext: nil as WindowContext?)
@@ -177,19 +178,22 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return ToolOutput.success(filteredOutput.description)
+                return .string(filteredOutput.description)
             })
     }
 
     /// Create the focused element tool
-    func createFocusedTool() -> Tool<PeekabooServices> {
-        createSimpleTool(
+    func createFocusedTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "focused",
             description: "Get information about the currently focused element",
-            execute: { _, context in
+            parameters: Tachikoma.AgentToolParameters(
+                properties: [],
+                required: []),
+            execute: { [services] _ in
                 // Get focused element information
-                guard let focusInfo = await context.automation.getFocusedElement() else {
-                    return ToolOutput.failure(PeekabooError.elementNotFound("No element is currently focused"))
+                guard let focusInfo = await services.automation.getFocusedElement() else {
+                    throw PeekabooError.elementNotFound("No element is currently focused")
                 }
 
                 // Format the focused element information
@@ -205,7 +209,7 @@ extension PeekabooAgentService {
                 description += "\nPosition: [\(Int(focusInfo.frame.origin.x)), \(Int(focusInfo.frame.origin.y))]"
                 description += "\nSize: \(Int(focusInfo.frame.size.width))×\(Int(focusInfo.frame.size.height))"
 
-                return ToolOutput.success(description)
+                return .string(description)
             })
     }
 }

@@ -12,7 +12,7 @@ private let logger = Logger(subsystem: "boo.peekaboo.core", category: "VisionToo
 
 @available(macOS 14.0, *)
 public struct VisionToolDefinitions {
-    public static let see = UnifiedToolDefinition(
+    public static let see = PeekabooToolDefinition(
         name: "see",
         commandName: nil,
         abstract: "Capture screen and map UI elements",
@@ -148,7 +148,7 @@ public struct VisionToolDefinitions {
             - This means you don't need separate focus_window + see commands in most cases
         """)
 
-    public static let screenshot = UnifiedToolDefinition(
+    public static let screenshot = PeekabooToolDefinition(
         name: "screenshot",
         commandName: nil,
         abstract: "Take a screenshot and save it to a file",
@@ -198,17 +198,17 @@ public struct VisionToolDefinitions {
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the primary 'see' tool for capturing and analyzing UI
-    func createSeeTool() -> Tool<PeekabooServices> {
+    func createSeeTool() -> Tachikoma.AgentTool {
         let definition = VisionToolDefinitions.see
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
-                let appName = params.stringValue("app", default: nil as String?)
-                let format = params.stringValue("format", default: "full" as String?) ?? "full"
-                let filterType = params.stringValue("filter", default: nil as String?)
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
+                let appName = params.optionalStringValue("app")
+                let format = params.optionalStringValue("format") ?? "full"
+                let filterType = params.optionalStringValue("filter")
 
                 let startTime = Date()
 
@@ -219,19 +219,19 @@ extension PeekabooAgentService {
 
                 if let appName {
                     // Capture specific application
-                    captureResult = try await context.screenCapture.captureWindow(
+                    captureResult = try await services.screenCapture.captureWindow(
                         appIdentifier: appName,
                         windowIndex: nil as Int?)
 
                     // Get more app context
-                    if let app = try? await context.applications.findApplication(identifier: appName) {
+                    if let app = try? await services.applications.findApplication(identifier: appName) {
                         targetDescription = app.name
                     } else {
                         targetDescription = appName
                     }
 
                     // Only detect elements for specific app captures
-                    detectionResult = try await context.automation.detectElements(
+                    detectionResult = try await services.automation.detectElements(
                         in: captureResult.imageData,
                         sessionId: nil as String?,
                         windowContext: WindowContext(applicationName: appName, windowTitle: nil))
@@ -248,10 +248,10 @@ extension PeekabooAgentService {
                     }
                 } else {
                     // Capture entire screen
-                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil as Int?)
+                    captureResult = try await services.screenCapture.captureScreen(displayIndex: nil as Int?)
 
                     // Count visible apps on screen
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     let visibleApps = appsOutput.data.applications.count(where: { $0.isActive || !$0.isHidden })
                     targetDescription = "entire screen (with \(visibleApps) visible apps)"
 
@@ -336,7 +336,7 @@ extension PeekabooAgentService {
                     let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
                     summary += "\nSaved to: \(savedPath)"
 
-                    return ToolOutput.success(summary)
+                    return .string(summary)
                 }
 
                 // Full format with detailed element list
@@ -355,22 +355,22 @@ extension PeekabooAgentService {
                 let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
                 fullOutput += "\nSaved to: \(savedPath)"
 
-                return ToolOutput.success(fullOutput)
+                return .string(fullOutput)
             })
     }
 
     /// Create the screenshot tool for saving screen captures
-    func createScreenshotTool() -> Tool<PeekabooServices> {
+    func createScreenshotTool() -> Tachikoma.AgentTool {
         let definition = VisionToolDefinitions.screenshot
 
-        return createTool(
+        return Tachikoma.AgentTool(
             name: definition.name,
             description: definition.agentDescription,
-            parameters: definition.toAgentParameters(),
-            execute: { params, context in
+            parameters: definition.toAgentToolParameters(),
+            execute: { [services] params in
                 let path = try params.stringValue("path")
                 let expandedPath = path.expandedPath
-                let appName = params.stringValue("app", default: nil)
+                let appName = params.optionalStringValue("app")
 
                 let startTime = Date()
 
@@ -378,21 +378,21 @@ extension PeekabooAgentService {
                 let targetDescription: String
 
                 if let appName {
-                    captureResult = try await context.screenCapture.captureWindow(
+                    captureResult = try await services.screenCapture.captureWindow(
                         appIdentifier: appName,
                         windowIndex: nil as Int?)
 
                     // Get more app context
-                    if let app = try? await context.applications.findApplication(identifier: appName) {
+                    if let app = try? await services.applications.findApplication(identifier: appName) {
                         targetDescription = app.name
                     } else {
                         targetDescription = appName
                     }
                 } else {
-                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil as Int?)
+                    captureResult = try await services.screenCapture.captureScreen(displayIndex: nil as Int?)
 
                     // Count visible apps on screen
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     let visibleApps = appsOutput.data.applications.count(where: { $0.isActive || !$0.isHidden })
                     targetDescription = "entire screen (with \(visibleApps) visible apps)"
                 }
@@ -405,36 +405,36 @@ extension PeekabooAgentService {
                 let fileSizeKB = (try? FileManager.default.attributesOfItem(atPath: expandedPath)[.size] as? Int64)
                     .map { $0 / 1024 } ?? 0
 
-                return ToolOutput.success(
+                return .string(
                     "Captured \(targetDescription) → \(expandedPath) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)), \(fileSizeKB)KB)")
             })
     }
 
     /// Create the window capture tool
-    func createWindowCaptureTool() -> Tool<PeekabooServices> {
-        createTool(
+    func createWindowCaptureTool() -> Tachikoma.AgentTool {
+        Tachikoma.AgentTool(
             name: "window_capture",
             description: "Capture a specific window by title or window ID",
-            parameters: ToolParameters(
+            parameters: Tachikoma.AgentToolParameters(
                 properties: [
-                    "title": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "title",
                         type: .string,
                         description: "Window title to search for (partial match supported)"),
-                    "window_id": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "window_id",
                         type: .integer,
                         description: "Specific window ID to capture"),
-                    "save_path": ToolParameterProperty(
+                    Tachikoma.AgentToolParameterProperty(
                         name: "save_path",
                         type: .string,
                         description: "Optional: Path to save the screenshot"),
                 ],
                 required: []),
-            execute: { params, context in
-                let title = params.stringValue("title", default: nil as String?)
-                let windowId = params.intValue("window_id", default: nil as Int?).map { CGWindowID($0) }
-                let savePath = params.stringValue("save_path", default: nil as String?)
+            execute: { [services] params in
+                let title = params.optionalStringValue("title")
+                let windowId = params.optionalIntegerValue("window_id").map { CGWindowID($0) }
+                let savePath = params.optionalStringValue("save_path")
 
                 guard title != nil || windowId != nil else {
                     throw PeekabooError.invalidInput("Either 'title' or 'window_id' must be provided")
@@ -448,16 +448,16 @@ extension PeekabooAgentService {
 
                 if let title {
                     // If title is specified, use title-based search
-                    windows = try await context.windows.listWindows(target: .title(title))
+                    windows = try await services.windows.listWindows(target: .title(title))
                 } else if windowId == nil {
                     // No specific criteria, get all windows with timeout protection
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     searchedApps = appsOutput.data.applications.count
 
                     // Process each app sequentially to ensure main thread execution
                     for app in appsOutput.data.applications {
                         do {
-                            let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                            let appWindows = try await services.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
                         } catch {
                             // Skip apps that fail
@@ -466,13 +466,13 @@ extension PeekabooAgentService {
                     }
                 } else {
                     // Window ID specified - still need to search all apps but with timeout
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     searchedApps = appsOutput.data.applications.count
 
                     // Process each app sequentially to ensure main thread execution
                     for app in appsOutput.data.applications {
                         do {
-                            let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                            let appWindows = try await services.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
                         } catch {
                             // Skip apps that fail
@@ -491,7 +491,7 @@ extension PeekabooAgentService {
                     window = foundWindow
 
                     // Find the app that owns this window
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     appName = appsOutput.data.applications.first { _ in
                         windows.contains { w in w.windowID == windowId }
                     }?.name ?? "Unknown App"
@@ -504,7 +504,7 @@ extension PeekabooAgentService {
                     window = foundWindow
 
                     // Find the app that owns this window
-                    let appsOutput = try await context.applications.listApplications()
+                    let appsOutput = try await services.applications.listApplications()
                     appName = appsOutput.data.applications.first { _ in
                         windows.contains { w in w.title == foundWindow.title }
                     }?.name ?? "Unknown App"
@@ -513,12 +513,12 @@ extension PeekabooAgentService {
                 }
 
                 // Capture the window
-                let captureResult = try await context.screenCapture.captureWindow(
+                let captureResult = try await services.screenCapture.captureWindow(
                     appIdentifier: appName,
                     windowIndex: nil)
 
                 // Detect elements
-                let detectionResult = try await context.automation.detectElements(
+                let detectionResult = try await services.automation.detectElements(
                     in: captureResult.imageData,
                     sessionId: nil as String?,
                     windowContext: nil)
@@ -547,7 +547,7 @@ extension PeekabooAgentService {
                     output += "\nSaved to: \(savedPath)"
                 }
 
-                return ToolOutput.success(output)
+                return .string(output)
             })
     }
 }

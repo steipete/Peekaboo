@@ -72,6 +72,7 @@ struct ExpandedToolCallsView: View {
 
 // MARK: - Detailed Tool Call View
 
+@available(macOS 15.0, *)
 struct DetailedToolCallView: View {
     let toolCall: ConversationToolCall
     let onImageTap: (NSImage) -> Void
