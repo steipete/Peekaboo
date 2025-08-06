@@ -18,6 +18,7 @@ final class StatusBarController: NSObject {
     private let permissions: Permissions
     private let speechRecognizer: SpeechRecognizer
     private let settings: PeekabooSettings
+    private let realtimeService: RealtimeVoiceService?
 
     // Icon animation
     private let animationController = MenuBarAnimationController()
@@ -27,13 +28,15 @@ final class StatusBarController: NSObject {
         sessionStore: SessionStore,
         permissions: Permissions,
         speechRecognizer: SpeechRecognizer,
-        settings: PeekabooSettings)
+        settings: PeekabooSettings,
+        realtimeService: RealtimeVoiceService? = nil)
     {
         self.agent = agent
         self.sessionStore = sessionStore
         self.permissions = permissions
         self.speechRecognizer = speechRecognizer
         self.settings = settings
+        self.realtimeService = realtimeService
 
         // Create status item
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -98,10 +101,18 @@ final class StatusBarController: NSObject {
         self.popover.behavior = .transient
         self.popover.animates = false
 
-        let contentView = MenuBarStatusView()
+        let baseView = MenuBarStatusView()
             .environment(self.agent)
             .environment(self.sessionStore)
             .environment(self.speechRecognizer)
+        
+        // Add realtime service if available
+        let contentView: AnyView
+        if let realtimeService {
+            contentView = AnyView(baseView.environment(realtimeService))
+        } else {
+            contentView = AnyView(baseView)
+        }
 
         self.popover.contentViewController = NSHostingController(rootView: contentView)
     }

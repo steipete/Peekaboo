@@ -19,6 +19,7 @@ struct PeekabooApp: App {
     // Dependencies that need the core state
     @State private var speechRecognizer: SpeechRecognizer?
     @State private var agent: PeekabooAgent?
+    @State private var realtimeService: RealtimeVoiceService?
 
     // Control Inspector window creation
     @AppStorage("inspectorWindowRequested") private var inspectorRequested = false
@@ -28,15 +29,15 @@ struct PeekabooApp: App {
     
     // Configure Tachikoma with API keys from settings
     private func configureTachikomaWithSettings() {
-        // First load API keys from credentials file if they're not already in settings
-        loadAPIKeysFromCredentials()
+        // Don't call loadAPIKeysFromCredentials anymore - let environment work naturally
         
-        // Set OpenAI API key if available
+        // Only set API keys if they're explicitly configured in settings
+        // Empty settings mean "use environment variables"
         if !settings.openAIAPIKey.isEmpty {
             TachikomaConfiguration.current.setAPIKey(settings.openAIAPIKey, for: .openai)
         }
         
-        // Set Anthropic API key if available
+        // Same for Anthropic - only override environment if explicitly set
         if !settings.anthropicAPIKey.isEmpty {
             TachikomaConfiguration.current.setAPIKey(settings.anthropicAPIKey, for: .anthropic)
         }
@@ -49,21 +50,9 @@ struct PeekabooApp: App {
     
     // Load API keys from credentials file if settings are empty
     private func loadAPIKeysFromCredentials() {
-        let configManager = ConfigurationManager.shared
-        
-        // Load OpenAI key if not already set
-        if settings.openAIAPIKey.isEmpty {
-            if let apiKey = configManager.getOpenAIAPIKey(), !apiKey.isEmpty {
-                settings.openAIAPIKey = apiKey
-            }
-        }
-        
-        // Load Anthropic key if not already set
-        if settings.anthropicAPIKey.isEmpty {
-            if let apiKey = configManager.getAnthropicAPIKey(), !apiKey.isEmpty {
-                settings.anthropicAPIKey = apiKey
-            }
-        }
+        // Don't load from environment/credentials into settings
+        // This allows proper environment variable detection in the UI
+        // Tachikoma will handle environment variables directly
     }
 
     var body: some Scene {
@@ -82,6 +71,21 @@ struct PeekabooApp: App {
                     
                     // Configure Tachikoma with API keys from settings
                     self.configureTachikomaWithSettings()
+                    
+                    // Initialize realtime service after agent is ready
+                    if self.realtimeService == nil, let agent = self.agent {
+                        do {
+                            if let agentService = try await agent.getAgentService() {
+                                self.realtimeService = RealtimeVoiceService(
+                                    agentService: agentService,
+                                    sessionStore: self.sessionStore,
+                                    settings: self.settings
+                                )
+                            }
+                        } catch {
+                            logger.error("Failed to initialize realtime service: \(error)")
+                        }
+                    }
 
                     // Set up window opening handler
                     self.appDelegate.windowOpener = { windowId in
@@ -96,7 +100,8 @@ struct PeekabooApp: App {
                         sessionStore: self.sessionStore,
                         permissions: self.permissions,
                         speechRecognizer: self.speechRecognizer!,
-                        agent: self.agent!)
+                        agent: self.agent!,
+                        realtimeService: self.realtimeService)
 
                     // Check permissions
                     await self.permissions.check()
@@ -115,6 +120,7 @@ struct PeekabooApp: App {
                 .environment(self.permissions)
                 .environment(self.speechRecognizer ?? SpeechRecognizer(settings: self.settings))
                 .environment(self.agent ?? PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore))
+                .environmentOptional(self.realtimeService)
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.main"))) { _ in
                     // Window will automatically open when this notification is received
                     DispatchQueue.main.async {
@@ -185,6 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var permissions: Permissions?
     private var speechRecognizer: SpeechRecognizer?
     private var agent: PeekabooAgent?
+    private var realtimeService: RealtimeVoiceService?
 
     // Visualizer components
     var visualizerCoordinator: VisualizerCoordinator?
@@ -214,13 +221,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sessionStore: SessionStore,
         permissions: Permissions,
         speechRecognizer: SpeechRecognizer,
-        agent: PeekabooAgent)
+        agent: PeekabooAgent,
+        realtimeService: RealtimeVoiceService?)
     {
         self.settings = settings
         self.sessionStore = sessionStore
         self.permissions = permissions
         self.speechRecognizer = speechRecognizer
         self.agent = agent
+        self.realtimeService = realtimeService
 
         // Now create status bar with connected state
         self.statusBarController = StatusBarController(
@@ -228,7 +237,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             sessionStore: sessionStore,
             permissions: permissions,
             speechRecognizer: speechRecognizer,
-            settings: settings)
+            settings: settings,
+            realtimeService: realtimeService)
 
         // Connect dock icon manager to settings
         DockIconManager.shared.connectToSettings(settings)

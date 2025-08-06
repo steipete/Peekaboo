@@ -1,5 +1,6 @@
 import SwiftUI
 import PeekabooCore
+import Tachikoma
 
 // MARK: - Input Components
 
@@ -50,48 +51,128 @@ struct StatusBarInputView: View {
 /// Voice input interface with recording controls
 struct VoiceInputView: View {
     @Environment(SpeechRecognizer.self) private var speechRecognizer
+    @Environment(RealtimeVoiceService.self) private var realtimeService
+    
+    @State private var useRealtimeMode = false
+    @State private var showRealtimeWindow = false
     
     let onToggleRecording: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
-            // Listening indicator
-            VStack(spacing: 8) {
-                if speechRecognizer.isListening {
-                    HStack(spacing: 4) {
-                        ForEach(0..<3) { index in
-                            Circle()
-                                .fill(Color.accentColor)
-                                .frame(width: 8, height: 8)
-                                .scaleEffect(speechRecognizer.isListening ? 1.2 : 0.8)
-                                .animation(
-                                    Animation.easeInOut(duration: 0.6)
-                                        .repeatForever()
-                                        .delay(Double(index) * 0.2),
-                                    value: speechRecognizer.isListening)
-                        }
-                    }
-                    .frame(height: 20)
-                }
-
-                Text(speechRecognizer.transcript.isEmpty ? "Listening..." : speechRecognizer.transcript)
-                    .font(.callout)
+            // Mode toggle
+            HStack {
+                Label("Realtime Mode", systemImage: "waveform.circle")
+                    .font(.caption)
                     .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                    .frame(maxHeight: 100)
+                
+                Toggle("", isOn: $useRealtimeMode)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
             }
+            .padding(.horizontal)
+            
+            if useRealtimeMode {
+                // Realtime mode UI
+                VStack(spacing: 12) {
+                    if realtimeService.isConnected {
+                        // Connection status
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                            Text("Connected")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        // Current state
+                        Text(realtimeService.connectionState.rawValue.capitalized)
+                            .font(.headline)
+                        
+                        // Live transcript
+                        if !realtimeService.currentTranscript.isEmpty {
+                            Text(realtimeService.currentTranscript)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                                .frame(maxHeight: 60)
+                        }
+                        
+                        // End session button
+                        Button("End Session") {
+                            Task {
+                                await realtimeService.endSession()
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    } else {
+                        // Start session button
+                        Button(action: {
+                            showRealtimeWindow = true
+                        }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: "waveform.circle.fill")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(.linearGradient(
+                                        colors: [.blue, .purple],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
+                                
+                                Text("Start Realtime Conversation")
+                                    .font(.caption)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding()
+                .frame(minHeight: 200)
+            } else {
+                // Traditional recording mode
+                VStack(spacing: 8) {
+                    if speechRecognizer.isListening {
+                        HStack(spacing: 4) {
+                            ForEach(0..<3) { index in
+                                Circle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 8, height: 8)
+                                    .scaleEffect(speechRecognizer.isListening ? 1.2 : 0.8)
+                                    .animation(
+                                        Animation.easeInOut(duration: 0.6)
+                                            .repeatForever()
+                                            .delay(Double(index) * 0.2),
+                                        value: speechRecognizer.isListening)
+                            }
+                        }
+                        .frame(height: 20)
+                    }
 
-            // Microphone button
-            Button(action: onToggleRecording) {
-                Image(systemName: speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
-                    .font(.system(size: 48))
-                    .foregroundColor(speechRecognizer.isListening ? .red : .accentColor)
+                    Text(speechRecognizer.transcript.isEmpty ? "Listening..." : speechRecognizer.transcript)
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                        .frame(maxHeight: 100)
+
+                    // Microphone button
+                    Button(action: onToggleRecording) {
+                        Image(systemName: speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(speechRecognizer.isListening ? .red : .accentColor)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+                .frame(minHeight: 200)
             }
-            .buttonStyle(.plain)
         }
-        .padding()
-        .frame(minHeight: 200)
+        .sheet(isPresented: $showRealtimeWindow) {
+            RealtimeVoiceView()
+        }
     }
 }
 

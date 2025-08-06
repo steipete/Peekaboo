@@ -16,11 +16,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use generics where appropriate
 - Prefer compile-time type checking over runtime casting
 
+**Modern Swift Patterns**: Follow modern Swift/SwiftUI patterns:
+- Use `@Observable` (iOS 17+/macOS 14+) instead of `ObservableObject`
+- Avoid unnecessary ViewModels - keep state in views when appropriate
+- Use `@State` and `@Environment` for dependency injection
+- Embrace SwiftUI's declarative nature, don't fight the framework
+- See `/Users/steipete/Projects/vibetunnel/apple/docs/modern-swift.md` for details
+
 **Minimum macOS Version**: This project targets macOS 14.0 (Sonoma) and later. Do not add availability checks for macOS versions below 14.0.
 
 **Direct API Over Subprocess**: Always prefer using PeekabooCore services directly instead of spawning CLI subprocesses. The migration to direct API calls improves performance by ~10x and provides better type safety.
 
 **Ollama Timeout Requirements**: When testing Ollama integration, use longer timeouts (300000ms or 5+ minutes) for Bash tool commands, as Ollama can be slow to load models and process requests, especially on first use.
+
+**Claude Opus 4.1 Availability**: Claude Opus 4.1 (model ID: `claude-opus-4-1-20250813`) is currently available and working. This is not a future model - it exists and functions properly as of August 2025.
 
 **File Headers**: Use minimal file headers without author attribution or creation dates:
 - Swift files: `//\n//  FileName.swift\n//  PeekabooCore\n//` (adapt module name: PeekabooCore, AXorcist, etc.)
@@ -474,3 +483,9 @@ if let appDelegate = NSApp.delegate as? AppDelegate {
 2. Pass the AppDelegate through environment values
 3. Use shared singleton patterns for app-wide services
 4. Store references in accessible places during initialization
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

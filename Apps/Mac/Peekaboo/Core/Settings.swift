@@ -246,6 +246,29 @@ final class PeekabooSettings {
             self.updateConfigFile()
         }
     }
+    
+    // MARK: - Realtime Voice Settings
+    
+    /// The selected voice for realtime conversations
+    var realtimeVoice: String? = nil {
+        didSet {
+            self.save()
+        }
+    }
+    
+    /// Custom instructions for the realtime assistant
+    var realtimeInstructions: String? = nil {
+        didSet {
+            self.save()
+        }
+    }
+    
+    /// Whether to use voice activity detection
+    var realtimeVAD: Bool = true {
+        didSet {
+            self.save()
+        }
+    }
 
     var menuNavigationEnabled: Bool = true {
         didSet {
@@ -293,9 +316,9 @@ final class PeekabooSettings {
     var hasValidAPIKey: Bool {
         switch self.selectedProvider {
         case "openai":
-            return !self.openAIAPIKey.isEmpty
+            return !self.openAIAPIKey.isEmpty || isUsingOpenAIEnvironment
         case "anthropic":
-            return !self.anthropicAPIKey.isEmpty
+            return !self.anthropicAPIKey.isEmpty || isUsingAnthropicEnvironment
         case "ollama":
             return true // Ollama doesn't require API key
         default:
@@ -305,6 +328,17 @@ final class PeekabooSettings {
             }
             return false
         }
+    }
+    
+    // Check if we're using environment variables
+    var isUsingOpenAIEnvironment: Bool {
+        // If settings are empty and environment has the key
+        openAIAPIKey.isEmpty && ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil
+    }
+    
+    var isUsingAnthropicEnvironment: Bool {
+        // If settings are empty and environment has the key
+        anthropicAPIKey.isEmpty && ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil
     }
 
     var allAvailableProviders: [String] {
@@ -430,6 +464,15 @@ final class PeekabooSettings {
         self.dialogInteractionEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)dialogInteractionEnabled")
         self.spaceTransitionEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)spaceTransitionEnabled")
         self.ghostEasterEggEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)ghostEasterEggEnabled")
+        
+        // Load Realtime Voice settings
+        self.realtimeVoice = self.userDefaults.string(forKey: "\(self.keyPrefix)realtimeVoice")
+        self.realtimeInstructions = self.userDefaults.string(forKey: "\(self.keyPrefix)realtimeInstructions")
+        if self.userDefaults.object(forKey: "\(self.keyPrefix)realtimeVAD") == nil {
+            self.realtimeVAD = true
+        } else {
+            self.realtimeVAD = self.userDefaults.bool(forKey: "\(self.keyPrefix)realtimeVAD")
+        }
     }
 
     private func save() {
@@ -474,20 +517,28 @@ final class PeekabooSettings {
         self.userDefaults.set(self.dialogInteractionEnabled, forKey: "\(self.keyPrefix)dialogInteractionEnabled")
         self.userDefaults.set(self.spaceTransitionEnabled, forKey: "\(self.keyPrefix)spaceTransitionEnabled")
         self.userDefaults.set(self.ghostEasterEggEnabled, forKey: "\(self.keyPrefix)ghostEasterEggEnabled")
+        
+        // Save Realtime Voice settings
+        if let voice = self.realtimeVoice {
+            self.userDefaults.set(voice, forKey: "\(self.keyPrefix)realtimeVoice")
+        } else {
+            self.userDefaults.removeObject(forKey: "\(self.keyPrefix)realtimeVoice")
+        }
+        if let instructions = self.realtimeInstructions {
+            self.userDefaults.set(instructions, forKey: "\(self.keyPrefix)realtimeInstructions")
+        } else {
+            self.userDefaults.removeObject(forKey: "\(self.keyPrefix)realtimeInstructions")
+        }
+        self.userDefaults.set(self.realtimeVAD, forKey: "\(self.keyPrefix)realtimeVAD")
     }
 
     private func loadFromPeekabooConfig() {
         // Use ConfigurationManager to load from config.json
         _ = self.configManager.loadConfiguration()
 
-        // Load API keys through ConfigurationManager (checks env vars, then credentials file)
-        if let openAIKey = configManager.getOpenAIAPIKey(), !openAIKey.isEmpty {
-            self.openAIAPIKey = openAIKey
-        }
-
-        if let anthropicKey = configManager.getAnthropicAPIKey(), !anthropicKey.isEmpty {
-            self.anthropicAPIKey = anthropicKey
-        }
+        // Don't copy environment variables into settings!
+        // Only load from credentials file if they exist there
+        // This allows proper environment variable detection in the UI
 
         // Load provider and model from config
         let selectedProvider = self.configManager.getSelectedProvider()

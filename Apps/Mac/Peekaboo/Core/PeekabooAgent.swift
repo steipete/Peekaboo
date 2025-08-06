@@ -105,6 +105,14 @@ final class PeekabooAgent {
     }
 
     // MARK: - Public Methods
+    
+    /// Get the underlying agent service for advanced use cases
+    func getAgentService() async throws -> PeekabooAgentService? {
+        guard let agentService = self.services.agent else {
+            throw AgentError.serviceUnavailable
+        }
+        return agentService as? PeekabooAgentService
+    }
 
     /// Execute a task with the agent
     func executeTask(_ task: String) async throws {
