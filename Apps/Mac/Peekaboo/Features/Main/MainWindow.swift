@@ -51,7 +51,7 @@ struct MainWindow: View {
             minHeight: 400,
             idealHeight: 600,
             maxHeight: 800)
-        .background(Color(NSColor.windowBackgroundColor))
+        .modernBackground(style: .automatic)
         .task {
             await self.permissions.check()
         }

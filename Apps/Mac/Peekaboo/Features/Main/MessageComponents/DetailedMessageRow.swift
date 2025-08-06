@@ -146,8 +146,11 @@ struct DetailedMessageRow: View {
             }
         }
         .padding()
-        .background(self.backgroundForMessage)
-        .cornerRadius(8)
+        .modernBackground(style: .content, cornerRadius: 8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(self.backgroundForMessage.opacity(0.3))
+        )
         .scaleEffect(self.appeared ? 1 : 0.95)
         .opacity(self.appeared ? 1 : 0)
         .onAppear {

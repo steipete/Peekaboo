@@ -23,7 +23,7 @@ struct MenuBarStatusView: View {
             StatusBarHeaderView(isVoiceMode: $isVoiceMode)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(.regularMaterial)
+                .modernBackground(style: .toolbar)
 
             Divider()
 
@@ -39,7 +39,7 @@ struct MenuBarStatusView: View {
                 if isVoiceMode {
                     VoiceInputView(onToggleRecording: toggleVoiceRecording)
                         .padding(10)
-                        .background(.regularMaterial)
+                        .modernBackground(style: .content)
                 } else {
                     StatusBarInputView(
                         inputText: $inputText,
@@ -49,7 +49,7 @@ struct MenuBarStatusView: View {
                         onSubmit: submitInput
                     )
                     .padding(10)
-                    .background(.regularMaterial)
+                    .modernBackground(style: .content)
                 }
 
                 Divider()
@@ -57,11 +57,11 @@ struct MenuBarStatusView: View {
                 // Action buttons (always visible)
                 ActionButtonsView()
                     .padding()
-                    .background(.regularMaterial)
+                    .modernBackground(style: .toolbar)
             }
         }
         .frame(width: 380)
-        .background(.ultraThinMaterial)
+        .modernBackground(style: .popover)
         .onAppear {
             setupViewOnAppear()
         }
