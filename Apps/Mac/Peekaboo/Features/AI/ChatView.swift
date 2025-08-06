@@ -13,7 +13,7 @@ public struct PeekabooChatView: View {
         model: Model = .default,
         system: String? = nil,
         settings: GenerationSettings = .default,
-        tools: (any ToolKit)? = nil)
+        tools: [AgentTool]? = nil)
     {
         self._ai = AI(
             model: model,
@@ -238,7 +238,7 @@ public struct MessageBubble: View {
 
 #Preview {
     PeekabooChatView(
-        model: .anthropic(.opus4),
+        model: LanguageModel.anthropic(.opus4),
         system: "You are a helpful assistant specialized in macOS automation and development."
     )
     .frame(width: 400, height: 600)

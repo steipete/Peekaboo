@@ -651,9 +651,9 @@ final class PeekabooSettings {
             
             // Configure Tachikoma with the new API key
             if key == "OPENAI_API_KEY" {
-                TachikomaConfiguration.shared.setAPIKey(value, for: "openai")
+                TachikomaConfiguration.current.setAPIKey(value, for: .openai)
             } else if key == "ANTHROPIC_API_KEY" {
-                TachikomaConfiguration.shared.setAPIKey(value, for: "anthropic")
+                TachikomaConfiguration.current.setAPIKey(value, for: .anthropic)
             }
 
             // Refresh the agent service to pick up new API keys

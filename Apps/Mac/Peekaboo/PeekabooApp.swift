@@ -33,17 +33,17 @@ struct PeekabooApp: App {
         
         // Set OpenAI API key if available
         if !settings.openAIAPIKey.isEmpty {
-            TachikomaConfiguration.shared.setAPIKey(settings.openAIAPIKey, for: "openai")
+            TachikomaConfiguration.current.setAPIKey(settings.openAIAPIKey, for: .openai)
         }
         
         // Set Anthropic API key if available
         if !settings.anthropicAPIKey.isEmpty {
-            TachikomaConfiguration.shared.setAPIKey(settings.anthropicAPIKey, for: "anthropic")
+            TachikomaConfiguration.current.setAPIKey(settings.anthropicAPIKey, for: .anthropic)
         }
         
         // Set Ollama base URL if custom
         if settings.ollamaBaseURL != "http://localhost:11434" {
-            TachikomaConfiguration.shared.setBaseURL(settings.ollamaBaseURL, for: "ollama")
+            TachikomaConfiguration.current.setBaseURL(settings.ollamaBaseURL, for: .ollama)
         }
     }
     

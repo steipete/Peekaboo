@@ -26,7 +26,7 @@ public struct AI: DynamicProperty {
         model: Model = .default,
         system: String? = nil,
         settings: GenerationSettings = .default,
-        tools: (any ToolKit)? = nil)
+        tools: [AgentTool]? = nil)
     {
         // Create AIManager on main actor since it's @MainActor
         let aiManager = AIManager(
@@ -53,7 +53,7 @@ public class AIManager: ObservableObject {
     public let model: Model
     public let system: String?
     public let settings: GenerationSettings
-    public let tools: (any ToolKit)?
+    public let tools: [AgentTool]?
 
     private var streamingTask: Task<Void, Never>?
 
@@ -61,7 +61,7 @@ public class AIManager: ObservableObject {
         model: Model = .default,
         system: String? = nil,
         settings: GenerationSettings = .default,
-        tools: (any ToolKit)? = nil)
+        tools: [AgentTool]? = nil)
     {
         self.model = model
         self.system = system
@@ -103,9 +103,9 @@ public class AIManager: ObservableObject {
         do {
             // Use the proper message-based API instead of extracting text
             let result = try await generateText(
-                model: .anthropic(.opus4), // Use the model from the app
+                model: self.model,
                 messages: self.messages,
-                tools: nil,
+                tools: self.tools,
                 settings: self.settings,
                 maxSteps: 1
             )
@@ -134,9 +134,9 @@ public class AIManager: ObservableObject {
                 // Use the proper streaming message-based API
                 var fullText = ""
                 let streamResult = try await streamText(
-                    model: .anthropic(.opus4), // Use the model from the app
+                    model: self.model,
                     messages: self.messages,
-                    tools: nil,
+                    tools: self.tools,
                     settings: self.settings,
                     maxSteps: 1
                 )
@@ -227,7 +227,7 @@ extension View {
     }
 
     /// Configure AI tools for child views
-    public func aiTools(_ tools: (any ToolKit)?) -> some View {
+    public func aiTools(_ tools: [AgentTool]?) -> some View {
         environment(\.aiTools, tools)
     }
 }
@@ -246,7 +246,7 @@ extension EnvironmentValues {
         set { self[AISettingsKey.self] = newValue }
     }
 
-    public var aiTools: (any ToolKit)? {
+    public var aiTools: [AgentTool]? {
         get { self[AIToolsKey.self] }
         set { self[AIToolsKey.self] = newValue }
     }
@@ -261,5 +261,5 @@ private struct AISettingsKey: EnvironmentKey {
 }
 
 private struct AIToolsKey: EnvironmentKey {
-    static let defaultValue: (any ToolKit)? = nil
+    static let defaultValue: [AgentTool]? = nil
 }
