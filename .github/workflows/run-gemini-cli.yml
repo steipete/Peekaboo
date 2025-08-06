@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Run Gemini CLI
-        uses: google-github-actions/run-gemini-cli@latest
+        uses: google-github-actions/run-gemini-cli@main
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           # Optional: Specify custom prompt or configuration
