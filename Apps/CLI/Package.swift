@@ -17,7 +17,7 @@ let package = Package(
         .package(url: "https://github.com/steipete/TermKit", branch: "macos-14"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
         .package(path: "../../Core/PeekabooCore"),
-        .package(path: "../../Tachikoma"),
+        .package(url: "https://github.com/steipete/tachikoma", branch: "main"),
     ],
     targets: [
         .executableTarget(
