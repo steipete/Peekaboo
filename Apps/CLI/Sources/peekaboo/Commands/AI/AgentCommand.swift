@@ -660,6 +660,13 @@ struct AgentCommand: AsyncParsableCommand {
             return .grok(.grok21212)
 
             // Ollama Models
+        } else if lowercased.contains("gpt-oss") || lowercased.contains("gptoss") {
+            // GPT-OSS models for Ollama
+            if lowercased.contains("20b") {
+                return .ollama(.gptOSS20B)
+            } else {
+                return .ollama(.gptOSS120B)
+            }
         } else if lowercased.contains("llama3.3") || lowercased == "llama3.3" {
             return .ollama(.llama33)
         } else if lowercased.contains("llama3.2") || lowercased == "llama3.2" {
