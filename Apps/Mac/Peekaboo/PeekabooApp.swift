@@ -120,6 +120,11 @@ struct PeekabooApp: App {
                 .environment(self.permissions)
                 .environment(self.speechRecognizer ?? SpeechRecognizer(settings: self.settings))
                 .environment(self.agent ?? PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore))
+                .environment(self.realtimeService ?? RealtimeVoiceService(
+                    agentService: try! PeekabooAgentService(services: PeekabooServices.shared),
+                    sessionStore: self.sessionStore,
+                    settings: self.settings
+                ))
                 .environmentOptional(self.realtimeService)
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.main"))) { _ in
                     // Window will automatically open when this notification is received

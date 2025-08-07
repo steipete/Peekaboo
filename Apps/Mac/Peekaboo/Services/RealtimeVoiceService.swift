@@ -96,8 +96,7 @@ final class RealtimeVoiceService {
         conversationHistory = []
         
         // Create agent tools from PeekabooCore
-        // Note: createAgentTools() is internal, we'll need to bridge tools differently
-        let tools: [AgentTool] = []  // TODO: Bridge tools from PeekabooCore
+        let tools = agentService.createAgentTools()
         logger.debug("Registered \(tools.count) tools for realtime session")
         
         // Prepare instructions

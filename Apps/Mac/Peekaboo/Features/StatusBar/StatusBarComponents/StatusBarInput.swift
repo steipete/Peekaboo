@@ -53,7 +53,7 @@ struct VoiceInputView: View {
     @Environment(SpeechRecognizer.self) private var speechRecognizer
     @Environment(RealtimeVoiceService.self) private var realtimeService
     
-    @State private var useRealtimeMode = false
+    @State private var useRealtimeMode = true  // Enable realtime mode by default
     @State private var showRealtimeWindow = false
     
     let onToggleRecording: () -> Void

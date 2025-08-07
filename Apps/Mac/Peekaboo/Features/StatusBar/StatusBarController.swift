@@ -221,13 +221,22 @@ final class StatusBarController: NSObject {
 
         window.title = session.title
         window.center()
-        window.contentView = NSHostingView(
-            rootView: SessionMainWindow()
-                .environment(self.sessionStore)
-                .environment(self.agent)
-                .environment(self.speechRecognizer)
-                .environment(self.permissions)
-                .environment(self.settings))
+        let rootView = SessionMainWindow()
+            .environment(self.sessionStore)
+            .environment(self.agent)
+            .environment(self.speechRecognizer)
+            .environment(self.permissions)
+            .environment(self.settings)
+        
+        // Add realtime service if available
+        let finalView: AnyView
+        if let realtimeService = self.realtimeService {
+            finalView = AnyView(rootView.environment(realtimeService))
+        } else {
+            finalView = AnyView(rootView)
+        }
+        
+        window.contentView = NSHostingView(rootView: finalView)
 
         window.makeKeyAndOrderFront(nil)
     }

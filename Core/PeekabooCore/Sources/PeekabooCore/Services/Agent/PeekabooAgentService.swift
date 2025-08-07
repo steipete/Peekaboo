@@ -506,7 +506,7 @@ private struct UnsafeTransfer<T>: @unchecked Sendable {
 
 extension PeekabooAgentService {
     /// Create AgentTool instances from native Peekaboo tools
-    func createAgentTools() -> [Tachikoma.AgentTool] {
+    public func createAgentTools() -> [Tachikoma.AgentTool] {
         var agentTools: [Tachikoma.AgentTool] = []
         
         // Vision tools
