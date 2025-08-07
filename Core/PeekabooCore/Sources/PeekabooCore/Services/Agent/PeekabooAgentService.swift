@@ -254,8 +254,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         model: LanguageModel? = nil,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
-        // Note: In the new API, we don't need to create agents - we use direct functions
-
         // If we have an event delegate, use streaming
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
@@ -320,10 +318,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         model: LanguageModel? = nil,
         streamHandler: @Sendable @escaping (String) async -> Void) async throws -> AgentExecutionResult
     {
-        // Note: In the new API, we don't need to create agents - we use direct functions
-
-        // AgentRunner.runStreaming doesn't have a streamHandler parameter
-        // We need to use the agent directly with an event delegate
         let selectedModel = model ?? self.defaultLanguageModel
         // For streaming without event handler, create a dummy delegate that discards chunks
         let dummyDelegate = StreamingEventDelegate { _ in /* discard */ }
@@ -336,38 +330,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     }
 
     // MARK: - Tool Creation
-
-
-    private func buildAdditionalParameters(modelName: String, apiType: String?) -> ModelParameters? {
-        var params = ModelParameters(modelName: modelName)
-
-        // Check if API type is explicitly specified
-        if let specifiedApiType = apiType {
-            params = params.with("apiType", value: specifiedApiType)
-        } else if !modelName.hasPrefix("grok") && !modelName.hasPrefix("claude") {
-            // Default to Responses API for OpenAI models only (better streaming support)
-            // Grok and Anthropic models don't need this parameter
-            params = params.with("apiType", value: "responses")
-        }
-
-        // Add reasoning parameters for o3/o4 models
-        if modelName.hasPrefix("o3") || modelName.hasPrefix("o4") {
-            params = params
-                .with("reasoning_effort", value: "medium")
-                .with("max_completion_tokens", value: 4096)
-                .with("reasoning", value: "summary:detailed")
-        }
-
-        // Only log API type debug info in verbose mode
-        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-            ProcessInfo.processInfo.arguments.contains("-v")
-        {
-            let apiTypeValue = params.stringValue("apiType") ?? "nil"
-            logger.debug("PeekabooAgentService: Model '\(modelName)' -> API Type: \(apiTypeValue)")
-        }
-
-        return params.isEmpty ? nil : params
-    }
 }
 
 // MARK: - Convenience Methods
@@ -385,8 +347,7 @@ extension PeekabooAgentService {
             throw PeekabooError.sessionNotFound(sessionId)
         }
 
-        // Use AgentRunner to resume the session with existing messages
-        // Note: In the new API, we don't need to create agents - we use direct functions
+        // Resume the session with existing messages using direct Tachikoma functions
 
         // Create a continuation prompt if needed
         let continuationPrompt = "Continue from where we left off."
