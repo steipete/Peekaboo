@@ -620,7 +620,18 @@ struct AgentCommand: AsyncParsableCommand {
         let lowercased = modelString.lowercased()
 
         // OpenAI Models
-        if lowercased.contains("gpt-4o") || lowercased == "gpt4o" {
+        // GPT-5 models (latest and greatest) - check these FIRST
+        if lowercased == "gpt-5-nano" || lowercased == "gpt5-nano" || lowercased == "gpt5nano" {
+            return .openai(.gpt5Nano)
+        } else if lowercased == "gpt-5-mini" || lowercased == "gpt5-mini" || lowercased == "gpt5mini" {
+            return .openai(.gpt5Mini)
+        } else if lowercased == "gpt-5" || lowercased == "gpt5" {
+            let model = LanguageModel.openai(.gpt5)
+            if isDebugLoggingEnabled {
+                print("DEBUG AgentCommand: Parsed to GPT-5: \(model)")
+            }
+            return model
+        } else if lowercased.contains("gpt-4o") || lowercased == "gpt4o" {
             let model = LanguageModel.openai(.gpt4o)
             if isDebugLoggingEnabled {
                 print("DEBUG AgentCommand: Parsed to: \(model)")

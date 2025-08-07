@@ -360,8 +360,9 @@ public final class PeekabooServices: @unchecked Sendable {
 
             // PeekabooAgentService now uses Tachikoma internally
             do {
-                // Convert model string to LanguageModel enum
-                let defaultModel = LanguageModel.anthropic(.opus4) // Default fallback
+                // Parse the determined model string to LanguageModel enum
+                let defaultModel = parseModelStringForAgent(determination.model)
+                logger.debug("🤖 Using AI model: \(defaultModel)")
                 agent = try PeekabooAgentService(
                     services: services,
                     defaultModel: defaultModel)
@@ -563,6 +564,79 @@ extension PeekabooServices {
 
     // MARK: - Private Helper Methods
 
+    /// Parse model string to LanguageModel enum
+    private static func parseModelStringForAgent(_ modelString: String) -> LanguageModel {
+        let lowercased = modelString.lowercased()
+        
+        // GPT-5 models (default for OpenAI)
+        if lowercased.contains("gpt-5") || lowercased.contains("gpt5") {
+            if lowercased.contains("mini") {
+                return .openai(.gpt5Mini)
+            } else if lowercased.contains("nano") {
+                return .openai(.gpt5Nano)
+            } else {
+                return .openai(.gpt5)
+            }
+        }
+        
+        // Claude models
+        if lowercased.contains("claude") || lowercased.contains("opus") || lowercased.contains("sonnet") || lowercased.contains("haiku") {
+            if lowercased.contains("opus-4") || lowercased.contains("opus4") {
+                return .anthropic(.opus4)
+            } else if lowercased.contains("sonnet-4") || lowercased.contains("sonnet4") {
+                return .anthropic(.sonnet4)
+            } else if lowercased.contains("haiku-3") || lowercased.contains("haiku3") {
+                return .anthropic(.haiku35)
+            } else if lowercased.contains("sonnet-3") || lowercased.contains("sonnet3") {
+                return .anthropic(.sonnet35)
+            }
+            // Default to Opus 4 for Claude
+            return .anthropic(.opus4)
+        }
+        
+        // OpenAI models
+        if lowercased.contains("gpt-4") || lowercased.contains("gpt4") {
+            if lowercased.contains("o") {
+                return .openai(.gpt4o)
+            } else if lowercased.contains("turbo") {
+                return .openai(.gpt4Turbo)
+            }
+            return .openai(.gpt41)
+        }
+        
+        // o3/o4 models
+        if lowercased.contains("o3") {
+            if lowercased.contains("mini") {
+                return .openai(.o3Mini)
+            } else if lowercased.contains("pro") {
+                return .openai(.o3Pro)
+            }
+            return .openai(.o3)
+        }
+        
+        if lowercased.contains("o4") {
+            return .openai(.o4Mini)
+        }
+        
+        // Ollama models
+        if lowercased.contains("llava") {
+            return .ollama(.llava)
+        }
+        if lowercased.contains("llama") {
+            if lowercased.contains("3.3") || lowercased.contains("33") {
+                return .ollama(.llama33)
+            } else if lowercased.contains("3.2") || lowercased.contains("32") {
+                return .ollama(.llama32)
+            } else if lowercased.contains("3.1") || lowercased.contains("31") {
+                return .ollama(.llama31)
+            }
+            return .ollama(.llama33)
+        }
+        
+        // Default to GPT-5 as the most capable model
+        return .openai(.gpt5)
+    }
+
     private func determineDefaultModelWithConflict(
         from providers: String,
         hasOpenAI: Bool,
@@ -578,10 +652,13 @@ extension PeekabooServices {
 
         let model: String = if !providers.isEmpty {
             environmentModel ?? "claude-opus-4-20250514"
+        } else if let configuredDefault = configuredDefault {
+            // Use configured default from config file if no environment provider is set
+            configuredDefault
         } else if hasAnthropic {
             "claude-opus-4-20250514"
         } else if hasOpenAI {
-            "gpt-4o"
+            "gpt-5"  // Default to GPT-5 for OpenAI
         } else if hasOllama {
             "llama3.3"
         } else {
