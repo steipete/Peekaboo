@@ -20,6 +20,8 @@ extension PeekabooToolDefinition {
                 .string
             case .integer:
                 .integer
+            case .number:
+                .number
             case .boolean:
                 .boolean
             case .object:

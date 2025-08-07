@@ -1,4 +1,6 @@
 import Foundation
+import CoreGraphics
+import TachikomaMCP
 import MCP
 import os.log
 

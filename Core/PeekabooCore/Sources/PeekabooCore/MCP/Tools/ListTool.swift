@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import TachikomaMCP
 import MCP
 
 /// MCP tool for listing various system items

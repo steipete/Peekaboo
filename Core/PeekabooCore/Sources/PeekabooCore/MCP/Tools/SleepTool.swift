@@ -1,4 +1,5 @@
 import Foundation
+import TachikomaMCP
 import MCP
 
 /// MCP tool for pausing execution

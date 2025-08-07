@@ -84,6 +84,7 @@ public struct ParameterDefinition: Sendable {
 public enum UnifiedParameterType: Sendable {
     case string
     case integer
+    case number
     case boolean
     case enumeration
     case object
@@ -117,21 +118,29 @@ public struct CLIOptions: Sendable {
 public enum ToolCategory: String, CaseIterable, Sendable {
     case vision = "Vision"
     case automation = "UI Automation"
+    case ui = "UI"
     case window = "Window Management"
     case app = "Applications"
+    case application = "Application"
     case menu = "Menu/Dialog"
+    case dialog = "Dialog"
+    case dock = "Dock"
     case system = "System"
     case element = "Elements"
+    case query = "Query"
+    case completion = "Completion"
 
     public var icon: String {
         switch self {
         case .vision: "👁️"
-        case .automation: "🤖"
+        case .automation, .ui: "🤖"
         case .window: "🪟"
-        case .app: "📱"
-        case .menu: "📋"
+        case .app, .application: "📱"
+        case .menu, .dialog: "📋"
+        case .dock: "🚢"
         case .system: "⚙️"
-        case .element: "🔍"
+        case .element, .query: "🔍"
+        case .completion: "✅"
         }
     }
 }

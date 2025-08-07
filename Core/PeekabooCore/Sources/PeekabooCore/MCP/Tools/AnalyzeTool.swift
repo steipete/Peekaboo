@@ -1,4 +1,5 @@
 import Foundation
+import TachikomaMCP
 import MCP
 import os.log
 import Tachikoma

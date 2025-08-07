@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import TachikomaMCP
 import MCP
 import os.log
 
@@ -297,13 +298,13 @@ public struct SeeTool: MCPTool {
         // Draw markers for each element
         for element in elements {
             // Skip elements without bounds
-            guard element.bounds.width > 0 && element.bounds.height > 0 else { continue }
+            guard element.frame.width > 0 && element.frame.height > 0 else { continue }
             
             // Convert coordinates (flip Y axis for screen coordinates)
             let screenHeight = NSScreen.main?.frame.height ?? originalImage.size.height
-            let flippedY = screenHeight - element.bounds.minY - element.bounds.height
-            let elementRect = NSRect(x: element.bounds.minX, y: flippedY,
-                                    width: element.bounds.width, height: element.bounds.height)
+            let flippedY = screenHeight - element.frame.minY - element.frame.height
+            let elementRect = NSRect(x: element.frame.minX, y: flippedY,
+                                    width: element.frame.width, height: element.frame.height)
             
             // Draw semi-transparent fill
             fillColor.setFill()
