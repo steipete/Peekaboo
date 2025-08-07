@@ -55,12 +55,36 @@ public final class Logger {
     
     // MARK: - Operation Tracking
     
+    private var timers: [String: Date] = [:]
+    
+    public func startTimer(_ label: String) {
+        timers[label] = Date()
+    }
+    
+    public func stopTimer(_ label: String) {
+        guard let startTime = timers[label] else { return }
+        let elapsed = Date().timeIntervalSince(startTime)
+        timers.removeValue(forKey: label)
+        verbose("Timer '\(label)' completed in \(String(format: "%.2f", elapsed))s", category: "Performance")
+    }
+    
     public func operationStart(_ operation: String, metadata: [String: Any]? = nil) {
         getLogger(for: "Operations").info("Starting operation: \(operation)", metadata: metadata)
     }
     
     public func operationComplete(_ operation: String, metadata: [String: Any]? = nil) {
         getLogger(for: "Operations").info("Completed operation: \(operation)", metadata: metadata)
+    }
+    
+    public func operationComplete(_ operation: String, success: Bool, metadata: [String: Any]? = nil) {
+        var fullMetadata = metadata ?? [:]
+        fullMetadata["success"] = success
+        let level = success ? "info" : "warning"
+        if success {
+            getLogger(for: "Operations").info("Completed operation: \(operation)", metadata: fullMetadata)
+        } else {
+            getLogger(for: "Operations").warning("Completed operation with issues: \(operation)", metadata: fullMetadata)
+        }
     }
     
     public func operationFailed(_ operation: String, error: Error, metadata: [String: Any]? = nil) {
@@ -77,22 +101,23 @@ public final class Logger {
         }
         
         // Map common categories to PeekabooCore categories
+        // Using string literals since LoggingService.Category members are internal
         let mappedCategory: String
         switch category {
         case "Capture", "ScreenCapture":
-            mappedCategory = LoggingService.Category.screenCapture
+            mappedCategory = "ScreenCapture"
         case "Automation":
-            mappedCategory = LoggingService.Category.automation
+            mappedCategory = "Automation"
         case "AI":
-            mappedCategory = LoggingService.Category.ai
+            mappedCategory = "AI"
         case "Permissions":
-            mappedCategory = LoggingService.Category.permissions
+            mappedCategory = "Permissions"
         case "LabelPlacement":
-            mappedCategory = LoggingService.Category.labelPlacement
+            mappedCategory = "LabelPlacement"
         case "Performance":
-            mappedCategory = LoggingService.Category.performance
+            mappedCategory = "Performance"
         case "Error":
-            mappedCategory = LoggingService.Category.error
+            mappedCategory = "Error"
         default:
             mappedCategory = category
         }

@@ -59,7 +59,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     public init(
         services: PeekabooServices,
-        defaultModel: LanguageModel = .anthropic(.opus4))
+        defaultModel: LanguageModel = .openai(.gpt5))
         throws
     {
         self.services = services

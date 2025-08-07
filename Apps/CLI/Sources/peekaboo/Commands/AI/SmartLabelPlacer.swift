@@ -54,11 +54,19 @@ final class SmartLabelPlacer {
             Logger.shared.verbose("Finding position for \(element.id) (\(element.type)) with \(element.label ?? "no label")", category: "LabelPlacement")
         }
         
-        // Generate candidate positions based on element type
+        // Check if element is horizontally constrained (has neighbors on sides)
+        let isHorizontallyConstrained = isElementHorizontallyConstrained(
+            element: element,
+            elementRect: elementRect,
+            allElements: allElements
+        )
+        
+        // Generate candidate positions based on element type and constraints
         let candidates = generateCandidatePositions(
             for: element,
             elementRect: elementRect,
-            labelSize: labelSize
+            labelSize: labelSize,
+            prioritizeVertical: isHorizontallyConstrained
         )
         
         // Filter out positions that overlap with other elements or labels
@@ -66,18 +74,59 @@ final class SmartLabelPlacer {
             candidates: candidates,
             element: element,
             existingLabels: existingLabels,
-            allElements: allElements
+            allElements: allElements,
+            logRejections: debugMode
         )
         
         if debugMode {
             Logger.shared.verbose("Found \(validPositions.count) valid external positions out of \(candidates.count) candidates", category: "LabelPlacement")
         }
         
-        guard !validPositions.isEmpty else {
+        // If no valid positions, try with relaxed constraints before falling back to internal
+        if validPositions.isEmpty {
             if debugMode {
-                Logger.shared.verbose("No valid external positions, falling back to internal placement", category: "LabelPlacement")
+                Logger.shared.verbose("No valid positions with strict constraints, trying relaxed constraints", category: "LabelPlacement")
             }
-            // Try internal positions as fallback
+            
+            // Try with relaxed constraints (allow slight boundary overflow)
+            let relaxedCandidates = generateCandidatePositions(
+                for: element,
+                elementRect: elementRect,
+                labelSize: labelSize,
+                prioritizeVertical: isHorizontallyConstrained,
+                relaxedSpacing: true
+            )
+            
+            let relaxedValidPositions = filterValidPositions(
+                candidates: relaxedCandidates,
+                element: element,
+                existingLabels: existingLabels,
+                allElements: allElements,
+                allowBoundaryOverflow: true,
+                logRejections: debugMode
+            )
+            
+            if !relaxedValidPositions.isEmpty {
+                if debugMode {
+                    Logger.shared.verbose("Found \(relaxedValidPositions.count) valid positions with relaxed constraints", category: "LabelPlacement")
+                }
+                
+                // Score and pick best relaxed position
+                let scoredRelaxed = scorePositions(relaxedValidPositions, elementRect: elementRect)
+                if let best = scoredRelaxed.max(by: { $0.score < $1.score }) {
+                    let connectionPoint = calculateConnectionPoint(
+                        for: best.index,
+                        elementRect: elementRect,
+                        isExternal: true
+                    )
+                    return (labelRect: best.rect, connectionPoint: connectionPoint)
+                }
+            }
+            
+            // Only use internal placement as absolute last resort
+            if debugMode {
+                Logger.shared.info("No valid external positions even with relaxed constraints, falling back to internal placement", category: "LabelPlacement")
+            }
             return findInternalPosition(
                 for: element,
                 elementRect: elementRect,
@@ -116,110 +165,129 @@ final class SmartLabelPlacer {
     
     // MARK: - Private Methods
     
+    private func isElementHorizontallyConstrained(
+        element: DetectedElement,
+        elementRect: NSRect,
+        allElements: [(element: DetectedElement, rect: NSRect)]
+    ) -> Bool {
+        // Check if there are elements close to the left and right
+        let horizontalThreshold: CGFloat = 20 // pixels
+        
+        var hasLeftNeighbor = false
+        var hasRightNeighbor = false
+        
+        for (otherElement, otherRect) in allElements {
+            guard otherElement.id != element.id else { continue }
+            
+            // Check if vertically aligned (similar Y position)
+            let verticalOverlap = min(elementRect.maxY, otherRect.maxY) - max(elementRect.minY, otherRect.minY)
+            guard verticalOverlap > elementRect.height * 0.5 else { continue }
+            
+            // Check horizontal proximity
+            if otherRect.maxX < elementRect.minX && elementRect.minX - otherRect.maxX < horizontalThreshold {
+                hasLeftNeighbor = true
+            }
+            if otherRect.minX > elementRect.maxX && otherRect.minX - elementRect.maxX < horizontalThreshold {
+                hasRightNeighbor = true
+            }
+        }
+        
+        return hasLeftNeighbor || hasRightNeighbor
+    }
+    
     private func generateCandidatePositions(
         for element: DetectedElement,
         elementRect: NSRect,
-        labelSize: NSSize
+        labelSize: NSSize,
+        prioritizeVertical: Bool = false,
+        relaxedSpacing: Bool = false
     ) -> [(rect: NSRect, index: Int, type: PositionType)] {
         
         var positions: [(rect: NSRect, index: Int, type: PositionType)] = []
+        let spacing = relaxedSpacing ? labelSpacing * 2 : labelSpacing
         
-        // For buttons and links, prefer corners to avoid centered text
+        // ALWAYS generate above/below positions first for ALL element types
+        // This is the key fix - buttons need these positions too!
+        positions.append(contentsOf: [
+            // Above (priority position for horizontally constrained elements)
+            (NSRect(
+                x: elementRect.midX - labelSize.width / 2,
+                y: elementRect.maxY + spacing,
+                width: labelSize.width,
+                height: labelSize.height
+            ), 0, .externalAbove),
+            // Below
+            (NSRect(
+                x: elementRect.midX - labelSize.width / 2,
+                y: elementRect.minY - labelSize.height - spacing,
+                width: labelSize.width,
+                height: labelSize.height
+            ), 1, .externalBelow),
+        ])
+        
+        // For buttons and links, add corner positions
         if element.type == .button || element.type == .link {
             // External corners (less intrusive)
             positions.append(contentsOf: [
                 // Top-left external
                 (NSRect(
-                    x: elementRect.minX - labelSize.width - labelSpacing,
+                    x: elementRect.minX - labelSize.width - spacing,
                     y: elementRect.maxY - labelSize.height,
                     width: labelSize.width,
                     height: labelSize.height
-                ), 0, .externalTopLeft),
+                ), 2, .externalTopLeft),
                 // Top-right external
                 (NSRect(
-                    x: elementRect.maxX + labelSpacing,
+                    x: elementRect.maxX + spacing,
                     y: elementRect.maxY - labelSize.height,
                     width: labelSize.width,
                     height: labelSize.height
-                ), 1, .externalTopRight),
+                ), 3, .externalTopRight),
                 // Bottom-left external
                 (NSRect(
-                    x: elementRect.minX - labelSize.width - labelSpacing,
+                    x: elementRect.minX - labelSize.width - spacing,
                     y: elementRect.minY,
                     width: labelSize.width,
                     height: labelSize.height
-                ), 2, .externalBottomLeft),
+                ), 4, .externalBottomLeft),
                 // Bottom-right external
                 (NSRect(
-                    x: elementRect.maxX + labelSpacing,
+                    x: elementRect.maxX + spacing,
                     y: elementRect.minY,
                     width: labelSize.width,
                     height: labelSize.height
-                ), 3, .externalBottomRight),
+                ), 5, .externalBottomRight),
             ])
         }
         
-        // For text fields, prefer right side
-        if element.type == .textField {
-            positions.append((
-                NSRect(
-                    x: elementRect.maxX + labelSpacing,
-                    y: elementRect.midY - labelSize.height / 2,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ), 4, .externalRight
-            ))
-        }
+        // Add side positions
+        positions.append(contentsOf: [
+            // Right side
+            (NSRect(
+                x: elementRect.maxX + spacing,
+                y: elementRect.midY - labelSize.height / 2,
+                width: labelSize.width,
+                height: labelSize.height
+            ), 6, .externalRight),
+            // Left side
+            (NSRect(
+                x: elementRect.minX - labelSize.width - spacing,
+                y: elementRect.midY - labelSize.height / 2,
+                width: labelSize.width,
+                height: labelSize.height
+            ), 7, .externalLeft),
+        ])
         
-        // For checkboxes, prefer left side
-        if element.type == .checkbox {
-            positions.append((
-                NSRect(
-                    x: elementRect.minX - labelSize.width - labelSpacing,
-                    y: elementRect.midY - labelSize.height / 2,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ), 5, .externalLeft
-            ))
-        }
-        
-        // Add standard positions as fallbacks
-        // For buttons, avoid centered positions (where text usually is)
-        if element.type != .button && element.type != .link {
-            positions.append(contentsOf: [
-                // Above
-                (NSRect(
-                    x: elementRect.midX - labelSize.width / 2,
-                    y: elementRect.maxY + labelSpacing,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ), 6, .externalAbove),
-                // Below
-                (NSRect(
-                    x: elementRect.midX - labelSize.width / 2,
-                    y: elementRect.minY - labelSize.height - labelSpacing,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ), 7, .externalBelow),
-            ])
-        } else {
-            // For buttons, prefer side positions
-            positions.append(contentsOf: [
-                // Right side
-                (NSRect(
-                    x: elementRect.maxX + labelSpacing,
-                    y: elementRect.midY - labelSize.height / 2,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ), 6, .externalRight),
-                // Left side
-                (NSRect(
-                    x: elementRect.minX - labelSize.width - labelSpacing,
-                    y: elementRect.midY - labelSize.height / 2,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ), 7, .externalLeft),
-            ])
+        // If element is horizontally constrained, prioritize vertical positions
+        if prioritizeVertical {
+            // Move above/below positions to the front of the array
+            positions.sort { a, b in
+                let aIsVertical = a.type == .externalAbove || a.type == .externalBelow
+                let bIsVertical = b.type == .externalAbove || b.type == .externalBelow
+                if aIsVertical && !bIsVertical { return true }
+                if !aIsVertical && bIsVertical { return false }
+                return a.index < b.index
+            }
         }
         
         return positions
@@ -229,26 +297,52 @@ final class SmartLabelPlacer {
         candidates: [(rect: NSRect, index: Int, type: PositionType)],
         element: DetectedElement,
         existingLabels: [(rect: NSRect, element: DetectedElement)],
-        allElements: [(element: DetectedElement, rect: NSRect)]
+        allElements: [(element: DetectedElement, rect: NSRect)],
+        allowBoundaryOverflow: Bool = false,
+        logRejections: Bool = false
     ) -> [(rect: NSRect, index: Int, type: PositionType)] {
         
         return candidates.filter { candidate in
-            // Check if within image bounds
-            guard candidate.rect.minX >= 0 && candidate.rect.maxX <= imageSize.width &&
-                  candidate.rect.minY >= 0 && candidate.rect.maxY <= imageSize.height else {
-                return false
+            // Check if within image bounds (with optional relaxation)
+            if !allowBoundaryOverflow {
+                let withinBounds = candidate.rect.minX >= -5 && // Allow slight overflow on edges
+                                  candidate.rect.maxX <= imageSize.width + 5 &&
+                                  candidate.rect.minY >= -5 &&
+                                  candidate.rect.maxY <= imageSize.height + 5
+                
+                if !withinBounds {
+                    if logRejections {
+                        Logger.shared.verbose("Position \(candidate.type) rejected: outside image bounds", category: "LabelPlacement", metadata: [
+                            "rect": "\(candidate.rect)",
+                            "imageBounds": "0,0 \(imageSize.width)x\(imageSize.height)"
+                        ])
+                    }
+                    return false
+                }
             }
             
             // Check overlap with other elements
             for (otherElement, otherRect) in allElements {
                 if otherElement.id != element.id && candidate.rect.intersects(otherRect) {
+                    if logRejections {
+                        Logger.shared.verbose("Position \(candidate.type) rejected: overlaps with element \(otherElement.id)", category: "LabelPlacement", metadata: [
+                            "candidateRect": "\(candidate.rect)",
+                            "elementRect": "\(otherRect)"
+                        ])
+                    }
                     return false
                 }
             }
             
             // Check overlap with existing labels
-            for (existingLabel, _) in existingLabels {
+            for (existingLabel, labelElement) in existingLabels {
                 if candidate.rect.intersects(existingLabel) {
+                    if logRejections {
+                        Logger.shared.verbose("Position \(candidate.type) rejected: overlaps with label for \(labelElement.id)", category: "LabelPlacement", metadata: [
+                            "candidateRect": "\(candidate.rect)",
+                            "existingLabelRect": "\(existingLabel)"
+                        ])
+                    }
                     return false
                 }
             }
@@ -273,7 +367,17 @@ final class SmartLabelPlacer {
             )
             
             // Score using edge detection
-            let score = textDetector.scoreRegionForLabelPlacement(imageRect, in: image)
+            var score = textDetector.scoreRegionForLabelPlacement(imageRect, in: image)
+            
+            // Boost score for preferred positions
+            if position.type == .externalAbove {
+                score *= 1.2 // Prefer above position
+            } else if position.type == .externalBelow {
+                score *= 1.1 // Second preference for below
+            }
+            
+            // Ensure score stays in valid range
+            score = min(1.0, score)
             
             if debugMode {
                 Logger.shared.verbose("Scoring position \(position.index) (\(position.type))", category: "LabelPlacement", metadata: [
@@ -368,17 +472,18 @@ final class SmartLabelPlacer {
         guard isExternal else { return nil }
         
         // Connection points for external positions
+        // Updated to match new position indices
         switch positionIndex {
-        case 0, 1, 2, 3: // Corner positions
-            return NSPoint(x: elementRect.midX, y: elementRect.midY)
-        case 4: // Right
-            return NSPoint(x: elementRect.maxX, y: elementRect.midY)
-        case 5: // Left
-            return NSPoint(x: elementRect.minX, y: elementRect.midY)
-        case 6: // Above
+        case 0: // Above
             return NSPoint(x: elementRect.midX, y: elementRect.maxY)
-        case 7: // Below
+        case 1: // Below
             return NSPoint(x: elementRect.midX, y: elementRect.minY)
+        case 2, 3, 4, 5: // Corner positions
+            return NSPoint(x: elementRect.midX, y: elementRect.midY)
+        case 6: // Right
+            return NSPoint(x: elementRect.maxX, y: elementRect.midY)
+        case 7: // Left
+            return NSPoint(x: elementRect.minX, y: elementRect.midY)
         default:
             return nil
         }

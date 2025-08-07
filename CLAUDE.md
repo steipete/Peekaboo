@@ -31,7 +31,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Claude Opus 4.1 Availability**: Claude Opus 4.1 (model ID: `claude-opus-4-1-20250805`) is currently available and working. This is not a future model - it exists and functions properly as of August 2025.
 
-**GPT-5 Availability**: GPT-5 (model ID: `gpt-5`) was released on August 7, 2025. It is now the default OpenAI model for Peekaboo. The API offers three sizes: `gpt-5` (best for logic and multi-step tasks), `gpt-5-mini` (for cost-sensitive applications), and `gpt-5-nano` (for ultra-low latency). Use `gpt-5` as the default for agent tasks as it excels at coding and agentic work.
+**GPT-5 Availability**: GPT-5 (model ID: `gpt-5`) was released on August 7, 2025. It is now the default OpenAI model for Peekaboo agent tasks. The API offers three sizes: `gpt-5` (best for logic and multi-step tasks, 74.9% on SWE-bench), `gpt-5-mini` (cost-optimized), and `gpt-5-nano` (ultra-low latency). All models support 400K total context (272K input + 128K output tokens).
+
+**GPT-5 Preamble Messages**: When instructed, GPT-5 outputs user-visible preamble messages before and between tool calls to update users on progress during longer agentic tasks. This makes complex operations more transparent by showing the AI's plan and progress at each step.
+
+**GPT-5 Responses API**: GPT-5 uses OpenAI's Responses API (`/v1/responses`) which provides persisted reasoning across tool calls, leading to more coherent and efficient outputs. This API supports `reasoning_effort` (minimal/low/medium/high) and `verbosity` (low/medium/high) parameters for fine-tuned control.
 
 **File Headers**: Use minimal file headers without author attribution or creation dates:
 - Swift files: `//\n//  FileName.swift\n//  PeekabooCore\n//` (adapt module name: PeekabooCore, AXorcist, etc.)
