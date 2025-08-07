@@ -235,16 +235,19 @@ struct AudioInputServiceComprehensiveTests {
             let aiService = PeekabooAIService()
             let service = AudioInputService(aiService: aiService)
             
-            // Create mock WAV file
-            let wavFile = try Self.createMockWAVFile()
-            defer { try? FileManager.default.removeItem(at: wavFile) }
+            // Use real test WAV file from Resources
+            let bundle = Bundle.module
+            guard let wavFile = bundle.url(forResource: "test_audio", withExtension: "wav") else {
+                Issue.record("Could not find test_audio.wav in Resources")
+                return
+            }
             
             // This will fail without API key, but we can test the file validation
             do {
                 _ = try await service.transcribeAudioFile(wavFile)
                 Issue.record("Should have thrown apiKeyMissing error")
             } catch AudioInputError.apiKeyMissing {
-                // Expected
+                // Expected - file was validated successfully, but API key is missing
             } catch {
                 Issue.record("Unexpected error: \(error)")
             }

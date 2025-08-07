@@ -25,6 +25,7 @@ let package = Package(
                 .product(name: "AXorcist", package: "AXorcist"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
                 .product(name: "TachikomaMCP", package: "Tachikoma"),
+                .product(name: "TachikomaAudio", package: "Tachikoma"),
             ],
             exclude: [
                 "README.md",
@@ -37,6 +38,9 @@ let package = Package(
             ]),
         .testTarget(
             name: "PeekabooTests",
-            dependencies: ["PeekabooCore"]),
+            dependencies: ["PeekabooCore"],
+            resources: [
+                .process("Resources")
+            ]),
     ],
     swiftLanguageModes: [.v6])
