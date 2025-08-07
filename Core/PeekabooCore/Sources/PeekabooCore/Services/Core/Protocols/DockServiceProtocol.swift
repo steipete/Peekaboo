@@ -13,6 +13,16 @@ public protocol DockServiceProtocol: Sendable {
     /// - Parameter appName: Name of the application in the Dock
     func launchFromDock(appName: String) async throws
 
+    /// Add an item to the Dock
+    /// - Parameters:
+    ///   - path: Path to the application or folder to add
+    ///   - persistent: Whether to add as persistent item (default true)
+    func addToDock(path: String, persistent: Bool) async throws
+
+    /// Remove an item from the Dock
+    /// - Parameter appName: Name of the application to remove
+    func removeFromDock(appName: String) async throws
+
     /// Right-click a Dock item and optionally select from context menu
     /// - Parameters:
     ///   - appName: Name of the application in the Dock

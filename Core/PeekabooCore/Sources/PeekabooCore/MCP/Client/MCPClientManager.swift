@@ -143,7 +143,7 @@ private actor MCPClientConnection {
         }
         
         // Convert ToolArguments to dictionary for MCP client
-        var args: [String: Any] = [:]
+        let args: [String: Any] = [:]
         // Note: This is a simplified conversion - may need to be expanded based on actual usage
         
         return try await client.executeTool(name: name, arguments: args)
@@ -177,6 +177,9 @@ public enum MCPClientError: LocalizedError {
 /// Manager for MCP client connections
 @MainActor
 public final class MCPClientManager {
+    /// Shared instance
+    public static let shared = MCPClientManager()
+    
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "client-manager")
     private var connections: [String: MCPClientConnection] = [:]
     private var configs: [String: MCPServerConfig] = [:]
@@ -196,9 +199,28 @@ public final class MCPClientManager {
         logger.info("Configured \(configs.count) MCP servers")
     }
     
+    /// Add a single server
+    public func addServer(name: String, config: MCPServerConfig) async throws {
+        self.configs[name] = config
+        let connection = MCPClientConnection(name: name, config: config)
+        self.connections[name] = connection
+        
+        if config.enabled {
+            try await connection.connect()
+        }
+        
+        logger.info("Added MCP server '\(name)'")
+    }
+    
+    /// Initialize default servers (currently a no-op)
+    public func initializeDefaultServers(userConfigs: [String: MCPServerConfig]) async {
+        // No default servers for now - userConfigs parameter is for future use
+        logger.info("Default servers initialization completed")
+    }
+    
     /// Connect to all enabled servers
     public func connectAll() async {
-        await withTaskGroup(of: (String, Result<Void, Error>).self) { group in
+        await withTaskGroup(of: (String, Result<Void, TachikomaMCP.MCPError>).self) { group in
             for (name, connection) in connections {
                 guard let config = configs[name], config.enabled else { continue }
                 
@@ -206,8 +228,10 @@ public final class MCPClientManager {
                     do {
                         try await connection.connect()
                         return (name, .success(()))
+                    } catch let mcpError as TachikomaMCP.MCPError {
+                        return (name, .failure(mcpError))
                     } catch {
-                        return (name, .failure(error))
+                        return (name, .failure(.connectionFailed(error.localizedDescription)))
                     }
                 }
             }
@@ -257,7 +281,7 @@ public final class MCPClientManager {
             
             let info = MCPServerInfo(
                 name: name,
-                description: config.description,
+                description: config.description ?? "",
                 enabled: config.enabled,
                 health: health,
                 tools: tools

@@ -2,8 +2,6 @@ import Foundation
 import Testing
 @testable import peekaboo
 
-// TODO: FocusIntegrationTests commented out - Issue.record() error handling needs fixing
-/*
 @Suite("Focus Integration Tests", .serialized)
 struct FocusIntegrationTests {
     // Helper function to run peekaboo commands
@@ -54,7 +52,8 @@ struct FocusIntegrationTests {
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
-            throw Issue.record("Failed to create session")
+            Issue.record("Failed to create session")
+            throw ProcessError(message: "Failed to create session")
         }
 
         // Click should auto-focus the Finder window
@@ -135,7 +134,8 @@ struct FocusIntegrationTests {
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
-            throw Issue.record("Failed to create session")
+            Issue.record("Failed to create session")
+            throw ProcessError(message: "Failed to create session")
         }
 
         // Click with auto-focus disabled
@@ -288,4 +288,3 @@ private struct WindowActionResponse: Codable {
 private struct ProcessError: Error {
     let message: String
 }
-*/

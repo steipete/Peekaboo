@@ -118,6 +118,120 @@ public final class DockService: DockServiceProtocol {
         try await Task.sleep(nanoseconds: 200_000_000) // 200ms
     }
 
+    public func addToDock(path: String, persistent: Bool = true) async throws {
+        // Adding to Dock
+        
+        // Determine the plist key based on item type
+        var isDirectory: ObjCBool = false
+        _ = FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+        let isFolder = isDirectory.boolValue
+        let plistKey = isFolder ? "persistent-others" : "persistent-apps"
+        
+        // Create the dock item dictionary structure
+        let tileData = """
+        <dict>
+            <key>tile-data</key>
+            <dict>
+                <key>file-data</key>
+                <dict>
+                    <key>_CFURLString</key>
+                    <string>\(path)</string>
+                    <key>_CFURLStringType</key>
+                    <integer>0</integer>
+                </dict>
+            </dict>
+        </dict>
+        """
+        
+        // Use defaults command to add the item
+        let script = """
+        defaults write com.apple.dock \(plistKey) -array-add '\(tileData)'
+        killall Dock
+        """
+        
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = ["-c", script]
+        
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        if process.terminationStatus != 0 {
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            throw PeekabooError.operationError(message: "Failed to add item to Dock: \(errorString)")
+        }
+        
+        // Successfully added to Dock
+    }
+    
+    public func removeFromDock(appName: String) async throws {
+        // Removing app from Dock
+        
+        // Read current dock preferences
+        let readScript = """
+        defaults read com.apple.dock persistent-apps
+        """
+        
+        let readProcess = Process()
+        readProcess.executableURL = URL(fileURLWithPath: "/bin/bash")
+        readProcess.arguments = ["-c", readScript]
+        
+        let outputPipe = Pipe()
+        readProcess.standardOutput = outputPipe
+        
+        try readProcess.run()
+        readProcess.waitUntilExit()
+        
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let outputString = String(data: outputData, encoding: .utf8) ?? ""
+        
+        // Parse and filter out the target app
+        // This is complex with defaults command, so we'll use a different approach:
+        // Use AppleScript to remove the item
+        let appleScript = """
+        tell application "System Events"
+            tell process "Dock"
+                set dockItems to every UI element of list 1
+                repeat with dockItem in dockItems
+                    if name of dockItem contains "\(appName)" then
+                        perform action "AXShowMenu" of dockItem
+                        delay 0.1
+                        click menu item "Remove from Dock" of menu 1 of dockItem
+                        return "Removed"
+                    end if
+                end repeat
+            end tell
+        end tell
+        return "Not found"
+        """
+        
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", appleScript]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+        
+        try task.run()
+        task.waitUntilExit()
+        
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let result = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        
+        if result == "Not found" {
+            throw PeekabooError.elementNotFound("App '\(appName)' not found in Dock")
+        }
+        
+        // Successfully removed from Dock
+    }
+    
     public func rightClickDockItem(appName: String, menuItem: String?) async throws {
         // Find the Dock item and get position
         let element = try findDockElement(appName: appName)

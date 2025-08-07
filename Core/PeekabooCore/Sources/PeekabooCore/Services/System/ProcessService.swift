@@ -658,22 +658,26 @@ public final class ProcessService: ProcessServiceProtocol {
                 sessionId: nil)
 
         case "add":
-            guard let _ = dockParams.path else {
+            guard let path = dockParams.path else {
                 throw PeekabooError.invalidInput(
                     field: "path",
                     reason: "Missing required parameter for dock add command")
             }
-            // Dock service doesn't support adding items directly
-            throw PeekabooError.operationError(message: "Adding items to Dock is not supported")
+            try await self.dockService.addToDock(path: path, persistent: true)
+            return StepExecutionResult(
+                output: .success("Added to Dock: \(path)"),
+                sessionId: nil)
 
         case "remove":
-            guard let _ = dockParams.item else {
+            guard let item = dockParams.item else {
                 throw PeekabooError.invalidInput(
                     field: "item",
                     reason: "Missing required parameter for dock remove command")
             }
-            // Dock service doesn't support removing items directly
-            throw PeekabooError.operationError(message: "Removing items from Dock is not supported")
+            try await self.dockService.removeFromDock(appName: item)
+            return StepExecutionResult(
+                output: .success("Removed from Dock: \(item)"),
+                sessionId: nil)
 
         default:
             throw PeekabooError.invalidInput(

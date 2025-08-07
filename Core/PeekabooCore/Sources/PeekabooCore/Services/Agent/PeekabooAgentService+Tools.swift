@@ -429,7 +429,8 @@ extension PeekabooAgentService {
                 required: ["command"]
             ),
             execute: { arguments in
-                guard let command = arguments["command"] as? String else {
+                guard let commandArg = arguments["command"],
+                      case let .string(command) = commandArg else {
                     return .string("Command is required")
                 }
                 
@@ -478,7 +479,13 @@ extension PeekabooAgentService {
                 required: []
             ),
             execute: { arguments in
-                let message = arguments["message"] as? String ?? "Task completed successfully"
+                let message: String
+                if let messageArg = arguments["message"],
+                   case let .string(msg) = messageArg {
+                    message = msg
+                } else {
+                    message = "Task completed successfully"
+                }
                 return .string("✅ \(message)")
             }
         )
@@ -495,7 +502,8 @@ extension PeekabooAgentService {
                 required: ["question"]
             ),
             execute: { arguments in
-                guard let question = arguments["question"] as? String else {
+                guard let questionArg = arguments["question"],
+                      case let .string(question) = questionArg else {
                     return .string("Please provide a question")
                 }
                 return .string("❓ Need more information: \(question)")
@@ -540,7 +548,7 @@ extension PeekabooAgentService {
                 // Determine type
                 if let typeValue = propDict["type"],
                    case let .string(typeStr) = typeValue {
-                    let paramType: ParameterType
+                    let paramType: AgentToolParameterProperty.ParameterType
                     switch typeStr {
                     case "string":
                         paramType = .string
@@ -700,6 +708,13 @@ extension Value {
             return .object(dict.mapValues { $0.toAgentToolArgument() })
         case .null:
             return .null
+        case .data(let mimeType, let data):
+            // Convert data to a special object representation
+            return .object([
+                "type": .string("data"),
+                "mimeType": .string(mimeType ?? "application/octet-stream"),
+                "dataSize": .int(data.count)
+            ])
         }
     }
 }

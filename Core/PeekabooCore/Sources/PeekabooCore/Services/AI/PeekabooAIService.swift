@@ -14,20 +14,17 @@ public final class PeekabooAIService {
     public func analyzeImage(imageData: Data, question: String, model: LanguageModel? = nil) async throws -> String {
         let selectedModel = model ?? defaultModel
         
-        // Create a message with the image
+        // Create a message with the image using Tachikoma's API
+        let base64String = imageData.base64EncodedString()
+        let imageContent = ModelMessage.ContentPart.ImageContent(data: base64String, mimeType: "image/png")
         let messages = [
-            ModelMessage.user([
-                .text(question),
-                .image(imageData, detail: .auto)
-            ])
+            ModelMessage.user(text: question, images: [imageContent])
         ]
         
-        // Generate response using Tachikoma
-        let response = try await generateText(
+        // Generate response using Tachikoma's generateText function
+        let response = try await Tachikoma.generateText(
             model: selectedModel,
-            messages: messages,
-            temperature: 0.7,
-            maxTokens: 1000
+            messages: messages
         )
         
         return response.text
@@ -50,11 +47,9 @@ public final class PeekabooAIService {
             ModelMessage.user(prompt)
         ]
         
-        let response = try await generateText(
+        let response = try await Tachikoma.generateText(
             model: selectedModel,
-            messages: messages,
-            temperature: 0.7,
-            maxTokens: 1000
+            messages: messages
         )
         
         return response.text
@@ -63,12 +58,12 @@ public final class PeekabooAIService {
     /// List available models
     public func availableModels() -> [LanguageModel] {
         return [
-            .gpt4o,
-            .gpt4oMini,
-            .claude35Sonnet,
-            .claude35Haiku,
-            .gemini15Pro,
-            .gemini15Flash
+            .openai(.gpt4o),
+            .openai(.gpt4oMini),
+            .anthropic(.sonnet35),
+            .anthropic(.haiku35),
+            .google(.gemini15Pro),
+            .google(.gemini15Flash)
         ]
     }
 }
