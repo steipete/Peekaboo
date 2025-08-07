@@ -13,6 +13,8 @@ import Tachikoma
 @Observable
 @MainActor
 final class PeekabooSettings {
+    // Flag to prevent recursive saves during loading
+    private var isLoading = false
     // Reference to ConfigurationManager
     private let configManager = ConfigurationManager.shared
 
@@ -105,18 +107,24 @@ final class PeekabooSettings {
 
     var launchAtLogin: Bool = false {
         didSet {
-            self.save()
-            // Update launch at login status
-            do {
-                if self.launchAtLogin {
-                    try SMAppService.mainApp.register()
-                } else {
-                    try SMAppService.mainApp.unregister()
+            // Don't save or update during loading to prevent recursion
+            if !isLoading {
+                self.save()
+                
+                // Update launch at login status
+                do {
+                    if self.launchAtLogin {
+                        try SMAppService.mainApp.register()
+                    } else {
+                        try SMAppService.mainApp.unregister()
+                    }
+                } catch {
+                    print("Failed to update launch at login: \(error)")
+                    // Prevent recursion when reverting - temporarily set isLoading
+                    self.isLoading = true
+                    self.launchAtLogin = !self.launchAtLogin
+                    self.isLoading = false
                 }
-            } catch {
-                print("Failed to update launch at login: \(error)")
-                // Revert the change if it failed
-                self.launchAtLogin = !self.launchAtLogin
             }
         }
     }
@@ -358,6 +366,10 @@ final class PeekabooSettings {
     }
 
     private func load() {
+        // Set loading flag to prevent recursive saves
+        self.isLoading = true
+        defer { self.isLoading = false }
+        
         self.selectedProvider = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedProvider") ?? "anthropic"
         self.openAIAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)openAIAPIKey") ?? ""
         self.anthropicAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)anthropicAPIKey") ?? ""
