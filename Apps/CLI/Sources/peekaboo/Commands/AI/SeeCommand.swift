@@ -397,7 +397,7 @@ ApplicationResolvable {
         let enabledElements = detectionResult.elements.all.filter(\.isEnabled)
         
         if enabledElements.isEmpty {
-            Logger.shared.warning("No enabled elements to annotate. Total elements: \(detectionResult.elements.all.count)")
+            Logger.shared.info("No enabled elements to annotate. Total elements: \(detectionResult.elements.all.count)")
             print("⚠️  No interactive UI elements found to annotate")
             return originalPath  // Return original image if no elements to annotate
         }
@@ -560,6 +560,16 @@ private struct SessionPaths {
 }
 
 // MARK: - JSON Output Structure (matching original)
+
+struct UIElementSummary: Codable {
+    let id: String
+    let role: String
+    let title: String?
+    let label: String?
+    let identifier: String?
+    let is_actionable: Bool
+    let keyboard_shortcut: String?
+}
 
 struct SeeResult: Codable {
     let session_id: String

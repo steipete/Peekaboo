@@ -150,6 +150,7 @@ extension LoggingService {
         static let performance = "Performance"
         static let permissions = "Permissions"
         static let error = "Error"
+        static let labelPlacement = "LabelPlacement"
     }
 }
 

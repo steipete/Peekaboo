@@ -459,10 +459,58 @@ extension PeekabooAgentService {
                     default:
                         paramType = .string
                     }
+                    
+                    // Handle array items if present
+                    var items: AgentToolParameterItems? = nil
+                    if typeStr == "array", let itemsValue = propDict["items"],
+                       case let .object(itemsDict) = itemsValue {
+                        // Extract item type
+                        if let itemTypeValue = itemsDict["type"],
+                           case let .string(itemTypeStr) = itemTypeValue {
+                            let itemType: AgentToolParameterProperty.ParameterType
+                            switch itemTypeStr {
+                            case "string":
+                                itemType = .string
+                            case "number":
+                                itemType = .number
+                            case "integer":
+                                itemType = .integer
+                            case "boolean":
+                                itemType = .boolean
+                            case "object":
+                                itemType = .object
+                            default:
+                                itemType = .string
+                            }
+                            
+                            // Extract enum values if present
+                            var enumValues: [String]? = nil
+                            if let enumValue = itemsDict["enum"],
+                               case let .array(enumArray) = enumValue {
+                                enumValues = enumArray.compactMap { value in
+                                    if case let .string(str) = value {
+                                        return str
+                                    }
+                                    return nil
+                                }
+                            }
+                            
+                            items = AgentToolParameterItems(type: itemType, enumValues: enumValues)
+                        }
+                    }
+                    
+                    // For array types, ensure we always have items (default to string if not specified)
+                    let finalItems: AgentToolParameterItems? = if paramType == .array {
+                        items ?? AgentToolParameterItems(type: .string)
+                    } else {
+                        items
+                    }
+                    
                     agentProperties[key] = AgentToolParameterProperty(
                         name: key,
                         type: paramType,
-                        description: description
+                        description: description,
+                        items: finalItems
                     )
                 }
             }

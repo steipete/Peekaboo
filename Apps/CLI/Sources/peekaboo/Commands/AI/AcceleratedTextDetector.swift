@@ -84,7 +84,7 @@ final class AcceleratedTextDetector {
         
         // Determine if region has text (high edge density)
         // Lower threshold to be more sensitive to text
-        let hasText = density > 0.08  // 8% of pixels are edges = likely text
+        let hasText = density > 0.03  // 3% of pixels are edges = likely text (lowered from 8%)
         
         return EdgeDensityResult(density: density, hasText: hasText)
     }
@@ -93,15 +93,22 @@ final class AcceleratedTextDetector {
     func scoreRegionForLabelPlacement(_ rect: NSRect, in image: NSImage) -> Float {
         let result = analyzeRegion(rect, in: image)
         
+        // Log edge detection results when verbose mode is enabled
+        Logger.shared.verbose("Edge detection for region", category: "LabelPlacement", metadata: [
+            "rect": "\(rect)",
+            "density": result.density,
+            "hasText": result.hasText
+        ])
+        
         // More aggressive scoring to avoid text
         // Areas with ANY significant edges should score very low
-        if result.hasText || result.density > 0.1 {
+        if result.hasText || result.density > 0.05 {  // Lower threshold from 0.1 to 0.05
             return 0.0  // Definitely avoid
-        } else if result.density < 0.02 {
+        } else if result.density < 0.01 {  // Lower threshold from 0.02 to 0.01
             return 1.0  // Perfect - almost no edges
         } else {
             // Exponential decay for intermediate values
-            return exp(-result.density * 50.0)
+            return exp(-result.density * 100.0)  // Increase penalty from 50 to 100
         }
     }
     

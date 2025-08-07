@@ -656,7 +656,7 @@ extension PeekabooAgentService {
                 case .reasoning:
                     // Handle reasoning/thinking content
                     if let content = delta.content, let eventHandler = eventHandler {
-                        await eventHandler.send(.thinkingMessage(content))
+                        await eventHandler.send(.thinkingMessage(content: content))
                     }
                     
                 case .done:
@@ -791,7 +791,7 @@ extension PeekabooAgentService {
             content: fullContent,
             messages: currentMessages,
             sessionId: sessionId,
-            usage: finalUsage,
+            usage: totalUsage,
             metadata: AgentMetadata(
                 executionTime: executionTime,
                 toolCallCount: allSteps.reduce(0) { $0 + $1.toolCalls.count },

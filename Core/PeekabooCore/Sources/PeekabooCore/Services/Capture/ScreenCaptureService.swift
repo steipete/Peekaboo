@@ -428,6 +428,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         let config = SCStreamConfiguration()
         config.width = Int(display.width)
         config.height = Int(display.height)
+        // Explicitly set the source rect to capture the full display
+        config.sourceRect = CGRect(x: 0, y: 0, width: CGFloat(display.width), height: CGFloat(display.height))
+        config.captureResolution = .best
+        config.showsCursor = false
 
         return try await self.captureWithStream(filter: filter, configuration: config)
     }
@@ -641,7 +645,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             [.boundsIgnoreFraming, .nominalResolution])
 
         guard let image else {
-            throw OperationError.captureFailed(reason: "Failed to create window image")
+            self.logger.error("CGWindowListCreateImage failed", metadata: [
+                "windowID": windowID,
+                "appName": app.name
+            ])
+            throw OperationError.captureFailed(reason: "Failed to create window image for window ID \(windowID) (app: \(app.name)). Window may be minimized, hidden, or in another space.")
         }
 
         let imageData: Data
@@ -716,11 +724,21 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         let screenBounds = targetScreen.frame
+        
+        // Convert NSScreen coordinates (bottom-left origin, Y up) to Quartz coordinates (top-left origin, Y down)
+        // We need to flip the Y coordinate relative to the primary screen
+        let primaryScreen = screens.first!
+        let quartzBounds = CGRect(
+            x: screenBounds.origin.x,
+            y: primaryScreen.frame.maxY - screenBounds.maxY,
+            width: screenBounds.width,
+            height: screenBounds.height
+        )
 
         // Capture using legacy API
         // TODO: Migrate to ScreenCaptureKit when ready
         let image = CGWindowListCreateImage(
-            screenBounds,
+            quartzBounds,
             .optionOnScreenBelowWindow,
             kCGNullWindowID,
             .nominalResolution)

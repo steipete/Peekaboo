@@ -50,6 +50,10 @@ final class SmartLabelPlacer {
         allElements: [(element: DetectedElement, rect: NSRect)]
     ) -> (labelRect: NSRect, connectionPoint: NSPoint?)? {
         
+        if debugMode {
+            Logger.shared.verbose("Finding position for \(element.id) (\(element.type)) with \(element.label ?? "no label")", category: "LabelPlacement")
+        }
+        
         // Generate candidate positions based on element type
         let candidates = generateCandidatePositions(
             for: element,
@@ -65,7 +69,14 @@ final class SmartLabelPlacer {
             allElements: allElements
         )
         
+        if debugMode {
+            Logger.shared.verbose("Found \(validPositions.count) valid external positions out of \(candidates.count) candidates", category: "LabelPlacement")
+        }
+        
         guard !validPositions.isEmpty else {
+            if debugMode {
+                Logger.shared.verbose("No valid external positions, falling back to internal placement", category: "LabelPlacement")
+            }
             // Try internal positions as fallback
             return findInternalPosition(
                 for: element,
@@ -79,11 +90,18 @@ final class SmartLabelPlacer {
         
         // Pick the best scoring position
         guard let best = scoredPositions.max(by: { $0.score < $1.score }) else {
+            if debugMode {
+                Logger.shared.verbose("No scored positions available", category: "LabelPlacement")
+            }
             return nil
         }
         
         if debugMode {
-            Logger.shared.verbose("Best position for \(element.id): index \(best.index) with score \(best.score)")
+            Logger.shared.verbose("Best position for \(element.id): type \(best.type) with score \(best.score) (higher = better, 1.0 = clear area, 0.0 = text/edges)", category: "LabelPlacement", metadata: [
+                "elementId": element.id,
+                "positionType": best.type.rawValue,
+                "score": best.score
+            ])
         }
         
         // Calculate connection point if needed
@@ -258,12 +276,13 @@ final class SmartLabelPlacer {
             let score = textDetector.scoreRegionForLabelPlacement(imageRect, in: image)
             
             if debugMode {
-                Logger.shared.verbose("""
-                    Position \(position.index) (\(position.type)) for element:
-                    - Drawing rect: \(position.rect)
-                    - Image rect: \(imageRect)
-                    - Score: \(score)
-                    """)
+                Logger.shared.verbose("Scoring position \(position.index) (\(position.type))", category: "LabelPlacement", metadata: [
+                    "index": position.index,
+                    "type": position.type.rawValue,
+                    "drawingRect": "\(position.rect)",
+                    "imageRect": "\(imageRect)",
+                    "score": score
+                ])
             }
             
             return (rect: position.rect, index: position.index, type: position.type, score: score)
