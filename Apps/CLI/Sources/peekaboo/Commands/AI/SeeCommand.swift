@@ -376,10 +376,10 @@ ApplicationResolvable {
         nsImage.draw(in: NSRect(origin: .zero, size: imageSize))
         Logger.shared.verbose("Original image drawn")
 
-        // Configure text attributes - smaller font
-        let fontSize: CGFloat = 10
+        // Configure text attributes - smaller font for less occlusion
+        let fontSize: CGFloat = 8
         let textAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: fontSize, weight: .medium),
+            .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold),
             .foregroundColor: NSColor.white,
         ]
 
@@ -431,6 +431,9 @@ ApplicationResolvable {
             elementRects.append((element: element, rect: rect))
         }
 
+        // Create smart label placer for intelligent label positioning
+        let labelPlacer = SmartLabelPlacer(image: nsImage, fontSize: fontSize, debugMode: verbose)
+        
         // Draw elements and calculate label positions
         var labelPositions: [(rect: NSRect, connection: NSPoint?, element: DetectedElement)] = []
 
@@ -457,144 +460,34 @@ ApplicationResolvable {
             let textSize = idString.size()
             let labelPadding: CGFloat = 4
             let labelSize = NSSize(width: textSize.width + labelPadding * 2, height: textSize.height + labelPadding)
-
-            // Smart label placement
-            let labelSpacing: CGFloat = 4
-            var labelRect: NSRect?
-            var connectionPoint: NSPoint?
-
-            // Try positions in order: above, right, left, below, inside
-            let positions = [
-                // Above
-                NSRect(
-                    x: rect.midX - labelSize.width / 2,
-                    y: rect.maxY + labelSpacing,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ),
-                // Right
-                NSRect(
-                    x: rect.maxX + labelSpacing,
-                    y: rect.midY - labelSize.height / 2,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ),
-                // Left
-                NSRect(
-                    x: rect.minX - labelSize.width - labelSpacing,
-                    y: rect.midY - labelSize.height / 2,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ),
-                // Below
-                NSRect(
-                    x: rect.midX - labelSize.width / 2,
-                    y: rect.minY - labelSize.height - labelSpacing,
-                    width: labelSize.width,
-                    height: labelSize.height
-                ),
-            ]
-
-            // Check each position
-            for (index, candidateRect) in positions.enumerated() {
-                // Check if position is within image bounds
-                if candidateRect.minX >= 0 && candidateRect.maxX <= imageSize.width &&
-                    candidateRect.minY >= 0 && candidateRect.maxY <= imageSize.height {
-                    // Check if it overlaps with any other element
-                    var overlaps = false
-                    for (otherElement, otherRect) in elementRects {
-                        if otherElement.id != element.id && candidateRect.intersects(otherRect) {
-                            overlaps = true
-                            break
-                        }
-                    }
-
-                    // Check if it overlaps with already placed labels
-                    for (existingLabel, _, _) in labelPositions {
-                        if candidateRect.intersects(existingLabel) {
-                            overlaps = true
-                            break
-                        }
-                    }
-
-                    if !overlaps {
-                        labelRect = candidateRect
-                        // Set connection point based on position
-                        switch index {
-                        case 0: // Above
-                            connectionPoint = NSPoint(x: rect.midX, y: rect.maxY)
-                        case 1: // Right
-                            connectionPoint = NSPoint(x: rect.maxX, y: rect.midY)
-                        case 2: // Left
-                            connectionPoint = NSPoint(x: rect.minX, y: rect.midY)
-                        case 3: // Below
-                            connectionPoint = NSPoint(x: rect.midX, y: rect.minY)
-                        default:
-                            break
-                        }
-                        break
-                    }
-                }
-            }
-
-            // If no external position works, place inside (top-left with minimal overlap)
-            if labelRect == nil {
-                // Try different corners inside the element
-                let insidePositions = [
-                    NSRect(
-                        x: rect.minX + 2,
-                        y: rect.maxY - labelSize.height - 2,
-                        width: labelSize.width,
-                        height: labelSize.height
-                    ), // Top-left
-                    NSRect(
-                        x: rect.maxX - labelSize.width - 2,
-                        y: rect.maxY - labelSize.height - 2,
-                        width: labelSize.width,
-                        height: labelSize.height
-                    ), // Top-right
-                    NSRect(x: rect.minX + 2, y: rect.minY + 2, width: labelSize.width, height: labelSize.height),
-                    // Bottom-left
-                    NSRect(
-                        x: rect.maxX - labelSize.width - 2,
-                        y: rect.minY + 2,
-                        width: labelSize.width,
-                        height: labelSize.height
-                    ), // Bottom-right
-                ]
-
-                // Pick the first one that fits
-                for candidateRect in insidePositions {
-                    if rect.contains(candidateRect) {
-                        labelRect = candidateRect
-                        connectionPoint = nil // No connection line needed for inside placement
-                        break
-                    }
-                }
-
-                // Ultimate fallback - center of element
-                if labelRect == nil {
-                    labelRect = NSRect(
-                        x: rect.midX - labelSize.width / 2,
-                        y: rect.midY - labelSize.height / 2,
-                        width: labelSize.width,
-                        height: labelSize.height
-                    )
-                }
-            }
-
-            if let finalLabelRect = labelRect {
-                labelPositions.append((rect: finalLabelRect, connection: connectionPoint, element: element))
+            
+            // Use smart label placer to find best position
+            if let placement = labelPlacer.findBestLabelPosition(
+                for: element,
+                elementRect: rect,
+                labelSize: labelSize,
+                existingLabels: labelPositions.map { ($0.rect, $0.element) },
+                allElements: elementRects
+            ) {
+                labelPositions.append((
+                    rect: placement.labelRect,
+                    connection: placement.connectionPoint,
+                    element: element
+                ))
             }
         }
 
+        // NOTE: Old placement code removed - now using SmartLabelPlacer
+
+        // [OLD CODE REMOVED - lines 483-785 contained the old placement logic]
+
         // Draw all labels and connection lines
         for (labelRect, connectionPoint, element) in labelPositions {
-            // Draw connection line if label is outside
+            // Draw connection line if label is outside - make it more subtle
             if let connection = connectionPoint {
-                NSColor.black.withAlphaComponent(0.6).setStroke()
+                NSColor.black.withAlphaComponent(0.3).setStroke()
                 let linePath = NSBezierPath()
-                linePath.lineWidth = 1
+                linePath.lineWidth = 0.5
 
                 // Draw line from connection point to nearest edge of label
                 linePath.move(to: connection)
@@ -606,42 +499,101 @@ ApplicationResolvable {
 
                 linePath.stroke()
             }
-
-            // Draw label background
-            NSColor.black.withAlphaComponent(0.85).setFill()
-            NSBezierPath(roundedRect: labelRect, xRadius: 2, yRadius: 2).fill()
-
-            // Draw label border (same color as element)
+            
+            // Draw label background - more transparent to show content beneath
+            NSColor.black.withAlphaComponent(0.7).setFill()
+            NSBezierPath(roundedRect: labelRect, xRadius: 1, yRadius: 1).fill()
+            
+            // Draw label border (same color as element) - thinner for less occlusion
             let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
-            color.setStroke()
-            let borderPath = NSBezierPath(roundedRect: labelRect, xRadius: 2, yRadius: 2)
-            borderPath.lineWidth = 1
+            color.withAlphaComponent(0.8).setStroke()
+            let borderPath = NSBezierPath(roundedRect: labelRect, xRadius: 1, yRadius: 1)
+            borderPath.lineWidth = 0.5
             borderPath.stroke()
-
+            
             // Draw label text
             let idString = NSAttributedString(string: element.id, attributes: textAttributes)
             idString.draw(at: NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2))
         }
-
+        
         NSGraphicsContext.restoreGraphicsState()
-
+        
         // Save annotated image
         guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
             throw CaptureError.captureFailure("Failed to create PNG data")
         }
-
+        
         try pngData.write(to: URL(fileURLWithPath: annotatedPath))
         Logger.shared.verbose("Created annotated screenshot: \(annotatedPath)")
-
+        
         // Log annotation info only in non-JSON mode
         if !self.jsonOutput {
             let interactableElements = detectionResult.elements.all.filter(\.isEnabled)
             print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
         }
-
+        
         return annotatedPath
     }
+    
+    // [OLD CODE REMOVED - massive cleanup of duplicate placement logic]
+}
 
+// MARK: - Supporting Types
+
+private struct CaptureAndDetectionResult {
+    let sessionId: String
+    let screenshotPath: String
+    let elements: DetectedElements
+    let metadata: DetectionMetadata
+}
+
+private struct SessionPaths {
+    let raw: String
+    let annotated: String
+    let map: String
+}
+
+// MARK: - JSON Output Structure (matching original)
+
+struct SeeResult: Codable {
+    let session_id: String
+    let screenshot_raw: String
+    let screenshot_annotated: String
+    let ui_map: String
+    let application_name: String?
+    let window_title: String?
+    let is_dialog: Bool
+    let element_count: Int
+    let interactable_count: Int
+    let capture_mode: String
+    let analysis_result: String?
+    let execution_time: TimeInterval
+    let ui_elements: [UIElementSummary]
+    let menu_bar: MenuBarSummary?
+    var success: Bool = true
+}
+
+
+struct MenuBarSummary: Codable {
+    let menus: [MenuSummary]
+    
+    struct MenuSummary: Codable {
+        let title: String
+        let item_count: Int
+        let enabled: Bool
+        let items: [MenuItemSummary]
+    }
+    
+    struct MenuItemSummary: Codable {
+        let title: String
+        let enabled: Bool
+        let keyboard_shortcut: String?
+    }
+}
+
+// MARK: - Format Helpers Extension
+
+extension SeeCommand {
     private func performAnalysis(imagePath: String, prompt: String) async throws -> String {
         // For now, just return a placeholder since AI provider is broken
         "AI analysis is temporarily unavailable"
@@ -805,68 +757,6 @@ ApplicationResolvable {
         }
 
         print("⏱️  Completed in \(String(format: "%.2f", executionTime))s")
-    }
-}
-
-// MARK: - Supporting Types
-
-private struct CaptureAndDetectionResult {
-    let sessionId: String
-    let screenshotPath: String
-    let elements: DetectedElements
-    let metadata: DetectionMetadata
-}
-
-private struct SessionPaths {
-    let raw: String
-    let annotated: String
-    let map: String
-}
-
-// MARK: - JSON Output Structure (matching original)
-
-struct SeeResult: Codable {
-    let session_id: String
-    let screenshot_raw: String
-    let screenshot_annotated: String
-    let ui_map: String
-    let application_name: String?
-    let window_title: String?
-    let is_dialog: Bool
-    let element_count: Int
-    let interactable_count: Int
-    let capture_mode: String
-    let analysis_result: String?
-    let execution_time: TimeInterval
-    let ui_elements: [UIElementSummary]
-    let menu_bar: MenuBarSummary?
-    var success: Bool = true
-}
-
-struct UIElementSummary: Codable {
-    let id: String
-    let role: String
-    let title: String?
-    let label: String?
-    let identifier: String?
-    let is_actionable: Bool
-    let keyboard_shortcut: String?
-}
-
-struct MenuBarSummary: Codable {
-    let menus: [MenuSummary]
-
-    struct MenuSummary: Codable {
-        let title: String
-        let item_count: Int
-        let enabled: Bool
-        let items: [MenuItemSummary]
-    }
-
-    struct MenuItemSummary: Codable {
-        let title: String
-        let enabled: Bool
-        let keyboard_shortcut: String?
     }
 }
 
