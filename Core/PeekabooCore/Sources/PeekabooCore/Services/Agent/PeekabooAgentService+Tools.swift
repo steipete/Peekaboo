@@ -203,7 +203,7 @@ extension PeekabooAgentService {
             execute: { arguments in
                 var argsDict = arguments.toDictionary()
                 argsDict["action"] = "launch"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AgentToolArgument.from($0) })
+                let newArgs = AgentToolArguments(argsDict.mapValues { AnyAgentToolValue.from($0) })
                 let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
                 return convertToolResponseToAgentToolResult(response)
             }
@@ -375,12 +375,12 @@ extension PeekabooAgentService {
             execute: { arguments in
                 let message: String
                 if let messageArg = arguments["message"],
-                   case let .string(msg) = messageArg {
+                   let msg = messageArg.stringValue {
                     message = msg
                 } else {
                     message = "Task completed successfully"
                 }
-                return .string("✅ \(message)")
+                return AnyAgentToolValue(string: "✅ \(message)")
             }
         )
     }
@@ -397,10 +397,10 @@ extension PeekabooAgentService {
             ),
             execute: { arguments in
                 guard let questionArg = arguments["question"],
-                      case let .string(question) = questionArg else {
-                    return .string("Please provide a question")
+                      let question = questionArg.stringValue else {
+                    return AnyAgentToolValue(string: "Please provide a question")
                 }
-                return .string("❓ Need more information: \(question)")
+                return AnyAgentToolValue(string: "❓ Need more information: \(question)")
             }
         )
     }
@@ -482,7 +482,7 @@ extension ToolArguments {
         var dict: [String: Any] = [:]
         for key in arguments.keys {
             if let value = arguments[key] {
-                dict[key] = value.toAny()
+                dict[key] = try! value.toJSON()  // AnyAgentToolValue has toJSON()
             }
         }
         self.init(raw: dict)
@@ -494,67 +494,45 @@ extension ToolArguments {
     }
 }
 
-// MARK: AgentToolArgument Extension
-extension AgentToolArgument {
+// MARK: AnyAgentToolValue Extension for Interop
+extension AnyAgentToolValue {
     /// Convert to Any type for interop
     func toAny() -> Any {
-        switch self {
-        case .string(let str):
-            return str
-        case .int(let num):
-            return num
-        case .double(let num):
-            return num
-        case .bool(let bool):
-            return bool
-        case .array(let array):
-            return array.map { $0.toAny() }
-        case .object(let dict):
-            return dict.mapValues { $0.toAny() }
-        case .null:
-            return NSNull()
+        do {
+            return try self.toJSON()
+        } catch {
+            // Fallback to string representation if conversion fails
+            return String(describing: self)
         }
     }
     
     /// Initialize from Any type
-    static func from(_ any: Any) -> AgentToolArgument {
-        switch any {
-        case let str as String:
-            return .string(str)
-        case let num as Int:
-            return .int(num)
-        case let num as Double:
-            return .double(num)
-        case let bool as Bool:
-            return .bool(bool)
-        case let array as [Any]:
-            return .array(array.map { AgentToolArgument.from($0) })
-        case let dict as [String: Any]:
-            return .object(dict.mapValues { AgentToolArgument.from($0) })
-        case is NSNull:
-            return .null
-        default:
+    static func from(_ any: Any) -> AnyAgentToolValue {
+        do {
+            return try AnyAgentToolValue.fromJSON(any)
+        } catch {
             // Fallback: convert to string representation
-            return .string(String(describing: any))
+            return AnyAgentToolValue(string: String(describing: any))
         }
     }
     
     /// Convert to Value for MCP interop
     func toValue() -> Value {
-        switch self {
-        case .string(let str):
+        if let str = self.stringValue {
             return .string(str)
-        case .int(let num):
+        } else if let num = self.intValue {
             return .int(num)
-        case .double(let num):
+        } else if let num = self.doubleValue {
             return .double(num)
-        case .bool(let bool):
+        } else if let bool = self.boolValue {
             return .bool(bool)
-        case .array(let array):
+        } else if let array = self.arrayValue {
             return .array(array.map { $0.toValue() })
-        case .object(let dict):
+        } else if let dict = self.objectValue {
             return .object(dict.mapValues { $0.toValue() })
-        case .null:
+        } else if self.isNull {
+            return .null
+        } else {
             return .null
         }
     }
@@ -585,37 +563,37 @@ extension Value {
         }
     }
     
-    /// Convert to AgentToolArgument
-    func toAgentToolArgument() -> AgentToolArgument {
+    /// Convert to AnyAgentToolValue
+    func toAnyAgentToolValue() -> AnyAgentToolValue {
         switch self {
         case .string(let str):
-            return .string(str)
+            return AnyAgentToolValue(string: str)
         case .int(let num):
-            return .int(num)
+            return AnyAgentToolValue(int: num)
         case .double(let num):
-            return .double(num)
+            return AnyAgentToolValue(double: num)
         case .bool(let bool):
-            return .bool(bool)
+            return AnyAgentToolValue(bool: bool)
         case .array(let array):
-            return .array(array.map { $0.toAgentToolArgument() })
+            return AnyAgentToolValue(array: array.map { $0.toAnyAgentToolValue() })
         case .object(let dict):
-            return .object(dict.mapValues { $0.toAgentToolArgument() })
+            return AnyAgentToolValue(object: dict.mapValues { $0.toAnyAgentToolValue() })
         case .null:
-            return .null
+            return AnyAgentToolValue(null: ())
         case .data(let mimeType, let data):
             // Convert data to a special object representation
-            return .object([
-                "type": .string("data"),
-                "mimeType": .string(mimeType ?? "application/octet-stream"),
-                "dataSize": .int(data.count)
+            return AnyAgentToolValue(object: [
+                "type": AnyAgentToolValue(string: "data"),
+                "mimeType": AnyAgentToolValue(string: mimeType ?? "application/octet-stream"),
+                "dataSize": AnyAgentToolValue(int: data.count)
             ])
         }
     }
 }
 
-// MARK: - Helper function to convert ToolResponse to AgentToolArgument
+// MARK: - Helper function to convert ToolResponse to AnyAgentToolValue
 
-private func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AgentToolArgument {
+private func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AnyAgentToolValue {
     // If there's an error, return error message
     if response.isError {
         let errorMessage = response.content.compactMap { content -> String? in
@@ -625,27 +603,27 @@ private func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> A
             return nil
         }.joined(separator: "\n")
         
-        return .string("Error: \(errorMessage)")
+        return AnyAgentToolValue(string: "Error: \(errorMessage)")
     }
     
     // Convert the first content item to a result
     if let firstContent = response.content.first {
         switch firstContent {
         case .text(let text):
-            return .string(text)
+            return AnyAgentToolValue(string: text)
         case .image(let data, let mimeType, _):
             // For images, return a descriptive string
-            return .string("[Image: \(mimeType), size: \(data.count) bytes]")
+            return AnyAgentToolValue(string: "[Image: \(mimeType), size: \(data.count) bytes]")
         case .resource(let uri, _, let text):
             // For resources, return the text content if available
-            return .string(text ?? "[Resource: \(uri)]")
+            return AnyAgentToolValue(string: text ?? "[Resource: \(uri)]")
         case .audio(let data, let mimeType):
-            return .string("[Audio: \(mimeType), size: \(data.count) bytes]")
+            return AnyAgentToolValue(string: "[Audio: \(mimeType), size: \(data.count) bytes]")
         }
     }
     
     // No content
-    return .string("Success")
+    return AnyAgentToolValue(string: "Success")
 }
 
 // MARK: - Helper Extensions

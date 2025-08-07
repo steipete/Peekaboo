@@ -395,10 +395,16 @@ ApplicationResolvable {
 
         // Draw UI elements
         let enabledElements = detectionResult.elements.all.filter(\.isEnabled)
-        Logger.shared
-            .verbose(
-                "Drawing \(enabledElements.count) enabled elements out of \(detectionResult.elements.all.count) total"
-            )
+        
+        if enabledElements.isEmpty {
+            Logger.shared.warning("No enabled elements to annotate. Total elements: \(detectionResult.elements.all.count)")
+            print("⚠️  No interactive UI elements found to annotate")
+            return originalPath  // Return original image if no elements to annotate
+        }
+        
+        Logger.shared.info(
+            "Annotating \(enabledElements.count) enabled elements out of \(detectionResult.elements.all.count) total"
+        )
         Logger.shared.verbose("Image size: \(imageSize)")
 
         // Calculate window origin from element bounds if we have elements

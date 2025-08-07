@@ -593,67 +593,177 @@ extension PeekabooAgentService {
             print("DEBUG PeekabooAgentService (streaming): Model description: \(model.description)")
         }
 
-        // IMPORTANT: TachikomaCore streamText doesn't handle tool execution
-        // Use generateText instead when tools are present
-        let response = try await generateText(
-            model: model,
-            messages: messages,
-            tools: tools.isEmpty ? nil : tools,
-            maxSteps: maxSteps)
-
-        // Process and emit tool call events from the response
-        if let eventHandler = eventHandler {
-            for step in response.steps {
-                for toolCall in step.toolCalls {
-                    // Emit tool call started event
-                    // Convert arguments to JSON string
-                    let argumentsData = try JSONEncoder().encode(toolCall.arguments)
-                    let argumentsJSON = String(data: argumentsData, encoding: .utf8) ?? "{}"
-                    
-                    let toolCallEvent = AgentEvent.toolCallStarted(
-                        name: toolCall.name,
-                        arguments: argumentsJSON
-                    )
-                    await eventHandler.send(toolCallEvent)
-                    
-                    // Small delay to ensure events are processed in order
-                    try await Task.sleep(nanoseconds: 10_000_000) // 10ms
-                    
-                    // Emit tool call completed event with result
-                    if let toolResult = step.toolResults.first(where: { $0.toolCallId == toolCall.id }) {
-                        // Convert tool result to string representation
-                        let resultString: String
-                        switch toolResult.result {
-                        case .string(let str):
-                            resultString = str
-                        case .int(let int):
-                            resultString = String(int)
-                        case .double(let double):
-                            resultString = String(double)
-                        case .bool(let bool):
-                            resultString = String(bool)
-                        case .array(let array):
-                            resultString = String(describing: array)
-                        case .object(let obj):
-                            resultString = String(describing: obj)
-                        case .null:
-                            resultString = "null"
+        // Implement proper streaming with manual tool execution
+        var currentMessages = messages
+        var fullContent = ""
+        var allSteps: [GenerationStep] = []
+        var totalUsage: Usage?
+        
+        for stepIndex in 0..<maxSteps {
+            // Stream the response
+            let streamResult = try await streamText(
+                model: model,
+                messages: currentMessages,
+                tools: tools.isEmpty ? nil : tools,
+                settings: GenerationSettings(maxTokens: 4096)
+            )
+            
+            var stepText = ""
+            var stepToolCalls: [AgentToolCall] = []
+            var isThinking = false
+            
+            // Process the stream
+            for try await delta in streamResult.stream {
+                switch delta.type {
+                case .textDelta:
+                    if let content = delta.content {
+                        stepText += content
+                        
+                        // Check if this is thinking content (starts with <thinking> or similar patterns)
+                        if content.contains("<thinking>") || content.contains("Let me") || content.contains("I need to") || content.contains("I'll") {
+                            isThinking = true
                         }
                         
-                        let completedEvent = AgentEvent.toolCallCompleted(
-                            name: toolCall.name,
-                            result: resultString
-                        )
-                        await eventHandler.send(completedEvent)
+                        // Emit events based on content
+                        if let eventHandler = eventHandler {
+                            if isThinking && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                await eventHandler.send(.thinkingMessage(content: content))
+                            } else if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                await eventHandler.send(.assistantMessage(content: content))
+                            }
+                        }
                         
-                        // Small delay between tool calls
-                        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                        // Also send to streaming delegate
+                        await streamingDelegate.onChunk(content)
                     }
+                    
+                case .toolCall:
+                    if let toolCall = delta.toolCall {
+                        stepToolCalls.append(toolCall)
+                        
+                        // Emit tool call started event immediately
+                        if let eventHandler = eventHandler {
+                            let argumentsData = try JSONEncoder().encode(toolCall.arguments)
+                            let argumentsJSON = String(data: argumentsData, encoding: .utf8) ?? "{}"
+                            
+                            await eventHandler.send(.toolCallStarted(
+                                name: toolCall.name,
+                                arguments: argumentsJSON
+                            ))
+                        }
+                    }
+                    
+                case .reasoning:
+                    // Handle reasoning/thinking content
+                    if let content = delta.content, let eventHandler = eventHandler {
+                        await eventHandler.send(.thinkingMessage(content))
+                    }
+                    
+                case .done:
+                    // Capture usage if available
+                    if let usage = delta.usage {
+                        totalUsage = usage
+                    }
+                    
+                default:
+                    break
                 }
             }
+            
+            fullContent += stepText
+            
+            // If we have tool calls, execute them
+            if !stepToolCalls.isEmpty {
+                var toolResults: [AgentToolResult] = []
+                
+                for toolCall in stepToolCalls {
+                    // Find and execute the tool
+                    if let tool = tools.first(where: { $0.name == toolCall.name }) {
+                        do {
+                            let context = ToolExecutionContext(
+                                messages: currentMessages,
+                                model: model,
+                                settings: GenerationSettings(maxTokens: 4096),
+                                sessionId: sessionId,
+                                stepIndex: stepIndex
+                            )
+                            
+                            let toolArguments = AgentToolArguments(toolCall.arguments)
+                            let result = try await tool.execute(toolArguments, context: context)
+                            let toolResult = AgentToolResult.success(toolCallId: toolCall.id, result: result)
+                            toolResults.append(toolResult)
+                            
+                            // Emit tool call completed event
+                            if let eventHandler = eventHandler {
+                                let resultString = result.stringValue ?? String(describing: result)
+                                await eventHandler.send(.toolCallCompleted(
+                                    name: toolCall.name,
+                                    result: resultString
+                                ))
+                            }
+                            
+                            // Add tool result message
+                            currentMessages.append(ModelMessage(
+                                role: .tool,
+                                content: [.toolResult(toolResult)]
+                            ))
+                        } catch {
+                            let errorResult = AgentToolResult.error(toolCallId: toolCall.id, error: error.localizedDescription)
+                            toolResults.append(errorResult)
+                            
+                            // Emit error event
+                            if let eventHandler = eventHandler {
+                                await eventHandler.send(.toolCallCompleted(
+                                    name: toolCall.name,
+                                    result: "Error: \(error.localizedDescription)"
+                                ))
+                            }
+                            
+                            currentMessages.append(ModelMessage(
+                                role: .tool,
+                                content: [.toolResult(errorResult)]
+                            ))
+                        }
+                    }
+                }
+                
+                // Add assistant message with tool calls
+                if !stepText.isEmpty || !stepToolCalls.isEmpty {
+                    var content: [ModelMessage.ContentPart] = []
+                    if !stepText.isEmpty {
+                        content.append(.text(stepText))
+                    }
+                    content.append(contentsOf: stepToolCalls.map { .toolCall($0) })
+                    currentMessages.append(ModelMessage(role: .assistant, content: content))
+                }
+                
+                // Store the step
+                allSteps.append(GenerationStep(
+                    stepIndex: stepIndex,
+                    text: stepText,
+                    toolCalls: stepToolCalls,
+                    toolResults: toolResults
+                ))
+                
+                // Continue to next iteration if we have tool results
+                if !toolResults.isEmpty {
+                    continue
+                }
+            } else {
+                // No tool calls, add assistant message and we're done
+                if !stepText.isEmpty {
+                    currentMessages.append(ModelMessage.assistant(stepText))
+                }
+                
+                allSteps.append(GenerationStep(
+                    stepIndex: stepIndex,
+                    text: stepText,
+                    toolCalls: [],
+                    toolResults: []
+                ))
+                break
+            }
         }
-
-        let fullContent = response.text
 
         // Send the complete response to streaming delegate
         await streamingDelegate.onChunk(fullContent)
@@ -665,9 +775,9 @@ extension PeekabooAgentService {
         let updatedSession = AgentSession(
             id: sessionId,
             modelName: model.description,
-            messages: response.messages,
+            messages: currentMessages,
             metadata: SessionMetadata(
-                toolCallCount: response.steps.reduce(0) { $0 + $1.toolCalls.count },
+                toolCallCount: allSteps.reduce(0) { $0 + $1.toolCalls.count },
                 totalExecutionTime: executionTime,
                 customData: ["status": "completed"]
             ),
@@ -679,12 +789,12 @@ extension PeekabooAgentService {
         // Create result
         return AgentExecutionResult(
             content: fullContent,
-            messages: response.messages,
+            messages: currentMessages,
             sessionId: sessionId,
-            usage: response.usage,
+            usage: finalUsage,
             metadata: AgentMetadata(
                 executionTime: executionTime,
-                toolCallCount: response.steps.reduce(0) { $0 + $1.toolCalls.count },
+                toolCallCount: allSteps.reduce(0) { $0 + $1.toolCalls.count },
                 modelName: model.description,
                 startTime: startTime,
                 endTime: endTime))

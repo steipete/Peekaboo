@@ -141,7 +141,7 @@ public class AIManager: ObservableObject {
                     maxSteps: 1
                 )
                 
-                for try await delta in streamResult.textStream {
+                for try await delta in streamResult.stream {
                     if !Task.isCancelled {
                         if let content = delta.content {
                             fullText += content
