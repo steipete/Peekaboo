@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Tachikoma
+import os.log
 
 
 // MARK: - Helper Types
@@ -42,6 +43,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     private let sessionManager: AgentSessionManager
     private let defaultLanguageModel: LanguageModel
     private var currentModel: LanguageModel?
+    private let logger = os.Logger(subsystem: "boo.peekaboo", category: "agent")
 
     /// The default model used by this agent service
     public var defaultModel: String { self.defaultLanguageModel.description }
@@ -74,7 +76,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         dryRun: Bool = false,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
-        print("DEBUG: executeTask (without sessionId) called with eventDelegate: \(eventDelegate != nil)")
         // For dry run, just return a simulated result
         if dryRun {
             return AgentExecutionResult(
@@ -253,7 +254,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         model: LanguageModel? = nil,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
-        print("DEBUG: executeTask (with sessionId) called with eventDelegate: \(eventDelegate != nil)")
         // Note: In the new API, we don't need to create agents - we use direct functions
 
         // If we have an event delegate, use streaming
@@ -363,8 +363,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             ProcessInfo.processInfo.arguments.contains("-v")
         {
             let apiTypeValue = params.stringValue("apiType") ?? "nil"
-            let debugMsg = "DEBUG PeekabooAgentService: Model '\(modelName)' -> API Type: \(apiTypeValue)"
-            FileHandle.standardError.write((debugMsg + "\n").data(using: .utf8)!)
+            logger.debug("PeekabooAgentService: Model '\(modelName)' -> API Type: \(apiTypeValue)")
         }
 
         return params.isEmpty ? nil : params
@@ -561,11 +560,9 @@ extension PeekabooAgentService {
     // MARK: - Helper Functions
 
     /// Parse a model string and return a mock model object for compatibility
-    /// TODO: Replace with direct LanguageModel enum usage
     private func parseModelString(_ modelString: String) async throws -> Any {
-        // This is a compatibility stub - in the new API we don't need to "get" models
-        // We just use LanguageModel enum directly with generateText/streamText
-        modelString
+        // This is a compatibility stub - in the new API we use LanguageModel enum directly
+        return modelString
     }
 
     /// Execute task using direct streamText calls with event streaming
@@ -596,13 +593,11 @@ extension PeekabooAgentService {
         )
         
         // Debug logging for session creation - ALWAYS print for debugging
-        print("DEBUG (streaming): Creating session with ID: \(sessionId)")
-        print("DEBUG (streaming): Session messages count: \(messages.count)")
-        print("DEBUG (streaming): Session directory: ~/.peekaboo/agent_sessions")
+        logger.debug("Creating session with ID: \(sessionId), messages count: \(messages.count)")
         
         do {
             try await self.sessionManager.saveSession(session)
-            print("DEBUG (streaming): Successfully saved initial session with ID: \(sessionId)")
+            logger.debug("Successfully saved initial session with ID: \(sessionId)")
         } catch {
             print("ERROR (streaming): Failed to save initial session: \(error)")
             throw error
@@ -615,11 +610,11 @@ extension PeekabooAgentService {
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
             ProcessInfo.processInfo.arguments.contains("-v")
         {
-            print("DEBUG: Passing \(tools.count) tools to generateText")
+            logger.debug("Passing \(tools.count) tools to generateText")
             for tool in tools {
-                print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
+                logger.debug("Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
                 if tool.name == "see" {
-                    print("DEBUG: 'see' tool required array: \(tool.parameters.required)")
+                    logger.debug("'see' tool required array: \(tool.parameters.required)")
                 }
             }
         }
