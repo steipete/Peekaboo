@@ -17,7 +17,7 @@ struct RealtimeVoiceViewTests {
     
     private func createMockService() -> RealtimeVoiceService {
         let services = PeekabooServices.shared
-        let agentService = PeekabooAgentService(services: services)
+        let agentService = try! PeekabooAgentService(services: services)
         let sessionStore = SessionStore()
         let settings = PeekabooSettings()
         
@@ -30,15 +30,7 @@ struct RealtimeVoiceViewTests {
     
     // MARK: - View Initialization Tests
     
-    @Test("View initializes with correct initial state")
-    func viewInitialization() throws {
-        let service = createMockService()
-        let view = RealtimeVoiceView()
-            .environment(service)
-        
-        // View should compile and be instantiable
-        #expect(view != nil)
-    }
+    // Removed test - just testing compilation is meaningless
     
     @Test("Connection indicator shows correct state")
     func connectionIndicatorState() throws {
@@ -99,15 +91,7 @@ struct RealtimeVoiceViewTests {
     
     // MARK: - Settings View Tests
     
-    @Test("Settings view contains required fields")
-    func settingsViewFields() throws {
-        let service = createMockService()
-        let view = RealtimeVoiceSettingsView()
-            .environment(service)
-        
-        // Settings view should be instantiable
-        #expect(view != nil)
-    }
+    // Removed test - just testing compilation is meaningless
     
     // MARK: - Error Display Tests
     
@@ -128,12 +112,7 @@ struct RealtimeVoiceViewTests {
     
     // MARK: - Accessibility Tests
     
-    @Test("Views have accessibility labels")
-    func accessibilityLabels() throws {
-        // This would require runtime inspection
-        // For now, we just verify the pattern exists
-        #expect(true) // Placeholder for actual accessibility tests
-    }
+    // Removed test - placeholder tests with no assertions are useless
 }
 
 // MARK: - Mock Conversation State Tests

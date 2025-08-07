@@ -9,7 +9,7 @@ import PeekabooCore
 import Tachikoma
 @testable import Peekaboo
 
-@Suite("RealtimeVoiceService Tests", .tags(.unit, .api))
+@Suite("RealtimeVoiceService Tests", .tags(.unit, .ai))
 @MainActor
 struct RealtimeVoiceServiceTests {
     
@@ -236,8 +236,4 @@ struct RealtimeVoiceServiceTests {
 }
 
 // MARK: - Test Tags
-
-extension Tag {
-    @Tag static var api: Self
-    @Tag static var integration: Self
-}
+// Tags are already defined in TestTags.swift
