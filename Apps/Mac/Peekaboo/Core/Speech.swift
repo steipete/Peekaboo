@@ -3,6 +3,7 @@ import Foundation
 import Observation
 import Speech
 import Tachikoma
+import TachikomaAudio
 
 /// Provides speech-to-text capabilities for voice-driven automation.
 ///

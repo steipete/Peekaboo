@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import Observation
 import Tachikoma
+import TachikomaAudio
 
 /// Records audio and sends it to AI models for transcription.
 ///
