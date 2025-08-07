@@ -166,22 +166,43 @@ final class SmartLabelPlacer {
         }
         
         // Add standard positions as fallbacks
-        positions.append(contentsOf: [
-            // Above
-            (NSRect(
-                x: elementRect.midX - labelSize.width / 2,
-                y: elementRect.maxY + labelSpacing,
-                width: labelSize.width,
-                height: labelSize.height
-            ), 6, .externalAbove),
-            // Below
-            (NSRect(
-                x: elementRect.midX - labelSize.width / 2,
-                y: elementRect.minY - labelSize.height - labelSpacing,
-                width: labelSize.width,
-                height: labelSize.height
-            ), 7, .externalBelow),
-        ])
+        // For buttons, avoid centered positions (where text usually is)
+        if element.type != .button && element.type != .link {
+            positions.append(contentsOf: [
+                // Above
+                (NSRect(
+                    x: elementRect.midX - labelSize.width / 2,
+                    y: elementRect.maxY + labelSpacing,
+                    width: labelSize.width,
+                    height: labelSize.height
+                ), 6, .externalAbove),
+                // Below
+                (NSRect(
+                    x: elementRect.midX - labelSize.width / 2,
+                    y: elementRect.minY - labelSize.height - labelSpacing,
+                    width: labelSize.width,
+                    height: labelSize.height
+                ), 7, .externalBelow),
+            ])
+        } else {
+            // For buttons, prefer side positions
+            positions.append(contentsOf: [
+                // Right side
+                (NSRect(
+                    x: elementRect.maxX + labelSpacing,
+                    y: elementRect.midY - labelSize.height / 2,
+                    width: labelSize.width,
+                    height: labelSize.height
+                ), 6, .externalRight),
+                // Left side
+                (NSRect(
+                    x: elementRect.minX - labelSize.width - labelSpacing,
+                    y: elementRect.midY - labelSize.height / 2,
+                    width: labelSize.width,
+                    height: labelSize.height
+                ), 7, .externalLeft),
+            ])
+        }
         
         return positions
     }

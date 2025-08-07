@@ -785,7 +785,7 @@ struct AgentCommand: AsyncParsableCommand {
                     )
                     
                     // Process result
-                    if let usage = result.usage {
+                    if result.usage != nil {
                         await MainActor.run {
                             // TUI handles its own token display
                         }
