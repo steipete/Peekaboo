@@ -492,8 +492,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         correlationId: String) async throws -> CaptureResult
     {
         // Get windows using ScreenCaptureKit
+        // Note: We set onScreenWindowsOnly to false to capture windows on all screens, not just the primary
         let content = try await withTimeout(seconds: 5.0) {
-            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
         }
 
         let appWindows = content.windows.filter { window in
@@ -584,8 +585,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         correlationId: String) async throws -> CaptureResult
     {
         // Get windows using CGWindowList
+        // Note: We use .optionAll instead of .optionOnScreenOnly to capture windows on all screens
         let windowList = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
+            [.optionAll, .excludeDesktopElements],
             kCGNullWindowID) as? [[String: Any]] ?? []
 
         let appWindows = windowList.filter { windowInfo in
