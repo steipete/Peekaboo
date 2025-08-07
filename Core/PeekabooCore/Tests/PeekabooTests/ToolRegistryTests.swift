@@ -7,6 +7,7 @@ struct ToolRegistryTests {
     // MARK: - Tool Retrieval Tests
 
     @Test("Registry contains expected tools")
+    @MainActor
     func registryContainsExpectedTools() {
         let allTools = ToolRegistry.allTools
 
@@ -29,6 +30,7 @@ struct ToolRegistryTests {
     }
 
     @Test("Tool retrieval by name")
+    @MainActor
     func toolRetrievalByName() {
         // Test exact name match
         let clickTool = ToolRegistry.tool(named: "click")
@@ -45,6 +47,7 @@ struct ToolRegistryTests {
     }
 
     @Test("Tool retrieval by command name")
+    @MainActor
     func toolRetrievalByCommandName() {
         // Find a tool with a different command name
         let toolWithCommandName = ToolRegistry.allTools.first { $0.commandName != nil }
@@ -59,6 +62,7 @@ struct ToolRegistryTests {
     // MARK: - Category Tests
 
     @Test("Tools organized by category")
+    @MainActor
     func toolsOrganizedByCategory() {
         let toolsByCategory = ToolRegistry.toolsByCategory()
 
@@ -108,6 +112,7 @@ struct ToolRegistryTests {
     // MARK: - Parameter Tests
 
     @Test("Parameter retrieval")
+    @MainActor
     func parameterRetrieval() {
         // Get a tool with parameters
         guard let clickTool = ToolRegistry.tool(named: "click") else {
@@ -303,6 +308,7 @@ struct ToolRegistryTests {
     // MARK: - Registry Integrity Tests
 
     @Test("All tools have valid categories")
+    @MainActor
     func allToolsHaveValidCategories() {
         let allTools = ToolRegistry.allTools
         let validCategories = Set(ToolCategory.allCases)
@@ -313,6 +319,7 @@ struct ToolRegistryTests {
     }
 
     @Test("No duplicate tool names")
+    @MainActor
     func noDuplicateToolNames() {
         let allTools = ToolRegistry.allTools
         let toolNames = allTools.map(\.name)
@@ -322,6 +329,7 @@ struct ToolRegistryTests {
     }
 
     @Test("All tools have abstracts and discussions")
+    @MainActor
     func allToolsHaveDescriptions() {
         let allTools = ToolRegistry.allTools
 

@@ -53,8 +53,6 @@ public enum ToolRegistry {
                 return .vision
             case "click", "type", "press", "scroll", "hotkey":
                 return .ui
-            case "list_windows", "focus_window", "resize_window":
-                return .window
             case "list_apps", "launch_app":
                 return .application
             case "menu_click", "list_menus":
@@ -65,8 +63,6 @@ public enum ToolRegistry {
                 return .dock
             case "shell":
                 return .system
-            case "find_element", "list_elements", "get_focused":
-                return .query
             case "done", "need_info":
                 return .completion
             default:

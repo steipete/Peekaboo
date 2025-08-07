@@ -510,42 +510,47 @@ extension PeekabooAgentService {
         
         // Vision tools
         agentTools.append(createSeeTool())
-        agentTools.append(createScreenshotTool())
-        agentTools.append(createWindowCaptureTool())
+        agentTools.append(createImageTool())
+        agentTools.append(createAnalyzeTool())
         
         // UI automation tools
         agentTools.append(createClickTool())
         agentTools.append(createTypeTool())
-        agentTools.append(createPressTool())
         agentTools.append(createScrollTool())
         agentTools.append(createHotkeyTool())
+        agentTools.append(createDragTool())
+        agentTools.append(createMoveTool())
+        agentTools.append(createSwipeTool())
         
-        // Window management tools
-        agentTools.append(createListWindowsTool())
-        agentTools.append(createFocusWindowTool())
-        agentTools.append(createResizeWindowTool())
+        // Window management
+        agentTools.append(createWindowTool())
+        
+        // Menu interaction
+        agentTools.append(createMenuTool())
+        
+        // Dialog handling
+        agentTools.append(createDialogTool())
+        
+        // Dock management
+        agentTools.append(createDockTool())
+        
+        // List tool (full access)
+        agentTools.append(createListTool())
+        
+        // Screen tools (legacy wrappers)
         agentTools.append(createListScreensTool())
         
-        // Application tools
+        // Application tools (legacy wrappers + full)
         agentTools.append(createListAppsTool())
         agentTools.append(createLaunchAppTool())
+        agentTools.append(createAppTool())  // Full app management
         
-        // Element tools
-        agentTools.append(createFindElementTool())
-        agentTools.append(createListElementsTool())
-        agentTools.append(createFocusedTool())
+        // Space management
+        agentTools.append(createSpaceTool())
         
-        // Menu tools
-        agentTools.append(createMenuClickTool())
-        agentTools.append(createListMenusTool())
-        
-        // Dialog tools
-        agentTools.append(createDialogClickTool())
-        agentTools.append(createDialogInputTool())
-        
-        // Dock tools
-        agentTools.append(createDockLaunchTool())
-        agentTools.append(createListDockTool())
+        // System tools
+        agentTools.append(createPermissionsTool())
+        agentTools.append(createSleepTool())
         
         // Shell tool
         agentTools.append(createShellTool())

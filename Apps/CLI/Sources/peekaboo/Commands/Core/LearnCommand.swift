@@ -25,6 +25,7 @@ struct LearnCommand: AsyncParsableCommand {
         """
     )
 
+    @MainActor
     func run() async throws {
         // Get the system prompt
         let systemPrompt = AgentSystemPrompt.generate()
@@ -38,6 +39,7 @@ struct LearnCommand: AsyncParsableCommand {
 
     // MARK: - Comprehensive Output
 
+    @MainActor
     private func outputComprehensiveGuide(systemPrompt: String, tools: [PeekabooToolDefinition]) {
         print("""
         # Peekaboo Comprehensive Guide

@@ -7,6 +7,7 @@ struct AgentToolDescriptionTests {
     // MARK: - Tool Definition Structure Tests
 
     @Test("All agent tools have comprehensive descriptions")
+    @MainActor
     func allToolsHaveDescriptions() {
         let allTools = ToolRegistry.allTools
 
@@ -21,6 +22,7 @@ struct AgentToolDescriptionTests {
     }
 
     @Test("Tool descriptions follow consistent format")
+    @MainActor
     func toolDescriptionFormat() {
         let allTools = ToolRegistry.allTools
 
@@ -56,6 +58,7 @@ struct AgentToolDescriptionTests {
     // MARK: - Specific Tool Enhancement Tests
 
     @Test("Click tool has enhanced element matching description")
+    @MainActor
     func clickToolEnhancedDescription() {
         guard let clickTool = ToolRegistry.allTools.first(where: { $0.name == "click" }) else {
             Issue.record("Click tool not found")
@@ -77,6 +80,7 @@ struct AgentToolDescriptionTests {
     }
 
     @Test("Type tool includes escape sequence documentation")
+    @MainActor
     func typeToolEscapeSequences() {
         guard let typeTool = ToolRegistry.allTools.first(where: { $0.name == "type" }) else {
             Issue.record("Type tool not found")
@@ -92,6 +96,7 @@ struct AgentToolDescriptionTests {
     }
 
     @Test("See tool has comprehensive UI detection description")
+    @MainActor
     func seeToolUIDetection() {
         guard let seeTool = ToolRegistry.allTools.first(where: { $0.name == "see" }) else {
             Issue.record("See tool not found")
@@ -109,6 +114,7 @@ struct AgentToolDescriptionTests {
     }
 
     @Test("Shell tool has quoting examples")
+    @MainActor
     func shellToolQuotingExamples() {
         guard let shellTool = ToolRegistry.allTools.first(where: { $0.name == "shell" }) else {
             Issue.record("Shell tool not found")
@@ -128,6 +134,7 @@ struct AgentToolDescriptionTests {
     // MARK: - Parameter Documentation Tests
 
     @Test("Required parameters are clearly marked")
+    @MainActor
     func requiredParametersMarked() {
         let allTools = ToolRegistry.allTools
 
@@ -144,6 +151,7 @@ struct AgentToolDescriptionTests {
     }
 
     @Test("Optional parameters have default values documented")
+    @MainActor
     func optionalParameterDefaults() {
         let allTools = ToolRegistry.allTools
 
@@ -166,6 +174,7 @@ struct AgentToolDescriptionTests {
     // MARK: - Tool Category Tests
 
     @Test("Tools are properly categorized")
+    @MainActor
     func toolCategorization() {
         let allTools = ToolRegistry.allTools
         let categorizedTools = Dictionary(grouping: allTools, by: { $0.category })
@@ -189,6 +198,7 @@ struct AgentToolDescriptionTests {
     // MARK: - Error Guidance Tests
 
     @Test("Tools provide helpful error guidance")
+    @MainActor
     func toolErrorGuidance() {
         // Only check tools that are expected to have error guidance
         // Based on actual tool definitions, only 'click' has TROUBLESHOOTING section
@@ -253,6 +263,7 @@ struct AgentToolDescriptionTests {
     // MARK: - Example Quality Tests
 
     @Test("Tool examples are realistic and helpful")
+    @MainActor
     func toolExampleQuality() {
         let allTools = ToolRegistry.allTools
 

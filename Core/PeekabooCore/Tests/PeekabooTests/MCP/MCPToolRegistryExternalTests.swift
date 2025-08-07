@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import MCP
+import TachikomaMCP
 @testable import PeekabooCore
 
 /// Tests for MCPToolRegistry external tool functionality

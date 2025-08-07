@@ -15,15 +15,7 @@ public enum LegacyAgentTool: String, CaseIterable, Sendable {
     case press
     case hotkey
 
-    // Element tools
-    case findElement = "find_element"
-    case listElements = "list_elements"
-    case focused
-
-    // Window management tools
-    case listWindows = "list_windows"
-    case focusWindow = "focus_window"
-    case resizeWindow = "resize_window"
+    // Screen and space tools
     case listSpaces = "list_spaces"
     case listScreens = "list_screens"
     case switchSpace = "switch_space"
@@ -72,12 +64,6 @@ public enum LegacyAgentTool: String, CaseIterable, Sendable {
         case .scroll: "Scroll"
         case .press: "Press"
         case .hotkey: "Hotkey"
-        case .findElement: "Find Element"
-        case .listElements: "List Elements"
-        case .focused: "Focused"
-        case .listWindows: "List Windows"
-        case .focusWindow: "Focus Window"
-        case .resizeWindow: "Resize Window"
         case .listSpaces: "List Spaces"
         case .listScreens: "List Screens"
         case .switchSpace: "Switch Space"
@@ -102,9 +88,7 @@ public enum LegacyAgentTool: String, CaseIterable, Sendable {
             .vision
         case .click, .type, .scroll, .press, .hotkey:
             .automation
-        case .findElement, .listElements, .focused:
-            .element
-        case .listWindows, .focusWindow, .resizeWindow, .listSpaces, .listScreens, .switchSpace, .moveWindowToSpace:
+        case .listSpaces, .listScreens, .switchSpace, .moveWindowToSpace:
             .window
         case .listApps, .launchApp:
             .app

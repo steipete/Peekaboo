@@ -7,6 +7,7 @@ import Foundation
 struct MCPClientManagerTests {
     
     @Test("MCPClientManager singleton initialization")
+    @MainActor
     func testSingletonInitialization() async {
         let manager1 = MCPClientManager.shared
         let manager2 = MCPClientManager.shared
@@ -16,6 +17,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Add MCP server configuration")
+    @MainActor
     func testAddServer() async throws {
         let manager = MCPClientManager.shared
         
@@ -44,6 +46,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Remove MCP server")
+    @MainActor
     func testRemoveServer() async throws {
         let manager = MCPClientManager.shared
         
@@ -62,6 +65,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Enable and disable MCP server")
+    @MainActor
     func testEnableDisableServer() async throws {
         let manager = MCPClientManager.shared
         
@@ -92,6 +96,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Server health checking with invalid command")
+    @MainActor
     func testHealthCheckInvalidCommand() async throws {
         let manager = MCPClientManager.shared
         
@@ -104,7 +109,7 @@ struct MCPClientManagerTests {
         
         try await manager.addServer(name: "test-invalid", config: config)
         
-        let health = await manager.checkServerHealth(name: "test-invalid", timeout: 1.0)
+        let health = await manager.checkServerHealth(name: "test-invalid", timeout: 1000)
         
         switch health {
         case .disconnected:
@@ -119,6 +124,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Server health checking with disabled server")
+    @MainActor
     func testHealthCheckDisabledServer() async throws {
         let manager = MCPClientManager.shared
         
@@ -145,6 +151,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Get server configurations")
+    @MainActor
     func testGetServerConfigs() async throws {
         let manager = MCPClientManager.shared
         
@@ -163,10 +170,13 @@ struct MCPClientManagerTests {
         try await manager.addServer(name: "server1", config: config1)
         try await manager.addServer(name: "server2", config: config2)
         
-        let configs = await manager.getServerConfigs()
+        let configs = await manager.getServerInfos()
         #expect(configs.count >= 2)
-        #expect(configs["server1"]?.command == "echo")
-        #expect(configs["server2"]?.command == "cat")
+        
+        let server1 = configs.first(where: { $0.name == "server1" })
+        let server2 = configs.first(where: { $0.name == "server2" })
+        #expect(server1?.config.command == "echo")
+        #expect(server2?.config.command == "cat")
         
         // Clean up
         try await manager.removeServer(name: "server1")
@@ -174,6 +184,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Check all servers health")
+    @MainActor
     func testCheckAllServersHealth() async throws {
         let manager = MCPClientManager.shared
         
@@ -230,6 +241,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Error handling for non-existent server")
+    @MainActor
     func testNonExistentServerError() async {
         let manager = MCPClientManager.shared
         
@@ -259,6 +271,7 @@ struct MCPClientManagerTests {
     }
     
     @Test("Server configuration validation")
+    @MainActor
     func testServerConfigValidation() async throws {
         let manager = MCPClientManager.shared
         
@@ -323,34 +336,19 @@ struct MCPClientErrorTests {
     
     @Test("Error descriptions")
     func testErrorDescriptions() {
-        let serverNotFound = MCPClientError.serverNotFound("test-server")
-        #expect(serverNotFound.errorDescription == "MCP server 'test-server' not found")
-        
         let serverDisabled = MCPClientError.serverDisabled
         #expect(serverDisabled.errorDescription == "MCP server is disabled")
         
         let notConnected = MCPClientError.notConnected
         #expect(notConnected.errorDescription == "Not connected to MCP server")
         
-        let connectionTimeout = MCPClientError.connectionTimeout
-        #expect(connectionTimeout.errorDescription == "Connection timeout")
+        let connectionFailed = MCPClientError.connectionFailed("Network error")
+        #expect(connectionFailed.errorDescription == "Failed to connect: Network error")
         
-        let connectionClosed = MCPClientError.connectionClosed
-        #expect(connectionClosed.errorDescription == "Connection closed")
-        
-        let unsupportedTransport = MCPClientError.unsupportedTransport("custom")
-        #expect(unsupportedTransport.errorDescription == "Unsupported transport: custom")
-        
-        let serializationFailed = MCPClientError.serializationFailed
-        #expect(serializationFailed.errorDescription == "Failed to serialize message")
-        
-        let deserializationFailed = MCPClientError.deserializationFailed
-        #expect(deserializationFailed.errorDescription == "Failed to deserialize message")
-        
-        let toolNotFound = MCPClientError.toolNotFound("test-tool")
-        #expect(toolNotFound.errorDescription == "Tool 'test-tool' not found")
+        let invalidResponse = MCPClientError.invalidResponse
+        #expect(invalidResponse.errorDescription == "Invalid response from MCP server")
         
         let executionFailed = MCPClientError.executionFailed("Custom error")
-        #expect(executionFailed.errorDescription == "Tool execution failed: Custom error")
+        #expect(executionFailed.errorDescription == "Execution failed: Custom error")
     }
 }

@@ -29,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Ollama Timeout Requirements**: When testing Ollama integration, use longer timeouts (300000ms or 5+ minutes) for Bash tool commands, as Ollama can be slow to load models and process requests, especially on first use.
 
-**Claude Opus 4.1 Availability**: Claude Opus 4.1 (model ID: `claude-opus-4-1-20250813`) is currently available and working. This is not a future model - it exists and functions properly as of August 2025.
+**Claude Opus 4.1 Availability**: Claude Opus 4.1 (model ID: `claude-opus-4-1-20250805`) is currently available and working. This is not a future model - it exists and functions properly as of August 2025.
 
 **File Headers**: Use minimal file headers without author attribution or creation dates:
 - Swift files: `//\n//  FileName.swift\n//  PeekabooCore\n//` (adapt module name: PeekabooCore, AXorcist, etc.)
@@ -62,258 +62,52 @@ To test this project interactive we can use:
    ./scripts/peekaboo-wait.sh --version
    ```
 
-## Quick Build Commands
-
-**IMPORTANT: AI AGENTS SHOULD NEVER MANUALLY BUILD**
-
-When working with the Peekaboo CLI:
-1. **ALWAYS** use polter: `polter peekaboo`
-2. **NEVER** run `npm run build:swift` or other build commands
-3. **NEVER** use the raw `./peekaboo` binary directly
-
-**Why this matters**: polter ensures you always run fresh binaries by checking build status and waiting for Poltergeist to rebuild automatically. Manual rebuilding should only be done when troubleshooting Swift Package Manager issues (see troubleshooting section below).
-
-polter automatically:
-- Detects if the binary is stale
-- Waits for Poltergeist to finish rebuilding if needed
-- Runs your command with the fresh binary
-- Falls back gracefully when Poltergeist isn't running
-
-Example:
-```bash
-# Install polter globally (one time)
-npm install -g @steipete/poltergeist
-
-# Use polter directly
-polter peekaboo agent "do something"
-
-# Create convenient alias
-alias pb='polter peekaboo'
-pb agent "do something"
-
-# WRONG: ./peekaboo agent "do something"
-# WRONG: npm run build:swift && ./peekaboo agent "do something"
-# LEGACY: ./scripts/peekaboo-wait.sh agent "do something"  # Still works but not needed
-```
-
-If Poltergeist isn't running, polter will warn but still execute with stale binary:
-```bash
-npm run poltergeist:haunt  # Start Poltergeist for fresh builds
-```
-
-## Poltergeist - Automatic Swift Rebuilding
-
-**Poltergeist** is our automatic Swift builder that watches source files and rebuilds when they change. It runs in the background and ensures both the CLI binary and Mac app are always up-to-date.
-
-**Key Points:**
-- Builds both CLI and Mac app targets automatically
-- Exit code 42 = build failed, fix immediately
-- For CLI: Always use wrapper: `./scripts/peekaboo-wait.sh`
-- For Mac app: Poltergeist builds automatically, use Xcode for manual builds
-- See [Poltergeist repository](https://github.com/steipete/poltergeist) for full details
-
-### CRITICAL INSTRUCTIONS FOR AI AGENTS
-
-1. **Check Poltergeist Once Per Session**:
-   ```bash
-   npm run poltergeist:status
-   # If not running:
-   npm run poltergeist:haunt
-   ```
-
-2. **NEVER manually rebuild the CLI**:
-   ```bash
-   # WRONG - DO NOT DO THIS:
-   npm run build:swift
-   ./scripts/build-swift-debug.sh
-   ./scripts/build-swift-universal.sh
-   
-   # Poltergeist handles ALL rebuilding automatically!
-   ```
-
-3. **ALWAYS use polter**:
-   ```bash
-   # WRONG: ./peekaboo command
-   # WRONG: ./Apps/CLI/.build/debug/peekaboo command
-   # RIGHT: polter peekaboo command
-   # LEGACY: ./scripts/peekaboo-wait.sh command  # Still works but not needed
-   ```
-
-### How It Works
-
-**Poltergeist** continuously watches:
-- `Core/PeekabooCore/**/*.swift`
-- `Core/AXorcist/**/*.swift`
-- `Apps/CLI/**/*.swift`
-- `Apps/Mac/**/*.swift`
-- All `Package.swift` files
-- Excludes auto-generated `Version.swift` to prevent infinite loops
-
-**polter Smart Execution**:
-1. **State Discovery**: Finds your project's poltergeist configuration
-2. **Build Status Check**: Reads current build state from temp directory (`/tmp/poltergeist/` on Unix, `%TEMP%\poltergeist` on Windows)
-3. **Smart Waiting**: Waits for in-progress builds with live progress indication
-4. **Fail Fast**: Immediately exits on build failures with clear messages
-5. **Fresh Execution**: Only runs executables when builds are confirmed fresh
-6. **Graceful Fallback**: When Poltergeist isn't running, executes potentially stale binaries with warnings
-
-**Build Notifications**:
-- Poltergeist sends macOS notifications when builds complete
-- Success: Glass sound with build time
-- Failure: Basso sound with error details
-- Disable with: `export POLTERGEIST_NOTIFICATIONS=false`
-
-### Why This Matters
-
-- **Efficiency**: No redundant builds or wasted time
-- **Reliability**: Always uses the latest code changes
-- **Simplicity**: No need to think about build state
-- **Speed**: Poltergeist builds in the background while you work
-
-### Fallback Behavior
-
-When Poltergeist is not running or configuration is missing, `polter` gracefully falls back to stale execution:
+## Quick Reference
 
 ```bash
-⚠️  POLTERGEIST NOT RUNNING - EXECUTING POTENTIALLY STALE BINARY
-   The binary may be outdated. For fresh builds, start Poltergeist:
-   npm run poltergeist:haunt
+# Core commands
+polter peekaboo <command>    # Run CLI (NOT ./peekaboo)
+./scripts/pblog.sh -f         # Stream logs
+npm run poltergeist:status    # Check build status
+alias pb='polter peekaboo'   # Add to ~/.zshrc
 
-✅ Running binary: peekaboo (potentially stale)
+# Examples
+polter peekaboo agent "take screenshot"
+polter peekaboo list apps
+polter peekaboo see --annotate
 ```
 
-**Fallback Logic**:
-1. **No config found**: Attempts to find binary in common locations (`./`, `./build/`, `./dist/`)
-2. **Target not configured**: Searches for binary even if not in Poltergeist config
-3. **Binary discovery**: Tries multiple paths and handles suffix variations (`-cli`, `-app`)
-4. **Clear warnings**: Always warns when running without build verification
+## Poltergeist Usage
 
-### Status Messages
+**polter runs binaries, NOT commands. Poltergeist auto-builds when files change.**
 
+### Commands
 ```bash
-🔨 Waiting for build to complete... (8s elapsed)
-❌ Build failed! Cannot execute stale binary.
-✅ Build completed successfully! Executing fresh binary...
+npm run poltergeist:status   # Check if running & build status
+npm run poltergeist:haunt    # Start auto-builder
+npm run poltergeist:stop     # Stop auto-builder
+polter peekaboo <args>       # Run CLI (waits for fresh build)
 ```
 
-### Debugging
+### NEVER
+- `polter wait` - doesn't exist
+- `npm run build:swift` - Poltergeist does this
+- `./peekaboo` - use `polter peekaboo`
 
-For polter debugging and advanced usage:
-```bash
-# Basic debugging
-polter peekaboo --verbose list apps
+### Workflow
+1. Start: `npm run poltergeist:haunt`
+2. Edit files → Poltergeist rebuilds automatically
+3. Run: `polter peekaboo <command>`
 
-# Command options
-polter peekaboo --timeout 60000    # Wait up to 60 seconds
-polter peekaboo --force            # Run even if build failed
-polter peekaboo --no-wait          # Fail immediately if building
-polter peekaboo --verbose          # Show detailed progress
+### Build Failures
+Exit code 42 = build failed. Fix: `npm run build:swift` once, then continue.
 
-# Convenient aliases (after global install)
-alias pb='polter peekaboo'
-pb agent "do something"
-```
+### State
+- Location: `/tmp/poltergeist/{project}-{hash}-{target}.state`
+- Contains: build status, timestamps, process info
 
-### State Management
-
-Poltergeist uses a unified state management system with atomic operations:
-
-- **Single state file per target**: Cross-platform temp directory (`/tmp/poltergeist/` on Unix, `%TEMP%\poltergeist` on Windows)
-- **Atomic writes**: Temp file + rename for consistency
-- **Heartbeat monitoring**: Process liveness detection
-- **Build history**: Track success/failure patterns
-- **Cross-tool compatibility**: State readable by external tools
-
-**State File Structure**:
-```json
-{
-  "target": "peekaboo",
-  "status": "running",
-  "process": {
-    "pid": 12345,
-    "hostname": "MacBook-Pro.local",
-    "startTime": "2025-08-02T20:15:30.000Z",
-    "heartbeat": "2025-08-02T20:16:00.000Z"
-  },
-  "build": {
-    "status": "success",
-    "startTime": "2025-08-02T20:15:45.000Z",
-    "endTime": "2025-08-02T20:15:47.500Z",
-    "duration": 2500,
-    "gitHash": "abc123f",
-    "outputPath": "./peekaboo"
-  }
-}
-```
-
-### Summary
-
-With Poltergeist running and using polter, you NEVER need to:
-- Check if the CLI needs rebuilding
-- Run any build commands manually
-- Worry about "build staleness" errors
-- Wait for builds to complete
-- Use wrapper scripts or custom build logic
-
-Just use `polter peekaboo` for all CLI commands and let Poltergeist handle the rest!
-
-**BUT ALWAYS**: Check the build timestamp in the CLI output to ensure you're running the latest version!
-
-### Build Failure Recovery - Enhanced Protocol
-
-**NEW: Smart Build Failure Detection (as of 2025-01-29)**
-
-The wrapper script (`peekaboo-wait.sh`) now automatically detects Poltergeist build failures and exits with code 42. When you see this:
-
-```
-❌ POLTERGEIST BUILD FAILED
-
-Error: [specific error summary]
-
-🔧 TO FIX: Run 'npm run build:swift' to see and fix the compilation errors.
-   After fixing, the wrapper will automatically use the new binary.
-```
-
-**Your response should be:**
-1. **Immediately run `npm run build:swift`** - don't check logs or status
-2. **Fix the compilation errors** shown in the output
-3. **Continue with your task** - the wrapper will now work correctly
-
-**Why this works:**
-- Exit code 42 specifically indicates Poltergeist build failure
-- Build status is tracked in `/tmp/peekaboo-build-status.json`
-- Poltergeist uses exponential backoff after failures (1min, 2min, 5min)
-- Recovery signal resets the backoff, allowing Poltergeist to resume normal operation
-
-**Old method (still works but less efficient):**
-If you detect a build failure via `poltergeist:status`, build it yourself with `npm run build:swift`.
-
-### Troubleshooting Swift Package Manager Issues
-
-If you encounter Swift Package Manager errors like:
-```
-error: InternalError(description: "Internal error. Please file a bug at https://github.com/swiftlang/swift-package-manager/issues with this info. Failed to parse target info (malformed(json: \"\", underlyingError: Error Domain=NSCocoaErrorDomain Code=3840 \"Unable to parse empty data.\"
-```
-
-**Fix**: Clean all derived data and build caches:
-```bash
-# Stop Poltergeist first
-npm run poltergeist:stop
-
-# Clean everything
-rm -rf ~/Library/Developer/Xcode/DerivedData/*
-rm -rf ~/Library/Caches/org.swift.swiftpm
-find . -name ".build" -type d -exec rm -rf {} + 2>/dev/null || true
-find . -name ".swiftpm" -type d -exec rm -rf {} + 2>/dev/null || true
-
-# Restart Poltergeist
-npm run poltergeist:haunt
-```
-
-This issue typically occurs when:
-- Switching between Xcode versions (stable ↔ beta)
-- Package.swift files become corrupted
-- Build cache becomes inconsistent
+### SPM Issues
+Clean caches if corrupted: `rm -rf ~/Library/Developer/Xcode/DerivedData/* ~/Library/Caches/org.swift.swiftpm`
 
 ## Common Commands
 

@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import TachikomaMCP
 import Testing
 @testable import PeekabooCore
 

@@ -1,5 +1,3 @@
-// AudioInputService not implemented yet - tests disabled
-/*
  import AVFoundation
  import Foundation
  import Testing
@@ -146,7 +144,7 @@
              defer { try? FileManager.default.removeItem(at: audioFile) }
 
              // Without API key configured, should throw
-             await #expect(throws: AudioInputError.noTranscriptionService) {
+             await #expect(throws: AudioInputError.apiKeyMissing) {
                  _ = try await service.transcribeAudioFile(audioFile)
              }
          }
@@ -157,13 +155,13 @@
          @Test("Error descriptions are user-friendly")
          func errorDescriptions() {
              let errors: [(AudioInputError, String)] = [
-                 (.alreadyRecording, "Audio recording is already in progress"),
-                 (.notRecording, "No audio recording is in progress"),
-                 (.invalidURL, "Invalid recording URL"),
-                 (.fileNotFound(URL(fileURLWithPath: "/test.wav")), "Audio file not found: /test.wav"),
+                 (.alreadyRecording, "Already recording audio"),
+                 (.notRecording, "Not currently recording"),
+                 // Remove invalidURL - doesn't exist in AudioInputError
+                 (.fileNotFound(URL(fileURLWithPath: "/test.wav")), "Audio file not found at /test.wav"),
                  (.unsupportedFileType("xyz"), "Unsupported audio file type: xyz"),
-                 (.fileTooLarge(30_000_000, 25_000_000), "Audio file too large: 30000000 bytes (max: 25000000 bytes)"),
-                 (.noTranscriptionService, "No transcription service configured. Please set OPENAI_API_KEY."),
+                 (.fileTooLarge(30_000_000), "Audio file too large: 30000000 bytes (max 25MB)"),
+                 (.apiKeyMissing, "OpenAI API key is required for transcription"),
                  (.transcriptionFailed("Network error"), "Transcription failed: Network error"),
                  (.microphonePermissionDenied, "Microphone permission denied"),
              ]
@@ -191,4 +189,83 @@
          return service
      }
  }
- */
+
+// MARK: - Additional Comprehensive Tests
+
+@Suite("AudioInputService Comprehensive Tests", .tags(.unit, .agent))
+struct AudioInputServiceComprehensiveTests {
+    
+    @Suite("Mock Audio File Tests")
+    struct MockAudioFileTests {
+        
+        /// Create a mock WAV file for testing
+        static func createMockWAVFile() throws -> URL {
+            let tempDir = FileManager.default.temporaryDirectory
+            let fileURL = tempDir.appendingPathComponent("test_audio_\(UUID().uuidString).wav")
+            
+            // Create a minimal WAV file header (44 bytes)
+            var wavData = Data()
+            
+            // RIFF header
+            wavData.append("RIFF".data(using: .ascii)!)  // ChunkID
+            wavData.append(Data([36, 0, 0, 0]))          // ChunkSize (36 + data size)
+            wavData.append("WAVE".data(using: .ascii)!)  // Format
+            
+            // fmt subchunk
+            wavData.append("fmt ".data(using: .ascii)!)  // Subchunk1ID
+            wavData.append(Data([16, 0, 0, 0]))          // Subchunk1Size
+            wavData.append(Data([1, 0]))                 // AudioFormat (PCM)
+            wavData.append(Data([1, 0]))                 // NumChannels (mono)
+            wavData.append(Data([68, 172, 0, 0]))        // SampleRate (44100)
+            wavData.append(Data([136, 88, 1, 0]))        // ByteRate
+            wavData.append(Data([2, 0]))                 // BlockAlign
+            wavData.append(Data([16, 0]))                // BitsPerSample
+            
+            // data subchunk
+            wavData.append("data".data(using: .ascii)!)  // Subchunk2ID
+            wavData.append(Data([0, 0, 0, 0]))           // Subchunk2Size (no actual audio data)
+            
+            try wavData.write(to: fileURL)
+            return fileURL
+        }
+        
+        @Test("Transcribe valid WAV file")
+        @MainActor
+        func transcribeValidWAVFile() async throws {
+            let aiService = PeekabooAIService()
+            let service = AudioInputService(aiService: aiService)
+            
+            // Create mock WAV file
+            let wavFile = try Self.createMockWAVFile()
+            defer { try? FileManager.default.removeItem(at: wavFile) }
+            
+            // This will fail without API key, but we can test the file validation
+            do {
+                _ = try await service.transcribeAudioFile(wavFile)
+                Issue.record("Should have thrown apiKeyMissing error")
+            } catch AudioInputError.apiKeyMissing {
+                // Expected
+            } catch {
+                Issue.record("Unexpected error: \(error)")
+            }
+        }
+        
+        @Test("Reject files over size limit")
+        @MainActor
+        func rejectLargeFiles() async throws {
+            let aiService = PeekabooAIService()
+            let service = AudioInputService(aiService: aiService)
+            
+            // Create a file larger than 25MB
+            let tempDir = FileManager.default.temporaryDirectory
+            let largeFile = tempDir.appendingPathComponent("large_audio.wav")
+            let largeData = Data(repeating: 0, count: 26 * 1024 * 1024)
+            try largeData.write(to: largeFile)
+            defer { try? FileManager.default.removeItem(at: largeFile) }
+            
+            await #expect(throws: AudioInputError.fileTooLarge(26 * 1024 * 1024)) {
+                _ = try await service.transcribeAudioFile(largeFile)
+            }
+        }
+    }
+}

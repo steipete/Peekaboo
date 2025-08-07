@@ -28,24 +28,11 @@ extension PeekabooAgentService {
         )
     }
     
-    public func createScreenshotTool() -> AgentTool {
+    public func createImageTool() -> AgentTool {
         let tool = ImageTool()
         return AgentTool(
-            name: "screenshot",
-            description: "Take a screenshot of the screen or a specific window",
-            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
-                return convertToolResponseToAgentToolResult(response)
-            }
-        )
-    }
-    
-    public func createWindowCaptureTool() -> AgentTool {
-        let tool = WindowTool()
-        return AgentTool(
-            name: "window_capture",
-            description: "Capture or manipulate application windows",
+            name: tool.name,
+            description: tool.description,
             parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
                 let response = try await tool.execute(arguments: ToolArguments(from: arguments))
@@ -82,19 +69,6 @@ extension PeekabooAgentService {
         )
     }
     
-    public func createPressTool() -> AgentTool {
-        let tool = HotkeyTool()
-        return AgentTool(
-            name: "press",
-            description: "Press keyboard keys or key combinations",
-            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
-                return convertToolResponseToAgentToolResult(response)
-            }
-        )
-    }
-    
     public func createScrollTool() -> AgentTool {
         let tool = ScrollTool()
         return AgentTool(
@@ -121,69 +95,63 @@ extension PeekabooAgentService {
         )
     }
     
-    // MARK: - Window Management Tools
-    
-    public func createListWindowsTool() -> AgentTool {
-        let tool = WindowTool()
+    public func createDragTool() -> AgentTool {
+        let tool = DragTool()
         return AgentTool(
-            name: "list_windows",
-            description: "List all open windows",
-            parameters: AgentToolParameters(
-                properties: [:],
-                required: []
-            ),
-            execute: { _ in
-                let args = ToolArguments(from: ["action": "list"])
-                let response = try await tool.execute(arguments: args)
-                return convertToolResponseToAgentToolResult(response)
-            }
-        )
-    }
-    
-    public func createFocusWindowTool() -> AgentTool {
-        let tool = WindowTool()
-        return AgentTool(
-            name: "focus_window",
-            description: "Focus a specific window",
-            parameters: AgentToolParameters(
-                properties: [
-                    "app": AgentToolParameterProperty(name: "app", type: .string, description: "Application name"),
-                    "index": AgentToolParameterProperty(name: "index", type: .integer, description: "Window index")
-                ],
-                required: ["app"]
-            ),
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                var argsDict = arguments.toDictionary()
-                argsDict["action"] = "focus"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AgentToolArgument.from($0) })
-                let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
                 return convertToolResponseToAgentToolResult(response)
             }
         )
     }
     
-    public func createResizeWindowTool() -> AgentTool {
-        let tool = WindowTool()
+    public func createMoveTool() -> AgentTool {
+        let tool = MoveTool()
         return AgentTool(
-            name: "resize_window",
-            description: "Resize a window",
-            parameters: AgentToolParameters(
-                properties: [
-                    "app": AgentToolParameterProperty(name: "app", type: .string, description: "Application name"),
-                    "width": AgentToolParameterProperty(name: "width", type: .number, description: "New width"),
-                    "height": AgentToolParameterProperty(name: "height", type: .number, description: "New height")
-                ],
-                required: ["app", "width", "height"]
-            ),
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                var argsDict = arguments.toDictionary()
-                argsDict["action"] = "resize"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AgentToolArgument.from($0) })
-                let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
                 return convertToolResponseToAgentToolResult(response)
             }
         )
     }
+    
+    // MARK: - Vision Tools
+    
+    public func createAnalyzeTool() -> AgentTool {
+        let tool = AnalyzeTool()
+        return AgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
+                return convertToolResponseToAgentToolResult(response)
+            }
+        )
+    }
+    
+    // MARK: - List Tool (Full Access)
+    
+    public func createListTool() -> AgentTool {
+        let tool = ListTool()
+        return AgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
+                return convertToolResponseToAgentToolResult(response)
+            }
+        )
+    }
+    
+    // MARK: - Screen Tools
     
     public func createListScreensTool() -> AgentTool {
         let tool = ListTool()
@@ -242,175 +210,136 @@ extension PeekabooAgentService {
         )
     }
     
-    // MARK: - Element Tools
+    // MARK: - Space Management
     
-    public func createFindElementTool() -> AgentTool {
+    public func createSpaceTool() -> AgentTool {
+        let tool = SpaceTool()
         return AgentTool(
-            name: "find_element",
-            description: "Find a UI element by text or role",
-            parameters: AgentToolParameters(
-                properties: [
-                    "text": AgentToolParameterProperty(name: "text", type: .string, description: "Text to search for"),
-                    "role": AgentToolParameterProperty(name: "role", type: .string, description: "Element role/type")
-                ],
-                required: []
-            ),
-            execute: { arguments in
-                // This would need to be implemented using ElementDetectionService
-                .string("Element finding not yet implemented")
-            }
-        )
-    }
-    
-    public func createListElementsTool() -> AgentTool {
-        return AgentTool(
-            name: "list_elements",
-            description: "List all UI elements in the current context",
-            parameters: AgentToolParameters(
-                properties: [:],
-                required: []
-            ),
-            execute: { arguments in
-                // This would need to be implemented using ElementDetectionService
-                .string("Element listing not yet implemented")
-            }
-        )
-    }
-    
-    public func createFocusedTool() -> AgentTool {
-        return AgentTool(
-            name: "get_focused",
-            description: "Get the currently focused UI element",
-            parameters: AgentToolParameters(
-                properties: [:],
-                required: []
-            ),
-            execute: { arguments in
-                // This would need to be implemented using FocusService
-                .string("Focus detection not yet implemented")
-            }
-        )
-    }
-    
-    // MARK: - Menu Tools
-    
-    public func createMenuClickTool() -> AgentTool {
-        let tool = MenuTool()
-        return AgentTool(
-            name: "menu_click",
-            description: "Click on a menu item",
+            name: tool.name,
+            description: tool.description,
             parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                var argsDict = arguments.toDictionary()
-                argsDict["action"] = "click"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AgentToolArgument.from($0) })
-                let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
                 return convertToolResponseToAgentToolResult(response)
             }
         )
     }
     
-    public func createListMenusTool() -> AgentTool {
+    // MARK: - Window Management
+    
+    public func createWindowTool() -> AgentTool {
+        let tool = WindowTool()
+        return AgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
+                return convertToolResponseToAgentToolResult(response)
+            }
+        )
+    }
+    
+    // MARK: - Menu Interaction
+    
+    public func createMenuTool() -> AgentTool {
         let tool = MenuTool()
         return AgentTool(
-            name: "list_menus",
-            description: "List available menu items",
-            parameters: AgentToolParameters(
-                properties: [
-                    "app": AgentToolParameterProperty(name: "app", type: .string, description: "Application name")
-                ],
-                required: []
-            ),
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                var argsDict = arguments.toDictionary()
-                argsDict["action"] = "list"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AgentToolArgument.from($0) })
-                let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
                 return convertToolResponseToAgentToolResult(response)
             }
         )
     }
     
-    // MARK: - Dialog Tools
+    // MARK: - Dialog Handling
     
-    public func createDialogClickTool() -> AgentTool {
+    public func createDialogTool() -> AgentTool {
         let tool = DialogTool()
         return AgentTool(
-            name: "dialog_click",
-            description: "Click a button in a dialog",
-            parameters: AgentToolParameters(
-                properties: [
-                    "button": AgentToolParameterProperty(name: "button", type: .string, description: "Button text to click")
-                ],
-                required: ["button"]
-            ),
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                var argsDict = arguments.toDictionary()
-                argsDict["action"] = "click"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AgentToolArgument.from($0) })
-                let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
                 return convertToolResponseToAgentToolResult(response)
             }
         )
     }
     
-    public func createDialogInputTool() -> AgentTool {
-        let tool = DialogTool()
-        return AgentTool(
-            name: "dialog_input",
-            description: "Enter text in a dialog field",
-            parameters: AgentToolParameters(
-                properties: [
-                    "text": AgentToolParameterProperty(name: "text", type: .string, description: "Text to enter"),
-                    "field": AgentToolParameterProperty(name: "field", type: .string, description: "Field identifier")
-                ],
-                required: ["text"]
-            ),
-            execute: { arguments in
-                var argsDict = arguments.toDictionary()
-                argsDict["action"] = "input"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AgentToolArgument.from($0) })
-                let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
-                return convertToolResponseToAgentToolResult(response)
-            }
-        )
-    }
+    // MARK: - Dock Management
     
-    // MARK: - Dock Tools
-    
-    public func createDockLaunchTool() -> AgentTool {
+    public func createDockTool() -> AgentTool {
         let tool = DockTool()
         return AgentTool(
-            name: "dock_launch",
-            description: "Launch an app from the dock",
-            parameters: AgentToolParameters(
-                properties: [
-                    "app": AgentToolParameterProperty(name: "app", type: .string, description: "Application name")
-                ],
-                required: ["app"]
-            ),
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                var argsDict = arguments.toDictionary()
-                argsDict["action"] = "launch"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AgentToolArgument.from($0) })
-                let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
                 return convertToolResponseToAgentToolResult(response)
             }
         )
     }
     
-    public func createListDockTool() -> AgentTool {
-        let tool = DockTool()
+    // MARK: - Timing Control
+    
+    public func createSleepTool() -> AgentTool {
+        let tool = SleepTool()
         return AgentTool(
-            name: "list_dock",
-            description: "List apps in the dock",
-            parameters: AgentToolParameters(
-                properties: [:],
-                required: []
-            ),
-            execute: { _ in
-                let args = ToolArguments(from: ["action": "list"])
-                let response = try await tool.execute(arguments: args)
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
+                return convertToolResponseToAgentToolResult(response)
+            }
+        )
+    }
+    
+    // MARK: - Gesture Support
+    
+    public func createSwipeTool() -> AgentTool {
+        let tool = SwipeTool()
+        return AgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
+                return convertToolResponseToAgentToolResult(response)
+            }
+        )
+    }
+    
+    // MARK: - Permissions Check
+    
+    public func createPermissionsTool() -> AgentTool {
+        let tool = PermissionsTool()
+        return AgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
+                return convertToolResponseToAgentToolResult(response)
+            }
+        )
+    }
+    
+    // MARK: - Full App Management
+    
+    public func createAppTool() -> AgentTool {
+        let tool = AppTool()
+        return AgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
                 return convertToolResponseToAgentToolResult(response)
             }
         )
@@ -419,49 +348,14 @@ extension PeekabooAgentService {
     // MARK: - Shell Tool
     
     public func createShellTool() -> AgentTool {
+        let tool = ShellTool()
         return AgentTool(
-            name: "shell",
-            description: "Execute shell commands",
-            parameters: AgentToolParameters(
-                properties: [
-                    "command": AgentToolParameterProperty(name: "command", type: .string, description: "Shell command to execute")
-                ],
-                required: ["command"]
-            ),
+            name: tool.name,
+            description: tool.description,
+            parameters: convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                guard let commandArg = arguments["command"],
-                      case let .string(command) = commandArg else {
-                    return .string("Command is required")
-                }
-                
-                // Execute shell command
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                process.arguments = ["-c", command]
-                
-                let outputPipe = Pipe()
-                let errorPipe = Pipe()
-                process.standardOutput = outputPipe
-                process.standardError = errorPipe
-                
-                do {
-                    try process.run()
-                    process.waitUntilExit()
-                    
-                    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                    
-                    let output = String(data: outputData, encoding: .utf8) ?? ""
-                    let error = String(data: errorData, encoding: .utf8) ?? ""
-                    
-                    if process.terminationStatus != 0 {
-                        return .string("Command failed: \(error.isEmpty ? output : error)")
-                    }
-                    
-                    return .string(output)
-                } catch {
-                    return .string("Failed to execute command: \(error.localizedDescription)")
-                }
+                let response = try await tool.execute(arguments: ToolArguments(from: arguments))
+                return convertToolResponseToAgentToolResult(response)
             }
         )
     }

@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import MCP
+import TachikomaMCP
 @testable import PeekabooCore
 
 /// Tests for ExternalMCPTool functionality
@@ -8,6 +9,7 @@ import MCP
 struct ExternalMCPToolTests {
     
     @Test("ExternalMCPTool initialization and properties")
+    @MainActor
     func testExternalToolProperties() async {
         let clientManager = MCPClientManager.shared
         
@@ -39,6 +41,7 @@ struct ExternalMCPToolTests {
     }
     
     @Test("ExternalMCPTool name prefixing")
+    @MainActor
     func testToolNamePrefixing() async {
         let clientManager = MCPClientManager.shared
         
@@ -64,6 +67,7 @@ struct ExternalMCPToolTests {
 struct CategorizedToolsTests {
     
     @Test("CategorizedTools initialization and properties")
+    @MainActor
     func testCategorizedToolsProperties() async {
         let clientManager = MCPClientManager.shared
         
@@ -207,6 +211,7 @@ struct ToolDisplayOptionsTests {
 struct ToolOrganizerTests {
     
     @Test("ToolOrganizer filtering")
+    @MainActor
     func testToolFiltering() async {
         let clientManager = MCPClientManager.shared
         
@@ -263,6 +268,7 @@ struct ToolOrganizerTests {
     }
     
     @Test("ToolOrganizer sorting")
+    @MainActor
     func testToolSorting() async {
         let clientManager = MCPClientManager.shared
         
@@ -310,6 +316,7 @@ struct ToolOrganizerTests {
     }
     
     @Test("ToolOrganizer display names")
+    @MainActor
     func testDisplayNames() async {
         let clientManager = MCPClientManager.shared
         

@@ -130,7 +130,7 @@ extension MCPCommand {
         var skipHealthCheck = false
 
         func run() async throws {
-            let clientManager = MCPClientManager.shared
+            let clientManager = await MCPClientManager.shared
             let serverNames = await clientManager.getServerNames()
             
             if serverNames.isEmpty {
@@ -280,7 +280,7 @@ extension MCPCommand {
                 throw ExitCode.failure
             }
             
-            let clientManager = MCPClientManager.shared
+            let clientManager = await MCPClientManager.shared
             
             // Parse environment variables
             var envDict: [String: String] = [:]
@@ -338,7 +338,7 @@ extension MCPCommand {
         var force = false
         
         func run() async throws {
-            let clientManager = MCPClientManager.shared
+            let clientManager = await MCPClientManager.shared
             
             // Check if server exists
             let serverInfo = await clientManager.getServerInfo(name: name)
@@ -385,11 +385,11 @@ extension MCPCommand {
         var showTools = false
         
         func run() async throws {
-            let clientManager = MCPClientManager.shared
+            let clientManager = await MCPClientManager.shared
             
             print("Testing connection to MCP server '\(name)'...")
             
-            let health = await clientManager.checkServerHealth(name: name, timeout: timeout)
+            let health = await clientManager.checkServerHealth(name: name, timeout: Int(timeout))
             
             print("\(health.symbol) \(health.statusText)")
             
@@ -398,7 +398,7 @@ extension MCPCommand {
                 if let serverTools = externalTools[name] {
                     print("\nAvailable tools (\(serverTools.count)):")
                     for tool in serverTools.sorted(by: { $0.name < $1.name }) {
-                        print("  \(tool.name) - \(tool.description ?? "No description")")
+                        print("  \(tool.name) - \(tool.description)")
                     }
                 }
             }
@@ -420,7 +420,7 @@ extension MCPCommand {
         var jsonOutput = false
         
         func run() async throws {
-            let clientManager = MCPClientManager.shared
+            let clientManager = await MCPClientManager.shared
             
             guard let serverInfo = await clientManager.getServerInfo(name: name) else {
                 Logger.shared.error("MCP server '\(name)' not found")
@@ -443,8 +443,6 @@ extension MCPCommand {
                         "status": serverInfo.health.isHealthy ? "connected" : "disconnected",
                         "details": serverInfo.health.statusText
                     ],
-                    "toolCount": serverInfo.toolCount,
-                    "lastConnected": serverInfo.lastConnected?.timeIntervalSince1970
                 ]
                 
                 let jsonData = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
@@ -471,11 +469,6 @@ extension MCPCommand {
                 }
                 
                 print("\nHealth: \(serverInfo.health.symbol) \(serverInfo.health.statusText)")
-                print("Tools: \(serverInfo.toolCount)")
-                
-                if let lastConnected = serverInfo.lastConnected {
-                    print("Last connected: \(lastConnected)")
-                }
             }
         }
     }
@@ -492,7 +485,7 @@ extension MCPCommand {
         var name: String
         
         func run() async throws {
-            let clientManager = MCPClientManager.shared
+            let clientManager = await MCPClientManager.shared
             
             do {
                 try await clientManager.enableServer(name: name)
@@ -521,7 +514,7 @@ extension MCPCommand {
         var name: String
         
         func run() async throws {
-            let clientManager = MCPClientManager.shared
+            let clientManager = await MCPClientManager.shared
             
             do {
                 try await clientManager.disableServer(name: name)

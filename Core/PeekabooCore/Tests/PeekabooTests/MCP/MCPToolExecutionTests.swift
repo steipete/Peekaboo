@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import TachikomaMCP
 import Testing
 @testable import PeekabooCore
 
@@ -122,7 +123,7 @@ struct MCPToolSchemaTests {
         let tool = ImageTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -139,7 +140,7 @@ struct MCPToolSchemaTests {
         // Check enum values
         if let formatSchema = props["format"],
            case let .object(formatDict) = formatSchema,
-           let enumValue = formatDict["enum"] as? Value,
+           let enumValue = formatDict["enum"],
            case let .array(formats) = enumValue
         {
             #expect(formats.contains(.string("png")))
@@ -153,7 +154,7 @@ struct MCPToolSchemaTests {
         let tool = ClickTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -175,7 +176,7 @@ struct MCPToolSchemaTests {
         let tool = MCPAgentTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")

@@ -54,19 +54,28 @@ public struct MCPServerInfo: Sendable {
     public let enabled: Bool
     public let health: MCPServerHealth
     public let tools: [Tool]
+    public let config: MCPServerConfig
     
     public init(
         name: String,
         description: String,
         enabled: Bool,
         health: MCPServerHealth,
-        tools: [Tool]
+        tools: [Tool],
+        config: MCPServerConfig? = nil
     ) {
         self.name = name
         self.description = description
         self.enabled = enabled
         self.health = health
         self.tools = tools
+        self.config = config ?? MCPServerConfig(
+            command: "",
+            args: [],
+            env: [:],
+            enabled: enabled,
+            description: description
+        )
     }
 }
 
@@ -284,7 +293,8 @@ public final class MCPClientManager {
                 description: config.description ?? "",
                 enabled: config.enabled,
                 health: health,
-                tools: tools
+                tools: tools,
+                config: config
             )
             
             infos.append(info)
@@ -335,5 +345,149 @@ public final class MCPClientManager {
     /// Convert MCP response to ToolResponse
     private func convertResponse(_ content: [MCP.Tool.Content]) -> ToolResponse {
         ToolResponse(content: content)
+    }
+    
+    // MARK: - Additional Methods for CLI Compatibility
+    
+    /// Get all server names
+    public func getServerNames() async -> [String] {
+        Array(connections.keys).sorted()
+    }
+    
+    /// Check health status for all servers
+    public func checkAllServersHealth() async -> [String: MCPServerHealth] {
+        var healthResults: [String: MCPServerHealth] = [:]
+        
+        await withTaskGroup(of: (String, MCPServerHealth).self) { group in
+            for (name, connection) in connections {
+                group.addTask {
+                    let health = await self.checkServerHealth(name: name)
+                    return (name, health)
+                }
+            }
+            
+            for await (name, health) in group {
+                healthResults[name] = health
+            }
+        }
+        
+        return healthResults
+    }
+    
+    /// Check health status for a specific server
+    public func checkServerHealth(name: String, timeout: Int = 5000) async -> MCPServerHealth {
+        guard let connection = connections[name] else {
+            return .unknown
+        }
+        
+        guard let config = configs[name], config.enabled else {
+            return .disabled
+        }
+        
+        let startTime = Date()
+        let isConnected = await connection.isConnected()
+        let responseTime = Date().timeIntervalSince(startTime)
+        
+        if isConnected {
+            let tools = await connection.getTools()
+            return .connected(toolCount: tools.count, responseTime: responseTime)
+        } else {
+            // Try to connect
+            do {
+                try await connection.connect()
+                let tools = await connection.getTools()
+                return .connected(toolCount: tools.count, responseTime: Date().timeIntervalSince(startTime))
+            } catch {
+                return .disconnected(error: error.localizedDescription)
+            }
+        }
+    }
+    
+    /// Get information about a specific server
+    public func getServerInfo(name: String) async -> MCPServerInfo? {
+        guard let connection = connections[name] else {
+            return nil
+        }
+        
+        let config = configs[name] ?? MCPServerConfig(
+            command: "",
+            args: [],
+            env: [:],
+            enabled: false,
+            description: ""
+        )
+        
+        let isConnected = await connection.isConnected()
+        let tools = await connection.getTools()
+        
+        let health: MCPServerHealth
+        if !config.enabled {
+            health = .disabled
+        } else if isConnected {
+            health = .connected(toolCount: tools.count, responseTime: 0)
+        } else {
+            health = .disconnected(error: "Not connected")
+        }
+        
+        return MCPServerInfo(
+            name: name,
+            description: config.description ?? "",
+            enabled: config.enabled,
+            health: health,
+            tools: tools,
+            config: config
+        )
+    }
+    
+    /// Check if a server is a default server
+    public func isDefaultServer(name: String) -> Bool {
+        // For now, no servers are marked as default
+        // This can be extended in the future
+        return false
+    }
+    
+    /// Remove a server
+    public func removeServer(name: String) async throws {
+        guard let connection = connections[name] else {
+            throw MCPClientError.executionFailed("Server '\(name)' not found")
+        }
+        
+        await connection.disconnect()
+        connections.removeValue(forKey: name)
+        configs.removeValue(forKey: name)
+        
+        logger.info("Removed MCP server '\(name)'")
+    }
+    
+    /// Enable a server
+    public func enableServer(name: String) async throws {
+        guard var config = configs[name] else {
+            throw MCPClientError.executionFailed("Server '\(name)' not found")
+        }
+        
+        config.enabled = true
+        configs[name] = config
+        
+        if let connection = connections[name] {
+            try await connection.connect()
+        }
+        
+        logger.info("Enabled MCP server '\(name)'")
+    }
+    
+    /// Disable a server
+    public func disableServer(name: String) async throws {
+        guard var config = configs[name] else {
+            throw MCPClientError.executionFailed("Server '\(name)' not found")
+        }
+        
+        config.enabled = false
+        configs[name] = config
+        
+        if let connection = connections[name] {
+            await connection.disconnect()
+        }
+        
+        logger.info("Disabled MCP server '\(name)'")
     }
 }
