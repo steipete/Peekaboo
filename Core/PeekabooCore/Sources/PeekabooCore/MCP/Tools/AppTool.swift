@@ -343,8 +343,36 @@ public struct AppTool: MCPTool {
         startTime: Date) async throws -> ToolResponse
     {
         if cycle {
-            // TODO: Implement Cmd+Tab like cycling functionality
-            return ToolResponse.error("Cycle mode not yet implemented")
+            // Implement Cmd+Tab like cycling functionality
+            // This simulates pressing Cmd+Tab to cycle to the next app
+            let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x30, keyDown: true) // Tab key
+            event?.flags = .maskCommand
+            event?.post(tap: .cghidEventTap)
+            
+            // Release the keys
+            let releaseEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0x30, keyDown: false)
+            releaseEvent?.flags = []
+            releaseEvent?.post(tap: .cghidEventTap)
+            
+            // Small delay to allow the switch to complete
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            
+            // Get the newly focused app
+            let appsOutput = try await service.listApplications()
+            guard let focusedApp = appsOutput.data.applications.first(where: { $0.isActive }) else {
+                return ToolResponse.error("Failed to determine focused app after cycling")
+            }
+            
+            let executionTime = Date().timeIntervalSince(startTime)
+            
+            return ToolResponse(
+                content: [.text("✅ Cycled to \(focusedApp.name) in \(String(format: "%.2f", executionTime))s")],
+                meta: .object([
+                    "app_name": .string(focusedApp.name),
+                    "process_id": .double(Double(focusedApp.processIdentifier)),
+                    "bundle_id": focusedApp.bundleIdentifier != nil ? .string(focusedApp.bundleIdentifier!) : .null,
+                    "execution_time": .double(executionTime),
+                ]))
         }
 
         let targetName = to ?? name

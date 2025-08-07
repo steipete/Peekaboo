@@ -347,9 +347,10 @@ private func buildImageSummary(savedFiles: [MCPSavedFile], captureCount: Int) ->
 }
 
 private func analyzeImage(at path: String, question: String) async throws -> (text: String, modelUsed: String) {
-    // TODO: Implement AI analysis once AI service is migrated
-    // For now, return a placeholder response
-    throw PeekabooError.operationError(message: "AI analysis not yet implemented in MCP server")
+    // Use the AI service to analyze the image
+    let aiService = await PeekabooAIService()
+    let result = try await aiService.analyzeImageFile(at: path, question: question)
+    return (text: result, modelUsed: "gpt-4o")
 }
 
 // MARK: - Supporting Types

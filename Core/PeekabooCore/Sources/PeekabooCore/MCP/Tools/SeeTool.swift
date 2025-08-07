@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import MCP
 import os.log
@@ -273,9 +274,88 @@ public struct SeeTool: MCPTool {
         elements: [UIElement],
         session: UISession) async throws -> String
     {
-        // For now, just return the original path
-        // TODO: Implement actual annotation with element markers
-        self.logger.info("Annotation not yet implemented, returning original screenshot")
+        // Load the original image
+        guard let originalImage = NSImage(contentsOfFile: originalPath) else {
+            self.logger.warning("Failed to load image for annotation, returning original")
+            return originalPath
+        }
+        
+        // Create a new image with annotations
+        let annotatedImage = NSImage(size: originalImage.size)
+        annotatedImage.lockFocus()
+        
+        // Draw the original image
+        originalImage.draw(at: .zero, from: NSRect(origin: .zero, size: originalImage.size),
+                          operation: .copy, fraction: 1.0)
+        
+        // Set up drawing attributes
+        let strokeColor = NSColor.systemRed
+        let fillColor = NSColor.systemRed.withAlphaComponent(0.2)
+        let textColor = NSColor.white
+        let textBackgroundColor = NSColor.systemRed
+        
+        // Draw markers for each element
+        for element in elements {
+            // Skip elements without bounds
+            guard element.bounds.width > 0 && element.bounds.height > 0 else { continue }
+            
+            // Convert coordinates (flip Y axis for screen coordinates)
+            let screenHeight = NSScreen.main?.frame.height ?? originalImage.size.height
+            let flippedY = screenHeight - element.bounds.minY - element.bounds.height
+            let elementRect = NSRect(x: element.bounds.minX, y: flippedY,
+                                    width: element.bounds.width, height: element.bounds.height)
+            
+            // Draw semi-transparent fill
+            fillColor.setFill()
+            NSBezierPath(rect: elementRect).fill()
+            
+            // Draw border
+            strokeColor.setStroke()
+            let borderPath = NSBezierPath(rect: elementRect)
+            borderPath.lineWidth = 2.0
+            borderPath.stroke()
+            
+            // Draw element ID label
+            let labelText = element.id
+            let font = NSFont.boldSystemFont(ofSize: 12)
+            let textAttributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: textColor,
+                .backgroundColor: textBackgroundColor
+            ]
+            
+            let textSize = labelText.size(withAttributes: textAttributes)
+            let labelRect = NSRect(x: elementRect.minX, y: elementRect.minY - textSize.height - 2,
+                                  width: textSize.width + 8, height: textSize.height + 4)
+            
+            // Draw label background
+            textBackgroundColor.setFill()
+            NSBezierPath(rect: labelRect).fill()
+            
+            // Draw label text
+            let textPoint = NSPoint(x: labelRect.minX + 4, y: labelRect.minY + 2)
+            labelText.draw(at: textPoint, withAttributes: textAttributes)
+        }
+        
+        annotatedImage.unlockFocus()
+        
+        // Save the annotated image
+        let annotatedPath = originalPath.replacingOccurrences(of: ".png", with: "_annotated.png")
+        
+        if let tiffData = annotatedImage.tiffRepresentation,
+           let bitmapRep = NSBitmapImageRep(data: tiffData),
+           let pngData = bitmapRep.representation(using: .png, properties: [:]) {
+            do {
+                try pngData.write(to: URL(fileURLWithPath: annotatedPath))
+                self.logger.info("Generated annotated screenshot at: \(annotatedPath)")
+                return annotatedPath
+            } catch {
+                self.logger.error("Failed to save annotated screenshot: \(error)")
+                return originalPath
+            }
+        }
+        
+        self.logger.warning("Failed to generate PNG data for annotation, returning original")
         return originalPath
     }
 

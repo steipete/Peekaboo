@@ -79,7 +79,7 @@ public struct DialogToolDefinitions {
             ParameterDefinition(
                 name: "field",
                 type: .string,
-                description: "Field label or placeholder text (not yet implemented)",
+                description: "Field label, placeholder text, or index (0-based) to target specific field",
                 required: false,
                 defaultValue: nil,
                 options: nil,
@@ -170,12 +170,6 @@ extension PeekabooAgentService {
                 let appName = params.optionalStringValue("app")
                 let clearFirst = !(params.optionalBooleanValue("no-clear") ?? false)
 
-                // For now, this is a simplified implementation
-                // Field-specific targeting is not yet supported
-                if fieldLabel != nil {
-                    throw PeekabooError.serviceUnavailable("Field-specific text entry not yet implemented")
-                }
-
                 // Get the frontmost app if not specified
                 let targetApp: String
                 if let appName {
@@ -187,21 +181,12 @@ extension PeekabooAgentService {
 
                 let startTime = Date()
 
-                // Clear if requested
-                if clearFirst {
-                    try await services.automation.hotkey(keys: "cmd,a", holdDuration: 0)
-                    try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
-                    try await services.automation.hotkey(keys: "delete", holdDuration: 0)
-                    try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
-                }
-
-                // Type the text
-                try await services.automation.type(
+                // Use the dialog service which supports field targeting
+                _ = try await services.dialogs.enterTextInField(
                     text: text,
-                    target: nil as String?,
-                    clearExisting: false,
-                    typingDelay: 0,
-                    sessionId: nil as String?)
+                    fieldIdentifier: fieldLabel,
+                    clearExisting: clearFirst,
+                    windowTitle: appName)
 
                 _ = Date().timeIntervalSince(startTime)
 

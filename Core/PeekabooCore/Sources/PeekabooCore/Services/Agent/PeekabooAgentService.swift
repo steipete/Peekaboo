@@ -514,47 +514,46 @@ extension PeekabooAgentService {
         agentTools.append(createScreenshotTool())
         agentTools.append(createWindowCaptureTool())
         
-        // TODO: Convert remaining tools to AgentTool format
-        // UI automation tools - temporarily disabled during migration
-        // agentTools.append(createClickTool())
-        // agentTools.append(createTypeTool())
-        // agentTools.append(createPressTool())
-        // agentTools.append(createScrollTool())
-        // agentTools.append(createHotkeyTool())
+        // UI automation tools
+        agentTools.append(createClickTool())
+        agentTools.append(createTypeTool())
+        agentTools.append(createPressTool())
+        agentTools.append(createScrollTool())
+        agentTools.append(createHotkeyTool())
         
-        // Window management tools - temporarily disabled during migration
-        // agentTools.append(createListWindowsTool())
-        // agentTools.append(createFocusWindowTool())
-        // agentTools.append(createResizeWindowTool())
-        // agentTools.append(createListScreensTool())
+        // Window management tools
+        agentTools.append(createListWindowsTool())
+        agentTools.append(createFocusWindowTool())
+        agentTools.append(createResizeWindowTool())
+        agentTools.append(createListScreensTool())
         
-        // Application tools - temporarily disabled during migration
-        // agentTools.append(createListAppsTool())
-        // agentTools.append(createLaunchAppTool())
+        // Application tools
+        agentTools.append(createListAppsTool())
+        agentTools.append(createLaunchAppTool())
         
-        // Element tools - temporarily disabled during migration
-        // agentTools.append(createFindElementTool())
-        // agentTools.append(createListElementsTool())
-        // agentTools.append(createFocusedTool())
+        // Element tools
+        agentTools.append(createFindElementTool())
+        agentTools.append(createListElementsTool())
+        agentTools.append(createFocusedTool())
         
-        // Menu tools - temporarily disabled during migration
-        // agentTools.append(createMenuClickTool())
-        // agentTools.append(createListMenusTool())
+        // Menu tools
+        agentTools.append(createMenuClickTool())
+        agentTools.append(createListMenusTool())
         
-        // Dialog tools - temporarily disabled during migration
-        // agentTools.append(createDialogClickTool())
-        // agentTools.append(createDialogInputTool())
+        // Dialog tools
+        agentTools.append(createDialogClickTool())
+        agentTools.append(createDialogInputTool())
         
-        // Dock tools - temporarily disabled during migration
-        // agentTools.append(createDockLaunchTool())
-        // agentTools.append(createListDockTool())
+        // Dock tools
+        agentTools.append(createDockLaunchTool())
+        agentTools.append(createListDockTool())
         
-        // Shell tool - temporarily disabled during migration
-        // agentTools.append(createShellTool())
+        // Shell tool
+        agentTools.append(createShellTool())
         
-        // TODO: Convert completion tools to AgentTool format
-        // agentTools.append(CompletionTools.createDoneAgentTool())
-        // agentTools.append(CompletionTools.createNeedInfoAgentTool())
+        // Completion tools
+        agentTools.append(createDoneTool())
+        agentTools.append(createNeedInfoTool())
         
         return agentTools
     }
