@@ -769,12 +769,36 @@ struct AgentCommand: AsyncParsableCommand {
                 }
                 print("\nInitializing agent...\n")
             case .compact, .enhanced:
-                // Show model in header
+                // Show model in header - split into two lines for better readability
                 let versionNumber = Version.current.replacingOccurrences(of: "Peekaboo ", with: "")
                 let versionInfo = "(\(Version.gitBranch)/\(Version.gitCommit), \(Version.gitCommitDate))"
+                
+                // First line: Version and git info
                 print(
-                    "\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)\(versionNumber) using \(displayModelName) \(versionInfo)\(TerminalColor.reset)"
+                    "\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)\(versionNumber) \(versionInfo)\(TerminalColor.reset)"
                 )
+                
+                // Second line: Model and API provider info
+                // Determine which API is being used based on the model
+                let apiProvider: String
+                if let parsedModel = self.model.flatMap({ self.parseModelString($0) }) {
+                    apiProvider = parsedModel.providerName
+                } else if actualModelName.lowercased().contains("gpt") || actualModelName.lowercased().contains("o3") || actualModelName.lowercased().contains("o4") {
+                    apiProvider = "OpenAI"
+                } else if actualModelName.lowercased().contains("claude") {
+                    apiProvider = "Anthropic"
+                } else if actualModelName.lowercased().contains("grok") {
+                    apiProvider = "xAI"
+                } else if actualModelName.lowercased().contains("llama") || actualModelName.lowercased().contains("gpt-oss") {
+                    apiProvider = "Ollama"
+                } else {
+                    apiProvider = "AI"
+                }
+                
+                print(
+                    "   \(TerminalColor.gray)Using \(displayModelName) via \(apiProvider) API\(TerminalColor.reset)"
+                )
+                
                 if let sessionId {
                     print("\(TerminalColor.gray)🔄 Session: \(sessionId.prefix(8))...\(TerminalColor.reset)")
                 }
