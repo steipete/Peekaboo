@@ -15,7 +15,7 @@ class DetailedMenuSystemToolFormatter: BaseToolFormatter {
         case .menuClick:
             return formatMenuClickResult(result)
         case .listMenus:
-            return formatListMenusResult(result)
+            return formatListMenuItemsResult(result)
             
         // Dialog tools
         case .dialogInput:
@@ -49,7 +49,7 @@ class DetailedMenuSystemToolFormatter: BaseToolFormatter {
         parts.append("→ Clicked menu")
         
         // Menu path
-        if let menuPath = ToolResultExtractor.array("menuPath", from: result) as? [String] {
+        if let menuPath: [String] = ToolResultExtractor.array("menuPath", from: result) {
             let path = menuPath.joined(separator: " → ")
             parts.append("\"\(path)\"")
         } else if let item = ToolResultExtractor.string("menuItem", from: result) {
@@ -94,7 +94,7 @@ class DetailedMenuSystemToolFormatter: BaseToolFormatter {
         parts.append("→ Found")
         
         // Match count
-        if let matches = ToolResultExtractor.array("matches", from: result) {
+        if let matches: [[String: Any]] = ToolResultExtractor.array("matches", from: result) {
             let count = matches.count
             parts.append("\(count) menu item\(count == 1 ? "" : "s")")
         } else if let count = ToolResultExtractor.int("matchCount", from: result) {
@@ -107,7 +107,7 @@ class DetailedMenuSystemToolFormatter: BaseToolFormatter {
         }
         
         // Top matches
-        if let matches = ToolResultExtractor.array("matches", from: result) as? [[String: Any]] {
+        if let matches: [[String: Any]] = ToolResultExtractor.array("matches", from: result) {
             let topMatches = matches.prefix(3).compactMap { match in
                 match["title"] as? String ?? match["item"] as? String
             }
@@ -131,7 +131,7 @@ class DetailedMenuSystemToolFormatter: BaseToolFormatter {
         var parts: [String] = []
         
         // Item count
-        if let items = ToolResultExtractor.array("items", from: result) {
+        if let items: [[String: Any]] = ToolResultExtractor.array("items", from: result) {
             let count = items.count
             parts.append("→ \(count) menu item\(count == 1 ? "" : "s")")
         } else if let count = ToolResultExtractor.int("count", from: result) {
@@ -148,7 +148,7 @@ class DetailedMenuSystemToolFormatter: BaseToolFormatter {
         }
         
         // Categories
-        if let items = ToolResultExtractor.array("items", from: result) as? [[String: Any]] {
+        if let items: [[String: Any]] = ToolResultExtractor.array("items", from: result) {
             var enabledCount = 0
             var disabledCount = 0
             var hasShortcuts = 0

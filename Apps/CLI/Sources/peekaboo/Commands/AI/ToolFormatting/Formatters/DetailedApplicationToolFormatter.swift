@@ -33,14 +33,14 @@ class DetailedApplicationToolFormatter: ApplicationToolFormatter {
         var appCount = 0
         if let count = ToolResultExtractor.int("count", from: result) {
             appCount = count
-        } else if let apps = ToolResultExtractor.array("apps", from: result) {
+        } else if let apps: [[String: Any]] = ToolResultExtractor.array("apps", from: result) {
             appCount = apps.count
         }
         
         parts.append("→ \(appCount) apps running")
         
         // Categorize apps
-        if let apps = ToolResultExtractor.array("apps", from: result) as? [[String: Any]] {
+        if let apps: [[String: Any]] = ToolResultExtractor.array("apps", from: result) {
             var categories: [String: Int] = [:]
             var activeCount = 0
             var hiddenCount = 0
@@ -88,7 +88,8 @@ class DetailedApplicationToolFormatter: ApplicationToolFormatter {
             }
             
             // Memory usage summary
-            if let totalMemory = apps.compactMap({ $0["memoryUsage"] as? Int }).reduce(0, +), totalMemory > 0 {
+            let totalMemory = apps.compactMap({ $0["memoryUsage"] as? Int }).reduce(0, +)
+            if totalMemory > 0 {
                 let memoryStr = formatMemorySize(totalMemory)
                 parts.append("Total memory: \(memoryStr)")
             }
@@ -190,7 +191,7 @@ class DetailedApplicationToolFormatter: ApplicationToolFormatter {
         var windowCount = 0
         if let count = ToolResultExtractor.int("count", from: result) {
             windowCount = count
-        } else if let windows = ToolResultExtractor.array("windows", from: result) {
+        } else if let windows: [[String: Any]] = ToolResultExtractor.array("windows", from: result) {
             windowCount = windows.count
         }
         
@@ -202,7 +203,7 @@ class DetailedApplicationToolFormatter: ApplicationToolFormatter {
         }
         
         // Window details
-        if let windows = ToolResultExtractor.array("windows", from: result) as? [[String: Any]] {
+        if let windows: [[String: Any]] = ToolResultExtractor.array("windows", from: result) {
             var visibleCount = 0
             var minimizedCount = 0
             var fullscreenCount = 0

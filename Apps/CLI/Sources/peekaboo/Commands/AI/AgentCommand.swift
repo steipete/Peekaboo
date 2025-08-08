@@ -243,14 +243,7 @@ struct AgentCommand: AsyncParsableCommand {
         
         // Smart detection based on terminal capabilities
         let capabilities = TerminalDetector.detectCapabilities()
-        let recommendedMode = capabilities.recommendedOutputMode
-        
-        // Show detailed detection info in debug terminal mode
-        if self.debugTerminal {
-            self.printTerminalDetectionDebug(capabilities, actualMode: recommendedMode)
-        }
-        
-        return recommendedMode
+        return capabilities.recommendedOutputMode
     }
 
     @MainActor
@@ -324,7 +317,7 @@ struct AgentCommand: AsyncParsableCommand {
                 }
                 return
             }
-            try await self.resumeSession(agentService, sessionId: sessionId, task: continuationTask)
+            try await self.resumeAgentSession(agentService, sessionId: sessionId, task: continuationTask)
             return
         }
 
@@ -350,7 +343,7 @@ struct AgentCommand: AsyncParsableCommand {
             let sessions = try await peekabooService.listSessions()
 
             if let mostRecent = sessions.first {
-                try await self.resumeSession(agentService, sessionId: mostRecent.id, task: continuationTask)
+                try await self.resumeAgentSession(agentService, sessionId: mostRecent.id, task: continuationTask)
                 return
             } else {
                 if self.jsonOutput {
@@ -1008,7 +1001,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
 
-    func resumeSession(_ agentService: AgentServiceProtocol, sessionId: String, task: String) async throws {
+    func resumeAgentSession(_ agentService: AgentServiceProtocol, sessionId: String, task: String) async throws {
         if !self.jsonOutput {
             print(
                 "\(TerminalColor.cyan)\(TerminalColor.bold)🔄 Resuming session \(sessionId.prefix(8))...\(TerminalColor.reset)\n"
@@ -1116,4 +1109,4 @@ struct AgentCommand: AsyncParsableCommand {
         
         print(String(repeating: "=", count: 60) + "\n")
     }
-}
+}  // End of AgentCommand struct

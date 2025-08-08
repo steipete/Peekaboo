@@ -108,4 +108,26 @@ public struct FormattingUtilities {
             return String(format: "%dmin %ds", minutes, remainingSeconds)
         }
     }
+
+    /// Format a byte count into a human-readable string
+    public static func formatFileSize(_ bytes: Int) -> String {
+        let units = ["B", "KB", "MB", "GB", "TB"]
+        var value = Double(bytes)
+        var unitIndex = 0
+
+        while value >= 1024.0 && unitIndex < units.count - 1 {
+            value /= 1024.0
+            unitIndex += 1
+        }
+
+        if unitIndex == 0 {
+            return String(format: "%.0f %@", value, units[unitIndex])
+        } else if value < 10 {
+            return String(format: "%.2f %@", value, units[unitIndex])
+        } else if value < 100 {
+            return String(format: "%.1f %@", value, units[unitIndex])
+        } else {
+            return String(format: "%.0f %@", value, units[unitIndex])
+        }
+    }
 }

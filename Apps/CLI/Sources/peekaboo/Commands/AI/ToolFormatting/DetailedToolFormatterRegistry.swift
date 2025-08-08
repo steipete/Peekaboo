@@ -90,17 +90,25 @@ public final class DetailedToolFormatterRegistry: @unchecked Sendable {
         switch toolType.category {
         case .vision:
             return DetailedVisionToolFormatter(toolType: toolType)
+        case .automation:
+            return DetailedUIAutomationToolFormatter(toolType: toolType)
         case .ui:
             return DetailedUIAutomationToolFormatter(toolType: toolType)
         case .app:
+            return DetailedApplicationToolFormatter(toolType: toolType)
+        case .application:
             return DetailedApplicationToolFormatter(toolType: toolType)
         case .window:
             return WindowToolFormatter(toolType: toolType)
         case .menu:
             return DetailedMenuSystemToolFormatter(toolType: toolType)
+        case .dialog:
+            return DetailedMenuSystemToolFormatter(toolType: toolType)
         case .dock:
             return DetailedMenuSystemToolFormatter(toolType: toolType)
         case .element:
+            return ElementToolFormatter(toolType: toolType)
+        case .query:
             return ElementToolFormatter(toolType: toolType)
         case .system:
             return DetailedMenuSystemToolFormatter(toolType: toolType)
