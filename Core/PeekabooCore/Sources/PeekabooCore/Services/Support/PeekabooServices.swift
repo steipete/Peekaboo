@@ -289,8 +289,21 @@ public final class PeekabooServices: @unchecked Sendable {
             menuService: menuSvc,
             dockService: dockSvc)
 
-        // Create AI service
+        // Create AI service and hydrate Tachikoma with credentials
         let aiService = PeekabooAIService()
+        // Load API keys from ConfigurationManager into TachikomaConfiguration.current
+        if let openAIKey = config.getOpenAIAPIKey(), !openAIKey.isEmpty {
+            TachikomaConfiguration.current.setAPIKey(openAIKey, for: .openai)
+            logger.debug("🔑 OpenAI key loaded into TachikomaConfiguration")
+        }
+        if let anthropicKey = config.getAnthropicAPIKey(), !anthropicKey.isEmpty {
+            TachikomaConfiguration.current.setAPIKey(anthropicKey, for: .anthropic)
+            logger.debug("🔑 Anthropic key loaded into TachikomaConfiguration")
+        }
+        // Ollama base URL
+        let ollamaURL = config.getOllamaBaseURL()
+        TachikomaConfiguration.current.setBaseURL(ollamaURL, for: .ollama)
+        logger.debug("🌐 Ollama base URL set to \(ollamaURL)")
         logger.debug("✅ AI service initialized")
 
         // Create services instance first
@@ -416,10 +429,10 @@ public final class PeekabooServices: @unchecked Sendable {
             // Determine default model based on first available provider
             var defaultModel = agentConfig?.agent?.defaultModel
             if defaultModel == nil {
-                if providers.contains("anthropic"), hasAnthropic {
+                if providers.contains("openai"), hasOpenAI {
+                    defaultModel = "gpt-5"
+                } else if providers.contains("anthropic"), hasAnthropic {
                     defaultModel = "claude-opus-4-20250514"
-                } else if providers.contains("openai"), hasOpenAI {
-                    defaultModel = "gpt-4.1"
                 } else if providers.contains("ollama") {
                     defaultModel = "llava:latest"
                 }
@@ -429,8 +442,8 @@ public final class PeekabooServices: @unchecked Sendable {
             defer { agentLock.unlock() }
 
             do {
-                // Convert model string to LanguageModel enum
-                let languageModel = LanguageModel.anthropic(.opus4) // Default fallback
+                // Convert model string to LanguageModel enum using same parser
+                let languageModel = Self.parseModelStringForAgent(defaultModel ?? "gpt-5")
                 self.agent = try PeekabooAgentService(
                     services: self,
                     defaultModel: languageModel)

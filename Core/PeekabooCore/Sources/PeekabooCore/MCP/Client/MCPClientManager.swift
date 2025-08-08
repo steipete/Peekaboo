@@ -221,10 +221,79 @@ public final class MCPClientManager {
         logger.info("Added MCP server '\(name)'")
     }
     
-    /// Initialize default servers (currently a no-op)
+    /// Initialize default servers
     public func initializeDefaultServers(userConfigs: [String: MCPServerConfig]) async {
-        // No default servers for now - userConfigs parameter is for future use
-        logger.info("Default servers initialization completed")
+        logger.info("Initializing default MCP servers...")
+        
+        // Define default browser server configuration
+        let defaultBrowserConfig = MCPServerConfig(
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+            env: [:],
+            enabled: true,
+            timeout: 15.0,
+            autoReconnect: true,
+            description: "Browser automation via BrowserMCP"
+        )
+        
+        // Load user configs from ConfigurationManager if not provided
+        let actualUserConfigs = userConfigs.isEmpty ? 
+            (ConfigurationManager.shared.getConfiguration()?.mcpClients ?? [:]) : userConfigs
+        
+        // Check if user has explicitly configured the browser server
+        if let userBrowserConfig = actualUserConfigs["browser"] {
+            // User has configured it - respect their settings (including if disabled)
+            self.configs["browser"] = userBrowserConfig
+            let connection = MCPClientConnection(name: "browser", config: userBrowserConfig)
+            self.connections["browser"] = connection
+            
+            if userBrowserConfig.enabled {
+                do {
+                    try await connection.connect()
+                    logger.info("Initialized user-configured browser MCP server")
+                } catch {
+                    logger.error("Failed to connect to browser MCP server: \(error.localizedDescription)")
+                }
+            } else {
+                logger.info("Browser MCP server is disabled by user configuration")
+            }
+        } else {
+            // User hasn't configured it - add as default
+            self.configs["browser"] = defaultBrowserConfig
+            let connection = MCPClientConnection(name: "browser", config: defaultBrowserConfig)
+            self.connections["browser"] = connection
+            
+            do {
+                try await connection.connect()
+                logger.info("Initialized default browser MCP server")
+            } catch {
+                logger.error("Failed to connect to default browser MCP server: \(error.localizedDescription)")
+            }
+        }
+        
+        // Also add any other user-configured servers
+        for (serverName, serverConfig) in actualUserConfigs {
+            // Skip browser since we already handled it
+            if serverName == "browser" {
+                continue
+            }
+            
+            self.configs[serverName] = serverConfig
+            let connection = MCPClientConnection(name: serverName, config: serverConfig)
+            self.connections[serverName] = connection
+            
+            if serverConfig.enabled {
+                do {
+                    try await connection.connect()
+                    logger.info("Initialized user-configured server '\(serverName)'")
+                } catch {
+                    logger.error("Failed to connect to '\(serverName)': \(error.localizedDescription)")
+                }
+            }
+        }
+        
+        logger.info("Default servers initialization completed with \(self.connections.count) servers")
     }
     
     /// Connect to all enabled servers
@@ -351,7 +420,9 @@ public final class MCPClientManager {
     
     /// Get all server names
     public func getServerNames() async -> [String] {
-        Array(connections.keys).sorted()
+        let names = Array(connections.keys).sorted()
+        logger.info("Returning \(names.count) server names: \(names)")
+        return names
     }
     
     /// Check health status for all servers
@@ -441,9 +512,8 @@ public final class MCPClientManager {
     
     /// Check if a server is a default server
     public func isDefaultServer(name: String) -> Bool {
-        // For now, no servers are marked as default
-        // This can be extended in the future
-        return false
+        // Browser server is the default server shipped with Peekaboo
+        return name == "browser"
     }
     
     /// Remove a server

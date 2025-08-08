@@ -419,7 +419,7 @@ public final class ConfigurationManager: @unchecked Sendable {
             cliValue: cliValue,
             envVar: "PEEKABOO_AI_PROVIDERS",
             configValue: self.configuration?.aiProviders?.providers,
-            defaultValue: "ollama/llava:latest")
+            defaultValue: "openai/gpt-5,ollama/llava:latest,anthropic/claude-opus-4-20250514")
     }
 
     /// Get OpenAI API key with proper precedence

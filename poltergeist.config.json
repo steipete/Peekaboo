@@ -63,6 +63,12 @@
         "action": "ignore",
         "reason": "Xcode user state files",
         "enabled": true
+      },
+      {
+        "pattern": "**/Version.swift",
+        "action": "ignore",
+        "reason": "Auto-generated version file that changes on every build",
+        "enabled": true
       }
     ]
   },

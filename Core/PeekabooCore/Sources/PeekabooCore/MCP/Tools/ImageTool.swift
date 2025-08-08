@@ -10,7 +10,7 @@ public struct ImageTool: MCPTool {
 
     public var description: String {
         """
-        Captures macOS screen content and optionally analyzes it. Targets can be entire screen, specific app window, or all windows of an app (via app_target). Supports foreground/background capture. Output via file path or inline Base64 data (format: "data"). If a question is provided, image is analyzed by an AI model (auto-selected from PEEKABOO_AI_PROVIDERS). Window shadows/frames excluded. Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Captures macOS screen content and optionally analyzes it. Targets can be entire screen, specific app window, or all windows of an app (via app_target). Supports foreground/background capture. Output via file path or inline Base64 data (format: "data"). If a question is provided, image is analyzed by an AI model (auto-selected from config). Window shadows/frames excluded. Uses GPT-5 by default when OpenAI is configured.
         """
     }
 
@@ -351,7 +351,7 @@ private func analyzeImage(at path: String, question: String) async throws -> (te
     // Use the AI service to analyze the image
     let aiService = await PeekabooAIService()
     let result = try await aiService.analyzeImageFile(at: path, question: question)
-    return (text: result, modelUsed: "gpt-4o")
+    return (text: result, modelUsed: "gpt-5")
 }
 
 // MARK: - Supporting Types

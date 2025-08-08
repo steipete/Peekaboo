@@ -131,6 +131,10 @@ extension MCPCommand {
 
         func run() async throws {
             let clientManager = await MCPClientManager.shared
+            
+            // Initialize default servers if needed (pass empty dict for now)
+            await clientManager.initializeDefaultServers(userConfigs: [:])
+            
             let serverNames = await clientManager.getServerNames()
             
             if serverNames.isEmpty {

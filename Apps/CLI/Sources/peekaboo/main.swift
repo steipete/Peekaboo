@@ -165,8 +165,7 @@ struct Main {
         _ = ConfigurationManager.shared.loadConfiguration()
         
         // Initialize MCP client with default servers
-        // TODO: Fix module visibility issue
-        // await ConfigurationManager.shared.initializeMCPClient()
+        // Note: MCP initialization happens within MCPCommand commands
 
         // Run the command normally - ArgumentParser will handle unknown commands
         await Peekaboo.main()

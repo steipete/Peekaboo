@@ -4,10 +4,18 @@ import Tachikoma
 /// AI service for handling model interactions and AI-powered features
 @MainActor
 public final class PeekabooAIService {
-    private let defaultModel: LanguageModel = .gpt4o
+    private let defaultModel: LanguageModel = .openai(.gpt5)
     
     public init() {
-        // AI service is ready to use with Tachikoma
+        // Ensure TachikomaConfiguration is hydrated from Peekaboo configuration
+        let config = ConfigurationManager.shared
+        if let openAIKey = config.getOpenAIAPIKey(), !openAIKey.isEmpty {
+            TachikomaConfiguration.current.setAPIKey(openAIKey, for: .openai)
+        }
+        if let anthropicKey = config.getAnthropicAPIKey(), !anthropicKey.isEmpty {
+            TachikomaConfiguration.current.setAPIKey(anthropicKey, for: .anthropic)
+        }
+        TachikomaConfiguration.current.setBaseURL(config.getOllamaBaseURL(), for: .ollama)
     }
     
     /// Analyze an image with a question using AI
@@ -58,6 +66,9 @@ public final class PeekabooAIService {
     /// List available models
     public func availableModels() -> [LanguageModel] {
         return [
+            .openai(.gpt5),
+            .openai(.gpt5Mini),
+            .openai(.gpt5Nano),
             .openai(.gpt4o),
             .openai(.gpt4oMini),
             .anthropic(.sonnet35),

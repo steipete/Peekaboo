@@ -92,16 +92,11 @@ public struct AnalyzeTool: MCPTool {
             return ToolResponse.error("Image file not found: \(imagePath)")
         }
 
-        // Check AI providers configuration
-        guard let aiProviders = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"],
-              !aiProviders.isEmpty
-        else {
-            return ToolResponse
-                .error("AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable.")
-        }
-
-        // Parse the AI providers to determine which to use
-        let (modelName, providerType) = self.parseAIProviders(aiProviders)
+        // Resolve AI providers from config manager (env overrides config)
+        let configManager = ConfigurationManager.shared
+        let providers = configManager.getAIProviders()
+        // Determine default model/provider from config
+        let (modelName, providerType) = self.parseAIProviders(providers)
 
         do {
             self.logger.info("Analyzing image with \(providerType ?? "auto")/\(modelName)")
@@ -180,7 +175,7 @@ public struct AnalyzeTool: MCPTool {
             case "anthropic":
                 languageModel = .anthropic(.opus4)
             case "openai":
-                languageModel = .openai(.gpt4o)
+                languageModel = .openai(.gpt5)
             case "grok":
                 languageModel = .grok(.grok4)
             case "ollama":

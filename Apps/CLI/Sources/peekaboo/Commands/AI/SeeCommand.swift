@@ -611,8 +611,9 @@ struct MenuBarSummary: Codable {
 
 extension SeeCommand {
     private func performAnalysis(imagePath: String, prompt: String) async throws -> String {
-        // For now, just return a placeholder since AI provider is broken
-        "AI analysis is temporarily unavailable"
+        // Use PeekabooCore AI service which is configured via ConfigurationManager/Tachikoma
+        let service = await PeekabooAIService()
+        return try await service.analyzeImageFile(at: imagePath, question: prompt, model: nil)
     }
 
     private func determineMode() -> CaptureMode {

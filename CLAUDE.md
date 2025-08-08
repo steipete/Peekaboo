@@ -47,7 +47,7 @@ To test this project interactive we can use:
 
 ## Binary Location and Version Checking
 
-**CRITICAL: Always verify you're using the correct binary!**
+**CRITICAL: Always use `polter peekaboo` to ensure fresh builds!**
 
 1. **Check the build timestamp**: Every Peekaboo execution shows when it was compiled:
    ```
@@ -57,30 +57,32 @@ To test this project interactive we can use:
 
 2. **Expected binary location**: `/Users/steipete/Projects/Peekaboo/peekaboo` (project root)
    - This is where Poltergeist puts the binary
-   - This is what the wrapper script should use
+   - Always use `polter peekaboo` to run it (ensures fresh builds)
    - If you see binaries in other locations, they might be outdated
 
 3. **Verify before testing**:
    ```bash
    # Check version and timestamp
-   ./peekaboo --version
-   # Or with wrapper
-   ./scripts/peekaboo-wait.sh --version
+   polter peekaboo --version
    ```
 
 ## Quick Reference
 
 ```bash
 # Core commands
-polter peekaboo <command>    # Run CLI (NOT ./peekaboo)
-./scripts/pblog.sh -f         # Stream logs
-npm run poltergeist:status    # Check build status
-alias pb='polter peekaboo'   # Add to ~/.zshrc
+polter peekaboo <command>     # Run CLI with automatic rebuild
+./scripts/pblog.sh -f          # Stream logs
+npm run poltergeist:status     # Check build status
+alias pb='polter peekaboo'    # Add to ~/.zshrc for convenience
 
 # Examples
 polter peekaboo agent "take screenshot"
 polter peekaboo list apps
 polter peekaboo see --annotate
+
+# NEVER use:
+# ./peekaboo                   # May run stale binary
+# ./scripts/peekaboo-wait.sh   # Redundant wrapper, use polter directly
 ```
 
 ## Poltergeist Usage
@@ -97,8 +99,9 @@ polter peekaboo <args>       # Run CLI (waits for fresh build)
 
 ### NEVER
 - `polter wait` - doesn't exist
-- `npm run build:swift` - Poltergeist does this
-- `./peekaboo` - use `polter peekaboo`
+- `npm run build:swift` - Poltergeist does this automatically
+- `./peekaboo` - use `polter peekaboo` for fresh builds
+- `./scripts/peekaboo-wait.sh` - redundant wrapper, use `polter peekaboo` directly
 
 ### Workflow
 1. Start: `npm run poltergeist:haunt`
