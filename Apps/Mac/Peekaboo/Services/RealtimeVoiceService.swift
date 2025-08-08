@@ -6,6 +6,7 @@
 import Foundation
 import PeekabooCore
 import Tachikoma
+import TachikomaAudio
 import os.log
 
 /// Service for managing OpenAI Realtime API voice conversations
