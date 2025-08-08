@@ -107,10 +107,12 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
             formatter = UnknownToolFormatter(toolName: name)
         }
         
+        // Get proper display name
+        let displayName = toolType?.displayName ?? name.replacingOccurrences(of: "_", with: " ").capitalized
+        
         // Update terminal title
         let titleSummary = formatter.formatForTitle(arguments: args)
-        let display = name.replacingOccurrences(of: "_", with: " ").capitalized
-        updateTerminalTitle("\(display): \(titleSummary) - \(task?.prefix(30) ?? "")")
+        updateTerminalTitle("\(displayName): \(titleSummary) - \(task?.prefix(30) ?? "")")
         
         // Skip output for quiet mode
         guard outputMode != .quiet else { return }
@@ -132,14 +134,14 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         }
         
         // Format output based on mode
-        let icon = "⚙️"
+        let icon = toolType?.icon ?? "⚙️"
         
         switch outputMode {
         case .minimal:
-            print(name, terminator: "")
+            print(displayName, terminator: "")
             
         case .verbose:
-            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(display)\(TerminalColor.reset)")
+            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)")
             if arguments.isEmpty || arguments == "{}" {
                 print("\(TerminalColor.gray)Arguments: (none)\(TerminalColor.reset)")
             } else if let formatted = formatJSON(arguments) {
@@ -152,7 +154,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
             print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(startMessage)\(TerminalColor.reset)", terminator: "")
             
         default: // .normal, .compact
-            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
+            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)", terminator: "")
             let summary = formatter.formatCompactSummary(arguments: args)
             if !summary.isEmpty {
                 print(" \(TerminalColor.gray)\(summary)\(TerminalColor.reset)", terminator: "")
@@ -182,7 +184,13 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         // Parse result
         guard let data = result.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            print(" \(TerminalColor.red)✗ Invalid result\(TerminalColor.reset)\(durationString)")
+            // Log the actual result for debugging in verbose mode
+            if outputMode == .verbose {
+                print(" \(TerminalColor.red)✗ Invalid JSON result\(TerminalColor.reset)\(durationString)")
+                print("\(TerminalColor.gray)Raw result: \(result.prefix(200))\(TerminalColor.reset)")
+            } else {
+                print(" \(TerminalColor.red)✗ Invalid result\(TerminalColor.reset)\(durationString)")
+            }
             return
         }
         

@@ -677,48 +677,45 @@ struct AgentCommand: AsyncParsableCommand {
                 
                 // Second line: Model and API provider info
                 // Determine which API is being used based on the model
-                let apiProvider: String
-                let apiEndpoint: String
+                // Determine provider and API endpoint
+                let apiDescription: String
                 
                 if let parsedModel = self.model.flatMap({ self.parseModelString($0) }) {
-                    apiProvider = parsedModel.providerName
-                    // Determine specific API endpoint based on model
-                    if parsedModel.providerName == "OpenAI" {
-                        // GPT-5 models use the Responses API
-                        if actualModelName.lowercased().contains("gpt-5") || actualModelName.lowercased().contains("gpt5") {
-                            apiEndpoint = "Responses API (/v1/responses)"
-                        } else {
-                            apiEndpoint = "Completions API (/v1/chat/completions)"
-                        }
-                    } else if parsedModel.providerName == "Anthropic" {
-                        apiEndpoint = "Messages API"
-                    } else {
-                        apiEndpoint = "API"
+                    // We have a parsed model with provider info
+                    switch parsedModel.providerName {
+                    case "OpenAI":
+                        // Note: GPT-5 can use either Completions or Responses API depending on configuration
+                        // We can't determine this from the model name alone
+                        // TODO: Get actual endpoint from provider configuration
+                        apiDescription = "\(parsedModel.providerName) API"
+                    case "Anthropic":
+                        apiDescription = "\(parsedModel.providerName) Messages API"
+                    case "xAI", "Groq", "Together", "Mistral":
+                        // These all use OpenAI-compatible APIs
+                        apiDescription = "\(parsedModel.providerName) (OpenAI-compatible)"
+                    case "Ollama":
+                        // Ollama provides an OpenAI-compatible API
+                        apiDescription = "Ollama (OpenAI-compatible)"
+                    default:
+                        apiDescription = parsedModel.providerName
                     }
-                } else if actualModelName.lowercased().contains("gpt") || actualModelName.lowercased().contains("o3") || actualModelName.lowercased().contains("o4") {
-                    apiProvider = "OpenAI"
-                    // Check if it's GPT-5 (uses Responses API)
-                    if actualModelName.lowercased().contains("gpt-5") || actualModelName.lowercased().contains("gpt5") {
-                        apiEndpoint = "Responses API (/v1/responses)"
-                    } else {
-                        apiEndpoint = "Completions API (/v1/chat/completions)"
-                    }
-                } else if actualModelName.lowercased().contains("claude") {
-                    apiProvider = "Anthropic"
-                    apiEndpoint = "Messages API"
-                } else if actualModelName.lowercased().contains("grok") {
-                    apiProvider = "xAI"
-                    apiEndpoint = "Completions API"
-                } else if actualModelName.lowercased().contains("llama") || actualModelName.lowercased().contains("gpt-oss") {
-                    apiProvider = "Ollama"
-                    apiEndpoint = "Completions API"
                 } else {
-                    apiProvider = "AI"
-                    apiEndpoint = "API"
+                    // Fallback to guessing based on model name
+                    if actualModelName.lowercased().contains("gpt") || actualModelName.lowercased().contains("o3") || actualModelName.lowercased().contains("o4") {
+                        apiDescription = "OpenAI API"
+                    } else if actualModelName.lowercased().contains("claude") {
+                        apiDescription = "Anthropic Messages API"
+                    } else if actualModelName.lowercased().contains("grok") {
+                        apiDescription = "xAI (OpenAI-compatible)"
+                    } else if actualModelName.lowercased().contains("llama") {
+                        apiDescription = "Ollama (OpenAI-compatible)"
+                    } else {
+                        apiDescription = "AI Provider"
+                    }
                 }
                 
                 print(
-                    "   \(TerminalColor.gray)Using \(displayModelName) via \(apiProvider) \(apiEndpoint)\(TerminalColor.reset)"
+                    "   \(TerminalColor.gray)Using \(displayModelName) via \(apiDescription)\(TerminalColor.reset)"
                 )
                 
                 if let sessionId {
