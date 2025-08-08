@@ -678,22 +678,47 @@ struct AgentCommand: AsyncParsableCommand {
                 // Second line: Model and API provider info
                 // Determine which API is being used based on the model
                 let apiProvider: String
+                let apiEndpoint: String
+                
                 if let parsedModel = self.model.flatMap({ self.parseModelString($0) }) {
                     apiProvider = parsedModel.providerName
+                    // Determine specific API endpoint based on model
+                    if parsedModel.providerName == "OpenAI" {
+                        // GPT-5 models use the Responses API
+                        if actualModelName.lowercased().contains("gpt-5") || actualModelName.lowercased().contains("gpt5") {
+                            apiEndpoint = "Responses API (/v1/responses)"
+                        } else {
+                            apiEndpoint = "Completions API (/v1/chat/completions)"
+                        }
+                    } else if parsedModel.providerName == "Anthropic" {
+                        apiEndpoint = "Messages API"
+                    } else {
+                        apiEndpoint = "API"
+                    }
                 } else if actualModelName.lowercased().contains("gpt") || actualModelName.lowercased().contains("o3") || actualModelName.lowercased().contains("o4") {
                     apiProvider = "OpenAI"
+                    // Check if it's GPT-5 (uses Responses API)
+                    if actualModelName.lowercased().contains("gpt-5") || actualModelName.lowercased().contains("gpt5") {
+                        apiEndpoint = "Responses API (/v1/responses)"
+                    } else {
+                        apiEndpoint = "Completions API (/v1/chat/completions)"
+                    }
                 } else if actualModelName.lowercased().contains("claude") {
                     apiProvider = "Anthropic"
+                    apiEndpoint = "Messages API"
                 } else if actualModelName.lowercased().contains("grok") {
                     apiProvider = "xAI"
+                    apiEndpoint = "Completions API"
                 } else if actualModelName.lowercased().contains("llama") || actualModelName.lowercased().contains("gpt-oss") {
                     apiProvider = "Ollama"
+                    apiEndpoint = "Completions API"
                 } else {
                     apiProvider = "AI"
+                    apiEndpoint = "API"
                 }
                 
                 print(
-                    "   \(TerminalColor.gray)Using \(displayModelName) via \(apiProvider) API\(TerminalColor.reset)"
+                    "   \(TerminalColor.gray)Using \(displayModelName) via \(apiProvider) \(apiEndpoint)\(TerminalColor.reset)"
                 )
                 
                 if let sessionId {
