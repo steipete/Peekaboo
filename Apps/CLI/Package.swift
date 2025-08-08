@@ -48,6 +48,10 @@ let package = Package(
         .testTarget(
             name: "peekabooTests",
             dependencies: ["peekaboo"],
+            exclude: [
+                "ClickCommandAdvancedTests.swift.disabled",
+                "MCPClientCommandTests.swift.disabled",
+            ],
             swiftSettings: []),
     ],
     swiftLanguageModes: [.v6])
