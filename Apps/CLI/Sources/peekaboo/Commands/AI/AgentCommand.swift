@@ -137,36 +137,8 @@ struct AgentCommand: AsyncParsableCommand {
         commandName: "agent",
         abstract: "Execute complex automation tasks using AI agent",
         discussion: """
-        Uses OpenAI Chat Completions API to break down and execute complex automation tasks.
+        Breaks down and executes complex automation tasks using AI.
         The agent can see the screen, interact with UI elements, and verify results.
-
-        EXAMPLES:
-          peekaboo agent "Open TextEdit and write 'Hello World'"
-          peekaboo agent "Take a screenshot of Safari and save it to Desktop"
-          peekaboo agent "Click on the login button and fill the form"
-          peekaboo agent "Find the Terminal app and run 'ls -la'"
-
-          # Output control (auto-detected by default):
-          peekaboo agent --tui "Complex task"             # Enable full Terminal User Interface
-          peekaboo agent --simple "Basic task"           # Force simple output, no colors
-          peekaboo agent --no-color "CI task"            # Disable colors only
-          peekaboo agent --verbose "Debug task"          # Full JSON debug output
-          peekaboo agent --debug-terminal "Debug task"   # Show terminal detection details
-          peekaboo agent --quiet "Silent task"           # Only show final result
-
-          # Control execution steps:
-          peekaboo agent --max-steps 5 "Simple task"  # Limit to 5 steps
-          peekaboo agent --max-steps 50 "Complex multi-step automation"  # Allow more steps
-
-          # Audio input:
-          peekaboo agent --audio  # Record from microphone
-          peekaboo agent --audio-file recording.wav  # Use audio file
-          peekaboo agent --audio "summarize this"  # Record and process with task
-
-          # Resume sessions:
-          peekaboo agent --resume "continue with the task"  # Resume most recent
-          peekaboo agent --resume-session abc123 "do this next"  # Resume specific
-          peekaboo agent --list-sessions  # Show available sessions
 
         The agent will:
         1. Analyze your request
@@ -196,6 +168,34 @@ struct AgentCommand: AsyncParsableCommand {
         Default is 20 steps, which handles most automation tasks effectively.
 
         Audio input requires OpenAI API key for transcription via Whisper API.
+
+        EXAMPLES:
+          peekaboo agent "Open TextEdit and write 'Hello World'"
+          peekaboo agent "Take a screenshot of Safari and save it to Desktop"
+          peekaboo agent "Click on the login button and fill the form"
+          peekaboo agent "Find the Terminal app and run 'ls -la'"
+
+          # Output control (auto-detected by default):
+          peekaboo agent --tui "Complex task"             # Enable full Terminal User Interface
+          peekaboo agent --simple "Basic task"           # Force simple output, no colors
+          peekaboo agent --no-color "CI task"            # Disable colors only
+          peekaboo agent --verbose "Debug task"          # Full JSON debug output
+          peekaboo agent --debug-terminal "Debug task"   # Show terminal detection details
+          peekaboo agent --quiet "Silent task"           # Only show final result
+
+          # Control execution steps:
+          peekaboo agent --max-steps 5 "Simple task"  # Limit to 5 steps
+          peekaboo agent --max-steps 50 "Complex multi-step automation"  # Allow more steps
+
+          # Audio input:
+          peekaboo agent --audio  # Record from microphone
+          peekaboo agent --audio-file recording.wav  # Use audio file
+          peekaboo agent --audio "summarize this"  # Record and process with task
+
+          # Resume sessions:
+          peekaboo agent --resume "continue with the task"  # Resume most recent
+          peekaboo agent --resume-session abc123 "do this next"  # Resume specific
+          peekaboo agent --list-sessions  # Show available sessions
         """
     )
 
@@ -709,8 +709,6 @@ struct AgentCommand: AsyncParsableCommand {
         maxSteps: Int = 20,
         sessionId: String? = nil
     ) async throws {
-        fputs("DEBUG STDERR: executeTask called with model parameter: \(String(describing: self.model))\n", stderr)
-
         // Update terminal title with VibeTunnel
         self.updateTerminalTitle("Starting: \(task.prefix(50))...")
 
@@ -1989,7 +1987,11 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                 fflush(stdout)
             } else if self.outputMode == .minimal {
                 // Minimal mode - simple thinking indicator
-                print("Thinking: \(content)", terminator: "")
+                if self.isThinking {
+                    self.isThinking = false
+                    print("Thinking: ", terminator: "")
+                }
+                print(content, terminator: "")
                 fflush(stdout)
             }
 

@@ -633,8 +633,7 @@ extension PeekabooAgentService {
                             }
                         }
                         
-                        // Also send to streaming delegate
-                        await streamingDelegate.onChunk(content)
+                        // Don't send to streaming delegate here - it's already handled by eventHandler
                     }
                     
                 case .toolCall:
@@ -765,8 +764,7 @@ extension PeekabooAgentService {
             }
         }
 
-        // Send the complete response to streaming delegate
-        await streamingDelegate.onChunk(fullContent)
+        // Don't send the complete response again - it was already streamed
 
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(startTime)
