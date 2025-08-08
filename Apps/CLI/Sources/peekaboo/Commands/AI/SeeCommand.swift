@@ -55,6 +55,11 @@ ApplicationResolvable {
     mutating func run() async throws {
         let startTime = Date()
         configureVerboseLogging()
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        if self.jsonOutput && !self.verbose {
+            // Ensure timing/operation logs appear in JSON debug_logs
+            Logger.shared.setVerboseMode(true)
+        }
         Logger.shared.operationStart("see_command", metadata: [
             "app": self.app ?? "none",
             "mode": self.mode?.rawValue ?? "auto",
@@ -185,7 +190,9 @@ ApplicationResolvable {
         }
 
         // Save screenshot
+        Logger.shared.startTimer("file_write")
         let outputPath = try saveScreenshot(captureResult.imageData)
+        Logger.shared.stopTimer("file_write")
 
         // Create window context from capture metadata
         let windowContext = WindowContext(
@@ -195,11 +202,13 @@ ApplicationResolvable {
         )
 
         // Detect UI elements with window context
+        Logger.shared.operationStart("element_detection")
         let detectionResult = try await PeekabooServices.shared.automation.detectElements(
             in: captureResult.imageData,
             sessionId: nil,
             windowContext: windowContext
         )
+        Logger.shared.operationComplete("element_detection")
 
         // Update the result with the correct screenshot path
         let resultWithPath = ElementDetectionResult(
@@ -231,10 +240,13 @@ ApplicationResolvable {
             metadata: ["mode": effectiveMode.rawValue]
         )
 
+        Logger.shared.operationStart("capture_phase", metadata: ["mode": effectiveMode.rawValue])
         switch effectiveMode {
         case .screen:
             // Handle screen capture with multi-screen support
-            return try await self.performScreenCapture()
+            let result = try await self.performScreenCapture()
+            Logger.shared.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+            return result
 
         case .window:
             if self.app != nil || self.pid != nil {
@@ -273,6 +285,7 @@ ApplicationResolvable {
                             windowIndex: windowIndex
                         )
                         Logger.shared.stopTimer("window_capture")
+                        Logger.shared.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
                         return result
                     } else {
                         Logger.shared.error(
@@ -287,6 +300,7 @@ ApplicationResolvable {
                         appIdentifier: appIdentifier,
                         windowIndex: nil
                     )
+                    Logger.shared.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
                     return result
                 }
             } else {
@@ -295,7 +309,9 @@ ApplicationResolvable {
 
         case .frontmost:
             Logger.shared.verbose("Capturing frontmost window")
-            return try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            let result = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            Logger.shared.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+            return result
         }
     }
 
@@ -836,6 +852,11 @@ extension SeeCommand {
                 )
             }
 
+            Logger.shared.verbose("Screen capture completed", category: "Capture", metadata: [
+                "mode": "screen-index",
+                "screenIndex": index,
+                "imageBytes": result.imageData.count
+            ])
             return result
         } else {
             // Capture all screens
@@ -891,6 +912,10 @@ extension SeeCommand {
             }
 
             // Return the primary screen result (first one)
+            Logger.shared.verbose("Multi-screen capture completed", category: "Capture", metadata: [
+                "count": results.count,
+                "primaryBytes": results.first?.imageData.count ?? 0
+            ])
             return results[0]
         }
     }

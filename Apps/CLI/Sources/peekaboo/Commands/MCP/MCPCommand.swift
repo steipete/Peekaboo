@@ -130,12 +130,9 @@ extension MCPCommand {
         var skipHealthCheck = false
 
         func run() async throws {
-            let clientManager = await MCPClientManager.shared
-            
-            // Initialize default servers if needed (pass empty dict for now)
-            await clientManager.initializeDefaultServers(userConfigs: [:])
-            
-            let serverNames = await clientManager.getServerNames()
+                // Initialize Tachikoma MCP manager without connecting, to avoid hangs
+                await TachikomaMCPClientManager.shared.initializeFromProfile(connect: false)
+                let serverNames = await TachikomaMCPClientManager.shared.getServerNames()
             
             if serverNames.isEmpty {
                 if jsonOutput {
@@ -158,22 +155,22 @@ extension MCPCommand {
             }
             
             // Get health status for all servers
-            let healthResults = skipHealthCheck ? [:] : await clientManager.checkAllServersHealth()
+                let healthResults: [String: MCPServerHealth] = [:]
             
             if jsonOutput {
-                try await outputJSON(serverNames: serverNames, healthResults: healthResults, clientManager: clientManager)
+                try await outputJSON(serverNames: serverNames, healthResults: healthResults)
             } else {
-                await outputFormatted(serverNames: serverNames, healthResults: healthResults, clientManager: clientManager)
+                await outputFormatted(serverNames: serverNames, healthResults: healthResults)
             }
         }
         
-        private func outputJSON(serverNames: [String], healthResults: [String: MCPServerHealth], clientManager: MCPClientManager) async throws {
+        private func outputJSON(serverNames: [String], healthResults: [String: MCPServerHealth]) async throws {
             var servers: [String: Any] = [:]
             var healthyCount = 0
             
             for serverName in serverNames {
-                let serverInfo = await clientManager.getServerInfo(name: serverName)
-                let health = healthResults[serverName] ?? .unknown
+                let serverInfo = await TachikomaMCPClientManager.shared.getServerInfo(name: serverName)
+                let health = healthResults[serverName] ?? (serverInfo?.connected == true ? .connected(toolCount: 0, responseTime: 0) : .unknown)
                 
                 servers[serverName] = [
                     "command": serverInfo?.config.command ?? "",
@@ -205,12 +202,12 @@ extension MCPCommand {
             }
         }
         
-        private func outputFormatted(serverNames: [String], healthResults: [String: MCPServerHealth], clientManager: MCPClientManager) async {
+        private func outputFormatted(serverNames: [String], healthResults: [String: MCPServerHealth]) async {
             var healthyCount = 0
             
             for serverName in serverNames.sorted() {
-                let serverInfo = await clientManager.getServerInfo(name: serverName)
-                let health = healthResults[serverName] ?? .unknown
+                let serverInfo = await TachikomaMCPClientManager.shared.getServerInfo(name: serverName)
+                let health = healthResults[serverName] ?? (serverInfo?.connected == true ? .connected(toolCount: 0, responseTime: 0) : .unknown)
                 
                 if health.isHealthy {
                     healthyCount += 1
@@ -224,7 +221,7 @@ extension MCPCommand {
                 let healthText = health.statusText
                 
                 // Show if this is a default server
-                let isDefault = await clientManager.isDefaultServer(name: serverName)
+                let isDefault = (serverName == "browser")
                 let defaultMarker = isDefault ? " [default]" : ""
                 
                 print("\(serverName): \(fullCommand) - \(healthSymbol) \(healthText)\(defaultMarker)")
@@ -234,7 +231,7 @@ extension MCPCommand {
             print("Total: \(serverNames.count) servers configured, \(healthyCount) healthy")
             
             // Show tool count if we have external tools
-            let externalTools = await clientManager.getExternalTools()
+            let externalTools = await TachikomaMCPClientManager.shared.getExternalToolsByServer()
             let totalExternalTools = externalTools.values.reduce(0) { $0 + $1.count }
             if totalExternalTools > 0 {
                 print("External tools available: \(totalExternalTools)")

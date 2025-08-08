@@ -95,6 +95,13 @@ ApplicationResolvable {
     func run() async throws {
         configureVerboseLogging()
         Logger.shared.setJsonOutputMode(self.jsonOutput)
+        Logger.shared.operationStart("image_command", metadata: [
+            "mode": self.mode?.rawValue ?? "auto",
+            "app": self.app ?? "none",
+            "pid": self.pid ?? 0,
+            "annotate": false,
+            "hasAnalyzePrompt": self.analyze != nil
+        ])
 
         do {
             // Check permissions
@@ -103,17 +110,39 @@ ApplicationResolvable {
             Logger.shared.debug("Screen recording permission granted")
 
             // Perform capture
+            Logger.shared.startTimer("image_capture")
             let savedFiles = try await performCapture()
+            Logger.shared.stopTimer("image_capture")
 
             // Analyze if requested
             if let analyzePrompt = analyze, let firstFile = savedFiles.first {
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: firstFile.path)[.size] as? Int) ?? 0
+                Logger.shared.verbose(
+                    "Starting AI analysis",
+                    category: "AI",
+                    metadata: [
+                        "imagePath": firstFile.path,
+                        "imageSizeBytes": fileSize,
+                        "promptLength": analyzePrompt.count
+                    ]
+                )
+                Logger.shared.operationStart("ai_analysis", metadata: ["promptPreview": String(analyzePrompt.prefix(80))])
+                Logger.shared.startTimer("ai_generate")
                 let analysisResult = try await analyzeImage(at: firstFile.path, with: analyzePrompt)
+                Logger.shared.stopTimer("ai_generate")
+                Logger.shared.operationComplete("ai_analysis", success: true, metadata: [
+                    "provider": analysisResult.provider,
+                    "model": analysisResult.model
+                ])
                 self.outputResultsWithAnalysis(savedFiles, analysis: analysisResult)
             } else {
                 self.outputResults(savedFiles)
             }
         } catch {
             self.handleError(error)
+            Logger.shared.operationComplete("image_command", success: false, metadata: [
+                "error": error.localizedDescription
+            ])
             throw ExitCode(1)
         }
     }

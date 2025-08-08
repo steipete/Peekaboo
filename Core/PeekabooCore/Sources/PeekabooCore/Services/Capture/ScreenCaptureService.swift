@@ -89,7 +89,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             do {
                 // Get available displays
                 self.logger.debug("Fetching shareable content", correlationId: correlationId)
-                let content = try await SCShareableContent.current
+                // Wrap in timeout to avoid hangs on some systems
+                let content = try await withTimeout(seconds: 5.0) {
+                    try await SCShareableContent.current
+                }
                 let displays = content.displays
 
                 self.logger.debug("Found displays", metadata: ["count": displays.count], correlationId: correlationId)
