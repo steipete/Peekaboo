@@ -367,92 +367,83 @@ struct AgentCommand: AsyncParsableCommand {
         // Handle audio input
         let executionTask: String
         if self.audio || self.audioFile != nil {
-            // TODO: Audio functionality not yet implemented
-            print("\(TerminalColor.red)Error: Audio input functionality is not yet implemented\(TerminalColor.reset)")
-            return
-        }
+            if !self.jsonOutput && !self.quiet {
+                if let audioPath = audioFile {
+                    print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
+                } else {
+                    print(
+                        "\(TerminalColor.cyan)🎙️ Starting audio recording... (Press Ctrl+C to stop)\(TerminalColor.reset)"
+                    )
+                }
+            }
 
-        /* Commented out until audio service is implemented
-         if self.audio || self.audioFile != nil {
-         if !self.jsonOutput && !self.quiet {
-         if let audioPath = audioFile {
-         print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
-         } else {
-         print(
-         "\(TerminalColor.cyan)🎙️ Starting audio recording... (Press Ctrl+C to stop)\(TerminalColor.reset)"
-         )
-         }
-         }
+            let audioService = services.audioInput
 
-         let audioService = services.audioInput
+            do {
+                if let audioPath = audioFile {
+                    // Transcribe from file
+                    let url = URL(fileURLWithPath: audioPath)
+                    executionTask = try await audioService.transcribeAudioFile(url)
+                } else {
+                    // Record from microphone
+                    try await audioService.startRecording()
 
-         do {
-         if let audioPath = audioFile {
-         // Transcribe from file
-         let url = URL(fileURLWithPath: audioPath)
-         executionTask = try await audioService.transcribeAudioFile(url)
-         } else {
-         // Record from microphone
-         try await audioService.startRecording()
+                    // Create a continuation to handle the async signal
+                    let transcript = try await withTaskCancellationHandler {
+                        try await withCheckedThrowingContinuation { continuation in
+                            // Set up signal handler for Ctrl+C
+                            let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+                            signalSource.setEventHandler {
+                                signalSource.cancel()
+                                Task { @MainActor in
+                                    do {
+                                        let transcript = try await audioService.stopRecording()
+                                        continuation.resume(returning: transcript)
+                                    } catch {
+                                        continuation.resume(throwing: error)
+                                    }
+                                }
+                            }
+                            signalSource.resume()
 
-         // Create a continuation to handle the async signal
-         let transcript = try await withTaskCancellationHandler {
-         try await withCheckedThrowingContinuation { continuation in
-         // Set up signal handler for Ctrl+C
-         let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-         signalSource.setEventHandler {
-         signalSource.cancel()
-         Task { @MainActor in
-         do {
-         let transcript = try await audioService.stopRecording()
-         continuation.resume(returning: transcript)
-         } catch {
-         continuation.resume(throwing: error)
-         }
-         }
-         }
-         signalSource.resume()
+                            // Also provide a way to stop recording after a timeout (optional)
+                            // This could be configured via a flag if needed
+                        }
+                    } onCancel: {
+                        Task { @MainActor in
+                            _ = try? await audioService.stopRecording()
+                        }
+                    }
 
-         // Also provide a way to stop recording after a timeout (optional)
-         // This could be configured via a flag if needed
-         }
-         } onCancel: {
-         Task { @MainActor in
-         _ = try? await audioService.stopRecording()
-         }
-         }
+                    executionTask = transcript
+                }
 
-         executionTask = transcript
-         }
+                if !self.jsonOutput && !self.quiet {
+                    print("\(TerminalColor.green)✅ Transcription complete\(TerminalColor.reset)")
+                    print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
+                }
 
-         if !self.jsonOutput && !self.quiet {
-         print("\(TerminalColor.green)✅ Transcription complete\(TerminalColor.reset)")
-         print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
-         }
+                // If we have both audio and a task, combine them
+                if let providedTask = task {
+                    executionTask = "\(providedTask)\n\nAudio transcript:\n\(executionTask)"
+                }
 
-         // If we have both audio and a task, combine them
-         if let providedTask = task {
-         executionTask = "\(providedTask)\n\nAudio transcript:\n\(executionTask)"
-         }
-
-         } catch {
-         if self.jsonOutput {
-         let errorObj = [
-         "success": false,
-         "error": "Audio processing failed: \(error.localizedDescription)"
-         ] as [String: Any]
-         let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
-         print(String(data: jsonData, encoding: .utf8) ?? "{}")
-         } else {
-         print(
-         "\(TerminalColor.red)❌ Audio processing failed: \(error.localizedDescription)\(TerminalColor.reset)"
-         )
-         }
-         return
-         }
-         } else {
-         // Regular execution requires task
-         */
+            } catch {
+                if self.jsonOutput {
+                    let errorObj = [
+                        "success": false,
+                        "error": "Audio processing failed: \(error.localizedDescription)"
+                    ] as [String: Any]
+                    let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
+                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                } else {
+                    print(
+                        "\(TerminalColor.red)❌ Audio processing failed: \(error.localizedDescription)\(TerminalColor.reset)"
+                    )
+                }
+                return
+            }
+        } else {
 
         // Check if we have a task to execute
         if let providedTask = task {

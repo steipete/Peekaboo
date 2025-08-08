@@ -78,7 +78,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
             print("\n🚀 Starting agent task: \(task)")
         } else if outputMode == .enhanced || outputMode == .compact {
             // Start spinner animation (fallback color)
-            spinner = Spinner(.dots, "Thinking...", color: .gray)
+            spinner = Spinner(.dots, "Thinking...", color: .default)
             spinner?.start()
         } else if outputMode == .minimal {
             print("Starting: \(task)")

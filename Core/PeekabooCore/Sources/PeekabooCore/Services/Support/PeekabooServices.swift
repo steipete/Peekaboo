@@ -100,6 +100,9 @@ public final class PeekabooServices: @unchecked Sendable {
 
     /// Permissions verification service for checking macOS privacy permissions
     public let permissions: PermissionsService
+    
+    /// Audio input service for recording and transcription
+    public let audioInput: AudioInputService
 
     // Model provider is now handled internally by Tachikoma
 
@@ -176,6 +179,11 @@ public final class PeekabooServices: @unchecked Sendable {
 
         self.permissions = PermissionsService()
         self.logger.debug("✅ PermissionsService initialized")
+        
+        // Initialize AI service for audio/transcription features
+        let aiService = PeekabooAIService()
+        self.audioInput = AudioInputService(aiService: aiService)
+        self.logger.debug("✅ AudioInputService initialized")
 
         // Model provider is now handled internally by Tachikoma
 
@@ -200,6 +208,7 @@ public final class PeekabooServices: @unchecked Sendable {
         files: FileServiceProtocol,
         process: ProcessServiceProtocol,
         permissions: PermissionsService? = nil,
+        audioInput: AudioInputService? = nil,
         agent: AgentServiceProtocol? = nil,
         configuration: ConfigurationManager? = nil,
         screens: ScreenServiceProtocol? = nil)
@@ -217,6 +226,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.files = files
         self.process = process
         self.permissions = permissions ?? PermissionsService()
+        self.audioInput = audioInput ?? AudioInputService(aiService: PeekabooAIService())
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
         self.screens = screens ?? ScreenService()
@@ -239,6 +249,7 @@ public final class PeekabooServices: @unchecked Sendable {
         files: FileServiceProtocol,
         process: ProcessServiceProtocol,
         permissions: PermissionsService,
+        audioInput: AudioInputService,
         configuration: ConfigurationManager,
         agent: AgentServiceProtocol?,
         screens: ScreenServiceProtocol)
@@ -255,6 +266,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.files = files
         self.process = process
         self.permissions = permissions
+        self.audioInput = audioInput
         self.configuration = configuration
         self.agent = agent
         self.screens = screens
@@ -279,6 +291,13 @@ public final class PeekabooServices: @unchecked Sendable {
         let files = FileService()
         let config = ConfigurationManager.shared
         let permissions = PermissionsService()
+        // Configure Tachikoma to use the Peekaboo profile directory for credentials/config
+        TachikomaConfiguration.profileDirectoryName = ".peekaboo"
+        // Load custom providers from profile so providerId/model works
+        CustomProviderRegistry.shared.loadFromProfile()
+        let aiService = PeekabooAIService()
+        logger.debug("✅ AI service initialized (Tachikoma loads env/credentials)")
+        let audioInputSvc = AudioInputService(aiService: aiService)
         let screens = ScreenService()
         let process = ProcessService(
             applicationService: apps,
@@ -288,13 +307,6 @@ public final class PeekabooServices: @unchecked Sendable {
             windowManagementService: windows,
             menuService: menuSvc,
             dockService: dockSvc)
-
-        // Configure Tachikoma to use the Peekaboo profile directory for credentials/config
-        TachikomaConfiguration.profileDirectoryName = ".peekaboo"
-        // Load custom providers from profile so providerId/model works
-        CustomProviderRegistry.shared.loadFromProfile()
-        let aiService = PeekabooAIService()
-        logger.debug("✅ AI service initialized (Tachikoma loads env/credentials)")
 
         // Create services instance first
         let services = PeekabooServices(
@@ -310,8 +322,9 @@ public final class PeekabooServices: @unchecked Sendable {
             files: files,
             process: process,
             permissions: permissions,
-            configuration: config,
+            audioInput: audioInputSvc,
             agent: nil,
+            configuration: config,
             screens: screens)
 
         // Note: AI model provider is created later from environment in createShared
@@ -393,8 +406,9 @@ public final class PeekabooServices: @unchecked Sendable {
             files: files,
             process: process,
             permissions: permissions,
-            configuration: config,
+            audioInput: audioInputSvc,
             agent: agent,
+            configuration: config,
             screens: screens)
     }
 
