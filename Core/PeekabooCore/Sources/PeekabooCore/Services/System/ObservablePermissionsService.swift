@@ -6,7 +6,7 @@ import os.log
 @available(macOS 14.0, *)
 @Observable
 @MainActor
-public final class ObservablePermissionsService {
+public class ObservablePermissionsService {
     // MARK: - Properties
 
     /// Core permissions service
