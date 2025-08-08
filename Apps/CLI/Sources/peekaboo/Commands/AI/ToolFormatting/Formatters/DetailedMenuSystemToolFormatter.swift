@@ -14,36 +14,27 @@ class DetailedMenuSystemToolFormatter: BaseToolFormatter {
         // Menu tools
         case .menuClick:
             return formatMenuClickResult(result)
-        case .menuSearch:
-            return formatMenuSearchResult(result)
-        case .listMenuItems:
-            return formatListMenuItemsResult(result)
+        case .listMenus:
+            return formatListMenusResult(result)
             
         // Dialog tools
         case .dialogInput:
             return formatDialogInputResult(result)
         case .dialogClick:
             return formatDialogClickResult(result)
-        case .dialogDismiss:
-            return formatDialogDismissResult(result)
+        
             
         // System tools
         case .shell:
             return formatShellResult(result)
         case .wait:
             return formatWaitResult(result)
-        case .copy:
-            return formatCopyResult(result)
-        case .paste:
-            return formatPasteResult(result)
+        
             
         // Dock tools
         case .dockClick:
             return formatDockClickResult(result)
-        case .dockAddRemove:
-            return formatDockAddRemoveResult(result)
-        case .dockPosition:
-            return formatDockPositionResult(result)
+        
             
         default:
             return super.formatResultSummary(result: result)

@@ -36,22 +36,22 @@ public final class DetailedToolFormatterRegistry: @unchecked Sendable {
         // Detailed UI Automation tools
         let uiFormatter = DetailedUIAutomationToolFormatter(toolType: .click)
         register(uiFormatter, for: [
-            .click, .doubleClick, .rightClick,
+            .click,
             .type, .scroll, .hotkey, .press,
-            .dragDrop, .swipe, .move
+            .move
         ])
         
         // Detailed Menu and System tools
         let menuSystemFormatter = DetailedMenuSystemToolFormatter(toolType: .menuClick)
         register(menuSystemFormatter, for: [
             // Menu tools
-            .menuClick, .menuSearch, .listMenuItems,
+            .menuClick, .listMenus,
             // Dialog tools
-            .dialogInput, .dialogClick, .dialogDismiss,
+            .dialogInput, .dialogClick,
             // System tools
-            .shell, .wait, .copy, .paste,
+            .shell, .wait,
             // Dock tools
-            .dockClick, .dockAddRemove, .dockPosition
+            .dockClick
         ])
         
         // Window management tools (use standard for now)
@@ -104,7 +104,7 @@ public final class DetailedToolFormatterRegistry: @unchecked Sendable {
             return ElementToolFormatter(toolType: toolType)
         case .system:
             return DetailedMenuSystemToolFormatter(toolType: toolType)
-        case .communication:
+        case .completion:
             return CommunicationToolFormatter(toolType: toolType)
         }
     }

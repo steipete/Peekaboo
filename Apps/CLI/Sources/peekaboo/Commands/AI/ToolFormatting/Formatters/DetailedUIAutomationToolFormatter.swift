@@ -13,10 +13,6 @@ class DetailedUIAutomationToolFormatter: UIAutomationToolFormatter {
         switch toolType {
         case .click:
             return formatClickResult(result)
-        case .doubleClick:
-            return formatDoubleClickResult(result)
-        case .rightClick:
-            return formatRightClickResult(result)
         case .type:
             return formatTypeResult(result)
         case .hotkey:
@@ -25,10 +21,7 @@ class DetailedUIAutomationToolFormatter: UIAutomationToolFormatter {
             return formatPressResult(result)
         case .scroll:
             return formatScrollResult(result)
-        case .dragDrop:
-            return formatDragDropResult(result)
-        case .swipe:
-            return formatSwipeResult(result)
+        
         default:
             return super.formatResultSummary(result: result)
         }

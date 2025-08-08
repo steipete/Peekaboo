@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Registry for tool formatters, providing type-safe lookup and management
+/// Main registry for tool formatters with comprehensive result formatting
 public final class ToolFormatterRegistry: @unchecked Sendable {
     
     // Singleton instance for global access
@@ -23,43 +23,90 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
     // MARK: - Registration
     
     private func registerAllFormatters() {
-        // Register formatters by category for better organization
+        // Register all formatters with comprehensive output
         
         // Application tools
-        let appFormatter = ApplicationToolFormatter(toolType: .launchApp)
+        let appFormatter = DetailedApplicationToolFormatter(toolType: .launchApp)
         register(appFormatter, for: [.launchApp, .listApps, .quitApp, .focusApp, .hideApp, .unhideApp, .switchApp])
         
         // Vision tools
-        let visionFormatter = VisionToolFormatter(toolType: .see)
+        let visionFormatter = DetailedVisionToolFormatter(toolType: .see)
         register(visionFormatter, for: [.see, .screenshot, .windowCapture, .analyze])
         
         // UI Automation tools
-        let uiFormatter = UIAutomationToolFormatter(toolType: .click)
-        register(uiFormatter, for: [.click, .type, .scroll, .hotkey, .drag, .move, .swipe, .press])
+        let uiFormatter = DetailedUIAutomationToolFormatter(toolType: .click)
+        register(uiFormatter, for: [
+            .click,
+            .type, .scroll, .hotkey, .press,
+            .move
+        ])
         
-        // Window management tools
+        // Menu and System tools
+        let menuSystemFormatter = DetailedMenuSystemToolFormatter(toolType: .menuClick)
+        register(menuSystemFormatter, for: [
+            // Menu tools
+            .menuClick, .listMenus,
+            // Dialog tools
+            .dialogInput, .dialogClick,
+            // System tools
+            .shell, .wait,
+            // Dock tools
+            .dockClick
+        ])
+        
+        // Window management tools (use standard for now)
         let windowFormatter = WindowToolFormatter(toolType: .focusWindow)
-        register(windowFormatter, for: [.focusWindow, .resizeWindow, .listWindows, .minimizeWindow, .maximizeWindow, .listScreens])
+        register(windowFormatter, for: [
+            .focusWindow, .resizeWindow, .listWindows,
+            .minimizeWindow, .maximizeWindow, .listScreens,
+            .listSpaces, .switchSpace, .moveWindowToSpace
+        ])
         
-        // Menu and dialog tools
-        let menuFormatter = MenuDialogToolFormatter(toolType: .menuClick)
-        register(menuFormatter, for: [.menuClick, .listMenus, .dialogClick, .dialogInput])
-        
-        // Dock tools
-        let dockFormatter = DockToolFormatter(toolType: .listDock)
-        register(dockFormatter, for: [.listDock, .dockClick, .dockLaunch])
-        
-        // Element query tools
+        // Element query tools (use standard for now)
         let elementFormatter = ElementToolFormatter(toolType: .findElement)
         register(elementFormatter, for: [.findElement, .listElements, .focused])
         
-        // System tools
-        let systemFormatter = SystemToolFormatter(toolType: .shell)
-        register(systemFormatter, for: [.shell, .wait, .listSpaces, .switchSpace, .moveWindowToSpace])
-        
-        // Communication tools
+        // Communication tools (use standard)
         let commFormatter = CommunicationToolFormatter(toolType: .taskCompleted)
         register(commFormatter, for: [.taskCompleted, .needMoreInformation, .needInfo])
+        
+        // Additional tools that might not have specific formatters yet
+        registerRemainingTools()
+    }
+    
+    private func registerRemainingTools() {
+        // Register any remaining tools with appropriate formatters
+        for toolType in ToolType.allCases {
+            if formatters[toolType] == nil {
+                // Determine best formatter based on category
+                let formatter = createDefaultFormatter(for: toolType)
+                formatters[toolType] = formatter
+            }
+        }
+    }
+    
+    private func createDefaultFormatter(for toolType: ToolType) -> ToolFormatter {
+        // Create appropriate formatter based on tool category
+        switch toolType.category {
+        case .vision:
+            return DetailedVisionToolFormatter(toolType: toolType)
+        case .ui:
+            return DetailedUIAutomationToolFormatter(toolType: toolType)
+        case .app:
+            return DetailedApplicationToolFormatter(toolType: toolType)
+        case .window:
+            return WindowToolFormatter(toolType: toolType)
+        case .menu:
+            return DetailedMenuSystemToolFormatter(toolType: toolType)
+        case .dock:
+            return DetailedMenuSystemToolFormatter(toolType: toolType)
+        case .element:
+            return ElementToolFormatter(toolType: toolType)
+        case .system:
+            return DetailedMenuSystemToolFormatter(toolType: toolType)
+        case .communication:
+            return CommunicationToolFormatter(toolType: toolType)
+        }
     }
     
     private func register(_ formatter: ToolFormatter, for toolTypes: [ToolType]) {
@@ -73,6 +120,14 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
     private func createFormatterInstance(_ formatter: ToolFormatter, for toolType: ToolType) -> ToolFormatter {
         // Create appropriate formatter instance based on type
         switch formatter {
+        case is DetailedApplicationToolFormatter:
+            return DetailedApplicationToolFormatter(toolType: toolType)
+        case is DetailedVisionToolFormatter:
+            return DetailedVisionToolFormatter(toolType: toolType)
+        case is DetailedUIAutomationToolFormatter:
+            return DetailedUIAutomationToolFormatter(toolType: toolType)
+        case is DetailedMenuSystemToolFormatter:
+            return DetailedMenuSystemToolFormatter(toolType: toolType)
         case is ApplicationToolFormatter:
             return ApplicationToolFormatter(toolType: toolType)
         case is VisionToolFormatter:

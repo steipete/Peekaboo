@@ -220,9 +220,6 @@ struct AgentCommand: AsyncParsableCommand {
 
     @Flag(name: .long, help: "Enable full Terminal User Interface mode")
     var tui = false
-    
-    @Flag(name: .long, help: "Enable enhanced output with detailed formatters")
-    var enhanced = false
 
     @Flag(name: .long, help: "Force simple output mode (no colors or rich formatting)")
     var simple = false
@@ -236,7 +233,6 @@ struct AgentCommand: AsyncParsableCommand {
         if self.quiet { return .quiet }
         if self.verbose || self.debugTerminal { return .verbose }
         if self.tui { return .tui }
-        if self.enhanced { return .enhanced }
         if self.simple { return .minimal }
         if self.noColor { return .minimal }
         
