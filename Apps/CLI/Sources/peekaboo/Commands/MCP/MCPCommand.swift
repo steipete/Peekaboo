@@ -319,7 +319,7 @@ extension MCPCommand {
 
             do {
                 try await TachikomaMCPClientManager.shared.addServer(name: name, config: config)
-                try TachikomaMCPClientManager.shared.persist()
+                try await TachikomaMCPClientManager.shared.persist()
                 print("✓ Added MCP server '\(name)' and saved to profile")
 
                 if !disabled {
