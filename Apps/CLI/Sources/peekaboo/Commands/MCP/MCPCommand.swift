@@ -3,6 +3,7 @@ import Foundation
 import Logging
 import MCP
 import PeekabooCore
+import TachikomaMCP
 
 /// Command for Model Context Protocol server operations
 struct MCPCommand: AsyncParsableCommand {
@@ -169,19 +170,23 @@ extension MCPCommand {
             var healthyCount = 0
             
             for serverName in serverNames {
-                let serverInfo = await TachikomaMCPClientManager.shared.getServerInfo(name: serverName)
-                let health = healthResults[serverName] ?? (serverInfo?.connected == true ? .connected(toolCount: 0, responseTime: 0) : .unknown)
-                
-                servers[serverName] = [
-                    "command": serverInfo?.config.command ?? "",
-                    "args": serverInfo?.config.args ?? [],
-                    "enabled": serverInfo?.config.enabled ?? false,
-                    "health": [
-                        "status": health.isHealthy ? "connected" : "disconnected",
-                        "details": health.statusText
-                    ]
+                let info = await TachikomaMCPClientManager.shared.getServerInfo(name: serverName)
+                let isEnabled = info?.config.enabled ?? false
+                let command = info?.config.command ?? ""
+                let args = info?.config.args ?? []
+                let isConnected = info?.connected ?? false
+                let health: MCPServerHealth = healthResults[serverName] ?? (isConnected ? .connected(toolCount: 0, responseTime: 0) : .unknown)
+
+                var serverDict: [String: Any] = [:]
+                serverDict["command"] = command
+                serverDict["args"] = args
+                serverDict["enabled"] = isEnabled
+                serverDict["health"] = [
+                    "status": health.isHealthy ? "connected" : "disconnected",
+                    "details": health.statusText
                 ]
-                
+                servers[serverName] = serverDict
+
                 if health.isHealthy {
                     healthyCount += 1
                 }
