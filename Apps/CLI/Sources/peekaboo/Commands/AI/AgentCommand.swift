@@ -1048,5 +1048,4 @@ struct AgentCommand: AsyncParsableCommand {
         print(String(repeating: "=", count: 60) + "\n")
     }
 }  // End of AgentCommand struct
-}
 

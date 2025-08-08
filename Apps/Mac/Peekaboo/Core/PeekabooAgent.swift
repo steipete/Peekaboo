@@ -493,18 +493,24 @@ final class PeekabooAgent {
             self.currentTool = name
             self.currentToolArgs = arguments
 
-            // Create compact summary for display
-            if let data = arguments.data(using: .utf8),
-               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            {
-                self.currentToolArgs = self.compactToolSummary(name, args)
-            }
+            // Use formatter bridge to create formatted message
+            let formattedMessage = ToolFormatterBridge.shared.formatToolCall(
+                name: name,
+                arguments: arguments,
+                result: nil
+            )
+            
+            // Store formatted args for display
+            self.currentToolArgs = ToolFormatterBridge.shared.formatArguments(
+                name: name,
+                arguments: arguments
+            )
 
             // Add tool execution message to session
             if let currentSession = sessionStore.currentSession {
                 let toolMessage = ConversationMessage(
                     role: .system,
-                    content: "🔧 \(name): \(currentToolArgs ?? arguments)",
+                    content: formattedMessage,
                     toolCalls: [ConversationToolCall(name: name, arguments: arguments, result: "Running...")])
                 self.sessionStore.addMessage(toolMessage, to: currentSession)
             }
@@ -589,27 +595,9 @@ final class PeekabooAgent {
 
     // MARK: - Tool Display Helpers
 
-    /// Get icon for tool name
+    /// Get icon for tool name (delegates to formatter bridge)
     static func iconForTool(_ toolName: String) -> String {
-        switch toolName {
-        case "see", "screenshot", "window_capture": "👁"
-        case "click", "dialog_click": "🖱"
-        case "type", "dialog_input": "⌨️"
-        case "list_apps", "launch_app", "dock_launch": "📱"
-        case "list_windows", "focus_window", "resize_window": "🪟"
-        case "hotkey": "⌨️"
-        case "wait": "⏱"
-        case "scroll": "📜"
-        case "find_element", "list_elements", "focused": "🔍"
-        case "shell": "💻"
-        case "menu", "menu_click", "list_menus": "📋"
-        case "dialog": "💬"
-        case "analyze_screenshot": "🤖"
-        case "list", "list_dock": "📋"
-        case "task_completed": "✅"
-        case "need_more_information": "❓"
-        default: "⚙️"
-        }
+        ToolFormatterBridge.shared.toolIcon(for: toolName)
     }
 
     /// Create compact summary of tool arguments
