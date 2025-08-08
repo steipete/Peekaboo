@@ -291,6 +291,8 @@ public final class PeekabooServices: @unchecked Sendable {
 
         // Configure Tachikoma to use the Peekaboo profile directory for credentials/config
         TachikomaConfiguration.profileDirectoryName = ".peekaboo"
+        // Load custom providers from profile so providerId/model works
+        CustomProviderRegistry.shared.loadFromProfile()
         let aiService = PeekabooAIService()
         logger.debug("✅ AI service initialized (Tachikoma loads env/credentials)")
 
