@@ -2,29 +2,43 @@ import Foundation
 import Observation
 import os.log
 
+@MainActor
+public protocol ObservablePermissionsServiceProtocol {
+    var screenRecordingStatus: ObservablePermissionsService.PermissionState { get }
+    var accessibilityStatus: ObservablePermissionsService.PermissionState { get }
+    var appleScriptStatus: ObservablePermissionsService.PermissionState { get }
+    var hasAllPermissions: Bool { get }
+    func checkPermissions()
+    func requestScreenRecording() throws
+    func requestAccessibility() throws
+    func requestAppleScript() throws
+    func startMonitoring(interval: TimeInterval)
+    func stopMonitoring()
+}
+
 /// Observable wrapper for PermissionsService that provides UI-friendly state management
 @available(macOS 14.0, *)
 @Observable
 @MainActor
-public class ObservablePermissionsService {
+public final class ObservablePermissionsService: ObservablePermissionsServiceProtocol {
     // MARK: - Properties
 
     /// Core permissions service
     private let core: PermissionsService
 
     /// Current permission status
-    public private(set) var status: PermissionsStatus
+        public private(set) var status: PermissionsStatus
 
     /// Individual permission states for UI binding
-    public private(set) var screenRecordingStatus: PermissionState = .notDetermined
-    public private(set) var accessibilityStatus: PermissionState = .notDetermined
-    public private(set) var appleScriptStatus: PermissionState = .notDetermined
+        public private(set) var screenRecordingStatus: PermissionState = .notDetermined
+        public private(set) var accessibilityStatus: PermissionState = .notDetermined
+        public private(set) var appleScriptStatus: PermissionState = .notDetermined
 
     /// Timer for monitoring permission changes
     private var monitorTimer: Timer?
 
     /// Whether monitoring is active
-    public private(set) var isMonitoring = false
+        public private(set) var isMonitoring = false
 
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ObservablePermissions")
 
