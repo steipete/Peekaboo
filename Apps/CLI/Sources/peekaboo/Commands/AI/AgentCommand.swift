@@ -618,6 +618,10 @@ struct AgentCommand: AsyncParsableCommand {
             print("DEBUG AgentCommand: Parsing model string: '\(modelString)'")
         }
         let lowercased = modelString.lowercased()
+        
+        if isDebugLoggingEnabled {
+            print("DEBUG AgentCommand: Lowercased model string: '\(lowercased)'")
+        }
 
         // OpenAI Models
         // GPT-5 models (latest and greatest) - check these FIRST
