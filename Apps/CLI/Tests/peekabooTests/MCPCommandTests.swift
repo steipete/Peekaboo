@@ -13,13 +13,19 @@ struct MCPCommandTests {
         let command = MCPCommand.self
 
         #expect(command.configuration.commandName == "mcp")
-        #expect(command.configuration.subcommands.count == 4)
+        #expect(command.configuration.subcommands.count == 10)
 
         let subcommandNames = command.configuration.subcommands.map { $0.configuration.commandName }
         #expect(subcommandNames.contains("serve"))
         #expect(subcommandNames.contains("call"))
         #expect(subcommandNames.contains("list"))
         #expect(subcommandNames.contains("inspect"))
+        #expect(subcommandNames.contains("add"))
+        #expect(subcommandNames.contains("remove"))
+        #expect(subcommandNames.contains("test"))
+        #expect(subcommandNames.contains("info"))
+        #expect(subcommandNames.contains("enable"))
+        #expect(subcommandNames.contains("disable"))
     }
 
     @Test("MCP serve command default options")
@@ -167,14 +173,7 @@ struct MCPCommandErrorHandlingTests {
         // These commands are marked as not implemented
         // They should fail with appropriate error messages
 
-        let list = MCPCommand.List()
-        await #expect(throws: ExitCode.self) {
-            try await list.run()
-        }
-
-        var call = MCPCommand.Call()
-        call.server = "test"
-        call.tool = "echo"
+        var call = try MCPCommand.Call.parse(["test", "--tool", "echo"])
         await #expect(throws: ExitCode.self) {
             try await call.run()
         }

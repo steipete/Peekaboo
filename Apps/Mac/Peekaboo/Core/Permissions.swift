@@ -31,6 +31,7 @@ final class Permissions {
         self.permissionsService.hasAllPermissions
     }
 
+    @MainActor
     init(permissionsService: ObservablePermissionsServiceProtocol = ObservablePermissionsService()) {
         self.permissionsService = permissionsService
     }

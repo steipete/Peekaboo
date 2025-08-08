@@ -266,8 +266,8 @@ struct ModelSelectionEdgeCasesTests {
             eventDelegate: nil
         )
         
-        // Dry run uses default model since we called the protocol method
-        #expect(result.metadata.modelName == LanguageModel.anthropic(.opus4).description)
+        // Dry run uses default model (GPT-5 for tests)
+        #expect(result.metadata.modelName == LanguageModel.openai(.gpt5).description)
         #expect(result.content.contains("Dry run completed"))
     }
     
@@ -290,7 +290,7 @@ struct ModelSelectionEdgeCasesTests {
             eventDelegate: nil
         )
         
-        #expect(result.metadata.modelName == LanguageModel.anthropic(.opus4).description)
+        #expect(result.metadata.modelName == LanguageModel.openai(.gpt5).description)
         #expect(result.content.contains("Dry run completed"))
     }
 }

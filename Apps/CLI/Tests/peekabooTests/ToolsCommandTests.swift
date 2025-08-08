@@ -35,8 +35,8 @@ struct ToolsCommandTests {
     
     @Test("ToolsCommand argument parsing - native only")
     func testArgumentParsingNativeOnly() throws {
-        let args = ["tools", "--native-only"]
-        var command = try ToolsCommand.parseAsRoot(args) as! ToolsCommand
+        let args = ["--native-only"]
+        var command = try ToolsCommand.parse(args)
         
         #expect(command.nativeOnly == true)
         #expect(command.mcpOnly == false)
@@ -44,8 +44,8 @@ struct ToolsCommandTests {
     
     @Test("ToolsCommand argument parsing - mcp only")
     func testArgumentParsingMcpOnly() throws {
-        let args = ["tools", "--mcp-only"]
-        var command = try ToolsCommand.parseAsRoot(args) as! ToolsCommand
+        let args = ["--mcp-only"]
+        var command = try ToolsCommand.parse(args)
         
         #expect(command.nativeOnly == false)
         #expect(command.mcpOnly == true)
@@ -53,8 +53,8 @@ struct ToolsCommandTests {
     
     @Test("ToolsCommand argument parsing - specific server")
     func testArgumentParsingSpecificServer() throws {
-        let args = ["tools", "--mcp", "github"]
-        var command = try ToolsCommand.parseAsRoot(args) as! ToolsCommand
+        let args = ["--mcp", "github"]
+        var command = try ToolsCommand.parse(args)
         
         #expect(command.mcp == "github")
         #expect(command.nativeOnly == false)
@@ -63,24 +63,24 @@ struct ToolsCommandTests {
     
     @Test("ToolsCommand argument parsing - verbose")
     func testArgumentParsingVerbose() throws {
-        let args = ["tools", "--verbose"]
-        var command = try ToolsCommand.parseAsRoot(args) as! ToolsCommand
+        let args = ["--verbose"]
+        var command = try ToolsCommand.parse(args)
         
         #expect(command.verbose == true)
     }
     
     @Test("ToolsCommand argument parsing - json output")
     func testArgumentParsingJsonOutput() throws {
-        let args = ["tools", "--json-output"]
-        var command = try ToolsCommand.parseAsRoot(args) as! ToolsCommand
+        let args = ["--json-output"]
+        var command = try ToolsCommand.parse(args)
         
         #expect(command.jsonOutput == true)
     }
     
     @Test("ToolsCommand argument parsing - multiple flags")
     func testArgumentParsingMultipleFlags() throws {
-        let args = ["tools", "--verbose", "--json-output", "--include-disabled", "--group-by-server"]
-        var command = try ToolsCommand.parseAsRoot(args) as! ToolsCommand
+        let args = ["--verbose", "--json-output", "--include-disabled", "--group-by-server"]
+        var command = try ToolsCommand.parse(args)
         
         #expect(command.verbose == true)
         #expect(command.jsonOutput == true)
@@ -90,8 +90,8 @@ struct ToolsCommandTests {
     
     @Test("ToolsCommand argument parsing - combined options")
     func testArgumentParsingCombined() throws {
-        let args = ["tools", "--mcp", "filesystem", "--verbose", "--sort"]
-        var command = try ToolsCommand.parseAsRoot(args) as! ToolsCommand
+        let args = ["--mcp", "filesystem", "--verbose", "--sort"]
+        var command = try ToolsCommand.parse(args)
         
         #expect(command.mcp == "filesystem")
         #expect(command.verbose == true)
@@ -148,10 +148,10 @@ struct ToolFilterValidationTests {
     @Test("ToolsCommand validation in parsing")
     func testValidationInParsing() throws {
         // These should parse successfully
-        _ = try ToolsCommand.parseAsRoot(["tools", "--native-only"])
-        _ = try ToolsCommand.parseAsRoot(["tools", "--mcp-only"])
-        _ = try ToolsCommand.parseAsRoot(["tools", "--mcp", "github"])
-        _ = try ToolsCommand.parseAsRoot(["tools", "--mcp-only", "--mcp", "github"])
+        _ = try ToolsCommand.parse(["--native-only"])
+        _ = try ToolsCommand.parse(["--mcp-only"])
+        _ = try ToolsCommand.parse(["--mcp", "github"])
+        _ = try ToolsCommand.parse(["--mcp-only", "--mcp", "github"])
         
         // Basic parsing should work - validation might happen during execution
     }

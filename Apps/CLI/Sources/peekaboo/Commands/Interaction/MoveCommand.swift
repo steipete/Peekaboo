@@ -58,6 +58,24 @@ struct MoveCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
+    mutating func validate() throws {
+        // Ensure at least one target is specified
+        guard center || coordinates != nil || to != nil || id != nil else {
+            throw ValidationError("Specify coordinates, --to, --id, or --center")
+        }
+
+        // Validate coordinates format if provided
+        if let coordString = coordinates {
+            let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2,
+                  let _ = Double(parts[0]),
+                  let _ = Double(parts[1])
+            else {
+                throw ValidationError("Invalid coordinates format. Use: x,y")
+            }
+        }
+    }
+
     mutating func run() async throws {
         let startTime = Date()
         Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -79,12 +97,8 @@ struct MoveCommand: AsyncParsableCommand {
             } else if let coordString = coordinates {
                 // Parse coordinates
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                guard parts.count == 2,
-                      let x = Double(parts[0]),
-                      let y = Double(parts[1])
-                else {
-                    throw ArgumentParser.ValidationError("Invalid coordinates format. Use: x,y")
-                }
+                let x = Double(parts[0])!
+                let y = Double(parts[1])!
                 targetLocation = CGPoint(x: x, y: y)
                 targetDescription = "Coordinates (\(Int(x)), \(Int(y)))"
 

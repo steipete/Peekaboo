@@ -41,6 +41,7 @@ extension MCPCommand {
     /// Start MCP server
     struct Serve: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
+            commandName: "serve",
             abstract: "Start Peekaboo as an MCP server",
             discussion: """
             Starts Peekaboo as an MCP server, exposing all its tools via the
@@ -83,6 +84,7 @@ extension MCPCommand {
     /// Call tool on MCP server
     struct Call: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
+            commandName: "call",
             abstract: "Call a tool on another MCP server",
             discussion: """
             Connect to another MCP server and execute a tool. This allows
@@ -111,6 +113,7 @@ extension MCPCommand {
     /// List available MCP servers with health checking
     struct List: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
+            commandName: "list",
             abstract: "List configured MCP servers with health status",
             discussion: """
             Shows all configured external MCP servers along with their current health status.
@@ -560,6 +563,7 @@ extension MCPCommand {
     /// Inspect MCP connection
     struct Inspect: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
+            commandName: "inspect",
             abstract: "Debug MCP connections",
             discussion: "Provides debugging information for MCP connections."
         )

@@ -12,13 +12,13 @@ struct ListCommandTests {
     @Test("ListCommand has correct subcommands", .tags(.fast))
     func listCommandSubcommands() throws {
         // Test that ListCommand has the expected subcommands
-        #expect(ListCommand.configuration.subcommands.count == 3)
-        let containsApps = ListCommand.configuration.subcommands.contains { $0 == AppsSubcommand.self }
-        #expect(containsApps)
-        let containsWindows = ListCommand.configuration.subcommands.contains { $0 == WindowsSubcommand.self }
-        #expect(containsWindows)
-        let containsPermissions = ListCommand.configuration.subcommands.contains { $0 == PermissionsSubcommand.self }
-        #expect(containsPermissions)
+        #expect(ListCommand.configuration.subcommands.count == 5)
+        let subcommandTypes = ListCommand.configuration.subcommands
+        #expect(subcommandTypes.contains { $0 == AppsSubcommand.self })
+        #expect(subcommandTypes.contains { $0 == WindowsSubcommand.self })
+        #expect(subcommandTypes.contains { $0 == PermissionsSubcommand.self })
+        #expect(subcommandTypes.contains { $0 == MenuBarSubcommand.self })
+        #expect(subcommandTypes.contains { $0 == ScreensSubcommand.self })
     }
 
     @Test("AppsSubcommand parsing with defaults", .tags(.fast))

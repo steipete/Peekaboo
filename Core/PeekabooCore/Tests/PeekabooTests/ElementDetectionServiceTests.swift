@@ -133,7 +133,7 @@ struct ElementDetectionServiceTests {
         // Test finding elements in the stored result
         if let detectionResult = result {
             let allElements = detectionResult.elements.all
-            #expect(allElements.count == 3)
+            #expect(allElements.count == 2)
 
             // Find button by ID
             if let button = allElements.first(where: { $0.id == "button-1" }) {

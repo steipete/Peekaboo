@@ -17,15 +17,15 @@ struct ToolRegistryTests {
         // Check for essential tools
         let toolNames = allTools.map(\.name)
         #expect(toolNames.contains("see"))
-        #expect(toolNames.contains("screenshot"))
+        // screenshot is now part of 'see' tool
         #expect(toolNames.contains("click"))
         #expect(toolNames.contains("type"))
-        #expect(toolNames.contains("press"))
+        // press is now part of 'hotkey' tool
         #expect(toolNames.contains("scroll"))
         #expect(toolNames.contains("hotkey"))
         #expect(toolNames.contains("list_apps"))
         #expect(toolNames.contains("launch_app"))
-        #expect(toolNames.contains("menu_click"))
+        #expect(toolNames.contains("menu"))  // menu_click is now 'menu'
         #expect(toolNames.contains("shell"))
     }
 
@@ -71,19 +71,19 @@ struct ToolRegistryTests {
 
         // Check expected categories
         #expect(toolsByCategory[.vision] != nil)
-        #expect(toolsByCategory[.automation] != nil)
-        #expect(toolsByCategory[.app] != nil)
-        #expect(toolsByCategory[.menu] != nil)
+        #expect(toolsByCategory[.ui] != nil)  // automation is now 'ui'
+        #expect(toolsByCategory[.application] != nil)  // app is now 'application'
+        #expect(toolsByCategory[.dialog] != nil)  // menu is now part of 'dialog'
         #expect(toolsByCategory[.system] != nil)
 
         // Verify tools are in correct categories
         if let visionTools = toolsByCategory[.vision] {
             let visionToolNames = visionTools.map(\.name)
             #expect(visionToolNames.contains("see"))
-            #expect(visionToolNames.contains("screenshot"))
+            // screenshot is now part of 'see' tool
         }
 
-        if let automationTools = toolsByCategory[.automation] {
+        if let automationTools = toolsByCategory[.ui] {  // automation is now 'ui'
             let automationToolNames = automationTools.map(\.name)
             #expect(automationToolNames.contains("click"))
             #expect(automationToolNames.contains("type"))

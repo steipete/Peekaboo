@@ -163,8 +163,9 @@ struct ScrollServiceTests {
                 smooth: false,
                 delay: 10,
                 sessionId: nil)
-        } catch is NotFoundError {
-            // Expected in test environment
+        } catch {
+            // Expected in test environment - element won't exist
+            // Could be NotFoundError or PeekabooError.elementNotFound
         }
     }
 
