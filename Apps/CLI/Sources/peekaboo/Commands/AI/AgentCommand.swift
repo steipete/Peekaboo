@@ -398,7 +398,6 @@ struct AgentCommand: AsyncParsableCommand {
         // Execute task
         try await self.executeTask(agentService, task: executionTask, maxSteps: self.maxSteps ?? 20)
     }
-    }
 
     // MARK: - Task Execution
 
