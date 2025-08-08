@@ -820,8 +820,7 @@ struct AgentCommand: AsyncParsableCommand {
                 throw error
             }
         }
-    }
-
+    
     func displayResult(_ result: AgentExecutionResult) {
         if self.jsonOutput {
             let response = [

@@ -33,6 +33,7 @@ let package = Package(
             ],
             swiftSettings: [
                 .unsafeFlags(["-parse-as-library"]),
+                .unsafeFlags(["-enable-batch-mode"], .when(configuration: .debug)),
             ],
             linkerSettings: [
                 .unsafeFlags([
