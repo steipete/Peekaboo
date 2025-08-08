@@ -132,7 +132,7 @@ struct AgentCommandTests {
     
     @Test("Ollama model parsing")
     func testOllamaModelParsing() async throws {
-        let command = AgentCommand()
+        _ = AgentCommand()
         
         // Test Llama variants
         // #expect(command.parseModelString("llama3.3") == .ollama(.llama3_3))

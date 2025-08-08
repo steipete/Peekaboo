@@ -210,7 +210,7 @@ struct AgentResumeCLITests {
 
     @Test("Resume prompt is constructed correctly")
     func resumePromptIsConstructedCorrectly() {
-        let originalTask = "Open TextEdit"
+        _ = "Open TextEdit"  // Original task
         let continuationTask = "Now save the document"
 
         let expectedPrompt = "Continue with the original task. The user's response: \(continuationTask)"
@@ -251,7 +251,7 @@ struct AgentResumeCLITests {
 
     @Test("Resume handles special characters in task")
     func resumeHandlesSpecialCharactersInTask() {
-        let specialTask = "Task with \"quotes\" and 'apostrophes' and {brackets} and <tags>"
+        _ = "Task with \"quotes\" and 'apostrophes' and {brackets} and <tags>"  // Special task
         let continuationTask = "Continue with émojis 🤖 and unicode ∆∇∫"
 
         let resumePrompt = "Continue with the original task. The user's response: \(continuationTask)"
@@ -262,7 +262,7 @@ struct AgentResumeCLITests {
 
     @Test("Resume handles very long tasks")
     func resumeHandlesVeryLongTasks() {
-        let longTask = String(repeating: "Very long task description. ", count: 100)
+        _ = String(repeating: "Very long task description. ", count: 100)  // Long task
         let longContinuation = String(repeating: "Long continuation. ", count: 50)
 
         let resumePrompt = "Continue with the original task. The user's response: \(longContinuation)"

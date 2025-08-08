@@ -8,8 +8,9 @@ struct FocusUtilitiesTests {
     // MARK: - FocusOptions Tests
 
     @Test("FocusOptions default values")
-    func focusOptionsDefaults() {
-        let options = FocusOptions()
+    func focusOptionsDefaults() throws {
+        // Parse empty arguments to get default values
+        let options = try FocusOptions.parse([])
 
         #expect(options.autoFocus == true)
         #expect(options.noAutoFocus == false)
@@ -20,13 +21,15 @@ struct FocusUtilitiesTests {
     }
 
     @Test("FocusOptions protocol conformance")
-    func focusOptionsProtocolConformance() {
-        var options = FocusOptions()
-        options.noAutoFocus = true
-        options.focusTimeout = 10.0
-        options.focusRetryCount = 5
-        options.spaceSwitch = true
-        options.bringToCurrentSpace = true
+    func focusOptionsProtocolConformance() throws {
+        // Parse with options to test protocol conformance
+        let options = try FocusOptions.parse([
+            "--no-auto-focus",
+            "--focus-timeout", "10.0",
+            "--focus-retry-count", "5",
+            "--space-switch",
+            "--bring-to-current-space"
+        ])
 
         // Test as protocol
         let protocolOptions: FocusOptionsProtocol = options

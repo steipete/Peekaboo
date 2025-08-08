@@ -58,7 +58,7 @@ struct MCPListCommandTests {
     @Test("List command argument parsing")
     func testListCommandArgumentParsing() throws {
         let args = ["mcp", "list", "--json-output", "--skip-health-check"]
-        let parsed = try MCPCommand.parseAsRoot(args) as! MCPCommand
+        _ = try MCPCommand.parseAsRoot(args) as! MCPCommand
         
         // We can't easily access the subcommand from the parsed result
         // but we can verify the parsing succeeds

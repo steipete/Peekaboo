@@ -155,9 +155,8 @@ struct AgentMenuTests {
         if let steps = json.data?.steps {
             // Find menu discovery steps
             var foundDiscovery = false
-            var foundAction = false
 
-            for (index, step) in steps.enumerated() {
+            for (_, step) in steps.enumerated() {
                 if step.tool == "menu" {
                     if let args = step.arguments,
                        let jsonData = try? JSONSerialization.data(withJSONObject: args),
@@ -165,7 +164,7 @@ struct AgentMenuTests {
                         if parsed["subcommand"] as? String == "list" {
                             foundDiscovery = true
                         } else if parsed["subcommand"] as? String == "click", foundDiscovery {
-                            foundAction = true
+                            // Found the action
                         }
                     }
                 }

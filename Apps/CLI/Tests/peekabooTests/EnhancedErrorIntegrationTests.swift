@@ -21,7 +21,7 @@ struct EnhancedErrorIntegrationTests {
 
         // Test non-existent command
         let delegate = TestEventDelegate()
-        let result = try await agent.executeTask(
+        _ = try await agent.executeTask(
             "Run shell command 'nonexistentcommand123 --help'",
             maxSteps: 10,
             dryRun: false,
@@ -53,7 +53,7 @@ struct EnhancedErrorIntegrationTests {
         }
 
         let delegate = TestEventDelegate()
-        let result = try await agent.executeTask(
+        _ = try await agent.executeTask(
             "Launch app 'Safary'", // Typo
             maxSteps: 10,
             dryRun: false,
