@@ -192,7 +192,8 @@ desktop.ini
 
 # Auto-generated version file
 Apps/CLI/Sources/peekaboo/Version.swift
-Apps/CLI/peekaboo
+# Built CLI binary only (not the source folder)
+/Apps/CLI/peekaboo
 
 # Release artifacts
 /release/
@@ -241,4 +242,5 @@ test-fixes-summary.md
 /peekaboo-x86_64
 /peekaboo-arm64
 /debug
-peekaboo
+# Root binary only
+/peekaboo
