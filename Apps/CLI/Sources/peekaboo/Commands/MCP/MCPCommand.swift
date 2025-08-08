@@ -315,17 +315,16 @@ extension MCPCommand {
             )
 
             // Load existing profile configs, add server, persist, then probe
-            let manager = TachikomaMCPClientManager.shared
-            await manager.initializeFromProfile(connect: false)
+            await TachikomaMCPClientManager.shared.initializeFromProfile(connect: false)
 
             do {
-                try await manager.addServer(name: name, config: config)
-                try manager.persist()
+                try await TachikomaMCPClientManager.shared.addServer(name: name, config: config)
+                try TachikomaMCPClientManager.shared.persist()
                 print("✓ Added MCP server '\(name)' and saved to profile")
 
                 if !disabled {
                     print("Testing connection (\(Int(timeout))s timeout)...")
-                    let (ok, count, rt, err) = await manager.probeServer(name: name, timeoutMs: Int(timeout * 1000))
+                    let (ok, count, rt, err) = await TachikomaMCPClientManager.shared.probeServer(name: name, timeoutMs: Int(timeout * 1000))
                     if ok {
                         print("✓ Connected in \(Int(rt * 1000))ms (\(count) tools)")
                     } else {
