@@ -140,8 +140,6 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
             return MenuSystemToolFormatter(toolType: toolType)
         case is WindowToolFormatter:
             return WindowToolFormatter(toolType: toolType)
-        case is MenuDialogToolFormatter:
-            return MenuDialogToolFormatter(toolType: toolType)
         case is DockToolFormatter:
             return DockToolFormatter(toolType: toolType)
         case is ElementToolFormatter:
