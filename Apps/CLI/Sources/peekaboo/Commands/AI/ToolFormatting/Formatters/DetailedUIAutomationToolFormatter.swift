@@ -68,7 +68,7 @@ class DetailedUIAutomationToolFormatter: UIAutomationToolFormatter {
             details.append("\(button) button")
         }
         
-        if let modifiers = ToolResultExtractor.array("modifiers", from: result) as? [String], !modifiers.isEmpty {
+        if let modifiers: [String] = ToolResultExtractor.array("modifiers", from: result), !modifiers.isEmpty {
             let modifierStr = FormattingUtilities.formatKeyboardShortcut(modifiers.joined(separator: "+"))
             details.append("with \(modifierStr)")
         }
@@ -148,7 +148,7 @@ class DetailedUIAutomationToolFormatter: UIAutomationToolFormatter {
         }
         
         // Context menu
-        if let menuItems = ToolResultExtractor.array("contextMenuItems", from: result) as? [String] {
+        if let menuItems: [String] = ToolResultExtractor.array("contextMenuItems", from: result) {
             let count = menuItems.count
             parts.append("• Menu with \(count) item\(count == 1 ? "" : "s")")
             
