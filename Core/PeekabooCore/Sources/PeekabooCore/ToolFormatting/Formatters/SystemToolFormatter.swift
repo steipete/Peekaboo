@@ -1,14 +1,14 @@
 //
 //  SystemToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
 
 /// Formatter for system tools (shell, wait, spaces, etc.)
-class SystemToolFormatter: BaseToolFormatter {
+public class SystemToolFormatter: BaseToolFormatter {
     
-    override func formatCompactSummary(arguments: [String: Any]) -> String {
+    public override func formatCompactSummary(arguments: [String: Any]) -> String {
         switch toolType {
         case .shell:
             var parts: [String] = []
@@ -71,7 +71,7 @@ class SystemToolFormatter: BaseToolFormatter {
         }
     }
     
-    override func formatResultSummary(result: [String: Any]) -> String {
+    public override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .shell:
             var parts: [String] = []
@@ -148,7 +148,7 @@ class SystemToolFormatter: BaseToolFormatter {
         }
     }
     
-    override func formatStarting(arguments: [String: Any]) -> String {
+    public override func formatStarting(arguments: [String: Any]) -> String
         switch toolType {
         case .shell:
             if let command = arguments["command"] as? String {
@@ -181,7 +181,7 @@ class SystemToolFormatter: BaseToolFormatter {
         }
     }
     
-    override func formatError(error: String, result: [String: Any]) -> String {
+    public override func formatError(error: String, result: [String: Any]) -> String
         if toolType == .shell {
             // Show command output for shell errors
             var parts: [String] = []

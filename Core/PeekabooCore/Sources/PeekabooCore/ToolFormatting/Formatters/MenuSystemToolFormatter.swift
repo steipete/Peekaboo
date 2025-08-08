@@ -1,15 +1,14 @@
 //
 //  MenuSystemToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
-import PeekabooCore
 
 /// Formatter for menu, dialog, and system tools with comprehensive result formatting
-class MenuSystemToolFormatter: BaseToolFormatter {
+public class MenuSystemToolFormatter: BaseToolFormatter {
     
-    override func formatResultSummary(result: [String: Any]) -> String {
+    public override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         // Menu tools
         case .menuClick:

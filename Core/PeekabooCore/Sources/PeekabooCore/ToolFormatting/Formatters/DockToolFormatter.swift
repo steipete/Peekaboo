@@ -1,14 +1,14 @@
 //
 //  DockToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
 
 /// Formatter for dock-related tools
-class DockToolFormatter: BaseToolFormatter {
+public class DockToolFormatter: BaseToolFormatter {
     
-    override func formatCompactSummary(arguments: [String: Any]) -> String {
+    public override func formatCompactSummary(arguments: [String: Any]) -> String {
         switch toolType {
         case .listDock:
             return ""
@@ -34,7 +34,7 @@ class DockToolFormatter: BaseToolFormatter {
         }
     }
     
-    override func formatResultSummary(result: [String: Any]) -> String {
+    public override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .listDock:
             // Check for totalCount in various formats
@@ -78,7 +78,7 @@ class DockToolFormatter: BaseToolFormatter {
         }
     }
     
-    override func formatStarting(arguments: [String: Any]) -> String {
+    public override func formatStarting(arguments: [String: Any]) -> String
         switch toolType {
         case .listDock:
             return "Listing dock items..."

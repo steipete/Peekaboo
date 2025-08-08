@@ -1,15 +1,14 @@
 //
 //  UIAutomationToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
-import PeekabooCore
 
 /// Formatter for UI automation tools with comprehensive result formatting
-class UIAutomationToolFormatter: BaseToolFormatter {
+public class UIAutomationToolFormatter: BaseToolFormatter {
     
-    override func formatResultSummary(result: [String: Any]) -> String {
+    public override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .click:
             return formatClickResult(result)

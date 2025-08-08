@@ -1,14 +1,14 @@
 //
 //  ElementToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
 
 /// Formatter for element query and search tools
-class ElementToolFormatter: BaseToolFormatter {
+public class ElementToolFormatter: BaseToolFormatter {
     
-    override func formatCompactSummary(arguments: [String: Any]) -> String {
+    public override func formatCompactSummary(arguments: [String: Any]) -> String {
         switch toolType {
         case .findElement:
             if let text = arguments["text"] as? String {
@@ -54,7 +54,7 @@ class ElementToolFormatter: BaseToolFormatter {
         }
     }
     
-    override func formatResultSummary(result: [String: Any]) -> String {
+    public override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .findElement:
             var parts: [String] = []
@@ -146,7 +146,7 @@ class ElementToolFormatter: BaseToolFormatter {
         }
     }
     
-    override func formatStarting(arguments: [String: Any]) -> String {
+    public override func formatStarting(arguments: [String: Any]) -> String
         switch toolType {
         case .findElement:
             let summary = formatCompactSummary(arguments: arguments)

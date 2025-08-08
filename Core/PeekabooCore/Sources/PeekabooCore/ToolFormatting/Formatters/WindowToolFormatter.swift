@@ -1,15 +1,14 @@
 //
 //  WindowToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
-import PeekabooCore
 
 /// Formatter for window management tools with comprehensive result formatting
-class WindowToolFormatter: BaseToolFormatter {
+public class WindowToolFormatter: BaseToolFormatter {
     
-    override func formatCompactSummary(arguments: [String: Any]) -> String {
+    public override func formatCompactSummary(arguments: [String: Any]) -> String {
         switch toolType {
         case .focusWindow:
             if let app = arguments["appName"] as? String {
@@ -47,7 +46,7 @@ class WindowToolFormatter: BaseToolFormatter {
         }
     }
     
-    override func formatResultSummary(result: [String: Any]) -> String {
+    public override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .focusWindow:
             return formatFocusWindowResult(result)
@@ -493,7 +492,7 @@ class WindowToolFormatter: BaseToolFormatter {
         return parts.isEmpty ? "→ moved" : parts.joined(separator: " ")
     }
     
-    override func formatStarting(arguments: [String: Any]) -> String {
+    public override func formatStarting(arguments: [String: Any]) -> String
         switch toolType {
         case .focusWindow:
             let app = arguments["appName"] as? String ?? "window"

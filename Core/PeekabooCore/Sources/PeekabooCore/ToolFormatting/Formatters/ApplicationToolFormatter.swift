@@ -1,15 +1,14 @@
 //
 //  ApplicationToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
-import PeekabooCore
 
 /// Formatter for application tools with comprehensive result formatting
-class ApplicationToolFormatter: BaseToolFormatter {
+public class ApplicationToolFormatter: BaseToolFormatter {
     
-    override func formatResultSummary(result: [String: Any]) -> String {
+    public override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .listApps:
             return formatListAppsResult(result)

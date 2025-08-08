@@ -109,8 +109,8 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         
         // Update terminal title
         let titleSummary = formatter.formatForTitle(arguments: args)
-        let displayName = toolType?.displayName ?? name.replacingOccurrences(of: "_", with: " ").capitalized
-        updateTerminalTitle("\(displayName): \(titleSummary) - \(task?.prefix(30) ?? "")")
+        let display = name.replacingOccurrences(of: "_", with: " ").capitalized
+        updateTerminalTitle("\(display): \(titleSummary) - \(task?.prefix(30) ?? "")")
         
         // Skip output for quiet mode
         guard outputMode != .quiet else { return }
@@ -121,7 +121,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         isThinking = false
         
         // Skip display for communication tools
-        if toolType?.isCommunicationTool == true {
+        if let t = toolType, [ToolType.taskCompleted, .needMoreInformation, .needInfo].contains(t) {
             return
         }
         
@@ -132,7 +132,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         }
         
         // Format output based on mode
-        let icon = toolType?.icon ?? "⚙️"
+        let icon = "⚙️"
         
         switch outputMode {
         case .minimal:
@@ -200,8 +200,8 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         }
         
         // Handle communication tools specially
-        if toolType?.isCommunicationTool == true {
-            handleCommunicationToolComplete(name: name, toolType: toolType!)
+        if let t = toolType, [ToolType.taskCompleted, .needMoreInformation, .needInfo].contains(t) {
+            handleCommunicationToolComplete(name: name, toolType: t)
             return
         }
         

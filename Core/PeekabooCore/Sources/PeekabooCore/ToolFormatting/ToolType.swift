@@ -1,10 +1,9 @@
 //
 //  ToolType.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
-import PeekabooCore
 
 /// Type-safe enumeration of all Peekaboo tools
 public enum ToolType: String, CaseIterable, Sendable {

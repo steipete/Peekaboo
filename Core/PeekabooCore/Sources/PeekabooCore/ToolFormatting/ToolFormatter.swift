@@ -1,6 +1,6 @@
 //
 //  ToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation

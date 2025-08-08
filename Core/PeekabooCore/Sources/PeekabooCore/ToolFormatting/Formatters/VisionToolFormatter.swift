@@ -1,15 +1,14 @@
 //
 //  VisionToolFormatter.swift
-//  Peekaboo
+//  PeekabooCore
 //
 
 import Foundation
-import PeekabooCore
 
 /// Formatter for vision tools with comprehensive result formatting
-class VisionToolFormatter: BaseToolFormatter {
+public class VisionToolFormatter: BaseToolFormatter {
     
-    override func formatResultSummary(result: [String: Any]) -> String {
+    public override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .see:
             return formatSeeResult(result)
