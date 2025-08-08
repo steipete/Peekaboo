@@ -197,7 +197,7 @@ struct WindowCommandLocalIntegrationTests {
 
         #expect(data.success == true)
 
-        if let responseData = data.data?.value as? [String: Any],
+        if let responseData = data.data as? [String: Any],
            let newBounds = responseData["new_bounds"] as? [String: Any] {
             #expect(newBounds["x"] as? Int == 200)
             #expect(newBounds["y"] as? Int == 200)

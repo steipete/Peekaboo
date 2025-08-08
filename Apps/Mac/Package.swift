@@ -26,6 +26,7 @@ let package = Package(
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "PeekabooUICore", package: "PeekabooUICore"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
+                .product(name: "TachikomaAudio", package: "Tachikoma"),
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
             ],
             path: "Peekaboo",

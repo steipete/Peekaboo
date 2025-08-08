@@ -16,7 +16,7 @@ struct AppCommandTests {
         let subcommands = AppCommand.configuration.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map(\.configuration.commandName)
+        let subcommandNames = subcommands.map { $0.configuration.commandName }
         #expect(subcommandNames.contains("launch"))
         #expect(subcommandNames.contains("quit"))
         #expect(subcommandNames.contains("hide"))

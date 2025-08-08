@@ -170,7 +170,7 @@ struct WindowCommandLocalTests {
             let moveResponse = try JSONDecoder().decode(JSONResponse.self, from: moveOutput.data(using: .utf8)!)
 
             if moveResponse.success,
-               let data = moveResponse.data?.value as? [String: Any],
+               let data = moveResponse.data as? [String: Any],
                let bounds = data["new_bounds"] as? [String: Any] {
                 #expect(bounds["x"] as? Int == 200)
                 #expect(bounds["y"] as? Int == 200)

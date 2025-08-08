@@ -36,7 +36,7 @@ struct MenuCommandTests {
         let subcommands = MenuCommand.configuration.subcommands
         #expect(subcommands.count == 3)
 
-        let subcommandNames = subcommands.map(\.configuration.commandName)
+        let subcommandNames = subcommands.map { $0.configuration.commandName }
         #expect(subcommandNames.contains("click"))
         #expect(subcommandNames.contains("click-system"))
         #expect(subcommandNames.contains("list"))

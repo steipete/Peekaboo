@@ -13,7 +13,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualShellErrors() async throws {
-        let services = PeekabooServices.shared
+        let services = await PeekabooServices.shared
         guard let agent = services.agent else {
             Issue.record("Agent service not available - set OPENAI_API_KEY")
             return
@@ -23,8 +23,8 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         let result = try await agent.executeTask(
             "Run shell command 'nonexistentcommand123 --help'",
-            dryRun: false,
             maxSteps: 10,
+            dryRun: false,
             eventDelegate: delegate
         )
 
@@ -46,7 +46,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualAppLaunchSuggestions() async throws {
-        let services = PeekabooServices.shared
+        let services = await PeekabooServices.shared
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
             return
@@ -55,8 +55,8 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         let result = try await agent.executeTask(
             "Launch app 'Safary'", // Typo
-            dryRun: false,
             maxSteps: 10,
+            dryRun: false,
             eventDelegate: delegate
         )
 
@@ -77,7 +77,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualClickWithoutSession() async throws {
-        let services = PeekabooServices.shared
+        let services = await PeekabooServices.shared
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
             return
@@ -86,8 +86,8 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         _ = try await agent.executeTask(
             "Click on 'NonExistentButton123'",
-            dryRun: false,
             maxSteps: 10,
+            dryRun: false,
             eventDelegate: delegate
         )
 
@@ -108,7 +108,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualTypeWithoutFocus() async throws {
-        let services = PeekabooServices.shared
+        let services = await PeekabooServices.shared
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
             return
@@ -117,8 +117,8 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         _ = try await agent.executeTask(
             "Type 'Hello World' without clicking anywhere first",
-            dryRun: false,
             maxSteps: 10,
+            dryRun: false,
             eventDelegate: delegate
         )
 
@@ -141,7 +141,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualInvalidHotkey() async throws {
-        let services = PeekabooServices.shared
+        let services = await PeekabooServices.shared
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
             return
@@ -150,8 +150,8 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         _ = try await agent.executeTask(
             "Press hotkey 'cmd+shift+a'", // Wrong format
-            dryRun: false,
             maxSteps: 10,
+            dryRun: false,
             eventDelegate: delegate
         )
 
