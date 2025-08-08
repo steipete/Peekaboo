@@ -6,23 +6,26 @@ import PeekabooCore
 @MainActor
 struct ToolFormatter {
     /// Format keyboard shortcuts with proper symbols
+    /// Uses the shared FormattingUtilities from PeekabooCore
     static func formatKeyboardShortcut(_ keys: String) -> String {
-        keys.replacingOccurrences(of: "cmd", with: "⌘")
-            .replacingOccurrences(of: "command", with: "⌘")
-            .replacingOccurrences(of: "shift", with: "⇧")
-            .replacingOccurrences(of: "option", with: "⌥")
-            .replacingOccurrences(of: "opt", with: "⌥")
-            .replacingOccurrences(of: "alt", with: "⌥")
-            .replacingOccurrences(of: "control", with: "⌃")
-            .replacingOccurrences(of: "ctrl", with: "⌃")
-            .replacingOccurrences(of: ",", with: "")
-            .replacingOccurrences(of: "+", with: "")
+        FormattingUtilities.formatKeyboardShortcut(keys)
     }
 
     /// Format duration with clock symbol
+    /// Uses the shared FormattingUtilities from PeekabooCore
     static func formatDuration(_ duration: TimeInterval?) -> String {
         guard let duration else { return "" }
-        return " ⌖ " + PeekabooCore.formatDuration(duration)
+        return " ⌖ " + FormattingUtilities.formatDetailedDuration(duration)
+    }
+    
+    /// Format file sizes using shared utilities
+    static func formatFileSize(_ bytes: Int) -> String {
+        FormattingUtilities.formatFileSize(bytes)
+    }
+    
+    /// Truncate text using shared utilities
+    static func truncate(_ text: String, maxLength: Int = 50) -> String {
+        FormattingUtilities.truncate(text, maxLength: maxLength)
     }
 
     /// Get compact summary of what the tool will do based on arguments

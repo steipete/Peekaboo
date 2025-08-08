@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import PeekabooCore
 
 /// Formatter for UI automation tools (click, type, scroll, hotkey, etc.)
 struct UIAutomationToolFormatter: MacToolFormatterProtocol {
@@ -154,7 +155,7 @@ struct UIAutomationToolFormatter: MacToolFormatterProtocol {
     
     private func formatHotkeySummary(_ args: [String: Any]) -> String {
         if let keys = args["keys"] as? String {
-            let formatted = MacToolFormatter.formatKeyboardShortcut(keys)
+            let formatted = FormattingUtilities.formatKeyboardShortcut(keys)
             return "Press \(formatted)"
         }
         return "Press hotkey"
@@ -162,7 +163,7 @@ struct UIAutomationToolFormatter: MacToolFormatterProtocol {
     
     private func formatHotkeyResult(_ result: [String: Any]) -> String? {
         if let keys = result["keys"] as? String {
-            let formatted = MacToolFormatter.formatKeyboardShortcut(keys)
+            let formatted = FormattingUtilities.formatKeyboardShortcut(keys)
             return "Pressed \(formatted)"
         }
         return nil

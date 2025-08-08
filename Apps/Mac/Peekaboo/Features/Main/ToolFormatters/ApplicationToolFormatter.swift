@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import PeekabooCore
 
 /// Formatter for application-related tools
 struct ApplicationToolFormatter: MacToolFormatterProtocol {
@@ -96,7 +97,9 @@ struct ApplicationToolFormatter: MacToolFormatterProtocol {
         }
         
         if let title = args["windowTitle"] as? String {
-            parts.append("- '\(title)'")
+            // Use shared truncation utility
+            let truncated = FormattingUtilities.truncate(title, maxLength: 40)
+            parts.append("- '\(truncated)'")
         } else if let index = args["windowIndex"] as? Int {
             parts.append("window #\(index)")
         }

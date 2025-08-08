@@ -88,9 +88,9 @@ lib-cov/
 **/*.xcworkspace/xcshareddata/
 
 ## Build binaries
+# Peekaboo CLI binary only (not directories)
 /peekaboo
 /Apps/CLI/peekaboo
-Apps/*/peekaboo
 
 ## Various Xcode settings
 *.pbxuser

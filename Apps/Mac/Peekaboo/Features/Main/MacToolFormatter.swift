@@ -7,23 +7,16 @@ import Foundation
 import PeekabooCore
 
 /// Adapts the CLI tool formatter system for use in the Mac app
+/// Now delegates to shared FormattingUtilities from PeekabooCore
 @MainActor
 struct MacToolFormatter {
     
     // MARK: - Keyboard Shortcut Formatting
     
     /// Format keyboard shortcuts with proper symbols
+    /// Delegates to shared FormattingUtilities from PeekabooCore
     static func formatKeyboardShortcut(_ keys: String) -> String {
-        keys.replacingOccurrences(of: "cmd", with: "⌘")
-            .replacingOccurrences(of: "command", with: "⌘")
-            .replacingOccurrences(of: "shift", with: "⇧")
-            .replacingOccurrences(of: "option", with: "⌥")
-            .replacingOccurrences(of: "opt", with: "⌥")
-            .replacingOccurrences(of: "alt", with: "⌥")
-            .replacingOccurrences(of: "control", with: "⌃")
-            .replacingOccurrences(of: "ctrl", with: "⌃")
-            .replacingOccurrences(of: ",", with: "")
-            .replacingOccurrences(of: "+", with: "")
+        FormattingUtilities.formatKeyboardShortcut(keys)
     }
     
     // MARK: - Duration Formatting
