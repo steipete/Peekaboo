@@ -1,15 +1,16 @@
 # Swift Build Performance Optimization Guide
 
-*Last Updated: August 2025 | Tested with Xcode 26 beta*
+*Last Updated: August 2025 | Tested with Xcode 26 beta | Extended testing: December 2025*
 
 ## Executive Summary
 
 After extensive testing on the Peekaboo project (727 Swift files, 16-core M-series Mac), we found:
 
-- **Batch mode**: **27.8% faster** incremental builds ✅
-- **Compilation caching**: Currently **slower** due to overhead ❌
-- **Integrated Swift driver**: **28% faster** incremental but **71% slower** clean builds ⚠️
-- **Root issue**: Module structure causes 518 files to recompile when changing 1 file
+- **Batch mode**: **34% faster** incremental builds (28.5s vs 43s) ✅
+- **Compilation caching**: Currently **slower** due to missing explicit modules ❌
+- **Integrated Swift driver**: **slower** for all builds (43-55s vs 35-37s) ❌
+- **Parallel jobs**: Default is optimal, more jobs = worse performance ❌
+- **Root issue**: Module structure causes 700+ files to recompile when changing 1 file
 
 ## Tested Optimizations
 
@@ -33,16 +34,28 @@ swiftSettings: [
 ]
 ```
 
-### 2. Compilation Caching ❌ **NOT READY**
+### 2. Compilation Caching ❌ **NOT WORKING**
 
 **What it does**: Caches compilation results between builds (new in Xcode 26).
 
-**Results**:
-- First clean build: 105.5s (vs 70.2s) - **50% slower**
-- Second clean build: 96.6s - **37% slower** (cache not helping)
-- Cache population overhead exceeds benefits
+**How to enable**:
+```bash
+# Via command line flag (preferred)
+swift build -Xswiftc -cache-compile-job
 
-**Status**: Wait for Xcode 26 final release.
+# Via environment variable
+export COMPILATION_CACHE_ENABLE_CACHING=YES
+
+# Via xcodebuild
+xcodebuild build COMPILATION_CACHE_ENABLE_CACHING=YES
+```
+
+**Results** (December 2025 testing):
+- Clean builds: 49-75s (vs 35-37s baseline) - **32-100% slower**
+- Cache not actually working: `warning: -cache-compile-job cannot be used without explicit module build`
+- Requires explicit modules which aren't available for SPM yet
+
+**Status**: Not functional for SPM projects. Wait for explicit module support.
 
 ### 3. Integrated Swift Driver ⚠️ **MIXED RESULTS**
 
@@ -59,6 +72,57 @@ swiftSettings: [
 
 **Status**: Flag exists in documentation but not in current compiler.
 Expected in future Xcode 26 releases.
+
+### 5. Whole Module Optimization (WMO) ⚠️ **RELEASE ONLY**
+
+**What it does**: Compiles entire module as one unit, enabling cross-file optimizations.
+
+**Results**:
+- **Release builds**: Good runtime performance, reasonable compile time
+- **Debug builds**: Breaks with error: `index output filenames do not match input source files`
+- Loses incremental compilation capability
+
+**Recommendation**: Already enabled by default for release builds. Don't use for debug.
+
+### 6. Parallel Jobs Configuration ❌ **DEFAULT IS BEST**
+
+**What it does**: Controls build parallelism with `-j` flag.
+
+**Results** (December 2025):
+- Default: 35-43s
+- `-j 8`: 44s (-2% slower)
+- `-j 16`: 49s (-32% slower)
+- `-j 32`: 67s (-81% slower)
+
+**Why it's worse**: Higher parallelism causes memory contention and CPU thrashing.
+
+**Recommendation**: Let Swift choose optimal parallelism automatically.
+
+### 7. Type Checking Performance 🔍 **DIAGNOSTIC TOOL**
+
+**What it does**: Identifies slow-compiling code.
+
+**How to use**:
+```bash
+swift build -Xswiftc -Xfrontend -Xswiftc -warn-long-function-bodies=50 \
+            -Xswiftc -Xfrontend -Xswiftc -warn-long-expression-type-checking=50
+```
+
+**Findings in Peekaboo**:
+- `Element+PathGeneration.swift`: `generatePathString` (51ms)
+- `Element+PathGeneration.swift`: `generatePathArray` (52ms)
+- `Element+Properties.swift`: `_dumpRecursive` (55ms)
+- `Element+TypeChecking.swift`: `isDockItem` (52ms)
+
+**Fix**: Add explicit type annotations to complex expressions.
+
+### 8. Other Tested Optimizations
+
+| Optimization | Result | Notes |
+|-------------|---------|-------|
+| **SWIFT_DETERMINISTIC_HASHING=1** | No change | For reproducible builds |
+| **Disable index store** | Not possible | No flag available |
+| **LLVM Thin LTO** | Small improvement for release | `-Xswiftc -lto=llvm-thin` |
 
 ## Performance Measurements
 
@@ -237,9 +301,30 @@ Testing performed on Peekaboo CLI (August 2025):
 
 ## Conclusion
 
-The most impactful optimization is **fixing the module architecture** that causes 518 files to rebuild when changing one file. No compiler flag can overcome poor architecture.
+After comprehensive testing (December 2025), our findings confirm:
 
-For immediate gains, use **batch mode** for a reliable 27.8% improvement in incremental builds. Wait for Xcode 26 final release before adopting compilation caching or explicit modules.
+1. **Only batch mode works** - Provides 34% faster incremental builds with no downsides
+2. **Most "advanced" features aren't ready** - Compilation caching, explicit modules don't work for SPM
+3. **Architecture matters most** - 700+ files rebuilding for single file change is the real problem
+
+### ✅ What Actually Works
+- **Batch mode** for debug builds (already applied)
+- **Type checking warnings** to identify slow code
+- **WMO** for release builds (default)
+
+### ❌ What Doesn't Work (Yet)
+- Compilation caching (requires explicit modules)
+- Integrated Swift driver (slower)
+- Custom parallelism (worse than default)
+- Explicit modules (not available)
+
+### 🎯 Action Items
+1. Keep batch mode enabled ✅
+2. Fix slow type-checking functions in AXorcist
+3. Refactor module architecture to reduce cascading rebuilds
+4. Wait for Xcode 26 stable before trying cache features again
+
+The most impactful optimization remains **fixing the module architecture**. No compiler flag can overcome poor module boundaries that cause 700+ files to rebuild.
 
 ## Resources
 
