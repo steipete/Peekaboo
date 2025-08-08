@@ -607,7 +607,7 @@ struct AgentCommand: AsyncParsableCommand {
         sessionId: String? = nil
     ) async throws {
         // Update terminal title with VibeTunnel
-        self.updateTerminalTitle("Starting: \(task.prefix(50))...")
+        updateTerminalTitle("Starting: \(task.prefix(50))...")
 
         // Cast to PeekabooAgentService early for enhanced functionality
         guard let peekabooAgent = agentService as? PeekabooAgentService else {
@@ -736,7 +736,7 @@ struct AgentCommand: AsyncParsableCommand {
                     self.displayResult(result)
                     
                     // Update terminal title
-                    self.updateTerminalTitle("Completed: \(task.prefix(50))")
+                    updateTerminalTitle("Completed: \(task.prefix(50))")
                 }
             }
         } else {
@@ -782,7 +782,7 @@ struct AgentCommand: AsyncParsableCommand {
             }
 
             // Update terminal title to show completion
-            self.updateTerminalTitle("Completed: \(task.prefix(50))")
+            updateTerminalTitle("Completed: \(task.prefix(50))")
             
             // TUI cleanup is handled by the TermKit delegate when task completes
             
@@ -816,7 +816,7 @@ struct AgentCommand: AsyncParsableCommand {
                 }
                 
                 // Update terminal title to show error
-                self.updateTerminalTitle("Error: \(task.prefix(40))...")
+                updateTerminalTitle("Error: \(task.prefix(40))...")
                 throw error
             }
         }
@@ -1049,3 +1049,4 @@ struct AgentCommand: AsyncParsableCommand {
         print(String(repeating: "=", count: 60) + "\n")
     }
 }  // End of AgentCommand struct
+
