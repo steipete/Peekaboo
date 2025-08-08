@@ -10,11 +10,11 @@ echo ""
 
 # Build everything
 echo "🔨 Building package..."
-npm run build:all
+npm run build:swift:all
 
 # Create package
 echo "📦 Creating package tarball..."
-PACKAGE_FILE=$(npm pack 2>&1 | tail -1)
+PACKAGE_FILE=$(npm pack | tail -n 1)
 PACKAGE_PATH=$(pwd)/$PACKAGE_FILE
 echo "Created: $PACKAGE_FILE"
 

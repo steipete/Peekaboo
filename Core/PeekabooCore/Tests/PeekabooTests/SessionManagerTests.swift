@@ -64,67 +64,43 @@ struct SessionManagerTests {
         // Create a session
         let sessionId = try await sessionManager.createSession()
 
-        // Store some UI elements
-        let uiElement1 = UIElement(
+        // Create mock detection elements
+        let element1 = DetectedElement(
             id: "B1",
-            elementId: "element_0",
-            role: "AXButton",
-            title: "Save",
+            type: .button,
             label: "Save Document",
-            frame: CGRect(x: 100, y: 100, width: 100, height: 50),
-            isActionable: true)
+            bounds: CGRect(x: 100, y: 100, width: 100, height: 50))
 
-        let uiElement2 = UIElement(
+        let element2 = DetectedElement(
             id: "B2",
-            elementId: "element_1",
-            role: "AXButton",
-            title: "Cancel",
+            type: .button,
             label: "Cancel Operation",
-            frame: CGRect(x: 210, y: 100, width: 100, height: 50),
-            isActionable: true)
+            bounds: CGRect(x: 210, y: 100, width: 100, height: 50))
 
-        // Create a temporary test image file
-        let testImagePath = "/tmp/test.png"
-        let testImageData = Data([0x89, 0x50, 0x4E, 0x47]) // PNG header
-        try testImageData.write(to: URL(fileURLWithPath: testImagePath))
+        let elements = DetectedElements(buttons: [element1, element2])
+        let metadata = DetectionMetadata(
+            detectionTime: 0.5,
+            elementCount: 2,
+            method: "test")
 
-        // Store screenshot with UI map
-        try await self.sessionManager.storeScreenshot(
+        let result = ElementDetectionResult(
             sessionId: sessionId,
-            screenshotPath: testImagePath,
-            applicationName: "TestApp",
-            windowTitle: "Test Window",
-            windowBounds: nil)
+            screenshotPath: "/tmp/test.png",
+            elements: elements,
+            metadata: metadata)
 
-        // We need to directly store the UI elements since storeScreenshot doesn't build a UI map
-        // This would normally be done by the enhanced detectElements method
-        let sessionPath = URL(fileURLWithPath: sessionManager.getSessionStoragePath())
-            .appendingPathComponent(sessionId)
-        let sessionFile = sessionPath.appendingPathComponent("map.json")
+        // Store the detection result which will create the UI map
+        try await sessionManager.storeDetectionResult(sessionId: sessionId, result: result)
 
-        // Ensure the session directory exists
-        try FileManager.default.createDirectory(at: sessionPath, withIntermediateDirectories: true)
-
-        var sessionData = UIAutomationSession()
-        sessionData.uiMap = ["B1": uiElement1, "B2": uiElement2]
-        sessionData.applicationName = "TestApp"
-        sessionData.windowTitle = "Test Window"
-        sessionData.lastUpdateTime = Date()
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let jsonData = try encoder.encode(sessionData)
-        try jsonData.write(to: sessionFile, options: .atomic)
-
-        // Find elements by query
+        // Now find elements by query
         let foundElements = try await sessionManager.findElements(sessionId: sessionId, matching: "save")
         #expect(foundElements.count == 1)
-        #expect(foundElements.first?.id == "B1")
+        #expect(foundElements.first?.label?.lowercased().contains("save") == true)
 
         // Find by partial match
         let cancelElements = try await sessionManager.findElements(sessionId: sessionId, matching: "cancel")
         #expect(cancelElements.count == 1)
-        #expect(cancelElements.first?.id == "B2")
+        #expect(cancelElements.first?.label?.lowercased().contains("cancel") == true)
 
         // Clean up
         try await self.sessionManager.cleanSession(sessionId: sessionId)

@@ -32,10 +32,12 @@ public struct FormattingUtilities {
     
     /// Truncate text for display
     public static func truncate(_ text: String, maxLength: Int = 50, suffix: String = "...") -> String {
+        guard maxLength > 0 else { return suffix }
         if text.count <= maxLength {
             return text
         }
-        let endIndex = text.index(text.startIndex, offsetBy: maxLength)
+        let safeMaxLength = min(maxLength, text.count)
+        let endIndex = text.index(text.startIndex, offsetBy: safeMaxLength)
         return String(text[..<endIndex]) + suffix
     }
     

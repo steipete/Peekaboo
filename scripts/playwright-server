@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Direct binary runner for Playwright MCP
+exec /Users/steipete/.nvm/versions/node/v24.4.1/bin/node /Users/steipete/.nvm/versions/node/v24.4.1/lib/node_modules/@playwright/mcp/cli.js "$@"
