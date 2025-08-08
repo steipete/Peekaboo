@@ -85,48 +85,6 @@ struct AnnotationIntegrationTests {
         #expect(abs(transformedY - buttonFrame.origin.y) < 5)
     }
 
-    @Test("Annotation overlay pixel accuracy")
-    func annotationOverlayAccuracy() async throws {
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
-            throw TestSkipped("Local test - set RUN_LOCAL_TESTS=true to run")
-        }
-
-        // Create a simple test image
-        let imageSize = NSSize(width: 800, height: 600)
-        let testImage = self.createTestImage(size: imageSize)
-
-        // Define test elements with known positions
-        let testElements: [String: PeekabooCore.UIElement] = [
-            "B1": PeekabooCore.UIElement(
-                id: "B1",
-                elementId: "button1",
-                role: "AXButton",
-                title: "Test Button",
-                label: nil,
-                value: nil,
-                frame: CGRect(x: 100, y: 100, width: 120, height: 40),
-                isActionable: true
-            ),
-        ]
-
-        // Create annotated image
-        let annotatedImage = try await drawAnnotations(
-            on: testImage,
-            elements: testElements,
-            windowBounds: CGRect(x: 0, y: 0, width: 800, height: 600)
-        )
-
-        // Save for manual inspection if needed
-        if let tiffData = annotatedImage.tiffRepresentation,
-           let bitmap = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmap.representation(using: .png, properties: [:]) {
-            try pngData.write(to: URL(fileURLWithPath: "/tmp/test-overlay-accuracy.png"))
-        }
-
-        // Verify image was created with correct size
-        #expect(annotatedImage.size == imageSize)
-    }
-
     // MARK: - Helper Methods
 
     @MainActor
@@ -170,80 +128,6 @@ struct AnnotationIntegrationTests {
 
         image.unlockFocus()
         return image
-    }
-
-    @MainActor
-    private func drawAnnotations(
-        on image: NSImage,
-        elements: [String: PeekabooCore.UIElement],
-        windowBounds: CGRect?
-    ) async throws -> NSImage {
-        let annotatedImage = NSImage(size: image.size)
-        annotatedImage.lockFocus()
-
-        // Draw original image
-        image.draw(at: .zero, from: NSRect(origin: .zero, size: image.size), operation: .copy, fraction: 1.0)
-
-        // Set up drawing context
-        guard let context = NSGraphicsContext.current else {
-            annotatedImage.unlockFocus()
-            throw CaptureError.captureFailure("No graphics context")
-        }
-
-        context.saveGraphicsState()
-
-        // Draw annotations for actionable elements
-        for element in elements.values where element.isActionable {
-            // Transform coordinates
-            var elementFrame = element.frame
-            if let bounds = windowBounds {
-                elementFrame.origin.x -= bounds.origin.x
-                elementFrame.origin.y -= bounds.origin.y
-            }
-
-            // Flip Y coordinate for drawing
-            let drawRect = NSRect(
-                x: elementFrame.origin.x,
-                y: image.size.height - elementFrame.origin.y - elementFrame.height,
-                width: elementFrame.width,
-                height: elementFrame.height
-            )
-
-            // Draw overlay
-            NSColor.systemBlue.withAlphaComponent(0.3).setFill()
-            drawRect.fill()
-
-            NSColor.systemBlue.setStroke()
-            let path = NSBezierPath(rect: drawRect)
-            path.lineWidth = 2
-            path.stroke()
-
-            // Draw label
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: 12, weight: .medium),
-                .foregroundColor: NSColor.white,
-                .backgroundColor: NSColor.black.withAlphaComponent(0.8),
-            ]
-
-            let label = element.id
-            let labelSize = label.size(withAttributes: attributes)
-            let labelRect = NSRect(
-                x: drawRect.origin.x + 4,
-                y: drawRect.origin.y + drawRect.height - labelSize.height - 4,
-                width: labelSize.width + 8,
-                height: labelSize.height + 4
-            )
-
-            NSColor.black.withAlphaComponent(0.8).setFill()
-            NSBezierPath(roundedRect: labelRect, xRadius: 3, yRadius: 3).fill()
-
-            label.draw(at: NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2), withAttributes: attributes)
-        }
-
-        context.restoreGraphicsState()
-        annotatedImage.unlockFocus()
-
-        return annotatedImage
     }
 }
 

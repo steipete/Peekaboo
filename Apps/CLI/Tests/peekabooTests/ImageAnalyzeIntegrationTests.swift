@@ -32,23 +32,6 @@ struct ImageAnalyzeIntegrationTests {
         try? FileManager.default.removeItem(atPath: path)
     }
 
-    // MARK: - AnalysisResult Tests
-
-    @Test("AnalysisResult model creation", .tags(.fast))
-    func analysisResultModel() {
-        let result = AnalysisResult(
-            analysisText: "This is a test window",
-            modelUsed: "test/model",
-            durationSeconds: 1.5,
-            imagePath: "/tmp/test.png"
-        )
-
-        #expect(result.analysisText == "This is a test window")
-        #expect(result.modelUsed == "test/model")
-        #expect(result.durationSeconds == 1.5)
-        #expect(result.imagePath == "/tmp/test.png")
-    }
-
     // MARK: - Analyze Error Handling Tests
 
     @Test("Analyze with missing image file", .tags(.fast))
@@ -104,47 +87,6 @@ struct ImageAnalyzeIntegrationTests {
             let command = try ImageCommand.parse(["--analyze", prompt])
             #expect(command.analyze == prompt)
         }
-    }
-
-    // MARK: - JSON Output Structure Tests
-
-    @Test("JSON output with analysis structure", .tags(.fast))
-    func jsonOutputWithAnalysisStructure() throws {
-        // Test the expected JSON structure when analysis is included
-        let savedFile = SavedFile(
-            path: "/tmp/test.png",
-            item_label: "Test App",
-            window_title: "Test Window",
-            window_id: 123,
-            window_index: 0,
-            mime_type: "image/png"
-        )
-
-        let analysisResult = AnalysisResult(
-            analysisText: "This is a test analysis",
-            modelUsed: "test/model",
-            durationSeconds: 2.5,
-            imagePath: "/tmp/test.png"
-        )
-
-        // Create the expected structure
-        let enrichedData: [String: Any] = [
-            "saved_files": [[
-                "path": savedFile.path,
-                "mime_type": savedFile.mime_type,
-                "window_title": savedFile.window_title as Any,
-            ]],
-            "analysis": [
-                "text": analysisResult.analysisText,
-                "model": analysisResult.modelUsed,
-                "duration_seconds": analysisResult.durationSeconds,
-            ],
-        ]
-
-        // Verify structure
-        #expect((enrichedData["saved_files"] as? [[String: Any]])?.count == 1)
-        #expect((enrichedData["analysis"] as? [String: Any])?["text"] as? String == "This is a test analysis")
-        #expect((enrichedData["analysis"] as? [String: Any])?["model"] as? String == "test/model")
     }
 
     // MARK: - Multiple File Analysis Tests

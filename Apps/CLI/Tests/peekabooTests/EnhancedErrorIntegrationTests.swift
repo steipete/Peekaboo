@@ -24,6 +24,7 @@ struct EnhancedErrorIntegrationTests {
         let result = try await agent.executeTask(
             "Run shell command 'nonexistentcommand123 --help'",
             dryRun: false,
+            maxSteps: 10,
             eventDelegate: delegate
         )
 
@@ -55,6 +56,7 @@ struct EnhancedErrorIntegrationTests {
         let result = try await agent.executeTask(
             "Launch app 'Safary'", // Typo
             dryRun: false,
+            maxSteps: 10,
             eventDelegate: delegate
         )
 
@@ -85,6 +87,7 @@ struct EnhancedErrorIntegrationTests {
         _ = try await agent.executeTask(
             "Click on 'NonExistentButton123'",
             dryRun: false,
+            maxSteps: 10,
             eventDelegate: delegate
         )
 
@@ -115,6 +118,7 @@ struct EnhancedErrorIntegrationTests {
         _ = try await agent.executeTask(
             "Type 'Hello World' without clicking anywhere first",
             dryRun: false,
+            maxSteps: 10,
             eventDelegate: delegate
         )
 
@@ -147,6 +151,7 @@ struct EnhancedErrorIntegrationTests {
         _ = try await agent.executeTask(
             "Press hotkey 'cmd+shift+a'", // Wrong format
             dryRun: false,
+            maxSteps: 10,
             eventDelegate: delegate
         )
 
