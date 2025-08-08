@@ -91,10 +91,10 @@ ApplicationResolvable {
             }
 
             // Perform AI analysis if requested
-            var analysisResult: String?
+            var analysisResult: SeeAnalysisData?
             if let prompt = analyze {
                 Logger.shared.operationStart("ai_analysis", metadata: ["prompt": prompt])
-                analysisResult = try await self.performAnalysis(
+                analysisResult = try await self.performAnalysisDetailed(
                     imagePath: captureResult.screenshotPath,
                     prompt: prompt
                 )
@@ -115,7 +115,7 @@ ApplicationResolvable {
                     annotatedPath: annotatedPath,
                     metadata: captureResult.metadata,
                     elements: captureResult.elements,
-                    analysisResult: analysisResult,
+                    analysis: analysisResult,
                     executionTime: executionTime
                 )
             } else {
@@ -125,7 +125,7 @@ ApplicationResolvable {
                     annotatedPath: annotatedPath,
                     metadata: captureResult.metadata,
                     elements: captureResult.elements,
-                    analysisResult: analysisResult,
+                    analysis: analysisResult,
                     executionTime: executionTime
                 )
             }
@@ -571,6 +571,12 @@ struct UIElementSummary: Codable {
     let keyboard_shortcut: String?
 }
 
+struct SeeAnalysisData: Codable {
+    let provider: String
+    let model: String
+    let text: String
+}
+
 struct SeeResult: Codable {
     let session_id: String
     let screenshot_raw: String
@@ -582,7 +588,7 @@ struct SeeResult: Codable {
     let element_count: Int
     let interactable_count: Int
     let capture_mode: String
-    let analysis_result: String?
+    let analysis: SeeAnalysisData?
     let execution_time: TimeInterval
     let ui_elements: [UIElementSummary]
     let menu_bar: MenuBarSummary?
@@ -610,10 +616,11 @@ struct MenuBarSummary: Codable {
 // MARK: - Format Helpers Extension
 
 extension SeeCommand {
-    private func performAnalysis(imagePath: String, prompt: String) async throws -> String {
+    private func performAnalysisDetailed(imagePath: String, prompt: String) async throws -> SeeAnalysisData {
         // Use PeekabooCore AI service which is configured via ConfigurationManager/Tachikoma
-        let service = await PeekabooAIService()
-        return try await service.analyzeImageFile(at: imagePath, question: prompt, model: nil)
+        let ai = await PeekabooAIService()
+        let res = try await ai.analyzeImageFileDetailed(at: imagePath, question: prompt, model: nil)
+        return SeeAnalysisData(provider: res.provider, model: res.model, text: res.text)
     }
 
     private func determineMode() -> CaptureMode {
@@ -637,7 +644,7 @@ extension SeeCommand {
         annotatedPath: String?,
         metadata: DetectionMetadata,
         elements: DetectedElements,
-        analysisResult: String?,
+        analysis: SeeAnalysisData?,
         executionTime: TimeInterval
     ) async {
         // Build UI element summaries
@@ -660,6 +667,8 @@ extension SeeCommand {
             map: PeekabooServices.shared.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
         )
 
+        // Structured analysis is passed in
+
         let output = await SeeResult(
             session_id: sessionId,
             screenshot_raw: sessionPaths.raw,
@@ -671,7 +680,7 @@ extension SeeCommand {
             element_count: metadata.elementCount,
             interactable_count: elements.all.count { $0.isEnabled },
             capture_mode: self.determineMode().rawValue,
-            analysis_result: analysisResult,
+            analysis: analysis,
             execution_time: executionTime,
             ui_elements: uiElements,
             menu_bar: self.getMenuBarItemsSummary()
@@ -719,7 +728,7 @@ extension SeeCommand {
         annotatedPath: String?,
         metadata: DetectionMetadata,
         elements: DetectedElements,
-        analysisResult: String?,
+        analysis: SeeAnalysisData?,
         executionTime: TimeInterval
     ) async {
         let sessionPaths = SessionPaths(
@@ -768,9 +777,10 @@ extension SeeCommand {
             }
         }
 
-        if let analysis = analysisResult {
-            print("🤖 Analysis:")
-            print(analysis)
+        if let analysis = analysis {
+            print("🤖 Analysis (")
+            print("\(analysis.provider)/\(analysis.model)):")
+            print(analysis.text)
         }
 
         print("⏱️  Completed in \(String(format: "%.2f", executionTime))s")
@@ -793,7 +803,7 @@ extension SeeCommand {
             Logger.shared.stopTimer("screen_capture")
         }
 
-        if let index = self.screenIndex {
+        if let index = self.screenIndex ?? (self.analyze != nil ? 0 : nil) {
             // Capture specific screen
             Logger.shared.verbose("Capturing specific screen", category: "Capture", metadata: ["screenIndex": index])
             let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)

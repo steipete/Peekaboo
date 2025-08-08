@@ -345,12 +345,9 @@ ApplicationResolvable {
     }
 
     private func analyzeImage(at path: String, with prompt: String) async throws -> ImageAnalysisData {
-        // For now, just return placeholder data since AI provider is broken
-        ImageAnalysisData(
-            provider: "unavailable",
-            model: "unavailable",
-            text: "AI analysis is temporarily unavailable"
-        )
+        let ai = await PeekabooAIService()
+        let result = try await ai.analyzeImageFileDetailed(at: path, question: prompt, model: nil)
+        return ImageAnalysisData(provider: result.provider, model: result.model, text: result.text)
     }
 
     // MARK: - Output Methods

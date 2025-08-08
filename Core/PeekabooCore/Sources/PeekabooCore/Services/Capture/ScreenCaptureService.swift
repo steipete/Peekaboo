@@ -634,21 +634,49 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             "windowID": windowID,
         ], correlationId: correlationId)
 
-        // Capture the window
-        // Note: CGWindowListCreateImage is deprecated but we intentionally use it here as a fallback
-        // when ScreenCaptureKit hangs on certain macOS versions (controlled by PEEKABOO_USE_MODERN_CAPTURE env var)
-        // TODO: Migrate to ScreenCaptureKit when ready
-        let image = CGWindowListCreateImage(
+        // Capture the window (legacy path). If this fails (minimized/off-space), fall back to cropping from screen.
+        var image = CGWindowListCreateImage(
             CGRect.null,
             .optionIncludingWindow,
             windowID,
             [.boundsIgnoreFraming, .nominalResolution])
 
-        guard let image else {
-            self.logger.error("CGWindowListCreateImage failed", metadata: [
+        if image == nil {
+            self.logger.warning("Window capture failed; attempting screen-crop fallback", metadata: [
                 "windowID": windowID,
                 "appName": app.name
-            ])
+            ], correlationId: correlationId)
+
+            // Attempt screen capture of the display that contains the window bounds and crop it
+            let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
+                            let x = boundsDict["X"] as? CGFloat,
+                            let y = boundsDict["Y"] as? CGFloat,
+                            let width = boundsDict["Width"] as? CGFloat,
+                            let height = boundsDict["Height"] as? CGFloat
+            { CGRect(x: x, y: y, width: width, height: height) } else { CGRect.null }
+
+            if !bounds.isNull {
+                // Identify a screen that intersects bounds
+                let screens = NSScreen.screens
+                if let screen = screens.first(where: { $0.frame.intersects(bounds) }) ?? screens.first {
+                    // Compute quartz rect for that screen portion
+                    let primary = screens.first!
+                    let quartzRect = CGRect(
+                        x: bounds.origin.x,
+                        y: primary.frame.maxY - bounds.maxY,
+                        width: bounds.width,
+                        height: bounds.height
+                    )
+                    image = CGWindowListCreateImage(quartzRect, .optionOnScreenBelowWindow, kCGNullWindowID, .nominalResolution)
+                }
+            }
+        }
+
+        guard let image else {
+            self.logger.error("CGWindowListCreateImage failed (including fallback)", metadata: [
+                "windowID": windowID,
+                "appName": app.name
+            ], correlationId: correlationId)
             throw OperationError.captureFailed(reason: "Failed to create window image for window ID \(windowID) (app: \(app.name)). Window may be minimized, hidden, or in another space.")
         }
 

@@ -707,6 +707,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     }
 
     /// Persist current MCP client configurations back to ~/.peekaboo/config.json
+    @MainActor
     public func persistMCPClientConfigs() throws {
         try TachikomaMCPClientManager.shared.persist()
     }

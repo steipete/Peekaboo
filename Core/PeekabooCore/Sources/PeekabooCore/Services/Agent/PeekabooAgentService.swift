@@ -569,8 +569,12 @@ extension PeekabooAgentService {
             throw error
         }
 
-        // Create tools for the model
-        let tools = self.createAgentTools()
+        // Create tools for the model (native + MCP)
+        var tools = self.createAgentTools()
+        // Append external MCP tools discovered via TachikomaMCP
+        if let mcpTools = try? await TachikomaMCPClientManager.shared.getAllAgentTools() {
+            tools.append(contentsOf: mcpTools)
+        }
 
         // Only log tool debug info in verbose mode
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
@@ -841,8 +845,11 @@ extension PeekabooAgentService {
             throw error
         }
 
-        // Create tools for the model
-        let tools = self.createAgentTools()
+        // Create tools for the model (native + MCP)
+        var tools = self.createAgentTools()
+        if let mcpTools = try? await TachikomaMCPClientManager.shared.getAllAgentTools() {
+            tools.append(contentsOf: mcpTools)
+        }
 
         // Only log tool debug info in verbose mode
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
