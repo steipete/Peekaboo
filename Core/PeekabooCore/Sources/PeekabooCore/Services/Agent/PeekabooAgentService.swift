@@ -678,6 +678,14 @@ extension PeekabooAgentService {
             
             // If we have tool calls, execute them
             if !stepToolCalls.isEmpty {
+                // FIRST: Add assistant message with tool calls (must come before tool results)
+                var assistantContent: [ModelMessage.ContentPart] = []
+                if !stepText.isEmpty {
+                    assistantContent.append(.text(stepText))
+                }
+                assistantContent.append(contentsOf: stepToolCalls.map { .toolCall($0) })
+                currentMessages.append(ModelMessage(role: .assistant, content: assistantContent))
+                
                 var toolResults: [AgentToolResult] = []
                 
                 for toolCall in stepToolCalls {
@@ -729,16 +737,6 @@ extension PeekabooAgentService {
                             ))
                         }
                     }
-                }
-                
-                // Add assistant message with tool calls
-                if !stepText.isEmpty || !stepToolCalls.isEmpty {
-                    var content: [ModelMessage.ContentPart] = []
-                    if !stepText.isEmpty {
-                        content.append(.text(stepText))
-                    }
-                    content.append(contentsOf: stepToolCalls.map { .toolCall($0) })
-                    currentMessages.append(ModelMessage(role: .assistant, content: content))
                 }
                 
                 // Store the step
