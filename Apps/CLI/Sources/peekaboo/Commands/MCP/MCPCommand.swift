@@ -289,9 +289,7 @@ extension MCPCommand {
                 Logger.shared.error("Command is required. Use -- to separate command from options.")
                 throw ExitCode.failure
             }
-            
-            let clientManager = await MCPClientManager.shared
-            
+
             // Parse environment variables
             var envDict: [String: String] = [:]
             for envVar in env {
@@ -303,9 +301,9 @@ extension MCPCommand {
                     throw ExitCode.failure
                 }
             }
-            
-            // Create server config
-            let config = Configuration.MCPClientConfig(
+
+            // Create Tachikoma MCP server config
+            let config = TachikomaMCP.MCPServerConfig(
                 transport: transport,
                 command: command[0],
                 args: Array(command.dropFirst()),
@@ -315,16 +313,24 @@ extension MCPCommand {
                 autoReconnect: true,
                 description: description
             )
-            
+
+            // Load existing profile configs, add server, persist, then probe
+            let manager = TachikomaMCPClientManager.shared
+            await manager.initializeFromProfile(connect: false)
+
             do {
-                try await clientManager.addServer(name: name, config: config)
-                print("✓ Added MCP server '\(name)'")
-                
-                // Test connection if enabled
+                try await manager.addServer(name: name, config: config)
+                try manager.persist()
+                print("✓ Added MCP server '\(name)' and saved to profile")
+
                 if !disabled {
-                    print("Testing connection...")
-                    let health = await clientManager.checkServerHealth(name: name)
-                    print("\(health.symbol) \(health.statusText)")
+                    print("Testing connection (\(Int(timeout))s timeout)...")
+                    let (ok, count, rt, err) = await manager.probeServer(name: name, timeoutMs: Int(timeout * 1000))
+                    if ok {
+                        print("✓ Connected in \(Int(rt * 1000))ms (\(count) tools)")
+                    } else {
+                        print("✗ Failed: \(err ?? "unknown error")")
+                    }
                 }
             } catch {
                 Logger.shared.error("Failed to add MCP server: \(error.localizedDescription)")
