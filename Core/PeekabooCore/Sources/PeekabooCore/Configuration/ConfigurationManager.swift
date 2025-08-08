@@ -706,6 +706,11 @@ public final class ConfigurationManager: @unchecked Sendable {
         await TachikomaMCPClientManager.shared.initializeFromProfile()
     }
 
+    /// Persist current MCP client configurations back to ~/.peekaboo/config.json
+    public func persistMCPClientConfigs() throws {
+        try TachikomaMCPClientManager.shared.persist()
+    }
+
     // MARK: - Custom Provider Management
 
     /// Add a custom AI provider to the configuration
