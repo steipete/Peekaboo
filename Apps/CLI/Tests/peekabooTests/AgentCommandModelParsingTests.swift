@@ -8,14 +8,15 @@ extension AgentCommand {
         let lowercased = modelString.lowercased()
         
         // OpenAI Models
-        if lowercased.contains("gpt-4o") || lowercased == "gpt4o" {
-            return .openai(.gpt4o)
-        } else if lowercased.contains("gpt-4o-mini") || lowercased == "gpt4o-mini" {
+        // Check gpt-4o-mini BEFORE gpt-4o to avoid false matches
+        if lowercased.contains("gpt-4o-mini") || lowercased == "gpt4o-mini" {
             return .openai(.gpt4oMini)
-        } else if lowercased.contains("gpt-4.1") || lowercased == "gpt-4.1" {
-            return .openai(.gpt41)
+        } else if lowercased.contains("gpt-4o") || lowercased == "gpt4o" {
+            return .openai(.gpt4o)
         } else if lowercased.contains("gpt-4.1-mini") || lowercased == "gpt-4.1-mini" {
             return .openai(.gpt41Mini)
+        } else if lowercased.contains("gpt-4.1") || lowercased == "gpt-4.1" {
+            return .openai(.gpt41)
         } else if lowercased == "o3" {
             return .openai(.o3)
         } else if lowercased == "o3-mini" || lowercased == "o3mini" {

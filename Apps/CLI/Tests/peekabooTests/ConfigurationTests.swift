@@ -225,7 +225,7 @@ struct ConfigurationTests {
 
         // Test default value
         let defaultProviders = manager.getAIProviders(cliValue: nil)
-        #expect(defaultProviders == "ollama/llava:latest")
+        #expect(defaultProviders == "openai/gpt-5,ollama/llava:latest,anthropic/claude-opus-4-20250514")
 
         // Test with CLI value
         let cliProviders = manager.getAIProviders(cliValue: "openai/gpt-4o")
