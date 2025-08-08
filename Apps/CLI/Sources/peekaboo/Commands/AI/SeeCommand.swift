@@ -93,12 +93,32 @@ ApplicationResolvable {
             // Perform AI analysis if requested
             var analysisResult: SeeAnalysisData?
             if let prompt = analyze {
-                Logger.shared.operationStart("ai_analysis", metadata: ["prompt": prompt])
+                // Pre-analysis diagnostics
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: captureResult.screenshotPath)[.size] as? Int) ?? 0
+                Logger.shared.verbose(
+                    "Starting AI analysis",
+                    category: "AI",
+                    metadata: [
+                        "imagePath": captureResult.screenshotPath,
+                        "imageSizeBytes": fileSize,
+                        "promptLength": prompt.count
+                    ]
+                )
+                Logger.shared.operationStart("ai_analysis", metadata: ["promptPreview": String(prompt.prefix(80))])
+                Logger.shared.startTimer("ai_generate")
                 analysisResult = try await self.performAnalysisDetailed(
                     imagePath: captureResult.screenshotPath,
                     prompt: prompt
                 )
-                Logger.shared.operationComplete("ai_analysis", success: analysisResult != nil)
+                Logger.shared.stopTimer("ai_generate")
+                Logger.shared.operationComplete(
+                    "ai_analysis",
+                    success: analysisResult != nil,
+                    metadata: [
+                        "provider": analysisResult?.provider ?? "unknown",
+                        "model": analysisResult?.model ?? "unknown"
+                    ]
+                )
             }
 
             // Output results

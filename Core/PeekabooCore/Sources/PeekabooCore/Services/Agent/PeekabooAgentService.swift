@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Tachikoma
+import TachikomaMCP
 import os.log
 
 
