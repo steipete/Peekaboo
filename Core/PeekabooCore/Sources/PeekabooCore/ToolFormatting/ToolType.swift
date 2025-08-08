@@ -59,6 +59,8 @@ public enum ToolType: String, CaseIterable, Sendable {
     // MARK: - System
     case shell
     case wait
+    case copyToClipboard = "copy_to_clipboard"
+    case pasteFromClipboard = "paste_from_clipboard"
     case listSpaces = "list_spaces"
     case switchSpace = "switch_space"
     case moveWindowToSpace = "move_window_to_space"
@@ -87,7 +89,7 @@ public enum ToolType: String, CaseIterable, Sendable {
             return .dock
         case .findElement, .listElements, .focused:
             return .element
-        case .shell, .wait, .listSpaces, .switchSpace, .moveWindowToSpace:
+        case .shell, .wait, .copyToClipboard, .pasteFromClipboard, .listSpaces, .switchSpace, .moveWindowToSpace:
             return .system
         case .taskCompleted, .needMoreInformation, .needInfo:
             return .completion
@@ -95,7 +97,7 @@ public enum ToolType: String, CaseIterable, Sendable {
     }
     
     /// The icon to display for this tool
-    var icon: String {
+    public var icon: String {
         // Special cases first
         switch self {
         case .taskCompleted:
@@ -119,7 +121,7 @@ public enum ToolType: String, CaseIterable, Sendable {
     }
     
     /// Human-readable display name for the tool
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .launchApp: return "Launch Application"
         case .listApps: return "List Applications"
@@ -147,6 +149,8 @@ public enum ToolType: String, CaseIterable, Sendable {
         case .taskCompleted: return "Task Completed"
         case .needMoreInformation: return "Need More Information"
         case .needInfo: return "Need Information"
+        case .copyToClipboard: return "Copy to Clipboard"
+        case .pasteFromClipboard: return "Paste from Clipboard"
         case .listSpaces: return "List Spaces"
         case .switchSpace: return "Switch Space"
         case .moveWindowToSpace: return "Move Window to Space"
