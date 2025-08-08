@@ -109,68 +109,7 @@ func iconForTool(_ toolName: String) -> String {
 struct AgentCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "agent",
-        abstract: "Execute complex automation tasks using AI agent",
-        discussion: """
-        Breaks down and executes complex automation tasks using AI.
-        The agent can see the screen, interact with UI elements, and verify results.
-
-        The agent will:
-        1. Analyze your request
-        2. Break it down into steps
-        3. Execute each step using Peekaboo commands (default: max 20 steps)
-        4. Verify results with screenshots
-        5. Retry if needed
-
-        OUTPUT MODES:
-        Peekaboo defaults to compact mode for consistent behavior:
-        
-        • TUI Mode: Full terminal interface with progress dashboard (use --tui to enable)
-        • Compact: Basic colors and icons (default for interactive terminals)
-        • Minimal: Plain text, CI-friendly (pipes, CI environments, no-color terminals)
-        
-        Manual overrides:
-        - --tui: Enable full Terminal User Interface mode
-        - --simple: Force minimal output mode (no colors or rich formatting)
-        - --no-color: Disable colors while keeping other formatting
-        - --verbose: Full JSON debug information for troubleshooting
-        - --debug-terminal: Show detailed terminal detection and TUI debugging info
-        - --quiet: Only final result, silent execution
-
-        EXECUTION CONTROL:
-        The --max-steps parameter controls how many AI reasoning steps the agent can take.
-        Each step can include tool calls and responses. Complex tasks may need more steps.
-        Default is 20 steps, which handles most automation tasks effectively.
-
-        Audio input requires OpenAI API key for transcription via Whisper API.
-
-        EXAMPLES:
-          peekaboo agent "Open TextEdit and write 'Hello World'"
-          peekaboo agent "Take a screenshot of Safari and save it to Desktop"
-          peekaboo agent "Click on the login button and fill the form"
-          peekaboo agent "Find the Terminal app and run 'ls -la'"
-
-          # Output control (auto-detected by default):
-          peekaboo agent --tui "Complex task"             # Enable full Terminal User Interface
-          peekaboo agent --simple "Basic task"           # Force simple output, no colors
-          peekaboo agent --no-color "CI task"            # Disable colors only
-          peekaboo agent --verbose "Debug task"          # Full JSON debug output
-          peekaboo agent --debug-terminal "Debug task"   # Show terminal detection details
-          peekaboo agent --quiet "Silent task"           # Only show final result
-
-          # Control execution steps:
-          peekaboo agent --max-steps 5 "Simple task"  # Limit to 5 steps
-          peekaboo agent --max-steps 50 "Complex multi-step automation"  # Allow more steps
-
-          # Audio input:
-          peekaboo agent --audio  # Record from microphone
-          peekaboo agent --audio-file recording.wav  # Use audio file
-          peekaboo agent --audio "summarize this"  # Record and process with task
-
-          # Resume sessions:
-          peekaboo agent --resume "continue with the task"  # Resume most recent
-          peekaboo agent --resume-session abc123 "do this next"  # Resume specific
-          peekaboo agent --list-sessions  # Show available sessions
-        """
+        abstract: "Execute complex automation tasks using AI agent"
     )
 
     @Argument(help: "Natural language description of the task to perform (optional when using --resume)")
