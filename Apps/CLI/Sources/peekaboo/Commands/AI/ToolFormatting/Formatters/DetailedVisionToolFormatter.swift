@@ -1,12 +1,13 @@
 //
-//  EnhancedVisionToolFormatter.swift
+//  DetailedVisionToolFormatter.swift
 //  Peekaboo
 //
 
 import Foundation
+import PeekabooCore
 
-/// Enhanced formatter for vision tools with detailed result formatting
-class EnhancedVisionToolFormatter: VisionToolFormatter {
+/// Detailed formatter for vision tools with comprehensive result formatting
+class DetailedVisionToolFormatter: VisionToolFormatter {
     
     override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
@@ -174,7 +175,7 @@ class EnhancedVisionToolFormatter: VisionToolFormatter {
         }
         
         // Element breakdown
-        if let elements = ToolResultExtractor.array("elements", from: result) as? [[String: Any]] {
+        if let elements: [[String: Any]] = ToolResultExtractor.array("elements", from: result) {
             let typeCount = Dictionary(grouping: elements) { element in
                 (element["type"] as? String) ?? "unknown"
             }.mapValues { $0.count }

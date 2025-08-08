@@ -99,7 +99,10 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         
         if let type = ToolType(rawValue: name) {
             toolType = type
-            formatter = ToolFormatterRegistry.shared.formatter(for: type)
+            // Use DetailedToolFormatterRegistry for enhanced mode
+            formatter = outputMode == .enhanced 
+                ? DetailedToolFormatterRegistry.shared.formatter(for: type)
+                : ToolFormatterRegistry.shared.formatter(for: type)
         } else {
             // Unknown tool - use a default formatter
             toolType = nil
@@ -191,7 +194,10 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         
         if let type = ToolType(rawValue: name) {
             toolType = type
-            formatter = ToolFormatterRegistry.shared.formatter(for: type)
+            // Use DetailedToolFormatterRegistry for enhanced mode
+            formatter = outputMode == .enhanced 
+                ? DetailedToolFormatterRegistry.shared.formatter(for: type)
+                : ToolFormatterRegistry.shared.formatter(for: type)
         } else {
             toolType = nil
             formatter = UnknownToolFormatter(toolName: name)

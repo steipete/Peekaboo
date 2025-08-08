@@ -85,6 +85,53 @@ public struct ToolResultExtractor {
         return nil
     }
     
+    // MARK: - Double Extraction
+    
+    /// Extract a Double value from the result
+    public static func double(_ key: String, from result: [String: Any]) -> Double? {
+        // Try direct Double
+        if let value = result[key] as? Double {
+            return value
+        }
+        
+        // Try Int and convert to Double
+        if let value = result[key] as? Int {
+            return Double(value)
+        }
+        
+        // Try String and convert
+        if let stringValue = string(key, from: result),
+           let doubleValue = Double(stringValue) {
+            return doubleValue
+        }
+        
+        // Try wrapped format
+        if let wrapper = result[key] as? [String: Any] {
+            if let value = wrapper["value"] as? Double {
+                return value
+            }
+            if let value = wrapper["value"] as? Int {
+                return Double(value)
+            }
+            if let value = wrapper["value"] as? String,
+               let doubleValue = Double(value) {
+                return doubleValue
+            }
+        }
+        
+        // Try nested in data
+        if let data = result["data"] as? [String: Any] {
+            if let value = data[key] as? Double {
+                return value
+            }
+            if let value = data[key] as? Int {
+                return Double(value)
+            }
+        }
+        
+        return nil
+    }
+    
     // MARK: - Boolean Extraction
     
     /// Extract a boolean value from the result

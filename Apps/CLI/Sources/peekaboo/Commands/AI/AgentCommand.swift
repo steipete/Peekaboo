@@ -220,6 +220,9 @@ struct AgentCommand: AsyncParsableCommand {
 
     @Flag(name: .long, help: "Enable full Terminal User Interface mode")
     var tui = false
+    
+    @Flag(name: .long, help: "Enable enhanced output with detailed formatters")
+    var enhanced = false
 
     @Flag(name: .long, help: "Force simple output mode (no colors or rich formatting)")
     var simple = false
@@ -233,6 +236,7 @@ struct AgentCommand: AsyncParsableCommand {
         if self.quiet { return .quiet }
         if self.verbose || self.debugTerminal { return .verbose }
         if self.tui { return .tui }
+        if self.enhanced { return .enhanced }
         if self.simple { return .minimal }
         if self.noColor { return .minimal }
         
@@ -279,7 +283,7 @@ struct AgentCommand: AsyncParsableCommand {
     }
 
     @MainActor
-    private mutating func runInternal() async throws {
+    mutating func runInternal() async throws {
         // Initialize services
         let services = PeekabooServices.shared
 
@@ -307,8 +311,8 @@ struct AgentCommand: AsyncParsableCommand {
         }
 
         // Handle resume with specific session ID
-        if let sessionId = resumeSession {
-            guard let continuationTask = task else {
+        if let sessionId = self.resumeSession {
+            guard let continuationTask = self.task else {
                 if self.jsonOutput {
                     let error = [
                         "success": false,
@@ -470,7 +474,7 @@ struct AgentCommand: AsyncParsableCommand {
     // MARK: - Task Execution
 
     @MainActor
-    private func getActualModelName(_ agentService: PeekabooAgentService) async -> String {
+    func getActualModelName(_ agentService: PeekabooAgentService) async -> String {
         // If model is explicitly provided via CLI, use that
         if let providedModel = model {
             return providedModel
@@ -482,7 +486,7 @@ struct AgentCommand: AsyncParsableCommand {
     }
 
     /// Convert internal model names to properly cased display names
-    private func getDisplayModelName(_ modelName: String) -> String {
+    func getDisplayModelName(_ modelName: String) -> String {
         let lowercased = modelName.lowercased()
 
         // OpenAI models - GPT should be uppercase with hyphen
@@ -578,7 +582,7 @@ struct AgentCommand: AsyncParsableCommand {
         return modelName
     }
 
-    private func parseModelString(_ modelString: String) -> LanguageModel? {
+    func parseModelString(_ modelString: String) -> LanguageModel? {
         if isDebugLoggingEnabled {
             print("DEBUG AgentCommand: Parsing model string: '\(modelString)'")
         }
@@ -668,7 +672,7 @@ struct AgentCommand: AsyncParsableCommand {
         return nil
     }
 
-    private func executeTask(
+    func executeTask(
         _ agentService: AgentServiceProtocol,
         task: String,
         maxSteps: Int = 20,
@@ -890,7 +894,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
 
-    private func displayResult(_ result: AgentExecutionResult) {
+    func displayResult(_ result: AgentExecutionResult) {
         if self.jsonOutput {
             let response = [
                 "success": true,
@@ -937,7 +941,7 @@ struct AgentCommand: AsyncParsableCommand {
 
     // MARK: - Session Management
 
-    private func showSessions(_ agentService: AgentServiceProtocol) async throws {
+    func showSessions(_ agentService: AgentServiceProtocol) async throws {
         // Cast to PeekabooAgentService - this should always succeed
         guard let peekabooService = agentService as? PeekabooAgentService else {
             throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
@@ -1008,7 +1012,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
 
-    private func resumeSession(_ agentService: AgentServiceProtocol, sessionId: String, task: String) async throws {
+    func resumeSession(_ agentService: AgentServiceProtocol, sessionId: String, task: String) async throws {
         if !self.jsonOutput {
             print(
                 "\(TerminalColor.cyan)\(TerminalColor.bold)🔄 Resuming session \(sessionId.prefix(8))...\(TerminalColor.reset)\n"
@@ -1019,7 +1023,7 @@ struct AgentCommand: AsyncParsableCommand {
         // The session resumption is handled inside runInternal
     }
 
-    private func updateTerminalTitle(_ title: String) {
+    func updateTerminalTitle(_ title: String) {
         // Use VibeTunnel to update terminal title if available
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -1035,7 +1039,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
 
-    private func formatTimeAgo(_ date: Date) -> String {
+    func formatTimeAgo(_ date: Date) -> String {
         let now = Date()
         let interval = now.timeIntervalSince(date)
 
@@ -1054,7 +1058,7 @@ struct AgentCommand: AsyncParsableCommand {
     }
     
     /// Print detailed terminal detection debugging information
-    private func printTerminalDetectionDebug(_ capabilities: TerminalCapabilities, actualMode: OutputMode) {
+    func printTerminalDetectionDebug(_ capabilities: TerminalCapabilities, actualMode: OutputMode) {
         print("\n" + String(repeating: "=", count: 60))
         print("\(TerminalColor.bold)\(TerminalColor.cyan)TERMINAL DETECTION DEBUG (-vv)\(TerminalColor.reset)")
         print(String(repeating: "=", count: 60))

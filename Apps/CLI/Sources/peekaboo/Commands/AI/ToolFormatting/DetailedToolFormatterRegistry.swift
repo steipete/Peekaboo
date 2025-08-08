@@ -26,11 +26,11 @@ public final class DetailedToolFormatterRegistry: @unchecked Sendable {
         // Register detailed formatters for comprehensive output
         
         // Detailed Application tools
-        let appFormatter = EnhancedApplicationToolFormatter(toolType: .launchApp)
+        let appFormatter = DetailedApplicationToolFormatter(toolType: .launchApp)
         register(appFormatter, for: [.launchApp, .listApps, .quitApp, .focusApp, .hideApp, .unhideApp, .switchApp])
         
         // Detailed Vision tools
-        let visionFormatter = EnhancedVisionToolFormatter(toolType: .see)
+        let visionFormatter = DetailedVisionToolFormatter(toolType: .see)
         register(visionFormatter, for: [.see, .screenshot, .windowCapture, .analyze])
         
         // Detailed UI Automation tools
@@ -89,11 +89,11 @@ public final class DetailedToolFormatterRegistry: @unchecked Sendable {
         // Create appropriate formatter based on tool category
         switch toolType.category {
         case .vision:
-            return EnhancedVisionToolFormatter(toolType: toolType)
+            return DetailedVisionToolFormatter(toolType: toolType)
         case .ui:
             return DetailedUIAutomationToolFormatter(toolType: toolType)
         case .app:
-            return EnhancedApplicationToolFormatter(toolType: toolType)
+            return DetailedApplicationToolFormatter(toolType: toolType)
         case .window:
             return WindowToolFormatter(toolType: toolType)
         case .menu:
@@ -120,10 +120,10 @@ public final class DetailedToolFormatterRegistry: @unchecked Sendable {
     private func createFormatterInstance(_ formatter: ToolFormatter, for toolType: ToolType) -> ToolFormatter {
         // Create appropriate formatter instance based on type
         switch formatter {
-        case is EnhancedApplicationToolFormatter:
-            return EnhancedApplicationToolFormatter(toolType: toolType)
-        case is EnhancedVisionToolFormatter:
-            return EnhancedVisionToolFormatter(toolType: toolType)
+        case is DetailedApplicationToolFormatter:
+            return DetailedApplicationToolFormatter(toolType: toolType)
+        case is DetailedVisionToolFormatter:
+            return DetailedVisionToolFormatter(toolType: toolType)
         case is DetailedUIAutomationToolFormatter:
             return DetailedUIAutomationToolFormatter(toolType: toolType)
         case is DetailedMenuSystemToolFormatter:
