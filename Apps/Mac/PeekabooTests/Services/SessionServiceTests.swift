@@ -1,37 +1,57 @@
 import Foundation
 import Testing
 @testable import Peekaboo
+@testable import PeekabooCore
 
 @Suite("SessionStore Tests", .tags(.services, .unit))
+@MainActor
 struct SessionStoreTests {
-    let store: SessionStore
+    var store: SessionStore!
+    var testStorageURL: URL!
 
-    init() {
-        self.store = SessionStore()
+    mutating func setup() {
+        // Create isolated storage for each test
+        let testDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: testDir, withIntermediateDirectories: true)
+        testStorageURL = testDir.appendingPathComponent("test_sessions.json")
+        store = SessionStore(storageURL: testStorageURL)
+    }
+
+    mutating func tearDown() {
+        // Clean up test storage
+        if let url = testStorageURL {
+            try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+        }
     }
 
     @Test("Creating a new session assigns unique ID")
-    func testCreateSession() {
-        let session = self.store.createSession(title: "")
+    mutating func testCreateSession() async {
+        setup()
+        defer { tearDown() }
+        let session = await store.createSession(title: "Test Session", modelName: "test-model")
 
         #expect(!session.id.isEmpty)
-        #expect(session.title == "New Session")
+        #expect(session.title == "Test Session")
         #expect(session.messages.isEmpty)
         #expect(session.startTime <= Date())
         #expect(session.summary.isEmpty)
     }
 
     @Test("Adding messages to session updates the session")
-    func testAddMessage() {
-        let session = self.store.createSession(title: "")
-        let message = SessionMessage(
+    mutating func testAddMessage() async {
+        setup()
+        defer { tearDown() }
+        var session = await store.createSession(title: "Test", modelName: "test-model")
+        let message = ConversationMessage(
             role: .user,
             content: "Test message")
 
-        self.store.addMessage(message, to: session)
+        await store.addMessage(message, to: session)
+        session = await store.sessions.first!
 
         // Verify the session was updated
-        let sessions = self.store.sessions
+        let sessions = await store.sessions
         #expect(sessions.count == 1)
 
         if let updatedSession = sessions.first {
@@ -41,20 +61,24 @@ struct SessionStoreTests {
     }
 
     @Test("Multiple sessions can be managed independently")
-    func multipleSessions() {
-        let session1 = self.store.createSession(title: "")
-        let session2 = self.store.createSession(title: "")
+    mutating func multipleSessions() async {
+        setup()
+        defer { tearDown() }
+        var session1 = await store.createSession(title: "Session 1", modelName: "test-model")
+        let session2 = await store.createSession(title: "Session 2", modelName: "test-model")
 
         #expect(session1.id != session2.id)
-        #expect(self.store.sessions.count == 2)
+        #expect(await store.sessions.count == 2)
 
         // Add message to first session
-        self.store.addMessage(
-            SessionMessage(role: .user, content: "Message 1"),
+        await store.addMessage(
+            ConversationMessage(role: .user, content: "Message 1"),
             to: session1)
+        session1 = await store.sessions.first { $0.id == session1.id }!
+
 
         // Verify only first session has the message
-        let sessions = self.store.sessions
+        let sessions = await store.sessions
         let updatedSession1 = sessions.first { $0.id == session1.id }
         let updatedSession2 = sessions.first { $0.id == session2.id }
 
@@ -63,15 +87,17 @@ struct SessionStoreTests {
     }
 
     @Test("Sessions are sorted by start time (newest first)")
-    func sessionSorting() {
+    mutating func sessionSorting() async {
+        setup()
+        defer { tearDown() }
         // Create sessions with specific times
-        let session1 = self.store.createSession(title: "")
-        Thread.sleep(forTimeInterval: 0.1)
-        let session2 = self.store.createSession(title: "")
-        Thread.sleep(forTimeInterval: 0.1)
-        let session3 = self.store.createSession(title: "")
+        let session1 = await store.createSession(title: "1", modelName: "m")
+        try? await Task.sleep(for: .milliseconds(10))
+        let session2 = await store.createSession(title: "2", modelName: "m")
+        try? await Task.sleep(for: .milliseconds(10))
+        let session3 = await store.createSession(title: "3", modelName: "m")
 
-        let sessions = self.store.sessions
+        let sessions = await store.sessions
         #expect(sessions.count == 3)
 
         // Verify order (newest first)
@@ -82,40 +108,47 @@ struct SessionStoreTests {
 }
 
 @Suite("SessionStore Persistence Tests", .tags(.services, .integration))
+@MainActor
 struct SessionStorePersistenceTests {
     @Test("Sessions persist across store instances")
     func sessionPersistence() async throws {
-        let sessionId: String
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let storageURL = directory.appendingPathComponent("test_sessions.json")
+        
+        var sessionId: String!
         let messageContent = "Test persistence message"
 
         // Create and populate session in first instance
         do {
-            let store1 = SessionStore()
-            let session = store1.createSession()
+            let store1 = SessionStore(storageURL: storageURL)
+            let session = await store1.createSession(title: "Persistent Session", modelName: "p-model")
             sessionId = session.id
 
-            store1.addMessage(
-                SessionMessage(role: .user, content: messageContent),
+            await store1.addMessage(
+                ConversationMessage(role: .user, content: messageContent),
                 to: session)
-
-            #expect(store1.sessions.count == 1)
+            
+            // Force save
+            await store1.saveSessions()
+            
+            let sessions = await store1.sessions
+            #expect(sessions.count == 1)
         }
 
-        // Wait a bit to ensure persistence
-        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        // Create new instance with same storage URL and verify data is loaded
+        let store2 = SessionStore(storageURL: storageURL)
 
-        // Create new instance and verify data is loaded
-        let store2 = SessionStore()
+        let sessions = await store2.sessions
+        #expect(sessions.count == 1)
 
-        // Give it time to load from persistence
-        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-
-        #expect(store2.sessions.count == 1)
-
-        if let loadedSession = store2.sessions.first {
+        if let loadedSession = sessions.first {
             #expect(loadedSession.id == sessionId)
             #expect(loadedSession.messages.count == 1)
             #expect(loadedSession.messages.first?.content == messageContent)
         }
+        
+        // Clean up
+        try? FileManager.default.removeItem(at: directory)
     }
 }

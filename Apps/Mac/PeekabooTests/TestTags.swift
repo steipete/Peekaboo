@@ -10,6 +10,7 @@ extension Tag {
     @Tag static var ui: Self
     @Tag static var services: Self
     @Tag static var models: Self
+    @Tag static var tools: Self
     @Tag static var fast: Self
     @Tag static var slow: Self
     @Tag static var networking: Self

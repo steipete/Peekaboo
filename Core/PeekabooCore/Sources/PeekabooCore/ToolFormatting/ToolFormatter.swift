@@ -10,6 +10,9 @@ public protocol ToolFormatter {
     /// The tool type this formatter handles
     var toolType: ToolType { get }
     
+    /// The display name for this tool
+    var displayName: String { get }
+    
     /// Format the tool execution start message
     func formatStarting(arguments: [String: Any]) -> String
     

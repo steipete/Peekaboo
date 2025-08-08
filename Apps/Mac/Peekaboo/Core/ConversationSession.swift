@@ -16,14 +16,17 @@ final class SessionStore {
 
     private let titleGenerator = SessionTitleGenerator()
 
-    private let storageURL: URL = {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let peekabooPath = documentsPath.appendingPathComponent("Peekaboo")
-        try? FileManager.default.createDirectory(at: peekabooPath, withIntermediateDirectories: true)
-        return peekabooPath.appendingPathComponent("sessions.json")
-    }()
+    private let storageURL: URL
 
-    init() {
+    init(storageURL: URL? = nil) {
+        if let storageURL = storageURL {
+            self.storageURL = storageURL
+        } else {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let peekabooPath = documentsPath.appendingPathComponent("Peekaboo")
+            try? FileManager.default.createDirectory(at: peekabooPath, withIntermediateDirectories: true)
+            self.storageURL = peekabooPath.appendingPathComponent("sessions.json")
+        }
         self.loadSessions()
     }
 

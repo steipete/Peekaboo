@@ -605,7 +605,7 @@ final class PeekabooAgent {
 
 // MARK: - Agent Errors
 
-public enum AgentError: LocalizedError {
+public enum AgentError: LocalizedError, Equatable {
     case serviceUnavailable
     case invalidConfiguration(String)
     case executionFailed(String)

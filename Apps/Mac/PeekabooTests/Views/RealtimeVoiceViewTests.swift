@@ -7,6 +7,7 @@ import Testing
 import SwiftUI
 import PeekabooCore
 import Tachikoma
+import TachikomaAudio
 @testable import Peekaboo
 
 @Suite("RealtimeVoiceView Tests", .tags(.unit, .ui))

@@ -1,12 +1,13 @@
 import Foundation
 import Testing
+import PeekabooCore
 @testable import Peekaboo
 
-@Suite("Session Model Tests", .tags(.models, .unit))
-struct SessionTests {
+@Suite("ConversationSession Model Tests", .tags(.models, .unit))
+struct ConversationSessionTests {
     @Test("Session initializes with correct defaults")
     func sessionInitialization() {
-        let session = Session(title: "Test Session")
+        let session = ConversationSession(title: "Test Session")
 
         #expect(!session.id.isEmpty)
         #expect(session.id.hasPrefix("session_"))
@@ -18,7 +19,7 @@ struct SessionTests {
 
     @Test("Session IDs are unique")
     func uniqueSessionIDs() {
-        let sessions = (0..<100).map { _ in Session(title: "Test") }
+        let sessions = (0..<100).map { _ in ConversationSession(title: "Test") }
         let uniqueIDs = Set(sessions.map(\.id))
 
         #expect(uniqueIDs.count == sessions.count)
@@ -27,20 +28,20 @@ struct SessionTests {
     @Test("Session codable roundtrip")
     func sessionCodable() throws {
         // Create a session with messages
-        var session = Session(title: "Codable Test")
+        var session = ConversationSession(title: "Codable Test")
         session.messages = [
-            SessionMessage(
+            ConversationMessage(
                 role: .user,
                 content: "Hello"),
-            SessionMessage(
+            ConversationMessage(
                 role: .assistant,
                 content: "Hi there!",
                 toolCalls: [
-                    ToolCall(
-                        id: "call_123",
+                    ConversationToolCall(
                         name: "screenshot",
-                        arguments: ["app": AnyCodable("Safari")],
-                        result: "Screenshot taken"),
+                        arguments: "{\"app\":\"Safari\"}",
+                        result: "Screenshot taken"
+                    ),
                 ]),
         ]
         session.summary = "A friendly greeting"
@@ -53,7 +54,7 @@ struct SessionTests {
         // Decode
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let decodedSession = try decoder.decode(Session.self, from: data)
+        let decodedSession = try decoder.decode(ConversationSession.self, from: data)
 
         // Verify
         #expect(decodedSession.id == session.id)
@@ -66,19 +67,19 @@ struct SessionTests {
     }
 }
 
-@Suite("SessionMessage Model Tests", .tags(.models, .unit))
-struct SessionMessageTests {
+@Suite("ConversationMessage Model Tests", .tags(.models, .unit))
+struct ConversationMessageTests {
     @Test("Message role types")
     func messageRoles() {
-        let userMessage = SessionMessage(
+        let userMessage = ConversationMessage(
             role: .user,
             content: "User content")
 
-        let assistantMessage = SessionMessage(
+        let assistantMessage = ConversationMessage(
             role: .assistant,
             content: "Assistant content")
 
-        let systemMessage = SessionMessage(
+        let systemMessage = ConversationMessage(
             role: .system,
             content: "System content")
 
@@ -90,19 +91,17 @@ struct SessionMessageTests {
     @Test("Message with tool calls")
     func messageWithToolCalls() {
         let toolCalls = [
-            ToolCall(
-                id: "call_1",
+            ConversationToolCall(
                 name: "screenshot",
-                arguments: ["app": AnyCodable("Finder")],
+                arguments: "{\"app\":\"Finder\"}",
                 result: "Success"),
-            ToolCall(
-                id: "call_2",
+            ConversationToolCall(
                 name: "click",
-                arguments: ["x": AnyCodable(100), "y": AnyCodable(200)],
+                arguments: "{\"x\":100,\"y\":200}",
                 result: "Clicked"),
         ]
 
-        let message = SessionMessage(
+        let message = ConversationMessage(
             role: .assistant,
             content: "I'll take a screenshot and click",
             toolCalls: toolCalls)
@@ -113,17 +112,13 @@ struct SessionMessageTests {
     }
 }
 
-@Suite("ToolCall Model Tests", .tags(.models, .unit))
-struct ToolCallTests {
+@Suite("ConversationToolCall Model Tests", .tags(.models, .unit))
+struct ConversationToolCallTests {
     @Test("Tool call initialization")
     func toolCallInit() {
-        let arguments: [String: AnyCodable] = [
-            "app": AnyCodable("Safari"),
-            "window": AnyCodable(1),
-            "includeDesktop": AnyCodable(true),
-        ]
+        let arguments = "{\"app\":\"Safari\",\"window\":1,\"includeDesktop\":true}"
 
-        let toolCall = ToolCall(
+        let toolCall = ConversationToolCall(
             id: "call_abc123",
             name: "screenshot",
             arguments: arguments,
@@ -131,41 +126,29 @@ struct ToolCallTests {
 
         #expect(toolCall.id == "call_abc123")
         #expect(toolCall.name == "screenshot")
-        #expect((toolCall.arguments["app"]?.value as? String) == "Safari")
-        #expect((toolCall.arguments["window"]?.value as? Int) == 1)
-        #expect((toolCall.arguments["includeDesktop"]?.value as? Bool) == true)
+        #expect(toolCall.arguments == arguments)
         #expect(toolCall.result == "Screenshot saved to /tmp/screenshot.png")
     }
 
-    @Test("Tool call codable with various argument types")
+    @Test("Tool call codable with complex arguments")
     func toolCallCodable() throws {
-        let toolCall = ToolCall(
+        let arguments = "{\"string\":\"value\",\"number\":42,\"float\":3.14,\"bool\":true,\"array\":[1,2,3],\"nested\":{\"key\":\"value\"}}"
+        let toolCall = ConversationToolCall(
             id: "test_call",
             name: "complex_tool",
-            arguments: [
-                "string": AnyCodable("value"),
-                "number": AnyCodable(42),
-                "float": AnyCodable(3.14),
-                "bool": AnyCodable(true),
-                "array": AnyCodable([1, 2, 3]),
-                "nested": AnyCodable(["key": "value"]),
-            ],
+            arguments: arguments,
             result: "Done")
 
         // Encode
         let data = try JSONEncoder().encode(toolCall)
 
         // Decode
-        let decoded = try JSONDecoder().decode(ToolCall.self, from: data)
+        let decoded = try JSONDecoder().decode(ConversationToolCall.self, from: data)
 
         // Verify
         #expect(decoded.id == toolCall.id)
         #expect(decoded.name == toolCall.name)
         #expect(decoded.result == toolCall.result)
-
-        // Check arguments
-        #expect((decoded.arguments["string"]?.value as? String) == "value")
-        #expect((decoded.arguments["number"]?.value as? Int) == 42)
-        #expect((decoded.arguments["bool"]?.value as? Bool) == true)
+        #expect(decoded.arguments == arguments)
     }
 }

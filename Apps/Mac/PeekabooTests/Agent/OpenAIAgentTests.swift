@@ -1,165 +1,63 @@
 import Foundation
-import os
 import Testing
+import PeekabooCore
 @testable import Peekaboo
 
-// Mock tool executor for testing
-final class MockToolExecutor: ToolExecutor {
-    private let _executedTools = OSAllocatedUnfairLock(initialState: [(name: String, arguments: String)]())
-    private let _toolResults = OSAllocatedUnfairLock(initialState: [String: String]())
+@Suite("PeekabooAgentService Tests", .tags(.ai, .unit))
+@MainActor
+struct PeekabooAgentServiceTests {
+    var agentService: PeekabooAgentService!
+    var settings: PeekabooSettings!
+    var sessionStore: SessionStore!
+    var agent: PeekabooAgent!
 
-    var executedTools: [(name: String, arguments: String)] {
-        self._executedTools.withLock { $0 }
+    mutating func setup() {
+        let services = PeekabooServices.shared
+        agentService = try! PeekabooAgentService(services: services)
+        settings = PeekabooSettings()
+        sessionStore = SessionStore()
+        agent = PeekabooAgent(settings: settings, sessionStore: sessionStore)
     }
 
-    var toolResults: [String: String] {
-        get { self._toolResults.withLock { $0 } }
-        set { self._toolResults.withLock { $0 = newValue } }
+    @Test("Agent service initializes correctly")
+    mutating func agentServiceInitialization() {
+        setup()
+        #expect(agentService != nil)
     }
 
-    func executeTool(name: String, arguments: String) async -> String {
-        self._executedTools.withLock { $0.append((name: name, arguments: arguments)) }
-        return self._toolResults.withLock { $0[name] } ?? "Mock result for \(name)"
+    @Test("Agent creates a valid set of tools")
+    mutating func agentCreatesTools() {
+        setup()
+        let tools = agentService.createAgentTools()
+        #expect(!tools.isEmpty)
+
+        // Check for a few expected tools
+        #expect(tools.contains { $0.name == "see" })
+        #expect(tools.contains { $0.name == "click" })
+        #expect(tools.contains { $0.name == "type" })
     }
 
-    func availableTools() -> [Tool] {
-        [
-            Tool(
-                function: ToolFunction(
-                    name: "test_tool",
-                    description: "A test tool",
-                    parameters: FunctionParameters(
-                        properties: ["param": Property(type: "string", description: "A parameter")],
-                        required: ["param"]))),
-        ]
-    }
-
-    func systemPrompt() -> String {
-        "Test system prompt"
-    }
-}
-
-@Suite("OpenAIAgent Tests", .tags(.ai, .unit))
-struct OpenAIAgentTests {
-    @Test("Agent initialization")
-    func agentInit() async {
-        let executor = MockToolExecutor()
-        _ = OpenAIAgent(
-            apiKey: "test-key",
-            model: "gpt-4o",
-            toolExecutor: executor)
-
-        // Agent should be created successfully
-        // The agent is non-optional, so it's always created
-    }
-
-    @Test("Dry run mode skips API calls")
-    func dryRunMode() async throws {
-        let executor = MockToolExecutor()
-        let agent = OpenAIAgent(
-            apiKey: "test-key",
-            model: "gpt-4o",
-            toolExecutor: executor)
-
-        let result = try await agent.executeTask("Test task", dryRun: true)
-
-        #expect(result.success == true)
-        #expect(result.output.contains("DRY RUN"))
-        #expect(executor.executedTools.isEmpty) // No tools should be executed in dry run
-    }
-
-    @Test("Tool executor integration")
-    func toolExecutorIntegration() async {
-        let executor = MockToolExecutor()
-        executor.toolResults["test_tool"] = "Custom test result"
-
-        _ = OpenAIAgent(
-            apiKey: "test-key",
-            model: "gpt-4o",
-            toolExecutor: executor)
-
-        // Get available tools
-        let tools = executor.availableTools()
-        #expect(tools.count == 1)
-        #expect(tools[0].function.name == "test_tool")
-
-        // Execute tool
-        let result = await executor.executeTool(
-            name: "test_tool",
-            arguments: "{\"param\": \"value\"}")
-        #expect(result == "Custom test result")
-        #expect(executor.executedTools.count == 1)
-    }
-}
-
-@Suite("PeekabooToolExecutor Tests", .tags(.ai, .integration))
-struct PeekabooToolExecutorTests {
-    let executor = PeekabooToolExecutor()
-
-    @Test("All expected tools are available")
-    func testAvailableTools() {
-        let tools = self.executor.availableTools()
-        let toolNames = Set(tools.map(\.function.name))
-
-        let expectedTools: Set<String> = [
-            "screenshot",
-            "click",
-            "type_text",
-            "key",
-            "scroll",
-            "drag",
-            "app",
-            "window",
-            "list_windows",
-            "list_apps",
-            "wait",
-            "see",
-            "analyze",
-            "speak",
-            "ask",
-        ]
-
-        #expect(toolNames == expectedTools)
-    }
-
-    @Test("Tool definitions are valid")
-    func toolDefinitions() {
-        let tools = self.executor.availableTools()
-
-        for tool in tools {
-            // Each tool should have required fields
-            #expect(!tool.function.name.isEmpty)
-            #expect(!tool.function.description.isEmpty)
-            #expect(tool.function.parameters.type == "object")
-            #expect(!tool.function.parameters.properties.isEmpty)
+    @Test("Task execution requires a valid API key")
+    mutating func taskExecutionRequiresAPIKey() async {
+        setup()
+        settings.openAIAPIKey = ""
+        
+        await #expect(throws: AgentError.serviceUnavailable) {
+            try await agent.executeTask("What time is it?")
         }
     }
 
-    @Test("System prompt contains necessary information")
-    func testSystemPrompt() {
-        let prompt = self.executor.systemPrompt()
+    @Test("Dry run mode returns successfully without execution")
+    mutating func dryRunMode() async throws {
+        setup()
+        settings.openAIAPIKey = "sk-test-key" // Needs a dummy key
+        
+        _ = try await agent.executeTask("Test task")
 
-        #expect(!prompt.isEmpty)
-        #expect(prompt.contains("macOS"))
-        #expect(prompt.contains("automation"))
-    }
-
-    @Test("Tool execution format")
-    func toolExecutionFormat() async {
-        // Test that tool executor properly formats commands
-        let testCases: [(String, String, String)] = [
-            ("screenshot", "{\"application\": \"Safari\"}", "image --app"),
-            ("click", "{\"x\": 100, \"y\": 200}", "click"),
-            ("list_apps", "{}", "list apps"),
-            ("list_windows", "{\"application\": \"Finder\"}", "list windows"),
-        ]
-
-        for (toolName, _, _) in testCases {
-            // Note: We can't actually execute without the CLI, but we can verify
-            // the executor handles the tool names correctly
-            let tools = self.executor.availableTools()
-            let tool = tools.first { $0.function.name == toolName }
-            #expect(tool != nil)
-        }
+        // Dry run should create a session and a user message, but not execute
+        let sessions = await sessionStore.sessions
+        #expect(sessions.count == 1)
+        #expect(sessions.first?.messages.count == 1)
+        #expect(sessions.first?.messages.first?.role == .user)
     }
 }

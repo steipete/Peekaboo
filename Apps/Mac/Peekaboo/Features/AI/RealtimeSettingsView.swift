@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Tachikoma
+import TachikomaAudio
 
 /// Settings popover for realtime voice configuration
 struct RealtimeSettingsView: View {

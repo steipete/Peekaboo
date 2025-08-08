@@ -12,7 +12,7 @@ import PeekabooCore
 @Observable
 @MainActor
 final class Permissions {
-    private let permissionsService = ObservablePermissionsService()
+    private let permissionsService: ObservablePermissionsServiceProtocol
     private let logger = Logger(subsystem: "com.peekaboo.peekaboo", category: "Permissions")
 
     var screenRecordingStatus: ObservablePermissionsService.PermissionState {
@@ -31,8 +31,8 @@ final class Permissions {
         self.permissionsService.hasAllPermissions
     }
 
-    init() {
-        // ObservablePermissionsService handles its own monitoring
+    init(permissionsService: ObservablePermissionsServiceProtocol = ObservablePermissionsService()) {
+        self.permissionsService = permissionsService
     }
 
     func check() async {
@@ -68,7 +68,7 @@ final class Permissions {
     }
 
     func startMonitoring() {
-        self.permissionsService.startMonitoring()
+        self.permissionsService.startMonitoring(interval: 1.0)
     }
 
     func stopMonitoring() {

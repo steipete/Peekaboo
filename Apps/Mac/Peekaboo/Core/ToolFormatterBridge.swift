@@ -236,6 +236,14 @@ extension ToolType {
             return "✅"
         case .needMoreInformation, .needInfo:
             return "❓"
+            
+        // New cases
+        case .drag, .swipe:
+            return "↔️"
+        case .listDock, .dockLaunch:
+            return "📋"
+        case .copyToClipboard, .pasteFromClipboard:
+            return "📋"
         }
     }
 }

@@ -6,6 +6,7 @@
 import SwiftUI
 import PeekabooCore
 import Tachikoma
+import TachikomaAudio
 
 /// Real-time voice conversation interface using OpenAI Realtime API
 struct RealtimeVoiceView: View {

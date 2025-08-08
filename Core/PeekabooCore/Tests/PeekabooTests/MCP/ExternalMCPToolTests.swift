@@ -11,7 +11,7 @@ struct ExternalMCPToolTests {
     @Test("ExternalMCPTool initialization and properties")
     @MainActor
     func testExternalToolProperties() async {
-        let clientManager = MCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager.shared
         
         // Create a mock tool info
         let originalTool = Tool(
@@ -43,7 +43,7 @@ struct ExternalMCPToolTests {
     @Test("ExternalMCPTool name prefixing")
     @MainActor
     func testToolNamePrefixing() async {
-        let clientManager = MCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager.shared
         
         let originalTool = Tool(
             name: "create_file",
@@ -69,7 +69,7 @@ struct CategorizedToolsTests {
     @Test("CategorizedTools initialization and properties")
     @MainActor
     func testCategorizedToolsProperties() async {
-        let clientManager = MCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager.shared
         
         // Create mock native tools
         let nativeTool1 = MockMCPTool(name: "native1", description: "Native tool 1")
@@ -213,7 +213,7 @@ struct ToolOrganizerTests {
     @Test("ToolOrganizer filtering")
     @MainActor
     func testToolFiltering() async {
-        let clientManager = MCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager.shared
         
         // Create test tools
         let nativeTools = [
@@ -270,7 +270,7 @@ struct ToolOrganizerTests {
     @Test("ToolOrganizer sorting")
     @MainActor
     func testToolSorting() async {
-        let clientManager = MCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager.shared
         
         // Create unsorted native tools
         let nativeTools = [
@@ -318,7 +318,7 @@ struct ToolOrganizerTests {
     @Test("ToolOrganizer display names")
     @MainActor
     func testDisplayNames() async {
-        let clientManager = MCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager.shared
         
         let nativeTool = MockMCPTool(name: "native_tool", description: "Native tool")
         

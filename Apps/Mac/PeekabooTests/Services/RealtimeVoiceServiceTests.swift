@@ -17,7 +17,7 @@ struct RealtimeVoiceServiceTests {
     
     private func createMockDependencies() -> (PeekabooAgentService, SessionStore, PeekabooSettings) {
         let services = PeekabooServices.shared
-        let agentService = PeekabooAgentService(services: services)
+        let agentService = try! PeekabooAgentService(services: services)
         let sessionStore = SessionStore()
         let settings = PeekabooSettings()
         return (agentService, sessionStore, settings)
@@ -70,7 +70,7 @@ struct RealtimeVoiceServiceTests {
         
         // Ensure no API key is set
         settings.openAIAPIKey = ""
-        TachikomaConfiguration.current.setAPIKey(nil, for: .openai)
+        TachikomaConfiguration.current.setAPIKey("", for: .openai)
         
         let service = RealtimeVoiceService(
             agentService: agentService,

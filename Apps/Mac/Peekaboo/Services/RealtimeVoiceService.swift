@@ -295,7 +295,7 @@ final class RealtimeVoiceService {
 
 // MARK: - Error Types
 
-enum RealtimeError: LocalizedError {
+enum RealtimeError: LocalizedError, Equatable {
     case notConnected
     case apiKeyMissing
     case connectionFailed(String)

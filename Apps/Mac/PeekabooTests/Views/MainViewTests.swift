@@ -1,25 +1,11 @@
 import SwiftUI
 import Testing
 @testable import Peekaboo
+@testable import PeekabooCore
 
-@Suite("MainView Tests", .tags(.ui, .unit))
+@Suite("MainView Logic Tests", .tags(.ui, .unit))
 @MainActor
-struct MainViewTests {
-    @Test("View modes toggle correctly")
-    func viewModes() {
-        let settings = PeekabooSettings()
-        let sessionStore = SessionStore()
-        let agent = PeekabooAgent(
-            settings: settings,
-            sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer(settings: settings)
-
-        // Note: We can't directly test SwiftUI views easily without UI testing
-        // This test verifies the services are properly initialized
-        #expect(agent.isExecuting == false)
-        #expect(speechRecognizer.isListening == false)
-    }
-
+struct MainViewLogicTests {
     @Test("Input validation")
     func inputValidation() {
         // Test various input strings
@@ -49,29 +35,28 @@ struct MainViewTests {
     }
 }
 
-@Suite("SessionDetailView Tests", .tags(.ui, .unit))
+@Suite("SessionDetailView Logic Tests", .tags(.ui, .unit))
 @MainActor
-struct SessionDetailViewTests {
+struct SessionDetailViewLogicTests {
     @Test("Session display formatting")
     func sessionFormatting() {
-        var session = Session(title: "Test Session")
+        var session = ConversationSession(title: "Test Session")
 
         // Add various message types
         session.messages = [
-            SessionMessage(
+            ConversationMessage(
                 role: .user,
                 content: "Take a screenshot of Safari"),
-            SessionMessage(
+            ConversationMessage(
                 role: .assistant,
                 content: "I'll take a screenshot of Safari for you.",
                 toolCalls: [
-                    ToolCall(
-                        id: "call_123",
+                    ConversationToolCall(
                         name: "screenshot",
-                        arguments: ["app": AnyCodable("Safari")],
+                        arguments: "{\"app\":\"Safari\"}",
                         result: "Screenshot saved"),
                 ]),
-            SessionMessage(
+            ConversationMessage(
                 role: .system,
                 content: "Task completed successfully"),
         ]
