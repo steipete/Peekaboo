@@ -230,27 +230,9 @@ struct AgentResultData: Decodable {
 
 struct AgentStep: Decodable {
     let tool: String
-    let arguments: [String: Any]?
+    let arguments: [String: String]?
     let description: String
     let output: String?
-
-    enum CodingKeys: String, CodingKey {
-        case tool, description, output, arguments
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.tool = try container.decode(String.self, forKey: .tool)
-        self.description = try container.decode(String.self, forKey: .description)
-        self.output = try container.decodeIfPresent(String.self, forKey: .output)
-
-        // Handle arguments as Any
-        if let args = try container.decodeIfPresent([String: AnyCodable].self, forKey: .arguments) {
-            self.arguments = args.mapValues { $0.value }
-        } else {
-            self.arguments = nil
-        }
-    }
 }
 
 struct AgentErrorData: Decodable {

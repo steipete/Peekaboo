@@ -269,6 +269,9 @@ extension MCPCommand {
         @Option(name: .shortAndLong, help: "Environment variables (key=value)")
         var env: [String] = []
         
+        @Option(name: .long, parsing: .upToNextOption, help: "HTTP headers for HTTP/SSE (Key=Value)")
+        var header: [String] = []
+        
         @Option(help: "Connection timeout in seconds")
         var timeout: Double = 10.0
         
@@ -302,12 +305,25 @@ extension MCPCommand {
                 }
             }
 
+            // Parse headers
+            var headersDict: [String: String] = [:]
+            for h in header {
+                let parts = h.split(separator: "=", maxSplits: 1)
+                if parts.count == 2 {
+                    headersDict[String(parts[0])] = String(parts[1])
+                } else {
+                    Logger.shared.error("Invalid header format: \(h). Use Key=Value")
+                    throw ExitCode.failure
+                }
+            }
+
             // Create Tachikoma MCP server config
             let config = TachikomaMCP.MCPServerConfig(
                 transport: transport,
                 command: command[0],
                 args: Array(command.dropFirst()),
                 env: envDict,
+                headers: headersDict.isEmpty ? nil : headersDict,
                 enabled: !disabled,
                 timeout: timeout,
                 autoReconnect: true,

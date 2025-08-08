@@ -99,7 +99,8 @@ struct ClickCommandAdvancedTests {
             clickedElement: "AXButton: Save",
             clickLocation: clickLocation,
             waitTime: 1.5,
-            executionTime: 2.0
+            executionTime: 2.0,
+            targetApp: "TestApp"
         )
 
         let encoder = JSONEncoder()
@@ -119,10 +120,10 @@ struct ClickCommandAdvancedTests {
         let executionTime = json?["executionTime"] as? Double
         #expect(executionTime == 2.0)
 
-        if let location = json?["clickLocation"] as? [String: Any] {
-            let x = location["x"] as? Double
+        if let location = json?["clickLocation"] as? [String: Double] {
+            let x = location["x"]
             #expect(x == 100.0)
-            let y = location["y"] as? Double
+            let y = location["y"]
             #expect(y == 200.0)
         } else {
             Issue.record("clickLocation not found in JSON")

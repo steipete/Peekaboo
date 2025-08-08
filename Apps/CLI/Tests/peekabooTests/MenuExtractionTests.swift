@@ -22,7 +22,7 @@ struct MenuExtractionTests {
 
         // Verify we got menu data
         if let menuData = json.data {
-            let jsonData = try JSONSerialization.data(withJSONObject: menuData.value)
+            let jsonData = try JSONSerialization.data(withJSONObject: menuData)
             let menus = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
 
             #expect(menus?["app"] as? String == "Calculator")
@@ -73,7 +73,7 @@ struct MenuExtractionTests {
         #expect(json.success == true)
 
         if let menuData = json.data {
-            let jsonData = try JSONSerialization.data(withJSONObject: menuData.value)
+            let jsonData = try JSONSerialization.data(withJSONObject: menuData)
             let menus = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
 
             if let menuStructure = menus?["menu_structure"] as? [[String: Any]] {
@@ -152,7 +152,7 @@ struct MenuExtractionTests {
         #expect(json.success == true)
 
         if let menuData = json.data {
-            let jsonData = try JSONSerialization.data(withJSONObject: menuData.value)
+            let jsonData = try JSONSerialization.data(withJSONObject: menuData)
             let menus = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
 
             if let menuStructure = menus?["menu_structure"] as? [[String: Any]] {
@@ -190,7 +190,7 @@ struct MenuExtractionTests {
         #expect(json.success == true)
 
         if let menuData = json.data {
-            let jsonData = try JSONSerialization.data(withJSONObject: menuData.value)
+            let jsonData = try JSONSerialization.data(withJSONObject: menuData)
             let menus = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
 
             if let menuStructure = menus?["menu_structure"] as? [[String: Any]] {

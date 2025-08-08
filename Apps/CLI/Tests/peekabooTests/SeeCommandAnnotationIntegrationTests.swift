@@ -64,7 +64,7 @@ struct SeeCommandAnnotationIntegrationTests {
             element_count: 0,
             interactable_count: 0,
             capture_mode: "window",
-            analysis_result: nil,
+            analysis: nil,
             execution_time: 0,
             ui_elements: [],
             menu_bar: nil
@@ -94,7 +94,7 @@ struct SeeCommandAnnotationIntegrationTests {
             element_count: 0,
             interactable_count: 0,
             capture_mode: "window",
-            analysis_result: nil,
+            analysis: nil,
             execution_time: 0,
             ui_elements: [],
             menu_bar: nil

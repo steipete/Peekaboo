@@ -118,8 +118,8 @@ struct SeeCommandAnnotationTests {
                 windowCount: 1
             ),
             windowInfo: ServiceWindowInfo(
-                title: windowInfo.window_title,
                 windowID: Int(windowInfo.window_id ?? 0),
+                title: windowInfo.window_title,
                 bounds: CGRect(
                     x: windowInfo.bounds?.x ?? 0,
                     y: windowInfo.bounds?.y ?? 0,

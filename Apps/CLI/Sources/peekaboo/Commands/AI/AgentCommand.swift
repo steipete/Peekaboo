@@ -297,7 +297,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
 
         // Handle audio input
-        let executionTask: String
+        var executionTask: String
         if self.audio || self.audioFile != nil {
             if !self.jsonOutput && !self.quiet {
                 if let audioPath = audioFile {
@@ -394,7 +394,7 @@ struct AgentCommand: AsyncParsableCommand {
             }
             return
         }
-
+    }
         // Execute task
         try await self.executeTask(agentService, task: executionTask, maxSteps: self.maxSteps ?? 20)
     }
@@ -842,6 +842,7 @@ struct AgentCommand: AsyncParsableCommand {
                 throw error
             }
         }
+    }
     
     func displayResult(_ result: AgentExecutionResult) {
         if self.jsonOutput {
@@ -1062,11 +1063,11 @@ struct AgentCommand: AsyncParsableCommand {
         } else if capabilities.supportsTUI && capabilities.width >= 100 && capabilities.height >= 20 {
             print("   → TUI mode (all requirements met)")
         } else if capabilities.supportsColors && capabilities.width >= 80 {
-            print("   → Enhanced mode (colors + sufficient width)")
+            print("   • Enhanced mode (colors + sufficient width)")
         } else {
             print("   → Compact mode (basic terminal)")
         }
         
         print(String(repeating: "=", count: 60) + "\n")
     }
-}  // End of AgentCommand struct
+}

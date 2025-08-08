@@ -97,7 +97,7 @@ struct SeeCommandTests {
             element_count: 10,
             interactable_count: 5,
             capture_mode: "frontmost",
-            analysis_result: nil,
+            analysis: nil,
             execution_time: 1.5,
             ui_elements: [element],
             menu_bar: nil

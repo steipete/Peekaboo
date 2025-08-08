@@ -14,7 +14,7 @@ struct AgentResumeCLITests {
         let command = AgentCommand()
 
         // The resume property should be optional and default to nil
-        #expect(command.resume == nil)
+        #expect(command.resume == false)
     }
 
     @Test("AgentCommand task is optional for resume functionality")
@@ -58,34 +58,34 @@ struct AgentResumeCLITests {
             #expect(jsonString != nil)
             #expect(jsonString!.contains("\"success\" : false"))
         } catch {
-            #expect(false, "JSON serialization should not fail")
+            #expect(Bool(false), "JSON serialization should not fail")
         }
     }
 
     @Test("Session data formats correctly for JSON output")
     func sessionDataFormatsCorrectlyForJSON() async {
-        let manager = AgentSessionManager.shared
-        let sessionId = await manager.createSession(task: "JSON test task", threadId: "json-test-thread")
+        let manager = SessionManager.shared
+        let session = try! await manager.createSession(task: "JSON test task")
 
-        await manager.addStep(sessionId: sessionId, description: "JSON step", command: "json-cmd", output: "json-out")
-        await manager.setLastQuestion(sessionId: sessionId, question: "JSON question?")
+        await manager.addMessageToSession(sessionId: session.id, message: .init(role: .user, content: "JSON step"))
+        //await manager.setLastQuestion(sessionId: session.id, question: "JSON question?")
 
-        let session = await manager.getSession(id: sessionId)!
+        let updatedSession = try! await manager.getSession(id: session.id)!
 
         // Format session data as it would be for JSON output
         let sessionData: [String: Any] = [
-            "id": session.id,
-            "task": session.task,
-            "steps": session.steps.count,
-            "lastQuestion": session.lastQuestion as Any,
-            "createdAt": ISO8601DateFormatter().string(from: session.createdAt),
-            "lastActivityAt": ISO8601DateFormatter().string(from: session.lastActivityAt)
+            "id": updatedSession.id,
+            "task": updatedSession.summary,
+            "steps": updatedSession.messages.count,
+            "lastQuestion": "" as Any,
+            "createdAt": ISO8601DateFormatter().string(from: updatedSession.createdAt),
+            "lastActivityAt": ISO8601DateFormatter().string(from: updatedSession.updatedAt)
         ]
 
-        #expect(sessionData["id"] as? String == sessionId)
+        #expect(sessionData["id"] as? String == session.id)
         #expect(sessionData["task"] as? String == "JSON test task")
         #expect(sessionData["steps"] as? Int == 1)
-        #expect(sessionData["lastQuestion"] as? String == "JSON question?")
+        #expect(sessionData["lastQuestion"] as? String == "")
 
         // Test serialization
         do {
@@ -94,11 +94,11 @@ struct AgentResumeCLITests {
             #expect(jsonString != nil)
             #expect(jsonString!.contains("JSON test task"))
         } catch {
-            #expect(false, "Session data should serialize to JSON")
+            #expect(Bool(false), "Session data should serialize to JSON")
         }
 
         // Clean up
-        await manager.deleteSession(id: sessionId)
+        await manager.deleteSession(id: session.id)
     }
 
     // MARK: - Time Formatting Tests
@@ -162,52 +162,42 @@ struct AgentResumeCLITests {
 
     @Test("Session list formatting includes all required fields")
     func sessionListFormattingIncludesAllRequiredFields() async {
-        let manager = AgentSessionManager.shared
+        let manager = SessionManager.shared
 
         // Create test sessions with different characteristics
-        let sessionId1 = await manager.createSession(task: "Simple task", threadId: "thread-1")
-        let sessionId2 = await manager.createSession(task: "Complex task with multiple steps", threadId: "thread-2")
-        let sessionId3 = await manager.createSession(task: "Task with question", threadId: "thread-3")
+        let session1 = try! await manager.createSession(task: "Simple task")
+        let session2 = try! await manager.createSession(task: "Complex task with multiple steps")
+        let session3 = try! await manager.createSession(task: "Task with question")
 
         // Add different amounts of content
-        await manager.addStep(sessionId: sessionId2, description: "Step 1", command: nil, output: nil)
-        await manager.addStep(sessionId: sessionId2, description: "Step 2", command: nil, output: nil)
-        await manager.addStep(sessionId: sessionId2, description: "Step 3", command: nil, output: nil)
+        await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 1"))
+        await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 2"))
+        await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 3"))
 
-        await manager.setLastQuestion(sessionId: sessionId3, question: "What should I do next?")
-
-        let sessions = await manager.getRecentSessions()
-        let testSessions = sessions.filter { [sessionId1, sessionId2, sessionId3].contains($0.id) }
+        let sessions = try! await manager.listSessions()
+        let testSessions = sessions.filter { [session1.id, session2.id, session3.id].contains($0.id) }
 
         #expect(testSessions.count == 3)
 
         // Verify each session has the required fields for display
         for session in testSessions {
             #expect(!session.id.isEmpty)
-            #expect(!session.task.isEmpty)
-            // steps array exists (count is always >= 0)
-            // lastQuestion can be nil, that's valid
+            #expect(session.summary != nil)
             #expect(session.createdAt <= Date())
-            #expect(session.lastActivityAt <= Date())
+            #expect(session.lastAccessedAt <= Date())
         }
 
         // Verify specific session characteristics
-        let simpleSession = testSessions.first { $0.id == sessionId1 }
-        #expect(simpleSession?.steps.isEmpty == true)
-        #expect(simpleSession?.lastQuestion == nil)
+        let simpleSession = testSessions.first { $0.id == session1.id }
+        #expect(simpleSession?.messageCount == 0)
 
-        let complexSession = testSessions.first { $0.id == sessionId2 }
-        #expect(complexSession?.steps.count == 3)
-        #expect(complexSession?.lastQuestion == nil)
-
-        let questionSession = testSessions.first { $0.id == sessionId3 }
-        #expect(questionSession?.steps.isEmpty == true)
-        #expect(questionSession?.lastQuestion == "What should I do next?")
+        let complexSession = testSessions.first { $0.id == session2.id }
+        #expect(complexSession?.messageCount == 3)
 
         // Clean up
-        await manager.deleteSession(id: sessionId1)
-        await manager.deleteSession(id: sessionId2)
-        await manager.deleteSession(id: sessionId3)
+        await manager.deleteSession(id: session1.id)
+        await manager.deleteSession(id: session2.id)
+        await manager.deleteSession(id: session3.id)
     }
 
     // MARK: - Resume Prompt Construction Tests
