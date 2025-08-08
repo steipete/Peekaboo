@@ -492,7 +492,7 @@ public class WindowToolFormatter: BaseToolFormatter {
         return parts.isEmpty ? "→ moved" : parts.joined(separator: " ")
     }
     
-    public override func formatStarting(arguments: [String: Any]) -> String
+    public override func formatStarting(arguments: [String: Any]) -> String {
         switch toolType {
         case .focusWindow:
             let app = arguments["appName"] as? String ?? "window"

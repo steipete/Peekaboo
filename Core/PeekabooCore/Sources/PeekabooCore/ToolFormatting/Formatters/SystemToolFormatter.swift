@@ -148,7 +148,7 @@ public class SystemToolFormatter: BaseToolFormatter {
         }
     }
     
-    public override func formatStarting(arguments: [String: Any]) -> String
+    public override func formatStarting(arguments: [String: Any]) -> String {
         switch toolType {
         case .shell:
             if let command = arguments["command"] as? String {
@@ -181,7 +181,7 @@ public class SystemToolFormatter: BaseToolFormatter {
         }
     }
     
-    public override func formatError(error: String, result: [String: Any]) -> String
+    public override func formatError(error: String, result: [String: Any]) -> String {
         if toolType == .shell {
             // Show command output for shell errors
             var parts: [String] = []

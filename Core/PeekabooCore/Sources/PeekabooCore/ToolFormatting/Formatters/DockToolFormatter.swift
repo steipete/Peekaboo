@@ -78,7 +78,7 @@ public class DockToolFormatter: BaseToolFormatter {
         }
     }
     
-    public override func formatStarting(arguments: [String: Any]) -> String
+    public override func formatStarting(arguments: [String: Any]) -> String {
         switch toolType {
         case .listDock:
             return "Listing dock items..."

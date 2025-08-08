@@ -146,7 +146,7 @@ public class ElementToolFormatter: BaseToolFormatter {
         }
     }
     
-    public override func formatStarting(arguments: [String: Any]) -> String
+    public override func formatStarting(arguments: [String: Any]) -> String {
         switch toolType {
         case .findElement:
             let summary = formatCompactSummary(arguments: arguments)

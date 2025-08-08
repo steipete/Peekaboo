@@ -139,7 +139,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
             print(name, terminator: "")
             
         case .verbose:
-            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)")
+            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(display)\(TerminalColor.reset)")
             if arguments.isEmpty || arguments == "{}" {
                 print("\(TerminalColor.gray)Arguments: (none)\(TerminalColor.reset)")
             } else if let formatted = formatJSON(arguments) {
@@ -402,7 +402,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
     
     private func handleCommunicationToolComplete(name: String, toolType: ToolType) {
         if outputMode == .verbose {
-            print("\n✅ \(toolType.displayName) completed")
+            print("\n✅ \(toolType.rawValue.replacingOccurrences(of: "_", with: " ").capitalized) completed")
         }
     }
     
@@ -440,14 +440,7 @@ private class UnknownToolFormatter: BaseToolFormatter {
         super.init(toolType: .wait)
     }
     
-    override var displayName: String {
-        toolName.replacingOccurrences(of: "_", with: " ").capitalized
-    }
-    
-    override var icon: String {
-        "⚙️"
-    }
-    
+
     override func formatStarting(arguments: [String: Any]) -> String {
         "\(toolName.replacingOccurrences(of: "_", with: " ").capitalized)"
     }
