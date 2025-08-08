@@ -13,7 +13,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
-        // Use local fork of swift-sdk during development
         .package(path: "../../../swift-sdk"),
         .package(url: "https://github.com/migueldeicaza/TermKit", branch: "main"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),

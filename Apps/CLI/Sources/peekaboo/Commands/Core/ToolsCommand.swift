@@ -110,7 +110,7 @@ struct ToolsCommand: AsyncParsableCommand {
         )
         
         if jsonOutput {
-            try await outputJSON(tools: sortedTools)
+            try outputJSON(tools: sortedTools)
         } else {
             await outputFormatted(tools: sortedTools, options: displayOptions)
         }

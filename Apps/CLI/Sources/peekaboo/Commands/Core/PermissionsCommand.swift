@@ -3,6 +3,7 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import ScreenCaptureKit
 
 // Permission status structures for JSON output
 struct PermissionStatus: Codable {
@@ -226,12 +227,23 @@ struct RequestSubcommand: AsyncParsableCommand {
         print("")
 
         // This will trigger the permission dialog
-        _ = CGWindowListCreateImage(
-            CGRect(x: 0, y: 0, width: 1, height: 1),
-            .optionAll,
-            kCGNullWindowID,
-            .nominalResolution
-        )
+        // For macOS 14+, we use ScreenCaptureKit to trigger the permission
+        if #available(macOS 14.0, *) {
+            Task {
+                // Request screen capture permissions
+                _ = try? await SCShareableContent.current
+            }
+            // Give it a moment to trigger the dialog
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        } else {
+            // Fall back to deprecated API for older macOS versions
+            _ = CGWindowListCreateImage(
+                CGRect(x: 0, y: 0, width: 1, height: 1),
+                .optionAll,
+                kCGNullWindowID,
+                .nominalResolution
+            )
+        }
 
         print("If a permission dialog appeared:")
         print("1. Click 'Open System Settings'")

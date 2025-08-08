@@ -323,7 +323,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         
         // Update token count if available
         if let usage = usage {
-            totalTokens = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0)
+            totalTokens = usage.inputTokens + usage.outputTokens
         }
         
         guard !hasShownFinalSummary && outputMode != .quiet else { return }

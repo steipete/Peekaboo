@@ -16,7 +16,6 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
         .package(path: "../AXorcist"),
         .package(path: "../../Tachikoma"),
-        // Ensure MCP SDK available via local fork for any direct usage
         .package(path: "../../swift-sdk"),
     ],
     targets: [
