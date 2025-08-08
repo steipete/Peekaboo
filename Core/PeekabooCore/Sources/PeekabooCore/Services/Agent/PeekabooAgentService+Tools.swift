@@ -203,7 +203,7 @@ extension PeekabooAgentService {
             execute: { arguments in
                 var argsDict = arguments.toDictionary()
                 argsDict["action"] = "launch"
-                let newArgs = AgentToolArguments(argsDict.mapValues { AnyAgentToolValue.from($0) })
+                let newArgs = AgentToolArguments(argsDict.mapValues { AnyAgentToolValue.fromAny($0) })
                 let response = try await tool.execute(arguments: ToolArguments(from: newArgs))
                 return convertToolResponseToAgentToolResult(response)
             }

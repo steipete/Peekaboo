@@ -40,8 +40,7 @@ public extension TypedValue {
     }
     
     /// Encode a dictionary with heterogeneous values
-    static func encodeDictionary<T>(_ dict: [String: Any], to container: inout T) throws 
-    where T: KeyedEncodingContainer<DynamicCodingKey> {
+    static func encodeDictionary(_ dict: [String: Any], to container: inout KeyedEncodingContainer<DynamicCodingKey>) throws {
         for (key, value) in dict {
             let typedValue = try TypedValue.fromJSON(value)
             let codingKey = DynamicCodingKey(stringValue: key)

@@ -10,12 +10,12 @@ import Tachikoma
 // MARK: - Bridge between TypedValue and external types
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
-public extension TypedValue {
+public extension Tachikoma.TypedValue {
     
     // MARK: - MCP Value Conversion
     
     /// Convert from MCP Value to TypedValue
-    static func from(_ value: Value) -> TypedValue {
+    static func fromMCPValue(_ value: MCP.Value) -> Tachikoma.TypedValue {
         switch value {
         case .null:
             return .null
@@ -28,21 +28,17 @@ public extension TypedValue {
         case .string(let v):
             return .string(v)
         case .array(let values):
-            return .array(values.map { TypedValue.from($0) })
+            return .array(values.map { Tachikoma.TypedValue.fromMCPValue($0) })
         case .object(let dict):
-            return .object(dict.mapValues { TypedValue.from($0) })
-        case .data(let mimeType, let data):
-            // Convert data to a special object representation
-            return .object([
-                "type": .string("data"),
-                "mimeType": .string(mimeType ?? "application/octet-stream"),
-                "dataSize": .int(data.count)
-            ])
+            return .object(dict.mapValues { Tachikoma.TypedValue.fromMCPValue($0) })
+        default:
+            // For unsupported types, convert to null
+            return .null
         }
     }
     
     /// Convert TypedValue to MCP Value
-    func toMCPValue() -> Value {
+    func toMCPValue() -> MCP.Value {
         switch self {
         case .null:
             return .null
@@ -63,10 +59,10 @@ public extension TypedValue {
     
     // MARK: - AnyAgentToolValue Conversion
     
-    /// Convert from AnyAgentToolValue to TypedValue
-    static func from(_ value: AnyAgentToolValue) throws -> TypedValue {
+    /// Convert from AnyAgentToolValue to TypedValue via JSON
+    static func fromAnyAgentToolValueViaJSON(_ value: AnyAgentToolValue) throws -> Tachikoma.TypedValue {
         let json = try value.toJSON()
-        return try TypedValue.fromJSON(json)
+        return try Tachikoma.TypedValue.fromJSON(json)
     }
     
     /// Convert TypedValue to AnyAgentToolValue
@@ -93,16 +89,16 @@ public extension TypedValue {
 // MARK: - MCP Value Extension
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
-extension Value {
+extension MCP.Value {
     /// Convert MCP Value to AnyAgentToolValue via TypedValue
     func toAnyAgentToolValue() -> AnyAgentToolValue {
-        return TypedValue.from(self).toAnyAgentToolValue()
+        return Tachikoma.TypedValue.fromMCPValue(self).toAnyAgentToolValue()
     }
     
     /// Create MCP Value from Any type via TypedValue
-    static func from(_ any: Any) -> Value {
+    static func fromAny(_ any: Any) -> MCP.Value {
         do {
-            let typedValue = try TypedValue.fromJSON(any)
+            let typedValue = try Tachikoma.TypedValue.fromJSON(any)
             return typedValue.toMCPValue()
         } catch {
             // Fallback to string representation
@@ -126,14 +122,14 @@ extension AnyAgentToolValue {
     }
     
     /// Create from MCP Value via TypedValue
-    static func from(_ value: Value) -> AnyAgentToolValue {
-        return TypedValue.from(value).toAnyAgentToolValue()
+    static func fromMCPValue(_ value: MCP.Value) -> AnyAgentToolValue {
+        return Tachikoma.TypedValue.fromMCPValue(value).toAnyAgentToolValue()
     }
     
     /// Create from Any type via TypedValue
-    static func from(_ any: Any) -> AnyAgentToolValue {
+    static func fromAny(_ any: Any) -> AnyAgentToolValue {
         do {
-            let typedValue = try TypedValue.fromJSON(any)
+            let typedValue = try Tachikoma.TypedValue.fromJSON(any)
             return typedValue.toAnyAgentToolValue()
         } catch {
             // Fallback to string representation
@@ -142,25 +138,8 @@ extension AnyAgentToolValue {
     }
     
     /// Convert to MCP Value via TypedValue
-    func toValue() -> Value {
-        do {
-            let typedValue = try TypedValue.from(self)
-            return typedValue.toMCPValue()
-        } catch {
-            // Fallback
-            if let str = self.stringValue {
-                return .string(str)
-            } else if let num = self.intValue {
-                return .int(num)
-            } else if let num = self.doubleValue {
-                return .double(num)
-            } else if let bool = self.boolValue {
-                return .bool(bool)
-            } else if self.isNull {
-                return .null
-            } else {
-                return .null
-            }
-        }
+    func toValue() -> MCP.Value {
+        let typedValue = Tachikoma.TypedValue.from(self as AnyAgentToolValue)
+        return typedValue.toMCPValue()
     }
 }
