@@ -1,13 +1,13 @@
 //
-//  DetailedMenuSystemToolFormatter.swift
+//  EnhancedMenuSystemToolFormatter.swift
 //  Peekaboo
 //
 
 import Foundation
 import PeekabooCore
 
-/// Detailed formatter for menu, dialog, and system tools with comprehensive result formatting
-class DetailedMenuSystemToolFormatter: BaseToolFormatter {
+/// Enhanced formatter for menu, dialog, and system tools with comprehensive result formatting
+class EnhancedMenuSystemToolFormatter: BaseToolFormatter {
     
     override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {

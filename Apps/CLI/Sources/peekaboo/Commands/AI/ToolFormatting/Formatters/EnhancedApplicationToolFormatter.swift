@@ -1,13 +1,13 @@
 //
-//  DetailedApplicationToolFormatter.swift
+//  EnhancedApplicationToolFormatter.swift
 //  Peekaboo
 //
 
 import Foundation
 import PeekabooCore
 
-/// Detailed formatter for application tools with comprehensive result formatting
-class DetailedApplicationToolFormatter: ApplicationToolFormatter {
+/// Enhanced formatter for application tools with comprehensive result formatting
+class EnhancedApplicationToolFormatter: ApplicationToolFormatter {
     
     override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {

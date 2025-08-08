@@ -88,10 +88,12 @@ Base implementation providing default formatting behavior that specific formatte
 - `DockToolFormatter`: Dock operations
 - `CommunicationToolFormatter`: Internal communication tools
 
-#### Enhanced Formatters
-Enhanced versions with detailed result formatting:
-- `EnhancedVisionToolFormatter`: Adds element counts, performance metrics, file sizes
-- `EnhancedApplicationToolFormatter`: Adds memory usage, app states, process info
+#### Detailed Formatters (Default)
+The default formatters provide comprehensive result formatting:
+- `DetailedVisionToolFormatter`: Includes element counts, performance metrics, file sizes
+- `DetailedApplicationToolFormatter`: Includes memory usage, app states, process info
+- `DetailedUIAutomationToolFormatter`: Rich UI interaction details with validation
+- `DetailedMenuSystemToolFormatter`: Comprehensive menu, dialog, and system tool output
 
 #### ToolFormatterRegistry
 Singleton registry managing all formatters:
@@ -136,14 +138,8 @@ Plain text, no colors, CI-friendly:
 list_apps OK → 29 apps running
 ```
 
-### Compact Mode (Default)
-Colors and icons with concise output:
-```
-📱 list_apps ✓ → 29 apps running (1.2s)
-```
-
-### Enhanced Mode
-Rich formatting with progress indicators:
+### Default Mode
+Rich formatting with detailed output (formerly "Enhanced Mode"):
 ```
 📱 Listing applications... ✅ → 29 apps running [15 active, 14 background] (1.2s)
 ```
@@ -292,8 +288,8 @@ Test with actual tool execution:
 polter peekaboo agent "list all apps" --verbose
 
 # Check different output modes
-polter peekaboo agent "take a screenshot" --minimal
-polter peekaboo agent "click on Safari" --enhanced
+polter peekaboo agent "take a screenshot" --simple  # Minimal mode
+polter peekaboo agent "click on Safari"            # Default detailed mode
 ```
 
 ## Migration Guide

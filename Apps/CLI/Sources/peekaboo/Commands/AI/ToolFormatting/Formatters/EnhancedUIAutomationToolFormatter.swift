@@ -1,13 +1,13 @@
 //
-//  DetailedUIAutomationToolFormatter.swift
+//  EnhancedUIAutomationToolFormatter.swift
 //  Peekaboo
 //
 
 import Foundation
 import PeekabooCore
 
-/// Detailed formatter for UI automation tools with comprehensive result formatting
-class DetailedUIAutomationToolFormatter: UIAutomationToolFormatter {
+/// Enhanced formatter for UI automation tools with comprehensive result formatting
+class EnhancedUIAutomationToolFormatter: UIAutomationToolFormatter {
     
     override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {

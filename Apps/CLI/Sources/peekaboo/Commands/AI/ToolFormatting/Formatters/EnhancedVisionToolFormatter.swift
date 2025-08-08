@@ -1,13 +1,13 @@
 //
-//  DetailedVisionToolFormatter.swift
+//  EnhancedVisionToolFormatter.swift
 //  Peekaboo
 //
 
 import Foundation
 import PeekabooCore
 
-/// Detailed formatter for vision tools with comprehensive result formatting
-class DetailedVisionToolFormatter: VisionToolFormatter {
+/// Enhanced formatter for vision tools with comprehensive result formatting
+class EnhancedVisionToolFormatter: VisionToolFormatter {
     
     override func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
