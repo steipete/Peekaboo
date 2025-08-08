@@ -7,15 +7,7 @@ public final class PeekabooAIService {
     private let defaultModel: LanguageModel = .openai(.gpt5)
     
     public init() {
-        // Ensure TachikomaConfiguration is hydrated from Peekaboo configuration
-        let config = ConfigurationManager.shared
-        if let openAIKey = config.getOpenAIAPIKey(), !openAIKey.isEmpty {
-            TachikomaConfiguration.current.setAPIKey(openAIKey, for: .openai)
-        }
-        if let anthropicKey = config.getAnthropicAPIKey(), !anthropicKey.isEmpty {
-            TachikomaConfiguration.current.setAPIKey(anthropicKey, for: .anthropic)
-        }
-        TachikomaConfiguration.current.setBaseURL(config.getOllamaBaseURL(), for: .ollama)
+        // Rely on TachikomaConfiguration to load from env/credentials (profile set at startup)
     }
     
     /// Analyze an image with a question using AI

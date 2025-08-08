@@ -6,7 +6,7 @@ import Foundation
 // Feature flag to toggle between modern ScreenCaptureKit and legacy CGWindowList APIs
 // Set to true to use modern API, false to use legacy API
 // This is a workaround for SCShareableContent.current hanging on macOS beta versions
-private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["PEEKABOO_USE_MODERN_CAPTURE"] != "false"
+private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["PEEKABOO_USE_MODERN_CAPTURE"] == "true"
 
 /**
  * Screen and window capture service with dual API support.

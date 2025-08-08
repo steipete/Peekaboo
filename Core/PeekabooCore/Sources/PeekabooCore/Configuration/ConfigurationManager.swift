@@ -1,5 +1,6 @@
 import Foundation
 import Tachikoma
+import TachikomaMCP
 
 /// Manages configuration loading and precedence resolution.
 ///
@@ -686,34 +687,23 @@ public final class ConfigurationManager: @unchecked Sendable {
         return self.getConfiguration()?.mcpClients ?? [:]
     }
     
-    /// Initialize MCP client with default servers
+    /// Initialize MCP client with Peekaboo defaults and user overrides via TachikomaMCP
     public func initializeMCPClient() async {
-        // Get user-configured servers
-        let userServers = getMCPClientServers()
-        
-        // Initialize default servers through MCPClientManager
-        await MCPClientManager.shared.initializeDefaultServers(userConfigs: userServers)
-        
-        // Add user-configured servers - process each server individually to avoid data race issues
-        for (serverName, serverConfig) in userServers {
-            do {
-                // Create a copy of the config to avoid data race issues
-                let configCopy = Configuration.MCPClientConfig(
-                    transport: serverConfig.transport,
-                    command: serverConfig.command,
-                    args: serverConfig.args,
-                    env: serverConfig.env,
-                    enabled: serverConfig.enabled,
-                    timeout: serverConfig.timeout,
-                    autoReconnect: serverConfig.autoReconnect,
-                    description: serverConfig.description
-                )
-                try await MCPClientManager.shared.addServer(name: serverName, config: configCopy)
-            } catch {
-                // Log error but continue with other servers
-                print("Warning: Failed to initialize MCP server '\(serverName)': \(error.localizedDescription)")
-            }
-        }
+        // Register Peekaboo's default Browser MCP as a host default
+        let defaultBrowser = TachikomaMCP.MCPServerConfig(
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+            env: [:],
+            enabled: true,
+            timeout: 15.0,
+            autoReconnect: true,
+            description: "Browser automation via BrowserMCP"
+        )
+        await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+
+        // Let TachikomaMCP handle parsing ~/.peekaboo/config.json and merging overrides
+        await TachikomaMCPClientManager.shared.initializeFromProfile()
     }
 
     // MARK: - Custom Provider Management

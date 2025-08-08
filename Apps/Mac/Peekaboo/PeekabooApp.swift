@@ -29,23 +29,11 @@ struct PeekabooApp: App {
     
     // Configure Tachikoma with API keys from settings
     private func configureTachikomaWithSettings() {
-        // Don't call loadAPIKeysFromCredentials anymore - let environment work naturally
-        
-        // Only set API keys if they're explicitly configured in settings
-        // Empty settings mean "use environment variables"
-        if !settings.openAIAPIKey.isEmpty {
-            TachikomaConfiguration.current.setAPIKey(settings.openAIAPIKey, for: .openai)
-        }
-        
-        // Same for Anthropic - only override environment if explicitly set
-        if !settings.anthropicAPIKey.isEmpty {
-            TachikomaConfiguration.current.setAPIKey(settings.anthropicAPIKey, for: .anthropic)
-        }
-        
-        // Set Ollama base URL if custom
-        if settings.ollamaBaseURL != "http://localhost:11434" {
-            TachikomaConfiguration.current.setBaseURL(settings.ollamaBaseURL, for: .ollama)
-        }
+        // Use TachikomaConfiguration profile-based loading (env/credentials).
+        // Only override when user explicitly enters values in settings.
+        if !settings.openAIAPIKey.isEmpty { TachikomaConfiguration.current.setAPIKey(settings.openAIAPIKey, for: .openai) }
+        if !settings.anthropicAPIKey.isEmpty { TachikomaConfiguration.current.setAPIKey(settings.anthropicAPIKey, for: .anthropic) }
+        if settings.ollamaBaseURL != "http://localhost:11434" { TachikomaConfiguration.current.setBaseURL(settings.ollamaBaseURL, for: .ollama) }
     }
     
     // Load API keys from credentials file if settings are empty

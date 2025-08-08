@@ -7,10 +7,10 @@ import os.log
 public struct ExternalMCPTool: MCPTool {
     public let serverName: String
     public let originalTool: Tool
-    private let clientManager: MCPClientManager
+    private let clientManager: TachikomaMCPClientManager
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp.client", category: "external-tool")
     
-    public init(serverName: String, originalTool: Tool, clientManager: MCPClientManager) {
+    public init(serverName: String, originalTool: Tool, clientManager: TachikomaMCPClientManager) {
         self.serverName = serverName
         self.originalTool = originalTool
         self.clientManager = clientManager
@@ -34,10 +34,10 @@ public struct ExternalMCPTool: MCPTool {
         logger.info("Executing external tool '\(name)' with arguments")
         
         do {
-            let response = try await clientManager.executeExternalTool(
+            let response = try await clientManager.executeTool(
                 serverName: serverName,
                 toolName: originalTool.name,
-                arguments: arguments
+                arguments: arguments.rawDictionary
             )
             
             logger.info("External tool '\(name)' executed successfully")

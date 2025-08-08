@@ -289,22 +289,10 @@ public final class PeekabooServices: @unchecked Sendable {
             menuService: menuSvc,
             dockService: dockSvc)
 
-        // Create AI service and hydrate Tachikoma with credentials
+        // Configure Tachikoma to use the Peekaboo profile directory for credentials/config
+        TachikomaConfiguration.profileDirectoryName = ".peekaboo"
         let aiService = PeekabooAIService()
-        // Load API keys from ConfigurationManager into TachikomaConfiguration.current
-        if let openAIKey = config.getOpenAIAPIKey(), !openAIKey.isEmpty {
-            TachikomaConfiguration.current.setAPIKey(openAIKey, for: .openai)
-            logger.debug("🔑 OpenAI key loaded into TachikomaConfiguration")
-        }
-        if let anthropicKey = config.getAnthropicAPIKey(), !anthropicKey.isEmpty {
-            TachikomaConfiguration.current.setAPIKey(anthropicKey, for: .anthropic)
-            logger.debug("🔑 Anthropic key loaded into TachikomaConfiguration")
-        }
-        // Ollama base URL
-        let ollamaURL = config.getOllamaBaseURL()
-        TachikomaConfiguration.current.setBaseURL(ollamaURL, for: .ollama)
-        logger.debug("🌐 Ollama base URL set to \(ollamaURL)")
-        logger.debug("✅ AI service initialized")
+        logger.debug("✅ AI service initialized (Tachikoma loads env/credentials)")
 
         // Create services instance first
         let services = PeekabooServices(

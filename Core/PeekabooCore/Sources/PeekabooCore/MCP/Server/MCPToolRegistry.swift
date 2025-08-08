@@ -9,7 +9,7 @@ public final class MCPToolRegistry {
     private let logger = Logger(subsystem: "boo.peekaboo.mcp", category: "registry")
     private var tools: [String: MCPTool] = [:]
     private var externalTools: [String: MCPTool] = [:]
-    private var clientManager: MCPClientManager?
+    private var clientManager: TachikomaMCPClientManager?
 
     public init() {}
 
@@ -66,19 +66,19 @@ public final class MCPToolRegistry {
     // MARK: - External Tool Management
     
     /// Set the client manager for external tools
-    public func setClientManager(_ clientManager: MCPClientManager) {
+    public func setClientManager(_ clientManager: TachikomaMCPClientManager) {
         self.clientManager = clientManager
     }
     
     /// Register external tools from the client manager
-    public func registerExternalTools(from clientManager: MCPClientManager) async {
+    public func registerExternalTools(from clientManager: TachikomaMCPClientManager) async {
         self.clientManager = clientManager
         
         // Clear existing external tools
         self.externalTools.removeAll()
         
         // Get external tools from all servers
-        let externalToolsByServer = await clientManager.getExternalTools()
+        let externalToolsByServer = await clientManager.getExternalToolsByServer()
         
         for (serverName, serverTools) in externalToolsByServer {
             for toolInfo in serverTools {
