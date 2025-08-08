@@ -131,8 +131,8 @@ extension MCPCommand {
         var skipHealthCheck = false
 
         func run() async throws {
-                // Initialize Tachikoma MCP manager without connecting, to avoid hangs
-                await TachikomaMCPClientManager.shared.initializeFromProfile(connect: false)
+                // Initialize Tachikoma MCP manager (connect will happen during health check)
+                await TachikomaMCPClientManager.shared.initializeFromProfile(connect: true)
                 let serverNames = await TachikomaMCPClientManager.shared.getServerNames()
             
             if serverNames.isEmpty {
@@ -156,7 +156,11 @@ extension MCPCommand {
             }
             
             // Get health status for all servers
-                let healthResults: [String: MCPServerHealth] = [:]
+            let probes = await TachikomaMCPClientManager.shared.probeAllServers(timeoutMs: 8000)
+            var healthResults: [String: MCPServerHealth] = [:]
+            for (name, (ok, count, rt, err)) in probes {
+                healthResults[name] = ok ? .connected(toolCount: count, responseTime: rt) : .disconnected(error: err ?? "unknown error")
+            }
             
             if jsonOutput {
                 try await outputJSON(serverNames: serverNames, healthResults: healthResults)

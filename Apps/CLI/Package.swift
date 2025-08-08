@@ -29,6 +29,7 @@ let package = Package(
                 .product(name: "Spinner", package: "Spinner"),
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
+                .product(name: "TachikomaMCP", package: "Tachikoma"),
             ],
             swiftSettings: [
                 .unsafeFlags(["-parse-as-library"]),
