@@ -770,12 +770,13 @@ extension PeekabooAgentService {
         var totalUsage: Usage?
         
         for stepIndex in 0..<maxSteps {
-            // Debug: log tools being passed
-            print("🔧 Step \(stepIndex): Passing \(tools.count) tools to streamText")
-            if !tools.isEmpty {
-                print("🔧 Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
-            } else {
-                print("⚠️ No tools available!")
+            // Debug: log tools being passed (only in verbose mode)
+            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+               ProcessInfo.processInfo.arguments.contains("-v") {
+                logger.debug("Step \(stepIndex): Passing \(tools.count) tools to streamText")
+                if !tools.isEmpty {
+                    logger.debug("Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
+                }
             }
             
             // Stream the response
@@ -792,11 +793,17 @@ extension PeekabooAgentService {
             
             // Process the stream
             for try await delta in streamResult.stream {
-                logger.debug("Stream delta type: \(delta.type)")
+                if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                   ProcessInfo.processInfo.arguments.contains("-v") {
+                    logger.debug("Stream delta type: \(delta.type)")
+                }
                 switch delta.type {
                 case .textDelta:
                     if let content = delta.content {
-                        logger.debug("Text delta content: \(content)")
+                        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                           ProcessInfo.processInfo.arguments.contains("-v") {
+                            logger.debug("Text delta content: \(content)")
+                        }
                         stepText += content
                         
                         // Check if this is thinking content (starts with <thinking> or similar patterns)
@@ -818,7 +825,10 @@ extension PeekabooAgentService {
                     
                 case .toolCall:
                     if let toolCall = delta.toolCall {
-                        logger.debug("Received tool call: \(toolCall.name) with ID: \(toolCall.id)")
+                        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                           ProcessInfo.processInfo.arguments.contains("-v") {
+                            logger.debug("Received tool call: \(toolCall.name) with ID: \(toolCall.id)")
+                        }
                         stepToolCalls.append(toolCall)
                         
                         // Emit tool call started event immediately
@@ -852,8 +862,11 @@ extension PeekabooAgentService {
             
             fullContent += stepText
             
-            // Debug: Check what we collected
-            logger.debug("Step \(stepIndex) completed: collected \(stepToolCalls.count) tool calls, text length: \(stepText.count)")
+            // Debug: Check what we collected (only in verbose mode)
+            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+               ProcessInfo.processInfo.arguments.contains("-v") {
+                logger.debug("Step \(stepIndex) completed: collected \(stepToolCalls.count) tool calls, text length: \(stepText.count)")
+            }
             
             // If we have tool calls, execute them
             if !stepToolCalls.isEmpty {

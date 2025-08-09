@@ -1,6 +1,7 @@
 import ArgumentParser
 import Dispatch
 import Foundation
+import Logging
 import PeekabooCore
 import Spinner
 import Tachikoma
@@ -213,6 +214,27 @@ struct AgentCommand: AsyncParsableCommand {
     @MainActor
     mutating func runInternal() async throws {
         // Initialize MCP clients first so agent has access to external tools
+        // Only show MCP initialization in verbose mode
+        let shouldSuppressMCPLogs = !self.verbose && !self.debugTerminal
+        
+        // Configure logging level based on verbosity
+        if shouldSuppressMCPLogs {
+            // Configure swift-log to suppress info/debug messages from TachikomaMCP
+            LoggingSystem.bootstrap { label in
+                var handler = StreamLogHandler.standardOutput(label: label)
+                // Only show warnings and errors for TachikomaMCP unless in verbose mode
+                if label.hasPrefix("tachikoma.mcp") {
+                    handler.logLevel = .warning
+                } else {
+                    handler.logLevel = .info
+                }
+                return handler
+            }
+        } else {
+            // In verbose mode, show all logs
+            LoggingSystem.bootstrap(StreamLogHandler.standardOutput)
+        }
+        
         // Register browser MCP as a default server
         let defaultBrowser = TachikomaMCP.MCPServerConfig(
             transport: "stdio",
@@ -224,7 +246,7 @@ struct AgentCommand: AsyncParsableCommand {
             autoReconnect: true,
             description: "Browser automation via BrowserMCP"
         )
-        await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+        TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
         
         // Initialize MCP from profile
         await TachikomaMCPClientManager.shared.initializeFromProfile()

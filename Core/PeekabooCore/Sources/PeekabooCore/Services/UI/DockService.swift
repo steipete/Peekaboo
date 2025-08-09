@@ -188,8 +188,7 @@ public final class DockService: DockServiceProtocol {
         try readProcess.run()
         readProcess.waitUntilExit()
         
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let outputString = String(data: outputData, encoding: .utf8) ?? ""
+        let _ = outputPipe.fileHandleForReading.readDataToEndOfFile()
         
         // Parse and filter out the target app
         // This is complex with defaults command, so we'll use a different approach:
