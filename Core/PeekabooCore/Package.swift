@@ -13,21 +13,21 @@ let package = Package(
             targets: ["PeekabooCore"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
-        .package(path: "../AXorcist"),
-        .package(path: "../../Tachikoma"),
         .package(path: "../PeekabooFoundation"),
+        .package(path: "../PeekabooProtocols"),
+        .package(path: "../PeekabooExternalDependencies"),
+        .package(path: "../../Tachikoma"),
     ],
     targets: [
         .target(
             name: "PeekabooCore",
             dependencies: [
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "AXorcist", package: "AXorcist"),
+                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
+                .product(name: "PeekabooProtocols", package: "PeekabooProtocols"),
+                .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
                 .product(name: "TachikomaMCP", package: "Tachikoma"),
                 .product(name: "TachikomaAudio", package: "Tachikoma"),
-                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
             ],
             exclude: [
                 "README.md",
@@ -40,7 +40,11 @@ let package = Package(
             ]),
         .testTarget(
             name: "PeekabooTests",
-            dependencies: ["PeekabooCore"],
+            dependencies: [
+                "PeekabooCore",
+                "PeekabooFoundation",
+                "PeekabooProtocols",
+            ],
             resources: [
                 .process("Resources")
             ]),
