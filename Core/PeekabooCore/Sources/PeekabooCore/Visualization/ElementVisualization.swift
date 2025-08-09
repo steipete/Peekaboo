@@ -117,7 +117,7 @@ public enum ElementCategory: Sendable, Equatable, Hashable {
         case .staticText:
             self = .text
         case .radioButton:
-            self = .checkbox  // Use checkbox category for radio buttons
+            self = .radioButton
         case .window, .dialog:
             self = .container
         case .other:
