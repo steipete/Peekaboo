@@ -6,6 +6,7 @@
 //
 
 import PeekabooCore
+import PeekabooFoundation
 import SwiftUI
 
 /// Test view for all visualizer animations
@@ -195,7 +196,7 @@ struct VisualizerTestView: View {
 
     func testScrollAnimation() async {
         let point = CGPoint(x: 400, y: 300)
-        _ = await coordinator.showScrollFeedback(at: point, direction: PeekabooCore.ScrollDirection.down, amount: 5)
+        _ = await coordinator.showScrollFeedback(at: point, direction: .down, amount: 5)
     }
 
     func testMouseTrail() async {
@@ -252,7 +253,7 @@ struct VisualizerTestView: View {
                     let point = CGPoint(
                         x: 200 + Double(i * 100),
                         y: 200 + Double(i * 50))
-                    _ = await self.coordinator.showClickFeedback(at: point, type: ClickType.single)
+                    _ = await self.coordinator.showClickFeedback(at: point, type: .single)
                 }
             }
         }
@@ -261,7 +262,7 @@ struct VisualizerTestView: View {
     private func testRapidFire(count: Int) async {
         for _ in 0..<count {
             let point = CGPoint(x: 400, y: 300)
-            _ = await self.coordinator.showClickFeedback(at: point, type: ClickType.single)
+            _ = await self.coordinator.showClickFeedback(at: point, type: .single)
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         }
     }

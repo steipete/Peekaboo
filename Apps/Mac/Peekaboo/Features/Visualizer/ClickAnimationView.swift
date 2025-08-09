@@ -6,6 +6,7 @@
 //
 
 import PeekabooCore
+import PeekabooFoundation
 import SwiftUI
 
 /// A view that displays ripple animations for different click types

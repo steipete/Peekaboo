@@ -31,9 +31,8 @@ final class Permissions {
         self.permissionsService.hasAllPermissions
     }
 
-    @MainActor
-    init(permissionsService: ObservablePermissionsServiceProtocol = ObservablePermissionsService()) {
-        self.permissionsService = permissionsService
+    init(permissionsService: ObservablePermissionsServiceProtocol? = nil) {
+        self.permissionsService = permissionsService ?? ObservablePermissionsService()
     }
 
     func check() async {

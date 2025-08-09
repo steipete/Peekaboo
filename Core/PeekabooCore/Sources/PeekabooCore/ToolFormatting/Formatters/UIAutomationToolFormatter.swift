@@ -508,7 +508,8 @@ public class UIAutomationToolFormatter: BaseToolFormatter {
         case "end": return "↘ End"
         case "pageup", "page_up": return "⇞ Page Up"
         case "pagedown", "page_down": return "⇟ Page Down"
-        case "f1"..."f12": return "🔘 \(key.uppercased())"
+        case "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12": 
+            return "🔘 \(key.uppercased())"
         default: return key
         }
     }

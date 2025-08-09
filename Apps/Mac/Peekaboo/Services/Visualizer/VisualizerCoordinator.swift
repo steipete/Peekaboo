@@ -13,6 +13,7 @@ import IOKit.ps
 import Observation
 import os
 import PeekabooCore
+import PeekabooFoundation
 import PeekabooUICore
 import SwiftUI
 
@@ -65,7 +66,7 @@ final class VisualizerCoordinator {
     }
 
     /// Shows click feedback animation
-    func showClickFeedback(at point: CGPoint, type: PeekabooCore.ClickType) async -> Bool {
+    func showClickFeedback(at point: CGPoint, type: PeekabooFoundation.ClickType) async -> Bool {
         self.logger.info("🖱️ Visualizer: Showing click feedback at \(String(describing: point)), type: \(type)")
 
         return await self.animationQueue.enqueue(priority: .high) {
@@ -83,7 +84,7 @@ final class VisualizerCoordinator {
     }
 
     /// Shows scroll feedback
-    func showScrollFeedback(at point: CGPoint, direction: PeekabooCore.ScrollDirection, amount: Int) async -> Bool {
+    func showScrollFeedback(at point: CGPoint, direction: PeekabooFoundation.ScrollDirection, amount: Int) async -> Bool {
         self.logger
             .info(
                 "📜 Visualizer: Showing scroll feedback at \(String(describing: point)), direction: \(direction), amount: \(amount)")
@@ -282,7 +283,7 @@ final class VisualizerCoordinator {
         return true
     }
 
-    private func displayClickAnimation(at point: CGPoint, type: PeekabooCore.ClickType) async -> Bool {
+    private func displayClickAnimation(at point: CGPoint, type: PeekabooFoundation.ClickType) async -> Bool {
         // Check if enabled
         guard self.settings?.visualizerEnabled ?? true,
               self.settings?.clickAnimationEnabled ?? true
@@ -349,7 +350,7 @@ final class VisualizerCoordinator {
 
     private func displayScrollIndicators(
         at point: CGPoint,
-        direction: PeekabooCore.ScrollDirection,
+        direction: PeekabooFoundation.ScrollDirection,
         amount: Int) async -> Bool
     {
         // Check if enabled

@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
@@ -12,7 +13,7 @@ struct ElementDetectionServiceTests {
     func initializeService() async throws {
         let sessionManager = MockSessionManager()
         let service = ElementDetectionService(sessionManager: sessionManager)
-        #expect(service != nil)
+        #expect(true)  // Service is non-optional, always succeeds
     }
 
     @Test("Detect elements from screenshot")

@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 import Foundation
 import Testing
 @testable import PeekabooCore

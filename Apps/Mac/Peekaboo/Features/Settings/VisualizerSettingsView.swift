@@ -1,6 +1,7 @@
 import os
 import os.log
 import PeekabooCore
+import PeekabooFoundation
 import PeekabooUICore
 import SwiftUI
 

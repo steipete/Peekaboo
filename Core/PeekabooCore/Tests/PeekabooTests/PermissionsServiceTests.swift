@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
@@ -88,14 +89,14 @@ struct PermissionsServiceTests {
             do {
                 try self.permissionsService.requireScreenRecordingPermission()
                 Issue.record("Expected CaptureError.screenRecordingPermissionDenied but no error was thrown")
-            } catch let captureError as CaptureError {
+            } catch let peekabooError as PeekabooError {
                 // Should be screenRecordingPermissionDenied
-                switch captureError {
-                case .screenRecordingPermissionDenied:
+                switch peekabooError {
+                case .permissionDeniedScreenRecording:
                     // Expected error - verify error message is helpful
-                    #expect(captureError.localizedDescription.contains("Screen recording permission"))
+                    #expect(peekabooError.localizedDescription.contains("Screen recording permission"))
                 default:
-                    Issue.record("Expected CaptureError.screenRecordingPermissionDenied but got \(captureError)")
+                    Issue.record("Expected PeekabooError.permissionDeniedScreenRecording but got \(peekabooError)")
                 }
             } catch {
                 Issue.record("Expected CaptureError.screenRecordingPermissionDenied but got \(error)")
@@ -117,14 +118,14 @@ struct PermissionsServiceTests {
             do {
                 try self.permissionsService.requireAccessibilityPermission()
                 Issue.record("Expected CaptureError.accessibilityPermissionDenied but no error was thrown")
-            } catch let captureError as CaptureError {
+            } catch let peekabooError as PeekabooError {
                 // Should be accessibilityPermissionDenied
-                switch captureError {
-                case .accessibilityPermissionDenied:
+                switch peekabooError {
+                case .permissionDeniedAccessibility:
                     // Expected error - verify error message is helpful
-                    #expect(captureError.localizedDescription.contains("Accessibility permission"))
+                    #expect(peekabooError.localizedDescription.contains("Accessibility permission"))
                 default:
-                    Issue.record("Expected CaptureError.accessibilityPermissionDenied but got \(captureError)")
+                    Issue.record("Expected PeekabooError.permissionDeniedAccessibility but got \(peekabooError)")
                 }
             } catch {
                 Issue.record("Expected CaptureError.accessibilityPermissionDenied but got \(error)")

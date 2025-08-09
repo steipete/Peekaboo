@@ -6,6 +6,7 @@
 //
 
 import PeekabooCore
+import PeekabooFoundation
 import SwiftUI
 
 /// A view that displays live UI element annotations as an overlay
@@ -147,8 +148,16 @@ struct AnnotatedScreenshotView: View {
             .slider
         case .checkbox:
             .checkbox
-        case .menu:
+        case .menu, .menuItem:
             .menu
+        case .staticText:
+            .custom("label")
+        case .radioButton:
+            .radioButton
+        case .window:
+            .custom("window")
+        case .dialog:
+            .custom("dialog")
         case .other:
             .custom("other")
         }

@@ -60,6 +60,7 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
 
     // MARK: - Initialization
 
+    @MainActor
     public init(core: PermissionsService = PermissionsService()) {
         self.core = core
         self.status = core.checkAllPermissions()

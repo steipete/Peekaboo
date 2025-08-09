@@ -235,7 +235,7 @@ struct MCPToolRegistryIntegrationTests {
 
         // Validate the schema structure is preserved
         guard case let .object(schema) = info.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -250,7 +250,7 @@ struct MCPToolRegistryIntegrationTests {
         #expect(props["nestedObject"] != nil)
 
         // Check required array
-        if let required = schema["required"] as? Value,
+        if let required = schema["required"],
            case let .array(requiredArray) = required
         {
             #expect(requiredArray.count == 1)

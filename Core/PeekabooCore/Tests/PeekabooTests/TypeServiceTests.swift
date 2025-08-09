@@ -1,4 +1,5 @@
 import CoreGraphics
+import PeekabooFoundation
 import Foundation
 import Testing
 @testable import PeekabooCore
@@ -9,7 +10,7 @@ struct TypeServiceTests {
     @Test("Initialize TypeService")
     func initializeService() async throws {
         let service = TypeService()
-        #expect(service != nil)
+        #expect(true)  // Service is non-optional, always succeeds
     }
 
     @Test("Type text")

@@ -13,7 +13,7 @@ struct ClickServiceTests {
         func initializeService() async throws {
             let sessionManager = MockSessionManager()
             let service = ClickService(sessionManager: sessionManager)
-            #expect(service != nil)
+            #expect(true)  // Service is non-optional, always succeeds
         }
     }
 

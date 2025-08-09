@@ -9,6 +9,7 @@ import CoreGraphics
 import Foundation
 import os
 import PeekabooCore
+import PeekabooFoundation
 
 /// XPC service implementation for the visualizer
 @MainActor
@@ -102,7 +103,7 @@ extension VisualizerXPCService: @preconcurrency VisualizerXPCProtocol {
 
             // Let the coordinator check its own settings
 
-            let clickType = ClickType(rawValue: type) ?? .single
+            let clickType = PeekabooFoundation.ClickType(rawValue: type) ?? .single
             let success = await visualizerCoordinator.showClickFeedback(at: point, type: clickType)
             reply(success)
         }
@@ -127,7 +128,7 @@ extension VisualizerXPCService: @preconcurrency VisualizerXPCProtocol {
 
             // Let the coordinator check its own settings
 
-            let scrollDirection = PeekabooCore.ScrollDirection(rawValue: direction) ?? .down
+            let scrollDirection = PeekabooFoundation.ScrollDirection(rawValue: direction) ?? .down
             let success = await visualizerCoordinator.showScrollFeedback(
                 at: point,
                 direction: scrollDirection,

@@ -1,6 +1,7 @@
 import SwiftUI
 import PeekabooCore
 import Tachikoma
+import TachikomaAudio
 
 // MARK: - Session Detail View
 

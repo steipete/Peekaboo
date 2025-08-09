@@ -371,12 +371,4 @@ public final class ClickService {
 
 // MARK: - Extensions for ClickType
 
-extension ClickType: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .single: "single"
-        case .right: "right"
-        case .double: "double"
-        }
-    }
-}
+// CustomStringConvertible conformance is now in PeekabooFoundation

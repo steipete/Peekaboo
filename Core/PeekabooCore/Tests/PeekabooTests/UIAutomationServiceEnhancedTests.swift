@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 import CoreGraphics
 import Foundation
 import Testing
@@ -72,9 +73,9 @@ struct UIAutomationServiceEnhancedTests {
 
         // Test data
         let imageData = Data()
-        let appName = "TestApp"
-        let windowTitle = "Test Window"
-        let windowBounds = CGRect(x: 50, y: 100, width: 1200, height: 800)
+        _ = "TestApp"  // appName - not used in this test
+        _ = "Test Window"  // windowTitle - not used in this test
+        _ = CGRect(x: 50, y: 100, width: 1200, height: 800)  // windowBounds - not used in this test
 
         // Call detectElements (the new method)
         let result = try await service.detectElements(
@@ -182,7 +183,11 @@ private func idPrefixForType(_ type: ElementType) -> String {
     case .group: "G"
     case .slider: "S"
     case .checkbox: "C"
-    case .menu: "M"
+    case .menu, .menuItem: "M"
+    case .staticText: "T"
+    case .radioButton: "R"
+    case .window: "W"
+    case .dialog: "D"
     case .other: "O"
     }
 }

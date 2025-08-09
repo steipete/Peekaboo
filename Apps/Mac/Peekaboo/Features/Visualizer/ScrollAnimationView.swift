@@ -6,6 +6,7 @@
 //
 
 import PeekabooCore
+import PeekabooFoundation
 import SwiftUI
 
 
@@ -14,7 +15,7 @@ struct ScrollAnimationView: View {
     // MARK: - Properties
 
     /// Scroll direction
-    let direction: PeekabooCore.ScrollDirection
+    let direction: PeekabooFoundation.ScrollDirection
 
     /// Number of scroll units
     let amount: Int
@@ -149,25 +150,25 @@ struct ScrollAnimationView: View {
 
 #if DEBUG
 #Preview("Scroll Up") {
-    ScrollAnimationView(direction: PeekabooCore.ScrollDirection.up, amount: 3)
+    ScrollAnimationView(direction: .up, amount: 3)
         .frame(width: 150, height: 150)
         .background(Color.gray.opacity(0.1))
 }
 
 #Preview("Scroll Down") {
-    ScrollAnimationView(direction: PeekabooCore.ScrollDirection.down, amount: 5)
+    ScrollAnimationView(direction: .down, amount: 5)
         .frame(width: 150, height: 150)
         .background(Color.gray.opacity(0.1))
 }
 
 #Preview("Scroll Left") {
-    ScrollAnimationView(direction: PeekabooCore.ScrollDirection.left, amount: 10)
+    ScrollAnimationView(direction: .left, amount: 10)
         .frame(width: 150, height: 150)
         .background(Color.gray.opacity(0.1))
 }
 
 #Preview("Scroll Right") {
-    ScrollAnimationView(direction: PeekabooCore.ScrollDirection.right, amount: 1)
+    ScrollAnimationView(direction: .right, amount: 1)
         .frame(width: 150, height: 150)
         .background(Color.gray.opacity(0.1))
 }

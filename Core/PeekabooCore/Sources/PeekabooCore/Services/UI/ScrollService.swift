@@ -68,13 +68,16 @@ public final class ScrollService {
         // Perform scroll
         let (deltaX, deltaY) = self.getScrollDeltas(for: direction)
 
+        // Ensure amount is positive
+        let absoluteAmount = abs(amount)
+        
         // Calculate ticks based on smoothness
         let (tickCount, tickSize): (Int, Int) = if smooth {
             // Smooth scroll with many small ticks
-            (amount * 10, 1)
+            (absoluteAmount * 10, 1)
         } else {
             // Normal scroll with fewer larger ticks
-            (amount, 10)
+            (absoluteAmount, 10)
         }
 
         self.logger.debug("Scrolling \(tickCount) ticks of size \(tickSize)")
@@ -217,13 +220,4 @@ public final class ScrollService {
 
 // MARK: - Extensions
 
-extension PeekabooFoundation.ScrollDirection: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .up: "up"
-        case .down: "down"
-        case .left: "left"
-        case .right: "right"
-        }
-    }
-}
+// CustomStringConvertible conformance is now in PeekabooFoundation
