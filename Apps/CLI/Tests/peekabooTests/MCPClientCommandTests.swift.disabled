@@ -285,17 +285,15 @@ struct MCPCommandParsingTests {
     
     @Test("Parsing MCP list with flags")
     func testParsingListWithFlags() throws {
-        let args = ["mcp", "list", "--json-output"]
-        let parsed = try MCPCommand.parseAsRoot(args)
-        
-        // Verify it parses without throwing
-        #expect(parsed is MCPCommand)
+        let args = ["--json-output"]
+        let command = try MCPCommand.List.parse(args)
+        #expect(command.jsonOutput == true)
     }
     
     @Test("Parsing MCP add with complex arguments")
     func testParsingAddWithComplexArguments() throws {
         let args = [
-            "mcp", "add", "github",
+            "github",
             "-e", "API_KEY=test123",
             "-e", "ANOTHER_VAR=value",
             "--timeout", "15.0",
@@ -305,37 +303,38 @@ struct MCPCommandParsingTests {
             "npx", "-y", "@modelcontextprotocol/server-github"
         ]
         
-        let parsed = try MCPCommand.parseAsRoot(args)
-        
-        // Verify it parses without throwing
-        #expect(parsed is MCPCommand)
+        let command = try MCPCommand.Add.parse(args)
+        #expect(command.name == "github")
+        #expect(command.env == ["API_KEY=test123", "ANOTHER_VAR=value"])
+        #expect(command.timeout == 15.0)
+        #expect(command.transport == "stdio")
+        #expect(command.description == "GitHub server")
+        #expect(command.command == ["npx", "-y", "@modelcontextprotocol/server-github"])
     }
     
     @Test("Parsing MCP remove with force flag")
     func testParsingRemoveWithForce() throws {
-        let args = ["mcp", "remove", "test-server", "--force"]
-        let parsed = try MCPCommand.parseAsRoot(args)
-        
-        // Verify it parses without throwing
-        #expect(parsed is MCPCommand)
+        let args = ["test-server", "--force"]
+        let command = try MCPCommand.Remove.parse(args)
+        #expect(command.name == "test-server")
+        #expect(command.force == true)
     }
     
     @Test("Parsing MCP test with options")
     func testParsingTestWithOptions() throws {
-        let args = ["mcp", "test", "github", "--timeout", "5.0", "--show-tools"]
-        let parsed = try MCPCommand.parseAsRoot(args)
-        
-        // Verify it parses without throwing
-        #expect(parsed is MCPCommand)
+        let args = ["github", "--timeout", "5.0", "--show-tools"]
+        let command = try MCPCommand.Test.parse(args)
+        #expect(command.name == "github")
+        #expect(command.timeout == 5.0)
+        #expect(command.showTools == true)
     }
     
     @Test("Parsing MCP info with JSON output")
     func testParsingInfoWithJson() throws {
-        let args = ["mcp", "info", "github", "--json-output"]
-        let parsed = try MCPCommand.parseAsRoot(args)
-        
-        // Verify it parses without throwing
-        #expect(parsed is MCPCommand)
+        let args = ["github", "--json-output"]
+        let command = try MCPCommand.Info.parse(args)
+        #expect(command.name == "github")
+        #expect(command.jsonOutput == true)
     }
     
     @Test("Invalid MCP subcommand should fail parsing")

@@ -41,6 +41,30 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
 
     @OptionGroup var focusOptions: FocusOptions
 
+    mutating func validate() throws {
+        guard query != nil || on != nil || id != nil || coords != nil else {
+            throw ValidationError("Specify an element query, --on/--id, or --coords.")
+        }
+
+        if on != nil && coords != nil {
+            throw ValidationError("Cannot specify both --on and --coords.")
+        }
+
+        if on != nil && id != nil {
+            throw ValidationError("Cannot specify both --on and --id.")
+        }
+
+        if let coordString = coords {
+            let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2,
+                  let _ = Double(parts[0]),
+                  let _ = Double(parts[1])
+            else {
+                throw ValidationError("Invalid coordinates format. Use: x,y")
+            }
+        }
+    }
+
     mutating func run() async throws {
         let startTime = Date()
         Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -55,12 +79,8 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
             if let coordString = coords {
                 // Click by coordinates (no session needed)
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                guard parts.count == 2,
-                      let x = Double(parts[0]),
-                      let y = Double(parts[1])
-                else {
-                    throw ArgumentParser.ValidationError("Invalid coordinates format. Use: x,y")
-                }
+                let x = Double(parts[0])!
+                let y = Double(parts[1])!
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
                 waitResult = WaitForElementResult(found: true, element: nil, waitTime: 0)
                 activeSessionId = "" // Not needed for coordinate clicks
@@ -88,11 +108,6 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     sessionId: activeSessionId,
                     options: self.focusOptions
                 )
-
-                // Check if both --on and --id are specified
-                if self.on != nil && self.id != nil {
-                    throw ArgumentParser.ValidationError("Cannot specify both --on and --id")
-                }
 
                 // Use whichever element ID parameter was provided
                 let elementId = self.on ?? self.id
@@ -136,10 +151,8 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     }
 
                 } else {
-                    throw ArgumentParser
-                        .ValidationError(
-                            "Specify an element query, --on/--id, or --coords. Did you mean to pass the query as a positional argument? Usage: `peekaboo click \"button text\"`"
-                        )
+                    // This case should not be reachable due to the validate() method
+                    throw ValidationError("No target specified for click.")
                 }
             }
 
