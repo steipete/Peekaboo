@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 import ImageIO
 import UniformTypeIdentifiers
 

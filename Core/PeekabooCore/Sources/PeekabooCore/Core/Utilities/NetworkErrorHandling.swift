@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooFoundation
 
 // MARK: - API Error Response Protocol
 

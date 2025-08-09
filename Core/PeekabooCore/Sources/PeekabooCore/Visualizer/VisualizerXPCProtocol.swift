@@ -1,4 +1,5 @@
 //
+import PeekabooFoundation
 //  VisualizerXPCProtocol.swift
 //  PeekabooCore
 //

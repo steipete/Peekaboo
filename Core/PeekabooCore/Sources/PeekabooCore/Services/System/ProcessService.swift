@@ -1,6 +1,7 @@
 import AppKit
 import AXorcist
 import Foundation
+import PeekabooFoundation
 
 /// Implementation of ProcessServiceProtocol for executing Peekaboo scripts
 @available(macOS 14.0, *)
@@ -352,7 +353,7 @@ public final class ProcessService: ProcessServiceProtocol {
         let smooth = false // Not in ScrollParameters, using default
         let delay = 100 // Not in ScrollParameters, using default
 
-        let scrollDirection: ScrollDirection = switch scrollParams.direction.lowercased() {
+        let scrollDirection: PeekabooFoundation.ScrollDirection = switch scrollParams.direction.lowercased() {
         case "up": .up
         case "down": .down
         case "left": .left

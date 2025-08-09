@@ -1,4 +1,5 @@
 //
+import PeekabooFoundation
 //  ElementVisualization.swift
 //  PeekabooCore
 //
@@ -107,11 +108,17 @@ public enum ElementCategory: Sendable, Equatable, Hashable {
             self = .checkbox
         case .slider:
             self = .slider
-        case .menu:
+        case .menu, .menuItem:
             self = .menu
         case .image:
             self = .image
         case .group:
+            self = .container
+        case .staticText:
+            self = .text
+        case .radioButton:
+            self = .checkbox  // Use checkbox category for radio buttons
+        case .window, .dialog:
             self = .container
         case .other:
             self = .text

@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import MCP
+import PeekabooFoundation
 import Tachikoma
 import TachikomaMCP
 import os.log

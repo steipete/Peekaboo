@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooFoundation
 
 /// Utility for resolving and validating file paths
 public struct PathResolver: Sendable {

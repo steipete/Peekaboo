@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 import CoreGraphics
 import Foundation
 import os.log

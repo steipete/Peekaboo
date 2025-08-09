@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 
 /// Protocol defining UI automation operations
 @MainActor
@@ -228,18 +229,7 @@ public struct DetectedElement: Sendable, Codable {
     }
 }
 
-/// Type of UI element
-public enum ElementType: String, Sendable, Codable {
-    case button
-    case textField = "text_field"
-    case link
-    case image
-    case group
-    case slider
-    case checkbox
-    case menu
-    case other
-}
+// ElementType is now in PeekabooFoundation
 
 /// Window context information for element detection
 public struct WindowContext: Sendable {
@@ -312,37 +302,13 @@ public enum ClickTarget: Sendable {
     case query(String)
 }
 
-/// Type of click operation
-public enum ClickType: String, Sendable {
-    case single
-    case double
-    case right
-}
+// ClickType is now in PeekabooFoundation
 
-/// Scroll direction
-public enum ScrollDirection: String, Sendable {
-    case up
-    case down
-    case left
-    case right
-}
+// ScrollDirection is now in PeekabooFoundation
 
-/// Swipe direction
-public enum SwipeDirection: String, Sendable {
-    case up
-    case down
-    case left
-    case right
-}
+// SwipeDirection is now in PeekabooFoundation
 
-/// Modifier keys
-public enum ModifierKey: String, Sendable {
-    case command = "cmd"
-    case shift
-    case option
-    case control = "ctrl"
-    case function = "fn"
-}
+// ModifierKey is now in PeekabooFoundation
 
 /// Result of waiting for an element
 public struct WaitForElementResult: Sendable {
@@ -357,49 +323,9 @@ public struct WaitForElementResult: Sendable {
     }
 }
 
-/// Type action for advanced typing operations
-public enum TypeAction: Sendable {
-    /// Type regular text
-    case text(String)
-    /// Press a special key
-    case key(SpecialKey)
-    /// Clear the current field (Cmd+A, Delete)
-    case clear
-}
+// TypeAction is now in PeekabooFoundation
 
-/// Special keys for typing
-public enum SpecialKey: String, Sendable {
-    case `return`
-    case enter // Numeric keypad enter
-    case tab
-    case escape
-    case delete // Backspace
-    case forwardDelete = "forward_delete" // fn+delete
-    case space
-    case leftArrow = "left"
-    case rightArrow = "right"
-    case upArrow = "up"
-    case downArrow = "down"
-    case pageUp = "pageup"
-    case pageDown = "pagedown"
-    case home
-    case end
-    case f1
-    case f2
-    case f3
-    case f4
-    case f5
-    case f6
-    case f7
-    case f8
-    case f9
-    case f10
-    case f11
-    case f12
-    case capsLock = "caps_lock"
-    case clear
-    case help
-}
+// SpecialKey is now in PeekabooFoundation
 
 /// Result of typing operations
 public struct TypeResult: Sendable {

@@ -1,6 +1,7 @@
 import ApplicationServices
 import AXorcist
 import Foundation
+import PeekabooFoundation
 import os
 @preconcurrency import Dispatch
 

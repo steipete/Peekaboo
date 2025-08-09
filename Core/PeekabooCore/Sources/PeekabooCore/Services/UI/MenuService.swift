@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 import AXorcist
 import CoreGraphics
 import Foundation

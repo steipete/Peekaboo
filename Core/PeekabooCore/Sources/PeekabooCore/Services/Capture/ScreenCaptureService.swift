@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
 
 // Feature flag to toggle between modern ScreenCaptureKit and legacy CGWindowList APIs

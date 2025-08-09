@@ -1,4 +1,5 @@
 //
+import PeekabooFoundation
 //  VisualizationClient.swift
 //  PeekabooCore
 //

@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
@@ -20,7 +21,7 @@ public final class ScrollService {
     /// Perform scroll operation
     @MainActor
     public func scroll(
-        direction: ScrollDirection,
+        direction: PeekabooFoundation.ScrollDirection,
         amount: Int,
         target: String?,
         smooth: Bool,
@@ -113,7 +114,7 @@ public final class ScrollService {
 
     // MARK: - Private Methods
 
-    private func getScrollDeltas(for direction: ScrollDirection) -> (deltaX: Int, deltaY: Int) {
+    private func getScrollDeltas(for direction: PeekabooFoundation.ScrollDirection) -> (deltaX: Int, deltaY: Int) {
         switch direction {
         case .up:
             (0, 5)
@@ -216,7 +217,7 @@ public final class ScrollService {
 
 // MARK: - Extensions
 
-extension ScrollDirection: CustomStringConvertible {
+extension PeekabooFoundation.ScrollDirection: CustomStringConvertible {
     public var description: String {
         switch self {
         case .up: "up"

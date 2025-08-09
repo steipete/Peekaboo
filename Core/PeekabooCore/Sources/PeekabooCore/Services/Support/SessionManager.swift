@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 import os.log
 
 /// Default implementation of session management operations
@@ -352,6 +353,11 @@ public final class SessionManager: SessionManagerProtocol {
         case .slider: "AXSlider"
         case .checkbox: "AXCheckBox"
         case .menu: "AXMenu"
+        case .staticText: "AXStaticText"
+        case .radioButton: "AXRadioButton"
+        case .menuItem: "AXMenuItem"
+        case .window: "AXWindow"
+        case .dialog: "AXDialog"
         case .other: "AXUnknown"
         }
     }
@@ -372,9 +378,9 @@ public final class SessionManager: SessionManagerProtocol {
 
     private func isActionableType(_ type: ElementType) -> Bool {
         switch type {
-        case .button, .textField, .link, .checkbox, .slider, .menu:
+        case .button, .textField, .link, .checkbox, .slider, .menu, .menuItem, .radioButton:
             true
-        case .image, .group, .other:
+        case .image, .group, .other, .staticText, .window, .dialog:
             false
         }
     }
@@ -399,8 +405,8 @@ public final class SessionManager: SessionManagerProtocol {
             case .group: groups.append(element)
             case .slider: sliders.append(element)
             case .checkbox: checkboxes.append(element)
-            case .menu: menus.append(element)
-            case .other: other.append(element)
+            case .menu, .menuItem: menus.append(element)
+            case .other, .staticText, .radioButton, .window, .dialog: other.append(element)
             }
         }
 

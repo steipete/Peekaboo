@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 import os.log
 import ScreenCaptureKit
 
@@ -71,7 +72,7 @@ public final class PermissionsService {
 
         if !self.checkScreenRecordingPermission() {
             self.logger.error("Screen recording permission denied")
-            throw CaptureError.screenRecordingPermissionDenied
+            throw PeekabooError.permissionDeniedScreenRecording
         }
     }
 
@@ -81,7 +82,7 @@ public final class PermissionsService {
 
         if !self.checkAccessibilityPermission() {
             self.logger.error("Accessibility permission denied")
-            throw CaptureError.accessibilityPermissionDenied
+            throw PeekabooError.permissionDeniedAccessibility
         }
     }
 
@@ -91,7 +92,7 @@ public final class PermissionsService {
 
         if !self.checkAppleScriptPermission() {
             self.logger.error("AppleScript permission denied")
-            throw CaptureError.appleScriptPermissionDenied
+            throw PeekabooError.operationError(message: "AppleScript permission denied")
         }
     }
 

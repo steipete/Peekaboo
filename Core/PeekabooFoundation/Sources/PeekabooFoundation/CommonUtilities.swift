@@ -26,10 +26,8 @@ public enum JSONCoding {
 extension Error {
     /// Convert any error to a PeekabooError with context
     public func asPeekabooError(
-        context: String,
-        logger: LoggingServiceProtocol? = nil) -> PeekabooError
+        context: String) -> PeekabooError
     {
-        logger?.error("\(context): \(self.localizedDescription)", category: "error-conversion")
 
         // Try to preserve specific PeekabooError types
         if let peekabooError = self as? PeekabooError {
@@ -51,13 +49,12 @@ extension Error {
 /// Perform an async operation with consistent error handling
 public func performOperation<T>(
     _ operation: @Sendable () async throws -> T,
-    errorContext: String,
-    logger: LoggingServiceProtocol? = nil) async throws -> T
+    errorContext: String) async throws -> T
 {
     do {
         return try await operation()
     } catch {
-        throw error.asPeekabooError(context: errorContext, logger: logger)
+        throw error.asPeekabooError(context: errorContext)
     }
 }
 
@@ -75,46 +72,7 @@ extension String {
     }
 }
 
-// MARK: - Window Finding
-
-extension [WindowInfo] {
-    // Note: WindowInfo doesn't have an applicationName property, so this method can't be implemented
-    // It would need to be implemented at a higher level where we have access to both window and app info
-
-    /// Find a window by title (partial match, case-insensitive)
-    public func findWindow(byTitle title: String) throws -> WindowInfo {
-        guard let window = first(where: {
-            $0.window_title.lowercased().contains(title.lowercased())
-        }) else {
-            throw PeekabooError.windowNotFound(criteria: "title containing '\(title)'")
-        }
-        return window
-    }
-
-    /// Find a window by ID
-    public func findWindow(byID windowID: CGWindowID) throws -> WindowInfo {
-        guard let window = first(where: { $0.window_id == UInt32(windowID) }) else {
-            throw PeekabooError.windowNotFound(criteria: "ID \(windowID)")
-        }
-        return window
-    }
-}
-
-// MARK: - Application Finding
-
-extension [ApplicationInfo] {
-    /// Find an application by name (case-insensitive)
-    public func findApp(byName name: String) -> ApplicationInfo? {
-        first(where: {
-            $0.app_name.lowercased() == name.lowercased()
-        })
-    }
-
-    /// Find an application by bundle ID
-    public func findApp(byBundleID bundleID: String) -> ApplicationInfo? {
-        first(where: { $0.bundle_id == bundleID })
-    }
-}
+// WindowInfo and ApplicationInfo extensions removed - these are higher-level types in PeekabooCore
 
 // MARK: - Time Utilities
 

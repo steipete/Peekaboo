@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics
@@ -413,7 +414,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
      * ```
      */
     public func scroll(
-        direction: ScrollDirection,
+        direction: PeekabooFoundation.ScrollDirection,
         amount: Int,
         target: String?,
         smooth: Bool,

@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 
 /// Unified output structure for all Peekaboo tools
 /// Used by CLI, Agent, macOS app, and MCP server

@@ -1,4 +1,5 @@
 import AppKit
+import PeekabooFoundation
 import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics

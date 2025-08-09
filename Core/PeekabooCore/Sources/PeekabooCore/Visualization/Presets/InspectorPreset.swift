@@ -1,4 +1,5 @@
 //
+import PeekabooFoundation
 //  InspectorPreset.swift
 //  PeekabooCore
 //

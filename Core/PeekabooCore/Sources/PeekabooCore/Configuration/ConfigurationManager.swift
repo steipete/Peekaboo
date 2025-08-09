@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooFoundation
 import Tachikoma
 import TachikomaMCP
 

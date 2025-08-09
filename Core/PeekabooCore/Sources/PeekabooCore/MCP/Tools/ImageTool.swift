@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import PeekabooFoundation
 import TachikomaMCP
 import MCP
 import UniformTypeIdentifiers
