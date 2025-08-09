@@ -796,7 +796,7 @@ extension PeekabooAgentService {
             for try await delta in streamResult.stream {
                 if ProcessInfo.processInfo.arguments.contains("--verbose") ||
                    ProcessInfo.processInfo.arguments.contains("-v") {
-                    logger.debug("Stream delta type: \(delta.type)")
+                    logger.debug("Stream delta type: \(String(describing: delta.type))")
                 }
                 switch delta.type {
                 case .textDelta:
