@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 import Testing
 
 @Suite("PID Targeting Tests", .serialized)

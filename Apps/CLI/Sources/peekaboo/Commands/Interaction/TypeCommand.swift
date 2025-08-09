@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Types text into focused elements or sends keyboard input using the UIAutomationService.
 @available(macOS 14.0, *)

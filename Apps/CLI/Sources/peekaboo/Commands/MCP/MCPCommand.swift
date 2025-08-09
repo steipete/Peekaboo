@@ -441,7 +441,6 @@ extension MCPCommand {
                 command: command[0],
                 args: Array(command.dropFirst()),
                 env: envDict,
-                headers: headersDict.isEmpty ? nil : headersDict,
                 enabled: !disabled,
                 timeout: timeout,
                 autoReconnect: true,

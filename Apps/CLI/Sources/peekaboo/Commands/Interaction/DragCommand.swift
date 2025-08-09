@@ -4,6 +4,7 @@ import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Perform drag and drop operations using intelligent element finding
 @available(macOS 14.0, *)

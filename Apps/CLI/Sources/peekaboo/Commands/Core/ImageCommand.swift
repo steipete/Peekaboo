@@ -3,6 +3,7 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 import UniformTypeIdentifiers
 
 // Helper function for async operations with timeout (uses withTimeout from CommandUtilities)

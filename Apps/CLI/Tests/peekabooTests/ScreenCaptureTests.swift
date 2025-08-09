@@ -3,6 +3,7 @@ import CoreGraphics
 import Foundation
 import Testing
 import PeekabooCore
+import PeekabooFoundation
 @testable import peekaboo
 
 // TODO: ScreenCaptureTests commented out - API changes needed (ApplicationFinder, WindowManager missing)

@@ -4,6 +4,7 @@ import ArgumentParser
 import AXorcist
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Control macOS applications
 struct AppCommand: AsyncParsableCommand {

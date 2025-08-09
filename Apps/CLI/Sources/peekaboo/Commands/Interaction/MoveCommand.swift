@@ -3,6 +3,7 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Moves the mouse cursor to specific coordinates or UI elements.
 @available(macOS 14.0, *)

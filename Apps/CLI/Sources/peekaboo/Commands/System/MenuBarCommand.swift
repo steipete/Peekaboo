@@ -2,6 +2,7 @@ import ArgumentParser
 import AXorcist
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Command for interacting with macOS menu bar items (status items).
 struct MenuBarCommand: AsyncParsableCommand, OutputFormattable {

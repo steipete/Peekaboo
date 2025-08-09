@@ -4,6 +4,7 @@ import ArgumentParser
 import AXorcist
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 // MARK: - Element Extensions for System UI
 

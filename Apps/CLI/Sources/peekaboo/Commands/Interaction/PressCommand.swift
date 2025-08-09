@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Press individual keys or key sequences
 @available(macOS 14.0, *)

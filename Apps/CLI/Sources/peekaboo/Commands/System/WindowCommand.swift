@@ -3,6 +3,7 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 // Logger for window command debugging
 private let logger = Logger.shared

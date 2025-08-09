@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 // MARK: - Image Capture Models
 
@@ -54,5 +55,5 @@ struct WindowData: Sendable {
 
 // MARK: - Error Types
 
-// Re-export CaptureError from PeekabooCore
-typealias CaptureError = PeekabooCore.CaptureError
+// Re-export CaptureError from PeekabooFoundation
+typealias CaptureError = PeekabooFoundation.CaptureError

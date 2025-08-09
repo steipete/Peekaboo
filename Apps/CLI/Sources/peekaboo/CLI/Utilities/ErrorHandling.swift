@@ -1,5 +1,6 @@
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 // MARK: - Common Error Handling
 

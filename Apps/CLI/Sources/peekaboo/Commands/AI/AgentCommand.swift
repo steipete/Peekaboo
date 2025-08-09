@@ -3,6 +3,7 @@ import Dispatch
 import Foundation
 import Logging
 import PeekabooCore
+import PeekabooFoundation
 import Spinner
 import Tachikoma
 import TachikomaMCP
@@ -315,7 +316,7 @@ struct AgentCommand: AsyncParsableCommand {
 
             // Get the most recent session
             guard let peekabooService = agentService as? PeekabooAgentService else {
-                throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
+                throw PeekabooError.commandFailed("Agent service not properly initialized")
             }
 
             let sessions = try await peekabooService.listSessions()
@@ -650,7 +651,7 @@ struct AgentCommand: AsyncParsableCommand {
 
         // Cast to PeekabooAgentService early for enhanced functionality
         guard let peekabooAgent = agentService as? PeekabooAgentService else {
-            throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
+            throw PeekabooError.commandFailed("Agent service not properly initialized")
         }
 
         // Get the actual model name that will be used
@@ -937,7 +938,7 @@ struct AgentCommand: AsyncParsableCommand {
     func showSessions(_ agentService: AgentServiceProtocol) async throws {
         // Cast to PeekabooAgentService - this should always succeed
         guard let peekabooService = agentService as? PeekabooAgentService else {
-            throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
+            throw PeekabooError.commandFailed("Agent service not properly initialized")
         }
 
         let sessionSummaries = try await peekabooService.listSessions()

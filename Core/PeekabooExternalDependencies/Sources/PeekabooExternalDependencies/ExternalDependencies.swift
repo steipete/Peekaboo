@@ -11,7 +11,6 @@
 @_exported import ArgumentParser
 @_exported import Logging
 @_exported import SystemPackage
-@_exported import AsyncHTTPClient
 
 // MARK: - Dependency Version Info
 
@@ -21,7 +20,6 @@ public enum DependencyInfo {
     public static let argumentParserVersion = "1.3.0"
     public static let swiftLogVersion = "1.5.3"
     public static let swiftSystemVersion = "1.3.0"
-    public static let asyncHTTPClientVersion = "1.19.0"
     
     public static var allDependencies: [String: String] {
         [
@@ -30,7 +28,6 @@ public enum DependencyInfo {
             "ArgumentParser": argumentParserVersion,
             "SwiftLog": swiftLogVersion,
             "SwiftSystem": swiftSystemVersion,
-            "AsyncHTTPClient": asyncHTTPClientVersion,
         ]
     }
 }

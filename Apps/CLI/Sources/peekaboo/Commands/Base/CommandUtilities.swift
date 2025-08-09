@@ -3,6 +3,7 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 // MARK: - Error Handling Protocol
 

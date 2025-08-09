@@ -20,7 +20,6 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-log", from: "1.5.3"),
         .package(url: "https://github.com/apple/swift-system", from: "1.3.0"),
-        .package(url: "https://github.com/swift-server/async-http-client", from: "1.19.0"),
     ],
     targets: [
         .target(
@@ -31,7 +30,6 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "SystemPackage", package: "swift-system"),
-                .product(name: "AsyncHTTPClient", package: "async-http-client"),
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency"),

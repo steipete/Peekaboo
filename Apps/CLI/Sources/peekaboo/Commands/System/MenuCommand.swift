@@ -2,6 +2,7 @@ import AppKit
 import ArgumentParser
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Menu-specific errors
 enum MenuError: Error {

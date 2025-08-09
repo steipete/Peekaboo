@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Protocol for commands that can resolve application identifiers from various inputs
 protocol ApplicationResolvable {

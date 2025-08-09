@@ -2,6 +2,7 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Scrolls the mouse wheel in a specified direction.
 /// Supports scrolling on specific elements or at the current mouse position.

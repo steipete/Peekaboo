@@ -4,6 +4,7 @@ import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Performs swipe gestures using intelligent element finding and service-based architecture.
 @available(macOS 14.0, *)

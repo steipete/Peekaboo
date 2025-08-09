@@ -4,6 +4,7 @@ import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 import ScreenCaptureKit
 
 /// Capture a screenshot and build an interactive UI map
