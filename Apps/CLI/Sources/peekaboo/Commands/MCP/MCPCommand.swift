@@ -132,11 +132,47 @@ extension MCPCommand {
         
         @Flag(name: .long, help: "Skip health checks (faster)")
         var skipHealthCheck = false
+        
+        @Flag(name: .long, help: "Show verbose output including connection logs")
+        var verbose = false
 
         func run() async throws {
-                // Initialize Tachikoma MCP manager (connect will happen during health check)
-                await TachikomaMCPClientManager.shared.initializeFromProfile(connect: true)
+                // Set verbose mode if requested
+                if verbose {
+                    Logger.shared.setVerboseMode(true)
+                }
+                
+                // Register browser MCP as a default server
+                let defaultBrowser = TachikomaMCP.MCPServerConfig(
+                    transport: "stdio",
+                    command: "npx",
+                    args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+                    env: [:],
+                    enabled: true,
+                    timeout: 15.0,
+                    autoReconnect: true,
+                    description: "Browser automation via BrowserMCP"
+                )
+                await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+                
+                // Suppress os_log output unless verbose
+                let originalStderr = dup(STDERR_FILENO)
+                let devNull = open("/dev/null", O_WRONLY)
+                if !verbose && devNull != -1 {
+                    // Redirect stderr to /dev/null to suppress os_log output
+                    dup2(devNull, STDERR_FILENO)
+                }
+                
+                // Initialize Tachikoma MCP manager (don't connect yet - let health check measure timing)
+                await TachikomaMCPClientManager.shared.initializeFromProfile(connect: false)
                 let serverNames = await TachikomaMCPClientManager.shared.getServerNames()
+                
+                // Restore stderr after initialization
+                if !verbose && devNull != -1 {
+                    dup2(originalStderr, STDERR_FILENO)
+                    close(devNull)
+                    close(originalStderr)
+                }
             
             if serverNames.isEmpty {
                 if jsonOutput {
@@ -158,11 +194,25 @@ extension MCPCommand {
                 print()
             }
             
-            // Get health status for all servers
-            let probes = await TachikomaMCPClientManager.shared.probeAllServers(timeoutMs: 8000)
+            // Suppress os_log output during health checks unless verbose
+            let originalStderr2 = dup(STDERR_FILENO)
+            let devNull2 = open("/dev/null", O_WRONLY)
+            if !verbose && devNull2 != -1 {
+                dup2(devNull2, STDERR_FILENO)
+            }
+            
+            // Get health status for all servers (5 second timeout should be sufficient)
+            let probes = await TachikomaMCPClientManager.shared.probeAllServers(timeoutMs: 5000)
             var healthResults: [String: MCPServerHealth] = [:]
             for (name, (ok, count, rt, err)) in probes {
                 healthResults[name] = ok ? .connected(toolCount: count, responseTime: rt) : .disconnected(error: err ?? "unknown error")
+            }
+            
+            // Restore stderr after health checks
+            if !verbose && devNull2 != -1 {
+                dup2(originalStderr2, STDERR_FILENO)
+                close(devNull2)
+                close(originalStderr2)
             }
             
             if jsonOutput {
@@ -214,6 +264,66 @@ extension MCPCommand {
             }
         }
         
+        /// Simplify command path for display
+        private func simplifyCommandPath(command: String, args: [String]) -> String {
+            // Handle npx commands - they're already clean
+            if command == "npx" || command.hasSuffix("/npx") {
+                return ([command.components(separatedBy: "/").last ?? command] + args).joined(separator: " ")
+            }
+            
+            // Handle node commands with node_modules packages
+            if command.contains("node") && !args.isEmpty {
+                if let firstArg = args.first {
+                    // Extract package name from node_modules path
+                    if firstArg.contains("/node_modules/") {
+                        if let packageStart = firstArg.range(of: "/node_modules/") {
+                            let afterModules = String(firstArg[packageStart.upperBound...])
+                            // Get just the package name (could be @org/package or package)
+                            let components = afterModules.split(separator: "/")
+                            if components.count >= 1 {
+                                if components[0].starts(with: "@") && components.count >= 2 {
+                                    // Scoped package like @playwright/mcp
+                                    return "\(components[0])/\(components[1])"
+                                } else {
+                                    // Regular package
+                                    return String(components[0])
+                                }
+                            }
+                        }
+                    }
+                    // If it's a direct script path, show just the filename
+                    return URL(fileURLWithPath: firstArg).lastPathComponent
+                }
+            }
+            
+            // For other commands, simplify the path
+            var simplifiedCommand = command
+            
+            // Replace home directory with ~
+            if let homeDir = ProcessInfo.processInfo.environment["HOME"] {
+                simplifiedCommand = simplifiedCommand.replacingOccurrences(of: homeDir, with: "~")
+            }
+            
+            // If still too long, just show the command name
+            if simplifiedCommand.count > 50 {
+                simplifiedCommand = URL(fileURLWithPath: command).lastPathComponent
+            }
+            
+            // Combine with meaningful args (skip version specifiers and paths)
+            let meaningfulArgs = args.filter { arg in
+                !arg.starts(with: "-y") && 
+                !arg.starts(with: "--yes") &&
+                !arg.contains("/") &&
+                !arg.starts(with: "@") // Keep package names in the command part
+            }
+            
+            if meaningfulArgs.isEmpty {
+                return simplifiedCommand
+            } else {
+                return ([simplifiedCommand] + meaningfulArgs).joined(separator: " ")
+            }
+        }
+        
         private func outputFormatted(serverNames: [String], healthResults: [String: MCPServerHealth]) async {
             var healthyCount = 0
             
@@ -227,7 +337,7 @@ extension MCPCommand {
                 
                 let command = serverInfo?.config.command ?? "unknown"
                 let args = serverInfo?.config.args ?? []
-                let fullCommand = ([command] + args).joined(separator: " ")
+                let simplifiedCommand = simplifyCommandPath(command: command, args: args)
                 
                 let healthSymbol = health.symbol
                 let healthText = health.statusText
@@ -236,7 +346,7 @@ extension MCPCommand {
                 let isDefault = (serverName == "browser")
                 let defaultMarker = isDefault ? " [default]" : ""
                 
-                print("\(serverName): \(fullCommand) - \(healthSymbol) \(healthText)\(defaultMarker)")
+                print("\(serverName): \(simplifiedCommand) - \(healthSymbol) \(healthText)\(defaultMarker)")
             }
             
             print()
@@ -333,6 +443,19 @@ extension MCPCommand {
                 description: description
             )
 
+            // Register browser MCP as a default server
+            let defaultBrowser = TachikomaMCP.MCPServerConfig(
+                transport: "stdio",
+                command: "npx",
+                args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+                env: [:],
+                enabled: true,
+                timeout: 15.0,
+                autoReconnect: true,
+                description: "Browser automation via BrowserMCP"
+            )
+            await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+            
             // Load existing profile configs, add server, persist, then probe
             await TachikomaMCPClientManager.shared.initializeFromProfile(connect: false)
 
