@@ -770,7 +770,7 @@ extension PeekabooAgentService {
         var totalUsage: Usage?
         
         for stepIndex in 0..<maxSteps {
-            // Debug: log tools being passed
+            // Log tools being passed only in verbose mode
             if ProcessInfo.processInfo.arguments.contains("--verbose") ||
                 ProcessInfo.processInfo.arguments.contains("-v")
             {
@@ -795,17 +795,20 @@ extension PeekabooAgentService {
             var isThinking = false
             
             // Process the stream
+            #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--verbose") ||
                 ProcessInfo.processInfo.arguments.contains("-v")
             {
                 logger.debug("Starting to process stream for step \(stepIndex)")
             }
+            #endif
             for try await delta in streamResult.stream {
+                #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("--verbose") ||
                    ProcessInfo.processInfo.arguments.contains("-v") {
                     logger.debug("Received delta type: \(delta.type)")
-                    logger.debug("Stream delta type: \(String(describing: delta.type))")
                 }
+                #endif
                 switch delta.type {
                 case .textDelta:
                     if let content = delta.content {
@@ -977,6 +980,28 @@ extension PeekabooAgentService {
                 
                 // Continue to next iteration if we have tool results
                 if !toolResults.isEmpty {
+                    #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                       ProcessInfo.processInfo.arguments.contains("-v") {
+                        // Log what messages we're sending next
+                        logger.debug("Continuing to step \(stepIndex + 1) with tool results")
+                        logger.debug("Current messages count: \(currentMessages.count)")
+                        for (idx, msg) in currentMessages.enumerated() {
+                            logger.debug("Message \(idx): role=\(msg.role), content parts=\(msg.content.count)")
+                            if idx == currentMessages.count - 1 {
+                                // Log the last message (tool result) in detail
+                                for part in msg.content {
+                                    switch part {
+                                    case .toolResult(let result):
+                                        logger.debug("Tool result: \(result)")
+                                    default:
+                                        logger.debug("Content part: \(part)")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    #endif
                     continue
                 }
             } else {

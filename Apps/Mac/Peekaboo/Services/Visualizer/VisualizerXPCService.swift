@@ -44,7 +44,8 @@ final class VisualizerXPCService: NSObject {
         self.listener?.delegate = self
         self.listener?.resume()
 
-        self.logger.info("Visualizer XPC service started")
+        self.logger.info("🎨 XPC Service: Started listening on '\(VisualizerXPCServiceName)'")
+        self.logger.info("🎨 XPC Service: Listener state: \(self.listener != nil ? "created" : "nil")")
     }
 
     /// Stops the XPC service
@@ -60,7 +61,9 @@ final class VisualizerXPCService: NSObject {
 
 extension VisualizerXPCService: @preconcurrency NSXPCListenerDelegate {
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection newConnection: NSXPCConnection) -> Bool {
-        self.logger.debug("New XPC connection request")
+        self.logger.info("🎨 XPC Service: New connection request received!")
+        self.logger.info("🎨 XPC Service: Connection PID: \(newConnection.processIdentifier)")
+        self.logger.info("🎨 XPC Service: Connection audit token: \(String(describing: newConnection.auditToken))")
 
         // Configure the connection
         newConnection.exportedInterface = NSXPCInterface(with: VisualizerXPCProtocol.self)
@@ -68,15 +71,16 @@ extension VisualizerXPCService: @preconcurrency NSXPCListenerDelegate {
 
         // Set up handlers
         newConnection.interruptionHandler = { [weak self] in
-            self?.logger.warning("XPC connection interrupted")
+            self?.logger.warning("🎨 XPC Service: Connection interrupted from PID \(newConnection.processIdentifier)")
         }
 
         newConnection.invalidationHandler = { [weak self] in
-            self?.logger.debug("XPC connection invalidated")
+            self?.logger.info("🎨 XPC Service: Connection invalidated from PID \(newConnection.processIdentifier)")
         }
 
         // Resume the connection
         newConnection.resume()
+        self.logger.info("🎨 XPC Service: Connection accepted and resumed for PID \(newConnection.processIdentifier)")
 
         return true
     }

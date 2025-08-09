@@ -164,6 +164,10 @@ struct Main {
         // Load configuration at startup
         _ = ConfigurationManager.shared.loadConfiguration()
         
+        // Initialize visualizer connection for CLI (non-Mac app) usage
+        // This ensures XPC connection to Mac app's visualizer service is established early
+        PeekabooServices.shared.ensureVisualizerConnection()
+        
         // Initialize MCP client with default servers
         // Note: MCP initialization happens within MCPCommand commands
 

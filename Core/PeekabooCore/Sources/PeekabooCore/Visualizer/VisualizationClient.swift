@@ -57,6 +57,7 @@ public final class VisualizationClient: @unchecked Sendable {
     /// Establishes connection to the visualizer service if available
     public func connect() {
         self.logger.info("🔌 Client: Attempting to connect to visualizer service")
+        self.logger.info("🔌 Client: Bundle ID: \(Bundle.main.bundleIdentifier ?? "nil"), Process: \(ProcessInfo.processInfo.processName)")
 
         guard self.isEnabled else {
             self.logger.info("🔌 Client: Visual feedback is disabled, skipping connection")
@@ -69,7 +70,7 @@ public final class VisualizationClient: @unchecked Sendable {
             return
         }
 
-        self.logger.info("🔌 Client: Peekaboo.app is running, establishing XPC connection")
+        self.logger.info("🔌 Client: Peekaboo.app is running, establishing XPC connection to '\(VisualizerXPCServiceName)'")
 
         // Create XPC connection
         self.connection = NSXPCConnection(machServiceName: VisualizerXPCServiceName)
@@ -78,6 +79,7 @@ public final class VisualizationClient: @unchecked Sendable {
         // Set up interruption handler
         self.connection?.interruptionHandler = {
             DispatchQueue.main.async { [weak self] in
+                self?.logger.error("🔌 Client: XPC connection interrupted!")
                 self?.handleConnectionInterruption()
             }
         }
@@ -85,34 +87,43 @@ public final class VisualizationClient: @unchecked Sendable {
         // Set up invalidation handler
         self.connection?.invalidationHandler = {
             DispatchQueue.main.async { [weak self] in
+                self?.logger.error("🔌 Client: XPC connection invalidated!")
                 self?.handleConnectionInvalidation()
             }
         }
 
         // Resume the connection
+        self.logger.info("🔌 Client: Resuming XPC connection...")
         self.connection?.resume()
 
         // Get remote proxy
+        self.logger.info("🔌 Client: Getting remote proxy...")
         self.remoteProxy = self.connection?.remoteObjectProxyWithErrorHandler { error in
             // Don't capture self here to avoid @MainActor checks
             DispatchQueue.main.async { [weak self] in
-                self?.logger.error("Failed to get remote proxy: \(error.localizedDescription)")
+                self?.logger.error("🔌 Client: Failed to get remote proxy: \(error.localizedDescription), error: \(error)")
                 self?.isConnected = false
             }
         } as? VisualizerXPCProtocol
 
         // Test connection
+        self.logger.info("🔌 Client: Testing connection with isVisualFeedbackEnabled call...")
         self.remoteProxy?.isVisualFeedbackEnabled { enabled in
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.isConnected = true
                 self.isEnabled = enabled
                 self.retryAttempt = 0
-                self.logger.info("Connected to visualizer service, feedback enabled: \(enabled)")
+                self.logger.info("🔌 Client: Successfully connected to visualizer service, feedback enabled: \(enabled)")
 
                 // Post notification
                 NotificationCenter.default.post(name: .visualizerConnected, object: nil)
             }
+        }
+        
+        // Log if remoteProxy is nil
+        if self.remoteProxy == nil {
+            self.logger.error("🔌 Client: remoteProxy is nil after connection attempt!")
         }
     }
 
