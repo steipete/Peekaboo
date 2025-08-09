@@ -628,10 +628,9 @@ extension PeekabooAgentService {
         // Screen tools (legacy wrappers)
         agentTools.append(createListScreensTool())
         
-        // Application tools (legacy wrappers + full)
+        // Application tools
         agentTools.append(createListAppsTool())
-        agentTools.append(createLaunchAppTool())
-        agentTools.append(createAppTool())  // Full app management
+        agentTools.append(createAppTool())  // Full app management (launch, quit, focus, etc.)
         
         // Space management
         agentTools.append(createSpaceTool())

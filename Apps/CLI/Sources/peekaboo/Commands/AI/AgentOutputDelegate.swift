@@ -108,7 +108,13 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         }
         
         // Get proper display name
-        let displayName = toolType?.displayName ?? name.replacingOccurrences(of: "_", with: " ").capitalized
+        var displayName = toolType?.displayName ?? name.replacingOccurrences(of: "_", with: " ").capitalized
+        
+        // Special handling for app tool to show the action
+        if name == "app", let action = args["action"] as? String {
+            let appName = (args["name"] as? String) ?? (args["bundleId"] as? String) ?? ""
+            displayName = "App \(action.capitalized)\(appName.isEmpty ? "" : ": \(appName)")"
+        }
         
         // Update terminal title
         let titleSummary = formatter.formatForTitle(arguments: args)
@@ -217,7 +223,29 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         let success = (json["success"] as? Bool) ?? true
         
         if success {
-            let resultSummary = formatter.formatResultSummary(result: json)
+            // Special handling for app tool results
+            var resultSummary = formatter.formatResultSummary(result: json)
+            if name == "app" {
+                if let meta = json["meta"] as? [String: Any],
+                   let appName = meta["app_name"] as? String {
+                    if let content = json["content"] as? [[String: Any]],
+                       let firstContent = content.first,
+                       let text = firstContent["text"] as? String {
+                        // Extract the key info from the result
+                        if text.contains("Launched") {
+                            resultSummary = "→ \(appName) launched"
+                        } else if text.contains("Quit") {
+                            resultSummary = "→ \(appName) quit"
+                        } else if text.contains("Focused") || text.contains("Switched") {
+                            resultSummary = "→ \(appName) focused"
+                        } else if text.contains("Hidden") {
+                            resultSummary = "→ \(appName) hidden"
+                        } else if text.contains("Unhidden") {
+                            resultSummary = "→ \(appName) shown"
+                        }
+                    }
+                }
+            }
             
             switch outputMode {
             case .minimal:
