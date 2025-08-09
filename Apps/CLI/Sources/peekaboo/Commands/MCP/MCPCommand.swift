@@ -370,9 +370,14 @@ extension MCPCommand {
             Add a new external MCP server that Peekaboo can connect to and use tools from.
             
             EXAMPLES:
+              # Stdio servers (most common):
               peekaboo mcp add github -- npx -y @modelcontextprotocol/server-github
               peekaboo mcp add files -- npx -y @modelcontextprotocol/server-filesystem /Users/me/docs
               peekaboo mcp add weather -e API_KEY=xyz123 -- /usr/local/bin/weather-server
+              
+              # HTTP/SSE servers (remote):
+              peekaboo mcp add context7 --transport sse -- https://mcp.context7.com/mcp
+              peekaboo mcp add myserver --transport http -- https://api.example.com/mcp
             """
         )
         
