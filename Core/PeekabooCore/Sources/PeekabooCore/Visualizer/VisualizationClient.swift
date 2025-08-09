@@ -26,6 +26,9 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Remote proxy object
     private var remoteProxy: VisualizerXPCProtocol?
+    
+    /// Serial queue for thread-safe connection management
+    private let connectionQueue = DispatchQueue(label: "boo.peekaboo.visualizer.connection")
 
     /// Connection state
     public private(set) var isConnected: Bool = false
@@ -51,16 +54,43 @@ public final class VisualizationClient: @unchecked Sendable {
             self.logger.info("Visual feedback disabled via environment variable")
         }
     }
+    
+    // BEST PRACTICE: Always invalidate connection in deinit
+    deinit {
+        // Invalidate connection on cleanup
+        connectionQueue.sync {
+            self.retryTimer?.invalidate()
+            self.retryTimer = nil
+            
+            if let connection = self.connection {
+                connection.invalidate()
+                self.connection = nil
+            }
+            self.remoteProxy = nil
+        }
+    }
 
     // MARK: - Connection Management
 
     /// Establishes connection to the visualizer service if available
     public func connect() {
+        connectionQueue.async { [weak self] in
+            self?.connectInternal()
+        }
+    }
+    
+    private func connectInternal() {
         self.logger.info("🔌 Client: Attempting to connect to visualizer service")
         self.logger.info("🔌 Client: Bundle ID: \(Bundle.main.bundleIdentifier ?? "nil"), Process: \(ProcessInfo.processInfo.processName)")
 
         guard self.isEnabled else {
             self.logger.info("🔌 Client: Visual feedback is disabled, skipping connection")
+            return
+        }
+        
+        // Check if already connected to avoid duplicate connections
+        if self.isConnected && self.connection != nil {
+            self.logger.info("🔌 Client: Already connected, skipping")
             return
         }
 
@@ -71,74 +101,111 @@ public final class VisualizationClient: @unchecked Sendable {
         }
 
         self.logger.info("🔌 Client: Peekaboo.app is running, establishing XPC connection to '\(VisualizerXPCServiceName)'")
+        
+        // Invalidate old connection before creating new one
+        if let oldConnection = self.connection {
+            oldConnection.invalidate()
+            self.connection = nil
+            self.remoteProxy = nil
+        }
 
         // Create XPC connection
-        self.connection = NSXPCConnection(machServiceName: VisualizerXPCServiceName)
-        self.connection?.remoteObjectInterface = NSXPCInterface(with: VisualizerXPCProtocol.self)
+        let newConnection = NSXPCConnection(machServiceName: VisualizerXPCServiceName)
+        newConnection.remoteObjectInterface = NSXPCInterface(with: VisualizerXPCProtocol.self)
 
-        // Set up interruption handler
-        self.connection?.interruptionHandler = {
-            DispatchQueue.main.async { [weak self] in
+        // Set up interruption handler with weak self to avoid retain cycles
+        newConnection.interruptionHandler = { [weak self] in
+            self?.connectionQueue.async {
                 self?.logger.error("🔌 Client: XPC connection interrupted!")
                 self?.handleConnectionInterruption()
             }
         }
 
-        // Set up invalidation handler
-        self.connection?.invalidationHandler = {
-            DispatchQueue.main.async { [weak self] in
+        // Set up invalidation handler with weak self to avoid retain cycles
+        newConnection.invalidationHandler = { [weak self] in
+            self?.connectionQueue.async {
                 self?.logger.error("🔌 Client: XPC connection invalidated!")
                 self?.handleConnectionInvalidation()
             }
         }
 
-        // Resume the connection
+        // Store connection before resuming
+        self.connection = newConnection
+        
+        // Resume the connection after all configuration
         self.logger.info("🔌 Client: Resuming XPC connection...")
-        self.connection?.resume()
+        newConnection.resume()
 
-        // Get remote proxy
+        // Get remote proxy using synchronous proxy for initial setup
         self.logger.info("🔌 Client: Getting remote proxy...")
-        self.remoteProxy = self.connection?.remoteObjectProxyWithErrorHandler { error in
-            // Don't capture self here to avoid @MainActor checks
-            DispatchQueue.main.async { [weak self] in
-                self?.logger.error("🔌 Client: Failed to get remote proxy: \(error.localizedDescription), error: \(error)")
-                self?.isConnected = false
-            }
+        let proxy = newConnection.synchronousRemoteObjectProxyWithErrorHandler { [weak self] error in
+            self?.logger.error("🔌 Client: Failed to get remote proxy: \(error.localizedDescription), error: \(error)")
+            self?.isConnected = false
+            self?.remoteProxy = nil
         } as? VisualizerXPCProtocol
-
-        // Test connection
-        self.logger.info("🔌 Client: Testing connection with isVisualFeedbackEnabled call...")
-        self.remoteProxy?.isVisualFeedbackEnabled { enabled in
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.isConnected = true
-                self.isEnabled = enabled
-                self.retryAttempt = 0
-                self.logger.info("🔌 Client: Successfully connected to visualizer service, feedback enabled: \(enabled)")
-
-                // Post notification
-                NotificationCenter.default.post(name: .visualizerConnected, object: nil)
-            }
+        
+        guard let proxy = proxy else {
+            self.logger.error("🔌 Client: Failed to create proxy object")
+            newConnection.invalidate()
+            self.connection = nil
+            return
         }
         
-        // Log if remoteProxy is nil
-        if self.remoteProxy == nil {
-            self.logger.error("🔌 Client: remoteProxy is nil after connection attempt!")
+        self.remoteProxy = proxy
+
+        // Test connection with timeout
+        self.logger.info("🔌 Client: Testing connection with isVisualFeedbackEnabled call...")
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        var testSucceeded = false
+        
+        proxy.isVisualFeedbackEnabled { [weak self] enabled in
+            self?.connectionQueue.async {
+                self?.isConnected = true
+                self?.isEnabled = enabled
+                self?.retryAttempt = 0
+                testSucceeded = true
+                self?.logger.info("🔌 Client: Successfully connected to visualizer service, feedback enabled: \(enabled)")
+                
+                // Post notification on main queue
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .visualizerConnected, object: nil)
+                }
+            }
+            semaphore.signal()
+        }
+        
+        // Wait for test with timeout
+        let timeout = DispatchTime.now() + .seconds(2)
+        let result = semaphore.wait(timeout: timeout)
+        
+        if result == .timedOut {
+            self.logger.error("🔌 Client: Connection test timed out")
+            newConnection.invalidate()
+            self.connection = nil
+            self.remoteProxy = nil
+            self.isConnected = false
         }
     }
 
     /// Disconnects from the visualizer service
     public func disconnect() {
-        self.retryTimer?.invalidate()
-        self.retryTimer = nil
+        connectionQueue.sync {
+            self.retryTimer?.invalidate()
+            self.retryTimer = nil
 
-        self.connection?.invalidate()
-        self.connection = nil
-        self.remoteProxy = nil
-        self.isConnected = false
+            // Always invalidate connection properly
+            self.connection?.invalidate()
+            self.connection = nil
+            self.remoteProxy = nil
+            self.isConnected = false
 
-        self.logger.info("Disconnected from visualizer service")
-        NotificationCenter.default.post(name: .visualizerDisconnected, object: nil)
+            self.logger.info("Disconnected from visualizer service")
+            
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .visualizerDisconnected, object: nil)
+            }
+        }
     }
 
     // MARK: - Visual Feedback Methods
@@ -404,16 +471,28 @@ public final class VisualizationClient: @unchecked Sendable {
     private func isPeekabooAppRunning() -> Bool {
         let workspace = NSWorkspace.shared
         let runningApps = workspace.runningApplications
-
-        return runningApps.contains { app in
+        
+        let peekabooApps = runningApps.filter { app in
             app.bundleIdentifier == "boo.peekaboo.mac" || app.bundleIdentifier == "boo.peekaboo.mac.debug"
         }
+        
+        if !peekabooApps.isEmpty {
+            for app in peekabooApps {
+                self.logger.debug("🔌 Client: Found Peekaboo.app - Bundle: \(app.bundleIdentifier ?? "unknown"), PID: \(app.processIdentifier)")
+            }
+        } else {
+            self.logger.debug("🔌 Client: No Peekaboo.app instances found in running apps")
+        }
+        
+        return !peekabooApps.isEmpty
     }
 
     /// Handles connection interruption
     private func handleConnectionInterruption() {
         self.logger.warning("XPC connection interrupted")
         self.isConnected = false
+        
+        // Don't nil out connection here - it may recover
 
         // Schedule retry
         self.scheduleConnectionRetry()
@@ -442,9 +521,9 @@ public final class VisualizationClient: @unchecked Sendable {
 
         self.logger.info("Scheduling connection retry #\(self.retryAttempt) in \(delay) seconds")
 
-        self.retryTimer?.invalidate()
-        self.retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            Task { @MainActor in
+        DispatchQueue.main.async { [weak self] in
+            self?.retryTimer?.invalidate()
+            self?.retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
                 self?.connect()
             }
         }

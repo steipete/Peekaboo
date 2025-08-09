@@ -91,12 +91,14 @@ extension VisualizerXPCService: @preconcurrency NSXPCListenerDelegate {
 extension VisualizerXPCService: @preconcurrency VisualizerXPCProtocol {
     func showScreenshotFlash(in rect: CGRect, reply: @escaping (Bool) -> Void) {
         Task { @MainActor in
-            self.logger.debug("Screenshot flash requested for rect: \(String(describing: rect))")
+            self.logger.info("🎨 XPC Service: Screenshot flash requested for rect: \(String(describing: rect))")
+            self.logger.debug("🎨 XPC Service: Processing on thread: \(Thread.current)")
 
             // Let the coordinator check its own settings
             // It has access to the real PeekabooSettings
 
             let success = await visualizerCoordinator.showScreenshotFlash(in: rect)
+            self.logger.info("🎨 XPC Service: Screenshot flash completed with result: \(success)")
             reply(success)
         }
     }

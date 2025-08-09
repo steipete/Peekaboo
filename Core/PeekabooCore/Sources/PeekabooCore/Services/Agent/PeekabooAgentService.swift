@@ -993,9 +993,9 @@ extension PeekabooAgentService {
                                 for part in msg.content {
                                     switch part {
                                     case .toolResult(let result):
-                                        logger.debug("Tool result: \(result)")
+                                        logger.debug("Tool result: \(String(describing: result))")
                                     default:
-                                        logger.debug("Content part: \(part)")
+                                        logger.debug("Content part: \(String(describing: part))")
                                     }
                                 }
                             }
