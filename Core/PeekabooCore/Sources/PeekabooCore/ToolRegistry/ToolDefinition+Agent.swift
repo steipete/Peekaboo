@@ -6,7 +6,7 @@ import Tachikoma
 extension PeekabooToolDefinition {
     /// Convert parameters to agent tool parameters
     public func toAgentToolParameters() -> Tachikoma.AgentToolParameters {
-        var properties: [Tachikoma.AgentToolParameterProperty] = []
+        var properties: [String: Tachikoma.AgentToolParameterProperty] = [:]
         var required: [String] = []
 
         for param in parameters {
@@ -38,7 +38,7 @@ extension PeekabooToolDefinition {
                 description: param.description,
                 enumValues: param.options)
                 
-            properties.append(property)
+            properties[agentParamName] = property
 
             if param.required {
                 required.append(agentParamName)

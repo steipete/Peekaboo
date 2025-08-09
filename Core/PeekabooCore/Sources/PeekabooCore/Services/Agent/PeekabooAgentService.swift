@@ -47,6 +47,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     private let defaultLanguageModel: LanguageModel
     private var currentModel: LanguageModel?
     private let logger = os.Logger(subsystem: "boo.peekaboo", category: "agent")
+    private var isVerbose: Bool = false
 
     /// The default model used by this agent service
     public var defaultModel: String { self.defaultLanguageModel.description }
@@ -308,8 +309,18 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         maxSteps: Int = 20,
         sessionId: String? = nil,
         model: LanguageModel? = nil,
-        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: AgentEventDelegate? = nil,
+        verbose: Bool = false) async throws -> AgentExecutionResult
     {
+        // Store the verbose flag for this execution
+        self.isVerbose = verbose
+        if verbose {
+            print("DEBUG: Verbose mode enabled in PeekabooAgentService")
+        }
+        
+        // Set verbose mode in Tachikoma configuration
+        TachikomaConfiguration.current.setVerbose(verbose)
+        
         // If we have an event delegate, use streaming
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
@@ -743,9 +754,7 @@ extension PeekabooAgentService {
         }
 
         // Only log tool debug info in verbose mode
-        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-            ProcessInfo.processInfo.arguments.contains("-v")
-        {
+        if self.isVerbose {
             logger.debug("Passing \(tools.count) tools to generateText")
             for tool in tools {
                 logger.debug("Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
@@ -756,9 +765,7 @@ extension PeekabooAgentService {
         }
 
         // Debug: Log which model is being used (streaming)
-        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-            ProcessInfo.processInfo.arguments.contains("-v")
-        {
+        if self.isVerbose {
             logger.debug("Using model: \(model)")
             logger.debug("Model description: \(model.description)")
         }
@@ -771,9 +778,7 @@ extension PeekabooAgentService {
         
         for stepIndex in 0..<maxSteps {
             // Log tools being passed only in verbose mode
-            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                ProcessInfo.processInfo.arguments.contains("-v")
-            {
+            if self.isVerbose {
                 logger.debug("Step \(stepIndex): Passing \(tools.count) tools to streamText")
                 if !tools.isEmpty {
                     logger.debug("Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
@@ -783,11 +788,39 @@ extension PeekabooAgentService {
             }
             
             // Stream the response
+            // Configure settings based on model type
+            let settings: GenerationSettings
+            switch model {
+            case .openai(.gpt5), .openai(.gpt5Mini), .openai(.gpt5Nano):
+                // GPT-5 models use verbosity instead of temperature
+                settings = GenerationSettings(
+                    maxTokens: 4096,
+                    providerOptions: .init(
+                        openai: .init(
+                            verbosity: .medium
+                        )
+                    )
+                )
+            case .openai(.o3), .openai(.o3Mini), .openai(.o3Pro), .openai(.o4), .openai(.o4Mini):
+                // Reasoning models use reasoning effort
+                settings = GenerationSettings(
+                    maxTokens: 4096,
+                    providerOptions: .init(
+                        openai: .init(
+                            reasoningEffort: .medium
+                        )
+                    )
+                )
+            default:
+                // Standard models use default settings
+                settings = GenerationSettings(maxTokens: 4096)
+            }
+            
             let streamResult = try await streamText(
                 model: model,
                 messages: currentMessages,
                 tools: tools.isEmpty ? nil : tools,
-                settings: GenerationSettings(maxTokens: 4096)
+                settings: settings
             )
             
             var stepText = ""
@@ -795,25 +828,17 @@ extension PeekabooAgentService {
             var isThinking = false
             
             // Process the stream
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                ProcessInfo.processInfo.arguments.contains("-v")
-            {
+            if self.isVerbose {
                 logger.debug("Starting to process stream for step \(stepIndex)")
             }
-            #endif
             for try await delta in streamResult.stream {
-                #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                   ProcessInfo.processInfo.arguments.contains("-v") {
-                    logger.debug("Received delta type: \(delta.type)")
+                if self.isVerbose {
+                    logger.debug("Received delta type: \(String(describing: delta.type))")
                 }
-                #endif
                 switch delta.type {
                 case .textDelta:
                     if let content = delta.content {
-                        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                           ProcessInfo.processInfo.arguments.contains("-v") {
+                        if self.isVerbose {
                             logger.debug("Text delta content: \(content)")
                         }
                         stepText += content
@@ -837,8 +862,7 @@ extension PeekabooAgentService {
                     
                 case .toolCall:
                     if let toolCall = delta.toolCall {
-                        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                           ProcessInfo.processInfo.arguments.contains("-v") {
+                        if self.isVerbose {
                             logger.debug("Received tool call: \(toolCall.name) with ID: \(toolCall.id)")
                         }
                         stepToolCalls.append(toolCall)
@@ -875,8 +899,7 @@ extension PeekabooAgentService {
             fullContent += stepText
             
             // Debug: Check what we collected (only in verbose mode)
-            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-               ProcessInfo.processInfo.arguments.contains("-v") {
+            if self.isVerbose {
                 logger.debug("Step \(stepIndex) completed: collected \(stepToolCalls.count) tool calls, text length: \(stepText.count)")
             }
             
@@ -896,10 +919,35 @@ extension PeekabooAgentService {
                     // Find and execute the tool
                     if let tool = tools.first(where: { $0.name == toolCall.name }) {
                         do {
+                            // Use the same settings as configured above for consistency
+                            let toolSettings: GenerationSettings
+                            switch model {
+                            case .openai(.gpt5), .openai(.gpt5Mini), .openai(.gpt5Nano):
+                                toolSettings = GenerationSettings(
+                                    maxTokens: 4096,
+                                    providerOptions: .init(
+                                        openai: .init(
+                                            verbosity: .medium
+                                        )
+                                    )
+                                )
+                            case .openai(.o3), .openai(.o3Mini), .openai(.o3Pro), .openai(.o4), .openai(.o4Mini):
+                                toolSettings = GenerationSettings(
+                                    maxTokens: 4096,
+                                    providerOptions: .init(
+                                        openai: .init(
+                                            reasoningEffort: .medium
+                                        )
+                                    )
+                                )
+                            default:
+                                toolSettings = GenerationSettings(maxTokens: 4096)
+                            }
+                            
                             let context = ToolExecutionContext(
                                 messages: currentMessages,
                                 model: model,
-                                settings: GenerationSettings(maxTokens: 4096),
+                                settings: toolSettings,
                                 sessionId: sessionId,
                                 stepIndex: stepIndex
                             )
@@ -980,14 +1028,12 @@ extension PeekabooAgentService {
                 
                 // Continue to next iteration if we have tool results
                 if !toolResults.isEmpty {
-                    #if DEBUG
-                    if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                       ProcessInfo.processInfo.arguments.contains("-v") {
+                    if self.isVerbose {
                         // Log what messages we're sending next
                         logger.debug("Continuing to step \(stepIndex + 1) with tool results")
                         logger.debug("Current messages count: \(currentMessages.count)")
                         for (idx, msg) in currentMessages.enumerated() {
-                            logger.debug("Message \(idx): role=\(msg.role), content parts=\(msg.content.count)")
+                            logger.debug("Message \(idx): role=\(String(describing: msg.role)), content parts=\(msg.content.count)")
                             if idx == currentMessages.count - 1 {
                                 // Log the last message (tool result) in detail
                                 for part in msg.content {
@@ -1001,7 +1047,6 @@ extension PeekabooAgentService {
                             }
                         }
                     }
-                    #endif
                     continue
                 }
             } else {
@@ -1083,25 +1128,15 @@ extension PeekabooAgentService {
         )
         
         // Debug logging for session creation
-        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-           ProcessInfo.processInfo.arguments.contains("-v") {
-            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                ProcessInfo.processInfo.arguments.contains("-v")
-            {
-                logger.debug("(non-streaming): Creating session with ID: \(sessionId)")
-                logger.debug("(non-streaming): Session messages count: \(messages.count)")
-            }
+        if self.isVerbose {
+            logger.debug("(non-streaming): Creating session with ID: \(sessionId)")
+            logger.debug("(non-streaming): Session messages count: \(messages.count)")
         }
         
         do {
             try self.sessionManager.saveSession(session)
-            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-               ProcessInfo.processInfo.arguments.contains("-v") {
-                if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                    ProcessInfo.processInfo.arguments.contains("-v")
-                {
-                    logger.debug("(non-streaming): Successfully saved initial session")
-                }
+            if self.isVerbose {
+                logger.debug("(non-streaming): Successfully saved initial session")
             }
         } catch {
             print("ERROR (non-streaming): Failed to save initial session: \(error)")
@@ -1152,32 +1187,20 @@ extension PeekabooAgentService {
         }
 
         // Only log tool debug info in verbose mode
-        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-            ProcessInfo.processInfo.arguments.contains("-v")
-        {
-            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                ProcessInfo.processInfo.arguments.contains("-v")
-            {
-                logger.debug("Passing \(tools.count) tools to generateText (non-streaming)")
-                for tool in tools {
-                    logger.debug("Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
-                    if tool.name == "see" {
-                        logger.debug("'see' tool required array: \(tool.parameters.required)")
-                    }
+        if self.isVerbose {
+            logger.debug("Passing \(tools.count) tools to generateText (non-streaming)")
+            for tool in tools {
+                logger.debug("Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
+                if tool.name == "see" {
+                    logger.debug("'see' tool required array: \(tool.parameters.required)")
                 }
             }
         }
 
         // Debug: Log which model is being used
-        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-            ProcessInfo.processInfo.arguments.contains("-v")
-        {
-            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-                ProcessInfo.processInfo.arguments.contains("-v")
-            {
-                logger.debug("Using model: \(model)")
-                logger.debug("Model description: \(model.description)")
-            }
+        if self.isVerbose {
+            logger.debug("Using model: \(model)")
+            logger.debug("Model description: \(model.description)")
         }
 
         // Generate the response
