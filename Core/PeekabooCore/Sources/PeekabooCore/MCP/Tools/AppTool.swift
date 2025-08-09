@@ -15,22 +15,27 @@ public struct AppTool: MCPTool {
         Control applications - launch, quit, relaunch, focus, hide, unhide, and switch between apps.
 
         Actions:
-        - launch: Start an application
+        - launch: Start an application (e.g., Calculator for calculations, Notes for writing)
         - quit: Quit an application (with optional force flag)
         - relaunch: Quit and restart an application (with configurable wait time)
         - focus/switch: Bring an application to the foreground
         - hide: Hide an application
         - unhide: Show a hidden application
+        - list: List all running applications
 
-        Target applications by name (e.g., "Safari"), bundle ID (e.g., "com.apple.Safari"),
+        Target applications by name (e.g., "Safari", "Calculator"), bundle ID (e.g., "com.apple.Safari"),
         or process ID (e.g., "PID:663"). Fuzzy matching is supported for application names.
 
+        Common apps: Calculator, Safari, Chrome, Firefox, TextEdit, Notes, Terminal, Finder, 
+        System Settings, Activity Monitor, Mail, Calendar, Messages, Music, Photos, Preview
+
         Examples:
+        - Launch Calculator for math: { "action": "launch", "name": "Calculator" }
         - Launch Safari: { "action": "launch", "name": "Safari" }
         - Quit TextEdit: { "action": "quit", "name": "TextEdit" }
         - Relaunch Chrome: { "action": "relaunch", "name": "Google Chrome", "wait": 3 }
         - Focus Terminal: { "action": "focus", "name": "Terminal" }
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        - List running apps: { "action": "list" }
         """
     }
 

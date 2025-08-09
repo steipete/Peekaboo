@@ -770,13 +770,12 @@ extension PeekabooAgentService {
         var totalUsage: Usage?
         
         for stepIndex in 0..<maxSteps {
-            // Debug: log tools being passed (only in verbose mode)
-            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
-               ProcessInfo.processInfo.arguments.contains("-v") {
-                logger.debug("Step \(stepIndex): Passing \(tools.count) tools to streamText")
-                if !tools.isEmpty {
-                    logger.debug("Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
-                }
+            // Debug: log tools being passed
+            print("DEBUG PeekabooAgentService: Step \(stepIndex): Passing \(tools.count) tools to streamText")
+            if !tools.isEmpty {
+                print("DEBUG PeekabooAgentService: Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
+            } else {
+                print("DEBUG PeekabooAgentService: WARNING - No tools available!")
             }
             
             // Stream the response
@@ -792,7 +791,9 @@ extension PeekabooAgentService {
             var isThinking = false
             
             // Process the stream
+            print("DEBUG PeekabooAgentService: Starting to process stream for step \(stepIndex)")
             for try await delta in streamResult.stream {
+                print("DEBUG PeekabooAgentService: Received delta type: \(delta.type)")
                 if ProcessInfo.processInfo.arguments.contains("--verbose") ||
                    ProcessInfo.processInfo.arguments.contains("-v") {
                     logger.debug("Stream delta type: \(String(describing: delta.type))")
