@@ -467,6 +467,77 @@ private struct UnsafeTransfer<T>: @unchecked Sendable {
 // MARK: - Tool Creation Helpers
 
 extension PeekabooAgentService {
+    /// Convert MCP Value schema to AgentToolParameters
+    private func convertMCPValueToAgentParameters(_ value: MCP.Value) -> AgentToolParameters {
+        // Default empty parameters if not an object
+        guard case let .object(schemaDict) = value else {
+            return AgentToolParameters(properties: [:], required: [])
+        }
+        
+        // Extract properties if they exist
+        guard let propertiesValue = schemaDict["properties"],
+              case let .object(properties) = propertiesValue else {
+            return AgentToolParameters(properties: [:], required: [])
+        }
+        
+        var agentProperties: [String: AgentToolParameterProperty] = [:]
+        var required: [String] = []
+        
+        // Get required fields
+        if let requiredValue = schemaDict["required"],
+           case let .array(requiredArray) = requiredValue {
+            required = requiredArray.compactMap { value in
+                if case let .string(str) = value {
+                    return str
+                }
+                return nil
+            }
+        }
+        
+        // Convert each property
+        for (propName, propValue) in properties {
+            guard case let .object(propDict) = propValue else { continue }
+            
+            // Get type
+            let typeStr: String
+            if let typeValue = propDict["type"],
+               case let .string(str) = typeValue {
+                typeStr = str
+            } else {
+                typeStr = "string"
+            }
+            
+            // Get description
+            let description: String
+            if let descValue = propDict["description"],
+               case let .string(str) = descValue {
+                description = str
+            } else {
+                description = "Parameter \(propName)"
+            }
+            
+            // Convert type string to enum
+            let paramType: AgentToolParameterProperty.ParameterType
+            switch typeStr {
+            case "string": paramType = .string
+            case "number": paramType = .number
+            case "integer": paramType = .integer
+            case "boolean": paramType = .boolean
+            case "array": paramType = .array
+            case "object": paramType = .object
+            default: paramType = .string
+            }
+            
+            agentProperties[propName] = AgentToolParameterProperty(
+                name: propName,
+                type: paramType,
+                description: description
+            )
+        }
+        
+        return AgentToolParameters(properties: agentProperties, required: required)
+    }
+    
     /// Create AgentTool instances from native Peekaboo tools
     public func createAgentTools() -> [Tachikoma.AgentTool] {
         var agentTools: [Tachikoma.AgentTool] = []
@@ -564,7 +635,7 @@ extension PeekabooAgentService {
         logger.debug("Creating session with ID: \(sessionId), messages count: \(messages.count)")
         
         do {
-            try await self.sessionManager.saveSession(session)
+            try self.sessionManager.saveSession(session)
             logger.debug("Successfully saved initial session with ID: \(sessionId)")
         } catch {
             print("ERROR (streaming): Failed to save initial session: \(error)")
@@ -574,31 +645,44 @@ extension PeekabooAgentService {
         // Create tools for the model (native + MCP)
         var tools = self.createAgentTools()
         // Append external MCP tools discovered via TachikomaMCP
-        if let mcpToolsByServer = try? await TachikomaMCPClientManager.shared.getExternalToolsByServer() {
-            // Prefix tool names with server name to ensure uniqueness
-            for (serverName, serverTools) in mcpToolsByServer {
-                for tool in serverTools {
-                    // Create a prefixed version of the tool
-                    var prefixedTool = AgentTool(
-                        name: "\(serverName)_\(tool.name)",
-                        description: tool.description ?? "Tool from \(serverName) MCP server",
-                        parameters: tool.inputSchema ?? [:],
-                        handler: { args in
-                            // Execute via the MCP client
-                            let result = try await TachikomaMCPClientManager.shared.executeTool(
-                                serverName: serverName,
-                                toolName: tool.name,
-                                arguments: args
-                            )
-                            // Convert result to expected format
-                            if let textContent = result.content.first(where: { $0.type == "text" }) {
-                                return ["result": textContent.text ?? ""]
+        let mcpToolsByServer = await TachikomaMCPClientManager.shared.getExternalToolsByServer()
+        // Prefix tool names with server name to ensure uniqueness
+        for (serverName, serverTools) in mcpToolsByServer {
+            for tool in serverTools {
+                // Convert MCP tool's Value-based schema to AgentToolParameters
+                let parameters = convertMCPValueToAgentParameters(tool.inputSchema)
+                
+                // Create a prefixed version of the tool
+                let prefixedTool = AgentTool(
+                    name: "\(serverName)_\(tool.name)",
+                    description: tool.description,
+                    parameters: parameters,
+                    execute: { args in
+                        // Convert AgentToolArguments to [String: Any] for MCP execution
+                        var argDict: [String: Any] = [:]
+                        for key in args.keys {
+                            if let value = args[key] {
+                                argDict[key] = try value.toJSON()
                             }
-                            return ["result": "Tool executed successfully"]
                         }
-                    )
-                    tools.append(prefixedTool)
-                }
+                        
+                        // Execute via the MCP client
+                        let result = try await TachikomaMCPClientManager.shared.executeTool(
+                            serverName: serverName,
+                            toolName: tool.name,
+                            arguments: argDict
+                        )
+                        // Convert result to expected format
+                        // ToolResponse has content as [MCP.Tool.Content]
+                        for contentItem in result.content {
+                            if case let .text(text) = contentItem {
+                                return AnyAgentToolValue(string: text)
+                            }
+                        }
+                        return AnyAgentToolValue(string: "Tool executed successfully")
+                    }
+                )
+                tools.append(prefixedTool)
             }
         }
 
@@ -810,7 +894,7 @@ extension PeekabooAgentService {
             createdAt: startTime,
             updatedAt: endTime
         )
-        try await self.sessionManager.saveSession(updatedSession)
+        try self.sessionManager.saveSession(updatedSession)
 
         // Create result
         return AgentExecutionResult(
@@ -859,7 +943,7 @@ extension PeekabooAgentService {
         }
         
         do {
-            try await self.sessionManager.saveSession(session)
+            try self.sessionManager.saveSession(session)
             if ProcessInfo.processInfo.arguments.contains("--verbose") ||
                ProcessInfo.processInfo.arguments.contains("-v") {
                 print("DEBUG (non-streaming): Successfully saved initial session")
@@ -871,31 +955,44 @@ extension PeekabooAgentService {
 
         // Create tools for the model (native + MCP)
         var tools = self.createAgentTools()
-        if let mcpToolsByServer = try? await TachikomaMCPClientManager.shared.getExternalToolsByServer() {
-            // Prefix tool names with server name to ensure uniqueness
-            for (serverName, serverTools) in mcpToolsByServer {
-                for tool in serverTools {
-                    // Create a prefixed version of the tool
-                    var prefixedTool = AgentTool(
-                        name: "\(serverName)_\(tool.name)",
-                        description: tool.description ?? "Tool from \(serverName) MCP server",
-                        parameters: tool.inputSchema ?? [:],
-                        handler: { args in
-                            // Execute via the MCP client
-                            let result = try await TachikomaMCPClientManager.shared.executeTool(
-                                serverName: serverName,
-                                toolName: tool.name,
-                                arguments: args
-                            )
-                            // Convert result to expected format
-                            if let textContent = result.content.first(where: { $0.type == "text" }) {
-                                return ["result": textContent.text ?? ""]
+        let mcpToolsByServer = await TachikomaMCPClientManager.shared.getExternalToolsByServer()
+        // Prefix tool names with server name to ensure uniqueness
+        for (serverName, serverTools) in mcpToolsByServer {
+            for tool in serverTools {
+                // Convert MCP tool's Value-based schema to AgentToolParameters
+                let parameters = convertMCPValueToAgentParameters(tool.inputSchema)
+                
+                // Create a prefixed version of the tool
+                let prefixedTool = AgentTool(
+                    name: "\(serverName)_\(tool.name)",
+                    description: tool.description,
+                    parameters: parameters,
+                    execute: { args in
+                        // Convert AgentToolArguments to [String: Any] for MCP execution
+                        var argDict: [String: Any] = [:]
+                        for key in args.keys {
+                            if let value = args[key] {
+                                argDict[key] = try value.toJSON()
                             }
-                            return ["result": "Tool executed successfully"]
                         }
-                    )
-                    tools.append(prefixedTool)
-                }
+                        
+                        // Execute via the MCP client
+                        let result = try await TachikomaMCPClientManager.shared.executeTool(
+                            serverName: serverName,
+                            toolName: tool.name,
+                            arguments: argDict
+                        )
+                        // Convert result to expected format
+                        // ToolResponse has content as [MCP.Tool.Content]
+                        for contentItem in result.content {
+                            if case let .text(text) = contentItem {
+                                return AnyAgentToolValue(string: text)
+                            }
+                        }
+                        return AnyAgentToolValue(string: "Tool executed successfully")
+                    }
+                )
+                tools.append(prefixedTool)
             }
         }
 
@@ -944,7 +1041,7 @@ extension PeekabooAgentService {
             createdAt: startTime,
             updatedAt: endTime
         )
-        try await self.sessionManager.saveSession(updatedSession)
+        try self.sessionManager.saveSession(updatedSession)
 
         // Create result
         return AgentExecutionResult(

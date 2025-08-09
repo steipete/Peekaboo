@@ -181,9 +181,9 @@ public struct MCPAgentTool: MCPTool {
 
                 if let usage = result.usage {
                     metadata["usage"] = .object([
-                        "inputTokens": .string(String(usage.inputTokens ?? 0)),
-                        "outputTokens": .string(String(usage.outputTokens ?? 0)),
-                        "totalTokens": .string(String(usage.totalTokens ?? 0)),
+                        "inputTokens": .string(String(usage.inputTokens)),
+                        "outputTokens": .string(String(usage.outputTokens)),
+                        "totalTokens": .string(String(usage.totalTokens)),
                     ])
                 }
 
@@ -199,7 +199,7 @@ public struct MCPAgentTool: MCPTool {
                 }
 
                 if let usage = result.usage {
-                    output += "\n📊 Tokens: \(usage.inputTokens ?? 0) in, \(usage.outputTokens ?? 0) out"
+                    output += "\n📊 Tokens: \(usage.inputTokens) in, \(usage.outputTokens) out"
                 }
 
                 // Add more details if needed
