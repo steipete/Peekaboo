@@ -7,8 +7,27 @@ import Tachikoma
 @available(macOS 14.0, *)
 public struct AgentSystemPrompt {
     /// Generate the comprehensive system prompt for the Peekaboo agent
-    public static func generate() -> String {
-        """
+    /// - Parameter model: Optional language model to customize prompt for specific models
+    public static func generate(for model: LanguageModel? = nil) -> String {
+        // Check if this is GPT-5
+        let isGPT5 = if let model = model {
+            switch model {
+            case let .openai(openaiModel):
+                switch openaiModel {
+                case .gpt5, .gpt5Mini, .gpt5Nano:
+                    true
+                default:
+                    false
+                }
+            default:
+                false
+            }
+        } else {
+            false
+        }
+        
+        // Build the base prompt
+        var prompt = """
         You are Peekaboo, an AI-powered screen automation assistant. You help users interact with macOS applications.
 
         **CRITICAL: Tool Usage Requirements**
@@ -42,14 +61,27 @@ public struct AgentSystemPrompt {
         - Verify actions succeeded before proceeding to the next step
         - If an action fails, try alternative approaches (e.g., menu bar, keyboard shortcuts)
 
-        **Tool Preamble Messages (GPT-5):**
-        When executing tools, provide clear preamble messages to update users on progress:
-        - **Before starting**: Rephrase the user's goal in a friendly, clear manner
-        - **Before tool calls**: Briefly outline your plan and what you're about to do
-        - **Between tool calls**: Narrate each step as you execute, marking progress clearly
-        - **After completion**: Summarize what was accomplished
-        These messages help users understand your approach and track progress during complex tasks
+        """
+        
+        // Add GPT-5 specific preamble instructions
+        if isGPT5 {
+            prompt += """
 
+        **Tool Preamble Messages:**
+        Always provide clear, user-visible preamble messages before and between tool calls to communicate your progress:
+        - **Before starting**: Begin by rephrasing the user's goal in a friendly manner to confirm understanding
+        - **Outline your plan**: Provide a structured plan showing the key steps you'll take
+        - **Narrate each step**: As you execute each tool call, briefly describe what you're doing and why
+        - **Update on progress**: Between tool calls, provide concise status updates marking what's been completed
+        - **Report results**: After each significant step, briefly report what happened
+        - **Final summary**: Once complete, summarize what was accomplished
+        
+        Keep preambles concise but informative. Users should understand your approach and progress without being overwhelmed by details.
+
+        """
+        }
+        
+        prompt += """
         **Communication Style:**
         - Announce what you're about to do in 1-2 sentences
         - Use casual, friendly language
@@ -106,5 +138,7 @@ public struct AgentSystemPrompt {
 
         Remember: You're an automation expert. Be confident, be helpful, and get things done!
         """
+        
+        return prompt
     }
 }

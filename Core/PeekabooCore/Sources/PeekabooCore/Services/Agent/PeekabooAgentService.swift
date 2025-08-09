@@ -673,7 +673,7 @@ extension PeekabooAgentService {
 
         // Create conversation with the task
         let messages = [
-            ModelMessage.system(AgentSystemPrompt.generate()),
+            ModelMessage.system(AgentSystemPrompt.generate(for: model)),
             ModelMessage.user(task)
         ]
 
@@ -759,8 +759,8 @@ extension PeekabooAgentService {
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
             ProcessInfo.processInfo.arguments.contains("-v")
         {
-            print("DEBUG PeekabooAgentService (streaming): Using model: \(model)")
-            print("DEBUG PeekabooAgentService (streaming): Model description: \(model.description)")
+            logger.debug("Using model: \(model)")
+            logger.debug("Model description: \(model.description)")
         }
 
         // Implement proper streaming with manual tool execution
@@ -771,11 +771,15 @@ extension PeekabooAgentService {
         
         for stepIndex in 0..<maxSteps {
             // Debug: log tools being passed
-            print("DEBUG PeekabooAgentService: Step \(stepIndex): Passing \(tools.count) tools to streamText")
-            if !tools.isEmpty {
-                print("DEBUG PeekabooAgentService: Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
-            } else {
-                print("DEBUG PeekabooAgentService: WARNING - No tools available!")
+            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                ProcessInfo.processInfo.arguments.contains("-v")
+            {
+                logger.debug("Step \(stepIndex): Passing \(tools.count) tools to streamText")
+                if !tools.isEmpty {
+                    logger.debug("Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
+                } else {
+                    logger.warning("No tools available!")
+                }
             }
             
             // Stream the response
@@ -791,11 +795,15 @@ extension PeekabooAgentService {
             var isThinking = false
             
             // Process the stream
-            print("DEBUG PeekabooAgentService: Starting to process stream for step \(stepIndex)")
+            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                ProcessInfo.processInfo.arguments.contains("-v")
+            {
+                logger.debug("Starting to process stream for step \(stepIndex)")
+            }
             for try await delta in streamResult.stream {
-                print("DEBUG PeekabooAgentService: Received delta type: \(delta.type)")
                 if ProcessInfo.processInfo.arguments.contains("--verbose") ||
                    ProcessInfo.processInfo.arguments.contains("-v") {
+                    logger.debug("Received delta type: \(delta.type)")
                     logger.debug("Stream delta type: \(String(describing: delta.type))")
                 }
                 switch delta.type {
@@ -1035,7 +1043,7 @@ extension PeekabooAgentService {
 
         // Create conversation with the task
         let messages = [
-            ModelMessage.system(AgentSystemPrompt.generate()),
+            ModelMessage.system(AgentSystemPrompt.generate(for: model)),
             ModelMessage.user(task)
         ]
 
@@ -1052,15 +1060,23 @@ extension PeekabooAgentService {
         // Debug logging for session creation
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
            ProcessInfo.processInfo.arguments.contains("-v") {
-            print("DEBUG (non-streaming): Creating session with ID: \(sessionId)")
-            print("DEBUG (non-streaming): Session messages count: \(messages.count)")
+            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                ProcessInfo.processInfo.arguments.contains("-v")
+            {
+                logger.debug("(non-streaming): Creating session with ID: \(sessionId)")
+                logger.debug("(non-streaming): Session messages count: \(messages.count)")
+            }
         }
         
         do {
             try self.sessionManager.saveSession(session)
             if ProcessInfo.processInfo.arguments.contains("--verbose") ||
                ProcessInfo.processInfo.arguments.contains("-v") {
-                print("DEBUG (non-streaming): Successfully saved initial session")
+                if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                    ProcessInfo.processInfo.arguments.contains("-v")
+                {
+                    logger.debug("(non-streaming): Successfully saved initial session")
+                }
             }
         } catch {
             print("ERROR (non-streaming): Failed to save initial session: \(error)")
@@ -1114,11 +1130,15 @@ extension PeekabooAgentService {
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
             ProcessInfo.processInfo.arguments.contains("-v")
         {
-            print("DEBUG: Passing \(tools.count) tools to generateText (non-streaming)")
-            for tool in tools {
-                print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
-                if tool.name == "see" {
-                    print("DEBUG: 'see' tool required array: \(tool.parameters.required)")
+            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                ProcessInfo.processInfo.arguments.contains("-v")
+            {
+                logger.debug("Passing \(tools.count) tools to generateText (non-streaming)")
+                for tool in tools {
+                    logger.debug("Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
+                    if tool.name == "see" {
+                        logger.debug("'see' tool required array: \(tool.parameters.required)")
+                    }
                 }
             }
         }
@@ -1127,8 +1147,12 @@ extension PeekabooAgentService {
         if ProcessInfo.processInfo.arguments.contains("--verbose") ||
             ProcessInfo.processInfo.arguments.contains("-v")
         {
-            print("DEBUG PeekabooAgentService: Using model: \(model)")
-            print("DEBUG PeekabooAgentService: Model description: \(model.description)")
+            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                ProcessInfo.processInfo.arguments.contains("-v")
+            {
+                logger.debug("Using model: \(model)")
+                logger.debug("Model description: \(model.description)")
+            }
         }
 
         // Generate the response
