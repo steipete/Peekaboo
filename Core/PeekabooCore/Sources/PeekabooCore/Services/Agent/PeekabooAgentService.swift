@@ -900,7 +900,25 @@ extension PeekabooAgentService {
                             
                             // Emit tool call completed event
                             if let eventHandler = eventHandler {
-                                let resultString = result.stringValue ?? String(describing: result)
+                                // Convert result to JSON string for the event handler
+                                let resultString: String
+                                do {
+                                    let jsonObject = try result.toJSON()
+                                    // Wrap non-dictionary results in an object for valid JSON
+                                    let wrappedObject: Any
+                                    if jsonObject is [String: Any] {
+                                        wrappedObject = jsonObject
+                                    } else {
+                                        // Wrap primitive values (string, number, bool, null) in a result object
+                                        wrappedObject = ["result": jsonObject]
+                                    }
+                                    let jsonData = try JSONSerialization.data(withJSONObject: wrappedObject, options: [])
+                                    resultString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                                } catch {
+                                    // Fallback to wrapped string value if JSON conversion fails
+                                    let fallbackValue = result.stringValue ?? String(describing: result)
+                                    resultString = "{\"result\": \"\(fallbackValue.replacingOccurrences(of: "\"", with: "\\\""))\"}"
+                                }
                                 await eventHandler.send(.toolCallCompleted(
                                     name: toolCall.name,
                                     result: resultString
@@ -918,9 +936,18 @@ extension PeekabooAgentService {
                             
                             // Emit error event
                             if let eventHandler = eventHandler {
+                                // Send error as JSON object for consistency
+                                let errorDict = ["error": error.localizedDescription]
+                                let resultString: String
+                                if let jsonData = try? JSONSerialization.data(withJSONObject: errorDict, options: []),
+                                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                                    resultString = jsonString
+                                } else {
+                                    resultString = "{\"error\": \"Unknown error\"}"
+                                }
                                 await eventHandler.send(.toolCallCompleted(
                                     name: toolCall.name,
-                                    result: "Error: \(error.localizedDescription)"
+                                    result: resultString
                                 ))
                             }
                             
