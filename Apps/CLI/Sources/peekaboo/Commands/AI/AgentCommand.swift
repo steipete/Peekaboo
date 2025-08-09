@@ -4,7 +4,7 @@ import Foundation
 import PeekabooCore
 import Spinner
 import Tachikoma
-
+import TachikomaMCP
 import TermKit
 
 // Temporary session info struct until PeekabooAgentService implements session management
@@ -212,6 +212,23 @@ struct AgentCommand: AsyncParsableCommand {
 
     @MainActor
     mutating func runInternal() async throws {
+        // Initialize MCP clients first so agent has access to external tools
+        // Register browser MCP as a default server
+        let defaultBrowser = TachikomaMCP.MCPServerConfig(
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+            env: [:],
+            enabled: true,
+            timeout: 15.0,
+            autoReconnect: true,
+            description: "Browser automation via BrowserMCP"
+        )
+        await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+        
+        // Initialize MCP from profile
+        await TachikomaMCPClientManager.shared.initializeFromProfile()
+        
         // Initialize services
         let services = PeekabooServices.shared
 

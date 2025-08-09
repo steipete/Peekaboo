@@ -139,8 +139,8 @@ struct Peekaboo: AsyncParsableCommand {
             DockCommand.self,
             DialogCommand.self,
             SpaceCommand.self,
-            // Agent commands (temporarily disabled to unblock build)
-            // AgentCommand.self,
+            // Agent commands
+            AgentCommand.self,
             // MCP commands
             MCPCommand.self,
         ]

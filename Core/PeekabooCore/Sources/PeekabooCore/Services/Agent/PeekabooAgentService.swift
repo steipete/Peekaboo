@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import MCP
 import Tachikoma
 import TachikomaMCP
 import os.log
@@ -573,8 +574,32 @@ extension PeekabooAgentService {
         // Create tools for the model (native + MCP)
         var tools = self.createAgentTools()
         // Append external MCP tools discovered via TachikomaMCP
-        if let mcpTools = try? await TachikomaMCPClientManager.shared.getAllAgentTools() {
-            tools.append(contentsOf: mcpTools)
+        if let mcpToolsByServer = try? await TachikomaMCPClientManager.shared.getExternalToolsByServer() {
+            // Prefix tool names with server name to ensure uniqueness
+            for (serverName, serverTools) in mcpToolsByServer {
+                for tool in serverTools {
+                    // Create a prefixed version of the tool
+                    var prefixedTool = AgentTool(
+                        name: "\(serverName)_\(tool.name)",
+                        description: tool.description ?? "Tool from \(serverName) MCP server",
+                        parameters: tool.inputSchema ?? [:],
+                        handler: { args in
+                            // Execute via the MCP client
+                            let result = try await TachikomaMCPClientManager.shared.executeTool(
+                                serverName: serverName,
+                                toolName: tool.name,
+                                arguments: args
+                            )
+                            // Convert result to expected format
+                            if let textContent = result.content.first(where: { $0.type == "text" }) {
+                                return ["result": textContent.text ?? ""]
+                            }
+                            return ["result": "Tool executed successfully"]
+                        }
+                    )
+                    tools.append(prefixedTool)
+                }
+            }
         }
 
         // Only log tool debug info in verbose mode
@@ -846,8 +871,32 @@ extension PeekabooAgentService {
 
         // Create tools for the model (native + MCP)
         var tools = self.createAgentTools()
-        if let mcpTools = try? await TachikomaMCPClientManager.shared.getAllAgentTools() {
-            tools.append(contentsOf: mcpTools)
+        if let mcpToolsByServer = try? await TachikomaMCPClientManager.shared.getExternalToolsByServer() {
+            // Prefix tool names with server name to ensure uniqueness
+            for (serverName, serverTools) in mcpToolsByServer {
+                for tool in serverTools {
+                    // Create a prefixed version of the tool
+                    var prefixedTool = AgentTool(
+                        name: "\(serverName)_\(tool.name)",
+                        description: tool.description ?? "Tool from \(serverName) MCP server",
+                        parameters: tool.inputSchema ?? [:],
+                        handler: { args in
+                            // Execute via the MCP client
+                            let result = try await TachikomaMCPClientManager.shared.executeTool(
+                                serverName: serverName,
+                                toolName: tool.name,
+                                arguments: args
+                            )
+                            // Convert result to expected format
+                            if let textContent = result.content.first(where: { $0.type == "text" }) {
+                                return ["result": textContent.text ?? ""]
+                            }
+                            return ["result": "Tool executed successfully"]
+                        }
+                    )
+                    tools.append(prefixedTool)
+                }
+            }
         }
 
         // Only log tool debug info in verbose mode
