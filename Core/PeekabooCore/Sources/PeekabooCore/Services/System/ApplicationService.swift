@@ -347,9 +347,6 @@ public final class ApplicationService: ApplicationServiceProtocol {
 
                     // Determine if minimized based on bounds
                     let isMinimized = bounds.origin.x < -10000 || bounds.origin.y < -10000
-                    let isOffScreen = !NSScreen.screens.contains { screen in
-                        screen.frame.intersects(bounds)
-                    }
 
                     // Get space information
                     let spaceService = SpaceManagementService()

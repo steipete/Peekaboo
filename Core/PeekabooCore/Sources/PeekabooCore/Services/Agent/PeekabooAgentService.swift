@@ -53,9 +53,62 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     /// Get the masked API key for the current model
     public var maskedApiKey: String? {
         get async {
-            // For the new API, we would need to implement API key masking in LanguageModel
-            // For now, return a placeholder
-            "***"
+            // Get the current model
+            let model = currentModel ?? defaultLanguageModel
+            
+            // Get the configuration
+            let config = TachikomaConfiguration.current
+            
+            // Determine the provider based on the model
+            let apiKey: String?
+            switch model {
+            case .openai:
+                apiKey = config.getAPIKey(for: .openai)
+            case .anthropic:
+                apiKey = config.getAPIKey(for: .anthropic)
+            case .google:
+                apiKey = config.getAPIKey(for: .google)
+            case .mistral:
+                apiKey = config.getAPIKey(for: .mistral)
+            case .groq:
+                apiKey = config.getAPIKey(for: .groq)
+            case .grok:
+                apiKey = config.getAPIKey(for: .grok)
+            case .ollama:
+                apiKey = config.getAPIKey(for: .ollama)
+            case .lmstudio:
+                apiKey = config.getAPIKey(for: .lmstudio)
+            case .openRouter:
+                apiKey = config.getAPIKey(for: .custom("openrouter"))
+            case .together:
+                apiKey = config.getAPIKey(for: .custom("together"))
+            case .replicate:
+                apiKey = config.getAPIKey(for: .custom("replicate"))
+            case .openaiCompatible, .anthropicCompatible:
+                apiKey = nil // Custom endpoints may have keys embedded
+            case .custom:
+                apiKey = nil // Custom providers handle their own keys
+            }
+            
+            // Mask the API key
+            guard let key = apiKey, !key.isEmpty else {
+                return nil
+            }
+            
+            // Show first 5 and last 5 characters
+            if key.count > 15 {
+                let prefix = String(key.prefix(5))
+                let suffix = String(key.suffix(5))
+                return "\(prefix)...\(suffix)"
+            } else if key.count > 8 {
+                // For shorter keys, show less
+                let prefix = String(key.prefix(3))
+                let suffix = String(key.suffix(3))
+                return "\(prefix)...\(suffix)"
+            } else {
+                // Very short keys, just show asterisks
+                return String(repeating: "*", count: key.count)
+            }
         }
     }
 
@@ -612,6 +665,9 @@ extension PeekabooAgentService {
         streamingDelegate: StreamingEventDelegate,
         eventHandler: EventHandler? = nil) async throws -> AgentExecutionResult
     {
+        // Store the current model for API key masking
+        self.currentModel = model
+        
         let startTime = Date()
         let sessionId = UUID().uuidString
 
@@ -714,6 +770,14 @@ extension PeekabooAgentService {
         var totalUsage: Usage?
         
         for stepIndex in 0..<maxSteps {
+            // Debug: log tools being passed
+            print("🔧 Step \(stepIndex): Passing \(tools.count) tools to streamText")
+            if !tools.isEmpty {
+                print("🔧 Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
+            } else {
+                print("⚠️ No tools available!")
+            }
+            
             // Stream the response
             let streamResult = try await streamText(
                 model: model,
@@ -728,9 +792,11 @@ extension PeekabooAgentService {
             
             // Process the stream
             for try await delta in streamResult.stream {
+                logger.debug("Stream delta type: \(delta.type)")
                 switch delta.type {
                 case .textDelta:
                     if let content = delta.content {
+                        logger.debug("Text delta content: \(content)")
                         stepText += content
                         
                         // Check if this is thinking content (starts with <thinking> or similar patterns)
@@ -752,6 +818,7 @@ extension PeekabooAgentService {
                     
                 case .toolCall:
                     if let toolCall = delta.toolCall {
+                        logger.debug("Received tool call: \(toolCall.name) with ID: \(toolCall.id)")
                         stepToolCalls.append(toolCall)
                         
                         // Emit tool call started event immediately
@@ -784,6 +851,9 @@ extension PeekabooAgentService {
             }
             
             fullContent += stepText
+            
+            // Debug: Check what we collected
+            logger.debug("Step \(stepIndex) completed: collected \(stepToolCalls.count) tool calls, text length: \(stepText.count)")
             
             // If we have tool calls, execute them
             if !stepToolCalls.isEmpty {
@@ -916,6 +986,9 @@ extension PeekabooAgentService {
         model: LanguageModel,
         maxSteps: Int = 20) async throws -> AgentExecutionResult
     {
+        // Store the current model for API key masking
+        self.currentModel = model
+        
         let startTime = Date()
         let sessionId = UUID().uuidString
 

@@ -27,7 +27,7 @@ public struct ExternalMCPTool: MCPTool {
     }
     
     public var inputSchema: Value {
-        originalTool.inputSchema ?? Value.object([:])
+        originalTool.inputSchema
     }
     
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {

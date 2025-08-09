@@ -430,7 +430,7 @@ public final class MCPClientManager {
         var healthResults: [String: MCPServerHealth] = [:]
         
         await withTaskGroup(of: (String, MCPServerHealth).self) { group in
-            for (name, connection) in connections {
+            for (name, _) in connections {
                 group.addTask {
                     let health = await self.checkServerHealth(name: name)
                     return (name, health)

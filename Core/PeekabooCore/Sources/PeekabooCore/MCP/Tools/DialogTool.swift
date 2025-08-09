@@ -78,9 +78,7 @@ public struct DialogTool: MCPTool {
         let path = arguments.getString("path")
         let select = arguments.getString("select")
         let window = arguments.getString("window")
-        let name = arguments.getString("name")
         let force = arguments.getBool("force") ?? false
-        let index = arguments.getInt("index")
 
         let dialogService = PeekabooServices.shared.dialogs
 

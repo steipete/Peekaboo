@@ -731,8 +731,12 @@ struct AgentCommand: AsyncParsableCommand {
                     }
                 }
                 
+                // Get the masked API key
+                let maskedKey = await peekabooAgent.maskedApiKey
+                let apiKeyInfo = maskedKey.map { " (\($0))" } ?? ""
+                
                 print(
-                    "   \(TerminalColor.gray)Using \(displayModelName) via \(apiDescription)\(TerminalColor.reset)"
+                    "   \(TerminalColor.gray)Using \(displayModelName) via \(apiDescription)\(apiKeyInfo)\(TerminalColor.reset)"
                 )
                 
                 if let sessionId {

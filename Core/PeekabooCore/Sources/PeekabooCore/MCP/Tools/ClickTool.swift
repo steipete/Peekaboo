@@ -56,7 +56,6 @@ public struct ClickTool: MCPTool {
         }
 
         let sessionId = arguments.getString("session")
-        let waitFor = arguments.getNumber("wait_for") ?? 5000
         let isDouble = arguments.getBool("double") ?? false
         let isRight = arguments.getBool("right") ?? false
 

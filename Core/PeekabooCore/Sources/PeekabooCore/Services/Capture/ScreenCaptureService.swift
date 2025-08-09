@@ -661,7 +661,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             if !bounds.isNull {
                 // Identify a screen that intersects bounds
                 let screens = NSScreen.screens
-                if let screen = screens.first(where: { $0.frame.intersects(bounds) }) ?? screens.first {
+                if screens.first(where: { $0.frame.intersects(bounds) }) != nil || screens.first != nil {
                     // Compute quartz rect for that screen portion
                     let primary = screens.first!
                     let quartzRect = CGRect(

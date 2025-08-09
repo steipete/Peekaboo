@@ -73,18 +73,6 @@ public struct AnalyzeTool: MCPTool {
                 .error("Unsupported image format: .\(fileExtension). Supported formats: .png, .jpg, .jpeg, .webp")
         }
 
-        // Determine media type based on file extension
-        let mediaType = switch fileExtension {
-        case "png":
-            "image/png"
-        case "jpg", "jpeg":
-            "image/jpeg"
-        case "webp":
-            "image/webp"
-        default:
-            "image/jpeg" // fallback
-        }
-
         // Check if file exists
         let expandedPath = (imagePath as NSString).expandingTildeInPath
         let fileManager = FileManager.default
@@ -111,13 +99,6 @@ public struct AnalyzeTool: MCPTool {
 
             let duration = Date().timeIntervalSince(startTime)
             self.logger.info("Analysis completed in \(String(format: "%.2f", duration))s")
-
-            // Create response with metadata
-            let metadata: [String: Any] = [
-                "model_used": "\(providerType ?? "unknown")/\(modelName)",
-                "analysis_text": analysisText,
-                "duration_seconds": String(format: "%.2f", duration),
-            ]
 
             let timingMessage = "\n\n👻 Peekaboo: Analyzed image with \(providerType ?? "unknown")/\(modelName) in \(String(format: "%.2f", duration))s."
 
