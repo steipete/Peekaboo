@@ -277,6 +277,30 @@ A `@Suite` groups related tests and can be nested for a clear hierarchy. Traits 
 ### Tags for Cross-Cutting Concerns
 Tags associate tests with common characteristics (e.g., `.network`, `.ui`, `.regression`) regardless of their suite. This is invaluable for filtering.
 
+> **Peekaboo convention:** Every suite chooses between two base tags:
+> - `.safe` – deterministic logic that can run anywhere (CI, developer laptops) with no side effects.
+> - `.automation` – anything that talks to UI automation, launches apps, manipulates windows, or shells into the real CLI. Gate these suites with `CLITestEnvironment.runAutomationScenarios` or `AXTestEnvironment.runAutomationScenarios` so `swift test --skip .automation` stays fast while keeping heavy UI coverage available on demand.
+>
+> You can (and should) add additional tags like `.integration`, `.imageCapture`, etc., but never skip the `.safe`/`.automation` decision.
+
+**CLI shortcuts:** we now expose the most common flows through `pnpm` so you don't have to remember the full `swift test` incantations.
+
+```bash
+# SwiftUI-appropriate defaults
+pnpm test              # Safe bundle only (skips automation)
+pnpm test:automation   # Full automation bundle (respects CLITestEnvironment gating)
+pnpm test:all          # Safe bundle, then automation bundle in one shot
+
+# Builds & utilities
+pnpm build             # Debug build of Apps/CLI
+pnpm build:cli:release # Release build of Apps/CLI
+pnpm build:polter      # polter peekaboo --version (fresh binary check)
+pnpm lint              # swiftlint over Apps/CLI
+pnpm format            # swiftformat the workspace
+```
+
+Run these from the repo root; they take care of changing into `Apps/CLI` and setting the right environment flags.
+
 1.  **Define Tags in a Central File:**
     ```swift
     // /Tests/Support/TestTags.swift

@@ -5,7 +5,7 @@ import Testing
 
 @Suite(
     "ScreenCaptureService Multi-Screen Tests - Current API",
-    .tags(.ui, .requiresDisplay),
+    .tags(.ui, .requiresDisplay, .safe),
     .enabled(if: TestEnvironment.runScreenCaptureScenarios))
 @MainActor
 struct ScreenCaptureServiceMultiScreenTests {

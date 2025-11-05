@@ -1,11 +1,16 @@
 import AppKit
-import XCTest
+import Testing
 @testable import AXorcist
 
-// MARK: - Element Search and Navigation Tests
-
-class ElementSearchTests: XCTestCase {
-    func testSearchElementsByRole() async throws {
+@Suite(
+    "AXorcist Element Search Tests",
+    .tags(.automation),
+    .enabled(if: AXTestEnvironment.runAutomationScenarios)
+)
+@MainActor
+struct ElementSearchTests {
+    @Test("Search elements by role", .tags(.automation))
+    func searchElementsByRole() async throws {
         await closeTextEdit()
         try await Task.sleep(for: .milliseconds(500))
 
@@ -18,7 +23,6 @@ class ElementSearchTests: XCTestCase {
 
         try await Task.sleep(for: .seconds(1))
 
-        // Search for buttons
         let command = CommandEnvelope(
             commandId: "test-search-buttons",
             command: .query,
@@ -35,8 +39,7 @@ class ElementSearchTests: XCTestCase {
         }
 
         let result = try runAXORCCommand(arguments: [jsonString])
-
-        XCTAssertEqual(result.exitCode, 0)
+        #expect(result.exitCode == 0)
 
         guard let output = result.output,
               let responseData = output.data(using: String.Encoding.utf8)
@@ -46,17 +49,17 @@ class ElementSearchTests: XCTestCase {
 
         let response = try JSONDecoder().decode(QueryResponse.self, from: responseData)
 
-        XCTAssertEqual(response.success, true)
+        #expect(response.success)
 
         if let data = response.data, let attributes = data.attributes {
-            // For a query response, we should find button elements
             if let role = attributes["AXRole"]?.anyValue as? String {
-                XCTAssertEqual(role, "AXButton", "Should find button elements")
+                #expect(role == "AXButton", "Should find button elements")
             }
         }
     }
 
-    func testDescribeElementHierarchy() async throws {
+    @Test("Describe element hierarchy", .tags(.automation))
+    func describeElementHierarchy() async throws {
         await closeTextEdit()
         try await Task.sleep(for: .milliseconds(500))
 
@@ -69,7 +72,6 @@ class ElementSearchTests: XCTestCase {
 
         try await Task.sleep(for: .seconds(1))
 
-        // Describe the application element
         let command = CommandEnvelope(
             commandId: "test-describe",
             command: .describeElement,
@@ -87,8 +89,7 @@ class ElementSearchTests: XCTestCase {
         }
 
         let result = try runAXORCCommand(arguments: [jsonString])
-
-        XCTAssertEqual(result.exitCode, 0)
+        #expect(result.exitCode == 0)
 
         guard let output = result.output,
               let responseData = output.data(using: String.Encoding.utf8)
@@ -98,18 +99,18 @@ class ElementSearchTests: XCTestCase {
 
         let response = try JSONDecoder().decode(QueryResponse.self, from: responseData)
 
-        XCTAssertEqual(response.success, true)
-        XCTAssertNotNil(response.data)
+        #expect(response.success)
+        #expect(response.data != nil)
 
-        // Check hierarchy
         if let data = response.data, let attributes = data.attributes {
             if let role = attributes["AXRole"]?.anyValue as? String {
-                XCTAssertEqual(role, "AXApplication", "Should find application element")
+                #expect(role == "AXApplication", "Should find application element")
             }
         }
     }
 
-    func testSetAndVerifyText() async throws {
+    @Test("Set and verify text in TextEdit", .tags(.automation))
+    func setAndVerifyText() async throws {
         await closeTextEdit()
         try await Task.sleep(for: .milliseconds(500))
 
@@ -122,7 +123,6 @@ class ElementSearchTests: XCTestCase {
 
         try await Task.sleep(for: .seconds(1))
 
-        // Set text
         let setText = CommandEnvelope(
             commandId: "test-set-text",
             command: .performAction,
@@ -140,9 +140,8 @@ class ElementSearchTests: XCTestCase {
         }
 
         var result = try runAXORCCommand(arguments: [setJsonString])
-        XCTAssertEqual(result.exitCode, 0)
+        #expect(result.exitCode == 0)
 
-        // Query to verify
         let queryText = CommandEnvelope(
             commandId: "test-query-text",
             command: .query,
@@ -158,7 +157,7 @@ class ElementSearchTests: XCTestCase {
         }
 
         result = try runAXORCCommand(arguments: [queryJsonString])
-        XCTAssertEqual(result.exitCode, 0)
+        #expect(result.exitCode == 0)
 
         guard let output = result.output,
               let responseData = output.data(using: String.Encoding.utf8)
@@ -168,16 +167,17 @@ class ElementSearchTests: XCTestCase {
 
         let response = try JSONDecoder().decode(QueryResponse.self, from: responseData)
 
-        XCTAssertEqual(response.success, true)
+        #expect(response.success)
 
         if let data = response.data, let attributes = data.attributes {
             if let value = attributes["AXValue"]?.anyValue as? String {
-                XCTAssertTrue(value.contains("Hello from AXorcist tests!"), "Should find the text we set")
+                #expect(value.contains("Hello from AXorcist tests!"), "Should find the text we set")
             }
         }
     }
 
-    func testExtractText() async throws {
+    @Test("Extract text from TextEdit window", .tags(.automation))
+    func extractText() async throws {
         await closeTextEdit()
         try await Task.sleep(for: .milliseconds(500))
 
@@ -190,7 +190,6 @@ class ElementSearchTests: XCTestCase {
 
         try await Task.sleep(for: .seconds(1))
 
-        // Set some text first
         let setText = CommandEnvelope(
             commandId: "test-set-for-extract",
             command: .performAction,
@@ -209,7 +208,6 @@ class ElementSearchTests: XCTestCase {
 
         _ = try runAXORCCommand(arguments: [setJsonString])
 
-        // Extract text
         let extractCommand = CommandEnvelope(
             commandId: "test-extract",
             command: .extractText,
@@ -225,7 +223,7 @@ class ElementSearchTests: XCTestCase {
         }
 
         let result = try runAXORCCommand(arguments: [extractJsonString])
-        XCTAssertEqual(result.exitCode, 0)
+        #expect(result.exitCode == 0)
 
         guard let output = result.output,
               let responseData = output.data(using: String.Encoding.utf8)
@@ -235,17 +233,17 @@ class ElementSearchTests: XCTestCase {
 
         let response = try JSONDecoder().decode(QueryResponse.self, from: responseData)
 
-        XCTAssertEqual(response.success, true)
+        #expect(response.success)
 
         if let data = response.data, let attributes = data.attributes {
-            // For extract text commands, check for extracted text in attributes
             if let extractedText = attributes["extractedText"]?.anyValue as? String {
-                XCTAssertTrue(extractedText.contains("This is test content"), "Should extract the test content")
-                XCTAssertTrue(extractedText.contains("multiple lines"), "Should extract multiple lines")
+                #expect(extractedText.contains("This is test content"), "Should extract the test content")
+                #expect(extractedText.contains("multiple lines"), "Should extract multiple lines")
             } else if let value = attributes["AXValue"]?.anyValue as? String {
-                XCTAssertTrue(value.contains("This is test content"), "Should extract the test content")
-                XCTAssertTrue(value.contains("multiple lines"), "Should extract multiple lines")
+                #expect(value.contains("This is test content"), "Should extract the test content")
+                #expect(value.contains("multiple lines"), "Should extract multiple lines")
             }
         }
     }
 }
+

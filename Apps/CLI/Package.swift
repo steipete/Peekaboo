@@ -1,5 +1,59 @@
 // swift-tools-version: 6.2
+import Foundation
 import PackageDescription
+
+let includeAutomationTests = ProcessInfo.processInfo.environment["PEEKABOO_INCLUDE_AUTOMATION_TESTS"] == "true"
+
+var targets: [Target] = [
+    .target(
+        name: "PeekabooCLI",
+        dependencies: [
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            .product(name: "MCP", package: "swift-sdk"),
+            .product(name: "Spinner", package: "Spinner"),
+            .product(name: "PeekabooCore", package: "PeekabooCore"),
+            .product(name: "Tachikoma", package: "Tachikoma"),
+            .product(name: "TachikomaMCP", package: "Tachikoma"),
+        ],
+        path: "Sources/PeekabooCLI"),
+    .executableTarget(
+        name: "peekaboo",
+        dependencies: [
+            "PeekabooCLI",
+        ],
+        path: "Sources/PeekabooExec",
+        linkerSettings: [
+            .unsafeFlags([
+                "-Xlinker", "-sectcreate",
+                "-Xlinker", "__TEXT",
+                "-Xlinker", "__info_plist",
+                "-Xlinker", "Sources/Resources/Info.plist",
+                // Ensure LC_UUID is generated for macOS 26 compatibility
+                "-Xlinker", "-random_uuid",
+            ]),
+        ]),
+    .testTarget(
+        name: "peekabooTests",
+        dependencies: [
+            "PeekabooCLI",
+            .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
+        ],
+        path: "Tests/peekabooSafeTests",
+        swiftSettings: []),
+]
+
+if includeAutomationTests {
+    targets.append(
+        .testTarget(
+            name: "peekabooAutomationTests",
+            dependencies: [
+                "PeekabooCLI",
+                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
+            ],
+            path: "Tests/peekabooAutomationTests",
+            swiftSettings: [])
+    )
+}
 
 let package = Package(
     name: "peekaboo",
@@ -19,41 +73,5 @@ let package = Package(
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Tachikoma"),
     ],
-    targets: [
-        .executableTarget(
-            name: "peekaboo",
-            dependencies: [
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "Spinner", package: "Spinner"),
-                .product(name: "PeekabooCore", package: "PeekabooCore"),
-                .product(name: "Tachikoma", package: "Tachikoma"),
-                .product(name: "TachikomaMCP", package: "Tachikoma"),
-            ],
-            swiftSettings: [
-                .unsafeFlags(["-parse-as-library"]),
-                .unsafeFlags(["-enable-batch-mode"], .when(configuration: .debug)),
-            ],
-            linkerSettings: [
-                .unsafeFlags([
-                    "-Xlinker", "-sectcreate",
-                    "-Xlinker", "__TEXT",
-                    "-Xlinker", "__info_plist",
-                    "-Xlinker", "Sources/Resources/Info.plist",
-                    // Ensure LC_UUID is generated for macOS 26 compatibility
-                    "-Xlinker", "-random_uuid",
-                ]),
-            ]),
-        .testTarget(
-            name: "peekabooTests",
-            dependencies: [
-                "peekaboo",
-                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
-            ],
-            exclude: [
-                "ClickCommandAdvancedTests.swift.disabled",
-                "MCPClientCommandTests.swift.disabled",
-            ],
-            swiftSettings: []),
-    ],
+    targets: targets,
     swiftLanguageModes: [.v6])

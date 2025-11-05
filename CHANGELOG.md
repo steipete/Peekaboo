@@ -5,6 +5,15 @@ All notable changes to Peekaboo will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `pnpm` shortcuts for common Swift workflows (`pnpm build`, `pnpm build:cli:release`, `pnpm build:polter`, `pnpm test`, `pnpm test:automation`, `pnpm test:all`, `pnpm lint`, `pnpm format`) so agents and humans can run the same commands without remembering the full Swift toolchain flags.
+
+### Changed
+- Automation test suites now launch the freshly built `.build/debug/peekaboo` binary via `CLITestEnvironment.peekabooBinaryURL()` and suppress `ArgumentParser` diagnostics on negative parsing checks so safe/automation runs stay readable.
+- Documented the safe vs. automation tagging convention and new command shorthands in `docs/swift-testing-playbook.md` to make it obvious how to scope test runs.
+
 ## [2.0.3] - 2025-07-03
 
 ### Fixed

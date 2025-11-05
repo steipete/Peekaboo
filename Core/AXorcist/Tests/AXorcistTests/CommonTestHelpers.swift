@@ -1,6 +1,19 @@
 @preconcurrency import AppKit
-import XCTest
+import Testing
 @testable import AXorcist
+
+extension Tag {
+    @Tag static var safe: Self
+    @Tag static var automation: Self
+}
+
+enum AXTestEnvironment {
+    private static let env = ProcessInfo.processInfo.environment
+
+    static var runAutomationScenarios: Bool {
+        env["RUN_AUTOMATION_TESTS"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+    }
+}
 
 
 // Result struct for AXORC commands
@@ -23,16 +36,28 @@ func setupTextEditAndGetInfo() async throws -> (pid: pid_t, axAppElement: AXUIEl
         }
 
         print("Attempting to launch TextEdit from URL: \(url.path)")
-        let configuration: [NSWorkspace.LaunchConfigurationKey: Any] = [:]
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false
+
         do {
-            app = try NSWorkspace.shared.launchApplication(at: url,
-                                                           options: [.async, .withoutActivation],
-                                                           configuration: configuration)
-            print("launchApplication call completed. App PID if returned: \(app?.processIdentifier ?? -1)")
+            app = try await withCheckedThrowingContinuation { continuation in
+                NSWorkspace.shared.openApplication(at: url, configuration: configuration) { runningApp, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else if let runningApp {
+                        continuation.resume(returning: runningApp)
+                    } else {
+                        continuation.resume(
+                            throwing: TestError.appNotRunning("openApplication completion returned nil without error.")
+                        )
+                    }
+                }
+            }
+            print("openApplication call completed. App PID if returned: \(app?.processIdentifier ?? -1)")
         } catch {
             throw TestError
                 .appNotRunning(
-                    "Failed to launch TextEdit using launchApplication(at:options:configuration:): " +
+                    "Failed to launch TextEdit using openApplication(at:configuration:): " +
                         "\(error.localizedDescription)"
                 )
         }

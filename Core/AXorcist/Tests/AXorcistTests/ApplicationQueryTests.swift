@@ -1,5 +1,5 @@
 import AppKit
-import XCTest
+import Testing
 @testable import AXorcist
 
 // Helper type for decoding arbitrary JSON values
@@ -31,10 +31,10 @@ struct AnyDecodable: Decodable {
     }
 }
 
-// MARK: - Application Query Tests
-
-class ApplicationQueryTests: XCTestCase {
-    func testGetAllApplications() async throws {
+@Suite("AXorcist Application Query Tests", .tags(.safe))
+struct ApplicationQueryTests {
+    @Test("Collect all running applications", .tags(.safe))
+    func getAllApplications() async throws {
         let command = CommandEnvelope(
             commandId: "test-get-all-apps",
             command: .collectAll,
@@ -52,8 +52,8 @@ class ApplicationQueryTests: XCTestCase {
 
         let result = try runAXORCCommand(arguments: [jsonString])
 
-        XCTAssertEqual(result.exitCode, 0, "Command should succeed")
-        XCTAssertNotEqual(result.output, nil, "Should have output")
+        #expect(result.exitCode == 0, "Command should succeed")
+        #expect(result.output != nil, "Should have output")
 
         guard let output = result.output,
               let responseData = output.data(using: String.Encoding.utf8)
@@ -61,53 +61,27 @@ class ApplicationQueryTests: XCTestCase {
             throw TestError.generic("No output")
         }
 
-        // Define a proper response type that includes data
-        struct ApplicationQueryResponse: Decodable {
-            let success: Bool
-            let data: [String: [[String: Any]]]
-
-            enum CodingKeys: String, CodingKey {
-                case success
-                case data
-            }
-
-            init(from decoder: Decoder) throws {
-                let container = try decoder.container(keyedBy: CodingKeys.self)
-                success = try container.decode(Bool.self, forKey: .success)
-
-                // Decode data as dictionary with array of dictionaries
-                let dataContainer = try container.decode([String: [[String: AnyDecodable]]].self, forKey: .data)
-                var dataDict: [String: [[String: Any]]] = [:]
-                for (key, value) in dataContainer {
-                    dataDict[key] = value.map { dict in
-                        var result: [String: Any] = [:]
-                        for (k, v) in dict {
-                            result[k] = v.value
-                        }
-                        return result
-                    }
-                }
-                data = dataDict
-            }
-        }
-
         let response = try JSONDecoder().decode(QueryResponse.self, from: responseData)
 
-        XCTAssertEqual(response.success, true)
-        XCTAssertNotNil(response.data, "Should have data")
+        #expect(response.success)
+        #expect(response.data != nil, "Should have data")
 
-        // For collectAll command, we get a single AXElementData that might contain multiple results
-        // Check that we got some data back
         if let data = response.data {
-            XCTAssertNotNil(data.attributes, "Should have attributes")
+            #expect(data.attributes != nil, "Should have attributes")
         }
     }
 
-    func testGetWindowsOfApplication() async throws {
+    @Test(
+        "List TextEdit windows",
+        .tags(.automation),
+        .enabled(if: AXTestEnvironment.runAutomationScenarios)
+    )
+    @MainActor
+    func getWindowsOfApplication() async throws {
         await closeTextEdit()
         try await Task.sleep(for: .milliseconds(500))
 
-        let (_, _) = try await setupTextEditAndGetInfo()
+        _ = try await setupTextEditAndGetInfo()
         defer {
             if let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.TextEdit").first {
                 app.terminate()
@@ -116,7 +90,6 @@ class ApplicationQueryTests: XCTestCase {
 
         try await Task.sleep(for: .seconds(1))
 
-        // Query for windows
         let command = CommandEnvelope(
             commandId: "test-get-windows",
             command: .query,
@@ -133,8 +106,7 @@ class ApplicationQueryTests: XCTestCase {
         }
 
         let result = try runAXORCCommand(arguments: [jsonString])
-
-        XCTAssertEqual(result.exitCode, 0)
+        #expect(result.exitCode == 0)
 
         guard let output = result.output,
               let responseData = output.data(using: String.Encoding.utf8)
@@ -144,19 +116,19 @@ class ApplicationQueryTests: XCTestCase {
 
         let response = try JSONDecoder().decode(QueryResponse.self, from: responseData)
 
-        XCTAssertEqual(response.success, true)
+        #expect(response.success)
         if let data = response.data {
-            // Check that we have window attributes
             if let roleValue = data.attributes?["AXRole"] {
-                XCTAssertEqual(roleValue.stringValue, "AXWindow")
+                #expect(roleValue.stringValue == "AXWindow")
             }
             if let titleValue = data.attributes?["AXTitle"] {
-                XCTAssertNotNil(titleValue.stringValue, "Window should have title")
+                #expect(titleValue.stringValue != nil, "Window should have title")
             }
         }
     }
 
-    func testQueryNonExistentApp() async throws {
+    @Test("Query non-existent application", .tags(.safe))
+    func queryNonExistentApp() async throws {
         let command = CommandEnvelope(
             commandId: "test-nonexistent",
             command: .query,
@@ -173,8 +145,7 @@ class ApplicationQueryTests: XCTestCase {
 
         let result = try runAXORCCommand(arguments: [jsonString])
 
-        // Command should succeed but return no elements
-        XCTAssertEqual(result.exitCode, 0)
+        #expect(result.exitCode == 0, "Command should succeed even when no elements found")
 
         guard let output = result.output,
               let responseData = output.data(using: String.Encoding.utf8)
@@ -185,11 +156,9 @@ class ApplicationQueryTests: XCTestCase {
         let response = try JSONDecoder().decode(SimpleSuccessResponse.self, from: responseData)
 
         if response.success {
-            // For non-existent app, we expect success but should check message or details
-            // to verify no elements were found. Since SimpleSuccessResponse doesn't
-            // have element data, we verify through the success status and message.
-            XCTAssertTrue(
-                response.message.contains("No") || response.message.contains("not found") || response.message.isEmpty,
+            let message = response.message
+            #expect(
+                message.contains("No") || message.contains("not found") || message.isEmpty,
                 "Message should indicate no elements found or be empty"
             )
         }

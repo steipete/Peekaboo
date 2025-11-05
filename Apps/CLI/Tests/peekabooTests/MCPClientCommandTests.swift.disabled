@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import ArgumentParser
-@testable import peekaboo
+@testable import PeekabooCLI
 
 /// Tests for MCP client management commands
 @Suite("MCP Client Command Tests")

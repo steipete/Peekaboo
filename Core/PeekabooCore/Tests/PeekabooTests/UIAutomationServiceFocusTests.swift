@@ -2,7 +2,7 @@ import CoreGraphics
 import Testing
 @testable import PeekabooCore
 
-@Suite("UIAutomationService Focus Tests")
+@Suite("UIAutomationService Focus Tests", .tags(.safe))
 struct UIAutomationServiceFocusTests {
     @Test("getFocusedElement returns nil when no element focused")
     @MainActor

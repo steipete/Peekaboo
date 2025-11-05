@@ -9,6 +9,7 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **Verification**: `swift build` clean for Tachikoma, PeekabooCore, peekaboo CLI, and macOS app; `swift test --filter TypeCommandTests` currently hits a Swift frontend signal 5 (compiler bug) even outside tmux—log captured for follow-up. Other large suites remain gated by `RUN_LOCAL_TESTS=true`.
 - **Next steps**: file Swift compiler crash with stack dump, add test subsets so automation suites compile in smaller batches, and revisit `tmux`-logged test strategy once the compiler issue is resolved.
 - **CI note**: when running long Swift test suites use bare `tmux new-session …` invocations (no `while` loops or `tmux wait-for` wrappers). Continuous polling prevents our hang detector from spotting stuck jobs, which defeats the reason we run tests inside tmux. When implementing progress checks or back-off behaviour, cap individual `sleep`/timeout intervals at **≤30s** so the hang detector retains sufficient cadence.
+- **tmux usage**: Avoid `while tmux …` polling or `tmux wait-for`; prefer direct `tmux` commands with occasional bounded `sleep` calls, and investigate any `tmux`-run command that approaches 10 minutes rather than letting it run unattended.
 
 ## Development Philosophy
 

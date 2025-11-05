@@ -6,7 +6,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("ElementDetectionService Tests", .tags(.ui))
+@Suite("ElementDetectionService Tests", .tags(.ui, .safe))
 @MainActor
 struct ElementDetectionServiceTests {
     @Test("Initialize ElementDetectionService")

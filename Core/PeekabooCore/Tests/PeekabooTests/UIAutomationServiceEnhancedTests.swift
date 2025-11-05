@@ -5,7 +5,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("UIAutomationServiceEnhanced Tests", .serialized)
+@Suite("UIAutomationServiceEnhanced Tests", .serialized, .tags(.safe))
 struct UIAutomationServiceEnhancedTests {
     @Test("Element coordinates are transformed to window-relative")
     func windowRelativeTransformation() async throws {
