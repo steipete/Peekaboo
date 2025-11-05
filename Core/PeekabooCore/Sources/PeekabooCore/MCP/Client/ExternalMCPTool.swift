@@ -1,8 +1,8 @@
 import Foundation
 import MCP
 import OrderedCollections
-import PeekabooExternalDependencies
 import os.log
+import PeekabooExternalDependencies
 import TachikomaMCP
 
 /// External MCP tool that proxies requests to an external MCP server

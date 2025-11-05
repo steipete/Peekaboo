@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Automation test suites now launch the freshly built `.build/debug/peekaboo` binary via `CLITestEnvironment.peekabooBinaryURL()` and suppress `ArgumentParser` diagnostics on negative parsing checks so safe/automation runs stay readable.
 - Documented the safe vs. automation tagging convention and new command shorthands in `docs/swift-testing-playbook.md` to make it obvious how to scope test runs.
+- `AudioInputService` now uses Swift observation (`@Observable`) and structured `Task.sleep` polling instead of Combine timers so Swift 6.2 buildings avoid dependency on legacy publishers.
+- CLI `tools` output adopts stable ordering using `OrderedDictionary` for consistent rendering and JSON responses.
 
 ## [2.0.3] - 2025-07-03
 

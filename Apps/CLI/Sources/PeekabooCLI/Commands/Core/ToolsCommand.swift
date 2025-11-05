@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import OrderedCollections
 import PeekabooCore
 import TachikomaMCP
 
@@ -144,7 +145,8 @@ struct ToolsCommand: AsyncParsableCommand {
                 name: tool.name,
                 description: tool.description,
                 source: "native",
-                server: nil)
+                server: nil
+            )
         }
 
         let externalTools = tools.external.map { serverName, serverTools in
@@ -155,15 +157,18 @@ struct ToolsCommand: AsyncParsableCommand {
                         name: tool.name,
                         description: tool.description,
                         source: "external",
-                        server: serverName)
-                })
+                        server: serverName
+                    )
+                }
+            )
         }
 
         let summary = Summary(
             nativeCount: tools.native.count,
             externalCount: tools.externalCount,
             externalServers: tools.external.count,
-            totalCount: tools.totalCount)
+            totalCount: tools.totalCount
+        )
 
         let payload = Payload(native: nativeTools, external: externalTools, summary: summary)
 
@@ -223,13 +228,13 @@ struct ToolsCommand: AsyncParsableCommand {
     }
 
     private func displayExternalTools(
-        _ toolsByServer: [String: [MCPTool]],
+        _ toolsByServer: OrderedDictionary<String, [MCPTool]>,
         options: ToolDisplayOptions,
         clientManager: TachikomaMCPClientManager
     ) async {
         if options.groupByServer {
             // Group by server
-            for (serverName, serverTools) in toolsByServer.sorted(by: { $0.key < $1.key }) {
+            for (serverName, serverTools) in toolsByServer {
                 print("\(serverName) Tools (\(serverTools.count)):")
 
                 for tool in serverTools {
@@ -246,7 +251,7 @@ struct ToolsCommand: AsyncParsableCommand {
             }
         } else {
             // Flat list of external tools
-            let allExternalTools = toolsByServer.values.flatMap(\.self)
+            let allExternalTools = toolsByServer.values.flatMap { $0 }
             print("External Tools (\(allExternalTools.count)):")
 
             for tool in allExternalTools {

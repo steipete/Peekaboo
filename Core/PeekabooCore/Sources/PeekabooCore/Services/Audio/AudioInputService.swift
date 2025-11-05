@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Observation
 import os.log
 import Tachikoma // For TachikomaError
 import TachikomaAudio
@@ -46,21 +47,28 @@ public enum AudioInputError: LocalizedError, Equatable {
 
 /// Service for handling audio input and transcription
 @MainActor
-public final class AudioInputService: ObservableObject {
+@Observable
+public final class AudioInputService {
     // MARK: - Properties
 
+    @ObservationIgnored
     private let aiService: PeekabooAIService
+    @ObservationIgnored
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "AudioInputService")
+    @ObservationIgnored
     private let recorder = AudioRecorder()
+    @ObservationIgnored
     private var stateObservationTask: Task<Void, Never>?
 
-    @Published public private(set) var isRecording = false
-    @Published public private(set) var recordingDuration: TimeInterval = 0
+    public private(set) var isRecording = false
+    public private(set) var recordingDuration: TimeInterval = 0
 
     // Maximum file size: 25MB (OpenAI Whisper limit)
+    @ObservationIgnored
     private let maxFileSize = 25 * 1024 * 1024
 
     // Supported audio formats for transcription
+    @ObservationIgnored
     private let supportedExtensions = ["wav", "mp3", "m4a", "mp4", "mpeg", "mpga", "webm"]
 
     // MARK: - Initialization
@@ -88,11 +96,9 @@ public final class AudioInputService: ObservableObject {
     // MARK: - Private Methods
 
     private func observeRecorderState() async {
-        // Use Combine to observe recorder state changes
-        for await _ in Timer.publish(every: 0.1, on: .main, in: .common)
-            .autoconnect()
-            .values
-        {
+        // Poll recorder state at a lightweight interval while the task is active
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(100))
             // Sync recorder state with our published properties
             if self.isRecording != self.recorder.isRecording {
                 self.isRecording = self.recorder.isRecording
