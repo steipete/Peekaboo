@@ -73,9 +73,7 @@ final class PeekabooSpinner {
 
     /// Stop with a brief delay for smoother transitions
     func stopWithDelay() async {
-        do {
-            try await Task.sleep(nanoseconds: 300_000_000) // 300ms delay
-        } catch {}
+        try? await Task.sleep(for: .milliseconds(300))
         self.stop()
     }
 }

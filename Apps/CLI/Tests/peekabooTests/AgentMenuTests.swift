@@ -36,7 +36,7 @@ struct AgentMenuTests {
 
         // Ensure Calculator is running
         _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "Calculator"])
-        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        try await Task.sleep(for: .seconds(2))
 
         // Test agent discovering menus
         let output = try await runPeekabooCommand([
@@ -75,7 +75,7 @@ struct AgentMenuTests {
 
         // Ensure Calculator is running
         _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "Calculator"])
-        try await Task.sleep(nanoseconds: 2_000_000_000)
+        try await Task.sleep(for: .seconds(2))
 
         // Test agent using menu to switch Calculator mode
         let output = try await runPeekabooCommand([
@@ -121,7 +121,7 @@ struct AgentMenuTests {
 
         // Test with TextEdit
         _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "TextEdit"])
-        try await Task.sleep(nanoseconds: 2_000_000_000)
+        try await Task.sleep(for: .seconds(2))
 
         let output = try await runPeekabooCommand([
             "agent",

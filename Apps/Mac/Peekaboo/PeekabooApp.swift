@@ -118,13 +118,13 @@ struct PeekabooApp: App {
                     sessionStore: self.sessionStore,
                     settings: self.settings))
                 .environmentOptional(self.realtimeService)
-                .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.main"))) { _ in
+                .onReceive(NotificationCenter.default.publisher(for: .openMainWindow)) { _ in
                     // Window will automatically open when this notification is received
                     DispatchQueue.main.async {
                         self.openWindow(id: "main")
                     }
                 }
-                .onReceive(NotificationCenter.default.publisher(for: Notification.Name("StartNewSession"))) { _ in
+                .onReceive(NotificationCenter.default.publisher(for: .startNewSession)) { _ in
                     // Handle new session request
                     _ = self.sessionStore.createSession(title: "New Session")
                 }
@@ -298,7 +298,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 self.logger.info("No windowOpener available, posting notification")
                 // Post notification to open window
-                NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                NotificationCenter.default.post(name: .openMainWindow, object: nil)
             }
         }
     }
@@ -330,7 +330,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             self.logger.info("WindowOpener not available, posting notification")
             // Post notification as fallback
-            NotificationCenter.default.post(name: Notification.Name("OpenWindow.\(id)"), object: nil)
+            NotificationCenter.default.post(name: .openWindow(id: id), object: nil)
         }
 
         // Activate the app
@@ -344,7 +344,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(self.handleShowInspector),
-            name: Notification.Name("ShowInspector"),
+            name: .showInspector,
             object: nil)
 
         // Listen for keyboard shortcut changes

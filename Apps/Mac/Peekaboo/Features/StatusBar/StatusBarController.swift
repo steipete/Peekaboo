@@ -247,7 +247,7 @@ final class StatusBarController: NSObject {
 
         // Post notification to open main window
         self.logger.info("Posting OpenWindow.main notification")
-        NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+        NotificationCenter.default.post(name: .openMainWindow, object: nil)
     }
 
     @objc private func openSettings() {
@@ -263,7 +263,7 @@ final class StatusBarController: NSObject {
         // Post notification to trigger window opening
         // The AppDelegate listens for this notification and calls showInspector
         self.logger.info("Posting ShowInspector notification")
-        NotificationCenter.default.post(name: Notification.Name("ShowInspector"), object: nil)
+        NotificationCenter.default.post(name: .showInspector, object: nil)
     }
 
     @objc private func showAbout() {

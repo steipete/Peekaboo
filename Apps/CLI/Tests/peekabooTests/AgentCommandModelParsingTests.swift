@@ -4,8 +4,8 @@ import Testing
 
 @Suite("AgentCommand Model Parsing Tests")
 struct AgentCommandTests {
-    @Test("OpenAI model parsing")
-    func openAIModelParsing() async throws {
+    @Test
+    func `OpenAI model parsing`() async throws {
         let command = AgentCommand()
 
         // GPT-5 family
@@ -35,8 +35,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("o4-mini") == .openai(.o4Mini))
     }
 
-    @Test("Anthropic model parsing")
-    func anthropicModelParsing() async throws {
+    @Test
+    func `Anthropic model parsing`() async throws {
         let command = AgentCommand()
 
         // Claude 4 series
@@ -62,8 +62,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("CLAUDE-OPUS-4") == .anthropic(.opus4))
     }
 
-    @Test("Grok model parsing")
-    func grokModelParsing() async throws {
+    @Test
+    func `Grok model parsing`() async throws {
         let command = AgentCommand()
 
         #expect(command.parseModelString("grok-4") == .grok(.grok4))
@@ -74,8 +74,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("grok-2") == .grok(.grok2Image))
     }
 
-    @Test("Ollama model parsing")
-    func ollamaModelParsing() async throws {
+    @Test
+    func `Ollama model parsing`() async throws {
         let command = AgentCommand()
 
         #expect(command.parseModelString("llama3.3") == .ollama(.llama33))
@@ -84,8 +84,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("LLAMA3.3") == .ollama(.llama33))
     }
 
-    @Test("Fallback model parsing")
-    func fallbackModelParsing() async throws {
+    @Test
+    func `Fallback model parsing`() async throws {
         let command = AgentCommand()
 
         #expect(command.parseModelString("gpt") == .openai(.gpt5Mini))
@@ -98,8 +98,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("   ") == nil)
     }
 
-    @Test("Model string normalization")
-    func modelStringNormalization() async throws {
+    @Test
+    func `Model string normalization`() async throws {
         let command = AgentCommand()
 
         #expect(command.parseModelString("  gpt-4o  ") == .openai(.gpt4o))
@@ -112,8 +112,8 @@ struct AgentCommandTests {
 /// Tests for model selection integration
 @Suite("Model Selection Integration Tests")
 struct ModelSelectionIntegrationTests {
-    @Test("Model parameter handling in AgentCommand")
-    func modelParameterHandling() async throws {
+    @Test
+    func `Model parameter handling in AgentCommand`() async throws {
         var command = AgentCommand()
         command.model = "gpt-4o"
 
@@ -125,8 +125,8 @@ struct ModelSelectionIntegrationTests {
         #expect(nilModel == nil)
     }
 
-    @Test("Model description consistency")
-    func modelDescriptionConsistency() async throws {
+    @Test
+    func `Model description consistency`() async throws {
         let command = AgentCommand()
 
         let testCases: [(String, LanguageModel)] = [

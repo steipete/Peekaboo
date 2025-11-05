@@ -121,4 +121,11 @@ struct HiddenWindowView: View {
 
 extension Notification.Name {
     static let openSettingsRequest = Notification.Name("openSettingsRequest")
+    static let showInspector = Notification.Name("ShowInspector")
+    static let startNewSession = Notification.Name("StartNewSession")
+    static let openMainWindow = Notification.Name("OpenWindow.main")
+
+    static func openWindow(id: String) -> Notification.Name {
+        Notification.Name("OpenWindow.\(id)")
+    }
 }

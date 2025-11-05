@@ -55,7 +55,7 @@ struct MainWindow: View {
         .task {
             await self.permissions.check()
         }
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("StartNewSession"))) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .startNewSession)) { _ in
             // Clear current input and focus on text field
             self.inputText = ""
             self.inputMode = .text
