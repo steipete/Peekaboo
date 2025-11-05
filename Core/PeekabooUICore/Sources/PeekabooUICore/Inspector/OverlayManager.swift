@@ -7,7 +7,7 @@
 
 import AppKit
 import AXorcist
-import Combine
+import Observation
 import os.log
 import PeekabooCore
 import SwiftUI
@@ -21,20 +21,23 @@ public protocol OverlayManagerDelegate: AnyObject {
 
 /// Manages visual overlays for UI element inspection
 @MainActor
-public class OverlayManager: ObservableObject {
+@Observable
+public final class OverlayManager {
+    @ObservationIgnored
     private let logger = Logger(subsystem: "boo.peekaboo.ui", category: "OverlayManager")
 
     // MARK: - Public Properties
 
-    @Published public var hoveredElement: UIElement?
-    @Published public var selectedElement: UIElement?
-    @Published public var applications: [ApplicationInfo] = []
-    @Published public var isOverlayActive: Bool = false
-    @Published public var currentMouseLocation: CGPoint = .zero
-    @Published public var selectedAppMode: AppSelectionMode = .all
-    @Published public var selectedAppBundleID: String?
-    @Published public var detailLevel: DetailLevel = .moderate
+    public var hoveredElement: UIElement?
+    public var selectedElement: UIElement?
+    public var applications: [ApplicationInfo] = []
+    public var isOverlayActive: Bool = false
+    public var currentMouseLocation: CGPoint = .zero
+    public var selectedAppMode: AppSelectionMode = .all
+    public var selectedAppBundleID: String?
+    public var detailLevel: DetailLevel = .moderate
 
+    @ObservationIgnored
     public weak var delegate: OverlayManagerDelegate?
 
     // MARK: - Types
@@ -144,9 +147,13 @@ public class OverlayManager: ObservableObject {
 
     // MARK: - Private Properties
 
+    @ObservationIgnored
     private var eventMonitor: Any?
+    @ObservationIgnored
     private var updateTimer: Timer?
+    @ObservationIgnored
     private var overlayWindows: [String: NSWindow] = [:] // Bundle ID -> Window
+    @ObservationIgnored
     private let idGenerator = ElementIDGenerator()
 
     // MARK: - Initialization
