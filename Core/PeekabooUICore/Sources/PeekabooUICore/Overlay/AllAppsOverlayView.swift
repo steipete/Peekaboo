@@ -6,17 +6,18 @@
 //
 
 import AppKit
+import Observation
 import SwiftUI
 
 public struct AllAppsOverlayView: View {
-    @ObservedObject var overlayManager: OverlayManager
+    @Bindable private var overlayManager: OverlayManager
     let preset: ElementStyleProvider
 
     public init(
         overlayManager: OverlayManager,
         preset: ElementStyleProvider = InspectorVisualizationPreset())
     {
-        self.overlayManager = overlayManager
+        self._overlayManager = Bindable(overlayManager)
         self.preset = preset
     }
 
@@ -31,7 +32,6 @@ public struct AllAppsOverlayView: View {
                 // Overlay elements from all applications
                 ForEach(self.overlayManager.applications) { app in
                     AppOverlayView(application: app, preset: self.preset)
-                        .environmentObject(self.overlayManager)
                 }
 
                 // Hover highlight

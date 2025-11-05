@@ -11,7 +11,6 @@ import SwiftUI
 public struct AppOverlayView: View {
     let application: OverlayManager.ApplicationInfo
     let preset: ElementStyleProvider
-    @EnvironmentObject var overlayManager: OverlayManager
 
     public init(
         application: OverlayManager.ApplicationInfo,

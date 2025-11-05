@@ -11,7 +11,6 @@ import SwiftUI
 
 public struct ElementDetailsView: View {
     let element: OverlayManager.UIElement
-    @EnvironmentObject var overlayManager: OverlayManager
     @State private var isExpanded = true
 
     public init(element: OverlayManager.UIElement) {

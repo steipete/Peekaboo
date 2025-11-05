@@ -6,13 +6,14 @@
 //
 
 import AppKit
+import Observation
 import SwiftUI
 
 public struct AppSelectorView: View {
-    @ObservedObject var overlayManager: OverlayManager
+    @Bindable private var overlayManager: OverlayManager
 
     public init(overlayManager: OverlayManager) {
-        self.overlayManager = overlayManager
+        self._overlayManager = Bindable(overlayManager)
     }
 
     public var body: some View {

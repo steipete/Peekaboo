@@ -6,10 +6,11 @@
 //
 
 import AppKit
+import Observation
 import SwiftUI
 
 public struct AllElementsView: View {
-    @ObservedObject var overlayManager: OverlayManager
+    @Bindable private var overlayManager: OverlayManager
     @State private var searchText = ""
     @State private var selectedCategory: ElementFilterCategory = .all
     @State private var showOnlyActionable = false
@@ -37,7 +38,7 @@ public struct AllElementsView: View {
     }
 
     public init(overlayManager: OverlayManager) {
-        self.overlayManager = overlayManager
+        self._overlayManager = Bindable(overlayManager)
     }
 
     public var body: some View {
@@ -206,8 +207,18 @@ public struct AllElementsView: View {
 struct AppElementSection: View {
     let appBundleID: String
     let elements: [OverlayManager.UIElement]
-    @ObservedObject var overlayManager: OverlayManager
+    @Bindable private var overlayManager: OverlayManager
     @State private var isExpanded = true
+
+    init(
+        appBundleID: String,
+        elements: [OverlayManager.UIElement],
+        overlayManager: OverlayManager)
+    {
+        self.appBundleID = appBundleID
+        self.elements = elements
+        self._overlayManager = Bindable(overlayManager)
+    }
 
     var appName: String {
         self.overlayManager.applications
@@ -266,8 +277,13 @@ struct AppElementSection: View {
 
 struct ElementRow: View {
     let element: OverlayManager.UIElement
-    @ObservedObject var overlayManager: OverlayManager
+    @Bindable private var overlayManager: OverlayManager
     @State private var isHovered = false
+
+    init(element: OverlayManager.UIElement, overlayManager: OverlayManager) {
+        self.element = element
+        self._overlayManager = Bindable(overlayManager)
+    }
 
     var isSelected: Bool {
         self.overlayManager.selectedElement?.id == self.element.id

@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import Observation
 import PeekabooCore
 import SwiftUI
 
@@ -20,7 +21,7 @@ public struct InspectorConfiguration {
 
 /// Main Inspector view for UI element inspection
 public struct InspectorView: View {
-    @StateObject private var overlayManager = OverlayManager()
+    @State private var overlayManager = OverlayManager()
     @State private var showPermissionAlert = false
     @State private var permissionStatus: PermissionStatus = .checking
     @State private var permissionCheckTimer: Timer?
@@ -54,7 +55,6 @@ public struct InspectorView: View {
         }
         .frame(width: 450, height: 700)
         .background(Color(NSColor.windowBackgroundColor))
-        .environmentObject(self.overlayManager)
         .onAppear {
             self.startPermissionMonitoring()
             if self.configuration.enableOverlay {
@@ -98,7 +98,6 @@ public struct InspectorView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let hoveredElement = overlayManager.hoveredElement {
                     ElementDetailsView(element: hoveredElement)
-                        .environmentObject(self.overlayManager)
                 } else {
                     Text("Hover over an element to see details")
                         .foregroundColor(.secondary)
