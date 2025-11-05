@@ -47,7 +47,7 @@ public enum TerminalOutput {
     public static func providerEmoji(_ provider: String) -> String {
         switch provider.lowercased() {
         case let p where p.contains("openai") || p.contains("gpt"):
-            "🤖" // OpenAI - robot/AI theme
+            "👻" // OpenAI - robot/AI theme
         case let p where p.contains("anthropic") || p.contains("claude"):
             "🧠" // Anthropic - brain/thinking theme
         case let p where p.contains("ollama") || p.contains("llama"):
@@ -55,7 +55,7 @@ public enum TerminalOutput {
         case let p where p.contains("grok"):
             "🚀" // Grok - rocket/fast theme
         default:
-            "🤖"
+            "👻"
         }
     }
 }

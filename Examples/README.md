@@ -43,7 +43,7 @@ swift run TachikomaComparison "Explain quantum computing"
 **Sample Output:**
 ```
 ┌────────────────────────────────────────┐ ┌────────────────────────────────────────┐
-│           🤖 OpenAI GPT-4.1            │ │        🧠 Anthropic Claude Opus 4      │
+│           👻 OpenAI GPT-4.1            │ │        🧠 Anthropic Claude Opus 4      │
 ├────────────────────────────────────────┤ ├────────────────────────────────────────┤
 │ Quantum computing harnesses quantum    │ │ Quantum computing represents a         │
 │ mechanical phenomena like superposition│ │ revolutionary approach to computation  │
@@ -155,7 +155,7 @@ let providers = ["gpt-4.1", "claude-opus-4-20250514", "llama3.3"]
 for providerModel in providers {
     let model = try modelProvider.getModel(providerModel)
     let response = try await model.getResponse(request: request)
-    print("🤖 \(providerModel): \(extractText(response))")
+    print("👻 \(providerModel): \(extractText(response))")
 }
 ```
 
@@ -423,7 +423,7 @@ All examples automatically measure and display performance metrics after each ru
 - **Model Information**: Which specific model was used
 
 ```
-⏱️ Duration: 2.45s | 🔤 Tokens: ~67 | 🤖 Model: gpt-4.1
+⏱️ Duration: 2.45s | 🔤 Tokens: ~67 | 👻 Model: gpt-4.1
 💰 Estimated cost: $0.0034
 ```
 

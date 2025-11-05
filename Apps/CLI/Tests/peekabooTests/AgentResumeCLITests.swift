@@ -252,11 +252,11 @@ struct AgentResumeCLITests {
     @Test("Resume handles special characters in task")
     func resumeHandlesSpecialCharactersInTask() {
         _ = "Task with \"quotes\" and 'apostrophes' and {brackets} and <tags>" // Special task
-        let continuationTask = "Continue with émojis 🤖 and unicode ∆∇∫"
+        let continuationTask = "Continue with émojis 👻 and unicode ∆∇∫"
 
         let resumePrompt = "Continue with the original task. The user's response: \(continuationTask)"
 
-        #expect(resumePrompt.contains("émojis 🤖"))
+        #expect(resumePrompt.contains("émojis 👻"))
         #expect(resumePrompt.contains("unicode ∆∇∫"))
     }
 

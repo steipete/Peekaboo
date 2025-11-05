@@ -133,7 +133,7 @@ public enum ToolCategory: String, CaseIterable, Sendable {
     public var icon: String {
         switch self {
         case .vision: "[see]️"
-        case .automation, .ui: "🤖"
+        case .automation, .ui: "👻"
         case .window: "[win]"
         case .app, .application: "[apps]"
         case .menu, .dialog: "[menu]"

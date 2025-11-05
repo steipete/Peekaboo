@@ -55,7 +55,7 @@ public struct AIAssistantWindow: View {
                         .font(.headline)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Button("🤖 General Assistant") {
+                        Button("👻 General Assistant") {
                             self.systemPrompt = "You are a helpful assistant specialized in macOS automation and development using Peekaboo."
                         }
                         .buttonStyle(.plain)

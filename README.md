@@ -24,7 +24,7 @@ Perfect for:
 - Quick screenshots and AI analysis
 - System administration tasks
 
-### 🤖 **MCP Server** (For AI Assistants)
+### 👻 **MCP Server** (For AI Assistants)
 Perfect for:
 - Claude Desktop integration
 - Cursor IDE workflows
@@ -115,7 +115,7 @@ peekaboo "Open Safari and search for weather"
 peekaboo agent "Fill out the contact form" --verbose
 peekaboo hotkey cmd,c                   # Press Cmd+C
 
-# AI Agent Automation (v3) 🤖
+# AI Agent Automation (v3) 👻
 peekaboo "Open TextEdit and write Hello World"
 peekaboo agent "Take a screenshot of Safari and email it"
 peekaboo agent --verbose "Find all Finder windows and close them"
@@ -278,7 +278,7 @@ peekaboo type "Hello" --session $SESSION_B   # Type in Notes
 peekaboo run login.peekaboo.json
 ```
 
-## 🤖 MCP Server Setup
+## 👻 MCP Server Setup
 
 For AI assistants like Claude Desktop and Cursor, Peekaboo provides a Model Context Protocol (MCP) server.
 
@@ -893,7 +893,7 @@ By default, Peekaboo:
 
 This ensures reliable automation across complex multi-window, multi-Space workflows without manual window management.
 
-## 🤖 AI Agent Automation
+## 👻 AI Agent Automation
 
 Peekaboo v3 introduces an AI-powered agent that can understand and execute complex automation tasks using natural language. The agent uses OpenAI's Chat Completions API with streaming support to break down your instructions into specific Peekaboo commands.
 

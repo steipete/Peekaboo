@@ -20,6 +20,11 @@ public enum AgentDisplayTokens {
         public static let dialog = "[dialog]"
     }
 
+    /// Brand glyphs shared across platforms
+    public enum Glyph {
+        public static let agent = "👻"
+    }
+
     /// Canonical glyphs for tool categories
     private static let iconByKey: [String: String] = [
         "see": "[see]",

@@ -8,7 +8,7 @@ import Tachikoma
 struct TachikomaAgent: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "tachikoma-agent",
-        abstract: "🤖 Build AI agents with custom tools and function calling",
+        abstract: "👻 Build AI agents with custom tools and function calling",
         discussion: """
         This example showcases Tachikoma's function calling capabilities, demonstrating how to
         build AI agents that can use custom tools to accomplish complex tasks. The agent can
@@ -45,7 +45,7 @@ struct TachikomaAgent: AsyncParsableCommand {
     var maxFunctionCalls: Int = 5
 
     func run() async throws {
-        TerminalOutput.header("🤖 Tachikoma Agent Demo")
+        TerminalOutput.header("👻 Tachikoma Agent Demo")
 
         if self.listTools {
             self.listAvailableTools()
@@ -732,7 +732,7 @@ class AgentRunner {
     /// Get provider emoji for display
     private func getProviderEmoji() -> String {
         // This is a simple implementation - in practice, you'd detect from the model
-        "🤖"
+        "👻"
     }
 
     /// Display agent performance metrics after task completion

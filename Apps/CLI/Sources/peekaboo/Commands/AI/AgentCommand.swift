@@ -583,7 +583,7 @@ struct AgentCommand: AsyncParsableCommand {
 
                 // First line: Version and git info
                 print(
-                    "\(TerminalColor.cyan)\(TerminalColor.bold)\(AgentDisplayTokens.Status.info) Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)\(versionNumber) \(versionInfo)\(TerminalColor.reset)"
+                    "\(TerminalColor.cyan)\(TerminalColor.bold)\(AgentDisplayTokens.Glyph.agent) Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)\(versionNumber) \(versionInfo)\(TerminalColor.reset)"
                 )
 
                 // Second line: Model and API provider info

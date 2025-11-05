@@ -101,7 +101,7 @@ struct ToolRegistryTests {
 
         // Check specific icons
         #expect(ToolCategory.vision.icon == "[see]️")
-        #expect(ToolCategory.automation.icon == "🤖")
+        #expect(ToolCategory.automation.icon == "👻")
         #expect(ToolCategory.window.icon == "[win]")
         #expect(ToolCategory.app.icon == "[apps]")
         #expect(ToolCategory.menu.icon == "[menu]")

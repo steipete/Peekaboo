@@ -270,7 +270,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         let stats = [
             "⏱️ Duration: \(String(format: "%.2fs", duration))",
             "🔤 Tokens: ~\(tokenCount)",
-            "🤖 Model: \(model)",
+            "👻 Model: \(model)",
         ]
 
         TerminalOutput.print(stats.joined(separator: " | "), color: .dim)

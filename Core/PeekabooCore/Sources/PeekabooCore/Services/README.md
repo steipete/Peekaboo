@@ -41,7 +41,7 @@ User interface automation:
 Visual capture and analysis:
 - **ScreenCaptureService** - Screenshots with AI-powered element detection
 
-### 🤖 Agent Services
+### 👻 Agent Services
 AI-powered automation:
 - **PeekabooAgentService** - Natural language task execution
 - **Tools/** - Modular tool implementations
