@@ -3,8 +3,8 @@
 //  PeekabooProtocols
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 import PeekabooFoundation
 
 // MARK: - UI Service Protocols
@@ -22,7 +22,7 @@ public struct WindowInfo: Sendable {
     public let title: String
     public let appName: String
     public let bounds: CGRect
-    
+
     public init(id: Int, title: String, appName: String, bounds: CGRect) {
         self.id = id
         self.title = title
@@ -44,7 +44,7 @@ public struct ScreenInfo: Sendable {
     public let frame: CGRect
     public let visibleFrame: CGRect
     public let scaleFactor: CGFloat
-    
+
     public init(id: Int, frame: CGRect, visibleFrame: CGRect, scaleFactor: CGFloat) {
         self.id = id
         self.frame = frame
@@ -68,7 +68,7 @@ public struct SessionData: Sendable {
     public let id: String
     public let createdAt: Date
     public let metadata: [String: String]
-    
+
     public init(id: String, createdAt: Date, metadata: [String: String] = [:]) {
         self.id = id
         self.createdAt = createdAt
@@ -79,7 +79,7 @@ public struct SessionData: Sendable {
 public struct DetectionResult: Sendable {
     public let elements: ElementCollection
     public let timestamp: Date
-    
+
     public init(elements: ElementCollection, timestamp: Date) {
         self.elements = elements
         self.timestamp = timestamp
@@ -88,13 +88,13 @@ public struct DetectionResult: Sendable {
 
 public struct ElementCollection: Sendable {
     public let all: [DetectedElement]
-    
+
     public init(all: [DetectedElement]) {
         self.all = all
     }
-    
+
     public func findById(_ id: String) -> DetectedElement? {
-        all.first { $0.id == id }
+        self.all.first { $0.id == id }
     }
 }
 
@@ -105,8 +105,15 @@ public struct DetectedElement: Sendable {
     public let label: String?
     public let value: String?
     public let isEnabled: Bool
-    
-    public init(id: String, type: ElementType, bounds: CGRect, label: String? = nil, value: String? = nil, isEnabled: Bool = true) {
+
+    public init(
+        id: String,
+        type: ElementType,
+        bounds: CGRect,
+        label: String? = nil,
+        value: String? = nil,
+        isEnabled: Bool = true)
+    {
         self.id = id
         self.type = type
         self.bounds = bounds

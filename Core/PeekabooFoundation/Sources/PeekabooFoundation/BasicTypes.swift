@@ -59,7 +59,7 @@ public enum ModifierKey: String, Sendable {
     case command = "cmd"
     case control = "ctrl"
     case option = "alt"
-    case shift = "shift"
+    case shift
     case function = "fn"
 }
 

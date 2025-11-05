@@ -15,7 +15,7 @@ mkdir -p Core/PeekabooModels/Tests/PeekabooModelsTests
 
 ```swift
 // Core/PeekabooModels/Package.swift
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(

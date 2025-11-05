@@ -14,7 +14,7 @@ public protocol ObservablePermissionsServiceProtocol: AnyObject {
     var accessibilityStatus: PermissionState { get }
     var appleScriptStatus: PermissionState { get }
     var hasAllPermissions: Bool { get }
-    
+
     func checkPermissions()
     func requestPermissions() async
 }
@@ -36,8 +36,8 @@ public protocol ToolFormatterProtocol {
 public struct ToolOutput: Sendable {
     public let tool: String
     public let result: String
-    public let metadata: [String: String]  // Changed from Any to String for Sendable conformance
-    
+    public let metadata: [String: String] // Changed from Any to String for Sendable conformance
+
     public init(tool: String, result: String, metadata: [String: String] = [:]) {
         self.tool = tool
         self.result = result
@@ -95,7 +95,7 @@ public struct ConversationSession: Sendable {
     public let id: String
     public let startedAt: Date
     public let messages: [ConversationMessage]
-    
+
     public init(id: String, startedAt: Date, messages: [ConversationMessage] = []) {
         self.id = id
         self.startedAt = startedAt
@@ -107,7 +107,7 @@ public struct ConversationMessage: Sendable {
     public let role: String
     public let content: String
     public let timestamp: Date
-    
+
     public init(role: String, content: String, timestamp: Date) {
         self.role = role
         self.content = content

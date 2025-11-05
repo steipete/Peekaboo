@@ -73,7 +73,8 @@ public protocol MenuServiceProtocol: Sendable {
 
 /// Protocol for process service operations
 public protocol ProcessServiceProtocol: Sendable {
-    func runCommand(_ command: String, arguments: [String], environment: [String: String]?) async throws -> ProcessOutput
+    func runCommand(_ command: String, arguments: [String], environment: [String: String]?) async throws
+        -> ProcessOutput
     func runShellCommand(_ command: String) async throws -> ProcessOutput
     func killProcess(pid: Int32) async throws
     func findProcess(name: String) async throws -> Int32?
@@ -83,7 +84,7 @@ public struct ProcessOutput: Sendable {
     public let stdout: String
     public let stderr: String
     public let exitCode: Int32
-    
+
     public init(stdout: String, stderr: String, exitCode: Int32) {
         self.stdout = stdout
         self.stderr = stderr

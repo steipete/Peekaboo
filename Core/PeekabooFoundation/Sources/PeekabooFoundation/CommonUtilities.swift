@@ -28,7 +28,6 @@ extension Error {
     public func asPeekabooError(
         context: String) -> PeekabooError
     {
-
         // Try to preserve specific PeekabooError types
         if let peekabooError = self as? PeekabooError {
             return peekabooError

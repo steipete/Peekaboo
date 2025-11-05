@@ -676,7 +676,7 @@ Guarantee your code is free of data races by enabling the Swift 6 language mode.
 A `Package.swift` file that uses `swift-tools-version` of `6.0` will enable the Swift 6 language mode for all targets:
 
 ```swift
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 let package = Package(
     name: "MyPackage",

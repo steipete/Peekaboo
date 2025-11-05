@@ -2,7 +2,8 @@
 
 import Foundation
 
-let apiKey = ProcessInfo.processInfo.environment["X_AI_API_KEY"] ?? ProcessInfo.processInfo.environment["XAI_API_KEY"] ?? ""
+let apiKey = ProcessInfo.processInfo.environment["X_AI_API_KEY"] ?? ProcessInfo.processInfo
+    .environment["XAI_API_KEY"] ?? ""
 guard !apiKey.isEmpty else {
     print("Error: X_AI_API_KEY or XAI_API_KEY not set")
     exit(1)
@@ -59,12 +60,12 @@ var startTime = Date()
 let task = URLSession.shared.dataTask(with: request) { data, response, error in
     let duration = Date().timeIntervalSince(startTime)
     print("Response received after \(String(format: "%.2f", duration))s")
-    
-    if let error = error {
+
+    if let error {
         print("❌ Error: \(error)")
     } else if let httpResponse = response as? HTTPURLResponse {
         print("Response status: \(httpResponse.statusCode)")
-        if let data = data {
+        if let data {
             let responseText = String(data: data, encoding: .utf8) ?? ""
             print("Response (first 1000 chars): \(String(responseText.prefix(1000)))")
         }

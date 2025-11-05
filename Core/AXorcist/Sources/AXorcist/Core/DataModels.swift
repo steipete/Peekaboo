@@ -60,7 +60,7 @@ public struct AXValueWrapper: Codable, Sendable, Equatable {
     private static func recursivelySanitize(_ item: Any?) -> Any {
         return recursivelySanitizeWithDepth(item, depth: 0, visited: Set<ObjectIdentifier>())
     }
-    
+
     // Convert sanitized Any value to AttributeValue
     private static func convertToAttributeValue(_ value: Any) -> AttributeValue? {
         switch value {

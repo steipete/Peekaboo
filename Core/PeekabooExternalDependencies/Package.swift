@@ -1,17 +1,16 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 import PackageDescription
 
 let package = Package(
     name: "PeekabooExternalDependencies",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v14),
     ],
     products: [
         .library(
             name: "PeekabooExternalDependencies",
-            targets: ["PeekabooExternalDependencies"]
-        ),
+            targets: ["PeekabooExternalDependencies"]),
     ],
     dependencies: [
         // External dependencies centralized here
@@ -33,8 +32,6 @@ let package = Package(
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency"),
-            ]
-        ),
+            ]),
     ],
-    swiftLanguageModes: [.v6]
-)
+    swiftLanguageModes: [.v6])

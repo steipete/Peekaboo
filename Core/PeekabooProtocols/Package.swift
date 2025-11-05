@@ -1,17 +1,16 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 import PackageDescription
 
 let package = Package(
     name: "PeekabooProtocols",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v14),
     ],
     products: [
         .library(
             name: "PeekabooProtocols",
-            targets: ["PeekabooProtocols"]
-        ),
+            targets: ["PeekabooProtocols"]),
     ],
     dependencies: [
         .package(path: "../PeekabooFoundation"),
@@ -25,15 +24,12 @@ let package = Package(
             swiftSettings: [
                 .unsafeFlags([
                     "-Xfrontend", "-warn-long-function-bodies=50",
-                    "-Xfrontend", "-warn-long-expression-type-checking=50"
+                    "-Xfrontend", "-warn-long-expression-type-checking=50",
                 ], .when(configuration: .debug)),
                 .enableExperimentalFeature("StrictConcurrency"),
-            ]
-        ),
+            ]),
         .testTarget(
             name: "PeekabooProtocolsTests",
-            dependencies: ["PeekabooProtocols"]
-        ),
+            dependencies: ["PeekabooProtocols"]),
     ],
-    swiftLanguageModes: [.v6]
-)
+    swiftLanguageModes: [.v6])
