@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -13,9 +13,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
-        .package(path: "../../../swift-sdk"),
-        .package(url: "https://github.com/migueldeicaza/TermKit", branch: "main"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.10.2"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
+        .package(path: "../../Core/PeekabooFoundation"),
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Tachikoma"),
     ],
@@ -25,7 +25,6 @@ let package = Package(
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "TermKit", package: "TermKit"),
                 .product(name: "Spinner", package: "Spinner"),
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
@@ -47,7 +46,10 @@ let package = Package(
             ]),
         .testTarget(
             name: "peekabooTests",
-            dependencies: ["peekaboo"],
+            dependencies: [
+                "peekaboo",
+                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
+            ],
             exclude: [
                 "ClickCommandAdvancedTests.swift.disabled",
                 "MCPClientCommandTests.swift.disabled",
