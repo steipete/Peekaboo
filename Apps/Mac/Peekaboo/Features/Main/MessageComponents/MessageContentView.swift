@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 // MARK: - Message Content View
 
@@ -10,31 +10,33 @@ struct MessageContentView: View {
     let isWarningMessage: Bool
     let isToolMessage: Bool
     let extractToolName: (String) -> String
-    
+
     var body: some View {
-        if isThinkingMessage {
-            // Show the actual thinking content, removing the 🤔 emoji
-            Text(message.content.replacingOccurrences(of: "🤔 ", with: ""))
+        if self.isThinkingMessage {
+            // Show the actual thinking content, removing the planning token prefix
+            Text(self.message.content.replacingOccurrences(
+                of: "\(AgentDisplayTokens.Status.planning) ",
+                with: ""))
                 .font(.system(.body))
                 .foregroundColor(.purple)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
-        } else if isErrorMessage {
-            Text(message.content)
+        } else if self.isErrorMessage {
+            Text(self.message.content)
                 .foregroundColor(.red)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
-        } else if isWarningMessage {
-            Text(message.content)
+        } else if self.isWarningMessage {
+            Text(self.message.content)
                 .foregroundColor(.orange)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
-        } else if isToolMessage {
-            ToolMessageContent(message: message, extractToolName: extractToolName)
-        } else if message.role == .assistant {
-            AssistantMessageContent(message: message)
+        } else if self.isToolMessage {
+            ToolMessageContent(message: self.message, extractToolName: self.extractToolName)
+        } else if self.message.role == .assistant {
+            AssistantMessageContent(message: self.message)
         } else {
-            Text(message.content)
+            Text(self.message.content)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -46,15 +48,15 @@ struct MessageContentView: View {
 struct ToolMessageContent: View {
     let message: ConversationMessage
     let extractToolName: (String) -> String
-    
+
     var body: some View {
         // Show tool execution details without inline icon (icon is in avatar position)
         if let toolCall = message.toolCalls.first {
             let isRunning = toolCall.result == "Running..."
-            let content = message.content
-                .replacingOccurrences(of: "🔧 ", with: "")
-                .replacingOccurrences(of: "✅ ", with: "")
-                .replacingOccurrences(of: "❌ ", with: "")
+            let content = self.message.content
+                .replacingOccurrences(of: AgentDisplayTokens.Status.running + " ", with: "")
+                .replacingOccurrences(of: AgentDisplayTokens.Status.success + " ", with: "")
+                .replacingOccurrences(of: AgentDisplayTokens.Status.failure + " ", with: "")
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -65,7 +67,7 @@ struct ToolMessageContent: View {
 
                     if !isRunning, toolCall.result != "Running..." {
                         // Show result summary if available
-                        let toolName = extractToolName(message.content)
+                        let toolName = self.extractToolName(self.message.content)
                         if let resultSummary = ToolFormatter.toolResultSummary(
                             toolName: toolName,
                             result: toolCall.result)
@@ -80,17 +82,17 @@ struct ToolMessageContent: View {
                 Spacer()
 
                 if isRunning {
-                    TimeIntervalText(startTime: message.timestamp)
+                    TimeIntervalText(startTime: self.message.timestamp)
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
             }
             .textSelection(.enabled)
         } else {
-            Text(message.content
-                .replacingOccurrences(of: "🔧 ", with: "")
-                .replacingOccurrences(of: "✅ ", with: "")
-                .replacingOccurrences(of: "❌ ", with: ""))
+            Text(self.message.content
+                .replacingOccurrences(of: AgentDisplayTokens.Status.running + " ", with: "")
+                .replacingOccurrences(of: AgentDisplayTokens.Status.success + " ", with: "")
+                .replacingOccurrences(of: AgentDisplayTokens.Status.failure + " ", with: ""))
                 .font(.system(.body, design: .rounded))
                 .fontWeight(.medium)
                 .foregroundColor(.primary)
@@ -103,7 +105,7 @@ struct ToolMessageContent: View {
 
 struct AssistantMessageContent: View {
     let message: ConversationMessage
-    
+
     var body: some View {
         // Render assistant messages as Markdown
         if let attributedString = try? AttributedString(
@@ -116,7 +118,7 @@ struct AssistantMessageContent: View {
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
         } else {
-            Text(message.content)
+            Text(self.message.content)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
         }

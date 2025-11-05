@@ -2,8 +2,8 @@ import AppKit
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
-import PeekabooFoundation
 import os.log
+import PeekabooFoundation
 
 /**
  * Specialized click service providing precise mouse interaction capabilities.

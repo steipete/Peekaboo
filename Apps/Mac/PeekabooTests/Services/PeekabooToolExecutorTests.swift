@@ -1,12 +1,11 @@
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import Peekaboo
 
 @Suite("ToolRegistry Tests", .tags(.tools, .unit))
 @MainActor
 struct ToolRegistryTests {
-
     @Test("All expected tools are registered")
     func allToolsAreRegistered() {
         let allTools = ToolRegistry.allTools
@@ -33,7 +32,7 @@ struct ToolRegistryTests {
             "done",
             "need_info",
         ]
-        
+
         #expect(toolNames.isSuperset(of: expectedTools))
     }
 
@@ -44,7 +43,7 @@ struct ToolRegistryTests {
         for tool in allTools {
             #expect(!tool.name.isEmpty)
             #expect(!tool.abstract.isEmpty)
-            
+
             for param in tool.parameters {
                 #expect(!param.name.isEmpty)
                 #expect(!param.description.isEmpty)

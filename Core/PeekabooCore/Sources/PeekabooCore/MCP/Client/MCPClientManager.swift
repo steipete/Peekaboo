@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 // Use MCPClientConfig from Configuration.swift
 public typealias MCPServerConfig = Configuration.MCPClientConfig
@@ -13,7 +13,7 @@ public enum MCPServerHealth: Sendable {
     case connecting
     case disabled
     case unknown
-    
+
     public var symbol: String {
         switch self {
         case .connected: "✓"
@@ -23,7 +23,7 @@ public enum MCPServerHealth: Sendable {
         case .unknown: "?"
         }
     }
-    
+
     public var statusText: String {
         switch self {
         case let .connected(toolCount, responseTime):
@@ -38,7 +38,7 @@ public enum MCPServerHealth: Sendable {
             "Unknown"
         }
     }
-    
+
     public var isHealthy: Bool {
         if case .connected = self {
             return true
@@ -55,15 +55,15 @@ public struct MCPServerInfo: Sendable {
     public let health: MCPServerHealth
     public let tools: [Tool]
     public let config: MCPServerConfig
-    
+
     public init(
         name: String,
         description: String,
         enabled: Bool,
         health: MCPServerHealth,
         tools: [Tool],
-        config: MCPServerConfig? = nil
-    ) {
+        config: MCPServerConfig? = nil)
+    {
         self.name = name
         self.description = description
         self.enabled = enabled
@@ -74,8 +74,7 @@ public struct MCPServerInfo: Sendable {
             args: [],
             env: [:],
             enabled: enabled,
-            description: description
-        )
+            description: description)
     }
 }
 
@@ -88,47 +87,46 @@ private actor MCPClientConnection {
     private var tools: [Tool] = []
     private var lastConnected: Date?
     private let logger: os.Logger
-    
+
     init(name: String, config: MCPServerConfig) {
         self.name = name
         self.config = config
         self.logger = os.Logger(subsystem: "boo.peekaboo.mcp.client", category: name)
     }
-    
+
     func connect() async throws {
-        guard config.enabled else {
+        guard self.config.enabled else {
             throw MCPClientError.serverDisabled
         }
-        
-        logger.info("Connecting to MCP server '\(self.name)'")
-        
+
+        self.logger.info("Connecting to MCP server '\(self.name)'")
+
         // Create MCP server config for TachikomaMCP
         let mcpServerConfig = TachikomaMCP.MCPServerConfig(
             transport: "stdio",
-            command: config.command,
-            args: config.args,
-            env: config.env,
-            description: config.description
-        )
-        
+            command: self.config.command,
+            args: self.config.args,
+            env: self.config.env,
+            description: self.config.description)
+
         // Create client and provider
         let client = MCPClient(name: name, config: mcpServerConfig)
         let provider = MCPToolProvider(client: client)
-        
+
         // Connect
         try await provider.connect()
-        
+
         // Store references
         self.client = client
         self.provider = provider
-        
+
         // Get available tools
         self.tools = await client.tools
         self.lastConnected = Date()
-        
-        logger.info("Connected to MCP server '\(self.name)' with \(self.tools.count) tools")
+
+        self.logger.info("Connected to MCP server '\(self.name)' with \(self.tools.count) tools")
     }
-    
+
     func disconnect() async {
         if let client = self.client {
             await client.disconnect()
@@ -137,24 +135,24 @@ private actor MCPClientConnection {
         self.provider = nil
         self.tools = []
     }
-    
+
     func isConnected() -> Bool {
-        return client != nil
+        self.client != nil
     }
-    
+
     func getTools() -> [Tool] {
-        return tools
+        self.tools
     }
-    
+
     func executeTool(name: String, arguments: ToolArguments) async throws -> ToolResponse {
         guard let client = self.client else {
             throw MCPClientError.notConnected
         }
-        
+
         // Convert ToolArguments to dictionary for MCP client
         let args: [String: Any] = [:]
         // Note: This is a simplified conversion - may need to be expanded based on actual usage
-        
+
         return try await client.executeTool(name: name, arguments: args)
     }
 }
@@ -166,19 +164,19 @@ public enum MCPClientError: LocalizedError {
     case executionFailed(String)
     case notConnected
     case invalidResponse
-    
+
     public var errorDescription: String? {
         switch self {
         case .serverDisabled:
-            return "MCP server is disabled"
-        case .connectionFailed(let message):
-            return "Failed to connect: \(message)"
-        case .executionFailed(let message):
-            return "Execution failed: \(message)"
+            "MCP server is disabled"
+        case let .connectionFailed(message):
+            "Failed to connect: \(message)"
+        case let .executionFailed(message):
+            "Execution failed: \(message)"
         case .notConnected:
-            return "Not connected to MCP server"
+            "Not connected to MCP server"
         case .invalidResponse:
-            return "Invalid response from MCP server"
+            "Invalid response from MCP server"
         }
     }
 }
@@ -188,43 +186,43 @@ public enum MCPClientError: LocalizedError {
 public final class MCPClientManager {
     /// Shared instance
     public static let shared = MCPClientManager()
-    
+
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "client-manager")
     private var connections: [String: MCPClientConnection] = [:]
     private var configs: [String: MCPServerConfig] = [:]
-    
+
     public init() {}
-    
+
     /// Configure MCP servers
     public func configure(_ configs: [String: MCPServerConfig]) {
         self.configs = configs
-        
+
         // Create connections for each config
         for (name, config) in configs {
             let connection = MCPClientConnection(name: name, config: config)
             self.connections[name] = connection
         }
-        
-        logger.info("Configured \(configs.count) MCP servers")
+
+        self.logger.info("Configured \(configs.count) MCP servers")
     }
-    
+
     /// Add a single server
     public func addServer(name: String, config: MCPServerConfig) async throws {
         self.configs[name] = config
         let connection = MCPClientConnection(name: name, config: config)
         self.connections[name] = connection
-        
+
         if config.enabled {
             try await connection.connect()
         }
-        
-        logger.info("Added MCP server '\(name)'")
+
+        self.logger.info("Added MCP server '\(name)'")
     }
-    
+
     /// Initialize default servers
     public func initializeDefaultServers(userConfigs: [String: MCPServerConfig]) async {
-        logger.info("Initializing default MCP servers...")
-        
+        self.logger.info("Initializing default MCP servers...")
+
         // Define default browser server configuration
         let defaultBrowserConfig = MCPServerConfig(
             transport: "stdio",
@@ -234,74 +232,73 @@ public final class MCPClientManager {
             enabled: true,
             timeout: 15.0,
             autoReconnect: true,
-            description: "Browser automation via BrowserMCP"
-        )
-        
+            description: "Browser automation via BrowserMCP")
+
         // Load user configs from ConfigurationManager if not provided
-        let actualUserConfigs = userConfigs.isEmpty ? 
+        let actualUserConfigs = userConfigs.isEmpty ?
             (ConfigurationManager.shared.getConfiguration()?.mcpClients ?? [:]) : userConfigs
-        
+
         // Check if user has explicitly configured the browser server
         if let userBrowserConfig = actualUserConfigs["browser"] {
             // User has configured it - respect their settings (including if disabled)
             self.configs["browser"] = userBrowserConfig
             let connection = MCPClientConnection(name: "browser", config: userBrowserConfig)
             self.connections["browser"] = connection
-            
+
             if userBrowserConfig.enabled {
                 do {
                     try await connection.connect()
-                    logger.info("Initialized user-configured browser MCP server")
+                    self.logger.info("Initialized user-configured browser MCP server")
                 } catch {
-                    logger.error("Failed to connect to browser MCP server: \(error.localizedDescription)")
+                    self.logger.error("Failed to connect to browser MCP server: \(error.localizedDescription)")
                 }
             } else {
-                logger.info("Browser MCP server is disabled by user configuration")
+                self.logger.info("Browser MCP server is disabled by user configuration")
             }
         } else {
             // User hasn't configured it - add as default
             self.configs["browser"] = defaultBrowserConfig
             let connection = MCPClientConnection(name: "browser", config: defaultBrowserConfig)
             self.connections["browser"] = connection
-            
+
             do {
                 try await connection.connect()
-                logger.info("Initialized default browser MCP server")
+                self.logger.info("Initialized default browser MCP server")
             } catch {
-                logger.error("Failed to connect to default browser MCP server: \(error.localizedDescription)")
+                self.logger.error("Failed to connect to default browser MCP server: \(error.localizedDescription)")
             }
         }
-        
+
         // Also add any other user-configured servers
         for (serverName, serverConfig) in actualUserConfigs {
             // Skip browser since we already handled it
             if serverName == "browser" {
                 continue
             }
-            
+
             self.configs[serverName] = serverConfig
             let connection = MCPClientConnection(name: serverName, config: serverConfig)
             self.connections[serverName] = connection
-            
+
             if serverConfig.enabled {
                 do {
                     try await connection.connect()
-                    logger.info("Initialized user-configured server '\(serverName)'")
+                    self.logger.info("Initialized user-configured server '\(serverName)'")
                 } catch {
-                    logger.error("Failed to connect to '\(serverName)': \(error.localizedDescription)")
+                    self.logger.error("Failed to connect to '\(serverName)': \(error.localizedDescription)")
                 }
             }
         }
-        
-        logger.info("Default servers initialization completed with \(self.connections.count) servers")
+
+        self.logger.info("Default servers initialization completed with \(self.connections.count) servers")
     }
-    
+
     /// Connect to all enabled servers
     public func connectAll() async {
         await withTaskGroup(of: (String, Result<Void, TachikomaMCP.MCPError>).self) { group in
-            for (name, connection) in connections {
+            for (name, connection) in self.connections {
                 guard let config = configs[name], config.enabled else { continue }
-                
+
                 group.addTask {
                     do {
                         try await connection.connect()
@@ -313,152 +310,149 @@ public final class MCPClientManager {
                     }
                 }
             }
-            
+
             for await (name, result) in group {
                 switch result {
                 case .success:
-                    logger.info("Successfully connected to '\(name)'")
-                case .failure(let error):
-                    logger.error("Failed to connect to '\(name)': \(error.localizedDescription)")
+                    self.logger.info("Successfully connected to '\(name)'")
+                case let .failure(error):
+                    self.logger.error("Failed to connect to '\(name)': \(error.localizedDescription)")
                 }
             }
         }
     }
-    
+
     /// Disconnect from all servers
     public func disconnectAll() async {
-        for connection in connections.values {
+        for connection in self.connections.values {
             await connection.disconnect()
         }
     }
-    
+
     /// Get information about all configured servers
     public func getServerInfos() async -> [MCPServerInfo] {
         var infos: [MCPServerInfo] = []
-        
-        for (name, connection) in connections {
-            let config = configs[name] ?? MCPServerConfig(
+
+        for (name, connection) in self.connections {
+            let config = self.configs[name] ?? MCPServerConfig(
                 command: "",
                 args: [],
                 env: [:],
                 enabled: false,
-                description: ""
-            )
-            
+                description: "")
+
             let isConnected = await connection.isConnected()
             let tools = await connection.getTools()
-            
-            let health: MCPServerHealth
-            if !config.enabled {
-                health = .disabled
+
+            let health: MCPServerHealth = if !config.enabled {
+                .disabled
             } else if isConnected {
-                health = .connected(toolCount: tools.count, responseTime: 0)
+                .connected(toolCount: tools.count, responseTime: 0)
             } else {
-                health = .disconnected(error: "Not connected")
+                .disconnected(error: "Not connected")
             }
-            
+
             let info = MCPServerInfo(
                 name: name,
                 description: config.description ?? "",
                 enabled: config.enabled,
                 health: health,
                 tools: tools,
-                config: config
-            )
-            
+                config: config)
+
             infos.append(info)
         }
-        
+
         return infos
     }
-    
+
     /// Get all available tools from all connected servers
     public func getAllTools() async -> [Tool] {
         var allTools: [Tool] = []
-        
-        for connection in connections.values {
+
+        for connection in self.connections.values {
             let tools = await connection.getTools()
             allTools.append(contentsOf: tools)
         }
-        
+
         return allTools
     }
-    
+
     /// Execute an external tool
     public func executeExternalTool(
         serverName: String,
         toolName: String,
-        arguments: ToolArguments
-    ) async throws -> ToolResponse {
+        arguments: ToolArguments) async throws -> ToolResponse
+    {
         guard let connection = connections[serverName] else {
             throw MCPClientError.executionFailed("Server '\(serverName)' not found")
         }
-        
+
         return try await connection.executeTool(name: toolName, arguments: arguments)
     }
-    
+
     /// Get external tools from all connected servers
     public func getExternalTools() async -> [String: [Tool]] {
         var toolsByServer: [String: [Tool]] = [:]
-        
-        for (name, connection) in connections {
+
+        for (name, connection) in self.connections {
             let tools = await connection.getTools()
             if !tools.isEmpty {
                 toolsByServer[name] = tools
             }
         }
-        
+
         return toolsByServer
     }
-    
+
     /// Convert MCP response to ToolResponse
     private func convertResponse(_ content: [MCP.Tool.Content]) -> ToolResponse {
         ToolResponse(content: content)
     }
-    
+
     // MARK: - Additional Methods for CLI Compatibility
-    
+
     /// Get all server names
     public func getServerNames() async -> [String] {
         let names = Array(connections.keys).sorted()
-        logger.info("Returning \(names.count) server names: \(names)")
+        self.logger.info("Returning \(names.count) server names: \(names)")
         return names
     }
-    
+
     /// Check health status for all servers
     public func checkAllServersHealth() async -> [String: MCPServerHealth] {
         var healthResults: [String: MCPServerHealth] = [:]
-        
+
         await withTaskGroup(of: (String, MCPServerHealth).self) { group in
-            for (name, _) in connections {
+            for (name, _) in self.connections {
                 group.addTask {
                     let health = await self.checkServerHealth(name: name)
                     return (name, health)
                 }
             }
-            
+
             for await (name, health) in group {
                 healthResults[name] = health
             }
         }
-        
+
         return healthResults
     }
-    
+
     /// Check health status for a specific server
     public func checkServerHealth(name: String, timeout: Int = 5000) async -> MCPServerHealth {
         guard let connection = connections[name] else {
             return .unknown
         }
-        
+
         guard let config = configs[name], config.enabled else {
             return .disabled
         }
-        
+
         let startTime = Date()
         let isConnected = await connection.isConnected()
         let responseTime = Date().timeIntervalSince(startTime)
-        
+
         if isConnected {
             let tools = await connection.getTools()
             return .connected(toolCount: tools.count, responseTime: responseTime)
@@ -473,91 +467,88 @@ public final class MCPClientManager {
             }
         }
     }
-    
+
     /// Get information about a specific server
     public func getServerInfo(name: String) async -> MCPServerInfo? {
         guard let connection = connections[name] else {
             return nil
         }
-        
-        let config = configs[name] ?? MCPServerConfig(
+
+        let config = self.configs[name] ?? MCPServerConfig(
             command: "",
             args: [],
             env: [:],
             enabled: false,
-            description: ""
-        )
-        
+            description: "")
+
         let isConnected = await connection.isConnected()
         let tools = await connection.getTools()
-        
-        let health: MCPServerHealth
-        if !config.enabled {
-            health = .disabled
+
+        let health: MCPServerHealth = if !config.enabled {
+            .disabled
         } else if isConnected {
-            health = .connected(toolCount: tools.count, responseTime: 0)
+            .connected(toolCount: tools.count, responseTime: 0)
         } else {
-            health = .disconnected(error: "Not connected")
+            .disconnected(error: "Not connected")
         }
-        
+
         return MCPServerInfo(
             name: name,
             description: config.description ?? "",
             enabled: config.enabled,
             health: health,
             tools: tools,
-            config: config
-        )
+            config: config)
     }
-    
+
     /// Check if a server is a default server
     public func isDefaultServer(name: String) -> Bool {
         // Browser server is the default server shipped with Peekaboo
-        return name == "browser"
+        name == "browser"
     }
-    
+
     /// Remove a server
     public func removeServer(name: String) async throws {
         guard let connection = connections[name] else {
             throw MCPClientError.executionFailed("Server '\(name)' not found")
         }
-        
+
         await connection.disconnect()
-        connections.removeValue(forKey: name)
-        configs.removeValue(forKey: name)
-        
-        logger.info("Removed MCP server '\(name)'")
+        self.connections.removeValue(forKey: name)
+        self.configs.removeValue(forKey: name)
+
+        self.logger.info("Removed MCP server '\(name)'")
     }
-    
+
     /// Enable a server
     public func enableServer(name: String) async throws {
         guard var config = configs[name] else {
             throw MCPClientError.executionFailed("Server '\(name)' not found")
         }
-        
+
         config.enabled = true
-        configs[name] = config
-        
+        self.configs[name] = config
+
         if let connection = connections[name] {
             try await connection.connect()
         }
-        
-        logger.info("Enabled MCP server '\(name)'")
+
+        self.logger.info("Enabled MCP server '\(name)'")
     }
-    
+
     /// Disable a server
     public func disableServer(name: String) async throws {
         guard var config = configs[name] else {
             throw MCPClientError.executionFailed("Server '\(name)' not found")
         }
-        
+
         config.enabled = false
-        configs[name] = config
-        
+        self.configs[name] = config
+
         if let connection = connections[name] {
             await connection.disconnect()
         }
-        
-        logger.info("Disabled MCP server '\(name)'")
+
+        self.logger.info("Disabled MCP server '\(name)'")
     }
 }

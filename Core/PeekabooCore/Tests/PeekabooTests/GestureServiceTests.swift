@@ -3,12 +3,15 @@ import Foundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("GestureService Tests", .tags(.ui))
+@Suite(
+    "GestureService Tests",
+    .tags(.ui, .automation, .requiresDisplay),
+    .enabled(if: TestEnvironment.runAutomationScenarios))
 @MainActor
 struct GestureServiceTests {
     @Test("Initialize GestureService")
     func initializeService() async throws {
-        let service = GestureService()
+        let service: GestureService? = GestureService()
         #expect(service != nil)
     }
 

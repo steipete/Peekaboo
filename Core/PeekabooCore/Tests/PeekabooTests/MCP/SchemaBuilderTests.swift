@@ -27,7 +27,7 @@ struct SchemaBuilderTests {
         #expect(dict["description"] == .string("A simple user object"))
 
         // Check required array
-        if let required = dict["required"] ,
+        if let required = dict["required"],
            case let .array(requiredArray) = required
         {
             #expect(requiredArray.count == 1)
@@ -37,7 +37,7 @@ struct SchemaBuilderTests {
         }
 
         // Check properties
-        if let properties = dict["properties"] ,
+        if let properties = dict["properties"],
            case let .object(props) = properties
         {
             #expect(props.count == 1)
@@ -61,7 +61,7 @@ struct SchemaBuilderTests {
             required: ["path", "format"])
 
         guard case let .object(dict) = schema,
-              let properties = dict["properties"] ,
+              let properties = dict["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -75,7 +75,7 @@ struct SchemaBuilderTests {
         #expect(props["overwrite"] != nil)
 
         // Verify required fields
-        if let required = dict["required"] ,
+        if let required = dict["required"],
            case let .array(requiredArray) = required
         {
             #expect(requiredArray.count == 2)
@@ -95,8 +95,8 @@ struct SchemaBuilderTests {
             return
         }
 
-        #expect(dict["type"]  == .string("string"))
-        #expect(dict["description"]  == .string("A test string"))
+        #expect(dict["type"] == .string("string"))
+        #expect(dict["description"] == .string("A test string"))
     }
 
     @Test("Create string schema with enum values")
@@ -110,9 +110,9 @@ struct SchemaBuilderTests {
             return
         }
 
-        #expect(dict["type"]  == .string("string"))
+        #expect(dict["type"] == .string("string"))
 
-        if let enumValue = dict["enum"] ,
+        if let enumValue = dict["enum"],
            case let .array(enumArray) = enumValue
         {
             #expect(enumArray.count == 3)
@@ -136,7 +136,7 @@ struct SchemaBuilderTests {
             return
         }
 
-        #expect(dict["default"]  == .string("png"))
+        #expect(dict["default"] == .string("png"))
     }
 
     // MARK: - Boolean Schema Tests
@@ -150,8 +150,8 @@ struct SchemaBuilderTests {
             return
         }
 
-        #expect(dict["type"]  == .string("boolean"))
-        #expect(dict["description"]  == .string("Enable feature"))
+        #expect(dict["type"] == .string("boolean"))
+        #expect(dict["description"] == .string("Enable feature"))
     }
 
     @Test("Create boolean schema without description")
@@ -163,7 +163,7 @@ struct SchemaBuilderTests {
             return
         }
 
-        #expect(dict["type"]  == .string("boolean"))
+        #expect(dict["type"] == .string("boolean"))
         #expect(dict["description"] == nil)
     }
 
@@ -178,8 +178,8 @@ struct SchemaBuilderTests {
             return
         }
 
-        #expect(dict["type"]  == .string("number"))
-        #expect(dict["description"]  == .string("Timeout in seconds"))
+        #expect(dict["type"] == .string("number"))
+        #expect(dict["description"] == .string("Timeout in seconds"))
     }
 
     // MARK: - Complex Nested Schema Tests
@@ -203,7 +203,7 @@ struct SchemaBuilderTests {
             required: ["user"])
 
         guard case let .object(dict) = schema,
-              let properties = dict["properties"] ,
+              let properties = dict["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected nested object schema")
@@ -216,7 +216,7 @@ struct SchemaBuilderTests {
         // Verify nested user object
         if let userSchema = props["user"],
            case let .object(userDict) = userSchema,
-           let userProps = userDict["properties"] ,
+           let userProps = userDict["properties"],
            case let .object(userProperties) = userProps
         {
             #expect(userProperties["name"] != nil)
@@ -237,16 +237,16 @@ struct SchemaBuilderTests {
             return
         }
 
-        #expect(dict["type"]  == .string("object"))
+        #expect(dict["type"] == .string("object"))
 
-        if let properties = dict["properties"] ,
+        if let properties = dict["properties"],
            case let .object(props) = properties
         {
             #expect(props.isEmpty)
         }
 
         // No required array should be present for empty required list
-        if let required = dict["required"] ,
+        if let required = dict["required"],
            case let .array(requiredArray) = required
         {
             #expect(requiredArray.isEmpty)
@@ -263,7 +263,7 @@ struct SchemaBuilderTests {
             return
         }
 
-        #expect(dict["description"]  == .string("Path with \"quotes\" and \nnewlines\tand tabs"))
+        #expect(dict["description"] == .string("Path with \"quotes\" and \nnewlines\tand tabs"))
     }
 }
 

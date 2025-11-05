@@ -8,7 +8,7 @@ struct AppCommandTests {
     func appCommandExists() {
         let config = AppCommand.configuration
         #expect(config.commandName == "app")
-        #expect(config.abstract.contains("application lifecycle"))
+        #expect(config.abstract.contains("Control applications"))
     }
 
     @Test("App command has expected subcommands")
@@ -16,7 +16,7 @@ struct AppCommandTests {
         let subcommands = AppCommand.configuration.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map { $0.configuration.commandName }
+        let subcommandNames = subcommands.map(\.configuration.commandName)
         #expect(subcommandNames.contains("launch"))
         #expect(subcommandNames.contains("quit"))
         #expect(subcommandNames.contains("hide"))

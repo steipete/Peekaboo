@@ -1,10 +1,13 @@
 import CoreGraphics
-import PeekabooFoundation
 import Foundation
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("ScrollService Tests", .tags(.ui))
+@Suite(
+    "ScrollService Tests",
+    .tags(.ui, .automation),
+    .enabled(if: TestEnvironment.runAutomationScenarios))
 @MainActor
 struct ScrollServiceTests {
     @Test("ScrollService initializes successfully with default configuration")

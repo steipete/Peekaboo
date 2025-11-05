@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 import Tachikoma
 
 // MARK: - Header Components
@@ -9,16 +9,16 @@ struct StatusBarHeaderView: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
     @Environment(SpeechRecognizer.self) private var speechRecognizer
-    
+
     @Binding var isVoiceMode: Bool
 
     var body: some View {
         HStack {
             // Status icon
-            Image(systemName: agent.isProcessing ? "brain" : "moon.stars")
+            Image(systemName: self.agent.isProcessing ? "brain" : "moon.stars")
                 .font(.title2)
-                .foregroundColor(agent.isProcessing ? .accentColor : .secondary)
-                .symbolEffect(.pulse, options: .repeating, isActive: agent.isProcessing)
+                .foregroundColor(self.agent.isProcessing ? .accentColor : .secondary)
+                .symbolEffect(.pulse, options: .repeating, isActive: self.agent.isProcessing)
 
             // Status information
             StatusInfoView()
@@ -31,7 +31,7 @@ struct StatusBarHeaderView: View {
             }
 
             // Controls
-            HeaderControlsView(isVoiceMode: $isVoiceMode)
+            HeaderControlsView(isVoiceMode: self.$isVoiceMode)
         }
     }
 }
@@ -48,13 +48,13 @@ struct StatusInfoView: View {
                     .font(.headline)
                     .lineLimit(1)
 
-                if agent.isProcessing {
+                if self.agent.isProcessing {
                     CurrentToolView()
                 } else {
                     SessionDurationView(session: currentSession)
                 }
             } else {
-                Text(agent.isProcessing ? "Agent Active" : "Agent Idle")
+                Text(self.agent.isProcessing ? "Agent Active" : "Agent Idle")
                     .font(.headline)
             }
         }
@@ -73,7 +73,7 @@ struct CurrentToolView: View {
                     status: .running)
                     .font(.system(size: 12))
                     .frame(width: 14, height: 14)
-                
+
                 Text(ToolFormatter.compactToolSummary(
                     toolName: currentTool.toolName,
                     arguments: currentTool.arguments ?? ""))
@@ -98,7 +98,7 @@ struct SessionDurationView: View {
         HStack(spacing: 4) {
             Image(systemName: "clock")
                 .font(.caption2)
-            Text(formatSessionDuration(session))
+            Text(formatSessionDuration(self.session))
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -113,11 +113,11 @@ struct TokenUsageView: View {
         HStack(spacing: 2) {
             Image(systemName: "circle.hexagongrid.circle")
                 .font(.caption)
-            Text("\(usage.totalTokens)")
+            Text("\(self.usage.totalTokens)")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .help("Tokens: \(usage.inputTokens) in, \(usage.outputTokens) out")
+        .help("Tokens: \(self.usage.inputTokens) in, \(self.usage.outputTokens) out")
     }
 }
 
@@ -125,30 +125,30 @@ struct TokenUsageView: View {
 struct HeaderControlsView: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SpeechRecognizer.self) private var speechRecognizer
-    
+
     @Binding var isVoiceMode: Bool
 
     var body: some View {
         HStack(spacing: 8) {
             // Voice mode toggle button
-            if !agent.isProcessing {
-                Button(action: { isVoiceMode.toggle() }) {
-                    Image(systemName: isVoiceMode ? "keyboard" : "mic")
+            if !self.agent.isProcessing {
+                Button(action: { self.isVoiceMode.toggle() }) {
+                    Image(systemName: self.isVoiceMode ? "keyboard" : "mic")
                         .font(.title3)
-                        .foregroundColor(isVoiceMode ? .red : .accentColor)
+                        .foregroundColor(self.isVoiceMode ? .red : .accentColor)
                         .symbolEffect(
                             .pulse,
                             options: .repeating,
-                            isActive: isVoiceMode && speechRecognizer.isListening)
+                            isActive: self.isVoiceMode && self.speechRecognizer.isListening)
                 }
                 .buttonStyle(.plain)
-                .help(isVoiceMode ? "Switch to text input" : "Switch to voice input")
+                .help(self.isVoiceMode ? "Switch to text input" : "Switch to voice input")
             }
 
             // Cancel button when processing
-            if agent.isProcessing {
+            if self.agent.isProcessing {
                 Button(action: {
-                    agent.cancelCurrentTask()
+                    self.agent.cancelCurrentTask()
                 }) {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)

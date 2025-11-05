@@ -1,10 +1,9 @@
 import Foundation
+import KeyboardShortcuts
 import Observation
 import PeekabooCore
 import ServiceManagement
-import KeyboardShortcuts
 import Tachikoma
-
 
 /// Application settings and preferences manager.
 ///
@@ -108,9 +107,9 @@ final class PeekabooSettings {
     var launchAtLogin: Bool = false {
         didSet {
             // Don't save or update during loading to prevent recursion
-            if !isLoading {
+            if !self.isLoading {
                 self.save()
-                
+
                 // Update launch at login status
                 do {
                     if self.launchAtLogin {
@@ -130,6 +129,7 @@ final class PeekabooSettings {
     }
 
     // MARK: - Keyboard Shortcuts
+
     // Keyboard shortcuts are now managed by sindresorhus/KeyboardShortcuts library
     // See KeyboardShortcutNames.swift for the defined shortcuts
 
@@ -254,23 +254,23 @@ final class PeekabooSettings {
             self.updateConfigFile()
         }
     }
-    
+
     // MARK: - Realtime Voice Settings
-    
+
     /// The selected voice for realtime conversations
-    var realtimeVoice: String? = nil {
+    var realtimeVoice: String? {
         didSet {
             self.save()
         }
     }
-    
+
     /// Custom instructions for the realtime assistant
-    var realtimeInstructions: String? = nil {
+    var realtimeInstructions: String? {
         didSet {
             self.save()
         }
     }
-    
+
     /// Whether to use voice activity detection
     var realtimeVAD: Bool = true {
         didSet {
@@ -324,9 +324,9 @@ final class PeekabooSettings {
     var hasValidAPIKey: Bool {
         switch self.selectedProvider {
         case "openai":
-            return !self.openAIAPIKey.isEmpty || isUsingOpenAIEnvironment
+            return !self.openAIAPIKey.isEmpty || self.isUsingOpenAIEnvironment
         case "anthropic":
-            return !self.anthropicAPIKey.isEmpty || isUsingAnthropicEnvironment
+            return !self.anthropicAPIKey.isEmpty || self.isUsingAnthropicEnvironment
         case "ollama":
             return true // Ollama doesn't require API key
         default:
@@ -337,16 +337,16 @@ final class PeekabooSettings {
             return false
         }
     }
-    
+
     // Check if we're using environment variables
     var isUsingOpenAIEnvironment: Bool {
         // If settings are empty and environment has the key
-        openAIAPIKey.isEmpty && ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil
+        self.openAIAPIKey.isEmpty && ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil
     }
-    
+
     var isUsingAnthropicEnvironment: Bool {
         // If settings are empty and environment has the key
-        anthropicAPIKey.isEmpty && ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil
+        self.anthropicAPIKey.isEmpty && ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil
     }
 
     var allAvailableProviders: [String] {
@@ -369,7 +369,7 @@ final class PeekabooSettings {
         // Set loading flag to prevent recursive saves
         self.isLoading = true
         defer { self.isLoading = false }
-        
+
         self.selectedProvider = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedProvider") ?? "anthropic"
         self.openAIAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)openAIAPIKey") ?? ""
         self.anthropicAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)anthropicAPIKey") ?? ""
@@ -403,7 +403,7 @@ final class PeekabooSettings {
         // Check actual launch at login status
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
         self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
-        
+
         // Keyboard shortcuts are automatically loaded by the KeyboardShortcuts library
 
         // Default voiceActivationEnabled to true if not previously set
@@ -476,7 +476,7 @@ final class PeekabooSettings {
         self.dialogInteractionEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)dialogInteractionEnabled")
         self.spaceTransitionEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)spaceTransitionEnabled")
         self.ghostEasterEggEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)ghostEasterEggEnabled")
-        
+
         // Load Realtime Voice settings
         self.realtimeVoice = self.userDefaults.string(forKey: "\(self.keyPrefix)realtimeVoice")
         self.realtimeInstructions = self.userDefaults.string(forKey: "\(self.keyPrefix)realtimeInstructions")
@@ -501,7 +501,7 @@ final class PeekabooSettings {
         self.userDefaults.set(self.alwaysOnTop, forKey: "\(self.keyPrefix)alwaysOnTop")
         self.userDefaults.set(self.showInDock, forKey: "\(self.keyPrefix)showInDock")
         self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
-        
+
         // Keyboard shortcuts are automatically saved by the KeyboardShortcuts library
 
         self.userDefaults.set(self.voiceActivationEnabled, forKey: "\(self.keyPrefix)voiceActivationEnabled")
@@ -529,7 +529,7 @@ final class PeekabooSettings {
         self.userDefaults.set(self.dialogInteractionEnabled, forKey: "\(self.keyPrefix)dialogInteractionEnabled")
         self.userDefaults.set(self.spaceTransitionEnabled, forKey: "\(self.keyPrefix)spaceTransitionEnabled")
         self.userDefaults.set(self.ghostEasterEggEnabled, forKey: "\(self.keyPrefix)ghostEasterEggEnabled")
-        
+
         // Save Realtime Voice settings
         if let voice = self.realtimeVoice {
             self.userDefaults.set(voice, forKey: "\(self.keyPrefix)realtimeVoice")
@@ -711,7 +711,7 @@ final class PeekabooSettings {
                 return
             }
             try self.configManager.setCredential(key: key, value: value)
-            
+
             // Configure Tachikoma with the new API key
             if key == "OPENAI_API_KEY" {
                 TachikomaConfiguration.current.setAPIKey(value, for: .openai)
@@ -753,5 +753,4 @@ final class PeekabooSettings {
     func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
         await self.configManager.discoverModelsForCustomProvider(id: id)
     }
-    
 }

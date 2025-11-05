@@ -4,7 +4,7 @@
 /// private CoreGraphics APIs. These APIs enable advanced window management features
 /// that are not available through public frameworks.
 ///
-/// ## ⚠️ Important Warning
+/// ## \(AgentDisplayTokens.Status.warning) Important Warning
 ///
 /// This implementation relies on private CGS (CoreGraphics Services) APIs that:
 /// - Are undocumented and unsupported by Apple
@@ -478,10 +478,10 @@ public final class SpaceManagementService {
     public func switchToSpace(_ spaceID: CGSSpaceID) async throws {
         let currentSpace = CGSGetActiveSpace(connection)
         let direction: SpaceDirection = spaceID > currentSpace ? .right : .left
-        
+
         // Show space switch visualization
         _ = await self.visualizerClient.showSpaceSwitch(from: Int(currentSpace), to: Int(spaceID), direction: direction)
-        
+
         // Use kCGSPackagesMainDisplayIdentifier for the main display
         CGSManagedDisplaySetCurrentSpace(connection, kCGSPackagesMainDisplayIdentifier, spaceID)
 

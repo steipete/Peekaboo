@@ -1,8 +1,8 @@
 import Foundation
-import PeekabooFoundation
-import TachikomaMCP
 import MCP
 import os.log
+import PeekabooFoundation
+import TachikomaMCP
 
 /// MCP tool for scrolling UI elements or at current mouse position
 public struct ScrollTool: MCPTool {
@@ -115,7 +115,7 @@ public struct ScrollTool: MCPTool {
 
             // Build response message
             let scrollDescription = smooth ? "smooth scroll" : "scroll"
-            let message = "✅ Performed \(scrollDescription) \(direction) (\(amount) ticks) \(targetDescription) in \(String(format: "%.2f", executionTime))s"
+            let message = "\(AgentDisplayTokens.Status.success) Performed \(scrollDescription) \(direction) (\(amount) ticks) \(targetDescription) in \(String(format: "%.2f", executionTime))s"
 
             return ToolResponse.text(message)
 

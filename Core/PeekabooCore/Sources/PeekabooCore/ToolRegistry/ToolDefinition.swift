@@ -132,15 +132,15 @@ public enum ToolCategory: String, CaseIterable, Sendable {
 
     public var icon: String {
         switch self {
-        case .vision: "👁️"
+        case .vision: "[see]️"
         case .automation, .ui: "🤖"
-        case .window: "🪟"
-        case .app, .application: "📱"
-        case .menu, .dialog: "📋"
+        case .window: "[win]"
+        case .app, .application: "[apps]"
+        case .menu, .dialog: "[menu]"
         case .dock: "🚢"
         case .system: "⚙️"
         case .element, .query: "🔍"
-        case .completion: "✅"
+        case .completion: "\(AgentDisplayTokens.Status.success)"
         }
     }
 }

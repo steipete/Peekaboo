@@ -21,7 +21,7 @@ struct GhostImageView: View {
     var body: some View {
         Canvas { context, canvasSize in
             // Center point for drawing (for future use)
-            let _ = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+            _ = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
 
             // Scale to fit the requested size
             let scale = min(canvasSize.width / 20, canvasSize.height / 20)

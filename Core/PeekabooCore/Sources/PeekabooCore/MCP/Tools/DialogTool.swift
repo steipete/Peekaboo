@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for interacting with system dialogs and alerts
 public struct DialogTool: MCPTool {
@@ -150,10 +150,10 @@ public struct DialogTool: MCPTool {
         let elements = try await service.listDialogElements(windowTitle: window)
         let executionTime = Date().timeIntervalSince(startTime)
 
-        var content = "✅ Dialog Elements Found in \(String(format: "%.2f", executionTime))s:\n\n"
+        var content = "\(AgentDisplayTokens.Status.success) Dialog Elements Found in \(String(format: "%.2f", executionTime))s:\n\n"
 
         // Dialog info
-        content += "📋 **Dialog**: \(elements.dialogInfo.title)\n"
+        content += "[menu] **Dialog**: \(elements.dialogInfo.title)\n"
         content += "   Role: \(elements.dialogInfo.role)\n"
         if let subrole = elements.dialogInfo.subrole {
             content += "   Subrole: \(subrole)\n"
@@ -163,7 +163,7 @@ public struct DialogTool: MCPTool {
 
         // Buttons
         if !elements.buttons.isEmpty {
-            content += "🔘 **Buttons** (\(elements.buttons.count)):\n"
+            content += "[tap] **Buttons** (\(elements.buttons.count)):\n"
             for button in elements.buttons {
                 let status = button.isEnabled ? "enabled" : "disabled"
                 let defaultMark = button.isDefault ? " (default)" : ""
@@ -196,7 +196,7 @@ public struct DialogTool: MCPTool {
 
         // Other elements
         if !elements.otherElements.isEmpty {
-            content += "🔧 **Other Elements** (\(elements.otherElements.count)):\n"
+            content += "**Other Elements** (\(elements.otherElements.count)):\n"
             for element in elements.otherElements {
                 let title = element.title ?? "Untitled"
                 let value = element.value.map { " = '\($0)'" } ?? ""
@@ -229,7 +229,10 @@ public struct DialogTool: MCPTool {
 
         if result.success {
             return ToolResponse(
-                content: [.text("✅ Clicked button '\(button)' in \(String(format: "%.2f", executionTime))s")],
+                content: [
+                    .text(
+                        "\(AgentDisplayTokens.Status.success) Clicked button '\(button)' in \(String(format: "%.2f", executionTime))s"),
+                ],
                 meta: .object([
                     "button_text": .string(button),
                     "action": .string(result.action.rawValue),
@@ -264,7 +267,7 @@ public struct DialogTool: MCPTool {
             return ToolResponse(
                 content: [
                     .text(
-                        "✅ Entered text '\(text)' into \(fieldDesc)\(clearDesc) in \(String(format: "%.2f", executionTime))s"),
+                        "\(AgentDisplayTokens.Status.success) Entered text '\(text)' into \(fieldDesc)\(clearDesc) in \(String(format: "%.2f", executionTime))s"),
                 ],
                 meta: .object([
                     "text": .string(text),
@@ -310,7 +313,10 @@ public struct DialogTool: MCPTool {
 
         if result.success {
             return ToolResponse(
-                content: [.text("✅ Selected file '\(targetPath)' in \(String(format: "%.2f", executionTime))s")],
+                content: [
+                    .text(
+                        "\(AgentDisplayTokens.Status.success) Selected file '\(targetPath)' in \(String(format: "%.2f", executionTime))s"),
+                ],
                 meta: .object([
                     "path": .string(targetPath),
                     "filename": .string(filename),
@@ -337,7 +343,10 @@ public struct DialogTool: MCPTool {
         if result.success {
             let method = force ? "force (Escape key)" : "normal"
             return ToolResponse(
-                content: [.text("✅ Dismissed dialog using \(method) in \(String(format: "%.2f", executionTime))s")],
+                content: [
+                    .text(
+                        "\(AgentDisplayTokens.Status.success) Dismissed dialog using \(method) in \(String(format: "%.2f", executionTime))s"),
+                ],
                 meta: .object([
                     "force": .bool(force),
                     "action": .string(result.action.rawValue),

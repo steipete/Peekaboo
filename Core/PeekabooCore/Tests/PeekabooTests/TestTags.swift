@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 // MARK: - Common Test Tags
@@ -31,4 +32,18 @@ extension Tag {
     @Tag static var requiresDisplay: Self
     @Tag static var requiresPermissions: Self
     @Tag static var requiresNetwork: Self
+}
+
+enum TestEnvironment {
+    private static let env = ProcessInfo.processInfo.environment
+
+    /// Enable automation-focused tests (input devices, hotkeys, typing).
+    static var runAutomationScenarios: Bool {
+        env["RUN_AUTOMATION_TESTS"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+    }
+
+    /// Enable screen capture and multi-display validation scenarios.
+    static var runScreenCaptureScenarios: Bool {
+        env["RUN_SCREEN_TESTS"] == "true" || runAutomationScenarios
+    }
 }

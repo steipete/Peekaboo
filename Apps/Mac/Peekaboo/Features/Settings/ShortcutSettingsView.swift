@@ -5,12 +5,11 @@
 //  Created by Claude on 2025-08-04.
 //
 
-import SwiftUI
-import PeekabooCore
 import KeyboardShortcuts
+import PeekabooCore
+import SwiftUI
 
 struct ShortcutSettingsView: View {
-    
     var body: some View {
         Form {
             Section {
@@ -26,31 +25,28 @@ struct ShortcutSettingsView: View {
                     Spacer()
                 }
             }
-            
+
             Section("Global Shortcuts") {
                 VStack(spacing: 16) {
                     ShortcutRecorderView(
                         title: "Toggle Popover",
-                        shortcutName: .togglePopover
-                    )
-                    
+                        shortcutName: .togglePopover)
+
                     Divider()
-                    
+
                     ShortcutRecorderView(
                         title: "Show Main Window",
-                        shortcutName: .showMainWindow
-                    )
-                    
+                        shortcutName: .showMainWindow)
+
                     Divider()
-                    
+
                     ShortcutRecorderView(
                         title: "Show Inspector",
-                        shortcutName: .showInspector
-                    )
+                        shortcutName: .showInspector)
                 }
                 .padding(.vertical, 8)
             }
-            
+
             Section("Instructions") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -59,7 +55,7 @@ struct ShortcutSettingsView: View {
                         Text("How to record shortcuts:")
                             .font(.headline)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         Label("Click \"Record\" next to any shortcut", systemImage: "1.circle")
                         Label("Press your desired key combination", systemImage: "2.circle")
@@ -68,15 +64,15 @@ struct ShortcutSettingsView: View {
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    
+
                     Divider()
                         .padding(.vertical, 4)
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Tips:")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        
+
                         Text("• Shortcuts must include at least one modifier key (⌘, ⌥, ⌃, or ⇧)")
                         Text("• Avoid common system shortcuts like ⌘Space or ⌘Tab")
                         Text("• Changes take effect immediately without restart")

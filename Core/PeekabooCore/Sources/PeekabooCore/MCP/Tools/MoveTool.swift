@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 #if canImport(AppKit)
 import AppKit
@@ -145,7 +145,7 @@ public struct MoveTool: MCPTool {
             let executionTime = Date().timeIntervalSince(startTime)
 
             // Build response message
-            var message = "✅ Moved mouse cursor to \(targetDescription)"
+            var message = "\(AgentDisplayTokens.Status.success) Moved mouse cursor to \(targetDescription)"
             if useSmooth {
                 message += " with smooth animation (\(duration)ms, \(steps) steps)"
             }

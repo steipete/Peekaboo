@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 import Testing
 @testable import peekaboo
 @testable import PeekabooCore

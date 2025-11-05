@@ -17,7 +17,6 @@ import PeekabooFoundation
 import PeekabooUICore
 import SwiftUI
 
-
 /// Coordinates all visual feedback animations for the Peekaboo app
 /// This follows modern SwiftUI patterns and focuses on simplicity
 @MainActor
@@ -84,7 +83,11 @@ final class VisualizerCoordinator {
     }
 
     /// Shows scroll feedback
-    func showScrollFeedback(at point: CGPoint, direction: PeekabooFoundation.ScrollDirection, amount: Int) async -> Bool {
+    func showScrollFeedback(
+        at point: CGPoint,
+        direction: PeekabooFoundation.ScrollDirection,
+        amount: Int) async -> Bool
+    {
         self.logger
             .info(
                 "📜 Visualizer: Showing scroll feedback at \(String(describing: point)), direction: \(direction), amount: \(amount)")
@@ -241,15 +244,15 @@ final class VisualizerCoordinator {
 
         return false
     }
-    
+
     /// Get the appropriate screen for displaying visualizations based on context
     /// For point-based operations, use the screen containing that point
     /// For general operations, use the screen containing the mouse cursor
     private func getTargetScreen(for point: CGPoint? = nil) -> NSScreen {
-        if let point = point {
-            return NSScreen.screen(containing: point)
+        if let point {
+            NSScreen.screen(containing: point)
         } else {
-            return NSScreen.mouseScreen
+            NSScreen.mouseScreen
         }
     }
 

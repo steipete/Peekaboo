@@ -1,219 +1,218 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import Testing
 import PeekabooCore
 import PeekabooFoundation
+import Testing
 @testable import peekaboo
 
 // TODO: ScreenCaptureTests commented out - API changes needed (ApplicationFinder, WindowManager missing)
 /*
-@Suite("ScreenCapture Tests", .serialized)
-struct ScreenCaptureTests {
-    
-    
-    @Suite("Display Capture Tests", .tags(.localOnly))
-    struct DisplayCaptureTests {
-        let tempDir: URL
+ @Suite("ScreenCapture Tests", .serialized)
+ struct ScreenCaptureTests {
 
-        init() throws {
-            self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
-        }
+     @Suite("Display Capture Tests", .tags(.localOnly))
+     struct DisplayCaptureTests {
+         let tempDir: URL
 
-        @Test("Captures main display", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
-        @MainActor
-        func capturesMainDisplay() async throws {
-            let mainDisplayID = CGMainDisplayID()
-            let outputPath = self.tempDir.appendingPathComponent("main-display.png").path
+         init() throws {
+             self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+             try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
+         }
 
-            // Create screen capture service
-            let service = PeekabooServices.shared.screenCapture
-            
-            // Capture display
-            let result = try await service.captureScreen(displayIndex: nil)
-            
-            // Save the image data to file
-            try result.imageData.write(to: URL(fileURLWithPath: outputPath))
+         @Test("Captures main display", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+         @MainActor
+         func capturesMainDisplay() async throws {
+             let mainDisplayID = CGMainDisplayID()
+             let outputPath = self.tempDir.appendingPathComponent("main-display.png").path
 
-            #expect(FileManager.default.fileExists(atPath: outputPath))
+             // Create screen capture service
+             let service = PeekabooServices.shared.screenCapture
 
-            // Verify it's a valid image
-            let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
-            #expect(data.count > 1000) // Should be a reasonable size
+             // Capture display
+             let result = try await service.captureScreen(displayIndex: nil)
 
-            // Check PNG header
-            #expect(data.prefix(8) == Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
-        }
+             // Save the image data to file
+             try result.imageData.write(to: URL(fileURLWithPath: outputPath))
 
-        @Test("Captures in JPEG format", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
-        @MainActor
-        func capturesInJPEGFormat() async throws {
-            let mainDisplayID = CGMainDisplayID()
-            let outputPath = self.tempDir.appendingPathComponent("main-display.jpg").path
+             #expect(FileManager.default.fileExists(atPath: outputPath))
 
-            // Create screen capture service
-            let service = PeekabooServices.shared.screenCapture
-            
-            // Capture display
-            let result = try await service.captureScreen(displayIndex: nil)
-            
-            // Save the image data to file as JPEG
-            // Note: The service returns PNG data, so we need to convert it
-            if let image = NSImage(data: result.imageData),
-               let tiffData = image.tiffRepresentation,
-               let bitmap = NSBitmapImageRep(data: tiffData),
-               let jpegData = bitmap.representation(using: .jpeg, properties: [:]) {
-                try jpegData.write(to: URL(fileURLWithPath: outputPath))
-            }
+             // Verify it's a valid image
+             let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
+             #expect(data.count > 1000) // Should be a reasonable size
 
-            #expect(FileManager.default.fileExists(atPath: outputPath))
+             // Check PNG header
+             #expect(data.prefix(8) == Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+         }
 
-            // Verify it's a valid JPEG
-            let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
-            #expect(data.prefix(3) == Data([0xFF, 0xD8, 0xFF]))
-        }
+         @Test("Captures in JPEG format", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+         @MainActor
+         func capturesInJPEGFormat() async throws {
+             let mainDisplayID = CGMainDisplayID()
+             let outputPath = self.tempDir.appendingPathComponent("main-display.jpg").path
 
-        @Test(
-            "Fails with invalid display ID",
-            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
-        )
-        @MainActor
-        func failsWithInvalidDisplayID() async throws {
-            let invalidDisplayID: CGDirectDisplayID = 999_999
-            let outputPath = self.tempDir.appendingPathComponent("invalid.png").path
+             // Create screen capture service
+             let service = PeekabooServices.shared.screenCapture
 
-            await #expect(throws: PeekabooError.self) {
-                let service = PeekabooServices.shared.screenCapture
-                
-                // Try to capture with an invalid display index (very high number)
-                let _ = try await service.captureScreen(displayIndex: 999999)
-            }
-        }
-    }
+             // Capture display
+             let result = try await service.captureScreen(displayIndex: nil)
 
-    @Suite("Window Capture Tests", .tags(.localOnly))
-    struct WindowCaptureTests {
-        let tempDir: URL
+             // Save the image data to file as JPEG
+             // Note: The service returns PNG data, so we need to convert it
+             if let image = NSImage(data: result.imageData),
+                let tiffData = image.tiffRepresentation,
+                let bitmap = NSBitmapImageRep(data: tiffData),
+                let jpegData = bitmap.representation(using: .jpeg, properties: [:]) {
+                 try jpegData.write(to: URL(fileURLWithPath: outputPath))
+             }
 
-        init() throws {
-            self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
-        }
+             #expect(FileManager.default.fileExists(atPath: outputPath))
 
-        @Test("Captures window by ID", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
-        @MainActor
-        func capturesWindowByID() async throws {
-            // First get a valid window ID from Finder
-            let apps = ApplicationFinder.getAllRunningApplications()
-            let finder = apps.first { $0.bundle_id == "com.apple.finder" }
-            let finderApp = try #require(finder)
+             // Verify it's a valid JPEG
+             let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
+             #expect(data.prefix(3) == Data([0xFF, 0xD8, 0xFF]))
+         }
 
-            let windows = try WindowManager.getWindowsForApp(pid: finderApp.pid)
-            let window = try #require(windows.first)
+         @Test(
+             "Fails with invalid display ID",
+             .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+         )
+         @MainActor
+         func failsWithInvalidDisplayID() async throws {
+             let invalidDisplayID: CGDirectDisplayID = 999_999
+             let outputPath = self.tempDir.appendingPathComponent("invalid.png").path
 
-            let outputPath = self.tempDir.appendingPathComponent("window.png").path
+             await #expect(throws: PeekabooError.self) {
+                 let service = PeekabooServices.shared.screenCapture
 
-            let service = PeekabooServices.shared.screenCapture
-            
-            // The new API uses app identifier and window index
-            let result = try await service.captureWindow(
-                appIdentifier: "com.apple.finder",
-                windowIndex: 0
-            )
-            
-            // Save the image data to file
-            try result.imageData.write(to: URL(fileURLWithPath: outputPath))
+                 // Try to capture with an invalid display index (very high number)
+                 let _ = try await service.captureScreen(displayIndex: 999999)
+             }
+         }
+     }
 
-            #expect(FileManager.default.fileExists(atPath: outputPath))
+     @Suite("Window Capture Tests", .tags(.localOnly))
+     struct WindowCaptureTests {
+         let tempDir: URL
 
-            // Verify it's a valid image
-            let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
-            #expect(data.count > 100) // Should have some content
-        }
+         init() throws {
+             self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+             try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
+         }
 
-        @Test(
-            "Fails with invalid window ID",
-            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
-        )
-        @MainActor
-        func failsWithInvalidWindowID() async throws {
-            // Create a fake window data with invalid ID
-            let invalidWindow = WindowData(
-                windowId: 999_999,
-                title: "Invalid Window",
-                bounds: CGRect(x: 0, y: 0, width: 100, height: 100),
-                isOnScreen: false,
-                windowIndex: 0
-            )
-            let outputPath = self.tempDir.appendingPathComponent("invalid-window.png").path
+         @Test("Captures window by ID", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+         @MainActor
+         func capturesWindowByID() async throws {
+             // First get a valid window ID from Finder
+             let apps = ApplicationFinder.getAllRunningApplications()
+             let finder = apps.first { $0.bundle_id == "com.apple.finder" }
+             let finderApp = try #require(finder)
 
-            await #expect(throws: PeekabooError.self) {
-                let service = PeekabooServices.shared.screenCapture
-                
-                // Try to capture with an invalid app identifier
-                let _ = try await service.captureWindow(
-                    appIdentifier: "com.invalid.nonexistent.app",
-                    windowIndex: 0
-                )
-            }
-        }
-    }
+             let windows = try WindowManager.getWindowsForApp(pid: finderApp.pid)
+             let window = try #require(windows.first)
 
-    @Suite("Permission Error Detection")
-    struct PermissionErrorDetectionTests {
-        @Test("Captures convert to permission errors when appropriate")
-        @MainActor
-        func capturesConvertToPermissionErrors() async {
-            // This test verifies the error conversion logic without requiring actual permissions
-            let tempPath = FileManager.default.temporaryDirectory
-                .appendingPathComponent("\(UUID().uuidString).png").path
+             let outputPath = self.tempDir.appendingPathComponent("window.png").path
 
-            // When we don't have permissions, ScreenCaptureKit will throw specific errors
-            // This test would fail in CI but demonstrates the error handling path
-            if ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != "true" {
-                // Skip this test in CI
-                return
-            }
+             let service = PeekabooServices.shared.screenCapture
 
-            // Attempt to capture without permissions should convert to our error type
-            do {
-                let service = PeekabooServices.shared.screenCapture
-                
-                let _ = try await service.captureScreen(displayIndex: nil)
-            } catch let error as PeekabooError {
-                // If we get a PeekabooError, it should be a permission error
-                switch error {
-                case .screenRecordingPermissionDenied:
-                    // Expected when permissions are not granted
-                    break
-                default:
-                    // Other errors are also valid (display not found, etc)
-                    break
-                }
-            } catch {
-                // Non-PeekabooError means our error handling didn't work
-                Issue.record("Expected PeekabooError but got \(type(of: error))")
-            }
-        }
-    }
+             // The new API uses app identifier and window index
+             let result = try await service.captureWindow(
+                 appIdentifier: "com.apple.finder",
+                 windowIndex: 0
+             )
 
-    @Suite("Capture Configuration")
-    struct CaptureConfigurationTests {
-        @Test("Default configuration includes cursor")
-        func defaultConfigurationIncludesCursor() {
-            // This is more of a documentation test to ensure our assumptions are correct
-            // The actual SCStreamConfiguration is created inside ScreenCapture methods
+             // Save the image data to file
+             try result.imageData.write(to: URL(fileURLWithPath: outputPath))
 
-            // We expect:
-            // - configuration.showsCursor = true
-            // - configuration.backgroundColor = .black
-            // - configuration.shouldBeOpaque = true
+             #expect(FileManager.default.fileExists(atPath: outputPath))
 
-            // These settings are hardcoded in ScreenCapture.swift
-            // This test serves as a reminder if we ever want to make them configurable
-            #expect(Bool(true)) // Configuration is hardcoded as expected
-        }
-    }
-}
-*/
+             // Verify it's a valid image
+             let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
+             #expect(data.count > 100) // Should have some content
+         }
+
+         @Test(
+             "Fails with invalid window ID",
+             .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+         )
+         @MainActor
+         func failsWithInvalidWindowID() async throws {
+             // Create a fake window data with invalid ID
+             let invalidWindow = WindowData(
+                 windowId: 999_999,
+                 title: "Invalid Window",
+                 bounds: CGRect(x: 0, y: 0, width: 100, height: 100),
+                 isOnScreen: false,
+                 windowIndex: 0
+             )
+             let outputPath = self.tempDir.appendingPathComponent("invalid-window.png").path
+
+             await #expect(throws: PeekabooError.self) {
+                 let service = PeekabooServices.shared.screenCapture
+
+                 // Try to capture with an invalid app identifier
+                 let _ = try await service.captureWindow(
+                     appIdentifier: "com.invalid.nonexistent.app",
+                     windowIndex: 0
+                 )
+             }
+         }
+     }
+
+     @Suite("Permission Error Detection")
+     struct PermissionErrorDetectionTests {
+         @Test("Captures convert to permission errors when appropriate")
+         @MainActor
+         func capturesConvertToPermissionErrors() async {
+             // This test verifies the error conversion logic without requiring actual permissions
+             let tempPath = FileManager.default.temporaryDirectory
+                 .appendingPathComponent("\(UUID().uuidString).png").path
+
+             // When we don't have permissions, ScreenCaptureKit will throw specific errors
+             // This test would fail in CI but demonstrates the error handling path
+             if ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != "true" {
+                 // Skip this test in CI
+                 return
+             }
+
+             // Attempt to capture without permissions should convert to our error type
+             do {
+                 let service = PeekabooServices.shared.screenCapture
+
+                 let _ = try await service.captureScreen(displayIndex: nil)
+             } catch let error as PeekabooError {
+                 // If we get a PeekabooError, it should be a permission error
+                 switch error {
+                 case .screenRecordingPermissionDenied:
+                     // Expected when permissions are not granted
+                     break
+                 default:
+                     // Other errors are also valid (display not found, etc)
+                     break
+                 }
+             } catch {
+                 // Non-PeekabooError means our error handling didn't work
+                 Issue.record("Expected PeekabooError but got \(type(of: error))")
+             }
+         }
+     }
+
+     @Suite("Capture Configuration")
+     struct CaptureConfigurationTests {
+         @Test("Default configuration includes cursor")
+         func defaultConfigurationIncludesCursor() {
+             // This is more of a documentation test to ensure our assumptions are correct
+             // The actual SCStreamConfiguration is created inside ScreenCapture methods
+
+             // We expect:
+             // - configuration.showsCursor = true
+             // - configuration.backgroundColor = .black
+             // - configuration.shouldBeOpaque = true
+
+             // These settings are hardcoded in ScreenCapture.swift
+             // This test serves as a reminder if we ever want to make them configurable
+             #expect(Bool(true)) // Configuration is hardcoded as expected
+         }
+     }
+ }
+ */

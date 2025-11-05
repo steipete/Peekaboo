@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for interacting with the macOS Dock
 public struct DockTool: MCPTool {
@@ -109,7 +109,10 @@ public struct DockTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Launched \(app) from dock in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Launched \(app) from dock in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "app_name": .string(app),
                 "execution_time": .double(executionTime),
@@ -130,7 +133,7 @@ public struct DockTool: MCPTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
 
-        var message = "✅ Right-clicked \(app) in dock"
+        var message = "\(AgentDisplayTokens.Status.success) Right-clicked \(app) in dock"
         if let menuItem {
             message += " and selected '\(menuItem)'"
         }
@@ -154,7 +157,10 @@ public struct DockTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Hidden dock (enabled auto-hide) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Hidden dock (enabled auto-hide) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "auto_hide_enabled": .bool(true),
                 "execution_time": .double(executionTime),
@@ -170,7 +176,10 @@ public struct DockTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Shown dock (disabled auto-hide) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Shown dock (disabled auto-hide) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "auto_hide_enabled": .bool(false),
                 "execution_time": .double(executionTime),

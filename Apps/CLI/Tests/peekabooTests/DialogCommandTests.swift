@@ -1,5 +1,6 @@
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 import Testing
 @testable import peekaboo
 
@@ -9,7 +10,7 @@ struct DialogCommandTests {
     func dialogCommandExists() {
         let config = DialogCommand.configuration
         #expect(config.commandName == "dialog")
-        #expect(config.abstract.contains("PeekabooCore services"))
+        #expect(config.abstract.contains("Interact with system dialogs and alerts"))
     }
 
     @Test("Dialog  command has expected subcommands")
@@ -17,7 +18,7 @@ struct DialogCommandTests {
         let subcommands = DialogCommand.configuration.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map { $0.configuration.commandName }
+        let subcommandNames = subcommands.map(\.configuration.commandName)
         #expect(subcommandNames.contains("click"))
         #expect(subcommandNames.contains("input"))
         #expect(subcommandNames.contains("file"))
@@ -29,62 +30,67 @@ struct DialogCommandTests {
     func dialogClickHelp() async throws {
         let output = try await runCommand(["dialog", "click", "--help"])
 
-        #expect(output.contains("Click a button in a dialog"))
+        #expect(output.contains("OVERVIEW: Click a button in a dialog using DialogService"))
         #expect(output.contains("--button"))
         #expect(output.contains("--window"))
-        #expect(output.contains("DialogService"))
+        #expect(output.contains("--json-output"))
     }
 
     @Test("Dialog  input command help")
     func dialogInputHelp() async throws {
         let output = try await runCommand(["dialog", "input", "--help"])
 
-        #expect(output.contains("Enter text in a dialog field"))
+        #expect(output.contains("OVERVIEW: Enter text in a dialog field using DialogService"))
         #expect(output.contains("--text"))
         #expect(output.contains("--field"))
+        #expect(output.contains("--index"))
         #expect(output.contains("--clear"))
-        #expect(output.contains("DialogService"))
     }
 
     @Test("Dialog  file command help")
     func dialogFileHelp() async throws {
         let output = try await runCommand(["dialog", "file", "--help"])
 
-        #expect(output.contains("Handle file dialogs"))
+        #expect(output.contains("OVERVIEW: Handle file save/open dialogs using DialogService"))
         #expect(output.contains("--path"))
         #expect(output.contains("--name"))
         #expect(output.contains("--select"))
-        #expect(output.contains("DialogService"))
     }
 
     @Test("Dialog  dismiss command help")
     func dialogDismissHelp() async throws {
         let output = try await runCommand(["dialog", "dismiss", "--help"])
 
-        #expect(output.contains("Dismiss a dialog"))
+        #expect(output.contains("OVERVIEW: Dismiss a dialog using DialogService"))
         #expect(output.contains("--force"))
         #expect(output.contains("--window"))
-        #expect(output.contains("DialogService"))
     }
 
     @Test("Dialog  list command help")
     func dialogListHelp() async throws {
         let output = try await runCommand(["dialog", "list", "--help"])
 
-        #expect(output.contains("List elements in current dialog"))
-        #expect(output.contains("DialogService"))
+        #expect(output.contains("OVERVIEW: List elements in current dialog using DialogService"))
+        #expect(output.contains("--json-output"))
     }
 
     @Test("Dialog  error handling")
     func dialogErrorHandling() {
         // Test that DialogError enum values are properly mapped
-        #expect(DialogError.noActiveDialog.localizedDescription.contains("No active dialog"))
-        #expect(DialogError.noFileDialog.localizedDescription.contains("No file dialog"))
-        #expect(DialogError.buttonNotFound("OK").localizedDescription.contains("Button 'OK' not found"))
-        #expect(DialogError.fieldNotFound.localizedDescription.contains("Field not found"))
-        #expect(DialogError.invalidFieldIndex.localizedDescription.contains("Invalid field index"))
-        #expect(DialogError.noTextFields.localizedDescription.contains("No text fields"))
-        #expect(DialogError.noDismissButton.localizedDescription.contains("No dismiss button"))
+        let errorCases: [(PeekabooError, StandardErrorCode, String)] = [
+            (.elementNotFound("OK"), .elementNotFound, "Element not found: OK"),
+            (.invalidInput("Field index 5 out of range"), .invalidInput, "Invalid input: Field index 5 out of range"),
+            (
+                .operationError(message: "No text fields found in dialog."),
+                .unknownError,
+                "No text fields found in dialog."
+            ),
+        ]
+
+        for (error, code, message) in errorCases {
+            #expect(error.code == code)
+            #expect(error.errorDescription == message)
+        }
     }
 
     @Test("Dialog  service integration")
@@ -240,7 +246,72 @@ private func runCommand(_ args: [String]) async throws -> String {
 }
 
 private func runPeekabooCommand(_ args: [String]) async throws -> String {
-    // This is a placeholder - in real tests, this would execute the actual CLI
-    // For unit tests, we're mainly testing command structure and validation
-    ""
+    let projectRoot = dialogProjectRoot()
+    let binaryURL = try ensurePeekabooBinary(at: projectRoot)
+
+    let process = Process()
+    process.executableURL = binaryURL
+    process.currentDirectoryURL = projectRoot
+    process.arguments = args
+
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    process.standardError = pipe
+
+    try process.run()
+    process.waitUntilExit()
+
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    let output = String(data: data, encoding: .utf8) ?? ""
+
+    // Allow command-line validation failures
+    let allowedStatuses: Set<Int32> = [0, 1, 64]
+    guard allowedStatuses.contains(process.terminationStatus) else {
+        throw CommandError(status: process.terminationStatus, output: output)
+    }
+
+    return output
+}
+
+private func dialogProjectRoot() -> URL {
+    let thisFile = URL(fileURLWithPath: #filePath)
+    return thisFile
+        .deletingLastPathComponent() // DialogCommandTests.swift
+        .deletingLastPathComponent() // peekabooTests
+        .deletingLastPathComponent() // Tests
+}
+
+private func ensurePeekabooBinary(at root: URL) throws -> URL {
+    let binaryURL = root.appendingPathComponent(".build/debug/peekaboo")
+    if FileManager.default.isExecutableFile(atPath: binaryURL.path) {
+        return binaryURL
+    }
+
+    let buildProcess = Process()
+    buildProcess.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
+    buildProcess.currentDirectoryURL = root
+    buildProcess.arguments = ["build", "--product", "peekaboo"]
+
+    let buildPipe = Pipe()
+    buildProcess.standardOutput = buildPipe
+    buildProcess.standardError = buildPipe
+
+    try buildProcess.run()
+    buildProcess.waitUntilExit()
+
+    guard buildProcess.terminationStatus == 0 else {
+        let buildOutput = String(data: buildPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        throw CommandError(status: buildProcess.terminationStatus, output: buildOutput)
+    }
+
+    return binaryURL
+}
+
+private struct CommandError: Error, CustomStringConvertible {
+    let status: Int32
+    let output: String
+
+    var description: String {
+        "Command failed with exit code \(self.status). Output: \(self.output)"
+    }
 }

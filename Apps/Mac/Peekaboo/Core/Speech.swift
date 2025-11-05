@@ -98,7 +98,7 @@ final class SpeechRecognizer: NSObject, SFSpeechRecognizerDelegate {
     private var directAudioURL: URL?
     private(set) var recordedAudioData: Data?
     private(set) var recordedAudioDuration: TimeInterval?
-    
+
     // For Tachikoma audio recording
     private var tachikomaAudioRecorder: AVAudioRecorder?
     private var tachikomaAudioURL: URL?
@@ -362,19 +362,19 @@ final class SpeechRecognizer: NSObject, SFSpeechRecognizerDelegate {
         // Clean up
         self.directAudioRecorder = nil
     }
-    
+
     // MARK: - Tachikoma Audio Recognition
-    
+
     private func startTachikomaRecognition() throws {
         // Create temporary file for recording
         let tempDir = FileManager.default.temporaryDirectory
         let fileName = "peekaboo_tachikoma_\(UUID().uuidString).wav"
         self.tachikomaAudioURL = tempDir.appendingPathComponent(fileName)
-        
+
         guard let recordingURL = tachikomaAudioURL else {
             throw SpeechError.recordingFailed
         }
-        
+
         // Configure audio settings for speech recognition optimized recording
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
@@ -385,66 +385,65 @@ final class SpeechRecognizer: NSObject, SFSpeechRecognizerDelegate {
             AVLinearPCMIsBigEndianKey: false,
             AVLinearPCMIsFloatKey: false,
         ]
-        
+
         // Create and start recorder
         self.tachikomaAudioRecorder = try AVAudioRecorder(url: recordingURL, settings: settings)
         self.tachikomaAudioRecorder?.prepareToRecord()
         self.tachikomaAudioRecorder?.record()
-        
+
         // Create abort signal for potential cancellation
         self.tachikomaAbortSignal = AbortSignal()
-        
+
         // Update transcript to show recording status
         self.transcript = "[Recording with Tachikoma Audio API...]"
     }
-    
+
     private func stopTachikomaRecording() {
         guard let recorder = tachikomaAudioRecorder,
               let audioURL = tachikomaAudioURL else { return }
-        
+
         // Stop recording
         recorder.stop()
         let duration = recorder.currentTime
-        
+
         // Start transcription with Tachikoma
         Task {
             await self.transcribeWithTachikoma(audioURL: audioURL, duration: duration)
         }
-        
+
         // Clean up recorder
         self.tachikomaAudioRecorder = nil
     }
-    
+
     private func transcribeWithTachikoma(audioURL: URL, duration: TimeInterval) async {
         do {
             // Create AudioData from recorded file
             let audioData = try AudioData(contentsOf: audioURL)
-            
+
             // Use Tachikoma's transcribe function with OpenAI Whisper
             let result = try await transcribe(
                 audioData,
                 using: .openai(.whisper1),
                 language: "en",
-                abortSignal: tachikomaAbortSignal
-            )
-            
+                abortSignal: tachikomaAbortSignal)
+
             // Update transcript on main thread
             await MainActor.run {
                 self.transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 self.recordedAudioData = audioData.data
                 self.recordedAudioDuration = duration
             }
-            
+
             // Clean up the temporary file
             try? FileManager.default.removeItem(at: audioURL)
-            
+
         } catch {
             await MainActor.run {
                 self.error = error
                 self.transcript = "Error: \(error.localizedDescription)"
             }
         }
-        
+
         // Clean up abort signal
         self.tachikomaAbortSignal = nil
         self.tachikomaAudioURL = nil

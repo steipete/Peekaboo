@@ -9,7 +9,7 @@ struct ToolsCommand: AsyncParsableCommand {
         abstract: "List available tools with filtering and display options",
         discussion: """
         Display all available Peekaboo tools, including both native tools and external MCP server tools.
-        
+
         Examples:
           peekaboo tools                    # Show all tools (native + external)
           peekaboo tools --native-only      # Show only native Peekaboo tools
@@ -19,35 +19,35 @@ struct ToolsCommand: AsyncParsableCommand {
           peekaboo tools --json-output      # Output in JSON format
         """
     )
-    
+
     @Flag(name: .long, help: "Show only native Peekaboo tools")
     var nativeOnly = false
-    
-    @Flag(name: .long, help: "Show only external MCP tools") 
+
+    @Flag(name: .long, help: "Show only external MCP tools")
     var mcpOnly = false
-    
+
     @Option(name: .long, help: "Show tools from specific MCP server")
     var mcp: String?
-    
+
     @Flag(name: .long, help: "Show detailed tool information")
     var verbose = false
-    
+
     @Flag(name: .long, help: "Output in JSON format")
     var jsonOutput = false
-    
+
     @Flag(name: .long, help: "Include disabled servers in output")
     var includeDisabled = false
-    
+
     @Flag(name: .long, help: "Sort tools alphabetically (default: true)")
     var sort = false
-    
+
     @Flag(name: .long, help: "Group external tools by server")
     var groupByServer = false
-    
+
     func run() async throws {
         let toolRegistry = await MCPToolRegistry()
         let clientManager = await TachikomaMCPClientManager.shared
-        
+
         // Register native Peekaboo tools
         let nativeTools: [MCPTool] = [
             // Core tools
@@ -75,20 +75,22 @@ struct ToolsCommand: AsyncParsableCommand {
             DialogTool(),
             SpaceTool(),
         ]
-        
+
         await toolRegistry.register(nativeTools)
-        
+
         // Debug: Check if tools were registered
         let allToolsCount = await toolRegistry.allTools().count
         print("DEBUG: Registered \(nativeTools.count) native tools, registry now has \(allToolsCount) total tools")
-        
+
         // Register external tools from client manager
         await toolRegistry.registerExternalTools(from: clientManager)
-        
+
         // Get categorized tools
         let categorizedTools = await toolRegistry.getToolsBySource()
-        print("DEBUG: Categorized tools - Native: \(categorizedTools.native.count), External: \(categorizedTools.externalCount)")
-        
+        print(
+            "DEBUG: Categorized tools - Native: \(categorizedTools.native.count), External: \(categorizedTools.externalCount)"
+        )
+
         // Apply filtering
         let filter = ToolFilter(
             showNativeOnly: nativeOnly,
@@ -96,31 +98,31 @@ struct ToolsCommand: AsyncParsableCommand {
             specificServer: mcp,
             includeDisabled: includeDisabled
         )
-        
+
         let filteredTools = ToolOrganizer.filter(categorizedTools, with: filter)
-        let sortedTools = ToolOrganizer.sort(filteredTools, alphabetically: !sort) // sort flag inverts default
-        
+        let sortedTools = ToolOrganizer.sort(filteredTools, alphabetically: !self.sort) // sort flag inverts default
+
         // Configure display options
         let displayOptions = ToolDisplayOptions(
             useServerPrefixes: true,
             groupByServer: groupByServer,
-            showToolCount: !jsonOutput,
-            sortAlphabetically: !sort,
-            showDescription: verbose
+            showToolCount: !self.jsonOutput,
+            sortAlphabetically: !self.sort,
+            showDescription: self.verbose
         )
-        
-        if jsonOutput {
-            try outputJSON(tools: sortedTools)
+
+        if self.jsonOutput {
+            try self.outputJSON(tools: sortedTools)
         } else {
-            await outputFormatted(tools: sortedTools, options: displayOptions)
+            await self.outputFormatted(tools: sortedTools, options: displayOptions)
         }
     }
-    
+
     // MARK: - JSON Output
-    
+
     private func outputJSON(tools: CategorizedTools) throws {
         var output: [String: Any] = [:]
-        
+
         // Native tools
         output["native"] = tools.native.map { tool in
             [
@@ -129,7 +131,7 @@ struct ToolsCommand: AsyncParsableCommand {
                 "source": "native"
             ]
         }
-        
+
         // External tools
         var externalOutput: [String: Any] = [:]
         for (serverName, serverTools) in tools.external {
@@ -143,7 +145,7 @@ struct ToolsCommand: AsyncParsableCommand {
             }
         }
         output["external"] = externalOutput
-        
+
         // Summary
         output["summary"] = [
             "native_count": tools.native.count,
@@ -151,18 +153,18 @@ struct ToolsCommand: AsyncParsableCommand {
             "external_servers": tools.external.count,
             "total_count": tools.totalCount
         ]
-        
+
         let jsonData = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
         if let jsonString = String(data: jsonData, encoding: .utf8) {
             print(jsonString)
         }
     }
-    
+
     // MARK: - Formatted Output
-    
+
     private func outputFormatted(tools: CategorizedTools, options: ToolDisplayOptions) async {
         let clientManager = await TachikomaMCPClientManager.shared
-        
+
         // Display header
         if !tools.native.isEmpty || !tools.external.isEmpty {
             print("Available Tools")
@@ -172,29 +174,29 @@ struct ToolsCommand: AsyncParsableCommand {
             print("No tools available.")
             return
         }
-        
+
         // Display native tools
-        if !tools.native.isEmpty && !mcpOnly {
-            displayNativeTools(tools.native, options: options)
+        if !tools.native.isEmpty && !self.mcpOnly {
+            self.displayNativeTools(tools.native, options: options)
         }
-        
+
         // Display external tools
-        if !tools.external.isEmpty && !nativeOnly {
-            await displayExternalTools(tools.external, options: options, clientManager: clientManager)
+        if !tools.external.isEmpty && !self.nativeOnly {
+            await self.displayExternalTools(tools.external, options: options, clientManager: clientManager)
         }
-        
+
         // Display summary
         if options.showToolCount {
-            displaySummary(tools: tools)
+            self.displaySummary(tools: tools)
         }
     }
-    
+
     private func displayNativeTools(_ tools: [MCPTool], options: ToolDisplayOptions) {
         print("Native Tools (\(tools.count)):")
-        
+
         for tool in tools {
             let name = ToolOrganizer.displayName(for: tool, options: options)
-            
+
             if options.showDescription {
                 let description = ToolOrganizer.formatDescription(tool.description)
                 print("  \(name.padding(toLength: 20, withPad: " ", startingAt: 0)) \(description)")
@@ -204,9 +206,9 @@ struct ToolsCommand: AsyncParsableCommand {
         }
         print()
     }
-    
+
     private func displayExternalTools(
-        _ toolsByServer: [String: [MCPTool]], 
+        _ toolsByServer: [String: [MCPTool]],
         options: ToolDisplayOptions,
         clientManager: TachikomaMCPClientManager
     ) async {
@@ -214,10 +216,10 @@ struct ToolsCommand: AsyncParsableCommand {
             // Group by server
             for (serverName, serverTools) in toolsByServer.sorted(by: { $0.key < $1.key }) {
                 print("\(serverName) Tools (\(serverTools.count)):")
-                
+
                 for tool in serverTools {
                     let name = ToolOrganizer.displayName(for: tool, options: options)
-                    
+
                     if options.showDescription {
                         let description = ToolOrganizer.formatDescription(tool.description)
                         print("  \(name.padding(toLength: 30, withPad: " ", startingAt: 0)) \(description)")
@@ -229,12 +231,12 @@ struct ToolsCommand: AsyncParsableCommand {
             }
         } else {
             // Flat list of external tools
-            let allExternalTools = toolsByServer.values.flatMap { $0 }
+            let allExternalTools = toolsByServer.values.flatMap(\.self)
             print("External Tools (\(allExternalTools.count)):")
-            
+
             for tool in allExternalTools {
                 let name = ToolOrganizer.displayName(for: tool, options: options)
-                
+
                 if options.showDescription {
                     let description = ToolOrganizer.formatDescription(tool.description)
                     print("  \(name.padding(toLength: 30, withPad: " ", startingAt: 0)) \(description)")
@@ -245,7 +247,7 @@ struct ToolsCommand: AsyncParsableCommand {
             print()
         }
     }
-    
+
     private func displaySummary(tools: CategorizedTools) {
         print("Summary:")
         print("  Native tools: \(tools.native.count)")
@@ -256,17 +258,17 @@ struct ToolsCommand: AsyncParsableCommand {
 
 // MARK: - Tool Filter Extensions
 
-private extension ToolFilter {
+extension ToolFilter {
     /// Validate filter combinations
-    func validate() throws {
+    private func validate() throws {
         if showNativeOnly && showMcpOnly {
             throw ValidationError("Cannot specify both --native-only and --mcp-only")
         }
-        
+
         if showNativeOnly && specificServer != nil {
             throw ValidationError("Cannot specify both --native-only and --mcp")
         }
-        
+
         if showMcpOnly && specificServer != nil {
             // This is actually valid - show only tools from specific server
         }

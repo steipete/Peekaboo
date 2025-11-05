@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for typing text
 public struct TypeTool: MCPTool {
@@ -173,7 +173,7 @@ public struct TypeTool: MCPTool {
                 actions.append("Pressed Return")
             }
 
-            let message = "✅ " + actions.joined(separator: ", ") + " in \(String(format: "%.2f", executionTime))s"
+            let message = "\(AgentDisplayTokens.Status.success) " + actions.joined(separator: ", ") + " in \(String(format: "%.2f", executionTime))s"
 
             return ToolResponse(
                 content: [.text(message)],

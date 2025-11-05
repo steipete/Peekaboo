@@ -1,9 +1,9 @@
 import AppKit
-import PeekabooFoundation
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
 import os.log
+import PeekabooFoundation
 
 /**
  * AI-powered UI element detection service for screenshot analysis.

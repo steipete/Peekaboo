@@ -116,7 +116,11 @@ struct MCPToolRegistryTests {
             return
         }
 
-        #expect(schemaDict["type"] as? Value == .string("object"))
+        if case let .string(type)? = schemaDict["type"] {
+            #expect(type == "object")
+        } else {
+            Issue.record("Expected schema type string")
+        }
         #expect(schemaDict["properties"] != nil)
         #expect(schemaDict["required"] != nil)
     }

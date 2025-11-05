@@ -36,7 +36,7 @@ struct MenuCommandTests {
         let subcommands = MenuCommand.configuration.subcommands
         #expect(subcommands.count == 3)
 
-        let subcommandNames = subcommands.map { $0.configuration.commandName }
+        let subcommandNames = subcommands.map(\.configuration.commandName)
         #expect(subcommandNames.contains("click"))
         #expect(subcommandNames.contains("click-system"))
         #expect(subcommandNames.contains("list"))
@@ -132,7 +132,10 @@ struct MenuCommandIntegrationTests {
             "--json-output",
         ])
 
-        let response = try JSONDecoder().decode(CodableJSONResponse<MenuListData>.self, from: output.data(using: .utf8)!)
+        let response = try JSONDecoder().decode(
+            CodableJSONResponse<MenuListData>.self,
+            from: output.data(using: .utf8)!
+        )
         #expect(response.success == true)
 
         let menuData = response.data
@@ -141,7 +144,7 @@ struct MenuCommandIntegrationTests {
             #expect(!structure.isEmpty)
 
             // Check for standard menus
-            let menuTitles = structure.map { $0.title }
+            let menuTitles = structure.map(\.title)
             #expect(menuTitles.contains("File"))
             #expect(menuTitles.contains("Edit"))
             #expect(menuTitles.contains("View"))

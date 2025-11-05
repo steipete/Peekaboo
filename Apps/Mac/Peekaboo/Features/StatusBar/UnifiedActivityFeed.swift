@@ -50,9 +50,11 @@ struct UnifiedActivityFeed: View {
         if let session = sessionStore.currentSession {
             for message in session.messages {
                 // Extract thinking messages
-                if message.role == .system, message.content.contains("🤔") {
+                if message.role == .system, message.content.contains(AgentDisplayTokens.Status.planning) {
                     items.append(.thinking(
-                        content: message.content.replacingOccurrences(of: "🤔 ", with: ""),
+                        content: message.content.replacingOccurrences(
+                            of: "\(AgentDisplayTokens.Status.planning) ",
+                            with: ""),
                         timestamp: message.timestamp))
                 } else {
                     items.append(.message(message))
@@ -548,21 +550,21 @@ struct MessageActivityView: View {
 
     private var cleanedContent: String {
         self.message.content
-            .replacingOccurrences(of: "🔧 ", with: "")
-            .replacingOccurrences(of: "✅ ", with: "")
-            .replacingOccurrences(of: "❌ ", with: "")
-            .replacingOccurrences(of: "⚠️ ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.running + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.success + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.failure + " ", with: "")
+            .replacingOccurrences(of: "\(AgentDisplayTokens.Status.warning) ", with: "")
     }
 
     private var contentColor: Color {
-        if self.message.content.contains("❌") { return .red }
-        if self.message.content.contains("⚠️") { return .orange }
+        if self.message.content.contains(AgentDisplayTokens.Status.failure) { return .red }
+        if self.message.content.contains(AgentDisplayTokens.Status.warning) { return .orange }
         return .primary
     }
 
     private var messageBackgroundColor: Color {
-        if self.message.content.contains("❌") { return .red.opacity(0.05) }
-        if self.message.content.contains("⚠️") { return .orange.opacity(0.05) }
+        if self.message.content.contains(AgentDisplayTokens.Status.failure) { return .red.opacity(0.05) }
+        if self.message.content.contains(AgentDisplayTokens.Status.warning) { return .orange.opacity(0.05) }
 
         switch self.message.role {
         case .user: return .blue.opacity(0.03)

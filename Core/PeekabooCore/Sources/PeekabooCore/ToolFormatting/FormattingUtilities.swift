@@ -6,8 +6,7 @@
 import Foundation
 
 /// Shared formatting utilities for tool output
-public struct FormattingUtilities {
-    
+public enum FormattingUtilities {
     /// Format keyboard shortcut with proper symbols
     public static func formatKeyboardShortcut(_ keys: String) -> String {
         keys.replacingOccurrences(of: "cmd", with: "⌘")
@@ -29,7 +28,7 @@ public struct FormattingUtilities {
             .replacingOccurrences(of: "+", with: "")
             .replacingOccurrences(of: " ", with: "")
     }
-    
+
     /// Truncate text for display
     public static func truncate(_ text: String, maxLength: Int = 50, suffix: String = "...") -> String {
         guard maxLength > 0 else { return suffix }
@@ -40,33 +39,33 @@ public struct FormattingUtilities {
         let endIndex = text.index(text.startIndex, offsetBy: safeMaxLength)
         return String(text[..<endIndex]) + suffix
     }
-    
+
     /// Format a file path to show only the filename
     public static func filename(from path: String) -> String {
         (path as NSString).lastPathComponent
     }
-    
+
     /// Format plural text
     public static func pluralize(_ count: Int, singular: String, plural: String? = nil) -> String {
         if count == 1 {
-            return "\(count) \(singular)"
+            "\(count) \(singular)"
         } else {
-            return "\(count) \(plural ?? singular + "s")"
+            "\(count) \(plural ?? singular + "s")"
         }
     }
-    
+
     /// Format coordinates
     public static func formatCoordinates(x: Any?, y: Any?) -> String? {
-        guard let x = x, let y = y else { return nil }
+        guard let x, let y else { return nil }
         return "(\(x), \(y))"
     }
-    
+
     /// Format size/dimensions
     public static func formatDimensions(width: Any?, height: Any?) -> String? {
-        guard let width = width, let height = height else { return nil }
+        guard let width, let height else { return nil }
         return "\(width)×\(height)"
     }
-    
+
     /// Format menu path with nice separators
     public static func formatMenuPath(_ path: String) -> String {
         let components = path.components(separatedBy: ">").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -75,27 +74,29 @@ public struct FormattingUtilities {
         }
         return path
     }
-    
+
     /// Parse JSON arguments string to dictionary
     public static func parseArguments(_ arguments: String) -> [String: Any] {
         guard let data = arguments.data(using: .utf8),
-              let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+              let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
             return [:]
         }
         return args
     }
-    
+
     /// Format JSON for pretty printing
     public static func formatJSON(_ json: String) -> String? {
         guard let data = json.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
               let formatted = try? JSONSerialization.data(withJSONObject: object, options: .prettyPrinted),
-              let result = String(data: formatted, encoding: .utf8) else {
+              let result = String(data: formatted, encoding: .utf8)
+        else {
             return nil
         }
         return result
     }
-    
+
     /// Format duration for display
     public static func formatDetailedDuration(_ seconds: TimeInterval) -> String {
         if seconds < 0.001 {
@@ -117,7 +118,7 @@ public struct FormattingUtilities {
         var value = Double(bytes)
         var unitIndex = 0
 
-        while value >= 1024.0 && unitIndex < units.count - 1 {
+        while value >= 1024.0, unitIndex < units.count - 1 {
             value /= 1024.0
             unitIndex += 1
         }

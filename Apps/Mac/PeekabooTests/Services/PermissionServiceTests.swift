@@ -11,8 +11,9 @@ struct PermissionsTests {
         var accessibilityStatus: ObservablePermissionsService.PermissionState = .notDetermined
         var appleScriptStatus: ObservablePermissionsService.PermissionState = .notDetermined
         var hasAllPermissions: Bool {
-            screenRecordingStatus == .authorized && accessibilityStatus == .authorized
+            self.screenRecordingStatus == .authorized && self.accessibilityStatus == .authorized
         }
+
         func checkPermissions() {}
         func requestScreenRecording() throws {}
         func requestAccessibility() throws {}
@@ -43,39 +44,60 @@ struct PermissionsTests {
         // In a real scenario, these would be set by checkPermissions()
 
         // Simulate both permissions granted
-        mockPermissionsService.screenRecordingStatus = .authorized
-        mockPermissionsService.accessibilityStatus = .authorized
+        self.mockPermissionsService.screenRecordingStatus = .authorized
+        self.mockPermissionsService.accessibilityStatus = .authorized
         #expect(self.permissions.hasAllPermissions == true)
 
         // Test various combinations
-        mockPermissionsService.screenRecordingStatus = .denied
+        self.mockPermissionsService.screenRecordingStatus = .denied
         #expect(self.permissions.hasAllPermissions == false)
 
-        mockPermissionsService.screenRecordingStatus = .authorized
-        mockPermissionsService.accessibilityStatus = .denied
+        self.mockPermissionsService.screenRecordingStatus = .authorized
+        self.mockPermissionsService.accessibilityStatus = .denied
         #expect(self.permissions.hasAllPermissions == false)
 
-        mockPermissionsService.screenRecordingStatus = .notDetermined
-        mockPermissionsService.accessibilityStatus = .authorized
+        self.mockPermissionsService.screenRecordingStatus = .notDetermined
+        self.mockPermissionsService.accessibilityStatus = .authorized
         #expect(self.permissions.hasAllPermissions == false)
     }
 
     @Test("Permission status combinations", arguments: [
-        (ObservablePermissionsService.PermissionState.authorized, ObservablePermissionsService.PermissionState.authorized, true),
-        (ObservablePermissionsService.PermissionState.authorized, ObservablePermissionsService.PermissionState.denied, false),
-        (ObservablePermissionsService.PermissionState.denied, ObservablePermissionsService.PermissionState.authorized, false),
-        (ObservablePermissionsService.PermissionState.denied, ObservablePermissionsService.PermissionState.denied, false),
-        (ObservablePermissionsService.PermissionState.notDetermined, ObservablePermissionsService.PermissionState.authorized, false),
-        (ObservablePermissionsService.PermissionState.authorized, ObservablePermissionsService.PermissionState.notDetermined, false),
-        (ObservablePermissionsService.PermissionState.notDetermined, ObservablePermissionsService.PermissionState.notDetermined, false)
+        (
+            ObservablePermissionsService.PermissionState.authorized,
+            ObservablePermissionsService.PermissionState.authorized,
+            true),
+        (
+            ObservablePermissionsService.PermissionState.authorized,
+            ObservablePermissionsService.PermissionState.denied,
+            false),
+        (
+            ObservablePermissionsService.PermissionState.denied,
+            ObservablePermissionsService.PermissionState.authorized,
+            false),
+        (
+            ObservablePermissionsService.PermissionState.denied,
+            ObservablePermissionsService.PermissionState.denied,
+            false),
+        (
+            ObservablePermissionsService.PermissionState.notDetermined,
+            ObservablePermissionsService.PermissionState.authorized,
+            false),
+        (
+            ObservablePermissionsService.PermissionState.authorized,
+            ObservablePermissionsService.PermissionState.notDetermined,
+            false),
+        (
+            ObservablePermissionsService.PermissionState.notDetermined,
+            ObservablePermissionsService.PermissionState.notDetermined,
+            false)
     ])
     func permissionCombinations(
         screenRecording: ObservablePermissionsService.PermissionState,
         accessibility: ObservablePermissionsService.PermissionState,
         expectedHasAll: Bool)
     {
-        mockPermissionsService.screenRecordingStatus = screenRecording
-        mockPermissionsService.accessibilityStatus = accessibility
+        self.mockPermissionsService.screenRecordingStatus = screenRecording
+        self.mockPermissionsService.accessibilityStatus = accessibility
         #expect(self.permissions.hasAllPermissions == expectedHasAll)
     }
 

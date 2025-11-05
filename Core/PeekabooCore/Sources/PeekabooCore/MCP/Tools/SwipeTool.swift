@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for performing swipe/drag gestures
 public struct SwipeTool: MCPTool {
@@ -101,7 +101,7 @@ public struct SwipeTool: MCPTool {
             let distance = sqrt(deltaX * deltaX + deltaY * deltaY)
 
             // Build response message
-            let message = "✅ Performed swipe from (\(Int(fromPoint.x)), \(Int(fromPoint.y))) to (\(Int(toPoint.x)), \(Int(toPoint.y))) over \(duration)ms with \(steps) steps (distance: \(String(format: "%.1f", distance))px) in \(String(format: "%.2f", executionTime))s"
+            let message = "\(AgentDisplayTokens.Status.success) Performed swipe from (\(Int(fromPoint.x)), \(Int(fromPoint.y))) to (\(Int(toPoint.x)), \(Int(toPoint.y))) over \(duration)ms with \(steps) steps (distance: \(String(format: "%.1f", distance))px) in \(String(format: "%.2f", executionTime))s"
 
             return ToolResponse(
                 content: [.text(message)],

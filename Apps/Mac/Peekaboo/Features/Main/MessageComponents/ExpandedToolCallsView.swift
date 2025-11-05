@@ -1,15 +1,15 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 // MARK: - Expanded Tool Calls View
 
 struct ExpandedToolCallsView: View {
     let toolCalls: [ConversationToolCall]
     let onImageTap: (NSImage) -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(toolCalls) { toolCall in
+            ForEach(self.toolCalls) { toolCall in
                 VStack(alignment: .leading, spacing: 8) {
                     // Arguments
                     if !toolCall.arguments.isEmpty, toolCall.arguments != "{}" {
@@ -40,7 +40,7 @@ struct ExpandedToolCallsView: View {
                                let image = NSImage(data: imageData)
                             {
                                 Button(action: {
-                                    onImageTap(image)
+                                    self.onImageTap(image)
                                 }) {
                                     Image(nsImage: image)
                                         .resizable()

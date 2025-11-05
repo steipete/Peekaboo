@@ -3,12 +3,15 @@ import Foundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("HotkeyService Tests", .tags(.ui))
+@Suite(
+    "HotkeyService Tests",
+    .tags(.ui, .automation),
+    .enabled(if: TestEnvironment.runAutomationScenarios))
 @MainActor
 struct HotkeyServiceTests {
     @Test("Initialize HotkeyService")
     func initializeService() async throws {
-        let service = HotkeyService()
+        let service: HotkeyService? = HotkeyService()
         #expect(service != nil)
     }
 

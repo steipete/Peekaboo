@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 // MARK: - Animated Thinking Components
 

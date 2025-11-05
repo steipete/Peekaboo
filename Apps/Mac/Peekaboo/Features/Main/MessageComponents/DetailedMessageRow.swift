@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 // MARK: - Detailed Message Row for Main Window
 
@@ -111,13 +111,12 @@ struct DetailedMessageRow: View {
                     }
 
                     MessageContentView(
-                        message: message,
-                        isThinkingMessage: isThinkingMessage,
-                        isErrorMessage: isErrorMessage,
-                        isWarningMessage: isWarningMessage,
-                        isToolMessage: isToolMessage,
-                        extractToolName: extractToolName
-                    )
+                        message: self.message,
+                        isThinkingMessage: self.isThinkingMessage,
+                        isErrorMessage: self.isErrorMessage,
+                        isWarningMessage: self.isWarningMessage,
+                        isToolMessage: self.isToolMessage,
+                        extractToolName: self.extractToolName)
 
                     // Show active tool executions
                     if self.message.role == .assistant, self.hasRunningTools {
@@ -136,21 +135,19 @@ struct DetailedMessageRow: View {
             // Expanded tool calls - show details directly without nested expansion
             if self.isExpanded, !self.message.toolCalls.isEmpty {
                 ExpandedToolCallsView(
-                    toolCalls: message.toolCalls,
+                    toolCalls: self.message.toolCalls,
                     onImageTap: { image in
                         self.selectedImage = image
                         self.showingImageInspector = true
-                    }
-                )
-                .padding(.leading, 44)
+                    })
+                    .padding(.leading, 44)
             }
         }
         .padding()
         .modernBackground(style: .content, cornerRadius: 8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .fill(self.backgroundForMessage.opacity(0.3))
-        )
+                .fill(self.backgroundForMessage.opacity(0.3)))
         .scaleEffect(self.appeared ? 1 : 0.95)
         .opacity(self.appeared ? 1 : 0)
         .onAppear {
@@ -168,22 +165,22 @@ struct DetailedMessageRow: View {
     // MARK: - Message Type Detection
 
     private var isThinkingMessage: Bool {
-        self.message.role == .system && self.message.content.contains("🤔")
+        self.message.role == .system && self.message.content.contains(AgentDisplayTokens.Status.planning)
     }
 
     private var isErrorMessage: Bool {
-        self.message.role == .system && self.message.content.contains("❌")
+        self.message.role == .system && self.message.content.contains(AgentDisplayTokens.Status.failure)
     }
 
     private var isWarningMessage: Bool {
-        self.message.role == .system && self.message.content.contains("⚠️")
+        self.message.role == .system && self.message.content.contains(AgentDisplayTokens.Status.warning)
     }
 
     private var isToolMessage: Bool {
-        self.message
-            .role == .system &&
-            (self.message.content.contains("🔧") || self.message.content.contains("✅") || self.message.content
-                .contains("❌"))
+        self.message.role == .system &&
+            (self.message.content.contains(AgentDisplayTokens.Status.running) ||
+                self.message.content.contains(AgentDisplayTokens.Status.success) ||
+                self.message.content.contains(AgentDisplayTokens.Status.failure))
     }
 
     private var hasRunningTools: Bool {
@@ -236,11 +233,11 @@ struct DetailedMessageRow: View {
     // MARK: - Tool Utilities
 
     private func extractToolName(from content: String) -> String {
-        // Format is "🔧 toolname: args" or "✅ toolname: args" or "❌ toolname: args"
+        // Format is "[run] toolname: args" or "[ok] toolname: args" or "[err] toolname: args"
         let cleaned = content
-            .replacingOccurrences(of: "🔧 ", with: "")
-            .replacingOccurrences(of: "✅ ", with: "")
-            .replacingOccurrences(of: "❌ ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.running + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.success + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.failure + " ", with: "")
 
         if let colonIndex = cleaned.firstIndex(of: ":") {
             return String(cleaned[..<colonIndex]).trimmingCharacters(in: .whitespaces)
@@ -256,9 +253,9 @@ struct DetailedMessageRow: View {
             }
             // If there's a non-empty result, it's completed (unless it contains error indicators)
             if !toolCall.result.isEmpty {
-                if message.content.contains("❌") {
+                if message.content.contains(AgentDisplayTokens.Status.failure) {
                     return .failed
-                } else if message.content.contains("⚠️") {
+                } else if message.content.contains(AgentDisplayTokens.Status.warning) {
                     return .cancelled
                 } else {
                     return .completed
@@ -276,11 +273,11 @@ struct DetailedMessageRow: View {
         }
 
         // Fallback to checking message content for status indicators
-        if message.content.contains("✅") {
+        if message.content.contains(AgentDisplayTokens.Status.success) {
             return .completed
-        } else if message.content.contains("❌") {
+        } else if message.content.contains(AgentDisplayTokens.Status.failure) {
             return .failed
-        } else if message.content.contains("⚠️") {
+        } else if message.content.contains(AgentDisplayTokens.Status.warning) {
             return .cancelled
         }
 

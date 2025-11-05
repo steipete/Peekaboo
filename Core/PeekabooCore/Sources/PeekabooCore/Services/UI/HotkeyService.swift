@@ -1,8 +1,8 @@
 import AppKit
-import PeekabooFoundation
 import CoreGraphics
 import Foundation
 import os.log
+import PeekabooFoundation
 
 /// Service for handling keyboard shortcuts and hotkeys
 @MainActor

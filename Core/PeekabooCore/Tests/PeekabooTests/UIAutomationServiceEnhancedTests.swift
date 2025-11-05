@@ -1,7 +1,7 @@
 import AppKit
-import PeekabooFoundation
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
@@ -73,9 +73,9 @@ struct UIAutomationServiceEnhancedTests {
 
         // Test data
         let imageData = Data()
-        _ = "TestApp"  // appName - not used in this test
-        _ = "Test Window"  // windowTitle - not used in this test
-        _ = CGRect(x: 50, y: 100, width: 1200, height: 800)  // windowBounds - not used in this test
+        _ = "TestApp" // appName - not used in this test
+        _ = "Test Window" // windowTitle - not used in this test
+        _ = CGRect(x: 50, y: 100, width: 1200, height: 800) // windowBounds - not used in this test
 
         // Call detectElements (the new method)
         let result = try await service.detectElements(

@@ -24,11 +24,11 @@ class SessionCache {
             // TODO: Rewrite this test helper.
             self.sessionId = ""
             // Try to get latest session
-            //let sessions = try sessionManager.listSessionsSync()
-            //guard let latest = sessions.first else {
+            // let sessions = try sessionManager.listSessionsSync()
+            // guard let latest = sessions.first else {
             //    throw SessionError.noValidSessionFound
-            //}
-            //self.sessionId = latest
+            // }
+            // self.sessionId = latest
         }
     }
 
@@ -68,31 +68,31 @@ class SessionCache {
 // Extension to make SessionManager sync-compatible for tests
 // TODO: Rewrite this test helper.
 /*
-extension SessionManager {
-    fileprivate func listSessionsSync() throws -> [String] {
-        let semaphore = DispatchSemaphore(value: 0)
-        var result: Result<[String], Error>?
+ extension SessionManager {
+     fileprivate func listSessionsSync() throws -> [String] {
+         let semaphore = DispatchSemaphore(value: 0)
+         var result: Result<[String], Error>?
 
-        Task {
-            do {
-                let sessions = try await self.listSessions()
-                result = .success(sessions)
-            } catch {
-                result = .failure(error)
-            }
-            semaphore.signal()
-        }
+         Task {
+             do {
+                 let sessions = try await self.listSessions()
+                 result = .success(sessions)
+             } catch {
+                 result = .failure(error)
+             }
+             semaphore.signal()
+         }
 
-        semaphore.wait()
+         semaphore.wait()
 
-        switch result {
-        case let .success(sessions):
-            return sessions
-        case let .failure(error):
-            throw error
-        case nil:
-            throw SessionError.corruptedData
-        }
-    }
-}
-*/
+         switch result {
+         case let .success(sessions):
+             return sessions
+         case let .failure(error):
+             throw error
+         case nil:
+             throw SessionError.corruptedData
+         }
+     }
+ }
+ */

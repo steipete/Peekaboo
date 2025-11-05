@@ -130,13 +130,13 @@ struct PeekabooSettingsPersistenceTests {
 
         // Create new instance and verify
         let settings2 = PeekabooSettings()
-        
+
         #expect(settings2.openAIAPIKey == testAPIKey)
         #expect(settings2.selectedModel == testModel)
         #expect(settings2.temperature == testTemperature)
         #expect(settings2.alwaysOnTop == true)
         #expect(settings2.voiceActivationEnabled == true)
-        
+
         // Clean up
         UserDefaults().removePersistentDomain(forName: suiteName)
     }

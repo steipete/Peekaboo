@@ -9,7 +9,6 @@ import PeekabooCore
 import PeekabooFoundation
 import SwiftUI
 
-
 /// A view that displays scroll direction indicators with motion blur
 struct ScrollAnimationView: View {
     // MARK: - Properties
@@ -19,7 +18,7 @@ struct ScrollAnimationView: View {
 
     /// Number of scroll units
     let amount: Int
-    
+
     /// Animation speed multiplier (1.0 = normal, 0.5 = 2x slower, 2.0 = 2x faster)
     var animationSpeed: Double = 1.0
 
@@ -108,7 +107,7 @@ struct ScrollAnimationView: View {
         let motionDelay = 0.3 / self.animationSpeed
         let fadeOutDuration = 0.2 / self.animationSpeed
         let fadeOutDelay = 0.6 / self.animationSpeed
-        
+
         // Fade in arrows with motion
         withAnimation(.easeOut(duration: fadeInDuration)) {
             self.arrowOpacity = 1.0

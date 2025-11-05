@@ -5,10 +5,10 @@ import SwiftUI
 struct AddCustomProviderView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(PeekabooSettings.self) private var settings
-    
+
     @State private var currentStep: AddProviderStep = .selectType
     @State private var selectedTemplate: ProviderTemplate?
-    
+
     // Form data
     @State private var providerId = ""
     @State private var name = ""
@@ -19,66 +19,66 @@ struct AddCustomProviderView: View {
     @State private var headers = ""
     @State private var testResult: TestResult?
     @State private var isTestingConnection = false
-    
+
     // UI state
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var isAdvancedMode = false
-    
+
     enum AddProviderStep: CaseIterable {
         case selectType
         case configure
         case test
-        
+
         var title: String {
             switch self {
-            case .selectType: return "Choose Provider Type"
-            case .configure: return "Configure Provider"
-            case .test: return "Test & Add"
+            case .selectType: "Choose Provider Type"
+            case .configure: "Configure Provider"
+            case .test: "Test & Add"
             }
         }
-        
+
         var subtitle: String {
             switch self {
-            case .selectType: return "Select from popular providers or create a custom one"
-            case .configure: return "Enter your provider details and API credentials"
-            case .test: return "Verify connection and add to your providers"
+            case .selectType: "Select from popular providers or create a custom one"
+            case .configure: "Enter your provider details and API credentials"
+            case .test: "Verify connection and add to your providers"
             }
         }
     }
-    
+
     enum TestResult {
         case success(String)
         case failure(String)
-        
+
         var isSuccess: Bool {
             if case .success = self { return true }
             return false
         }
-        
+
         var message: String {
             switch self {
-            case .success(let msg): return msg
-            case .failure(let msg): return msg
+            case let .success(msg): msg
+            case let .failure(msg): msg
             }
         }
     }
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Header with progress indicator
-                headerView
-                
+                self.headerView
+
                 Divider()
-                
+
                 // Main content
-                GeometryReader { geometry in
+                GeometryReader { _ in
                     ZStack {
                         ForEach(AddProviderStep.allCases, id: \.self) { step in
-                            stepContent(for: step)
-                                .opacity(currentStep == step ? 1 : 0)
-                                .animation(.easeInOut, value: currentStep)
+                            self.stepContent(for: step)
+                                .opacity(self.currentStep == step ? 1 : 0)
+                                .animation(.easeInOut, value: self.currentStep)
                         }
                     }
                 }
@@ -87,23 +87,23 @@ struct AddCustomProviderView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        dismiss()
+                        self.dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .primaryAction) {
-                    navigationButton
+                    self.navigationButton
                 }
             }
         }
         .frame(width: 700, height: 600)
-        .alert("Error", isPresented: $showingError) {
+        .alert("Error", isPresented: self.$showingError) {
             Button("OK") {}
         } message: {
-            Text(errorMessage)
+            Text(self.errorMessage)
         }
     }
-    
+
     private var headerView: some View {
         VStack(spacing: 16) {
             // Progress indicator
@@ -112,15 +112,17 @@ struct AddCustomProviderView: View {
                     HStack(spacing: 8) {
                         // Step circle
                         Circle()
-                            .fill(stepColor(for: step))
+                            .fill(self.stepColor(for: step))
                             .frame(width: 24, height: 24)
                             .overlay(
                                 Group {
-                                    if step == currentStep {
+                                    if step == self.currentStep {
                                         Text("\(index + 1)")
                                             .font(.caption.bold())
                                             .foregroundColor(.white)
-                                    } else if AddProviderStep.allCases.firstIndex(of: step)! < AddProviderStep.allCases.firstIndex(of: currentStep)! {
+                                    } else if AddProviderStep.allCases.firstIndex(of: step)! < AddProviderStep
+                                        .allCases.firstIndex(of: self.currentStep)!
+                                    {
                                         Image(systemName: "checkmark")
                                             .font(.caption.bold())
                                             .foregroundColor(.white)
@@ -129,26 +131,25 @@ struct AddCustomProviderView: View {
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
-                                }
-                            )
-                        
+                                })
+
                         // Connector line
                         if index < AddProviderStep.allCases.count - 1 {
                             Rectangle()
-                                .fill(connectorColor(for: step))
+                                .fill(self.connectorColor(for: step))
                                 .frame(width: 40, height: 2)
                         }
                     }
                 }
             }
             .padding(.horizontal)
-            
+
             // Step title and subtitle
             VStack(spacing: 4) {
-                Text(currentStep.title)
+                Text(self.currentStep.title)
                     .font(.title2.bold())
-                
-                Text(currentStep.subtitle)
+
+                Text(self.currentStep.subtitle)
                     .font(.callout)
                     .foregroundColor(.secondary)
             }
@@ -156,114 +157,118 @@ struct AddCustomProviderView: View {
         .padding(.vertical, 20)
         .background(.ultraThinMaterial)
     }
-    
+
     private func stepColor(for step: AddProviderStep) -> Color {
-        let currentIndex = AddProviderStep.allCases.firstIndex(of: currentStep) ?? 0
+        let currentIndex = AddProviderStep.allCases.firstIndex(of: self.currentStep) ?? 0
         let stepIndex = AddProviderStep.allCases.firstIndex(of: step) ?? 0
-        
+
         if stepIndex <= currentIndex {
             return .accentColor
         } else {
             return Color(.controlBackgroundColor)
         }
     }
-    
+
     private func connectorColor(for step: AddProviderStep) -> Color {
-        let currentIndex = AddProviderStep.allCases.firstIndex(of: currentStep) ?? 0
+        let currentIndex = AddProviderStep.allCases.firstIndex(of: self.currentStep) ?? 0
         let stepIndex = AddProviderStep.allCases.firstIndex(of: step) ?? 0
-        
+
         if stepIndex < currentIndex {
             return .accentColor
         } else {
             return Color(.separatorColor)
         }
     }
-    
+
     @ViewBuilder
     private func stepContent(for step: AddProviderStep) -> some View {
         ScrollView {
             VStack(spacing: 24) {
                 switch step {
                 case .selectType:
-                    providerSelectionView
+                    self.providerSelectionView
                 case .configure:
-                    configurationView
+                    self.configurationView
                 case .test:
-                    testView
+                    self.testView
                 }
             }
             .padding(.horizontal, 40)
             .padding(.vertical, 32)
         }
     }
-    
+
     private var providerSelectionView: some View {
         VStack(spacing: 24) {
             // Popular provider templates
             VStack(alignment: .leading, spacing: 16) {
                 Text("Popular Providers")
                     .font(.headline)
-                
+
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
                     ForEach(ProviderTemplate.popular, id: \.id) { template in
                         ProviderTemplateCard(
                             template: template,
-                            isSelected: selectedTemplate?.id == template.id
-                        ) {
-                            selectedTemplate = template
-                            applyTemplate(template)
+                            isSelected: self.selectedTemplate?.id == template.id)
+                        {
+                            self.selectedTemplate = template
+                            self.applyTemplate(template)
                         }
                     }
                 }
             }
-            
+
             Divider()
-            
+
             // Custom provider option
             VStack(alignment: .leading, spacing: 16) {
                 Text("Custom Provider")
                     .font(.headline)
-                
+
                 ProviderTemplateCard(
                     template: ProviderTemplate.custom,
-                    isSelected: selectedTemplate?.id == ProviderTemplate.custom.id
-                ) {
-                    selectedTemplate = ProviderTemplate.custom
-                    applyTemplate(ProviderTemplate.custom)
+                    isSelected: self.selectedTemplate?.id == ProviderTemplate.custom.id)
+                {
+                    self.selectedTemplate = ProviderTemplate.custom
+                    self.applyTemplate(ProviderTemplate.custom)
                 }
             }
         }
     }
-    
+
     private var configurationView: some View {
         VStack(spacing: 24) {
             // Provider preview card
             if let template = selectedTemplate {
-                ProviderPreviewCard(template: template, name: name.isEmpty ? template.name : name)
+                ProviderPreviewCard(template: template, name: self.name.isEmpty ? template.name : self.name)
             }
-            
+
             // Configuration form
             VStack(spacing: 20) {
                 // Basic info section
                 SectionCard(title: "Basic Information", icon: "info.circle") {
                     VStack(spacing: 16) {
-                        FormField(title: "Provider ID", binding: $providerId, placeholder: "my-custom-provider") {
+                        FormField(title: "Provider ID", binding: self.$providerId, placeholder: "my-custom-provider") {
                             Text("Unique identifier for this provider")
                                 .foregroundColor(.secondary)
                         }
-                        
-                        FormField(title: "Display Name", binding: $name, placeholder: "My Custom Provider") {
+
+                        FormField(title: "Display Name", binding: self.$name, placeholder: "My Custom Provider") {
                             Text("Friendly name shown in the UI")
                                 .foregroundColor(.secondary)
                         }
-                        
-                        FormField(title: "Description", binding: $description, placeholder: "Optional description") {
+
+                        FormField(
+                            title: "Description",
+                            binding: self.$description,
+                            placeholder: "Optional description")
+                        {
                             Text("Brief description of this provider")
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
-                
+
                 // Connection section
                 SectionCard(title: "Connection", icon: "network") {
                     VStack(spacing: 16) {
@@ -271,32 +276,47 @@ struct AddCustomProviderView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Provider Type")
                                 .font(.headline)
-                            
-                            Picker("Type", selection: $type) {
-                                ForEach(Configuration.CustomProvider.ProviderType.allCases, id: \.self) { providerType in
+
+                            Picker("Type", selection: self.$type) {
+                                ForEach(
+                                    Configuration.CustomProvider.ProviderType.allCases,
+                                    id: \.self)
+                                { providerType in
                                     Label(providerType.displayName, systemImage: providerType.icon)
                                         .tag(providerType)
                                 }
                             }
                             .pickerStyle(.segmented)
                         }
-                        
-                        FormField(title: "Base URL", binding: $baseURL, placeholder: "https://api.provider.com/v1") {
+
+                        FormField(
+                            title: "Base URL",
+                            binding: self.$baseURL,
+                            placeholder: "https://api.provider.com/v1")
+                        {
                             Text("API endpoint URL for this provider")
                                 .foregroundColor(.secondary)
                         }
-                        
-                        SecureFormField(title: "API Key", binding: $apiKey, placeholder: "sk-... or {env:API_KEY}") {
+
+                        SecureFormField(
+                            title: "API Key",
+                            binding: self.$apiKey,
+                            placeholder: "sk-... or {env:API_KEY}")
+                        {
                             Text("Your API key or environment variable reference")
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
-                
+
                 // Advanced section (collapsible)
-                DisclosureGroup("Advanced Settings", isExpanded: $isAdvancedMode) {
+                DisclosureGroup("Advanced Settings", isExpanded: self.$isAdvancedMode) {
                     VStack(spacing: 16) {
-                        FormField(title: "Custom Headers", binding: $headers, placeholder: "Authorization:Bearer token,X-Custom:value") {
+                        FormField(
+                            title: "Custom Headers",
+                            binding: self.$headers,
+                            placeholder: "Authorization:Bearer token,X-Custom:value")
+                        {
                             Text("Additional headers in key:value,key:value format")
                                 .foregroundColor(.secondary)
                         }
@@ -310,30 +330,29 @@ struct AddCustomProviderView: View {
             }
         }
     }
-    
+
     private var testView: some View {
         VStack(spacing: 32) {
             // Provider summary
             if let template = selectedTemplate {
                 ProviderSummaryCard(
                     template: template,
-                    name: name,
-                    baseURL: baseURL,
-                    type: type
-                )
+                    name: self.name,
+                    baseURL: self.baseURL,
+                    type: self.type)
             }
-            
+
             // Test connection section
             VStack(spacing: 20) {
                 Text("Test Connection")
                     .font(.title2.bold())
-                
+
                 if let result = testResult {
                     TestResultCard(result: result)
-                } else if isTestingConnection {
+                } else if self.isTestingConnection {
                     TestingCard()
                 } else {
-                    Button(action: testConnection) {
+                    Button(action: self.testConnection) {
                         Label("Test Connection", systemImage: "bolt.fill")
                             .font(.headline)
                             .foregroundColor(.white)
@@ -345,73 +364,73 @@ struct AddCustomProviderView: View {
                     .buttonStyle(.plain)
                 }
             }
-            
+
             Spacer()
         }
     }
-    
+
     private var navigationButton: some View {
-        Button(navigationButtonTitle) {
-            navigationAction()
+        Button(self.navigationButtonTitle) {
+            self.navigationAction()
         }
-        .disabled(!canNavigate)
+        .disabled(!self.canNavigate)
     }
-    
+
     private var navigationButtonTitle: String {
-        switch currentStep {
+        switch self.currentStep {
         case .selectType:
-            return selectedTemplate != nil ? "Next" : "Select Provider"
+            self.selectedTemplate != nil ? "Next" : "Select Provider"
         case .configure:
-            return "Next"
+            "Next"
         case .test:
-            return testResult?.isSuccess == true ? "Add Provider" : "Test First"
+            self.testResult?.isSuccess == true ? "Add Provider" : "Test First"
         }
     }
-    
+
     private var canNavigate: Bool {
-        switch currentStep {
+        switch self.currentStep {
         case .selectType:
-            return selectedTemplate != nil
+            self.selectedTemplate != nil
         case .configure:
-            return isConfigurationValid
+            self.isConfigurationValid
         case .test:
-            return testResult?.isSuccess == true
+            self.testResult?.isSuccess == true
         }
     }
-    
+
     private var isConfigurationValid: Bool {
-        !providerId.isEmpty && !name.isEmpty && !baseURL.isEmpty && !apiKey.isEmpty
+        !self.providerId.isEmpty && !self.name.isEmpty && !self.baseURL.isEmpty && !self.apiKey.isEmpty
     }
-    
+
     private func navigationAction() {
-        switch currentStep {
+        switch self.currentStep {
         case .selectType:
             withAnimation {
-                currentStep = .configure
+                self.currentStep = .configure
             }
         case .configure:
             withAnimation {
-                currentStep = .test
+                self.currentStep = .test
             }
         case .test:
-            if testResult?.isSuccess == true {
-                addProvider()
+            if self.testResult?.isSuccess == true {
+                self.addProvider()
             }
         }
     }
-    
+
     private func applyTemplate(_ template: ProviderTemplate) {
-        name = template.name
-        description = template.description
-        type = template.type
-        baseURL = template.baseURL
-        providerId = template.suggestedId
+        self.name = template.name
+        self.description = template.description
+        self.type = template.type
+        self.baseURL = template.baseURL
+        self.providerId = template.suggestedId
     }
-    
-    private func testConnection() {
-        isTestingConnection = true
-        testResult = nil
-        
+
+    func testConnection() {
+        self.isTestingConnection = true
+        self.testResult = nil
+
         Task {
             await MainActor.run {
                 // Simulate test - in real implementation, this would call the actual API
@@ -423,13 +442,13 @@ struct AddCustomProviderView: View {
             }
         }
     }
-    
+
     private func addProvider() {
         // Parse headers
         var headerDict: [String: String]?
-        if !headers.isEmpty {
+        if !self.headers.isEmpty {
             headerDict = [:]
-            let pairs = headers.split(separator: ",")
+            let pairs = self.headers.split(separator: ",")
             for pair in pairs {
                 let components = pair.split(separator: ":", maxSplits: 1)
                 if components.count == 2 {
@@ -439,28 +458,26 @@ struct AddCustomProviderView: View {
                 }
             }
         }
-        
+
         let options = Configuration.ProviderOptions(
-            baseURL: baseURL,
-            apiKey: apiKey,
-            headers: headerDict
-        )
-        
+            baseURL: self.baseURL,
+            apiKey: self.apiKey,
+            headers: headerDict)
+
         let provider = Configuration.CustomProvider(
-            name: name,
-            description: description.isEmpty ? nil : description,
-            type: type,
+            name: self.name,
+            description: self.description.isEmpty ? nil : self.description,
+            type: self.type,
             options: options,
             models: nil,
-            enabled: true
-        )
-        
+            enabled: true)
+
         do {
-            try settings.addCustomProvider(provider, id: providerId)
-            dismiss()
+            try self.settings.addCustomProvider(provider, id: self.providerId)
+            self.dismiss()
         } catch {
-            errorMessage = error.localizedDescription
-            showingError = true
+            self.errorMessage = error.localizedDescription
+            self.showingError = true
         }
     }
 }
@@ -471,28 +488,28 @@ struct ProviderTemplateCard: View {
     let template: ProviderTemplate
     let isSelected: Bool
     let onTap: () -> Void
-    
+
     var body: some View {
-        Button(action: onTap) {
+        Button(action: self.onTap) {
             VStack(spacing: 12) {
                 // Icon
                 ZStack {
                     Circle()
-                        .fill(template.color.opacity(0.1))
+                        .fill(self.template.color.opacity(0.1))
                         .frame(width: 50, height: 50)
-                    
-                    Image(systemName: template.icon)
+
+                    Image(systemName: self.template.icon)
                         .font(.title2)
-                        .foregroundColor(template.color)
+                        .foregroundColor(self.template.color)
                 }
-                
+
                 // Content
                 VStack(spacing: 4) {
-                    Text(template.name)
+                    Text(self.template.name)
                         .font(.headline)
                         .multilineTextAlignment(.center)
-                    
-                    Text(template.description)
+
+                    Text(self.template.description)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -501,11 +518,10 @@ struct ProviderTemplateCard: View {
             }
             .padding(20)
             .frame(maxWidth: .infinity, minHeight: 140)
-            .background(isSelected ? Color.accentColor.opacity(0.1) : Color(.controlBackgroundColor))
+            .background(self.isSelected ? Color.accentColor.opacity(0.1) : Color(.controlBackgroundColor))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-            )
+                    .stroke(self.isSelected ? Color.accentColor : Color.clear, lineWidth: 2))
             .cornerRadius(12)
         }
         .buttonStyle(.plain)
@@ -515,33 +531,33 @@ struct ProviderTemplateCard: View {
 struct ProviderPreviewCard: View {
     let template: ProviderTemplate
     let name: String
-    
+
     var body: some View {
         HStack(spacing: 16) {
             // Icon
             ZStack {
                 Circle()
-                    .fill(template.color.opacity(0.1))
+                    .fill(self.template.color.opacity(0.1))
                     .frame(width: 40, height: 40)
-                
-                Image(systemName: template.icon)
+
+                Image(systemName: self.template.icon)
                     .font(.title3)
-                    .foregroundColor(template.color)
+                    .foregroundColor(self.template.color)
             }
-            
+
             // Info
             VStack(alignment: .leading, spacing: 4) {
-                Text(name)
+                Text(self.name)
                     .font(.headline)
-                
-                Text(template.type.displayName)
+
+                Text(self.template.type.displayName)
                     .font(.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
-                    .background(template.color.opacity(0.2))
+                    .background(self.template.color.opacity(0.2))
                     .cornerRadius(4)
             }
-            
+
             Spacer()
         }
         .padding(16)
@@ -554,18 +570,18 @@ struct SectionCard<Content: View>: View {
     let title: String
     let icon: String
     @ViewBuilder let content: Content
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Section header
             HStack {
-                Image(systemName: icon)
+                Image(systemName: self.icon)
                     .foregroundColor(.accentColor)
-                Text(title)
+                Text(self.title)
                     .font(.headline)
             }
-            
-            content
+
+            self.content
         }
         .padding(20)
         .background(Color(.controlBackgroundColor))
@@ -578,16 +594,16 @@ struct FormField<Help: View>: View {
     @Binding var binding: String
     let placeholder: String
     @ViewBuilder let help: Help
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(self.title)
                 .font(.headline)
-            
-            TextField(placeholder, text: $binding)
+
+            TextField(self.placeholder, text: self.$binding)
                 .textFieldStyle(.roundedBorder)
-            
-            help
+
+            self.help
         }
     }
 }
@@ -597,16 +613,16 @@ struct SecureFormField<Help: View>: View {
     @Binding var binding: String
     let placeholder: String
     @ViewBuilder let help: Help
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(self.title)
                 .font(.headline)
-            
-            SecureField(placeholder, text: $binding)
+
+            SecureField(self.placeholder, text: self.$binding)
                 .textFieldStyle(.roundedBorder)
-            
-            help
+
+            self.help
         }
     }
 }
@@ -616,47 +632,47 @@ struct ProviderSummaryCard: View {
     let name: String
     let baseURL: String
     let type: Configuration.CustomProvider.ProviderType
-    
+
     var body: some View {
         VStack(spacing: 16) {
             // Header
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(template.color.opacity(0.1))
+                        .fill(self.template.color.opacity(0.1))
                         .frame(width: 50, height: 50)
-                    
-                    Image(systemName: template.icon)
+
+                    Image(systemName: self.template.icon)
                         .font(.title2)
-                        .foregroundColor(template.color)
+                        .foregroundColor(self.template.color)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(name)
+                    Text(self.name)
                         .font(.title2.bold())
-                    
-                    Text(type.displayName)
+
+                    Text(self.type.displayName)
                         .font(.callout)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(template.color.opacity(0.2))
+                        .background(self.template.color.opacity(0.2))
                         .cornerRadius(4)
                 }
-                
+
                 Spacer()
             }
-            
+
             // Details
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: "link")
                         .foregroundColor(.secondary)
                         .frame(width: 20)
-                    Text(baseURL)
+                    Text(self.baseURL)
                         .font(.callout)
                         .foregroundColor(.secondary)
                 }
-                
+
                 HStack {
                     Image(systemName: "checkmark.shield")
                         .foregroundColor(.green)
@@ -675,27 +691,27 @@ struct ProviderSummaryCard: View {
 
 struct TestResultCard: View {
     let result: AddCustomProviderView.TestResult
-    
+
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
+            Image(systemName: self.result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .font(.title2)
-                .foregroundColor(result.isSuccess ? .green : .red)
-            
+                .foregroundColor(self.result.isSuccess ? .green : .red)
+
             VStack(alignment: .leading, spacing: 4) {
-                Text(result.isSuccess ? "Connection Successful" : "Connection Failed")
+                Text(self.result.isSuccess ? "Connection Successful" : "Connection Failed")
                     .font(.headline)
-                    .foregroundColor(result.isSuccess ? .green : .red)
-                
-                Text(result.message)
+                    .foregroundColor(self.result.isSuccess ? .green : .red)
+
+                Text(self.result.message)
                     .font(.callout)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
         }
         .padding(16)
-        .background(result.isSuccess ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
+        .background(self.result.isSuccess ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
         .cornerRadius(12)
     }
 }
@@ -705,16 +721,16 @@ struct TestingCard: View {
         HStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.2)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text("Testing Connection")
                     .font(.headline)
-                
+
                 Text("Verifying your provider configuration...")
                     .font(.callout)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
         }
         .padding(16)
@@ -734,7 +750,7 @@ struct ProviderTemplate: Identifiable {
     let suggestedId: String
     let icon: String
     let color: Color
-    
+
     @MainActor
     static let popular: [ProviderTemplate] = [
         ProviderTemplate(
@@ -744,8 +760,7 @@ struct ProviderTemplate: Identifiable {
             baseURL: "https://openrouter.ai/api/v1",
             suggestedId: "openrouter",
             icon: "arrow.triangle.2.circlepath",
-            color: .purple
-        ),
+            color: .purple),
         ProviderTemplate(
             name: "Groq",
             description: "Ultra-fast inference for Llama models",
@@ -753,8 +768,7 @@ struct ProviderTemplate: Identifiable {
             baseURL: "https://api.groq.com/openai/v1",
             suggestedId: "groq",
             icon: "bolt.fill",
-            color: .orange
-        ),
+            color: .orange),
         ProviderTemplate(
             name: "Together AI",
             description: "Open-source model hosting",
@@ -762,8 +776,7 @@ struct ProviderTemplate: Identifiable {
             baseURL: "https://api.together.xyz/v1",
             suggestedId: "together",
             icon: "person.2.fill",
-            color: .blue
-        ),
+            color: .blue),
         ProviderTemplate(
             name: "Perplexity",
             description: "Search-powered AI models",
@@ -771,10 +784,9 @@ struct ProviderTemplate: Identifiable {
             baseURL: "https://api.perplexity.ai",
             suggestedId: "perplexity",
             icon: "magnifyingglass.circle.fill",
-            color: .teal
-        )
+            color: .teal),
     ]
-    
+
     @MainActor
     static let custom = ProviderTemplate(
         name: "Custom Provider",
@@ -783,8 +795,7 @@ struct ProviderTemplate: Identifiable {
         baseURL: "",
         suggestedId: "custom",
         icon: "gearshape.fill",
-        color: .gray
-    )
+        color: .gray)
 }
 
 // MARK: - Extensions
@@ -792,8 +803,8 @@ struct ProviderTemplate: Identifiable {
 extension Configuration.CustomProvider.ProviderType {
     var icon: String {
         switch self {
-        case .openai: return "brain.head.profile"
-        case .anthropic: return "person.crop.rectangle.stack"
+        case .openai: "brain.head.profile"
+        case .anthropic: "person.crop.rectangle.stack"
         }
     }
 }

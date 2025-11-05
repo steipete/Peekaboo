@@ -7,23 +7,23 @@ struct EnhancedSessionDetailView: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
     @Environment(PeekabooSettings.self) private var settings
-    
+
     @State private var selectedTab: Tab = .session
     @State private var showAIAssistant = false
-    
+
     enum Tab: String, CaseIterable {
         case session = "Session"
         case aiChat = "AI Assistant"
         case tools = "Tools"
-        
+
         var systemImage: String {
             switch self {
             case .session:
-                return "bubble.left.and.bubble.right"
+                "bubble.left.and.bubble.right"
             case .aiChat:
-                return "brain.filled.head.profile"
+                "brain.filled.head.profile"
             case .tools:
-                return "wrench.and.screwdriver"
+                "wrench.and.screwdriver"
             }
         }
     }
@@ -43,34 +43,32 @@ struct EnhancedSessionDetailView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .background(
-                            self.selectedTab == tab ? 
-                            Color.accentColor : Color.clear
-                        )
+                            self.selectedTab == tab ?
+                                Color.accentColor : Color.clear)
                         .foregroundColor(
-                            self.selectedTab == tab ? 
-                            .white : .primary
-                        )
+                            self.selectedTab == tab ?
+                                .white : .primary)
                         .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
                 }
-                
+
                 Spacer()
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
             .background(Color.gray.opacity(0.1))
-            
+
             Divider()
-            
+
             // Tab content
             switch self.selectedTab {
             case .session:
                 SessionDetailContent(session: self.session)
-                
+
             case .aiChat:
                 AIAssistantTab(sessionTitle: self.session.title)
-                
+
             case .tools:
                 ToolsTab(session: self.session)
             }
@@ -83,7 +81,7 @@ struct EnhancedSessionDetailView: View {
 
 private struct SessionDetailContent: View {
     let session: ConversationSession
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -124,7 +122,7 @@ private struct SessionDetailContent: View {
 private struct AIAssistantTab: View {
     let sessionTitle: String
     @State private var systemPrompt: String = ""
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Context header
@@ -132,13 +130,13 @@ private struct AIAssistantTab: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("AI Assistant for Session")
                         .font(.headline)
-                    Text(sessionTitle)
+                    Text(self.sessionTitle)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 Button("Configure") {
                     // Show configuration sheet
                 }
@@ -147,22 +145,23 @@ private struct AIAssistantTab: View {
             }
             .padding()
             .background(Color.blue.opacity(0.1))
-            
+
             // AI Chat interface
             CompactAIAssistant(
-                systemPrompt: self.systemPrompt.isEmpty ? 
-                "You are a helpful assistant analyzing the Peekaboo automation session '\(sessionTitle)'. Help the user understand the session data, troubleshoot issues, and improve their automation workflows." : 
-                self.systemPrompt
-            )
+                systemPrompt: self.systemPrompt.isEmpty ?
+                    "You are a helpful assistant analyzing the Peekaboo automation session '\(self.sessionTitle)'. Help the user understand the session data, troubleshoot issues, and improve their automation workflows." :
+                    self.systemPrompt)
         }
         .onAppear {
             self.setupSystemPrompt()
         }
     }
-    
+
     private func setupSystemPrompt() {
         self.systemPrompt = """
-        You are an expert AI assistant for Peekaboo, a macOS automation tool. You're helping analyze the session titled "\(sessionTitle)".
+        You are an expert AI assistant for Peekaboo, a macOS automation tool. You're helping analyze the session titled "\(
+            self
+                .sessionTitle)".
 
         Your role:
         - Help users understand their automation sessions
@@ -180,7 +179,7 @@ private struct AIAssistantTab: View {
 
 private struct ToolsTab: View {
     let session: ConversationSession
-    
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
@@ -188,7 +187,7 @@ private struct ToolsTab: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Tools Used in Session")
                         .font(.headline)
-                    
+
                     ForEach(self.extractToolsUsed(), id: \.self) { tool in
                         HStack {
                             Image(systemName: "wrench.and.screwdriver.fill")
@@ -200,47 +199,43 @@ private struct ToolsTab: View {
                     }
                 }
                 .padding()
-                
+
                 Divider()
-                
+
                 // Available tools
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Available Peekaboo Tools")
                         .font(.headline)
-                    
+
                     ToolCategoryRow(
                         title: "Screen Capture",
                         tools: ["image", "see", "analyze"],
-                        icon: "camera"
-                    )
-                    
+                        icon: "camera")
+
                     ToolCategoryRow(
                         title: "UI Interaction",
                         tools: ["click", "type", "scroll", "drag"],
-                        icon: "hand.tap"
-                    )
-                    
+                        icon: "hand.tap")
+
                     ToolCategoryRow(
                         title: "Window Management",
                         tools: ["window", "app", "space"],
-                        icon: "macwindow"
-                    )
-                    
+                        icon: "macwindow")
+
                     ToolCategoryRow(
                         title: "System Control",
                         tools: ["hotkey", "menu", "dialog"],
-                        icon: "gear"
-                    )
+                        icon: "gear")
                 }
                 .padding()
             }
         }
     }
-    
+
     private func extractToolsUsed() -> [String] {
         // Extract tools from session messages
         // This would analyze the session data to find which tools were used
-        return ["click", "type", "image", "see"] // Placeholder
+        ["click", "type", "image", "see"] // Placeholder
     }
 }
 
@@ -248,19 +243,19 @@ private struct ToolCategoryRow: View {
     let title: String
     let tools: [String]
     let icon: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Image(systemName: icon)
+                Image(systemName: self.icon)
                     .foregroundColor(.accentColor)
-                Text(title)
+                Text(self.title)
                     .font(.subheadline)
                     .fontWeight(.medium)
             }
-            
+
             HStack {
-                ForEach(tools, id: \.self) { tool in
+                ForEach(self.tools, id: \.self) { tool in
                     Text(tool)
                         .font(.caption)
                         .padding(.horizontal, 8)
@@ -288,19 +283,19 @@ private struct SessionMessageRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(message.role.rawValue.capitalized)
+                    Text(self.message.role.rawValue.capitalized)
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
 
                     Spacer()
 
-                    Text(message.timestamp, style: .time)
+                    Text(self.message.timestamp, style: .time)
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
 
-                Text(message.content)
+                Text(self.message.content)
                     .font(.callout)
                     .textSelection(.enabled)
             }
@@ -311,24 +306,24 @@ private struct SessionMessageRow: View {
     }
 
     private var iconName: String {
-        switch message.role {
+        switch self.message.role {
         case .user:
-            return "person.circle.fill"
+            "person.circle.fill"
         case .assistant:
-            return "brain.head.profile"
+            "brain.head.profile"
         case .system:
-            return "gear.circle.fill"
+            "gear.circle.fill"
         }
     }
 
     private var iconColor: Color {
-        switch message.role {
+        switch self.message.role {
         case .user:
-            return .blue
+            .blue
         case .assistant:
-            return .green
+            .green
         case .system:
-            return .orange
+            .orange
         }
     }
 }
@@ -340,11 +335,11 @@ private struct SessionMessageRow: View {
             title: "Screenshot and Analysis",
             messages: [
                 PeekabooCore.ConversationMessage(role: .user, content: "Take a screenshot of Safari"),
-                PeekabooCore.ConversationMessage(role: .assistant, content: "I'll take a screenshot of Safari for you."),
-                PeekabooCore.ConversationMessage(role: .system, content: "Screenshot captured: safari_screenshot.png")
+                PeekabooCore.ConversationMessage(
+                    role: .assistant,
+                    content: "I'll take a screenshot of Safari for you."),
+                PeekabooCore.ConversationMessage(role: .system, content: "Screenshot captured: safari_screenshot.png"),
             ],
-            startTime: Date()
-        )
-    )
-    .frame(width: 800, height: 600)
+            startTime: Date()))
+        .frame(width: 800, height: 600)
 }

@@ -41,7 +41,7 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
             if let logger = loggers[category] {
                 return logger
             }
-            let logger = os.Logger(subsystem: subsystem, category: category)
+            let logger = os.Logger(subsystem: self.subsystem, category: category)
             return logger
         }
     }

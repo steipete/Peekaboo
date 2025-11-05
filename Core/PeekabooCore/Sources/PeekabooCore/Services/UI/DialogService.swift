@@ -1,9 +1,9 @@
 import AppKit
-import PeekabooFoundation
 import ApplicationServices
 import AXorcist
 import Foundation
 import os.log
+import PeekabooFoundation
 
 /// Dialog-specific errors
 public enum DialogError: Error {
@@ -66,7 +66,7 @@ public final class DialogService: DialogServiceProtocol {
             isFileDialog: isFileDialog,
             bounds: bounds)
 
-        self.logger.info("✅ Found dialog: \(title), file dialog: \(isFileDialog)")
+        self.logger.info("\(AgentDisplayTokens.Status.success) Found dialog: \(title), file dialog: \(isFileDialog)")
         return info
     }
 
@@ -116,7 +116,9 @@ public final class DialogService: DialogServiceProtocol {
                 "window": dialog.title() ?? "Dialog",
             ])
 
-        self.logger.info("✅ Successfully clicked button: \(targetButton.title() ?? buttonText)")
+        self.logger
+            .info(
+                "\(AgentDisplayTokens.Status.success) Successfully clicked button: \(targetButton.title() ?? buttonText)")
         return result
     }
 
@@ -222,7 +224,7 @@ public final class DialogService: DialogServiceProtocol {
                 "cleared": String(clearExisting),
             ])
 
-        self.logger.info("✅ Successfully entered text into field")
+        self.logger.info("\(AgentDisplayTokens.Status.success) Successfully entered text into field")
         return result
     }
 
@@ -314,7 +316,7 @@ public final class DialogService: DialogServiceProtocol {
             action: .handleFileDialog,
             details: details)
 
-        self.logger.info("✅ Successfully handled file dialog")
+        self.logger.info("\(AgentDisplayTokens.Status.success) Successfully handled file dialog")
         return result
     }
 
@@ -328,7 +330,7 @@ public final class DialogService: DialogServiceProtocol {
             let escape = CGEvent(keyboardEventSource: nil, virtualKey: 0x35, keyDown: true) // Escape
             escape?.post(tap: .cghidEventTap)
 
-            self.logger.info("✅ Dialog dismissed with Escape key")
+            self.logger.info("\(AgentDisplayTokens.Status.success) Dialog dismissed with Escape key")
             return DialogActionResult(
                 success: true,
                 action: .dismiss,
@@ -350,7 +352,7 @@ public final class DialogService: DialogServiceProtocol {
                     self.logger.debug("Found dismiss button: \(buttonName)")
                     try button.performAction(.press)
 
-                    self.logger.info("✅ Dialog dismissed by clicking: \(buttonName)")
+                    self.logger.info("\(AgentDisplayTokens.Status.success) Dialog dismissed by clicking: \(buttonName)")
                     return DialogActionResult(
                         success: true,
                         action: .dismiss,
@@ -433,7 +435,9 @@ public final class DialogService: DialogServiceProtocol {
             staticTexts: staticTexts,
             otherElements: otherElements)
 
-        self.logger.info("✅ Listed \(buttons.count) buttons, \(textFields.count) fields, \(staticTexts.count) texts")
+        self.logger
+            .info(
+                "\(AgentDisplayTokens.Status.success) Listed \(buttons.count) buttons, \(textFields.count) fields, \(staticTexts.count) texts")
         return elements
     }
 

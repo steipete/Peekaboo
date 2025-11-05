@@ -43,15 +43,15 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
     @OptionGroup var focusOptions: FocusOptions
 
     mutating func validate() throws {
-        guard query != nil || on != nil || id != nil || coords != nil else {
+        guard self.query != nil || self.on != nil || self.id != nil || self.coords != nil else {
             throw ValidationError("Specify an element query, --on/--id, or --coords.")
         }
 
-        if on != nil && coords != nil {
+        if self.on != nil && self.coords != nil {
             throw ValidationError("Cannot specify both --on and --coords.")
         }
 
-        if on != nil && id != nil {
+        if self.on != nil && self.id != nil {
             throw ValidationError("Cannot specify both --on and --id.")
         }
 

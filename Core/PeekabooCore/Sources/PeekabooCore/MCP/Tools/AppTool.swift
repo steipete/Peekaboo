@@ -1,8 +1,8 @@
-import Foundation
 import CoreGraphics
-import TachikomaMCP
+import Foundation
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for controlling applications
 public struct AppTool: MCPTool {
@@ -185,7 +185,7 @@ public struct AppTool: MCPTool {
         return ToolResponse(
             content: [
                 .text(
-                    "✅ Launched \(app.name) (PID: \(app.processIdentifier)) in \(String(format: "%.2f", executionTime))s"),
+                    "\(AgentDisplayTokens.Status.success) Launched \(app.name) (PID: \(app.processIdentifier)) in \(String(format: "%.2f", executionTime))s"),
             ],
             meta: .object([
                 "app_name": .string(app.name),
@@ -223,7 +223,10 @@ public struct AppTool: MCPTool {
 
         if success {
             return ToolResponse(
-                content: [.text("✅ Quit \(app.name)\(forceText) in \(String(format: "%.2f", executionTime))s")],
+                content: [
+                    .text(
+                        "\(AgentDisplayTokens.Status.success) Quit \(app.name)\(forceText) in \(String(format: "%.2f", executionTime))s"),
+                ],
                 meta: .object([
                     "app_name": .string(app.name),
                     "process_id": .double(Double(app.processIdentifier)),
@@ -274,7 +277,7 @@ public struct AppTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
         let forceText = force ? " (force quit)" : ""
 
-        var message = "✅ Quit \(quitCount) applications\(forceText)"
+        var message = "\(AgentDisplayTokens.Status.success) Quit \(quitCount) applications\(forceText)"
         if !failedApps.isEmpty {
             message += " (failed: \(failedApps.joined(separator: ", ")))"
         }
@@ -329,7 +332,7 @@ public struct AppTool: MCPTool {
         return ToolResponse(
             content: [
                 .text(
-                    "✅ Relaunched \(newApp.name)\(forceText) with \(wait)s wait in \(String(format: "%.2f", executionTime))s"),
+                    "\(AgentDisplayTokens.Status.success) Relaunched \(newApp.name)\(forceText) with \(wait)s wait in \(String(format: "%.2f", executionTime))s"),
             ],
             meta: .object([
                 "app_name": .string(newApp.name),
@@ -355,25 +358,28 @@ public struct AppTool: MCPTool {
             let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x30, keyDown: true) // Tab key
             event?.flags = .maskCommand
             event?.post(tap: .cghidEventTap)
-            
+
             // Release the keys
             let releaseEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0x30, keyDown: false)
             releaseEvent?.flags = []
             releaseEvent?.post(tap: .cghidEventTap)
-            
+
             // Small delay to allow the switch to complete
             try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-            
+
             // Get the newly focused app
             let appsOutput = try await service.listApplications()
             guard let focusedApp = appsOutput.data.applications.first(where: { $0.isActive }) else {
                 return ToolResponse.error("Failed to determine focused app after cycling")
             }
-            
+
             let executionTime = Date().timeIntervalSince(startTime)
-            
+
             return ToolResponse(
-                content: [.text("✅ Cycled to \(focusedApp.name) in \(String(format: "%.2f", executionTime))s")],
+                content: [
+                    .text(
+                        "\(AgentDisplayTokens.Status.success) Cycled to \(focusedApp.name) in \(String(format: "%.2f", executionTime))s"),
+                ],
                 meta: .object([
                     "app_name": .string(focusedApp.name),
                     "process_id": .double(Double(focusedApp.processIdentifier)),
@@ -393,7 +399,10 @@ public struct AppTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Focused \(app.name) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Focused \(app.name) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "app_name": .string(app.name),
                 "process_id": .double(Double(app.processIdentifier)),
@@ -417,7 +426,10 @@ public struct AppTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Hidden \(app.name) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Hidden \(app.name) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "app_name": .string(app.name),
                 "process_id": .double(Double(app.processIdentifier)),
@@ -440,7 +452,10 @@ public struct AppTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Unhidden \(app.name) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Unhidden \(app.name) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "app_name": .string(app.name),
                 "process_id": .double(Double(app.processIdentifier)),
@@ -469,7 +484,7 @@ public struct AppTool: MCPTool {
             return info
         }.joined(separator: "\n")
 
-        let message = "📱 Running Applications (\(apps.data.applications.count) total):\n\(appList)\n\nCompleted in \(String(format: "%.2f", executionTime))s"
+        let message = "[apps] Running Applications (\(apps.data.applications.count) total):\n\(appList)\n\nCompleted in \(String(format: "%.2f", executionTime))s"
 
         return ToolResponse(
             content: [.text(message)],

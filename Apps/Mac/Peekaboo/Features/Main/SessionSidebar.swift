@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 import UniformTypeIdentifiers
 
 // MARK: - Session Sidebar

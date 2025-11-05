@@ -1,6 +1,6 @@
 import AppKit
-import PeekabooFoundation
 import Foundation
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
@@ -105,14 +105,14 @@ struct ApplicationServiceTests {
     @MainActor
     func timeoutConfigurationIsApplied() async throws {
         // Given
-        let service = ApplicationService()
+        let service: ApplicationService? = ApplicationService()
 
         // ApplicationService sets global timeout in init
         // Default timeout should be 2 seconds as defined in the service
 
         // When/Then - service is initialized with timeout configuration
         // This test verifies the service initializes properly
-        // Service initialized successfully
+        #expect(service != nil)
     }
 
     @Test("List windows handles partial results on timeout")

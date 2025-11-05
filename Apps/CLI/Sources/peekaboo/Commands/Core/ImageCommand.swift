@@ -127,7 +127,10 @@ ApplicationResolvable {
                         "promptLength": analyzePrompt.count
                     ]
                 )
-                Logger.shared.operationStart("ai_analysis", metadata: ["promptPreview": String(analyzePrompt.prefix(80))])
+                Logger.shared.operationStart(
+                    "ai_analysis",
+                    metadata: ["promptPreview": String(analyzePrompt.prefix(80))]
+                )
                 Logger.shared.startTimer("ai_generate")
                 let analysisResult = try await analyzeImage(at: firstFile.path, with: analyzePrompt)
                 Logger.shared.stopTimer("ai_generate")

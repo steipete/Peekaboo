@@ -1,9 +1,9 @@
 import AppKit
-import PeekabooFoundation
 import AXorcist
 import CoreGraphics
 import Foundation
 import os.log
+import PeekabooFoundation
 
 /**
  * Window management service providing window control operations using AXorcist.

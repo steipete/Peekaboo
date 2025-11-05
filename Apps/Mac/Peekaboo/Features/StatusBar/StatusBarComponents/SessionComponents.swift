@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 import Tachikoma
 
 // MARK: - Session Components
@@ -68,7 +68,7 @@ struct CurrentSessionPreview: View {
                     Text("Current Session")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(session.title)
+                    Text(self.session.title)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(1)
@@ -77,7 +77,7 @@ struct CurrentSessionPreview: View {
                 Spacer()
 
                 // Open button
-                Button(action: onOpenMainWindow) {
+                Button(action: self.onOpenMainWindow) {
                     Image(systemName: "arrow.up.right.square")
                         .font(.body)
                 }
@@ -86,16 +86,16 @@ struct CurrentSessionPreview: View {
             }
 
             // Show last few messages
-            if !session.messages.isEmpty {
+            if !self.session.messages.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(session.messages.suffix(3)) { message in
+                    ForEach(self.session.messages.suffix(3)) { message in
                         HStack(alignment: .top, spacing: 6) {
-                            Image(systemName: iconForRole(message.role))
+                            Image(systemName: self.iconForRole(message.role))
                                 .font(.caption2)
-                                .foregroundColor(colorForRole(message.role))
+                                .foregroundColor(self.colorForRole(message.role))
                                 .frame(width: 12)
 
-                            Text(truncatedContent(message.content))
+                            Text(self.truncatedContent(message.content))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
@@ -111,11 +111,11 @@ struct CurrentSessionPreview: View {
 
             // Session stats
             HStack(spacing: 12) {
-                Label("\(session.messages.count)", systemImage: "message")
+                Label("\(self.session.messages.count)", systemImage: "message")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                if let tokenUsage = tokenUsage {
+                if let tokenUsage {
                     Label("\(tokenUsage.totalTokens)", systemImage: "circle.hexagongrid.circle")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -123,7 +123,7 @@ struct CurrentSessionPreview: View {
 
                 Spacer()
 
-                Text(formatSessionDuration(session))
+                Text(formatSessionDuration(self.session))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -151,11 +151,11 @@ struct CurrentSessionPreview: View {
 
     private func truncatedContent(_ content: String) -> String {
         let cleaned = content
-            .replacingOccurrences(of: "🤔 ", with: "")
-            .replacingOccurrences(of: "🔧 ", with: "")
-            .replacingOccurrences(of: "✅ ", with: "")
-            .replacingOccurrences(of: "❌ ", with: "")
-            .replacingOccurrences(of: "⚠️ ", with: "")
+            .replacingOccurrences(of: "\(AgentDisplayTokens.Status.planning) ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.running + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.success + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.failure + " ", with: "")
+            .replacingOccurrences(of: "\(AgentDisplayTokens.Status.warning) ", with: "")
             .components(separatedBy: .newlines)
             .first ?? content
 

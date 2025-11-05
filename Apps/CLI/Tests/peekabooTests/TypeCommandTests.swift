@@ -76,46 +76,46 @@ struct TypeCommandTests {
 
     @Test("Process text with escape sequences")
     func processEscapeSequences() throws {
-        var command = TypeCommand()
-
         // Test newline escape
-        let newlineActions = command.processTextWithEscapes("Line 1\\nLine 2")
+        let newlineActions = TypeCommand.processTextWithEscapes("Line 1\\nLine 2")
         #expect(newlineActions.count == 3)
         if case .text("Line 1") = newlineActions[0] { } else { Issue.record("Expected text 'Line 1'") }
         if case .key(.return) = newlineActions[1] { } else { Issue.record("Expected return key") }
         if case .text("Line 2") = newlineActions[2] { } else { Issue.record("Expected text 'Line 2'") }
 
         // Test tab escape
-        let tabActions = command.processTextWithEscapes("Name:\\tJohn")
+        let tabActions = TypeCommand.processTextWithEscapes("Name:\\tJohn")
         #expect(tabActions.count == 3)
         if case .text("Name:") = tabActions[0] { } else { Issue.record("Expected text 'Name:'") }
         if case .key(.tab) = tabActions[1] { } else { Issue.record("Expected tab key") }
         if case .text("John") = tabActions[2] { } else { Issue.record("Expected text 'John'") }
 
         // Test backspace escape
-        let backspaceActions = command.processTextWithEscapes("ABC\\b")
+        let backspaceActions = TypeCommand.processTextWithEscapes("ABC\\b")
         #expect(backspaceActions.count == 2)
         if case .text("ABC") = backspaceActions[0] { } else { Issue.record("Expected text 'ABC'") }
         if case .key(.delete) = backspaceActions[1] { } else { Issue.record("Expected delete key") }
 
         // Test escape key
-        let escapeActions = command.processTextWithEscapes("Cancel\\e")
+        let escapeActions = TypeCommand.processTextWithEscapes("Cancel\\e")
         #expect(escapeActions.count == 2)
         if case .text("Cancel") = escapeActions[0] { } else { Issue.record("Expected text 'Cancel'") }
         if case .key(.escape) = escapeActions[1] { } else { Issue.record("Expected escape key") }
 
         // Test literal backslash
-        let backslashActions = command.processTextWithEscapes("Path: C\\\\\\\\data")
+        let backslashActions = TypeCommand.processTextWithEscapes("Path: C\\\\data")
         #expect(backslashActions.count == 1)
-        if case .text("Path: C:\\data") = backslashActions[0] { } else { Issue.record("Expected text with backslash") }
+        if case let .text(value) = backslashActions[0] {
+            #expect(value == "Path: C\\data", "Value was: \(value)")
+        } else {
+            Issue.record("Expected text with backslash")
+        }
     }
 
     @Test("Complex escape sequence combinations")
     func complexEscapeSequences() throws {
-        var command = TypeCommand()
-
         // Test multiple escape sequences
-        let complexActions = command.processTextWithEscapes("Line 1\\nLine 2\\tTabbed\\bFixed\\eEsc\\\\Path")
+        let complexActions = TypeCommand.processTextWithEscapes("Line 1\\nLine 2\\tTabbed\\bFixed\\eEsc\\\\Path")
         #expect(complexActions.count == 9)
 
         // Verify the sequence
@@ -132,23 +132,21 @@ struct TypeCommandTests {
 
     @Test("Empty and edge case escape sequences")
     func edgeCaseEscapeSequences() throws {
-        var command = TypeCommand()
-
         // Empty text
-        let emptyActions = command.processTextWithEscapes("")
+        let emptyActions = TypeCommand.processTextWithEscapes("")
         #expect(emptyActions.isEmpty)
 
         // Only escape sequences
-        let onlyEscapes = command.processTextWithEscapes("\\n\\t\\b\\e")
+        let onlyEscapes = TypeCommand.processTextWithEscapes("\\n\\t\\b\\e")
         #expect(onlyEscapes.count == 4)
 
         // Text ending with incomplete escape
-        let incompleteEscape = command.processTextWithEscapes("Text\\\\")
+        let incompleteEscape = TypeCommand.processTextWithEscapes("Text\\\\")
         #expect(incompleteEscape.count == 1)
         if case .text("Text\\") = incompleteEscape[0] { } else { Issue.record("Expected 'Text\\'") }
 
         // Multiple consecutive escapes
-        let consecutiveEscapes = command.processTextWithEscapes("Text\\n\\n\\t\\t")
+        let consecutiveEscapes = TypeCommand.processTextWithEscapes("Text\\n\\n\\t\\t")
         #expect(consecutiveEscapes.count == 5)
         if case .text("Text") = consecutiveEscapes[0] { } else { Issue.record("Expected 'Text'") }
         if case .key(.return) = consecutiveEscapes[1] { } else { Issue.record("Expected return") }

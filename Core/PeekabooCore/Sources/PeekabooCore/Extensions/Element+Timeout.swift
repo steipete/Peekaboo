@@ -1,9 +1,9 @@
 import ApplicationServices
 import AXorcist
-import Foundation
-import PeekabooFoundation
-import os
 @preconcurrency import Dispatch
+import Foundation
+import os
+import PeekabooFoundation
 
 extension Element {
     /// Set a messaging timeout for this element to prevent hangs

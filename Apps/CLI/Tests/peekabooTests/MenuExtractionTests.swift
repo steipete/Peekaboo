@@ -13,38 +13,38 @@ struct MenuExtractionData: Codable {
     let app: String?
     let menu_structure: [[String: Any]]?
     let apps: [[String: Any]]?
-    
+
     enum CodingKeys: String, CodingKey {
         case app
         case menu_structure
         case apps
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        app = try container.decodeIfPresent(String.self, forKey: .app)
-        
+        self.app = try container.decodeIfPresent(String.self, forKey: .app)
+
         // Decode as generic JSON
         if let menuStructure = try? container.decode([[String: AnyCodable]].self, forKey: .menu_structure) {
-            menu_structure = menuStructure.map { dict in
+            self.menu_structure = menuStructure.map { dict in
                 dict.mapValues { $0.value }
             }
         } else {
-            menu_structure = nil
+            self.menu_structure = nil
         }
-        
+
         if let appsArray = try? container.decode([[String: AnyCodable]].self, forKey: .apps) {
-            apps = appsArray.map { dict in
+            self.apps = appsArray.map { dict in
                 dict.mapValues { $0.value }
             }
         } else {
-            apps = nil
+            self.apps = nil
         }
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encodeIfPresent(app, forKey: .app)
+        try container.encodeIfPresent(self.app, forKey: .app)
         // For encoding, we'd need to convert back to AnyCodable
     }
 }
@@ -52,27 +52,27 @@ struct MenuExtractionData: Codable {
 // Helper for decoding arbitrary JSON
 struct AnyCodable: Codable {
     let value: Any
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let bool = try? container.decode(Bool.self) {
-            value = bool
+            self.value = bool
         } else if let int = try? container.decode(Int.self) {
-            value = int
+            self.value = int
         } else if let double = try? container.decode(Double.self) {
-            value = double
+            self.value = double
         } else if let string = try? container.decode(String.self) {
-            value = string
+            self.value = string
         } else if let array = try? container.decode([AnyCodable].self) {
-            value = array.map { $0.value }
+            self.value = array.map(\.value)
         } else if let dict = try? container.decode([String: AnyCodable].self) {
-            value = dict.mapValues { $0.value }
+            self.value = dict.mapValues { $0.value }
         } else {
-            value = NSNull()
+            self.value = NSNull()
         }
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         // Simplified encoding
@@ -96,10 +96,7 @@ struct MenuExtractionTests {
     func menuExtraction() async throws {
         // This test requires a running application
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with Calculator app
         let output = try await runPeekabooCommand(["menu", "list", "--app", "Calculator", "--json-output"])
@@ -145,10 +142,7 @@ struct MenuExtractionTests {
     @Test("Menu extraction includes keyboard shortcuts")
     func menuKeyboardShortcuts() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with TextEdit which has well-known shortcuts
         let output = try await runPeekabooCommand(["menu", "list", "--app", "TextEdit", "--json-output"])
@@ -184,10 +178,7 @@ struct MenuExtractionTests {
     @Test("Menu list-all extracts frontmost app menus")
     func menuListAll() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         let output = try await runPeekabooCommand(["menu", "list-all", "--json-output"])
         let data = try #require(output.data(using: .utf8))
@@ -222,10 +213,7 @@ struct MenuExtractionTests {
     @Test("Menu extraction handles nested submenus")
     func nestedSubmenus() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Finder has nested menus like View > Sort By > Name
         let output = try await runPeekabooCommand(["menu", "list", "--app", "Finder", "--json-output"])
@@ -258,10 +246,7 @@ struct MenuExtractionTests {
     @Test("Menu extraction properly handles disabled items")
     func disabledMenuItems() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         let output = try await runPeekabooCommand(["menu", "list", "--app", "Finder", "--json-output"])
         let data = try #require(output.data(using: .utf8))

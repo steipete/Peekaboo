@@ -1,9 +1,9 @@
 import AppKit
-import PeekabooFoundation
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
 import os.log
+import PeekabooFoundation
 
 /// Service for handling scroll operations
 @MainActor
@@ -70,7 +70,7 @@ public final class ScrollService {
 
         // Ensure amount is positive
         let absoluteAmount = abs(amount)
-        
+
         // Calculate ticks based on smoothness
         let (tickCount, tickSize): (Int, Int) = if smooth {
             // Smooth scroll with many small ticks

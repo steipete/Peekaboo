@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-import TachikomaMCP
 import MCP
+import TachikomaMCP
 
 /// MCP tool for listing various system items
 public struct ListTool: MCPTool {
@@ -174,8 +174,12 @@ public struct ListTool: MCPTool {
         let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
         let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
 
-        sections.append("- Screen Recording: \(screenRecording ? "✅ Granted" : "❌ Not granted")")
-        sections.append("- Accessibility: \(accessibility ? "✅ Granted" : "❌ Not granted")")
+        sections
+            .append(
+                "- Screen Recording: \(screenRecording ? "\(AgentDisplayTokens.Status.success) Granted" : "\(AgentDisplayTokens.Status.failure) Not granted")")
+        sections
+            .append(
+                "- Accessibility: \(accessibility ? "\(AgentDisplayTokens.Status.success) Granted" : "\(AgentDisplayTokens.Status.failure) Not granted")")
         sections.append("")
 
         // 3. AI Provider Status
@@ -184,7 +188,7 @@ public struct ListTool: MCPTool {
         if let providersString = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] {
             sections.append("Configured providers: \(providersString)")
         } else {
-            sections.append("❌ No AI providers configured")
+            sections.append("\(AgentDisplayTokens.Status.failure) No AI providers configured")
             sections.append("Configure PEEKABOO_AI_PROVIDERS environment variable to enable image analysis")
         }
         sections.append("")
@@ -195,15 +199,17 @@ public struct ListTool: MCPTool {
         var issues: [String] = []
 
         if !screenRecording {
-            issues.append("❌ Screen Recording permission not granted")
+            issues.append("\(AgentDisplayTokens.Status.failure) Screen Recording permission not granted")
         }
 
         if ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] == nil {
-            issues.append("⚠️  No AI providers configured (analysis features will be limited)")
+            issues
+                .append(
+                    "\(AgentDisplayTokens.Status.warning)  No AI providers configured (analysis features will be limited)")
         }
 
         if issues.isEmpty {
-            sections.append("✅ No configuration issues detected")
+            sections.append("\(AgentDisplayTokens.Status.success) No configuration issues detected")
         } else {
             for issue in issues {
                 sections.append(issue)

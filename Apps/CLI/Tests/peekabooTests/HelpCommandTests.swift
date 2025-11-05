@@ -62,7 +62,7 @@ struct HelpCommandTests {
             #expect(output.contains("USAGE:"), "Help for \(subcommand) should contain USAGE")
 
             // Should not show agent execution output
-            #expect(!output.contains("🤖 Peekaboo Agent"), "Help for \(subcommand) should not invoke agent")
+            #expect(!output.contains("[info] Peekaboo Agent"), "Help for \(subcommand) should not invoke agent")
             #expect(!output.contains("📋 Task:"), "Help for \(subcommand) should not show task execution")
         }
     }
@@ -74,7 +74,7 @@ struct HelpCommandTests {
 
         #expect(result.exitCode != 0)
         #expect(result.output.contains("Error:") || result.output.contains("Unknown subcommand"))
-        #expect(!result.output.contains("🤖 Peekaboo Agent"))
+        #expect(!result.output.contains("[info] Peekaboo Agent"))
     }
 
     @Test("Subcommand --help flag")
@@ -87,7 +87,7 @@ struct HelpCommandTests {
 
             #expect(output.contains("OVERVIEW:"), "\(subcommand) --help should show overview")
             #expect(output.contains("USAGE:"), "\(subcommand) --help should show usage")
-            #expect(!output.contains("🤖 Peekaboo Agent"), "\(subcommand) --help should not invoke agent")
+            #expect(!output.contains("[info] Peekaboo Agent"), "\(subcommand) --help should not invoke agent")
         }
     }
 

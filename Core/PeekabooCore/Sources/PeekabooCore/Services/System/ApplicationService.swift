@@ -1,8 +1,8 @@
 import AppKit
 import AXorcist
 import Foundation
-import PeekabooFoundation
 import os.log
+import PeekabooFoundation
 
 /**
  * Application discovery and management service for macOS automation.

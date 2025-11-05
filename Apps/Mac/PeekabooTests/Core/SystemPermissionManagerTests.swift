@@ -1,6 +1,6 @@
 import AppKit
-import Testing
 import PeekabooCore
+import Testing
 @testable import Peekaboo
 
 @Suite("PermissionsService Tests", .tags(.permissions, .unit))
@@ -11,7 +11,7 @@ struct PermissionsServiceTests {
     @Test("Permission status check - Screen Recording")
     func screenRecordingStatus() {
         // Check screen recording permission
-        let hasPermission = service.checkScreenRecordingPermission()
+        let hasPermission = self.service.checkScreenRecordingPermission()
 
         // Should return a valid boolean
         #expect(hasPermission == true || hasPermission == false)
@@ -20,7 +20,7 @@ struct PermissionsServiceTests {
     @Test("Permission status check - Accessibility")
     func accessibilityStatus() {
         // Check accessibility permission
-        let hasPermission = service.checkAccessibilityPermission()
+        let hasPermission = self.service.checkAccessibilityPermission()
 
         // Should return a valid boolean
         #expect(hasPermission == true || hasPermission == false)
@@ -29,11 +29,11 @@ struct PermissionsServiceTests {
     @Test("Combined permission check")
     func allPermissionsCheck() {
         // Check if all required permissions are granted
-        let status = service.checkAllPermissions()
+        let status = self.service.checkAllPermissions()
 
         // Should be true only if both permissions are granted
-        let hasScreenRecording = service.checkScreenRecordingPermission()
-        let hasAccessibility = service.checkAccessibilityPermission()
+        let hasScreenRecording = self.service.checkScreenRecordingPermission()
+        let hasAccessibility = self.service.checkAccessibilityPermission()
 
         #expect(status.allGranted == (hasScreenRecording && hasAccessibility))
     }

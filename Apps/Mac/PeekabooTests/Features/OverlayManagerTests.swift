@@ -1,9 +1,9 @@
-import Testing
-import SwiftUI
+import AXorcist
 import Combine
 import PeekabooCore
 import PeekabooUICore
-import AXorcist
+import SwiftUI
+import Testing
 
 @Suite("OverlayManager Tests", .tags(.ui, .unit))
 @MainActor
@@ -22,32 +22,32 @@ final class OverlayManagerTests {
 
     @Test("Manager initializes with default state")
     func initialization() {
-        #expect(manager.hoveredElement == nil)
-        #expect(manager.selectedElement == nil)
-        #expect(manager.applications.isEmpty)
-        #expect(manager.isOverlayActive == false)
-        #expect(manager.selectedAppMode == .all)
-        #expect(manager.detailLevel == .moderate)
+        #expect(self.manager.hoveredElement == nil)
+        #expect(self.manager.selectedElement == nil)
+        #expect(self.manager.applications.isEmpty)
+        #expect(self.manager.isOverlayActive == false)
+        #expect(self.manager.selectedAppMode == .all)
+        #expect(self.manager.detailLevel == .moderate)
     }
 
     @Test("App selection mode can be changed")
     func appSelectionMode() {
-        manager.setAppSelectionMode(.single, bundleID: "com.apple.finder")
-        #expect(manager.selectedAppMode == .single)
-        #expect(manager.selectedAppBundleID == "com.apple.finder")
+        self.manager.setAppSelectionMode(.single, bundleID: "com.apple.finder")
+        #expect(self.manager.selectedAppMode == .single)
+        #expect(self.manager.selectedAppBundleID == "com.apple.finder")
 
-        manager.setAppSelectionMode(.all)
-        #expect(manager.selectedAppMode == .all)
-        #expect(manager.selectedAppBundleID == nil)
+        self.manager.setAppSelectionMode(.all)
+        #expect(self.manager.selectedAppMode == .all)
+        #expect(self.manager.selectedAppBundleID == nil)
     }
 
     @Test("Detail level can be changed")
     func detailLevel() {
-        manager.setDetailLevel(.essential)
-        #expect(manager.detailLevel == .essential)
+        self.manager.setDetailLevel(.essential)
+        #expect(self.manager.detailLevel == .essential)
 
-        manager.setDetailLevel(.all)
-        #expect(manager.detailLevel == .all)
+        self.manager.setDetailLevel(.all)
+        #expect(self.manager.detailLevel == .all)
     }
 }
 
@@ -59,14 +59,14 @@ class MockOverlayManagerDelegate: OverlayManagerDelegate {
     var didHoverElementHandler: ((OverlayManager.UIElement?) -> Void)?
 
     func overlayManager(_ manager: OverlayManager, shouldShowElement element: OverlayManager.UIElement) -> Bool {
-        return shouldShowElementHandler?(element) ?? true
+        self.shouldShowElementHandler?(element) ?? true
     }
 
     func overlayManager(_ manager: OverlayManager, didSelectElement element: OverlayManager.UIElement) {
-        didSelectElementHandler?(element)
+        self.didSelectElementHandler?(element)
     }
 
     func overlayManager(_ manager: OverlayManager, didHoverElement element: OverlayManager.UIElement?) {
-        didHoverElementHandler?(element)
+        self.didHoverElementHandler?(element)
     }
 }

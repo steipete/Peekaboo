@@ -1,6 +1,6 @@
 import Foundation
-import PeekabooFoundation
 import MCP
+import PeekabooFoundation
 import TachikomaMCP
 import Testing
 @testable import PeekabooCore
@@ -29,7 +29,7 @@ struct MCPErrorHandlingTests {
             var errorDescription: String? { "Test error occurred" }
         }
 
-        let _ = TestError()
+        _ = TestError()
         let error = PeekabooCore.MCPError.executionFailed("Operation failed")
 
         // Note: The current MCPError doesn't support underlying errors

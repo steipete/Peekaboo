@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for clicking UI elements
 public struct ClickTool: MCPTool {
@@ -150,7 +150,7 @@ public struct ClickTool: MCPTool {
             let executionTime = Date().timeIntervalSince(startTime)
 
             // Build response
-            var message = "✅ "
+            var message = "\(AgentDisplayTokens.Status.success) "
             if isDouble {
                 message += "Double-clicked"
             } else if isRight {

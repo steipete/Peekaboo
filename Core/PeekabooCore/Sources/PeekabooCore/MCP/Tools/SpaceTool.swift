@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for managing macOS Spaces (virtual desktops)
 public struct SpaceTool: MCPTool {
@@ -216,7 +216,10 @@ public struct SpaceTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Switched to Space \(spaceNumber) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Switched to Space \(spaceNumber) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "space_number": .double(Double(spaceNumber)),
                 "space_id": .double(Double(targetSpace.id)),
@@ -256,7 +259,7 @@ public struct SpaceTool: MCPTool {
             return ToolResponse(
                 content: [
                     .text(
-                        "✅ Moved window '\(windowInfo.title)' to current Space in \(String(format: "%.2f", executionTime))s"),
+                        "\(AgentDisplayTokens.Status.success) Moved window '\(windowInfo.title)' to current Space in \(String(format: "%.2f", executionTime))s"),
                 ],
                 meta: .object([
                     "window_title": .string(windowInfo.title),
@@ -291,7 +294,7 @@ public struct SpaceTool: MCPTool {
             return ToolResponse(
                 content: [
                     .text(
-                        "✅ Moved window '\(windowInfo.title)' to Space \(targetSpaceNumber)\(followText) in \(String(format: "%.2f", executionTime))s"),
+                        "\(AgentDisplayTokens.Status.success) Moved window '\(windowInfo.title)' to Space \(targetSpaceNumber)\(followText) in \(String(format: "%.2f", executionTime))s"),
                 ],
                 meta: .object([
                     "window_title": .string(windowInfo.title),

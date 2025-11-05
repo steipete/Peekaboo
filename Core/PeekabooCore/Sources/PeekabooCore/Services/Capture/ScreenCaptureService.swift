@@ -648,7 +648,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         if image == nil {
             self.logger.warning("Window capture failed; attempting screen-crop fallback", metadata: [
                 "windowID": windowID,
-                "appName": app.name
+                "appName": app.name,
             ], correlationId: correlationId)
 
             // Attempt screen capture of the display that contains the window bounds and crop it
@@ -669,9 +669,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                         x: bounds.origin.x,
                         y: primary.frame.maxY - bounds.maxY,
                         width: bounds.width,
-                        height: bounds.height
-                    )
-                    image = CGWindowListCreateImage(quartzRect, .optionOnScreenBelowWindow, kCGNullWindowID, .nominalResolution)
+                        height: bounds.height)
+                    image = CGWindowListCreateImage(
+                        quartzRect,
+                        .optionOnScreenBelowWindow,
+                        kCGNullWindowID,
+                        .nominalResolution)
                 }
             }
         }
@@ -679,9 +682,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         guard let image else {
             self.logger.error("CGWindowListCreateImage failed (including fallback)", metadata: [
                 "windowID": windowID,
-                "appName": app.name
+                "appName": app.name,
             ], correlationId: correlationId)
-            throw OperationError.captureFailed(reason: "Failed to create window image for window ID \(windowID) (app: \(app.name)). Window may be minimized, hidden, or in another space.")
+            throw OperationError
+                .captureFailed(
+                    reason: "Failed to create window image for window ID \(windowID) (app: \(app.name)). Window may be minimized, hidden, or in another space.")
         }
 
         let imageData: Data
@@ -756,7 +761,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         let screenBounds = targetScreen.frame
-        
+
         // Convert NSScreen coordinates (bottom-left origin, Y up) to Quartz coordinates (top-left origin, Y down)
         // We need to flip the Y coordinate relative to the primary screen
         let primaryScreen = screens.first!
@@ -764,8 +769,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             x: screenBounds.origin.x,
             y: primaryScreen.frame.maxY - screenBounds.maxY,
             width: screenBounds.width,
-            height: screenBounds.height
-        )
+            height: screenBounds.height)
 
         // Capture using legacy API
         // TODO: Migrate to ScreenCaptureKit when ready

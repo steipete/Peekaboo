@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
-import PeekabooFoundation
 import os.log
+import PeekabooFoundation
 
 /// Default implementation of session management operations
 /// Migrated from CLI SessionCache with thread-safe actor-based design

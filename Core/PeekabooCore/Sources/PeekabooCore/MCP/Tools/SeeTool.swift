@@ -1,9 +1,9 @@
 import AppKit
 import Foundation
-import PeekabooFoundation
-import TachikomaMCP
 import MCP
 import os.log
+import PeekabooFoundation
+import TachikomaMCP
 
 /// MCP tool for capturing UI state and element detection
 public struct SeeTool: MCPTool {
@@ -281,72 +281,82 @@ public struct SeeTool: MCPTool {
             self.logger.warning("Failed to load image for annotation, returning original")
             return originalPath
         }
-        
+
         // Create a new image with annotations
         let annotatedImage = NSImage(size: originalImage.size)
         annotatedImage.lockFocus()
-        
+
         // Draw the original image
-        originalImage.draw(at: .zero, from: NSRect(origin: .zero, size: originalImage.size),
-                          operation: .copy, fraction: 1.0)
-        
+        originalImage.draw(
+            at: .zero,
+            from: NSRect(origin: .zero, size: originalImage.size),
+            operation: .copy,
+            fraction: 1.0)
+
         // Set up drawing attributes
         let strokeColor = NSColor.systemRed
         let fillColor = NSColor.systemRed.withAlphaComponent(0.2)
         let textColor = NSColor.white
         let textBackgroundColor = NSColor.systemRed
-        
+
         // Draw markers for each element
         for element in elements {
             // Skip elements without bounds
-            guard element.frame.width > 0 && element.frame.height > 0 else { continue }
-            
+            guard element.frame.width > 0, element.frame.height > 0 else { continue }
+
             // Convert coordinates (flip Y axis for screen coordinates)
             let screenHeight = NSScreen.main?.frame.height ?? originalImage.size.height
             let flippedY = screenHeight - element.frame.minY - element.frame.height
-            let elementRect = NSRect(x: element.frame.minX, y: flippedY,
-                                    width: element.frame.width, height: element.frame.height)
-            
+            let elementRect = NSRect(
+                x: element.frame.minX,
+                y: flippedY,
+                width: element.frame.width,
+                height: element.frame.height)
+
             // Draw semi-transparent fill
             fillColor.setFill()
             NSBezierPath(rect: elementRect).fill()
-            
+
             // Draw border
             strokeColor.setStroke()
             let borderPath = NSBezierPath(rect: elementRect)
             borderPath.lineWidth = 2.0
             borderPath.stroke()
-            
+
             // Draw element ID label
             let labelText = element.id
             let font = NSFont.boldSystemFont(ofSize: 12)
             let textAttributes: [NSAttributedString.Key: Any] = [
                 .font: font,
                 .foregroundColor: textColor,
-                .backgroundColor: textBackgroundColor
+                .backgroundColor: textBackgroundColor,
             ]
-            
+
             let textSize = labelText.size(withAttributes: textAttributes)
-            let labelRect = NSRect(x: elementRect.minX, y: elementRect.minY - textSize.height - 2,
-                                  width: textSize.width + 8, height: textSize.height + 4)
-            
+            let labelRect = NSRect(
+                x: elementRect.minX,
+                y: elementRect.minY - textSize.height - 2,
+                width: textSize.width + 8,
+                height: textSize.height + 4)
+
             // Draw label background
             textBackgroundColor.setFill()
             NSBezierPath(rect: labelRect).fill()
-            
+
             // Draw label text
             let textPoint = NSPoint(x: labelRect.minX + 4, y: labelRect.minY + 2)
             labelText.draw(at: textPoint, withAttributes: textAttributes)
         }
-        
+
         annotatedImage.unlockFocus()
-        
+
         // Save the annotated image
         let annotatedPath = originalPath.replacingOccurrences(of: ".png", with: "_annotated.png")
-        
+
         if let tiffData = annotatedImage.tiffRepresentation,
            let bitmapRep = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmapRep.representation(using: .png, properties: [:]) {
+           let pngData = bitmapRep.representation(using: .png, properties: [:])
+        {
             do {
                 try pngData.write(to: URL(fileURLWithPath: annotatedPath))
                 self.logger.info("Generated annotated screenshot at: \(annotatedPath)")
@@ -356,7 +366,7 @@ public struct SeeTool: MCPTool {
                 return originalPath
             }
         }
-        
+
         self.logger.warning("Failed to generate PNG data for annotation, returning original")
         return originalPath
     }

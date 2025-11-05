@@ -3,8 +3,8 @@
 //  Peekaboo
 //
 
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 import Tachikoma
 import TachikomaAudio
 
@@ -12,53 +12,53 @@ import TachikomaAudio
 struct RealtimeVoiceView: View {
     @Environment(RealtimeVoiceService.self) private var realtimeService
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var isConnecting = false
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var pulseAnimation = false
-    
+
     var body: some View {
         VStack(spacing: 24) {
             // Header
-            headerView
-            
+            self.headerView
+
             // Connection status
-            connectionStatusView
-            
+            self.connectionStatusView
+
             // Main interaction area
-            if realtimeService.isConnected {
-                connectedView
+            if self.realtimeService.isConnected {
+                self.connectedView
             } else {
-                disconnectedView
+                self.disconnectedView
             }
-            
+
             // Conversation transcript
-            if !realtimeService.conversationHistory.isEmpty {
-                transcriptView
+            if !self.realtimeService.conversationHistory.isEmpty {
+                self.transcriptView
             }
-            
+
             Spacer()
-            
+
             // Action buttons
-            actionButtons
+            self.actionButtons
         }
         .padding(24)
         .frame(width: 520, height: 640)
-        .alert("Connection Error", isPresented: $showError) {
+        .alert("Connection Error", isPresented: self.$showError) {
             Button("OK") {
-                showError = false
+                self.showError = false
             }
         } message: {
-            Text(errorMessage)
+            Text(self.errorMessage)
         }
         .onAppear {
-            startPulseAnimation()
+            self.startPulseAnimation()
         }
     }
-    
+
     // MARK: - View Components
-    
+
     private var headerView: some View {
         VStack(spacing: 8) {
             Image(systemName: "waveform.circle.fill")
@@ -66,34 +66,33 @@ struct RealtimeVoiceView: View {
                 .foregroundStyle(.linearGradient(
                     colors: [.blue, .purple],
                     startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-            
+                    endPoint: .bottomTrailing))
+
             Text("Realtime Voice Assistant")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
+
             Text("Have a natural conversation with Peekaboo")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
     }
-    
+
     private var connectionStatusView: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(realtimeService.isConnected ? Color.green : Color.gray)
+                .fill(self.realtimeService.isConnected ? Color.green : Color.gray)
                 .frame(width: 8, height: 8)
-            
-            Text(realtimeService.isConnected ? "Connected" : "Disconnected")
+
+            Text(self.realtimeService.isConnected ? "Connected" : "Disconnected")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            
-            if realtimeService.isConnected {
+
+            if self.realtimeService.isConnected {
                 Text("•")
                     .foregroundColor(.secondary)
-                
-                Text(realtimeService.connectionState.rawValue.capitalized)
+
+                Text(self.realtimeService.connectionState.rawValue.capitalized)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -103,7 +102,7 @@ struct RealtimeVoiceView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
     }
-    
+
     private var connectedView: some View {
         VStack(spacing: 20) {
             // Visual feedback circle
@@ -112,24 +111,24 @@ struct RealtimeVoiceView: View {
                 Circle()
                     .fill(Color.gray.opacity(0.1))
                     .frame(width: 180, height: 180)
-                
+
                 // Activity indicator based on state
-                if realtimeService.connectionState == .listening {
+                if self.realtimeService.connectionState == .listening {
                     // Recording animation
                     Circle()
                         .stroke(
                             LinearGradient(
                                 colors: [.red, .orange],
                                 startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 3
-                        )
+                                endPoint: .bottomTrailing),
+                            lineWidth: 3)
                         .frame(width: 180, height: 180)
-                        .scaleEffect(pulseAnimation ? 1.1 : 1.0)
-                        .opacity(pulseAnimation ? 0.6 : 1.0)
-                        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: pulseAnimation)
-                } else if realtimeService.connectionState == .speaking {
+                        .scaleEffect(self.pulseAnimation ? 1.1 : 1.0)
+                        .opacity(self.pulseAnimation ? 0.6 : 1.0)
+                        .animation(
+                            .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                            value: self.pulseAnimation)
+                } else if self.realtimeService.connectionState == .speaking {
                     // Speaking animation
                     ForEach(0..<3, id: \.self) { index in
                         Circle()
@@ -141,34 +140,33 @@ struct RealtimeVoiceView: View {
                                 .easeOut(duration: 2.0)
                                     .repeatForever(autoreverses: false)
                                     .delay(Double(index) * 0.4),
-                                value: pulseAnimation
-                            )
+                                value: self.pulseAnimation)
                     }
-                } else if realtimeService.connectionState == .processing {
+                } else if self.realtimeService.connectionState == .processing {
                     // Processing animation
                     ProgressView()
                         .scaleEffect(1.5)
                 }
-                
+
                 // Center icon
-                Image(systemName: iconForState)
+                Image(systemName: self.iconForState)
                     .font(.system(size: 60))
-                    .foregroundColor(colorForState)
+                    .foregroundColor(self.colorForState)
             }
-            
+
             // Status text
-            Text(statusText)
+            Text(self.statusText)
                 .font(.headline)
                 .foregroundColor(.primary)
-            
+
             // Audio level indicator
-            if realtimeService.audioLevel > 0 {
-                audioLevelView
+            if self.realtimeService.audioLevel > 0 {
+                self.audioLevelView
             }
-            
+
             // Current transcript
-            if !realtimeService.currentTranscript.isEmpty {
-                Text(realtimeService.currentTranscript)
+            if !self.realtimeService.currentTranscript.isEmpty {
+                Text(self.realtimeService.currentTranscript)
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .padding()
@@ -178,49 +176,53 @@ struct RealtimeVoiceView: View {
             }
         }
     }
-    
+
     private var disconnectedView: some View {
         VStack(spacing: 20) {
             Image(systemName: "wifi.slash")
                 .font(.system(size: 60))
                 .foregroundColor(.gray)
-            
+
             Text("Not Connected")
                 .font(.headline)
                 .foregroundColor(.secondary)
-            
-            if isConnecting {
+
+            if self.isConnecting {
                 ProgressView("Connecting...")
                     .progressViewStyle(.linear)
                     .frame(width: 200)
             } else {
                 Button("Start Conversation") {
-                    startConversation()
+                    self.startConversation()
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
             }
         }
     }
-    
+
     private var transcriptView: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Conversation History", systemImage: "text.bubble")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            
+
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(Array(realtimeService.conversationHistory.enumerated()), id: \.offset) { index, message in
+                        ForEach(
+                            Array(self.realtimeService.conversationHistory.enumerated()),
+                            id: \.offset)
+                        { index, message in
                             HStack {
                                 Text(message)
                                     .font(.caption)
                                     .padding(8)
-                                    .background(message.hasPrefix("User:") ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
+                                    .background(message.hasPrefix("User:") ? Color.blue.opacity(0.1) : Color.gray
+                                        .opacity(0.1))
                                     .cornerRadius(8)
                                     .id(index)
-                                
+
                                 Spacer()
                             }
                         }
@@ -230,51 +232,51 @@ struct RealtimeVoiceView: View {
                 .frame(maxHeight: 150)
                 .background(Color.gray.opacity(0.05))
                 .cornerRadius(8)
-                .onChange(of: realtimeService.conversationHistory.count) { _, _ in
+                .onChange(of: self.realtimeService.conversationHistory.count) { _, _ in
                     // Scroll to bottom when new messages arrive
                     withAnimation {
-                        proxy.scrollTo(realtimeService.conversationHistory.count - 1, anchor: .bottom)
+                        proxy.scrollTo(self.realtimeService.conversationHistory.count - 1, anchor: .bottom)
                     }
                 }
             }
         }
     }
-    
+
     private var audioLevelView: some View {
         HStack(spacing: 4) {
             ForEach(0..<20, id: \.self) { index in
                 Rectangle()
-                    .fill(index < Int(realtimeService.audioLevel * 20) ? Color.green : Color.gray.opacity(0.3))
+                    .fill(index < Int(self.realtimeService.audioLevel * 20) ? Color.green : Color.gray.opacity(0.3))
                     .frame(width: 8, height: 20)
             }
         }
         .frame(height: 20)
         .cornerRadius(2)
     }
-    
+
     private var actionButtons: some View {
         HStack(spacing: 16) {
             Button("Close") {
                 Task {
-                    await realtimeService.endSession()
+                    await self.realtimeService.endSession()
                 }
-                dismiss()
+                self.dismiss()
             }
             .buttonStyle(.bordered)
-            
-            if realtimeService.isConnected {
-                if realtimeService.connectionState == .speaking {
+
+            if self.realtimeService.isConnected {
+                if self.realtimeService.connectionState == .speaking {
                     Button("Interrupt") {
                         Task {
-                            try? await realtimeService.interrupt()
+                            try? await self.realtimeService.interrupt()
                         }
                     }
                     .buttonStyle(.bordered)
                 }
-                
+
                 Button("End Session") {
                     Task {
-                        await realtimeService.endSession()
+                        await self.realtimeService.endSession()
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -282,74 +284,74 @@ struct RealtimeVoiceView: View {
             }
         }
     }
-    
+
     // MARK: - Helper Properties
-    
+
     private var iconForState: String {
-        switch realtimeService.connectionState {
+        switch self.realtimeService.connectionState {
         case .idle:
-            return "mic.slash"
+            "mic.slash"
         case .listening:
-            return "mic.fill"
+            "mic.fill"
         case .processing:
-            return "brain"
+            "brain"
         case .speaking:
-            return "speaker.wave.3.fill"
+            "speaker.wave.3.fill"
         case .error:
-            return "exclamationmark.triangle.fill"
+            "exclamationmark.triangle.fill"
         }
     }
-    
+
     private var colorForState: Color {
-        switch realtimeService.connectionState {
+        switch self.realtimeService.connectionState {
         case .idle:
-            return .gray
+            .gray
         case .listening:
-            return .red
+            .red
         case .processing:
-            return .blue
+            .blue
         case .speaking:
-            return .green
+            .green
         case .error:
-            return .orange
+            .orange
         }
     }
-    
+
     private var statusText: String {
-        switch realtimeService.connectionState {
+        switch self.realtimeService.connectionState {
         case .idle:
-            return "Ready to listen"
+            "Ready to listen"
         case .listening:
-            return "Listening..."
+            "Listening..."
         case .processing:
-            return "Processing..."
+            "Processing..."
         case .speaking:
-            return "Speaking..."
+            "Speaking..."
         case .error:
-            return "Error occurred"
+            "Error occurred"
         }
     }
-    
+
     // MARK: - Actions
-    
+
     private func startConversation() {
-        isConnecting = true
-        errorMessage = ""
-        
+        self.isConnecting = true
+        self.errorMessage = ""
+
         Task {
             do {
-                try await realtimeService.startSession()
-                isConnecting = false
+                try await self.realtimeService.startSession()
+                self.isConnecting = false
             } catch {
-                isConnecting = false
-                errorMessage = error.localizedDescription
-                showError = true
+                self.isConnecting = false
+                self.errorMessage = error.localizedDescription
+                self.showError = true
             }
         }
     }
-    
+
     private func startPulseAnimation() {
-        pulseAnimation = true
+        self.pulseAnimation = true
     }
 }
 
@@ -360,40 +362,40 @@ struct RealtimeVoiceSettingsView: View {
     @AppStorage("realtimeVoice") private var selectedVoice = "alloy"
     @AppStorage("realtimeInstructions") private var customInstructions = ""
     @AppStorage("realtimeVAD") private var useVAD = true
-    
+
     var body: some View {
         Form {
             Section("Voice Selection") {
-                Picker("Assistant Voice", selection: $selectedVoice) {
+                Picker("Assistant Voice", selection: self.$selectedVoice) {
                     ForEach(RealtimeVoice.allCases, id: \.rawValue) { voice in
                         Text(voice.displayName)
                             .tag(voice.rawValue)
                     }
                 }
-                .onChange(of: selectedVoice) { _, newValue in
+                .onChange(of: self.selectedVoice) { _, newValue in
                     if let voice = RealtimeVoice(rawValue: newValue) {
-                        realtimeService.updateVoice(voice)
+                        self.realtimeService.updateVoice(voice)
                     }
                 }
-                
+
                 Text("Voice changes will take effect in the next conversation")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Section("Instructions") {
-                TextEditor(text: $customInstructions)
+                TextEditor(text: self.$customInstructions)
                     .font(.system(.body, design: .monospaced))
                     .frame(minHeight: 100)
-                
+
                 Text("Custom instructions for the AI assistant")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Section("Voice Detection") {
-                Toggle("Use Voice Activity Detection (VAD)", isOn: $useVAD)
-                
+                Toggle("Use Voice Activity Detection (VAD)", isOn: self.$useVAD)
+
                 Text("VAD automatically detects when you start and stop speaking")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -408,12 +410,12 @@ struct RealtimeVoiceSettingsView: View {
 extension RealtimeVoice {
     var displayName: String {
         switch self {
-        case .alloy: return "Alloy (Neutral)"
-        case .echo: return "Echo (Smooth)"
-        case .fable: return "Fable (British)"
-        case .onyx: return "Onyx (Deep)"
-        case .nova: return "Nova (Friendly)"
-        case .shimmer: return "Shimmer (Energetic)"
+        case .alloy: "Alloy (Neutral)"
+        case .echo: "Echo (Smooth)"
+        case .fable: "Fable (British)"
+        case .onyx: "Onyx (Deep)"
+        case .nova: "Nova (Friendly)"
+        case .shimmer: "Shimmer (Energetic)"
         }
     }
 }

@@ -1,11 +1,10 @@
 import CoreGraphics
 import Foundation
 import MCP
+import os.log
 import PeekabooFoundation
 import Tachikoma
 import TachikomaMCP
-import os.log
-
 
 // MARK: - Helper Types
 
@@ -42,7 +41,7 @@ final class StreamingEventDelegate: @unchecked Sendable, AgentEventDelegate {
 @available(macOS 14.0, *)
 @MainActor
 public final class PeekabooAgentService: AgentServiceProtocol {
-    internal let services: PeekabooServices
+    let services: PeekabooServices
     private let sessionManager: AgentSessionManager
     private let defaultLanguageModel: LanguageModel
     private var currentModel: LanguageModel?
@@ -56,47 +55,46 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public var maskedApiKey: String? {
         get async {
             // Get the current model
-            let model = currentModel ?? defaultLanguageModel
-            
+            let model = self.currentModel ?? self.defaultLanguageModel
+
             // Get the configuration
             let config = TachikomaConfiguration.current
-            
+
             // Determine the provider based on the model
-            let apiKey: String?
-            switch model {
+            let apiKey: String? = switch model {
             case .openai:
-                apiKey = config.getAPIKey(for: .openai)
+                config.getAPIKey(for: .openai)
             case .anthropic:
-                apiKey = config.getAPIKey(for: .anthropic)
+                config.getAPIKey(for: .anthropic)
             case .google:
-                apiKey = config.getAPIKey(for: .google)
+                config.getAPIKey(for: .google)
             case .mistral:
-                apiKey = config.getAPIKey(for: .mistral)
+                config.getAPIKey(for: .mistral)
             case .groq:
-                apiKey = config.getAPIKey(for: .groq)
+                config.getAPIKey(for: .groq)
             case .grok:
-                apiKey = config.getAPIKey(for: .grok)
+                config.getAPIKey(for: .grok)
             case .ollama:
-                apiKey = config.getAPIKey(for: .ollama)
+                config.getAPIKey(for: .ollama)
             case .lmstudio:
-                apiKey = config.getAPIKey(for: .lmstudio)
+                config.getAPIKey(for: .lmstudio)
             case .openRouter:
-                apiKey = config.getAPIKey(for: .custom("openrouter"))
+                config.getAPIKey(for: .custom("openrouter"))
             case .together:
-                apiKey = config.getAPIKey(for: .custom("together"))
+                config.getAPIKey(for: .custom("together"))
             case .replicate:
-                apiKey = config.getAPIKey(for: .custom("replicate"))
+                config.getAPIKey(for: .custom("replicate"))
             case .openaiCompatible, .anthropicCompatible:
-                apiKey = nil // Custom endpoints may have keys embedded
+                nil // Custom endpoints may have keys embedded
             case .custom:
-                apiKey = nil // Custom providers handle their own keys
+                nil // Custom providers handle their own keys
             }
-            
+
             // Mask the API key
             guard let key = apiKey, !key.isEmpty else {
                 return nil
             }
-            
+
             // Show first 5 and last 5 characters
             if key.count > 15 {
                 let prefix = String(key.prefix(5))
@@ -116,7 +114,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     public init(
         services: PeekabooServices,
-        defaultModel: LanguageModel = .openai(.gpt5))
+        defaultModel: LanguageModel = .openai(.gpt5Mini))
         throws
     {
         self.services = services
@@ -317,10 +315,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         if verbose {
             print("DEBUG: Verbose mode enabled in PeekabooAgentService")
         }
-        
+
         // Set verbose mode in Tachikoma configuration
         TachikomaConfiguration.current.setVerbose(verbose)
-        
+
         // If we have an event delegate, use streaming
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
@@ -402,7 +400,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 // MARK: - Convenience Methods
 
 extension PeekabooAgentService {
-
     /// Resume a previous session
     public func resumeSession(
         sessionId: String,
@@ -528,7 +525,6 @@ private struct UnsafeTransfer<T>: @unchecked Sendable {
     }
 }
 
-
 // MARK: - Tool Creation Helpers
 
 extension PeekabooAgentService {
@@ -538,19 +534,21 @@ extension PeekabooAgentService {
         guard case let .object(schemaDict) = value else {
             return AgentToolParameters(properties: [:], required: [])
         }
-        
+
         // Extract properties if they exist
         guard let propertiesValue = schemaDict["properties"],
-              case let .object(properties) = propertiesValue else {
+              case let .object(properties) = propertiesValue
+        else {
             return AgentToolParameters(properties: [:], required: [])
         }
-        
+
         var agentProperties: [String: AgentToolParameterProperty] = [:]
         var required: [String] = []
-        
+
         // Get required fields
         if let requiredValue = schemaDict["required"],
-           case let .array(requiredArray) = requiredValue {
+           case let .array(requiredArray) = requiredValue
+        {
             required = requiredArray.compactMap { value in
                 if case let .string(str) = value {
                     return str
@@ -558,60 +556,58 @@ extension PeekabooAgentService {
                 return nil
             }
         }
-        
+
         // Convert each property
         for (propName, propValue) in properties {
             guard case let .object(propDict) = propValue else { continue }
-            
+
             // Get type
-            let typeStr: String
-            if let typeValue = propDict["type"],
-               case let .string(str) = typeValue {
-                typeStr = str
+            let typeStr: String = if let typeValue = propDict["type"],
+                                     case let .string(str) = typeValue
+            {
+                str
             } else {
-                typeStr = "string"
+                "string"
             }
-            
+
             // Get description
-            let description: String
-            if let descValue = propDict["description"],
-               case let .string(str) = descValue {
-                description = str
+            let description: String = if let descValue = propDict["description"],
+                                         case let .string(str) = descValue
+            {
+                str
             } else {
-                description = "Parameter \(propName)"
+                "Parameter \(propName)"
             }
-            
+
             // Convert type string to enum
-            let paramType: AgentToolParameterProperty.ParameterType
-            switch typeStr {
-            case "string": paramType = .string
-            case "number": paramType = .number
-            case "integer": paramType = .integer
-            case "boolean": paramType = .boolean
-            case "array": paramType = .array
-            case "object": paramType = .object
-            default: paramType = .string
+            let paramType: AgentToolParameterProperty.ParameterType = switch typeStr {
+            case "string": .string
+            case "number": .number
+            case "integer": .integer
+            case "boolean": .boolean
+            case "array": .array
+            case "object": .object
+            default: .string
             }
-            
+
             agentProperties[propName] = AgentToolParameterProperty(
                 name: propName,
                 type: paramType,
-                description: description
-            )
+                description: description)
         }
-        
+
         return AgentToolParameters(properties: agentProperties, required: required)
     }
-    
+
     /// Create AgentTool instances from native Peekaboo tools
     public func createAgentTools() -> [Tachikoma.AgentTool] {
         var agentTools: [Tachikoma.AgentTool] = []
-        
+
         // Vision tools
         agentTools.append(createSeeTool())
         agentTools.append(createImageTool())
         agentTools.append(createAnalyzeTool())
-        
+
         // UI automation tools
         agentTools.append(createClickTool())
         agentTools.append(createTypeTool())
@@ -620,43 +616,43 @@ extension PeekabooAgentService {
         agentTools.append(createDragTool())
         agentTools.append(createMoveTool())
         agentTools.append(createSwipeTool())
-        
+
         // Window management
         agentTools.append(createWindowTool())
-        
+
         // Menu interaction
         agentTools.append(createMenuTool())
-        
+
         // Dialog handling
         agentTools.append(createDialogTool())
-        
+
         // Dock management
         agentTools.append(createDockTool())
-        
+
         // List tool (full access)
         agentTools.append(createListTool())
-        
+
         // Screen tools (legacy wrappers)
         agentTools.append(createListScreensTool())
-        
+
         // Application tools
         agentTools.append(createListAppsTool())
-        agentTools.append(createAppTool())  // Full app management (launch, quit, focus, etc.)
-        
+        agentTools.append(createAppTool()) // Full app management (launch, quit, focus, etc.)
+
         // Space management
         agentTools.append(createSpaceTool())
-        
+
         // System tools
         agentTools.append(createPermissionsTool())
         agentTools.append(createSleepTool())
-        
+
         // Shell tool
         agentTools.append(createShellTool())
-        
+
         // Completion tools
         agentTools.append(createDoneTool())
         agentTools.append(createNeedInfoTool())
-        
+
         return agentTools
     }
 
@@ -665,7 +661,7 @@ extension PeekabooAgentService {
     /// Parse a model string and return a mock model object for compatibility
     private func parseModelString(_ modelString: String) async throws -> Any {
         // This is a compatibility stub - in the new API we use LanguageModel enum directly
-        return modelString
+        modelString
     }
 
     /// Execute task using direct streamText calls with event streaming
@@ -678,14 +674,14 @@ extension PeekabooAgentService {
     {
         // Store the current model for API key masking
         self.currentModel = model
-        
+
         let startTime = Date()
         let sessionId = UUID().uuidString
 
         // Create conversation with the task
         let messages = [
             ModelMessage.system(AgentSystemPrompt.generate(for: model)),
-            ModelMessage.user(task)
+            ModelMessage.user(task),
         ]
 
         // Create and save initial session
@@ -695,15 +691,14 @@ extension PeekabooAgentService {
             messages: messages,
             metadata: SessionMetadata(),
             createdAt: startTime,
-            updatedAt: startTime
-        )
-        
+            updatedAt: startTime)
+
         // Debug logging for session creation - ALWAYS print for debugging
-        logger.debug("Creating session with ID: \(sessionId), messages count: \(messages.count)")
-        
+        self.logger.debug("Creating session with ID: \(sessionId), messages count: \(messages.count)")
+
         do {
             try self.sessionManager.saveSession(session)
-            logger.debug("Successfully saved initial session with ID: \(sessionId)")
+            self.logger.debug("Successfully saved initial session with ID: \(sessionId)")
         } catch {
             print("ERROR (streaming): Failed to save initial session: \(error)")
             throw error
@@ -717,12 +712,12 @@ extension PeekabooAgentService {
         for (serverName, serverTools) in mcpToolsByServer {
             for tool in serverTools {
                 // Convert MCP tool's Value-based schema to AgentToolParameters
-                let parameters = convertMCPValueToAgentParameters(tool.inputSchema)
-                
+                let parameters = self.convertMCPValueToAgentParameters(tool.inputSchema)
+
                 // Create a prefixed version of the tool
                 let prefixedTool = AgentTool(
                     name: "\(serverName)_\(tool.name)",
-                    description: tool.description,
+                    description: tool.description ?? "",
                     parameters: parameters,
                     execute: { args in
                         // Convert AgentToolArguments to [String: Any] for MCP execution
@@ -732,13 +727,12 @@ extension PeekabooAgentService {
                                 argDict[key] = try value.toJSON()
                             }
                         }
-                        
+
                         // Execute via the MCP client
                         let result = try await TachikomaMCPClientManager.shared.executeTool(
                             serverName: serverName,
                             toolName: tool.name,
-                            arguments: argDict
-                        )
+                            arguments: argDict)
                         // Convert result to expected format
                         // ToolResponse has content as [MCP.Tool.Content]
                         for contentItem in result.content {
@@ -747,27 +741,28 @@ extension PeekabooAgentService {
                             }
                         }
                         return AnyAgentToolValue(string: "Tool executed successfully")
-                    }
-                )
+                    })
                 tools.append(prefixedTool)
             }
         }
 
         // Only log tool debug info in verbose mode
         if self.isVerbose {
-            logger.debug("Passing \(tools.count) tools to generateText")
+            self.logger.debug("Passing \(tools.count) tools to generateText")
             for tool in tools {
-                logger.debug("Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
+                self.logger
+                    .debug(
+                        "Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
                 if tool.name == "see" {
-                    logger.debug("'see' tool required array: \(tool.parameters.required)")
+                    self.logger.debug("'see' tool required array: \(tool.parameters.required)")
                 }
             }
         }
 
         // Debug: Log which model is being used (streaming)
         if self.isVerbose {
-            logger.debug("Using model: \(model)")
-            logger.debug("Model description: \(model.description)")
+            self.logger.debug("Using model: \(model)")
+            self.logger.debug("Model description: \(model.description)")
         }
 
         // Implement proper streaming with manual tool execution
@@ -775,134 +770,129 @@ extension PeekabooAgentService {
         var fullContent = ""
         var allSteps: [GenerationStep] = []
         var totalUsage: Usage?
-        
+
         for stepIndex in 0..<maxSteps {
             // Log tools being passed only in verbose mode
             if self.isVerbose {
-                logger.debug("Step \(stepIndex): Passing \(tools.count) tools to streamText")
+                self.logger.debug("Step \(stepIndex): Passing \(tools.count) tools to streamText")
                 if !tools.isEmpty {
-                    logger.debug("Available tools: \(tools.map { $0.name }.joined(separator: ", "))")
+                    self.logger.debug("Available tools: \(tools.map(\.name).joined(separator: ", "))")
                 } else {
-                    logger.warning("No tools available!")
+                    self.logger.warning("No tools available!")
                 }
             }
-            
+
             // Stream the response
             // Configure settings based on model type
-            let settings: GenerationSettings
-            switch model {
+            let settings = switch model {
             case .openai(.gpt5), .openai(.gpt5Mini), .openai(.gpt5Nano):
                 // GPT-5 models use verbosity instead of temperature
-                settings = GenerationSettings(
+                GenerationSettings(
                     maxTokens: 4096,
                     providerOptions: .init(
                         openai: .init(
-                            verbosity: .medium
-                        )
-                    )
-                )
-            case .openai(.o3), .openai(.o3Mini), .openai(.o3Pro), .openai(.o4), .openai(.o4Mini):
+                            verbosity: .medium)))
+            case .openai(.o3), .openai(.o3Mini), .openai(.o3Pro), .openai(.o4Mini):
                 // Reasoning models use reasoning effort
-                settings = GenerationSettings(
+                GenerationSettings(
                     maxTokens: 4096,
                     providerOptions: .init(
                         openai: .init(
-                            reasoningEffort: .medium
-                        )
-                    )
-                )
+                            reasoningEffort: .medium)))
             default:
                 // Standard models use default settings
-                settings = GenerationSettings(maxTokens: 4096)
+                GenerationSettings(maxTokens: 4096)
             }
-            
+
             let streamResult = try await streamText(
                 model: model,
                 messages: currentMessages,
                 tools: tools.isEmpty ? nil : tools,
-                settings: settings
-            )
-            
+                settings: settings)
+
             var stepText = ""
             var stepToolCalls: [AgentToolCall] = []
             var isThinking = false
-            
+
             // Process the stream
             if self.isVerbose {
-                logger.debug("Starting to process stream for step \(stepIndex)")
+                self.logger.debug("Starting to process stream for step \(stepIndex)")
             }
             for try await delta in streamResult.stream {
                 if self.isVerbose {
-                    logger.debug("Received delta type: \(String(describing: delta.type))")
+                    self.logger.debug("Received delta type: \(String(describing: delta.type))")
                 }
                 switch delta.type {
                 case .textDelta:
                     if let content = delta.content {
                         if self.isVerbose {
-                            logger.debug("Text delta content: \(content)")
+                            self.logger.debug("Text delta content: \(content)")
                         }
                         stepText += content
-                        
+
                         // Check if this is thinking content (starts with <thinking> or similar patterns)
-                        if content.contains("<thinking>") || content.contains("Let me") || content.contains("I need to") || content.contains("I'll") {
+                        if content.contains("<thinking>") || content.contains("Let me") || content
+                            .contains("I need to") || content.contains("I'll")
+                        {
                             isThinking = true
                         }
-                        
+
                         // Emit events based on content
-                        if let eventHandler = eventHandler {
-                            if isThinking && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if let eventHandler {
+                            if isThinking, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 await eventHandler.send(.thinkingMessage(content: content))
                             } else if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 await eventHandler.send(.assistantMessage(content: content))
                             }
                         }
-                        
+
                         // Don't send to streaming delegate here - it's already handled by eventHandler
                     }
-                    
+
                 case .toolCall:
                     if let toolCall = delta.toolCall {
                         if self.isVerbose {
-                            logger.debug("Received tool call: \(toolCall.name) with ID: \(toolCall.id)")
+                            self.logger.debug("Received tool call: \(toolCall.name) with ID: \(toolCall.id)")
                         }
                         stepToolCalls.append(toolCall)
-                        
+
                         // Emit tool call started event immediately
-                        if let eventHandler = eventHandler {
+                        if let eventHandler {
                             let argumentsData = try JSONEncoder().encode(toolCall.arguments)
                             let argumentsJSON = String(data: argumentsData, encoding: .utf8) ?? "{}"
-                            
+
                             await eventHandler.send(.toolCallStarted(
                                 name: toolCall.name,
-                                arguments: argumentsJSON
-                            ))
+                                arguments: argumentsJSON))
                         }
                     }
-                    
+
                 case .reasoning:
                     // Handle reasoning/thinking content
-                    if let content = delta.content, let eventHandler = eventHandler {
+                    if let content = delta.content, let eventHandler {
                         await eventHandler.send(.thinkingMessage(content: content))
                     }
-                    
+
                 case .done:
                     // Capture usage if available
                     if let usage = delta.usage {
                         totalUsage = usage
                     }
-                    
+
                 default:
                     break
                 }
             }
-            
+
             fullContent += stepText
-            
+
             // Debug: Check what we collected (only in verbose mode)
             if self.isVerbose {
-                logger.debug("Step \(stepIndex) completed: collected \(stepToolCalls.count) tool calls, text length: \(stepText.count)")
+                self.logger
+                    .debug(
+                        "Step \(stepIndex) completed: collected \(stepToolCalls.count) tool calls, text length: \(stepText.count)")
             }
-            
+
             // If we have tool calls, execute them
             if !stepToolCalls.isEmpty {
                 // FIRST: Add assistant message with tool calls (must come before tool results)
@@ -912,66 +902,59 @@ extension PeekabooAgentService {
                 }
                 assistantContent.append(contentsOf: stepToolCalls.map { .toolCall($0) })
                 currentMessages.append(ModelMessage(role: .assistant, content: assistantContent))
-                
+
                 var toolResults: [AgentToolResult] = []
-                
+
                 for toolCall in stepToolCalls {
                     // Find and execute the tool
                     if let tool = tools.first(where: { $0.name == toolCall.name }) {
                         do {
                             // Use the same settings as configured above for consistency
-                            let toolSettings: GenerationSettings
-                            switch model {
+                            let toolSettings = switch model {
                             case .openai(.gpt5), .openai(.gpt5Mini), .openai(.gpt5Nano):
-                                toolSettings = GenerationSettings(
+                                GenerationSettings(
                                     maxTokens: 4096,
                                     providerOptions: .init(
                                         openai: .init(
-                                            verbosity: .medium
-                                        )
-                                    )
-                                )
-                            case .openai(.o3), .openai(.o3Mini), .openai(.o3Pro), .openai(.o4), .openai(.o4Mini):
-                                toolSettings = GenerationSettings(
+                                            verbosity: .medium)))
+                            case .openai(.o3), .openai(.o3Mini), .openai(.o3Pro), .openai(.o4Mini):
+                                GenerationSettings(
                                     maxTokens: 4096,
                                     providerOptions: .init(
                                         openai: .init(
-                                            reasoningEffort: .medium
-                                        )
-                                    )
-                                )
+                                            reasoningEffort: .medium)))
                             default:
-                                toolSettings = GenerationSettings(maxTokens: 4096)
+                                GenerationSettings(maxTokens: 4096)
                             }
-                            
+
                             let context = ToolExecutionContext(
                                 messages: currentMessages,
                                 model: model,
                                 settings: toolSettings,
                                 sessionId: sessionId,
-                                stepIndex: stepIndex
-                            )
-                            
+                                stepIndex: stepIndex)
+
                             let toolArguments = AgentToolArguments(toolCall.arguments)
                             let result = try await tool.execute(toolArguments, context: context)
                             let toolResult = AgentToolResult.success(toolCallId: toolCall.id, result: result)
                             toolResults.append(toolResult)
-                            
+
                             // Emit tool call completed event
-                            if let eventHandler = eventHandler {
+                            if let eventHandler {
                                 // Convert result to JSON string for the event handler
                                 let resultString: String
                                 do {
                                     let jsonObject = try result.toJSON()
                                     // Wrap non-dictionary results in an object for valid JSON
-                                    let wrappedObject: Any
-                                    if jsonObject is [String: Any] {
-                                        wrappedObject = jsonObject
+                                    let wrappedObject: Any = if jsonObject is [String: Any] {
+                                        jsonObject
                                     } else {
                                         // Wrap primitive values (string, number, bool, null) in a result object
-                                        wrappedObject = ["result": jsonObject]
+                                        ["result": jsonObject]
                                     }
-                                    let jsonData = try JSONSerialization.data(withJSONObject: wrappedObject, options: [])
+                                    let jsonData = try JSONSerialization.data(
+                                        withJSONObject: wrappedObject,
+                                        options: [])
                                     resultString = String(data: jsonData, encoding: .utf8) ?? "{}"
                                 } catch {
                                     // Fallback to wrapped string value if JSON conversion fails
@@ -980,68 +963,69 @@ extension PeekabooAgentService {
                                 }
                                 await eventHandler.send(.toolCallCompleted(
                                     name: toolCall.name,
-                                    result: resultString
-                                ))
+                                    result: resultString))
                             }
-                            
+
                             // Add tool result message
                             currentMessages.append(ModelMessage(
                                 role: .tool,
-                                content: [.toolResult(toolResult)]
-                            ))
+                                content: [.toolResult(toolResult)]))
                         } catch {
-                            let errorResult = AgentToolResult.error(toolCallId: toolCall.id, error: error.localizedDescription)
+                            let errorResult = AgentToolResult.error(
+                                toolCallId: toolCall.id,
+                                error: error.localizedDescription)
                             toolResults.append(errorResult)
-                            
+
                             // Emit error event
-                            if let eventHandler = eventHandler {
+                            if let eventHandler {
                                 // Send error as JSON object for consistency
                                 let errorDict = ["error": error.localizedDescription]
-                                let resultString: String
-                                if let jsonData = try? JSONSerialization.data(withJSONObject: errorDict, options: []),
-                                   let jsonString = String(data: jsonData, encoding: .utf8) {
-                                    resultString = jsonString
+                                let resultString: String = if let jsonData = try? JSONSerialization.data(
+                                    withJSONObject: errorDict,
+                                    options: []),
+                                    let jsonString = String(data: jsonData, encoding: .utf8)
+                                {
+                                    jsonString
                                 } else {
-                                    resultString = "{\"error\": \"Unknown error\"}"
+                                    "{\"error\": \"Unknown error\"}"
                                 }
                                 await eventHandler.send(.toolCallCompleted(
                                     name: toolCall.name,
-                                    result: resultString
-                                ))
+                                    result: resultString))
                             }
-                            
+
                             currentMessages.append(ModelMessage(
                                 role: .tool,
-                                content: [.toolResult(errorResult)]
-                            ))
+                                content: [.toolResult(errorResult)]))
                         }
                     }
                 }
-                
+
                 // Store the step
                 allSteps.append(GenerationStep(
                     stepIndex: stepIndex,
                     text: stepText,
                     toolCalls: stepToolCalls,
-                    toolResults: toolResults
-                ))
-                
+                    toolResults: toolResults))
+
                 // Continue to next iteration if we have tool results
                 if !toolResults.isEmpty {
                     if self.isVerbose {
                         // Log what messages we're sending next
-                        logger.debug("Continuing to step \(stepIndex + 1) with tool results")
-                        logger.debug("Current messages count: \(currentMessages.count)")
+                        self.logger.debug("Continuing to step \(stepIndex + 1) with tool results")
+                        self.logger.debug("Current messages count: \(currentMessages.count)")
                         for (idx, msg) in currentMessages.enumerated() {
-                            logger.debug("Message \(idx): role=\(String(describing: msg.role)), content parts=\(msg.content.count)")
+                            self.logger
+                                .debug(
+                                    "Message \(idx): role=\(String(describing: msg.role)), content parts=\(msg.content.count)")
                             if idx == currentMessages.count - 1 {
                                 // Log the last message (tool result) in detail
                                 for part in msg.content {
                                     switch part {
-                                    case .toolResult(let result):
-                                        logger.debug("Tool result: \(String(describing: result))")
+                                    case let .toolResult(result):
+                                        self.logger.debug("Tool result: \(String(describing: result))")
                                     default:
-                                        logger.debug("Content part: \(String(describing: part))")
+                                        self.logger.debug("Content part: \(String(describing: part))")
                                     }
                                 }
                             }
@@ -1054,13 +1038,12 @@ extension PeekabooAgentService {
                 if !stepText.isEmpty {
                     currentMessages.append(ModelMessage.assistant(stepText))
                 }
-                
+
                 allSteps.append(GenerationStep(
                     stepIndex: stepIndex,
                     text: stepText,
                     toolCalls: [],
-                    toolResults: []
-                ))
+                    toolResults: []))
                 break
             }
         }
@@ -1078,11 +1061,9 @@ extension PeekabooAgentService {
             metadata: SessionMetadata(
                 toolCallCount: allSteps.reduce(0) { $0 + $1.toolCalls.count },
                 totalExecutionTime: executionTime,
-                customData: ["status": "completed"]
-            ),
+                customData: ["status": "completed"]),
             createdAt: startTime,
-            updatedAt: endTime
-        )
+            updatedAt: endTime)
         try self.sessionManager.saveSession(updatedSession)
 
         // Create result
@@ -1107,14 +1088,14 @@ extension PeekabooAgentService {
     {
         // Store the current model for API key masking
         self.currentModel = model
-        
+
         let startTime = Date()
         let sessionId = UUID().uuidString
 
         // Create conversation with the task
         let messages = [
             ModelMessage.system(AgentSystemPrompt.generate(for: model)),
-            ModelMessage.user(task)
+            ModelMessage.user(task),
         ]
 
         // Create and save initial session
@@ -1124,19 +1105,18 @@ extension PeekabooAgentService {
             messages: messages,
             metadata: SessionMetadata(),
             createdAt: startTime,
-            updatedAt: startTime
-        )
-        
+            updatedAt: startTime)
+
         // Debug logging for session creation
         if self.isVerbose {
-            logger.debug("(non-streaming): Creating session with ID: \(sessionId)")
-            logger.debug("(non-streaming): Session messages count: \(messages.count)")
+            self.logger.debug("(non-streaming): Creating session with ID: \(sessionId)")
+            self.logger.debug("(non-streaming): Session messages count: \(messages.count)")
         }
-        
+
         do {
             try self.sessionManager.saveSession(session)
             if self.isVerbose {
-                logger.debug("(non-streaming): Successfully saved initial session")
+                self.logger.debug("(non-streaming): Successfully saved initial session")
             }
         } catch {
             print("ERROR (non-streaming): Failed to save initial session: \(error)")
@@ -1150,12 +1130,12 @@ extension PeekabooAgentService {
         for (serverName, serverTools) in mcpToolsByServer {
             for tool in serverTools {
                 // Convert MCP tool's Value-based schema to AgentToolParameters
-                let parameters = convertMCPValueToAgentParameters(tool.inputSchema)
-                
+                let parameters = self.convertMCPValueToAgentParameters(tool.inputSchema)
+
                 // Create a prefixed version of the tool
                 let prefixedTool = AgentTool(
                     name: "\(serverName)_\(tool.name)",
-                    description: tool.description,
+                    description: tool.description ?? "",
                     parameters: parameters,
                     execute: { args in
                         // Convert AgentToolArguments to [String: Any] for MCP execution
@@ -1165,13 +1145,12 @@ extension PeekabooAgentService {
                                 argDict[key] = try value.toJSON()
                             }
                         }
-                        
+
                         // Execute via the MCP client
                         let result = try await TachikomaMCPClientManager.shared.executeTool(
                             serverName: serverName,
                             toolName: tool.name,
-                            arguments: argDict
-                        )
+                            arguments: argDict)
                         // Convert result to expected format
                         // ToolResponse has content as [MCP.Tool.Content]
                         for contentItem in result.content {
@@ -1180,27 +1159,28 @@ extension PeekabooAgentService {
                             }
                         }
                         return AnyAgentToolValue(string: "Tool executed successfully")
-                    }
-                )
+                    })
                 tools.append(prefixedTool)
             }
         }
 
         // Only log tool debug info in verbose mode
         if self.isVerbose {
-            logger.debug("Passing \(tools.count) tools to generateText (non-streaming)")
+            self.logger.debug("Passing \(tools.count) tools to generateText (non-streaming)")
             for tool in tools {
-                logger.debug("Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
+                self.logger
+                    .debug(
+                        "Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
                 if tool.name == "see" {
-                    logger.debug("'see' tool required array: \(tool.parameters.required)")
+                    self.logger.debug("'see' tool required array: \(tool.parameters.required)")
                 }
             }
         }
 
         // Debug: Log which model is being used
         if self.isVerbose {
-            logger.debug("Using model: \(model)")
-            logger.debug("Model description: \(model.description)")
+            self.logger.debug("Using model: \(model)")
+            self.logger.debug("Model description: \(model.description)")
         }
 
         // Generate the response
@@ -1222,11 +1202,9 @@ extension PeekabooAgentService {
             metadata: SessionMetadata(
                 toolCallCount: 0,
                 totalExecutionTime: executionTime,
-                customData: ["status": "completed"]
-            ),
+                customData: ["status": "completed"]),
             createdAt: startTime,
-            updatedAt: endTime
-        )
+            updatedAt: endTime)
         try self.sessionManager.saveSession(updatedSession)
 
         // Create result

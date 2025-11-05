@@ -105,13 +105,12 @@ final class StatusBarController: NSObject {
             .environment(self.agent)
             .environment(self.sessionStore)
             .environment(self.speechRecognizer)
-        
+
         // Add realtime service if available
-        let contentView: AnyView
-        if let realtimeService {
-            contentView = AnyView(baseView.environment(realtimeService))
+        let contentView = if let realtimeService {
+            AnyView(baseView.environment(realtimeService))
         } else {
-            contentView = AnyView(baseView)
+            AnyView(baseView)
         }
 
         self.popover.contentViewController = NSHostingController(rootView: contentView)
@@ -227,15 +226,14 @@ final class StatusBarController: NSObject {
             .environment(self.speechRecognizer)
             .environment(self.permissions)
             .environment(self.settings)
-        
+
         // Add realtime service if available
-        let finalView: AnyView
-        if let realtimeService = self.realtimeService {
-            finalView = AnyView(rootView.environment(realtimeService))
+        let finalView = if let realtimeService = self.realtimeService {
+            AnyView(rootView.environment(realtimeService))
         } else {
-            finalView = AnyView(rootView)
+            AnyView(rootView)
         }
-        
+
         window.contentView = NSHostingView(rootView: finalView)
 
         window.makeKeyAndOrderFront(nil)

@@ -107,8 +107,7 @@ public class AIManager: ObservableObject {
                 messages: self.messages,
                 tools: self.tools,
                 settings: self.settings,
-                maxSteps: 1
-            )
+                maxSteps: 1)
 
             self.lastResult = result.text
             self.messages.append(.assistant(result.text))
@@ -138,9 +137,8 @@ public class AIManager: ObservableObject {
                     messages: self.messages,
                     tools: self.tools,
                     settings: self.settings,
-                    maxSteps: 1
-                )
-                
+                    maxSteps: 1)
+
                 for try await delta in streamResult.stream {
                     if !Task.isCancelled {
                         if let content = delta.content {

@@ -1,9 +1,9 @@
 import Foundation
-import PeekabooFoundation
-import TachikomaMCP
 import MCP
 import os.log
+import PeekabooFoundation
 import Tachikoma
+import TachikomaMCP
 
 /// MCP tool for analyzing images with AI
 public struct AnalyzeTool: MCPTool {

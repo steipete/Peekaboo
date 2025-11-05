@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import Peekaboo
 
 @Suite("PeekabooAgentService Tests", .tags(.ai, .unit), .disabled("Uses PeekabooServices.shared which may hang"))
@@ -13,22 +13,22 @@ struct PeekabooAgentServiceTests {
 
     mutating func setup() {
         let services = PeekabooServices.shared
-        agentService = try! PeekabooAgentService(services: services)
-        settings = PeekabooSettings()
-        sessionStore = SessionStore()
-        agent = PeekabooAgent(settings: settings, sessionStore: sessionStore)
+        self.agentService = try! PeekabooAgentService(services: services)
+        self.settings = PeekabooSettings()
+        self.sessionStore = SessionStore()
+        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
     }
 
     @Test("Agent service initializes correctly")
     mutating func agentServiceInitialization() {
-        setup()
-        #expect(agentService != nil)
+        self.setup()
+        #expect(self.agentService != nil)
     }
 
     @Test("Agent creates a valid set of tools")
     mutating func agentCreatesTools() {
-        setup()
-        let tools = agentService.createAgentTools()
+        self.setup()
+        let tools = self.agentService.createAgentTools()
         #expect(!tools.isEmpty)
 
         // Check for a few expected tools
@@ -39,9 +39,9 @@ struct PeekabooAgentServiceTests {
 
     @Test("Task execution requires a valid API key")
     mutating func taskExecutionRequiresAPIKey() async {
-        setup()
-        settings.openAIAPIKey = ""
-        
+        self.setup()
+        self.settings.openAIAPIKey = ""
+
         await #expect(throws: AgentError.serviceUnavailable) {
             try await agent.executeTask("What time is it?")
         }
@@ -49,10 +49,10 @@ struct PeekabooAgentServiceTests {
 
     @Test("Dry run mode returns successfully without execution")
     mutating func dryRunMode() async throws {
-        setup()
-        settings.openAIAPIKey = "sk-test-key" // Needs a dummy key
-        
-        _ = try await agent.executeTask("Test task")
+        self.setup()
+        self.settings.openAIAPIKey = "sk-test-key" // Needs a dummy key
+
+        _ = try await self.agent.executeTask("Test task")
 
         // Dry run should create a session and a user message, but not execute
         let sessions = await sessionStore.sessions

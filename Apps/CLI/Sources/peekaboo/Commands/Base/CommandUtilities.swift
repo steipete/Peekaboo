@@ -157,7 +157,7 @@ protocol OutputFormattable {
 
 extension OutputFormattable {
     /// Output data in appropriate format
-    func output(_ data: some Codable, humanReadable: () -> ()) {
+    func output(_ data: some Codable, humanReadable: () -> Void) {
         if jsonOutput {
             outputSuccessCodable(data: data)
         } else {

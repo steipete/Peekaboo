@@ -56,7 +56,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
     @Option(help: "Delay between keystrokes in milliseconds")
     var delay: Int = 2
 
-    @Flag(name: .long, help: "Press return/enter after typing")
+    @Flag(name: [.customLong("return"), .long], help: "Press return/enter after typing")
     var pressReturn = false
 
     @Option(help: "Press tab N times")
@@ -93,7 +93,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
 
             if let textToType = text {
                 // Process escape sequences
-                let processedActions = self.processTextWithEscapes(textToType)
+                let processedActions = Self.processTextWithEscapes(textToType)
                 actions.append(contentsOf: processedActions)
             }
 
@@ -171,7 +171,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
     // Error handling is provided by ErrorHandlingCommand protocol
 
     /// Process text with escape sequences like \n, \t, etc.
-    func processTextWithEscapes(_ text: String) -> [TypeAction] {
+    static func processTextWithEscapes(_ text: String) -> [TypeAction] {
         var actions: [TypeAction] = []
         var currentText = ""
         var i = text.startIndex

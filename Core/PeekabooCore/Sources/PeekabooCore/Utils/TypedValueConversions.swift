@@ -8,53 +8,55 @@ import Foundation
 // MARK: - Migration Helpers
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
-public extension TypedValue {
-    
+extension TypedValue {
     // MARK: - Encoding Helpers
-    
+
     /// Encode a value into a container with type checking
-    static func encode<T>(_ value: Any, to container: inout T) throws where T: UnkeyedEncodingContainer {
+    public static func encode(_ value: Any, to container: inout some UnkeyedEncodingContainer) throws {
         let typedValue = try TypedValue.fromJSON(value)
         switch typedValue {
         case .null:
             try container.encodeNil()
-        case .bool(let v):
+        case let .bool(v):
             try container.encode(v)
-        case .int(let v):
+        case let .int(v):
             try container.encode(v)
-        case .double(let v):
+        case let .double(v):
             try container.encode(v)
-        case .string(let v):
+        case let .string(v):
             try container.encode(v)
-        case .array(let values):
+        case let .array(values):
             var nestedContainer = container.nestedUnkeyedContainer()
             for element in values {
-                try encode(element.toJSON(), to: &nestedContainer)
+                try self.encode(element.toJSON(), to: &nestedContainer)
             }
-        case .object(let dict):
+        case let .object(dict):
             var nestedContainer = container.nestedContainer(keyedBy: DynamicCodingKey.self)
             for (key, val) in dict {
                 try nestedContainer.encode(val, forKey: DynamicCodingKey(stringValue: key))
             }
         }
     }
-    
+
     /// Encode a dictionary with heterogeneous values
-    static func encodeDictionary(_ dict: [String: Any], to container: inout KeyedEncodingContainer<DynamicCodingKey>) throws {
+    public static func encodeDictionary(
+        _ dict: [String: Any],
+        to container: inout KeyedEncodingContainer<DynamicCodingKey>) throws
+    {
         for (key, value) in dict {
             let typedValue = try TypedValue.fromJSON(value)
             let codingKey = DynamicCodingKey(stringValue: key)
-            
+
             switch typedValue {
             case .null:
                 try container.encodeNil(forKey: codingKey)
-            case .bool(let v):
+            case let .bool(v):
                 try container.encode(v, forKey: codingKey)
-            case .int(let v):
+            case let .int(v):
                 try container.encode(v, forKey: codingKey)
-            case .double(let v):
+            case let .double(v):
                 try container.encode(v, forKey: codingKey)
-            case .string(let v):
+            case let .string(v):
                 try container.encode(v, forKey: codingKey)
             case .array:
                 var nestedContainer = container.nestedUnkeyedContainer(forKey: codingKey)
@@ -68,11 +70,11 @@ public extension TypedValue {
             }
         }
     }
-    
+
     // MARK: - Decoding Helpers
-    
+
     /// Decode from a single value container
-    static func decode(from container: SingleValueDecodingContainer) throws -> TypedValue {
+    public static func decode(from container: SingleValueDecodingContainer) throws -> TypedValue {
         if container.decodeNil() {
             return .null
         } else if let bool = try? container.decode(Bool.self) {
@@ -80,9 +82,10 @@ public extension TypedValue {
         } else if let int = try? container.decode(Int.self) {
             return .int(int)
         } else if let double = try? container.decode(Double.self) {
-            if double.truncatingRemainder(dividingBy: 1) == 0 && 
-               double >= Double(Int.min) && 
-               double <= Double(Int.max) {
+            if double.truncatingRemainder(dividingBy: 1) == 0,
+               double >= Double(Int.min),
+               double <= Double(Int.max)
+            {
                 return .int(Int(double))
             }
             return .double(double)
@@ -95,8 +98,7 @@ public extension TypedValue {
         } else {
             throw DecodingError.dataCorruptedError(
                 in: container,
-                debugDescription: "Unable to decode TypedValue"
-            )
+                debugDescription: "Unable to decode TypedValue")
         }
     }
 }
@@ -108,12 +110,12 @@ public extension TypedValue {
 public struct DynamicCodingKey: CodingKey {
     public let stringValue: String
     public let intValue: Int?
-    
+
     public init(stringValue: String) {
         self.stringValue = stringValue
         self.intValue = nil
     }
-    
+
     public init?(intValue: Int) {
         self.stringValue = String(intValue)
         self.intValue = intValue
@@ -123,11 +125,10 @@ public struct DynamicCodingKey: CodingKey {
 // MARK: - Legacy Support
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
-public extension TypedValue {
-    
+extension TypedValue {
     /// Convert from AnyCodable for migration purposes
     /// This will be removed once AnyCodable is fully replaced
-    static func fromAnyCodable(_ anyCodable: Any) throws -> TypedValue {
+    public static func fromAnyCodable(_ anyCodable: Any) throws -> TypedValue {
         // Extract the underlying value if it's wrapped
         if let codable = anyCodable as? any Codable {
             // Try to get the raw value through encoding/decoding
@@ -136,21 +137,21 @@ public extension TypedValue {
             let json = try JSONSerialization.jsonObject(with: data)
             return try TypedValue.fromJSON(json)
         }
-        
+
         // Fallback to direct conversion
         return try TypedValue.fromJSON(anyCodable)
     }
-    
+
     /// Helper to wrap any Encodable for JSON conversion
     private struct AnyEncodableWrapper: Encodable {
         let value: any Encodable
-        
+
         init(_ value: any Encodable) {
             self.value = value
         }
-        
+
         func encode(to encoder: Encoder) throws {
-            try value.encode(to: encoder)
+            try self.value.encode(to: encoder)
         }
     }
 }
@@ -158,47 +159,46 @@ public extension TypedValue {
 // MARK: - Type Checking Utilities
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
-public extension TypedValue {
-    
+extension TypedValue {
     /// Check if the value matches a specific type
-    func matches<T>(_ type: T.Type) -> Bool {
+    public func matches(_ type: (some Any).Type) -> Bool {
         switch self {
         case .bool where type == Bool.self:
-            return true
+            true
         case .int where type == Int.self:
-            return true
+            true
         case .double where type == Double.self || type == Float.self:
-            return true
+            true
         case .string where type == String.self:
-            return true
+            true
         case .array where type == [TypedValue].self || type == [Any].self:
-            return true
+            true
         case .object where type == [String: TypedValue].self || type == [String: Any].self:
-            return true
+            true
         case .null where type == NSNull.self || type == Void.self:
-            return true
+            true
         default:
-            return false
+            false
         }
     }
-    
+
     /// Try to cast the value to a specific type
-    func cast<T>(to type: T.Type) -> T? {
+    public func cast<T>(to type: T.Type) -> T? {
         switch self {
-        case .bool(let v) where type == Bool.self:
-            return v as? T
-        case .int(let v) where type == Int.self:
-            return v as? T
-        case .double(let v) where type == Double.self:
-            return v as? T
-        case .string(let v) where type == String.self:
-            return v as? T
-        case .array(let v) where type == [TypedValue].self:
-            return v as? T
-        case .object(let v) where type == [String: TypedValue].self:
-            return v as? T
+        case let .bool(v) where type == Bool.self:
+            v as? T
+        case let .int(v) where type == Int.self:
+            v as? T
+        case let .double(v) where type == Double.self:
+            v as? T
+        case let .string(v) where type == String.self:
+            v as? T
+        case let .array(v) where type == [TypedValue].self:
+            v as? T
+        case let .object(v) where type == [String: TypedValue].self:
+            v as? T
         default:
-            return nil
+            nil
         }
     }
 }
@@ -206,29 +206,27 @@ public extension TypedValue {
 // MARK: - Batch Operations
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
-public extension Array where Element == TypedValue {
-    
+extension [TypedValue] {
     /// Convert array of TypedValues to JSON array
-    func toJSONArray() -> [Any] {
-        return map { $0.toJSON() }
+    public func toJSONArray() -> [Any] {
+        map { $0.toJSON() }
     }
-    
+
     /// Create from JSON array
-    static func fromJSONArray(_ jsonArray: [Any]) throws -> [TypedValue] {
-        return try jsonArray.map { try TypedValue.fromJSON($0) }
+    public static func fromJSONArray(_ jsonArray: [Any]) throws -> [TypedValue] {
+        try jsonArray.map { try TypedValue.fromJSON($0) }
     }
 }
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
-public extension Dictionary where Key == String, Value == TypedValue {
-    
+extension [String: TypedValue] {
     /// Convert dictionary of TypedValues to JSON dictionary
-    func toJSONDictionary() -> [String: Any] {
-        return mapValues { $0.toJSON() }
+    public func toJSONDictionary() -> [String: Any] {
+        mapValues { $0.toJSON() }
     }
-    
+
     /// Create from JSON dictionary
-    static func fromJSONDictionary(_ jsonDict: [String: Any]) throws -> [String: TypedValue] {
-        return try jsonDict.mapValues { try TypedValue.fromJSON($0) }
+    public static func fromJSONDictionary(_ jsonDict: [String: Any]) throws -> [String: TypedValue] {
+        try jsonDict.mapValues { try TypedValue.fromJSON($0) }
     }
 }

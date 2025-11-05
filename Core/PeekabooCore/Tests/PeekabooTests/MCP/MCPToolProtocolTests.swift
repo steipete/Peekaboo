@@ -169,7 +169,11 @@ struct MCPToolProtocolTests {
         if let responseMeta = response.meta,
            case let .object(dict) = responseMeta
         {
-            #expect(dict["duration"] as? Value == .double(1.5))
+            if case let .double(duration)? = dict["duration"] {
+                #expect(duration == 1.5)
+            } else {
+                Issue.record("Expected duration double value")
+            }
         }
     }
 

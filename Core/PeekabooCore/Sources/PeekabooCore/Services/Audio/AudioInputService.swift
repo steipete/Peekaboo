@@ -4,9 +4,9 @@
 //
 
 import Foundation
-import TachikomaAudio
-import Tachikoma  // For TachikomaError
 import os.log
+import Tachikoma // For TachikomaError
+import TachikomaAudio
 
 /// Error types for audio input operations
 public enum AudioInputError: LocalizedError, Equatable {
@@ -19,27 +19,27 @@ public enum AudioInputError: LocalizedError, Equatable {
     case audioSessionError(String)
     case transcriptionFailed(String)
     case apiKeyMissing
-    
+
     public var errorDescription: String? {
         switch self {
         case .alreadyRecording:
-            return "Already recording audio"
+            "Already recording audio"
         case .notRecording:
-            return "Not currently recording"
-        case .fileNotFound(let url):
-            return "Audio file not found at \(url.path)"
-        case .unsupportedFileType(let type):
-            return "Unsupported audio file type: \(type)"
-        case .fileTooLarge(let size):
-            return "Audio file too large: \(size) bytes (max 25MB)"
+            "Not currently recording"
+        case let .fileNotFound(url):
+            "Audio file not found at \(url.path)"
+        case let .unsupportedFileType(type):
+            "Unsupported audio file type: \(type)"
+        case let .fileTooLarge(size):
+            "Audio file too large: \(size) bytes (max 25MB)"
         case .microphonePermissionDenied:
-            return "Microphone permission denied"
-        case .audioSessionError(let message):
-            return "Audio session error: \(message)"
-        case .transcriptionFailed(let message):
-            return "Transcription failed: \(message)"
+            "Microphone permission denied"
+        case let .audioSessionError(message):
+            "Audio session error: \(message)"
+        case let .transcriptionFailed(message):
+            "Transcription failed: \(message)"
         case .apiKeyMissing:
-            return "OpenAI API key is required for transcription"
+            "OpenAI API key is required for transcription"
         }
     }
 }
@@ -47,69 +47,69 @@ public enum AudioInputError: LocalizedError, Equatable {
 /// Service for handling audio input and transcription
 @MainActor
 public final class AudioInputService: ObservableObject {
-    
     // MARK: - Properties
-    
+
     private let aiService: PeekabooAIService
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "AudioInputService")
     private let recorder = AudioRecorder()
     private var stateObservationTask: Task<Void, Never>?
-    
+
     @Published public private(set) var isRecording = false
     @Published public private(set) var recordingDuration: TimeInterval = 0
-    
+
     // Maximum file size: 25MB (OpenAI Whisper limit)
     private let maxFileSize = 25 * 1024 * 1024
-    
+
     // Supported audio formats for transcription
     private let supportedExtensions = ["wav", "mp3", "m4a", "mp4", "mpeg", "mpga", "webm"]
-    
+
     // MARK: - Initialization
-    
+
     public init(aiService: PeekabooAIService) {
         self.aiService = aiService
-        
+
         // Observe recorder state changes
-        stateObservationTask = Task { @MainActor [weak self] in
+        self.stateObservationTask = Task { @MainActor [weak self] in
             await self?.observeRecorderState()
         }
     }
-    
+
     deinit {
         stateObservationTask?.cancel()
     }
-    
+
     // MARK: - Public Properties
-    
+
     /// Check if audio recording is available
     public var isAvailable: Bool {
-        recorder.isAvailable
+        self.recorder.isAvailable
     }
-    
+
     // MARK: - Private Methods
-    
+
     private func observeRecorderState() async {
         // Use Combine to observe recorder state changes
         for await _ in Timer.publish(every: 0.1, on: .main, in: .common)
             .autoconnect()
-            .values {
+            .values
+        {
             // Sync recorder state with our published properties
-            if isRecording != recorder.isRecording {
-                isRecording = recorder.isRecording
+            if self.isRecording != self.recorder.isRecording {
+                self.isRecording = self.recorder.isRecording
             }
-            if recordingDuration != recorder.recordingDuration {
-                recordingDuration = recorder.recordingDuration
+            if self.recordingDuration != self.recorder.recordingDuration {
+                self.recordingDuration = self.recorder.recordingDuration
             }
         }
     }
-    
+
     // MARK: - Recording Methods
-    
+
     /// Start recording audio from the microphone
     public func startRecording() async throws {
         do {
-            try await recorder.startRecording()
-            logger.info("Started audio recording")
+            try await self.recorder.startRecording()
+            self.logger.info("Started audio recording")
         } catch let error as AudioRecordingError {
             // Convert AudioRecordingError to AudioInputError
             switch error {
@@ -117,7 +117,7 @@ public final class AudioInputService: ObservableObject {
                 throw AudioInputError.alreadyRecording
             case .microphonePermissionDenied:
                 throw AudioInputError.microphonePermissionDenied
-            case .audioEngineError(let message):
+            case let .audioEngineError(message):
                 throw AudioInputError.audioSessionError(message)
             default:
                 throw AudioInputError.audioSessionError(error.localizedDescription)
@@ -126,13 +126,13 @@ public final class AudioInputService: ObservableObject {
             throw AudioInputError.audioSessionError(error.localizedDescription)
         }
     }
-    
+
     /// Stop recording and return the transcription
     public func stopRecording() async throws -> String {
         do {
             let audioData = try await recorder.stopRecording()
-            logger.info("Stopped audio recording")
-            
+            self.logger.info("Stopped audio recording")
+
             // Transcribe the recorded audio using TachikomaAudio
             let text = try await transcribe(audioData)
             return text
@@ -149,9 +149,9 @@ public final class AudioInputService: ObservableObject {
         } catch let error as TachikomaError {
             // Convert TachikomaError to AudioInputError
             switch error {
-            case .authenticationFailed(let message) where message.contains("API_KEY"):
+            case let .authenticationFailed(message) where message.contains("API_KEY"):
                 throw AudioInputError.apiKeyMissing
-            case .invalidInput(let message), .apiError(let message):
+            case let .invalidInput(message), let .apiError(message):
                 throw AudioInputError.transcriptionFailed(message)
             default:
                 throw AudioInputError.transcriptionFailed(error.localizedDescription)
@@ -160,47 +160,46 @@ public final class AudioInputService: ObservableObject {
             throw AudioInputError.transcriptionFailed(error.localizedDescription)
         }
     }
-    
+
     /// Cancel recording without transcription
     public func cancelRecording() async {
-        await recorder.cancelRecording()
-        logger.info("Cancelled audio recording")
+        await self.recorder.cancelRecording()
+        self.logger.info("Cancelled audio recording")
     }
-    
+
     // MARK: - Transcription Methods
-    
+
     /// Transcribe an audio file using OpenAI Whisper
     public func transcribeAudioFile(_ url: URL) async throws -> String {
         // Validate file exists
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw AudioInputError.fileNotFound(url)
         }
-        
+
         // Validate file extension
         let fileExtension = url.pathExtension.lowercased()
-        guard supportedExtensions.contains(fileExtension) else {
+        guard self.supportedExtensions.contains(fileExtension) else {
             throw AudioInputError.unsupportedFileType(fileExtension)
         }
-        
+
         // Validate file size
         let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
         if let fileSize = attributes[.size] as? Int {
-            guard fileSize <= maxFileSize else {
+            guard fileSize <= self.maxFileSize else {
                 throw AudioInputError.fileTooLarge(fileSize)
             }
         }
-        
+
         // Use AI service to transcribe
         do {
             let transcription = try await aiService.transcribeAudio(at: url)
-            logger.info("Successfully transcribed audio file")
+            self.logger.info("Successfully transcribed audio file")
             return transcription
         } catch {
-            logger.error("Transcription failed: \(error)")
+            self.logger.error("Transcription failed: \(error)")
             throw AudioInputError.transcriptionFailed(error.localizedDescription)
         }
     }
-    
 }
 
 // MARK: - PeekabooAIService Extension
@@ -216,11 +215,11 @@ extension PeekabooAIService {
             // Convert errors to AudioInputError for compatibility
             if let tachikomaError = error as? TachikomaError {
                 switch tachikomaError {
-                case .authenticationFailed(let message) where message.contains("API_KEY"):
+                case let .authenticationFailed(message) where message.contains("API_KEY"):
                     throw AudioInputError.apiKeyMissing
-                case .invalidInput(let message):
+                case let .invalidInput(message):
                     throw AudioInputError.transcriptionFailed(message)
-                case .apiError(let message):
+                case let .apiError(message):
                     throw AudioInputError.transcriptionFailed(message)
                 default:
                     throw AudioInputError.transcriptionFailed(error.localizedDescription)

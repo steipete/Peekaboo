@@ -84,7 +84,8 @@ public struct PeekabooChatView: View {
                                 .frame(width: 24, height: 24)
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(self.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || self.ai.isGenerating)
+                        .disabled(self.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || self.ai
+                            .isGenerating)
 
                         if self.ai.isGenerating {
                             Button("Cancel") {
@@ -210,22 +211,22 @@ public struct MessageBubble: View {
     private var bubbleColor: Color {
         switch self.message.role {
         case .user:
-            return .accentColor
+            .accentColor
         case .assistant:
-            return Color.gray.opacity(0.2)
+            Color.gray.opacity(0.2)
         case .system:
-            return Color.yellow.opacity(0.2)
+            Color.yellow.opacity(0.2)
         case .tool:
-            return Color.purple.opacity(0.2)
+            Color.purple.opacity(0.2)
         }
     }
 
     private var textColor: Color {
         switch self.message.role {
         case .user:
-            return .white
+            .white
         case .assistant, .system, .tool:
-            return .primary
+            .primary
         }
     }
 
@@ -239,7 +240,6 @@ public struct MessageBubble: View {
 #Preview {
     PeekabooChatView(
         model: LanguageModel.anthropic(.opus4),
-        system: "You are a helpful assistant specialized in macOS automation and development."
-    )
-    .frame(width: 400, height: 600)
+        system: "You are a helpful assistant specialized in macOS automation and development.")
+        .frame(width: 400, height: 600)
 }

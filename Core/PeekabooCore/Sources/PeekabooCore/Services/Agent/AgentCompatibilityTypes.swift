@@ -391,4 +391,3 @@ public final class AgentSessionManager: @unchecked Sendable {
         }
     }
 }
-

@@ -309,8 +309,8 @@ public struct Configuration: Codable {
             enabled: Bool = true,
             timeout: TimeInterval = 10.0,
             autoReconnect: Bool = true,
-            description: String? = nil
-        ) {
+            description: String? = nil)
+        {
             self.transport = transport
             self.command = command
             self.args = args
@@ -334,8 +334,8 @@ public struct Configuration: Codable {
         public init(
             showMcpToolsByDefault: Bool = true,
             useServerPrefixes: Bool = true,
-            groupByServer: Bool = false
-        ) {
+            groupByServer: Bool = false)
+        {
             self.showMcpToolsByDefault = showMcpToolsByDefault
             self.useServerPrefixes = useServerPrefixes
             self.groupByServer = groupByServer

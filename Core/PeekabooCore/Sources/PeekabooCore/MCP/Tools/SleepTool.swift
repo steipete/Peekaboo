@@ -1,6 +1,6 @@
 import Foundation
-import TachikomaMCP
 import MCP
+import TachikomaMCP
 
 /// MCP tool for pausing execution
 public struct SleepTool: MCPTool {
@@ -48,6 +48,7 @@ public struct SleepTool: MCPTool {
         let seconds = Double(milliseconds) / 1000.0
 
         return ToolResponse
-            .text("✅ Paused for \(seconds)s (requested: \(milliseconds)ms, actual: \(Int(actualDuration))ms)")
+            .text(
+                "\(AgentDisplayTokens.Status.success) Paused for \(seconds)s (requested: \(milliseconds)ms, actual: \(Int(actualDuration))ms)")
     }
 }

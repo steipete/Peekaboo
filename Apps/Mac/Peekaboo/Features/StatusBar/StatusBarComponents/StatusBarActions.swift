@@ -1,6 +1,6 @@
-import SwiftUI
-import PeekabooCore
 import os.log
+import PeekabooCore
+import SwiftUI
 
 // MARK: - Action Components
 
@@ -8,7 +8,7 @@ import os.log
 struct ActionButtonsView: View {
     @Environment(SessionStore.self) private var sessionStore
     @Environment(\.openWindow) private var openWindow
-    
+
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "StatusBarActions")
 
     var body: some View {
@@ -17,30 +17,30 @@ struct ActionButtonsView: View {
             if let currentSession = sessionStore.currentSession {
                 CurrentSessionIndicator(session: currentSession)
             } else {
-                NewSessionButton(onCreateSession: createNewSession)
+                NewSessionButton(onCreateSession: self.createNewSession)
             }
 
-            ExpandButton(onOpenMainWindow: openMainWindow)
+            ExpandButton(onOpenMainWindow: self.openMainWindow)
         }
     }
 
     private func createNewSession() {
-        logger.info("Creating new session")
-        _ = sessionStore.createSession(title: "New Session")
-        openMainWindow()
+        self.logger.info("Creating new session")
+        _ = self.sessionStore.createSession(title: "New Session")
+        self.openMainWindow()
     }
 
     private func openMainWindow() {
-        logger.info("Opening main window")
-        
+        self.logger.info("Opening main window")
+
         // Show dock icon temporarily
         DockIconManager.shared.temporarilyShowDock()
-        
+
         // Activate the app
         NSApp.activate(ignoringOtherApps: true)
-        
+
         // Use SwiftUI's openWindow directly
-        openWindow(id: "main")
+        self.openWindow(id: "main")
     }
 }
 
@@ -52,7 +52,7 @@ struct CurrentSessionIndicator: View {
         HStack {
             Image(systemName: "text.bubble")
                 .font(.caption)
-            Text(session.title)
+            Text(self.session.title)
                 .font(.caption)
                 .lineLimit(1)
         }
@@ -69,7 +69,7 @@ struct NewSessionButton: View {
     let onCreateSession: () -> Void
 
     var body: some View {
-        Button(action: onCreateSession) {
+        Button(action: self.onCreateSession) {
             Label("New Session", systemImage: "plus.circle")
                 .font(.caption)
                 .frame(maxWidth: .infinity)
@@ -84,7 +84,7 @@ struct ExpandButton: View {
     let onOpenMainWindow: () -> Void
 
     var body: some View {
-        Button(action: onOpenMainWindow) {
+        Button(action: self.onOpenMainWindow) {
             Label("Expand", systemImage: "arrow.up.left.and.arrow.down.right")
                 .font(.caption)
                 .frame(maxWidth: .infinity)
@@ -101,14 +101,14 @@ struct QuickActionsView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Button(action: onOpenMainWindow) {
+            Button(action: self.onOpenMainWindow) {
                 Label("Open Main Window", systemImage: "rectangle.stack")
                     .frame(maxWidth: .infinity)
             }
             .controlSize(.large)
             .buttonStyle(.bordered)
 
-            Button(action: onCreateNewSession) {
+            Button(action: self.onCreateNewSession) {
                 Label("New Session", systemImage: "plus.circle")
                     .frame(maxWidth: .infinity)
             }

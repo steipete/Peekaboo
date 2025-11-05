@@ -64,45 +64,45 @@ struct AgentResumeCLITests {
 
     // TODO: Rewrite these tests.
     /*
-    @Test("Session data formats correctly for JSON output")
-    func sessionDataFormatsCorrectlyForJSON() async {
-        let manager = SessionManager.shared
-        let session = try! await manager.createSession(task: "JSON test task")
+     @Test("Session data formats correctly for JSON output")
+     func sessionDataFormatsCorrectlyForJSON() async {
+         let manager = SessionManager.shared
+         let session = try! await manager.createSession(task: "JSON test task")
 
-        await manager.addMessageToSession(sessionId: session.id, message: .init(role: .user, content: "JSON step"))
-        //await manager.setLastQuestion(sessionId: session.id, question: "JSON question?")
+         await manager.addMessageToSession(sessionId: session.id, message: .init(role: .user, content: "JSON step"))
+         //await manager.setLastQuestion(sessionId: session.id, question: "JSON question?")
 
-        let updatedSession = try! await manager.getSession(id: session.id)!
+         let updatedSession = try! await manager.getSession(id: session.id)!
 
-        // Format session data as it would be for JSON output
-        let sessionData: [String: Any] = [
-            "id": updatedSession.id,
-            "task": updatedSession.summary,
-            "steps": updatedSession.messages.count,
-            "lastQuestion": "" as Any,
-            "createdAt": ISO8601DateFormatter().string(from: updatedSession.createdAt),
-            "lastActivityAt": ISO8601DateFormatter().string(from: updatedSession.updatedAt)
-        ]
+         // Format session data as it would be for JSON output
+         let sessionData: [String: Any] = [
+             "id": updatedSession.id,
+             "task": updatedSession.summary,
+             "steps": updatedSession.messages.count,
+             "lastQuestion": "" as Any,
+             "createdAt": ISO8601DateFormatter().string(from: updatedSession.createdAt),
+             "lastActivityAt": ISO8601DateFormatter().string(from: updatedSession.updatedAt)
+         ]
 
-        #expect(sessionData["id"] as? String == session.id)
-        #expect(sessionData["task"] as? String == "JSON test task")
-        #expect(sessionData["steps"] as? Int == 1)
-        #expect(sessionData["lastQuestion"] as? String == "")
+         #expect(sessionData["id"] as? String == session.id)
+         #expect(sessionData["task"] as? String == "JSON test task")
+         #expect(sessionData["steps"] as? Int == 1)
+         #expect(sessionData["lastQuestion"] as? String == "")
 
-        // Test serialization
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: sessionData, options: .prettyPrinted)
-            let jsonString = String(data: jsonData, encoding: .utf8)
-            #expect(jsonString != nil)
-            #expect(jsonString!.contains("JSON test task"))
-        } catch {
-            #expect(Bool(false), "Session data should serialize to JSON")
-        }
+         // Test serialization
+         do {
+             let jsonData = try JSONSerialization.data(withJSONObject: sessionData, options: .prettyPrinted)
+             let jsonString = String(data: jsonData, encoding: .utf8)
+             #expect(jsonString != nil)
+             #expect(jsonString!.contains("JSON test task"))
+         } catch {
+             #expect(Bool(false), "Session data should serialize to JSON")
+         }
 
-        // Clean up
-        await manager.deleteSession(id: session.id)
-    }
-    */
+         // Clean up
+         await manager.deleteSession(id: session.id)
+     }
+     */
 
     // MARK: - Time Formatting Tests
 
@@ -165,52 +165,52 @@ struct AgentResumeCLITests {
 
     // TODO: Rewrite these tests.
     /*
-    @Test("Session list formatting includes all required fields")
-    func sessionListFormattingIncludesAllRequiredFields() async {
-        let manager = SessionManager.shared
+     @Test("Session list formatting includes all required fields")
+     func sessionListFormattingIncludesAllRequiredFields() async {
+         let manager = SessionManager.shared
 
-        // Create test sessions with different characteristics
-        let session1 = try! await manager.createSession(task: "Simple task")
-        let session2 = try! await manager.createSession(task: "Complex task with multiple steps")
-        let session3 = try! await manager.createSession(task: "Task with question")
+         // Create test sessions with different characteristics
+         let session1 = try! await manager.createSession(task: "Simple task")
+         let session2 = try! await manager.createSession(task: "Complex task with multiple steps")
+         let session3 = try! await manager.createSession(task: "Task with question")
 
-        // Add different amounts of content
-        await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 1"))
-        await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 2"))
-        await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 3"))
+         // Add different amounts of content
+         await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 1"))
+         await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 2"))
+         await manager.addMessageToSession(sessionId: session2.id, message: .init(role: .user, content: "Step 3"))
 
-        let sessions = try! await manager.listSessions()
-        let testSessions = sessions.filter { [session1.id, session2.id, session3.id].contains($0.id) }
+         let sessions = try! await manager.listSessions()
+         let testSessions = sessions.filter { [session1.id, session2.id, session3.id].contains($0.id) }
 
-        #expect(testSessions.count == 3)
+         #expect(testSessions.count == 3)
 
-        // Verify each session has the required fields for display
-        for session in testSessions {
-            #expect(!session.id.isEmpty)
-            #expect(session.summary != nil)
-            #expect(session.createdAt <= Date())
-            #expect(session.lastAccessedAt <= Date())
-        }
+         // Verify each session has the required fields for display
+         for session in testSessions {
+             #expect(!session.id.isEmpty)
+             #expect(session.summary != nil)
+             #expect(session.createdAt <= Date())
+             #expect(session.lastAccessedAt <= Date())
+         }
 
-        // Verify specific session characteristics
-        let simpleSession = testSessions.first { $0.id == session1.id }
-        #expect(simpleSession?.messageCount == 0)
+         // Verify specific session characteristics
+         let simpleSession = testSessions.first { $0.id == session1.id }
+         #expect(simpleSession?.messageCount == 0)
 
-        let complexSession = testSessions.first { $0.id == session2.id }
-        #expect(complexSession?.messageCount == 3)
+         let complexSession = testSessions.first { $0.id == session2.id }
+         #expect(complexSession?.messageCount == 3)
 
-        // Clean up
-        await manager.deleteSession(id: session1.id)
-        await manager.deleteSession(id: session2.id)
-        await manager.deleteSession(id: session3.id)
-    }
-    */
+         // Clean up
+         await manager.deleteSession(id: session1.id)
+         await manager.deleteSession(id: session2.id)
+         await manager.deleteSession(id: session3.id)
+     }
+     */
 
     // MARK: - Resume Prompt Construction Tests
 
     @Test("Resume prompt is constructed correctly")
     func resumePromptIsConstructedCorrectly() {
-        _ = "Open TextEdit"  // Original task
+        _ = "Open TextEdit" // Original task
         let continuationTask = "Now save the document"
 
         let expectedPrompt = "Continue with the original task. The user's response: \(continuationTask)"
@@ -251,7 +251,7 @@ struct AgentResumeCLITests {
 
     @Test("Resume handles special characters in task")
     func resumeHandlesSpecialCharactersInTask() {
-        _ = "Task with \"quotes\" and 'apostrophes' and {brackets} and <tags>"  // Special task
+        _ = "Task with \"quotes\" and 'apostrophes' and {brackets} and <tags>" // Special task
         let continuationTask = "Continue with émojis 🤖 and unicode ∆∇∫"
 
         let resumePrompt = "Continue with the original task. The user's response: \(continuationTask)"
@@ -262,7 +262,7 @@ struct AgentResumeCLITests {
 
     @Test("Resume handles very long tasks")
     func resumeHandlesVeryLongTasks() {
-        _ = String(repeating: "Very long task description. ", count: 100)  // Long task
+        _ = String(repeating: "Very long task description. ", count: 100) // Long task
         let longContinuation = String(repeating: "Long continuation. ", count: 50)
 
         let resumePrompt = "Continue with the original task. The user's response: \(longContinuation)"

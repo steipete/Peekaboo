@@ -11,11 +11,11 @@ extension PeekabooServices {
     public func ensureVisualizerConnection() {
         // Check if we're running as CLI (not Mac app)
         let isMacApp = Bundle.main.bundleIdentifier?.hasPrefix("boo.peekaboo.mac") == true
-        
+
         if !isMacApp {
             // Force connection by accessing the visualization client
             VisualizationClient.shared.connect()
-            
+
             // Also trigger service initialization to ensure connections are made
             _ = self.screenCapture
             _ = self.automation

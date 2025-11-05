@@ -19,36 +19,30 @@ public enum VisionToolDefinitions {
                 name: "app",
                 type: .string,
                 description: "Application name to capture, or special values: 'menubar', 'frontmost'",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "path",
                 type: .string,
                 description: "Path to save the screenshot",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "annotate",
                 type: .boolean,
                 description: "Generate an annotated screenshot with interaction markers",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "session",
                 type: .string,
                 description: "Session ID for UI automation state tracking",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "jsonOutput",
                 type: .boolean,
                 description: "Output in JSON format",
-                required: false
-            )
+                required: false),
         ],
         examples: [],
-        agentGuidance: ""
-    )
+        agentGuidance: "")
 }
 
 /// UI Automation tool definitions
@@ -65,70 +59,58 @@ public enum UIAutomationToolDefinitions {
                 name: "query",
                 type: .string,
                 description: "Element text or query to click",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "on",
                 type: .string,
                 description: "Element ID to click (e.g., B1, T2) from see command output",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "coords",
                 type: .string,
                 description: "Click at specific coordinates in format 'x,y'",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "double",
                 type: .boolean,
                 description: "Double-click instead of single click",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "right",
                 type: .boolean,
                 description: "Right-click instead of left-click",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "session",
                 type: .string,
                 description: "Session ID from see command",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "waitFor",
                 type: .number,
                 description: "Maximum milliseconds to wait for element to become actionable",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "spaceSwitch",
                 type: .boolean,
                 description: "Switch to target Space if needed",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "bringToCurrentSpace",
                 type: .boolean,
                 description: "Bring window to current Space instead of switching",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "autoFocus",
                 type: .boolean,
                 description: "Automatically focus application before clicking",
-                required: false
-            ),
+                required: false),
             ParameterDefinition(
                 name: "jsonOutput",
                 type: .boolean,
                 description: "Output in JSON format",
-                required: false
-            )
+                required: false),
         ],
         examples: [],
-        agentGuidance: ""
-    )
+        agentGuidance: "")
 }

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import Peekaboo
 
 @Suite("ConversationSession Model Tests", .tags(.models, .unit))
@@ -40,8 +40,7 @@ struct ConversationSessionTests {
                     ConversationToolCall(
                         name: "screenshot",
                         arguments: "{\"app\":\"Safari\"}",
-                        result: "Screenshot taken"
-                    ),
+                        result: "Screenshot taken"),
                 ]),
         ]
         session.summary = "A friendly greeting"

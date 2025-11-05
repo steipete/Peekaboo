@@ -1,16 +1,19 @@
 import CoreGraphics
-import PeekabooFoundation
 import Foundation
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("TypeService Tests", .tags(.ui))
+@Suite(
+    "TypeService Tests",
+    .tags(.ui, .automation),
+    .enabled(if: TestEnvironment.runAutomationScenarios))
 @MainActor
 struct TypeServiceTests {
     @Test("Initialize TypeService")
     func initializeService() async throws {
-        let service = TypeService()
-        #expect(true)  // Service is non-optional, always succeeds
+        let service: TypeService? = TypeService()
+        #expect(service != nil)
     }
 
     @Test("Type text")

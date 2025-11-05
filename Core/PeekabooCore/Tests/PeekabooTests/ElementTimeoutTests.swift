@@ -1,5 +1,5 @@
-import ApplicationServices
 import AppKit
+import ApplicationServices
 import AXorcist
 import Foundation
 import Testing
@@ -25,7 +25,7 @@ struct ElementTimeoutTests {
         element.setMessagingTimeout(1.0)
 
         // Then - no crash and method completes
-        #expect(element.underlyingElement != nil)
+        #expect(CFGetTypeID(element.underlyingElement) == AXUIElementGetTypeID())
     }
 
     @Test("Windows with timeout returns windows")
@@ -49,7 +49,7 @@ struct ElementTimeoutTests {
         #expect(windows != nil)
         // Note: Finder windows may vary, so we just check that the method works
         if let windowArray = windows {
-            #expect(windowArray.count >= 0) // At least 0 windows
+            #expect(windowArray.isEmpty) // At least 0 windows
         }
     }
 
@@ -73,7 +73,7 @@ struct ElementTimeoutTests {
         // Then - should get some children (menu bar, windows, etc.)
         #expect(children != nil)
         if let childArray = children {
-            #expect(childArray.count >= 0) // At least 0 children
+            #expect(childArray.isEmpty) // At least 0 children
         }
     }
 
@@ -97,7 +97,7 @@ struct ElementTimeoutTests {
         // Then - Finder should have a menu bar when it's frontmost
         // Note: This might be nil if Finder is not active, which is okay
         if let menuBarElement = menuBar {
-            #expect(menuBarElement.underlyingElement != nil)
+            #expect(CFGetTypeID(menuBarElement.underlyingElement) == AXUIElementGetTypeID())
         }
     }
 
@@ -121,9 +121,9 @@ struct ElementTimeoutTests {
         // Then - might have a focused element or might be nil
         // This is environment-dependent, so we just verify no crash
         if let focused = focusedElement {
-            #expect(focused.underlyingElement != nil)
+            #expect(CFGetTypeID(focused.underlyingElement) == AXUIElementGetTypeID())
         }
-        
+
         // Test passes if we get here without crashing
         #expect(Bool(true))
     }
@@ -149,7 +149,7 @@ struct ElementTimeoutTests {
         if let titleString = title {
             #expect(!titleString.isEmpty)
         }
-        
+
         // Test that the method completes without error
         #expect(Bool(true))
     }
@@ -178,11 +178,11 @@ struct ElementTimeoutTests {
         let menuItems = menuBar.children() ?? []
 
         // Then - should have some menu items if Finder is active
-        #expect(menuItems.count >= 0) // At least 0 menu items
-        
+        #expect(menuItems.isEmpty) // At least 0 menu items
+
         // Test that menu items are valid Elements
         for menuItem in menuItems {
-            #expect(menuItem.underlyingElement != nil)
+            #expect(CFGetTypeID(menuItem.underlyingElement) == AXUIElementGetTypeID())
         }
     }
 
@@ -206,15 +206,15 @@ struct ElementTimeoutTests {
 
         // When using short timeout
         let startTime = Date()
-        let _ = element.windowsWithTimeout(timeout: shortTimeout)
+        _ = element.windowsWithTimeout(timeout: shortTimeout)
         let shortDuration = Date().timeIntervalSince(startTime)
 
         // Then short timeout should complete relatively quickly
         #expect(shortDuration < 2.0) // Should not take more than 2 seconds
-        
+
         // Test that longer timeout doesn't crash
-        let _ = element.windowsWithTimeout(timeout: longTimeout)
-        
+        _ = element.windowsWithTimeout(timeout: longTimeout)
+
         // Test passes if we complete without crashing
         #expect(Bool(true))
     }

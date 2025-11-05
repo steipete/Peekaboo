@@ -106,7 +106,7 @@ final class PeekabooAgent {
     }
 
     // MARK: - Public Methods
-    
+
     /// Get the underlying agent service for advanced use cases
     func getAgentService() async throws -> PeekabooAgentService? {
         guard let agentService = self.services.agent else {
@@ -137,39 +137,35 @@ final class PeekabooAgent {
             try await self.executeTask(transcript)
             return
         }
-        
+
         // Otherwise, transcribe the audio using Tachikoma and then execute
         do {
             // Create AudioData from the raw data
-            let audioFormat: AudioFormat = {
-                switch mimeType {
-                case "audio/wav": return .wav
-                case "audio/mp3": return .mp3
-                case "audio/flac": return .flac
-                case "audio/opus": return .opus
-                case "audio/m4a": return .m4a
-                case "audio/aac": return .aac
-                case "audio/ogg": return .ogg
-                default: return .wav // Default fallback
-                }
-            }()
-            
+            let audioFormat: AudioFormat = switch mimeType {
+            case "audio/wav": .wav
+            case "audio/mp3": .mp3
+            case "audio/flac": .flac
+            case "audio/opus": .opus
+            case "audio/m4a": .m4a
+            case "audio/aac": .aac
+            case "audio/ogg": .ogg
+            default: .wav // Default fallback
+            }
+
             let audioDataStruct = AudioData(
                 data: audioData,
                 format: audioFormat,
-                duration: duration
-            )
-            
+                duration: duration)
+
             // Transcribe using Tachikoma's OpenAI Whisper integration
             let transcriptionResult = try await transcribe(
                 audioDataStruct,
                 using: .openai(.whisper1),
-                language: "en"
-            )
-            
+                language: "en")
+
             // Execute the task with the transcribed text
             try await self.executeTask(transcriptionResult.text)
-            
+
         } catch {
             throw AgentError.executionFailed("Failed to transcribe audio: \(error.localizedDescription)")
         }
@@ -346,7 +342,7 @@ final class PeekabooAgent {
 
                     // Add token usage if available
                     if let usage = lastTokenUsage {
-                        summaryContent += " • 🤖 \(usage.totalTokens) tokens"
+                        summaryContent += " • \(AgentDisplayTokens.Status.info) \(usage.totalTokens) tokens"
                         if usage.inputTokens > 0, usage.outputTokens > 0 {
                             summaryContent += " (\(usage.inputTokens) in, \(usage.outputTokens) out)"
                         }
@@ -373,7 +369,7 @@ final class PeekabooAgent {
                 if let currentSession = sessionStore.currentSession {
                     let cancelMessage = PeekabooCore.ConversationMessage(
                         role: .system,
-                        content: "⚠️ Task was cancelled by user")
+                        content: "\(AgentDisplayTokens.Status.warning) Task was cancelled by user")
                     self.sessionStore.addMessage(cancelMessage, to: currentSession)
                 }
             } else {
@@ -384,7 +380,7 @@ final class PeekabooAgent {
                 if let currentSession = sessionStore.currentSession {
                     let errorMessage = PeekabooCore.ConversationMessage(
                         role: .system,
-                        content: "❌ Error: \(error.localizedDescription)")
+                        content: "\(AgentDisplayTokens.Status.failure) Error: \(error.localizedDescription)")
                     self.sessionStore.addMessage(errorMessage, to: currentSession)
                 }
             }
@@ -482,7 +478,7 @@ final class PeekabooAgent {
                 if let currentSession = sessionStore.currentSession {
                     let thinkingMessage = PeekabooCore.ConversationMessage(
                         role: .system,
-                        content: "🤔 \(content)")
+                        content: "\(AgentDisplayTokens.Status.planning) \(content)")
                     self.sessionStore.addMessage(thinkingMessage, to: currentSession)
                 }
             }
@@ -497,14 +493,12 @@ final class PeekabooAgent {
             let formattedMessage = ToolFormatterBridge.shared.formatToolCall(
                 name: name,
                 arguments: arguments,
-                result: nil
-            )
-            
+                result: nil)
+
             // Store formatted args for display
             self.currentToolArgs = ToolFormatterBridge.shared.formatArguments(
                 name: name,
-                arguments: arguments
-            )
+                arguments: arguments)
 
             // Add tool execution message to session
             if let currentSession = sessionStore.currentSession {
@@ -562,11 +556,11 @@ final class PeekabooAgent {
                     if let sessionIndex = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }),
                        let toolMessageIndex = sessionStore.sessions[sessionIndex].messages.lastIndex(where: { message in
                            message.role == .system &&
-                               message.content.contains("🔧 \(name):")
+                               message.content.contains("\(AgentDisplayTokens.Status.running) \(name):")
                        })
                     {
                         let originalMessage = self.sessionStore.sessions[sessionIndex].messages[toolMessageIndex]
-                        let updatedContent = originalMessage.content + " ⏱ \(durationText)"
+                        let updatedContent = originalMessage.content + " \(AgentDisplayTokens.Status.time) \(durationText)"
 
                         // Create a new message with updated content
                         let updatedMessage = ConversationMessage(

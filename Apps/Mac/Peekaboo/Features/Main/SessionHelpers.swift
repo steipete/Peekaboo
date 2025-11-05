@@ -58,7 +58,6 @@ struct SessionDurationText: View {
     }
 }
 
-
 // MARK: - Data Extraction Utilities
 
 extension String {
@@ -73,7 +72,7 @@ extension String {
         }
         return nil
     }
-    
+
     func formatJSON() -> String {
         guard let data = self.data(using: .utf8),
               let jsonObject = try? JSONSerialization.jsonObject(with: data),

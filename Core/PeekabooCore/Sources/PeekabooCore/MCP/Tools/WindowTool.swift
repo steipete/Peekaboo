@@ -1,8 +1,8 @@
 import Foundation
-import PeekabooFoundation
-import TachikomaMCP
 import MCP
 import os.log
+import PeekabooFoundation
+import TachikomaMCP
 
 /// MCP tool for manipulating application windows
 public struct WindowTool: MCPTool {
@@ -187,7 +187,10 @@ public struct WindowTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Closed window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Closed window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
@@ -215,7 +218,10 @@ public struct WindowTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Minimized window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Minimized window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
@@ -243,7 +249,10 @@ public struct WindowTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Maximized window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Maximized window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
@@ -276,7 +285,7 @@ public struct WindowTool: MCPTool {
         return ToolResponse(
             content: [
                 .text(
-                    "✅ Moved window '\(windowInfo.title)' to (\(Int(x)), \(Int(y))) in \(String(format: "%.2f", executionTime))s"),
+                    "\(AgentDisplayTokens.Status.success) Moved window '\(windowInfo.title)' to (\(Int(x)), \(Int(y))) in \(String(format: "%.2f", executionTime))s"),
             ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
@@ -312,7 +321,7 @@ public struct WindowTool: MCPTool {
         return ToolResponse(
             content: [
                 .text(
-                    "✅ Resized window '\(windowInfo.title)' to \(Int(width)) × \(Int(height)) in \(String(format: "%.2f", executionTime))s"),
+                    "\(AgentDisplayTokens.Status.success) Resized window '\(windowInfo.title)' to \(Int(width)) × \(Int(height)) in \(String(format: "%.2f", executionTime))s"),
             ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
@@ -350,7 +359,7 @@ public struct WindowTool: MCPTool {
         return ToolResponse(
             content: [
                 .text(
-                    "✅ Set bounds for window '\(windowInfo.title)' to (\(Int(x)), \(Int(y)), \(Int(width)) × \(Int(height))) in \(String(format: "%.2f", executionTime))s"),
+                    "\(AgentDisplayTokens.Status.success) Set bounds for window '\(windowInfo.title)' to (\(Int(x)), \(Int(y)), \(Int(width)) × \(Int(height))) in \(String(format: "%.2f", executionTime))s"),
             ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
@@ -383,7 +392,10 @@ public struct WindowTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         return ToolResponse(
-            content: [.text("✅ Focused window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "\(AgentDisplayTokens.Status.success) Focused window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),

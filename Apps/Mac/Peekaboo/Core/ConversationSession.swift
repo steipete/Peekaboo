@@ -19,7 +19,7 @@ final class SessionStore {
     private let storageURL: URL
 
     init(storageURL: URL? = nil) {
-        if let storageURL = storageURL {
+        if let storageURL {
             self.storageURL = storageURL
         } else {
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!

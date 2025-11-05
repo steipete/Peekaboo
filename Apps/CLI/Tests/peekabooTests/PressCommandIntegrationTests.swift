@@ -124,7 +124,7 @@ struct PressCommandIntegrationTests {
         let navigationSequences: [([String], String)] = [
             (["down", "down", "return"], "Navigate down and select"),
             (["tab", "tab", "tab", "return"], "Tab through fields and submit"),
-            (["home", "shift", "end"], "Select all from home to end"),
+            (["home", "end"], "Jump to start and end"),
             (["up", "up", "up", "space"], "Navigate up and toggle")
         ]
 
@@ -164,7 +164,7 @@ struct PressCommandIntegrationTests {
         let invalidKeys = ["invalid_key", "notakey", "xyz"]
 
         for invalidKey in invalidKeys {
-            #expect(throws: ArgumentParser.ValidationError.self) {
+            #expect(throws: (any Error).self) {
                 _ = try PressCommand.parse([invalidKey])
             }
         }

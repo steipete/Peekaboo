@@ -12,70 +12,70 @@ import Spinner
 final class PeekabooSpinner {
     private var spinner: Spinner?
     private let supportsColors: Bool
-    
+
     init(supportsColors: Bool = true) {
         self.supportsColors = supportsColors
     }
-    
+
     /// Start spinner with default "Thinking..." message
     func start() {
-        start(message: "Thinking...")
+        self.start(message: "Thinking...")
     }
-    
+
     /// Start spinner with custom message
     func start(message: String) {
-        stop() // Ensure no previous spinner is running
-        
-        if supportsColors {
-            spinner = Spinner(.dots, message, format: "{S} {T}")
+        self.stop() // Ensure no previous spinner is running
+
+        if self.supportsColors {
+            self.spinner = Spinner(.dots, message, format: "{S} {T}")
         } else {
             // For environments without color support, use a minimal spinner
-            spinner = Spinner(.dots, message, format: "{T}...")
+            self.spinner = Spinner(.dots, message, format: "{T}...")
         }
-        
-        spinner?.start()
+
+        self.spinner?.start()
     }
-    
+
     /// Stop spinner without completion message
     func stop() {
-        spinner?.clear()
-        spinner = nil
+        self.spinner?.clear()
+        self.spinner = nil
     }
-    
+
     /// Stop spinner with success message
     func success(_ message: String? = nil) {
-        spinner?.success(message)
-        spinner = nil
+        self.spinner?.success(message)
+        self.spinner = nil
     }
-    
+
     /// Stop spinner with error message
     func error(_ message: String? = nil) {
-        spinner?.error(message)
-        spinner = nil
+        self.spinner?.error(message)
+        self.spinner = nil
     }
-    
+
     /// Stop spinner with warning message
     func warning(_ message: String? = nil) {
-        spinner?.warning(message)
-        spinner = nil
+        self.spinner?.warning(message)
+        self.spinner = nil
     }
-    
+
     /// Stop spinner with info message
     func info(_ message: String? = nil) {
-        spinner?.info(message)
-        spinner = nil
+        self.spinner?.info(message)
+        self.spinner = nil
     }
-    
+
     /// Update spinner message while running
     func updateMessage(_ message: String) {
-        spinner?.message(message)
+        self.spinner?.message(message)
     }
-    
+
     /// Stop with a brief delay for smoother transitions
     func stopWithDelay() async {
         do {
             try await Task.sleep(nanoseconds: 300_000_000) // 300ms delay
         } catch {}
-        stop()
+        self.stop()
     }
 }

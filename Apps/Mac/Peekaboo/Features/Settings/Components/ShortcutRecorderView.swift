@@ -3,20 +3,20 @@
 //  Peekaboo
 //
 
-import SwiftUI
 import KeyboardShortcuts
+import SwiftUI
 
 /// A keyboard shortcut recorder component using sindresorhus/KeyboardShortcuts
 struct ShortcutRecorderView: View {
     let title: String
     let shortcutName: KeyboardShortcuts.Name
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(self.title)
                 .font(.headline)
-            
-            KeyboardShortcuts.Recorder(for: shortcutName)
+
+            KeyboardShortcuts.Recorder(for: self.shortcutName)
         }
     }
 }

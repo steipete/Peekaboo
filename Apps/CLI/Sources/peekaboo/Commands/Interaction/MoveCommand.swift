@@ -61,7 +61,7 @@ struct MoveCommand: AsyncParsableCommand {
 
     mutating func validate() throws {
         // Ensure at least one target is specified
-        guard center || coordinates != nil || to != nil || id != nil else {
+        guard self.center || self.coordinates != nil || self.to != nil || self.id != nil else {
             throw ValidationError("Specify coordinates, --to, --id, or --center")
         }
 

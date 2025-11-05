@@ -3,7 +3,10 @@ import Foundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("ClickService Tests", .tags(.ui))
+@Suite(
+    "ClickService Tests",
+    .tags(.ui, .automation),
+    .enabled(if: TestEnvironment.runAutomationScenarios))
 @MainActor
 struct ClickServiceTests {
     @Suite("Initialization")
@@ -12,8 +15,8 @@ struct ClickServiceTests {
         @Test("ClickService initializes with session manager dependency")
         func initializeService() async throws {
             let sessionManager = MockSessionManager()
-            let service = ClickService(sessionManager: sessionManager)
-            #expect(true)  // Service is non-optional, always succeeds
+            let service: ClickService? = ClickService(sessionManager: sessionManager)
+            #expect(service != nil)
         }
     }
 

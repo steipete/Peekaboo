@@ -1,6 +1,6 @@
 import Foundation
-import PeekabooFoundation
 import os.log
+import PeekabooFoundation
 import Tachikoma
 
 /**
@@ -101,7 +101,7 @@ public final class PeekabooServices: @unchecked Sendable {
 
     /// Permissions verification service for checking macOS privacy permissions
     public let permissions: PermissionsService
-    
+
     /// Audio input service for recording and transcription
     public let audioInput: AudioInputService
 
@@ -122,31 +122,31 @@ public final class PeekabooServices: @unchecked Sendable {
         self.logger.info("🚀 Initializing PeekabooServices with default implementations")
 
         let logging = LoggingService()
-        self.logger.debug("✅ LoggingService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) LoggingService initialized")
 
         let apps = ApplicationService()
-        self.logger.debug("✅ ApplicationService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) ApplicationService initialized")
 
         let sess = SessionManager()
-        self.logger.debug("✅ SessionManager initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) SessionManager initialized")
 
         let screenCap = ScreenCaptureService(loggingService: logging)
-        self.logger.debug("✅ ScreenCaptureService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) ScreenCaptureService initialized")
 
         let auto = UIAutomationService(sessionManager: sess, loggingService: logging)
-        self.logger.debug("✅ UIAutomationService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) UIAutomationService initialized")
 
         let windows = WindowManagementService(applicationService: apps)
-        self.logger.debug("✅ WindowManagementService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) WindowManagementService initialized")
 
         let menuSvc = MenuService(applicationService: apps)
-        self.logger.debug("✅ MenuService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) MenuService initialized")
 
         let dockSvc = DockService()
-        self.logger.debug("✅ DockService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) DockService initialized")
 
         let screenSvc = ScreenService()
-        self.logger.debug("✅ ScreenService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) ScreenService initialized")
 
         self.logging = logging
         self.screenCapture = screenCap
@@ -158,15 +158,15 @@ public final class PeekabooServices: @unchecked Sendable {
         self.screens = screenSvc
 
         self.dialogs = DialogService()
-        self.logger.debug("✅ DialogService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) DialogService initialized")
 
         self.sessions = sess
 
         self.files = FileService()
-        self.logger.debug("✅ FileService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) FileService initialized")
 
         self.configuration = ConfigurationManager.shared
-        self.logger.debug("✅ ConfigurationManager initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) ConfigurationManager initialized")
 
         self.process = ProcessService(
             applicationService: apps,
@@ -176,15 +176,15 @@ public final class PeekabooServices: @unchecked Sendable {
             windowManagementService: windows,
             menuService: menuSvc,
             dockService: dockSvc)
-        self.logger.debug("✅ ProcessService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) ProcessService initialized")
 
         self.permissions = PermissionsService()
-        self.logger.debug("✅ PermissionsService initialized")
-        
+        self.logger.debug("\(AgentDisplayTokens.Status.success) PermissionsService initialized")
+
         // Initialize AI service for audio/transcription features
         let aiService = PeekabooAIService()
         self.audioInput = AudioInputService(aiService: aiService)
-        self.logger.debug("✅ AudioInputService initialized")
+        self.logger.debug("\(AgentDisplayTokens.Status.success) AudioInputService initialized")
 
         // Model provider is now handled internally by Tachikoma
 
@@ -297,7 +297,7 @@ public final class PeekabooServices: @unchecked Sendable {
         // Load custom providers from profile so providerId/model works
         CustomProviderRegistry.shared.loadFromProfile()
         let aiService = PeekabooAIService()
-        logger.debug("✅ AI service initialized (Tachikoma loads env/credentials)")
+        logger.debug("\(AgentDisplayTokens.Status.success) AI service initialized (Tachikoma loads env/credentials)")
         let audioInputSvc = AudioInputService(aiService: aiService)
         let screens = ScreenService()
         let process = ProcessService(
@@ -361,14 +361,14 @@ public final class PeekabooServices: @unchecked Sendable {
 
             // Print conflict warning if needed
             if determination.hasConflict {
-                logger.warning("⚠️ Model configuration conflict detected:")
+                logger.warning("\(AgentDisplayTokens.Status.warning) Model configuration conflict detected:")
                 logger.warning("   Config file specifies: \(determination.configModel ?? "none")")
                 logger.warning("   Environment variable specifies: \(determination.environmentModel ?? "none")")
                 logger.warning("   Using environment variable: \(determination.model)")
 
                 // Also print to stdout so user sees it as a warning
                 print("""
-                ⚠️  Model configuration conflict:
+                \(AgentDisplayTokens.Status.warning)  Model configuration conflict:
                    Config (~/.peekaboo/config.json) specifies: \(determination.configModel ?? "none")
                    PEEKABOO_AI_PROVIDERS environment variable specifies: \(determination.environmentModel ?? "none")
                    → Using environment variable: \(determination.model)
@@ -379,7 +379,7 @@ public final class PeekabooServices: @unchecked Sendable {
             do {
                 // Parse the determined model string to LanguageModel enum
                 let defaultModel = parseModelStringForAgent(determination.model)
-                logger.debug("🤖 Using AI model: \(defaultModel)")
+                logger.debug("\(AgentDisplayTokens.Status.info) Using AI model: \(defaultModel)")
                 agent = try PeekabooAgentService(
                     services: services,
                     defaultModel: defaultModel)
@@ -387,10 +387,13 @@ public final class PeekabooServices: @unchecked Sendable {
                 logger.error("Failed to initialize PeekabooAgentService: \(error)")
                 agent = nil
             }
-            logger.debug("✅ PeekabooAgentService initialized with available providers")
+            logger
+                .debug("\(AgentDisplayTokens.Status.success) PeekabooAgentService initialized with available providers")
         } else {
             agent = nil
-            logger.debug("⚠️ PeekabooAgentService skipped - no API keys found for any provider")
+            logger
+                .debug(
+                    "\(AgentDisplayTokens.Status.warning) PeekabooAgentService skipped - no API keys found for any provider")
         }
 
         // Return services with agent
@@ -435,7 +438,7 @@ public final class PeekabooServices: @unchecked Sendable {
             var defaultModel = agentConfig?.agent?.defaultModel
             if defaultModel == nil {
                 if providers.contains("openai"), hasOpenAI {
-                    defaultModel = "gpt-5"
+                    defaultModel = "gpt-5-mini"
                 } else if providers.contains("anthropic"), hasAnthropic {
                     defaultModel = "claude-opus-4-20250514"
                 } else if providers.contains("ollama") {
@@ -448,7 +451,7 @@ public final class PeekabooServices: @unchecked Sendable {
 
             do {
                 // Convert model string to LanguageModel enum using same parser
-                let languageModel = Self.parseModelStringForAgent(defaultModel ?? "gpt-5")
+                let languageModel = Self.parseModelStringForAgent(defaultModel ?? "gpt-5-mini")
                 self.agent = try PeekabooAgentService(
                     services: self,
                     defaultModel: languageModel)
@@ -456,13 +459,14 @@ public final class PeekabooServices: @unchecked Sendable {
                 self.logger.error("Failed to refresh PeekabooAgentService: \(error)")
                 self.agent = nil
             }
-            self.logger.info("✅ Agent service refreshed with providers: \(providers)")
+            self.logger
+                .info("\(AgentDisplayTokens.Status.success) Agent service refreshed with providers: \(providers)")
         } else {
             self.agentLock.lock()
             defer { agentLock.unlock() }
 
             self.agent = nil
-            self.logger.warning("⚠️ No API keys available - agent service disabled")
+            self.logger.warning("\(AgentDisplayTokens.Status.warning) No API keys available - agent service disabled")
         }
     }
 }
@@ -480,7 +484,7 @@ extension PeekabooServices {
         appIdentifier: String,
         actions: [AutomationAction]) async throws -> AutomationResult
     {
-        self.logger.info("🤖 Starting automation for app: \(appIdentifier)")
+        self.logger.info("\(AgentDisplayTokens.Status.running) Starting automation for app: \(appIdentifier)")
         self.logger.debug("Number of actions: \(actions.count)")
 
         // Create a new session
@@ -547,7 +551,9 @@ extension PeekabooServices {
                 }
 
                 let duration = Date().timeIntervalSince(startTime)
-                self.logger.debug("✅ Action completed in \(String(format: "%.2f", duration))s")
+                self.logger
+                    .debug(
+                        "\(AgentDisplayTokens.Status.success) Action completed in \(String(format: "%.2f", duration))s")
 
                 executedActions.append(ExecutedAction(
                     action: action,
@@ -559,7 +565,7 @@ extension PeekabooServices {
                 let peekabooError = error.asPeekabooError(context: "Action execution failed")
                 self.logger
                     .error(
-                        "❌ Action failed after \(String(format: "%.2f", duration))s: \(peekabooError.localizedDescription)")
+                        "\(AgentDisplayTokens.Status.failure) Action failed after \(String(format: "%.2f", duration))s: \(peekabooError.localizedDescription)")
 
                 executedActions.append(ExecutedAction(
                     action: action,
@@ -572,7 +578,7 @@ extension PeekabooServices {
 
         self.logger
             .info(
-                "✅ Automation complete: \(executedActions.count(where: { $0.success }))/\(executedActions.count) actions succeeded")
+                "\(AgentDisplayTokens.Status.success) Automation complete: \(executedActions.count(where: { $0.success }))/\(executedActions.count) actions succeeded")
 
         return AutomationResult(
             sessionId: sessionId,
@@ -584,75 +590,7 @@ extension PeekabooServices {
 
     /// Parse model string to LanguageModel enum
     private static func parseModelStringForAgent(_ modelString: String) -> LanguageModel {
-        let lowercased = modelString.lowercased()
-        
-        // GPT-5 models (default for OpenAI)
-        if lowercased.contains("gpt-5") || lowercased.contains("gpt5") {
-            if lowercased.contains("mini") {
-                return .openai(.gpt5Mini)
-            } else if lowercased.contains("nano") {
-                return .openai(.gpt5Nano)
-            } else {
-                return .openai(.gpt5)
-            }
-        }
-        
-        // Claude models
-        if lowercased.contains("claude") || lowercased.contains("opus") || lowercased.contains("sonnet") || lowercased.contains("haiku") {
-            if lowercased.contains("opus-4") || lowercased.contains("opus4") {
-                return .anthropic(.opus4)
-            } else if lowercased.contains("sonnet-4") || lowercased.contains("sonnet4") {
-                return .anthropic(.sonnet4)
-            } else if lowercased.contains("haiku-3") || lowercased.contains("haiku3") {
-                return .anthropic(.haiku35)
-            } else if lowercased.contains("sonnet-3") || lowercased.contains("sonnet3") {
-                return .anthropic(.sonnet35)
-            }
-            // Default to Opus 4 for Claude
-            return .anthropic(.opus4)
-        }
-        
-        // OpenAI models
-        if lowercased.contains("gpt-4") || lowercased.contains("gpt4") {
-            if lowercased.contains("o") {
-                return .openai(.gpt4o)
-            } else if lowercased.contains("turbo") {
-                return .openai(.gpt4Turbo)
-            }
-            return .openai(.gpt41)
-        }
-        
-        // o3/o4 models
-        if lowercased.contains("o3") {
-            if lowercased.contains("mini") {
-                return .openai(.o3Mini)
-            } else if lowercased.contains("pro") {
-                return .openai(.o3Pro)
-            }
-            return .openai(.o3)
-        }
-        
-        if lowercased.contains("o4") {
-            return .openai(.o4Mini)
-        }
-        
-        // Ollama models
-        if lowercased.contains("llava") {
-            return .ollama(.llava)
-        }
-        if lowercased.contains("llama") {
-            if lowercased.contains("3.3") || lowercased.contains("33") {
-                return .ollama(.llama33)
-            } else if lowercased.contains("3.2") || lowercased.contains("32") {
-                return .ollama(.llama32)
-            } else if lowercased.contains("3.1") || lowercased.contains("31") {
-                return .ollama(.llama31)
-            }
-            return .ollama(.llama33)
-        }
-        
-        // Default to GPT-5 as the most capable model
-        return .openai(.gpt5)
+        LanguageModel.parse(from: modelString) ?? .openai(.gpt5Mini)
     }
 
     private func determineDefaultModelWithConflict(
@@ -670,13 +608,13 @@ extension PeekabooServices {
 
         let model: String = if !providers.isEmpty {
             environmentModel ?? "claude-opus-4-20250514"
-        } else if let configuredDefault = configuredDefault {
+        } else if let configuredDefault {
             // Use configured default from config file if no environment provider is set
             configuredDefault
         } else if hasAnthropic {
             "claude-opus-4-20250514"
         } else if hasOpenAI {
-            "gpt-5"  // Default to GPT-5 for OpenAI
+            "gpt-5" // Default to GPT-5 for OpenAI
         } else if hasOllama {
             "llama3.3"
         } else {

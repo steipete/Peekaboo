@@ -279,7 +279,11 @@ struct ListCommandTests {
 
     // MARK: - Window Count Display Tests
 
-    @Test("printApplicationList hides window count when count is 1", .tags(.fast), .disabled("formatApplicationList method not found"))
+    @Test(
+        "printApplicationList hides window count when count is 1",
+        .tags(.fast),
+        .disabled("formatApplicationList method not found")
+    )
     func printApplicationListHidesWindowCountForSingleWindow() throws {
         // Create test applications with different window counts
         let applications = [
@@ -325,7 +329,11 @@ struct ListCommandTests {
         #expect(output.contains("Windows: 0"))
     }
 
-    @Test("printApplicationList shows window count for non-1 values", .tags(.fast), .disabled("formatApplicationList method not found"))
+    @Test(
+        "printApplicationList shows window count for non-1 values",
+        .tags(.fast),
+        .disabled("formatApplicationList method not found")
+    )
     func printApplicationListShowsWindowCountForNonSingleWindow() throws {
         let applications = [
             ApplicationInfo(
@@ -362,7 +370,11 @@ struct ListCommandTests {
         #expect(output.contains("Windows: 10"))
     }
 
-    @Test("printApplicationList formats output correctly", .tags(.fast), .disabled("formatApplicationList method not found"))
+    @Test(
+        "printApplicationList formats output correctly",
+        .tags(.fast),
+        .disabled("formatApplicationList method not found")
+    )
     func printApplicationListFormatsOutputCorrectly() throws {
         let applications = [
             ApplicationInfo(

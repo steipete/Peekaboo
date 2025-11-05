@@ -196,7 +196,7 @@ struct VisualizerTestView: View {
 
     func testScrollAnimation() async {
         let point = CGPoint(x: 400, y: 300)
-        _ = await coordinator.showScrollFeedback(at: point, direction: .down, amount: 5)
+        _ = await self.coordinator.showScrollFeedback(at: point, direction: .down, amount: 5)
     }
 
     func testMouseTrail() async {

@@ -67,14 +67,6 @@ struct PressCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            // Validate all keys are recognized
-            for key in self.keys {
-                guard SpecialKey(rawValue: key.lowercased()) != nil else {
-                    throw ArgumentParser
-                        .ValidationError("Unknown key: '\(key)'. Run 'peekaboo press --help' for available keys.")
-                }
-            }
-
             // Get session if available
             let sessionId: String? = if let providedSession = session {
                 providedSession
@@ -140,6 +132,15 @@ struct PressCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol
+
+    mutating func validate() throws {
+        for key in self.keys {
+            guard SpecialKey(rawValue: key.lowercased()) != nil else {
+                throw ArgumentParser
+                    .ValidationError("Unknown key: '\(key)'. Run 'peekaboo press --help' for available keys.")
+            }
+        }
+    }
 }
 
 // MARK: - JSON Output Structure

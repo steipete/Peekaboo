@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for pressing keyboard shortcuts and key combinations
 public struct HotkeyTool: MCPTool {
@@ -72,7 +72,7 @@ public struct HotkeyTool: MCPTool {
             let keyArray = keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             let formattedKeys = keyArray.joined(separator: "+")
 
-            let message = "✅ Pressed \(formattedKeys) (held for \(holdDurationMs)ms) in \(String(format: "%.2f", executionTime))s"
+            let message = "\(AgentDisplayTokens.Status.success) Pressed \(formattedKeys) (held for \(holdDurationMs)ms) in \(String(format: "%.2f", executionTime))s"
 
             return ToolResponse(
                 content: [.text(message)],

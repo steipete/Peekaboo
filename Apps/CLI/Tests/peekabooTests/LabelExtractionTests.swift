@@ -6,5 +6,4 @@ import Testing
 @testable import peekaboo
 
 @Suite("Label Extraction Tests", .serialized, .tags(.localOnly))
-struct LabelExtractionTests {
-}
+struct LabelExtractionTests {}

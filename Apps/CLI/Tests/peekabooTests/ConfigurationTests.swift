@@ -223,9 +223,10 @@ struct ConfigurationTests {
     func getAIProvidersWithConfig() {
         let manager = ConfigurationManager.shared
 
-        // Test default value
-        let defaultProviders = manager.getAIProviders(cliValue: nil)
-        #expect(defaultProviders == "openai/gpt-5,ollama/llava:latest,anthropic/claude-opus-4-20250514")
+        // Capture baseline (may include persisted user configuration)
+        let baselineProviders = manager.getAIProviders(cliValue: nil)
+        #expect(!baselineProviders.isEmpty)
+        #expect(baselineProviders.contains("ollama/llava:latest"))
 
         // Test with CLI value
         let cliProviders = manager.getAIProviders(cliValue: "openai/gpt-4o")
@@ -236,31 +237,32 @@ struct ConfigurationTests {
         let envProviders = manager.getAIProviders(cliValue: nil)
         #expect(envProviders == "env_provider")
         unsetenv("PEEKABOO_AI_PROVIDERS")
+
+        // After clearing env override, manager should return to baseline
+        let restoredProviders = manager.getAIProviders(cliValue: nil)
+        #expect(restoredProviders == baselineProviders)
     }
 
     @Test("Get OpenAI API key with configuration", .tags(.fast))
     func getOpenAIAPIKeyWithConfig() {
         let manager = ConfigurationManager.shared
 
-        // Save current API key if it exists
-        let originalKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"]
-        unsetenv("OPENAI_API_KEY")
+        // Capture baseline (may come from credentials)
+        let baselineKey = manager.getOpenAIAPIKey()
 
-        // Test default (nil)
-        let defaultKey = manager.getOpenAIAPIKey()
-        #expect(defaultKey == nil)
-
-        // Test with environment variable
         setenv("OPENAI_API_KEY", "test_api_key", 1)
         let envKey = manager.getOpenAIAPIKey()
         #expect(envKey == "test_api_key")
 
-        // Restore original key
-        if let originalKey {
-            setenv("OPENAI_API_KEY", originalKey, 1)
+        // Restore environment
+        if let baselineKey {
+            setenv("OPENAI_API_KEY", baselineKey, 1)
         } else {
             unsetenv("OPENAI_API_KEY")
         }
+
+        let restoredKey = manager.getOpenAIAPIKey()
+        #expect(restoredKey == baselineKey)
     }
 
     @Test("Get Ollama base URL with configuration", .tags(.fast))

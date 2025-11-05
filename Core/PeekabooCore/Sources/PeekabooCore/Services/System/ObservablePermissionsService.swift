@@ -27,18 +27,18 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
     private let core: PermissionsService
 
     /// Current permission status
-        public private(set) var status: PermissionsStatus
+    public private(set) var status: PermissionsStatus
 
     /// Individual permission states for UI binding
-        public private(set) var screenRecordingStatus: PermissionState = .notDetermined
-        public private(set) var accessibilityStatus: PermissionState = .notDetermined
-        public private(set) var appleScriptStatus: PermissionState = .notDetermined
+    public private(set) var screenRecordingStatus: PermissionState = .notDetermined
+    public private(set) var accessibilityStatus: PermissionState = .notDetermined
+    public private(set) var appleScriptStatus: PermissionState = .notDetermined
 
     /// Timer for monitoring permission changes
     private var monitorTimer: Timer?
 
     /// Whether monitoring is active
-        public private(set) var isMonitoring = false
+    public private(set) var isMonitoring = false
 
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ObservablePermissions")
 

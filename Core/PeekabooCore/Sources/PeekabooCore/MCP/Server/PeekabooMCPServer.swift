@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// Transport types supported by the MCP server
 public enum TransportType: CustomStringConvertible {

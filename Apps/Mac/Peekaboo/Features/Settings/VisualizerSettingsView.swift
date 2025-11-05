@@ -1,5 +1,4 @@
 import os
-import os.log
 import PeekabooCore
 import PeekabooFoundation
 import PeekabooUICore
@@ -41,7 +40,7 @@ struct VisualizerSettingsView: View {
                         .monospacedDigit()
                         .frame(width: 40, alignment: .trailing)
                 }
-                
+
                 Slider(value: self.$settings.visualizerAnimationSpeed, in: 0.1...2.0, step: 0.1)
                     .disabled(!self.settings.visualizerEnabled)
 
@@ -54,7 +53,7 @@ struct VisualizerSettingsView: View {
                         .monospacedDigit()
                         .frame(width: 40, alignment: .trailing)
                 }
-                
+
                 Slider(value: self.$settings.visualizerEffectIntensity, in: 0.1...2.0, step: 0.1)
                     .disabled(!self.settings.visualizerEnabled)
 
@@ -209,7 +208,7 @@ struct AnimationToggleRow: View {
     let isEnabled: Bool
     let animationType: String
     let settings: PeekabooSettings
-    
+
     @Environment(VisualizerCoordinator.self) private var visualizerCoordinator
     @State private var isPreviewRunning = false
 
@@ -229,9 +228,9 @@ struct AnimationToggleRow: View {
                 Image(systemName: self.icon)
                     .foregroundStyle(self.isEnabled ? Color.accentColor : .secondary)
             }
-            
+
             Spacer()
-            
+
             // Preview button
             Button {
                 Task {
@@ -245,26 +244,26 @@ struct AnimationToggleRow: View {
             .buttonStyle(.plain)
             .disabled(!self.canPreview || self.isPreviewRunning)
             .help("Preview \(self.title) animation")
-            
+
             Toggle("", isOn: self.$isOn)
                 .toggleStyle(IOSToggleStyle())
                 .disabled(!self.isEnabled)
         }
     }
-    
+
     private var canPreview: Bool {
         self.isEnabled && self.settings.visualizerEnabled && self.isOn
     }
-    
+
     @MainActor
     private func runPreview() async {
         self.isPreviewRunning = true
         defer { self.isPreviewRunning = false }
-        
+
         // Get screen for consistent positioning
         let screen = NSScreen.mouseScreen
         let centerPoint = CGPoint(x: screen.frame.midX, y: screen.frame.midY)
-        
+
         // Run the appropriate preview animation
         switch self.animationType {
         case "screenshot":
@@ -274,31 +273,31 @@ struct AnimationToggleRow: View {
                 width: 400,
                 height: 300)
             _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
-            
+
         case "click":
             _ = await self.visualizerCoordinator.showClickFeedback(at: centerPoint, type: .single)
-            
+
         case "type":
             let sampleKeys = ["H", "e", "l", "l", "o"]
             _ = await self.visualizerCoordinator.showTypingFeedback(keys: sampleKeys, duration: 2.0)
-            
+
         case "scroll":
             _ = await self.visualizerCoordinator.showScrollFeedback(at: centerPoint, direction: .down, amount: 3)
-            
+
         case "trail":
             let from = CGPoint(x: screen.frame.midX - 150, y: screen.frame.midY - 50)
             let to = CGPoint(x: screen.frame.midX + 150, y: screen.frame.midY + 50)
             _ = await self.visualizerCoordinator.showMouseMovement(from: from, to: to, duration: 1.5)
-            
+
         case "swipe":
             let swipeFrom = CGPoint(x: screen.frame.midX - 100, y: screen.frame.midY)
             let swipeTo = CGPoint(x: screen.frame.midX + 100, y: screen.frame.midY)
             _ = await self.visualizerCoordinator.showSwipeGesture(from: swipeFrom, to: swipeTo, duration: 1.0)
-            
+
         case "hotkey":
             let sampleKeys = ["⌘", "⇧", "P"]
             _ = await self.visualizerCoordinator.showHotkeyDisplay(keys: sampleKeys, duration: 2.0)
-            
+
         case "app_launch":
             // Alternate between launch and quit for App Lifecycle
             if Bool.random() {
@@ -306,7 +305,7 @@ struct AnimationToggleRow: View {
             } else {
                 _ = await self.visualizerCoordinator.showAppQuit(appName: "TextEdit", iconPath: nil as String?)
             }
-            
+
         case "window":
             let windowRect = CGRect(
                 x: screen.frame.midX - 150,
@@ -314,11 +313,11 @@ struct AnimationToggleRow: View {
                 width: 300,
                 height: 200)
             _ = await self.visualizerCoordinator.showWindowOperation(.move, windowRect: windowRect, duration: 1.0)
-            
+
         case "menu":
             let menuPath = ["File", "Export", "PNG Image"]
             _ = await self.visualizerCoordinator.showMenuNavigation(menuPath: menuPath)
-            
+
         case "dialog":
             let dialogRect = CGRect(
                 x: screen.frame.midX - 100,
@@ -326,13 +325,13 @@ struct AnimationToggleRow: View {
                 width: 200,
                 height: 50)
             _ = await self.visualizerCoordinator.showDialogInteraction(
-                element: .button, 
-                elementRect: dialogRect, 
+                element: .button,
+                elementRect: dialogRect,
                 action: .clickButton)
-            
+
         case "space":
             _ = await self.visualizerCoordinator.showSpaceSwitch(from: 1, to: 2, direction: .right)
-            
+
         case "ghost":
             // For ghost easter egg, use the settings window itself for the flash
             if let window = NSApp.keyWindow {
@@ -347,11 +346,11 @@ struct AnimationToggleRow: View {
                     height: 300)
                 _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
             }
-            
+
         default:
             break
         }
-        
+
         // Keep button in running state for a moment to show feedback
         try? await Task.sleep(for: .milliseconds(500))
     }
@@ -385,7 +384,6 @@ struct IOSToggleView: View {
             }
     }
 }
-
 
 #Preview {
     VisualizerSettingsView(settings: PeekabooSettings())

@@ -1,9 +1,9 @@
 import AppKit
-import os.log
-import SwiftUI
 import KeyboardShortcuts
-import Tachikoma
+import os.log
 import PeekabooCore
+import SwiftUI
+import Tachikoma
 
 @main
 struct PeekabooApp: App {
@@ -26,16 +26,22 @@ struct PeekabooApp: App {
 
     // Logger
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "PeekabooApp")
-    
+
     // Configure Tachikoma with API keys from settings
     private func configureTachikomaWithSettings() {
         // Use TachikomaConfiguration profile-based loading (env/credentials).
         // Only override when user explicitly enters values in settings.
-        if !settings.openAIAPIKey.isEmpty { TachikomaConfiguration.current.setAPIKey(settings.openAIAPIKey, for: .openai) }
-        if !settings.anthropicAPIKey.isEmpty { TachikomaConfiguration.current.setAPIKey(settings.anthropicAPIKey, for: .anthropic) }
-        if settings.ollamaBaseURL != "http://localhost:11434" { TachikomaConfiguration.current.setBaseURL(settings.ollamaBaseURL, for: .ollama) }
+        if !self.settings.openAIAPIKey.isEmpty { TachikomaConfiguration.current.setAPIKey(
+            self.settings.openAIAPIKey,
+            for: .openai) }
+        if !self.settings.anthropicAPIKey.isEmpty { TachikomaConfiguration.current.setAPIKey(
+            self.settings.anthropicAPIKey,
+            for: .anthropic) }
+        if self.settings.ollamaBaseURL != "http://localhost:11434" { TachikomaConfiguration.current.setBaseURL(
+            self.settings.ollamaBaseURL,
+            for: .ollama) }
     }
-    
+
     // Load API keys from credentials file if settings are empty
     private func loadAPIKeysFromCredentials() {
         // Don't load from environment/credentials into settings
@@ -56,10 +62,10 @@ struct PeekabooApp: App {
                     if self.agent == nil {
                         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
                     }
-                    
+
                     // Configure Tachikoma with API keys from settings
                     self.configureTachikomaWithSettings()
-                    
+
                     // Initialize realtime service after agent is ready
                     if self.realtimeService == nil, let agent = self.agent {
                         do {
@@ -67,11 +73,10 @@ struct PeekabooApp: App {
                                 self.realtimeService = RealtimeVoiceService(
                                     agentService: agentService,
                                     sessionStore: self.sessionStore,
-                                    settings: self.settings
-                                )
+                                    settings: self.settings)
                             }
                         } catch {
-                            logger.error("Failed to initialize realtime service: \(error)")
+                            self.logger.error("Failed to initialize realtime service: \(error)")
                         }
                     }
 
@@ -111,8 +116,7 @@ struct PeekabooApp: App {
                 .environment(self.realtimeService ?? RealtimeVoiceService(
                     agentService: try! PeekabooAgentService(services: PeekabooServices.shared),
                     sessionStore: self.sessionStore,
-                    settings: self.settings
-                ))
+                    settings: self.settings))
                 .environmentOptional(self.realtimeService)
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.main"))) { _ in
                     // Window will automatically open when this notification is received
@@ -189,7 +193,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Visualizer components
     var visualizerCoordinator: VisualizerCoordinator?
     private var visualizerXPCService: VisualizerXPCService?
-    
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
@@ -306,10 +309,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showInspector() {
         self.logger.info("showInspector called")
-        
+
         // Mark that Inspector has been requested
         UserDefaults.standard.set(true, forKey: "inspectorWindowRequested")
-        
+
         // Open the inspector window
         self.openWindow(id: "inspector")
     }
@@ -343,7 +346,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             selector: #selector(self.handleShowInspector),
             name: Notification.Name("ShowInspector"),
             object: nil)
-        
+
         // Listen for keyboard shortcut changes
         // Keyboard shortcuts are now handled automatically by the KeyboardShortcuts library
     }
@@ -354,7 +357,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.set(true, forKey: "inspectorWindowRequested")
         self.showInspector()
     }
-    
 
     // MARK: - Keyboard Shortcuts
 
@@ -364,12 +366,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.logger.info("Global shortcut triggered: togglePopover")
             self?.statusBarController?.togglePopover()
         }
-        
+
         KeyboardShortcuts.onKeyDown(for: .showMainWindow) { [weak self] in
             self?.logger.info("Global shortcut triggered: showMainWindow")
             self?.showMainWindow()
         }
-        
+
         KeyboardShortcuts.onKeyDown(for: .showInspector) { [weak self] in
             self?.logger.info("Global shortcut triggered: showInspector")
             self?.showInspector()

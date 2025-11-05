@@ -1,9 +1,9 @@
 import AppKit
-import PeekabooFoundation
 import AXorcist
 import CoreGraphics
 import Foundation
 import os
+import PeekabooFoundation
 
 /// Default implementation of menu interaction operations
 @MainActor

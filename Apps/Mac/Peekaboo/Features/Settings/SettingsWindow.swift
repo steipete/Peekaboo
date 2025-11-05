@@ -184,9 +184,7 @@ struct AISettingsView: View {
                     provider: .openai,
                     apiKey: Binding(
                         get: { self.settings.openAIAPIKey },
-                        set: { self.settings.openAIAPIKey = $0 }
-                    )
-                )
+                        set: { self.settings.openAIAPIKey = $0 }))
             }
 
             Section("Anthropic Configuration") {
@@ -194,9 +192,7 @@ struct AISettingsView: View {
                     provider: .anthropic,
                     apiKey: Binding(
                         get: { self.settings.anthropicAPIKey },
-                        set: { self.settings.anthropicAPIKey = $0 }
-                    )
-                )
+                        set: { self.settings.anthropicAPIKey = $0 }))
             }
 
             Section("Ollama Configuration") {

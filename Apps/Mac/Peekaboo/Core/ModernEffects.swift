@@ -3,8 +3,8 @@
 //  Peekaboo
 //
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - Modern Visual Effects with Platform-Appropriate Styling
 
@@ -16,31 +16,32 @@ struct ModernEffectView<Content: View>: View {
     let style: ModernEffectStyle
     let cornerRadius: CGFloat
     let content: Content
-    
-    init(style: ModernEffectStyle = .automatic,
-         cornerRadius: CGFloat = 10,  // macOS standard corner radius
-         @ViewBuilder content: () -> Content) {
+
+    init(
+        style: ModernEffectStyle = .automatic,
+        cornerRadius: CGFloat = 10, // macOS standard corner radius
+        @ViewBuilder content: () -> Content)
+    {
         self.style = style
         self.cornerRadius = cornerRadius
         self.content = content()
     }
-    
+
     var body: some View {
         if #available(macOS 26.0, *) {
             // Use new Liquid Glass on macOS 26+
             NativeGlassWrapper(
                 style: style,
                 cornerRadius: cornerRadius,
-                content: content
-            )
+                content: content)
         } else {
             // Use standard macOS materials for 14-25
-            content
+            self.content
                 .background {
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .fill(style.nativeMaterial)
+                    RoundedRectangle(cornerRadius: self.cornerRadius)
+                        .fill(self.style.nativeMaterial)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                .clipShape(RoundedRectangle(cornerRadius: self.cornerRadius))
         }
     }
 }
@@ -55,33 +56,33 @@ enum ModernEffectStyle {
     case hudWindow
     case toolbar
     case selection
-    
+
     /// Returns the appropriate native material for macOS 14-25
     var nativeMaterial: Material {
         switch self {
         case .automatic:
-            return .regular
+            .regular
         case .sidebar:
-            return .bar  // Sidebar-appropriate material
+            .bar // Sidebar-appropriate material
         case .content:
-            return .regularMaterial
+            .regularMaterial
         case .popover:
-            return .ultraThinMaterial  // Light material for popovers
+            .ultraThinMaterial // Light material for popovers
         case .hudWindow:
-            return .ultraThickMaterial  // Heavy material for HUD
+            .ultraThickMaterial // Heavy material for HUD
         case .toolbar:
-            return .bar  // Toolbar-appropriate material
+            .bar // Toolbar-appropriate material
         case .selection:
-            return .thick  // Selection highlighting
+            .thick // Selection highlighting
         }
     }
-    
+
     /// Returns the glass style for macOS 26+
     @available(macOS 26.0, *)
     var glassStyle: NSGlassEffectView.Style {
         // This will map to appropriate glass styles when available
         // For now, using placeholder since the enum isn't defined yet
-        return NSGlassEffectView.Style(rawValue: 0)!
+        NSGlassEffectView.Style(rawValue: 0)!
     }
 }
 
@@ -92,34 +93,34 @@ struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
     let style: ModernEffectStyle
     let cornerRadius: CGFloat
     let content: Content
-    
+
     func makeNSView(context: Context) -> NSGlassEffectView {
         let glassView = NSGlassEffectView()
-        glassView.cornerRadius = cornerRadius
-        glassView.style = style.glassStyle
-        
+        glassView.cornerRadius = self.cornerRadius
+        glassView.style = self.style.glassStyle
+
         let hostingView = NSHostingView(rootView: content)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
         glassView.contentView = hostingView
-        
+
         if let contentView = glassView.contentView {
             NSLayoutConstraint.activate([
                 hostingView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
                 hostingView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
                 hostingView.topAnchor.constraint(equalTo: contentView.topAnchor),
-                hostingView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
+                hostingView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             ])
         }
-        
+
         return glassView
     }
-    
+
     func updateNSView(_ nsView: NSGlassEffectView, context: Context) {
-        nsView.cornerRadius = cornerRadius
-        nsView.style = style.glassStyle
-        
+        nsView.cornerRadius = self.cornerRadius
+        nsView.style = self.style.glassStyle
+
         if let hostingView = nsView.contentView as? NSHostingView<Content> {
-            hostingView.rootView = content
+            hostingView.rootView = self.content
         }
     }
 }
@@ -131,17 +132,19 @@ struct ModernButton: View {
     let systemImage: String?
     let role: ButtonRole?
     let action: () -> Void
-    
-    init(_ title: String,
-         systemImage: String? = nil,
-         role: ButtonRole? = nil,
-         action: @escaping () -> Void) {
+
+    init(
+        _ title: String,
+        systemImage: String? = nil,
+        role: ButtonRole? = nil,
+        action: @escaping () -> Void)
+    {
         self.title = title
         self.systemImage = systemImage
         self.role = role
         self.action = action
     }
-    
+
     var body: some View {
         if #available(macOS 26.0, *) {
             // Use glass button style on macOS 26+
@@ -151,14 +154,14 @@ struct ModernButton: View {
             .buttonStyle(.glass)
         } else {
             // Use standard macOS button styles
-            Button(role: role, action: action) {
-                if let systemImage = systemImage {
-                    Label(title, systemImage: systemImage)
+            Button(role: self.role, action: self.action) {
+                if let systemImage {
+                    Label(self.title, systemImage: systemImage)
                 } else {
-                    Text(title)
+                    Text(self.title)
                 }
             }
-            .buttonStyle(.automatic)  // Let macOS decide the appropriate style
+            .buttonStyle(.automatic) // Let macOS decide the appropriate style
         }
     }
 }
@@ -167,11 +170,11 @@ struct ModernButton: View {
 
 struct ModernCard<Content: View>: View {
     let content: Content
-    
+
     init(@ViewBuilder content: () -> Content) {
         self.content = content()
     }
-    
+
     var body: some View {
         if #available(macOS 26.0, *) {
             // Glass card on macOS 26+
@@ -184,14 +187,13 @@ struct ModernCard<Content: View>: View {
                 }
         } else {
             // Standard macOS card styling
-            content
+            self.content
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
-                )
+                        .stroke(Color(NSColor.separatorColor), lineWidth: 0.5))
         }
     }
 }
@@ -200,11 +202,11 @@ struct ModernCard<Content: View>: View {
 
 struct ModernToolbar<Content: View>: View {
     let content: Content
-    
+
     init(@ViewBuilder content: () -> Content) {
         self.content = content()
     }
-    
+
     var body: some View {
         if #available(macOS 26.0, *) {
             // Glass toolbar on macOS 26+
@@ -213,7 +215,7 @@ struct ModernToolbar<Content: View>: View {
             }
         } else {
             // Standard macOS toolbar material
-            content
+            self.content
                 .background(.bar)
         }
     }
@@ -223,18 +225,22 @@ struct ModernToolbar<Content: View>: View {
 
 extension View {
     /// Applies platform-appropriate modern background
-    func modernBackground(style: ModernEffectStyle = .automatic,
-                         cornerRadius: CGFloat = 10) -> some View {
+    func modernBackground(
+        style: ModernEffectStyle = .automatic,
+        cornerRadius: CGFloat = 10) -> some View
+    {
         background {
             ModernEffectView(style: style, cornerRadius: cornerRadius) {
                 Color.clear
             }
         }
     }
-    
+
     /// Wraps content in platform-appropriate modern effect
-    func modernEffect(style: ModernEffectStyle = .automatic,
-                     cornerRadius: CGFloat = 10) -> some View {
+    func modernEffect(
+        style: ModernEffectStyle = .automatic,
+        cornerRadius: CGFloat = 10) -> some View
+    {
         ModernEffectView(style: style, cornerRadius: cornerRadius) {
             self
         }

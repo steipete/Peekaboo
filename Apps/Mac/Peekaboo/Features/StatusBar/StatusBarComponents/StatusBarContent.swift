@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 // MARK: - Content Components
 
@@ -9,10 +9,10 @@ struct StatusBarContentView: View {
 
     var body: some View {
         Group {
-            if sessionStore.currentSession != nil {
+            if self.sessionStore.currentSession != nil {
                 // Show unified activity feed for current session
                 UnifiedActivityFeed()
-            } else if !sessionStore.sessions.isEmpty {
+            } else if !self.sessionStore.sessions.isEmpty {
                 // Show recent sessions when no active session
                 RecentSessionsView()
             } else {
@@ -52,25 +52,25 @@ struct RecentSessionsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 4) {
-                ForEach(sessionStore.sessions.prefix(5)) { session in
+                ForEach(self.sessionStore.sessions.prefix(5)) { session in
                     SessionRowCompact(
                         session: session,
                         isActive: false, // No active session in this context
                         onDelete: {
                             withAnimation {
-                                sessionStore.sessions.removeAll { $0.id == session.id }
+                                self.sessionStore.sessions.removeAll { $0.id == session.id }
                                 Task { @MainActor in
-                                    sessionStore.saveSessions()
+                                    self.sessionStore.saveSessions()
                                 }
                             }
                         })
                         .onTapGesture {
-                            sessionStore.selectSession(session)
+                            self.sessionStore.selectSession(session)
                             // Don't open main window - keep the popover experience
                         }
                 }
 
-                if sessionStore.sessions.isEmpty {
+                if self.sessionStore.sessions.isEmpty {
                     VStack(spacing: 12) {
                         Text("No recent sessions")
                             .font(.caption)

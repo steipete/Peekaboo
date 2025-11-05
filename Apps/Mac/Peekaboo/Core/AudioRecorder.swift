@@ -124,8 +124,7 @@ final class AudioRecorder: NSObject {
             let transcriptionResult = try await transcribe(
                 audioData,
                 using: .openai(.whisper1),
-                language: "en"
-            )
+                language: "en")
 
             await MainActor.run {
                 self.transcript = transcriptionResult.text.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -1,6 +1,6 @@
 import Foundation
-import TachikomaMCP
 import MCP
+import TachikomaMCP
 
 /// MCP tool for checking macOS system permissions
 public struct PermissionsTool: MCPTool {
@@ -30,12 +30,18 @@ public struct PermissionsTool: MCPTool {
         var lines: [String] = []
         lines.append("macOS Permissions Status:")
         lines.append("")
-        lines.append("Screen Recording: \(screenRecording ? "✅ Granted" : "❌ Not Granted")")
-        lines.append("Accessibility: \(accessibility ? "✅ Granted" : "⚠️  Not Granted (Optional)")")
+        lines
+            .append(
+                "Screen Recording: \(screenRecording ? "\(AgentDisplayTokens.Status.success) Granted" : "\(AgentDisplayTokens.Status.failure) Not Granted")")
+        lines
+            .append(
+                "Accessibility: \(accessibility ? "\(AgentDisplayTokens.Status.success) Granted" : "\(AgentDisplayTokens.Status.warning)  Not Granted (Optional)")")
 
         if !screenRecording {
             lines.append("")
-            lines.append("⚠️  Screen Recording permission is REQUIRED for capturing screenshots.")
+            lines
+                .append(
+                    "\(AgentDisplayTokens.Status.warning)  Screen Recording permission is REQUIRED for capturing screenshots.")
             lines.append("Grant via: System Settings > Privacy & Security > Screen Recording")
         }
 

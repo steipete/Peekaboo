@@ -22,7 +22,7 @@ public enum CLIFormatter {
             case .primary:
                 result += "→ \(highlight.label): \(highlight.value)"
             case .warning:
-                result += "⚠️  \(highlight.label): \(highlight.value)"
+                result += "\(AgentDisplayTokens.Status.warning)  \(highlight.label): \(highlight.value)"
             case .info:
                 result += "ℹ️  \(highlight.label): \(highlight.value)"
             }
@@ -35,7 +35,7 @@ public enum CLIFormatter {
         if !output.metadata.warnings.isEmpty {
             result += "\n\nWarnings:"
             for warning in output.metadata.warnings {
-                result += "\n⚠️  \(warning)"
+                result += "\n\(AgentDisplayTokens.Status.warning)  \(warning)"
             }
         }
 

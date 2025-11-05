@@ -63,7 +63,6 @@ extension VisualizerXPCService: @preconcurrency NSXPCListenerDelegate {
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection newConnection: NSXPCConnection) -> Bool {
         self.logger.info("🎨 XPC Service: New connection request received!")
         self.logger.info("🎨 XPC Service: Connection PID: \(newConnection.processIdentifier)")
-        self.logger.info("🎨 XPC Service: Connection audit token: \(String(describing: newConnection.auditToken))")
 
         // Configure the connection
         newConnection.exportedInterface = NSXPCInterface(with: VisualizerXPCProtocol.self)

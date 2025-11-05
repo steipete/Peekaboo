@@ -3,8 +3,7 @@ import Testing
 @testable import peekaboo
 
 @Suite("AnalyzeCommand Tests")
-struct AnalyzeCommandTests {
-}
+struct AnalyzeCommandTests {}
 
 // MARK: - Integration Tests
 

@@ -31,13 +31,13 @@ extension PeekabooToolDefinition {
             }
 
             let agentParamName = param.name.replacingOccurrences(of: "-", with: "_")
-            
+
             let property = Tachikoma.AgentToolParameterProperty(
                 name: agentParamName,
                 type: parameterType,
                 description: param.description,
                 enumValues: param.options)
-                
+
             properties[agentParamName] = property
 
             if param.required {

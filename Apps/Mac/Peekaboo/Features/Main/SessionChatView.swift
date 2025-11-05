@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 import Tachikoma
 import TachikomaAudio
 
@@ -16,7 +16,7 @@ struct SessionChatView: View {
     @State private var isProcessing = false
     @State private var inputMode: InputMode = .text
     @State private var hasConnectionError = false
-    @State private var useRealtimeMode = true  // Enable realtime mode by default
+    @State private var useRealtimeMode = true // Enable realtime mode by default
     @State private var showRealtimeSettings = false
 
     enum InputMode {
@@ -83,10 +83,9 @@ struct SessionChatView: View {
                 // Connection error banner
                 if self.hasConnectionError {
                     ConnectionErrorBanner(
-                        hasConnectionError: $hasConnectionError,
-                        agent: agent,
-                        isProcessing: $isProcessing
-                    )
+                        hasConnectionError: self.$hasConnectionError,
+                        agent: self.agent,
+                        isProcessing: self.$isProcessing)
                     Divider()
                 }
 
@@ -115,22 +114,22 @@ struct SessionChatView: View {
 
             // Voice mode menu button
             Menu {
-                Button(action: { 
+                Button(action: {
                     self.inputMode = .voice
                     self.useRealtimeMode = false
                 }) {
                     Label("Voice Transcription", systemImage: "mic")
                 }
-                
-                Button(action: { 
+
+                Button(action: {
                     self.inputMode = .realtime
                     self.useRealtimeMode = true
                 }) {
                     Label("Realtime Conversation", systemImage: "waveform.circle")
                 }
             } label: {
-                Image(systemName: inputMode == .realtime ? "waveform.circle" : "mic")
-                    .foregroundColor(inputMode != .text ? .accentColor : .secondary)
+                Image(systemName: self.inputMode == .realtime ? "waveform.circle" : "mic")
+                    .foregroundColor(self.inputMode != .text ? .accentColor : .secondary)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 24)
@@ -203,12 +202,12 @@ struct SessionChatView: View {
         .padding()
         .frame(height: 100)
     }
-    
+
     private var realtimeInputArea: some View {
         VStack(spacing: 12) {
             // Connection status bar
             HStack(spacing: 8) {
-                if realtimeService.isConnected {
+                if self.realtimeService.isConnected {
                     Circle()
                         .fill(Color.green)
                         .frame(width: 8, height: 8)
@@ -217,16 +216,17 @@ struct SessionChatView: View {
                                 .stroke(Color.green.opacity(0.5), lineWidth: 2)
                                 .scaleEffect(1.5)
                                 .opacity(0.5)
-                                .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: realtimeService.isConnected)
-                        )
+                                .animation(
+                                    .easeInOut(duration: 1).repeatForever(autoreverses: true),
+                                    value: self.realtimeService.isConnected))
                     Text("Connected")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     Text("•")
                         .foregroundColor(.secondary)
-                    
-                    Text(realtimeService.connectionState.rawValue.capitalized)
+
+                    Text(self.realtimeService.connectionState.rawValue.capitalized)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 } else {
@@ -237,23 +237,23 @@ struct SessionChatView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 // Settings button
-                Button(action: { showRealtimeSettings.toggle() }) {
+                Button(action: { self.showRealtimeSettings.toggle() }) {
                     Image(systemName: "gear")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
-                .popover(isPresented: $showRealtimeSettings) {
-                    RealtimeSettingsView(service: realtimeService)
+                .popover(isPresented: self.$showRealtimeSettings) {
+                    RealtimeSettingsView(service: self.realtimeService)
                         .frame(width: 300, height: 250)
                 }
             }
             .padding(.horizontal)
-            
+
             // Main controls
             HStack {
                 Button(action: { self.inputMode = .text }) {
@@ -261,30 +261,33 @@ struct SessionChatView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
-                
+
                 Spacer()
-                
-                if realtimeService.isConnected {
+
+                if self.realtimeService.isConnected {
                     // Recording controls
                     VStack(spacing: 8) {
-                        Button(action: toggleRealtimeRecording) {
-                            Image(systemName: realtimeService.isRecording ? "stop.circle.fill" : "mic.circle.fill")
+                        Button(action: self.toggleRealtimeRecording) {
+                            Image(systemName: self.realtimeService.isRecording ? "stop.circle.fill" : "mic.circle.fill")
                                 .font(.system(size: 48))
-                                .foregroundColor(realtimeService.isRecording ? .red : .blue)
-                                .symbolEffect(.bounce, value: realtimeService.isRecording)
+                                .foregroundColor(self.realtimeService.isRecording ? .red : .blue)
+                                .symbolEffect(.bounce, value: self.realtimeService.isRecording)
                         }
                         .buttonStyle(.plain)
-                        
-                        if realtimeService.isSpeaking {
+
+                        if self.realtimeService.isSpeaking {
                             HStack(spacing: 4) {
                                 ForEach(0..<3) { i in
                                     RoundedRectangle(cornerRadius: 2)
                                         .fill(Color.blue)
                                         .frame(width: 3, height: CGFloat.random(in: 8...20))
-                                        .animation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true).delay(Double(i) * 0.1), value: realtimeService.isSpeaking)
+                                        .animation(
+                                            .easeInOut(duration: 0.3).repeatForever(autoreverses: true)
+                                                .delay(Double(i) * 0.1),
+                                            value: self.realtimeService.isSpeaking)
                                 }
                             }
-                        } else if realtimeService.isRecording {
+                        } else if self.realtimeService.isRecording {
                             Text("Listening...")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -292,26 +295,25 @@ struct SessionChatView: View {
                     }
                 } else {
                     // Start session button
-                    Button(action: startRealtimeSession) {
+                    Button(action: self.startRealtimeSession) {
                         VStack(spacing: 8) {
                             Image(systemName: "waveform.circle.fill")
                                 .font(.system(size: 48))
                                 .foregroundStyle(.linearGradient(
                                     colors: [.blue, .purple],
                                     startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ))
+                                    endPoint: .bottomTrailing))
                             Text("Start Conversation")
                                 .font(.caption)
                         }
                     }
                     .buttonStyle(.plain)
                 }
-                
+
                 Spacer()
-                
-                if realtimeService.isConnected {
-                    Button(action: endRealtimeSession) {
+
+                if self.realtimeService.isConnected {
+                    Button(action: self.endRealtimeSession) {
                         Image(systemName: "xmark.circle")
                             .foregroundColor(.secondary)
                     }
@@ -323,10 +325,10 @@ struct SessionChatView: View {
                         .frame(width: 30, height: 30)
                 }
             }
-            
+
             // Transcript preview
-            if !realtimeService.currentTranscript.isEmpty {
-                Text(realtimeService.currentTranscript)
+            if !self.realtimeService.currentTranscript.isEmpty {
+                Text(self.realtimeService.currentTranscript)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -403,31 +405,31 @@ struct SessionChatView: View {
             }
         }
     }
-    
+
     // MARK: - Realtime Voice Methods
-    
+
     private func startRealtimeSession() {
         Task {
             do {
-                try await realtimeService.startSession()
+                try await self.realtimeService.startSession()
             } catch {
                 print("Failed to start realtime session: \(error)")
                 // Optionally show error to user
-                hasConnectionError = true
+                self.hasConnectionError = true
             }
         }
     }
-    
+
     private func endRealtimeSession() {
         Task {
-            await realtimeService.endSession()
+            await self.realtimeService.endSession()
         }
     }
-    
+
     private func toggleRealtimeRecording() {
         Task {
             do {
-                try await realtimeService.toggleRecording()
+                try await self.realtimeService.toggleRecording()
             } catch {
                 print("Failed to toggle recording: \(error)")
             }

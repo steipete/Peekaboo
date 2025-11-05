@@ -14,8 +14,8 @@ struct SessionStoreTests {
         let testDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try? FileManager.default.createDirectory(at: testDir, withIntermediateDirectories: true)
-        testStorageURL = testDir.appendingPathComponent("test_sessions.json")
-        store = SessionStore(storageURL: testStorageURL)
+        self.testStorageURL = testDir.appendingPathComponent("test_sessions.json")
+        self.store = SessionStore(storageURL: self.testStorageURL)
     }
 
     mutating func tearDown() {
@@ -27,7 +27,7 @@ struct SessionStoreTests {
 
     @Test("Creating a new session assigns unique ID")
     mutating func testCreateSession() async {
-        setup()
+        self.setup()
         defer { tearDown() }
         let session = await store.createSession(title: "Test Session", modelName: "test-model")
 
@@ -40,7 +40,7 @@ struct SessionStoreTests {
 
     @Test("Adding messages to session updates the session")
     mutating func testAddMessage() async {
-        setup()
+        self.setup()
         defer { tearDown() }
         var session = await store.createSession(title: "Test", modelName: "test-model")
         let message = ConversationMessage(
@@ -48,7 +48,7 @@ struct SessionStoreTests {
             content: "Test message")
 
         await store.addMessage(message, to: session)
-        session = await store.sessions.first!
+        session = await self.store.sessions.first!
 
         // Verify the session was updated
         let sessions = await store.sessions
@@ -62,20 +62,19 @@ struct SessionStoreTests {
 
     @Test("Multiple sessions can be managed independently")
     mutating func multipleSessions() async {
-        setup()
+        self.setup()
         defer { tearDown() }
         var session1 = await store.createSession(title: "Session 1", modelName: "test-model")
         let session2 = await store.createSession(title: "Session 2", modelName: "test-model")
 
         #expect(session1.id != session2.id)
-        #expect(await store.sessions.count == 2)
+        #expect(await self.store.sessions.count == 2)
 
         // Add message to first session
-        await store.addMessage(
+        await self.store.addMessage(
             ConversationMessage(role: .user, content: "Message 1"),
             to: session1)
-        session1 = await store.sessions.first { $0.id == session1.id }!
-
+        session1 = await self.store.sessions.first { $0.id == session1.id }!
 
         // Verify only first session has the message
         let sessions = await store.sessions
@@ -88,7 +87,7 @@ struct SessionStoreTests {
 
     @Test("Sessions are sorted by start time (newest first)")
     mutating func sessionSorting() async {
-        setup()
+        self.setup()
         defer { tearDown() }
         // Create sessions with specific times
         let session1 = await store.createSession(title: "1", modelName: "m")
@@ -115,7 +114,7 @@ struct SessionStorePersistenceTests {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let storageURL = directory.appendingPathComponent("test_sessions.json")
-        
+
         var sessionId: String!
         let messageContent = "Test persistence message"
 
@@ -128,10 +127,10 @@ struct SessionStorePersistenceTests {
             await store1.addMessage(
                 ConversationMessage(role: .user, content: messageContent),
                 to: session)
-            
+
             // Force save
             await store1.saveSessions()
-            
+
             let sessions = await store1.sessions
             #expect(sessions.count == 1)
         }
@@ -147,7 +146,7 @@ struct SessionStorePersistenceTests {
             #expect(loadedSession.messages.count == 1)
             #expect(loadedSession.messages.first?.content == messageContent)
         }
-        
+
         // Clean up
         try? FileManager.default.removeItem(at: directory)
     }

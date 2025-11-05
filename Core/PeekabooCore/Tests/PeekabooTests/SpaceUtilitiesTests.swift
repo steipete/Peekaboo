@@ -219,9 +219,9 @@ struct SpaceManagementIntegrationTests {
                     #expect(space.displayID == displayID)
                 }
 
-                // At least one space should be active per display set
-                let hasActiveSpace = spaces.contains { $0.isActive }
-                // Note: Multiple displays might not all have active spaces
+                // At least one space should be active per display set (typically true for primary display)
+                let hasActiveSpace = spaces.contains(where: \.isActive)
+                #expect(hasActiveSpace || spacesByDisplay.count > 1)
             }
         }
     }

@@ -1,8 +1,8 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
 import Tachikoma
+import TachikomaMCP
 
 /// MCP tool for executing complex automation tasks using an AI agent
 public struct MCPAgentTool: MCPTool {
@@ -263,34 +263,5 @@ struct AgentInput: Codable {
 
 /// Parse a model string into a LanguageModel enum
 private func parseModelString(_ modelString: String) -> LanguageModel {
-    // Use TachikomaCore's model parsing logic
-    if modelString.hasPrefix("claude") {
-        if modelString.contains("opus-4") {
-            return .anthropic(.opus4)
-        } else if modelString.contains("sonnet-4") {
-            return .anthropic(.sonnet4)
-        } else if modelString.contains("haiku-3.5") {
-            return .anthropic(.haiku35)
-        } else if modelString.contains("sonnet-3.5") {
-            return .anthropic(.sonnet35)
-        }
-        // Default to Opus 4
-        return .anthropic(.opus4)
-    } else if modelString.hasPrefix("gpt") {
-        if modelString.contains("4.1") {
-            return .openai(.gpt41)
-        } else if modelString.contains("4o") {
-            return .openai(.gpt4o)
-        }
-        return .openai(.gpt4o)
-    } else if modelString.hasPrefix("o3") {
-        return .openai(.o3)
-    } else if modelString.hasPrefix("grok") {
-        return .grok(.grok4)
-    } else if modelString.hasPrefix("llama") {
-        return .ollama(.llama33)
-    }
-
-    // Default to Anthropic Opus 4
-    return .anthropic(.opus4)
+    LanguageModel.parse(from: modelString) ?? .anthropic(.opus4)
 }

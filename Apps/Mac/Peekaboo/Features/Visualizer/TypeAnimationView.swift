@@ -16,7 +16,7 @@ struct TypeAnimationView: View {
 
     /// Visual theme for the keyboard
     let theme: KeyboardTheme
-    
+
     /// Animation speed multiplier (1.0 = normal, 0.5 = 2x slower, 2.0 = 2x faster)
     var animationSpeed: Double = 1.0
 

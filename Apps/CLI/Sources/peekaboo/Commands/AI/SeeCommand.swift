@@ -100,7 +100,8 @@ ApplicationResolvable {
             var analysisResult: SeeAnalysisData?
             if let prompt = analyze {
                 // Pre-analysis diagnostics
-                let fileSize = (try? FileManager.default.attributesOfItem(atPath: captureResult.screenshotPath)[.size] as? Int) ?? 0
+                let fileSize = (try? FileManager.default
+                    .attributesOfItem(atPath: captureResult.screenshotPath)[.size] as? Int) ?? 0
                 Logger.shared.verbose(
                     "Starting AI analysis",
                     category: "AI",
@@ -432,13 +433,13 @@ ApplicationResolvable {
 
         // Draw UI elements
         let enabledElements = detectionResult.elements.all.filter(\.isEnabled)
-        
+
         if enabledElements.isEmpty {
             Logger.shared.info("No enabled elements to annotate. Total elements: \(detectionResult.elements.all.count)")
-            print("⚠️  No interactive UI elements found to annotate")
-            return originalPath  // Return original image if no elements to annotate
+            print("\(AgentDisplayTokens.Status.warning)  No interactive UI elements found to annotate")
+            return originalPath // Return original image if no elements to annotate
         }
-        
+
         Logger.shared.info(
             "Annotating \(enabledElements.count) enabled elements out of \(detectionResult.elements.all.count) total"
         )
@@ -476,7 +477,7 @@ ApplicationResolvable {
 
         // Create smart label placer for intelligent label positioning
         let labelPlacer = SmartLabelPlacer(image: nsImage, fontSize: fontSize, debugMode: verbose)
-        
+
         // Draw elements and calculate label positions
         var labelPositions: [(rect: NSRect, connection: NSPoint?, element: DetectedElement)] = []
 
@@ -503,7 +504,7 @@ ApplicationResolvable {
             let textSize = idString.size()
             let labelPadding: CGFloat = 4
             let labelSize = NSSize(width: textSize.width + labelPadding * 2, height: textSize.height + labelPadding)
-            
+
             // Use smart label placer to find best position
             if let placement = labelPlacer.findBestLabelPosition(
                 for: element,
@@ -542,42 +543,42 @@ ApplicationResolvable {
 
                 linePath.stroke()
             }
-            
+
             // Draw label background - more transparent to show content beneath
             NSColor.black.withAlphaComponent(0.7).setFill()
             NSBezierPath(roundedRect: labelRect, xRadius: 1, yRadius: 1).fill()
-            
+
             // Draw label border (same color as element) - thinner for less occlusion
             let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
             color.withAlphaComponent(0.8).setStroke()
             let borderPath = NSBezierPath(roundedRect: labelRect, xRadius: 1, yRadius: 1)
             borderPath.lineWidth = 0.5
             borderPath.stroke()
-            
+
             // Draw label text
             let idString = NSAttributedString(string: element.id, attributes: textAttributes)
             idString.draw(at: NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2))
         }
-        
+
         NSGraphicsContext.restoreGraphicsState()
-        
+
         // Save annotated image
         guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
             throw CaptureError.captureFailure("Failed to create PNG data")
         }
-        
+
         try pngData.write(to: URL(fileURLWithPath: annotatedPath))
         Logger.shared.verbose("Created annotated screenshot: \(annotatedPath)")
-        
+
         // Log annotation info only in non-JSON mode
         if !self.jsonOutput {
             let interactableElements = detectionResult.elements.all.filter(\.isEnabled)
             print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
         }
-        
+
         return annotatedPath
     }
-    
+
     // [OLD CODE REMOVED - massive cleanup of duplicate placement logic]
 }
 
@@ -632,17 +633,16 @@ struct SeeResult: Codable {
     var success: Bool = true
 }
 
-
 struct MenuBarSummary: Codable {
     let menus: [MenuSummary]
-    
+
     struct MenuSummary: Codable {
         let title: String
         let item_count: Int
         let enabled: Bool
         let items: [MenuItemSummary]
     }
-    
+
     struct MenuItemSummary: Codable {
         let title: String
         let enabled: Bool
@@ -776,21 +776,21 @@ extension SeeCommand {
 
         let interactableCount = elements.all.count { $0.isEnabled }
 
-        print("✅ Screenshot captured successfully")
+        print("\(AgentDisplayTokens.Status.success) Screenshot captured successfully")
         print("📍 Session ID: \(sessionId)")
         print("🖼  Raw screenshot: \(sessionPaths.raw)")
         if let annotated = annotatedPath {
-            print("🎯 Annotated: \(annotated)")
+            print("[focus] Annotated: \(annotated)")
         }
         print("🗺️  UI map: \(sessionPaths.map)")
         print("🔍 Found \(metadata.elementCount) UI elements (\(interactableCount) interactive)")
 
         if let app = metadata.windowContext?.applicationName {
-            print("📱 Application: \(app)")
+            print("[apps] Application: \(app)")
         }
         if let window = metadata.windowContext?.windowTitle {
             let windowType = metadata.isDialog ? "Dialog" : "Window"
-            let icon = metadata.isDialog ? "🗨️" : "🪟"
+            let icon = metadata.isDialog ? "🗨️" : "[win]"
             print("\(icon) \(windowType): \(window)")
         }
 
@@ -805,7 +805,7 @@ extension SeeCommand {
         }
 
         if !menuExtras.isEmpty {
-            print("📊 Menu Bar Items: \(menuExtras.count)")
+            print("\(AgentDisplayTokens.Status.info) Menu Bar Items: \(menuExtras.count)")
             for item in menuExtras.prefix(10) { // Show first 10
                 print("   • \(item.title)")
             }
@@ -814,13 +814,12 @@ extension SeeCommand {
             }
         }
 
-        if let analysis = analysis {
-            print("🤖 Analysis (")
-            print("\(analysis.provider)/\(analysis.model)):")
+        if let analysis {
+            print("\(AgentDisplayTokens.Status.info) Analysis (\(analysis.provider)/\(analysis.model)):")
             print(analysis.text)
         }
 
-        print("⏱️  Completed in \(String(format: "%.2f", executionTime))s")
+        print("\(AgentDisplayTokens.Status.time)  Completed in \(String(format: "%.2f", executionTime))s")
     }
 }
 
@@ -849,7 +848,7 @@ extension SeeCommand {
             if let displayInfo = result.metadata.displayInfo {
                 let bounds = displayInfo.bounds
                 print(
-                    "🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height)))"
+                    "[scrn]️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height)))"
                 )
             }
 
@@ -898,7 +897,7 @@ extension SeeCommand {
                         let fileSize = self.getFileSize(screenPath) ?? 0
                         let bounds = displayInfo.bounds
                         print(
-                            "   🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → \(screenPath) (\(self.formatFileSize(Int64(fileSize))))"
+                            "   [scrn]️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → \(screenPath) (\(self.formatFileSize(Int64(fileSize))))"
                         )
                     }
                 } else {
@@ -906,7 +905,7 @@ extension SeeCommand {
                     if let displayInfo = result.metadata.displayInfo {
                         let bounds = displayInfo.bounds
                         print(
-                            "   🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → (primary)"
+                            "   [scrn]️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → (primary)"
                         )
                     }
                 }

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 import PackageDescription
 
@@ -46,7 +46,7 @@ let package = Package(
                 "PeekabooProtocols",
             ],
             resources: [
-                .process("Resources")
+                .process("Resources"),
             ]),
     ],
     swiftLanguageModes: [.v6])

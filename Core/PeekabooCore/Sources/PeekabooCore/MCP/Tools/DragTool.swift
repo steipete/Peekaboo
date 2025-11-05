@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// MCP tool for performing drag and drop operations between UI elements or coordinates
 public struct DragTool: MCPTool {
@@ -159,7 +159,7 @@ public struct DragTool: MCPTool {
             let distance = sqrt(deltaX * deltaX + deltaY * deltaY)
 
             // Build response message
-            var message = "✅ Performed drag and drop from \(fromDescription) to \(toDescription)"
+            var message = "\(AgentDisplayTokens.Status.success) Performed drag and drop from \(fromDescription) to \(toDescription)"
             if let modifiers, !modifiers.isEmpty {
                 message += " with modifiers (\(modifiers))"
             }

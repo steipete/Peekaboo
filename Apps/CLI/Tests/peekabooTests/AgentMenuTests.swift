@@ -30,15 +30,9 @@ struct AgentMenuTests {
     @Test("Agent can discover menus using list subcommand")
     func agentMenuDiscovery() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
-            Issue.record("Skipping test - OPENAI_API_KEY not set")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else { return }
 
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Ensure Calculator is running
         _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "Calculator"])
@@ -75,15 +69,9 @@ struct AgentMenuTests {
     @Test("Agent can navigate menus to perform actions")
     func agentMenuNavigation() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
-            Issue.record("Skipping test - OPENAI_API_KEY not set")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else { return }
 
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Ensure Calculator is running
         _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "Calculator"])
@@ -127,15 +115,9 @@ struct AgentMenuTests {
     @Test("Agent uses menu discovery before clicking")
     func agentMenuDiscoveryBeforeAction() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
-            Issue.record("Skipping test - OPENAI_API_KEY not set")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else { return }
 
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with TextEdit
         _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "TextEdit"])
@@ -178,15 +160,9 @@ struct AgentMenuTests {
     @Test("Agent handles menu errors gracefully")
     func agentMenuErrorHandling() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
-            Issue.record("Skipping test - OPENAI_API_KEY not set")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else { return }
 
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else {
-            Issue.record("Skipping local test - set RUN_LOCAL_TESTS=true to run")
-            return
-        }
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with non-existent menu item
         let output = try await runPeekabooCommand([

@@ -169,7 +169,9 @@ struct MenuDetailedMessageRow: View {
     private var contentView: some View {
         if self.isThinkingMessage {
             HStack(spacing: 4) {
-                Text(self.message.content.replacingOccurrences(of: "🤔 ", with: ""))
+                Text(self.message.content.replacingOccurrences(
+                    of: "\(AgentDisplayTokens.Status.planning) ",
+                    with: ""))
                     .font(.caption)
                     .foregroundColor(.purple)
                     .italic()
@@ -307,22 +309,23 @@ struct MenuDetailedMessageRow: View {
     // MARK: - Helper Properties
 
     private var isThinkingMessage: Bool {
-        self.message.role == .system && self.message.content.contains("🤔")
+        self.message.role == .system && self.message.content.contains(AgentDisplayTokens.Status.planning)
     }
 
     private var isErrorMessage: Bool {
-        self.message.role == .system && self.message.content.contains("❌")
+        self.message.role == .system && self.message.content.contains(AgentDisplayTokens.Status.failure)
     }
 
     private var isWarningMessage: Bool {
-        self.message.role == .system && self.message.content.contains("⚠️")
+        self.message.role == .system && self.message.content.contains(AgentDisplayTokens.Status.warning)
     }
 
     private var isToolMessage: Bool {
         self.message
             .role == .system &&
-            (self.message.content.contains("🔧") || self.message.content.contains("✅") || self.message.content
-                .contains("❌"))
+            (self.message.content.contains(AgentDisplayTokens.Status.running) ||
+                self.message.content.contains(AgentDisplayTokens.Status.success) ||
+                self.message.content.contains(AgentDisplayTokens.Status.failure))
     }
 
     private var backgroundForMessage: Color {
@@ -374,9 +377,9 @@ struct MenuDetailedMessageRow: View {
 
     private func extractToolName(from content: String) -> String {
         let cleaned = content
-            .replacingOccurrences(of: "🔧 ", with: "")
-            .replacingOccurrences(of: "✅ ", with: "")
-            .replacingOccurrences(of: "❌ ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.running + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.success + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.failure + " ", with: "")
 
         if let colonIndex = cleaned.firstIndex(of: ":") {
             return String(cleaned[..<colonIndex]).trimmingCharacters(in: .whitespaces)
@@ -386,9 +389,9 @@ struct MenuDetailedMessageRow: View {
 
     private func formatToolContent() -> String {
         self.message.content
-            .replacingOccurrences(of: "🔧 ", with: "")
-            .replacingOccurrences(of: "✅ ", with: "")
-            .replacingOccurrences(of: "❌ ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.running + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.success + " ", with: "")
+            .replacingOccurrences(of: AgentDisplayTokens.Status.failure + " ", with: "")
     }
 
     private func determineToolStatus(from message: ConversationMessage) -> ToolExecutionStatus {
@@ -397,9 +400,9 @@ struct MenuDetailedMessageRow: View {
                 return .running
             }
             if !toolCall.result.isEmpty {
-                if message.content.contains("❌") {
+                if message.content.contains(AgentDisplayTokens.Status.failure) {
                     return .failed
-                } else if message.content.contains("⚠️") {
+                } else if message.content.contains(AgentDisplayTokens.Status.warning) {
                     return .cancelled
                 } else {
                     return .completed
@@ -416,11 +419,11 @@ struct MenuDetailedMessageRow: View {
         }
 
         // Fallback to content indicators
-        if message.content.contains("✅") {
+        if message.content.contains(AgentDisplayTokens.Status.success) {
             return .completed
-        } else if message.content.contains("❌") {
+        } else if message.content.contains(AgentDisplayTokens.Status.failure) {
             return .failed
-        } else if message.content.contains("⚠️") {
+        } else if message.content.contains(AgentDisplayTokens.Status.warning) {
             return .cancelled
         }
 

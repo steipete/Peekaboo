@@ -1,8 +1,8 @@
 import AppKit
 import Foundation
+import MCP
 import PeekabooFoundation
 import TachikomaMCP
-import MCP
 import UniformTypeIdentifiers
 
 /// MCP tool for capturing screenshots

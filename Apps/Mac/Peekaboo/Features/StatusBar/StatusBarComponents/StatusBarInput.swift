@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 import Tachikoma
 import TachikomaAudio
 
@@ -10,41 +10,41 @@ struct StatusBarInputView: View {
     @Binding var inputText: String
     @Binding var isVoiceMode: Bool
     @FocusState.Binding var isInputFocused: Bool
-    
+
     let isProcessing: Bool
     let onSubmit: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            if isVoiceMode {
+            if self.isVoiceMode {
                 Image(systemName: "mic.fill")
                     .foregroundColor(.red)
                     .font(.caption)
             }
 
-            TextField(isProcessing ? "Ask a follow-up..." : "Ask Peekaboo...", text: $inputText)
+            TextField(self.isProcessing ? "Ask a follow-up..." : "Ask Peekaboo...", text: self.$inputText)
                 .textFieldStyle(.plain)
                 .font(.body)
-                .focused($isInputFocused)
+                .focused(self.$isInputFocused)
                 .onSubmit {
-                    onSubmit()
+                    self.onSubmit()
                 }
 
             // Voice mode toggle
-            Button(action: { isVoiceMode.toggle() }) {
-                Image(systemName: isVoiceMode ? "keyboard" : "mic")
+            Button(action: { self.isVoiceMode.toggle() }) {
+                Image(systemName: self.isVoiceMode ? "keyboard" : "mic")
                     .font(.body)
-                    .foregroundColor(isVoiceMode ? .red : .secondary)
+                    .foregroundColor(self.isVoiceMode ? .red : .secondary)
             }
             .buttonStyle(.plain)
-            .help(isVoiceMode ? "Switch to text input" : "Switch to voice input")
+            .help(self.isVoiceMode ? "Switch to text input" : "Switch to voice input")
 
-            Button(action: onSubmit) {
+            Button(action: self.onSubmit) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.title2)
             }
             .buttonStyle(.plain)
-            .disabled(inputText.isEmpty && !isVoiceMode)
+            .disabled(self.inputText.isEmpty && !self.isVoiceMode)
         }
     }
 }
@@ -53,10 +53,10 @@ struct StatusBarInputView: View {
 struct VoiceInputView: View {
     @Environment(SpeechRecognizer.self) private var speechRecognizer
     @Environment(RealtimeVoiceService.self) private var realtimeService
-    
-    @State private var useRealtimeMode = true  // Enable realtime mode by default
+
+    @State private var useRealtimeMode = true // Enable realtime mode by default
     @State private var showRealtimeWindow = false
-    
+
     let onToggleRecording: () -> Void
 
     var body: some View {
@@ -66,17 +66,17 @@ struct VoiceInputView: View {
                 Label("Realtime Mode", systemImage: "waveform.circle")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
-                Toggle("", isOn: $useRealtimeMode)
+
+                Toggle("", isOn: self.$useRealtimeMode)
                     .toggleStyle(.switch)
                     .controlSize(.mini)
             }
             .padding(.horizontal)
-            
-            if useRealtimeMode {
+
+            if self.useRealtimeMode {
                 // Realtime mode UI
                 VStack(spacing: 12) {
-                    if realtimeService.isConnected {
+                    if self.realtimeService.isConnected {
                         // Connection status
                         HStack(spacing: 6) {
                             Circle()
@@ -86,25 +86,25 @@ struct VoiceInputView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        
+
                         // Current state
-                        Text(realtimeService.connectionState.rawValue.capitalized)
+                        Text(self.realtimeService.connectionState.rawValue.capitalized)
                             .font(.headline)
-                        
+
                         // Live transcript
-                        if !realtimeService.currentTranscript.isEmpty {
-                            Text(realtimeService.currentTranscript)
+                        if !self.realtimeService.currentTranscript.isEmpty {
+                            Text(self.realtimeService.currentTranscript)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                                 .frame(maxHeight: 60)
                         }
-                        
+
                         // End session button
                         Button("End Session") {
                             Task {
-                                await realtimeService.endSession()
+                                await self.realtimeService.endSession()
                             }
                         }
                         .buttonStyle(.bordered)
@@ -112,7 +112,7 @@ struct VoiceInputView: View {
                     } else {
                         // Start session button
                         Button(action: {
-                            showRealtimeWindow = true
+                            self.showRealtimeWindow = true
                         }) {
                             VStack(spacing: 8) {
                                 Image(systemName: "waveform.circle.fill")
@@ -120,9 +120,8 @@ struct VoiceInputView: View {
                                     .foregroundStyle(.linearGradient(
                                         colors: [.blue, .purple],
                                         startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ))
-                                
+                                        endPoint: .bottomTrailing))
+
                                 Text("Start Realtime Conversation")
                                     .font(.caption)
                             }
@@ -135,24 +134,24 @@ struct VoiceInputView: View {
             } else {
                 // Traditional recording mode
                 VStack(spacing: 8) {
-                    if speechRecognizer.isListening {
+                    if self.speechRecognizer.isListening {
                         HStack(spacing: 4) {
                             ForEach(0..<3) { index in
                                 Circle()
                                     .fill(Color.accentColor)
                                     .frame(width: 8, height: 8)
-                                    .scaleEffect(speechRecognizer.isListening ? 1.2 : 0.8)
+                                    .scaleEffect(self.speechRecognizer.isListening ? 1.2 : 0.8)
                                     .animation(
                                         Animation.easeInOut(duration: 0.6)
                                             .repeatForever()
                                             .delay(Double(index) * 0.2),
-                                        value: speechRecognizer.isListening)
+                                        value: self.speechRecognizer.isListening)
                             }
                         }
                         .frame(height: 20)
                     }
 
-                    Text(speechRecognizer.transcript.isEmpty ? "Listening..." : speechRecognizer.transcript)
+                    Text(self.speechRecognizer.transcript.isEmpty ? "Listening..." : self.speechRecognizer.transcript)
                         .font(.callout)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -160,10 +159,10 @@ struct VoiceInputView: View {
                         .frame(maxHeight: 100)
 
                     // Microphone button
-                    Button(action: onToggleRecording) {
-                        Image(systemName: speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
+                    Button(action: self.onToggleRecording) {
+                        Image(systemName: self.speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
                             .font(.system(size: 48))
-                            .foregroundColor(speechRecognizer.isListening ? .red : .accentColor)
+                            .foregroundColor(self.speechRecognizer.isListening ? .red : .accentColor)
                     }
                     .buttonStyle(.plain)
                 }
@@ -171,7 +170,7 @@ struct VoiceInputView: View {
                 .frame(minHeight: 200)
             }
         }
-        .sheet(isPresented: $showRealtimeWindow) {
+        .sheet(isPresented: self.$showRealtimeWindow) {
             RealtimeVoiceView()
         }
     }
@@ -182,7 +181,7 @@ struct IdleStateInputView: View {
     @Binding var inputText: String
     @Binding var isVoiceMode: Bool
     @FocusState.Binding var isInputFocused: Bool
-    
+
     let sessions: [ConversationSession]
     let onSubmit: () -> Void
     let onSelectSession: (ConversationSession) -> Void
@@ -204,26 +203,26 @@ struct IdleStateInputView: View {
 
             // Input field - always visible
             HStack(spacing: 8) {
-                if isVoiceMode {
+                if self.isVoiceMode {
                     Image(systemName: "mic.fill")
                         .foregroundColor(.red)
                         .font(.caption)
                 }
 
-                TextField("What would you like me to do?", text: $inputText)
+                TextField("What would you like me to do?", text: self.$inputText)
                     .textFieldStyle(.plain)
                     .font(.body)
-                    .focused($isInputFocused)
+                    .focused(self.$isInputFocused)
                     .onSubmit {
-                        onSubmit()
+                        self.onSubmit()
                     }
 
-                Button(action: onSubmit) {
+                Button(action: self.onSubmit) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
                 }
                 .buttonStyle(.plain)
-                .disabled(inputText.isEmpty)
+                .disabled(self.inputText.isEmpty)
             }
             .padding(10)
             .background(Color(NSColor.controlBackgroundColor))
@@ -231,7 +230,7 @@ struct IdleStateInputView: View {
             .padding(.horizontal)
 
             // Recent sessions if any
-            if !sessions.isEmpty {
+            if !self.sessions.isEmpty {
                 Divider()
                     .padding(.horizontal)
 
@@ -243,7 +242,7 @@ struct IdleStateInputView: View {
 
                     ScrollView {
                         VStack(spacing: 2) {
-                            ForEach(sessions.prefix(3)) { session in
+                            ForEach(self.sessions.prefix(3)) { session in
                                 HStack {
                                     Text(session.title)
                                         .font(.caption)
@@ -261,7 +260,7 @@ struct IdleStateInputView: View {
                                 .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
                                 .cornerRadius(4)
                                 .onTapGesture {
-                                    onSelectSession(session)
+                                    self.onSelectSession(session)
                                 }
                             }
                         }

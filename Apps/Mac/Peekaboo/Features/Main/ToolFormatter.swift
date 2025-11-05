@@ -17,12 +17,12 @@ struct ToolFormatter {
         guard let duration else { return "" }
         return " ⌖ " + FormattingUtilities.formatDetailedDuration(duration)
     }
-    
+
     /// Format file sizes using shared utilities
     static func formatFileSize(_ bytes: Int) -> String {
         FormattingUtilities.formatFileSize(bytes)
     }
-    
+
     /// Truncate text using shared utilities
     static func truncate(_ text: String, maxLength: Int = 50) -> String {
         FormattingUtilities.truncate(text, maxLength: maxLength)
@@ -32,13 +32,13 @@ struct ToolFormatter {
     /// Delegates to the new modular formatter system
     static func compactToolSummary(toolName: String, arguments: String) -> String {
         // Use the new registry-based system
-        return MacToolFormatterRegistry.shared.formatSummary(toolName: toolName, arguments: arguments)
+        MacToolFormatterRegistry.shared.formatSummary(toolName: toolName, arguments: arguments)
     }
-    
+
     /// Get result summary for completed tool execution
     /// Delegates to the new modular formatter system
     static func toolResultSummary(toolName: String, result: String?) -> String? {
         // Use the new registry-based system
-        return MacToolFormatterRegistry.shared.formatResult(toolName: toolName, result: result)
+        MacToolFormatterRegistry.shared.formatResult(toolName: toolName, result: result)
     }
 }

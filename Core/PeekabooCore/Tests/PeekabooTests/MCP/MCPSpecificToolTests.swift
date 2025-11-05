@@ -13,7 +13,7 @@ struct MCPSpecificToolTests {
         let tool = SeeTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -28,9 +28,11 @@ struct MCPSpecificToolTests {
 
         // Check annotate default value
         if let annotateSchema = props["annotate"],
-           case let .object(annotateDict) = annotateSchema
+           case let .object(annotateDict) = annotateSchema,
+           let defaultValue = annotateDict["default"],
+           case let .bool(annotateDefault) = defaultValue
         {
-            #expect(annotateDict["default"] as? Value == .bool(false))
+            #expect(annotateDefault == false)
         }
     }
 
@@ -41,7 +43,7 @@ struct MCPSpecificToolTests {
         let tool = DialogTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -64,7 +66,7 @@ struct MCPSpecificToolTests {
         // Check action enum values
         if let actionSchema = props["action"],
            case let .object(actionDict) = actionSchema,
-           let enumValue = actionDict["enum"] as? Value,
+           let enumValue = actionDict["enum"],
            case let .array(actions) = enumValue
         {
             #expect(actions.contains(.string("list")))
@@ -80,7 +82,7 @@ struct MCPSpecificToolTests {
         let tool = MenuTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -94,7 +96,7 @@ struct MCPSpecificToolTests {
         // Verify path description includes format examples
         if let pathSchema = props["path"],
            case let .object(pathDict) = pathSchema,
-           let description = pathDict["description"] as? Value,
+           let description = pathDict["description"],
            case let .string(desc) = description
         {
             #expect(desc.contains(">") || desc.contains("separator"))
@@ -108,7 +110,7 @@ struct MCPSpecificToolTests {
         let tool = SpaceTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -127,7 +129,7 @@ struct MCPSpecificToolTests {
         // Check action types
         if let actionSchema = props["action"],
            case let .object(actionDict) = actionSchema,
-           let enumValue = actionDict["enum"] as? Value,
+           let enumValue = actionDict["enum"],
            case let .array(actions) = enumValue
         {
             #expect(actions.contains(.string("list")))
@@ -143,7 +145,7 @@ struct MCPSpecificToolTests {
         let tool = HotkeyTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -154,7 +156,7 @@ struct MCPSpecificToolTests {
         #expect(props["hold_duration"] != nil)
 
         // Verify keys is required
-        if let required = schema["required"] as? Value,
+        if let required = schema["required"],
            case let .array(requiredArray) = required
         {
             #expect(requiredArray.contains(.string("keys")))
@@ -168,7 +170,7 @@ struct MCPSpecificToolTests {
         let tool = DragTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -181,7 +183,7 @@ struct MCPSpecificToolTests {
         #expect(props["modifiers"] != nil)
 
         // Required fields
-        if let required = schema["required"] as? Value,
+        if let required = schema["required"],
            case let .array(requiredArray) = required
         {
             #expect(requiredArray.contains(.string("from")))
@@ -196,7 +198,7 @@ struct MCPSpecificToolTests {
         let tool = WindowTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -213,7 +215,7 @@ struct MCPSpecificToolTests {
         // Check action types include all window operations
         if let actionSchema = props["action"],
            case let .object(actionDict) = actionSchema,
-           let enumValue = actionDict["enum"] as? Value,
+           let enumValue = actionDict["enum"],
            case let .array(actions) = enumValue
         {
             // Check that common actions are present
@@ -231,7 +233,7 @@ struct MCPSpecificToolTests {
         let tool = MoveTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -244,7 +246,7 @@ struct MCPSpecificToolTests {
         // Check description mentions coordinates
         if let toSchema = props["to"],
            case let .object(toDict) = toSchema,
-           let description = toDict["description"] as? Value,
+           let description = toDict["description"],
            case let .string(desc) = description
         {
             #expect(desc.contains("Coordinates") || desc.contains("x,y") || desc.contains("center"))
@@ -258,7 +260,7 @@ struct MCPSpecificToolTests {
         let tool = SwipeTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -271,7 +273,7 @@ struct MCPSpecificToolTests {
         #expect(props["steps"] != nil)
 
         // Swipe tool has from/to required fields
-        if let required = schema["required"] as? Value,
+        if let required = schema["required"],
            case let .array(requiredArray) = required
         {
             #expect(requiredArray.contains(.string("from")))
@@ -286,7 +288,7 @@ struct MCPSpecificToolTests {
         let tool = AnalyzeTool()
 
         guard case let .object(schema) = tool.inputSchema,
-              let properties = schema["properties"] as? Value,
+              let properties = schema["properties"],
               case let .object(props) = properties
         else {
             Issue.record("Expected object schema with properties")
@@ -298,7 +300,7 @@ struct MCPSpecificToolTests {
         #expect(props["provider_config"] != nil)
 
         // Verify required fields - only question is required
-        if let required = schema["required"] as? Value,
+        if let required = schema["required"],
            case let .array(requiredArray) = required
         {
             #expect(requiredArray.contains(.string("question")))

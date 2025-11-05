@@ -1,10 +1,10 @@
 import AppKit
-import PeekabooFoundation
 import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
 import os.log
+import PeekabooFoundation
 
 /**
  * Primary UI automation service orchestrating specialized automation components.

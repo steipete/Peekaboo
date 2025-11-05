@@ -1,8 +1,8 @@
 import AVFoundation
 import CoreGraphics
 import Foundation
-import PeekabooFoundation
 import os.log
+import PeekabooFoundation
 import ScreenCaptureKit
 
 /// Service for checking and managing macOS system permissions

@@ -1,7 +1,7 @@
 import Foundation
-import TachikomaMCP
 import MCP
 import os.log
+import TachikomaMCP
 
 /// Registry for managing MCP tools
 @MainActor
@@ -62,55 +62,55 @@ public final class MCPToolRegistry {
         self.tools.removeAll()
         self.logger.debug("Unregistered all tools")
     }
-    
+
     // MARK: - External Tool Management
-    
+
     /// Set the client manager for external tools
     public func setClientManager(_ clientManager: TachikomaMCPClientManager) {
         self.clientManager = clientManager
     }
-    
+
     /// Register external tools from the client manager
     public func registerExternalTools(from clientManager: TachikomaMCPClientManager) async {
         self.clientManager = clientManager
-        
+
         // Clear existing external tools
         self.externalTools.removeAll()
-        
+
         // Get external tools from all servers
         let externalToolsByServer = await clientManager.getExternalToolsByServer()
-        
+
         for (serverName, serverTools) in externalToolsByServer {
             for toolInfo in serverTools {
                 let externalTool = ExternalMCPTool(
                     serverName: serverName,
                     originalTool: toolInfo,
-                    clientManager: clientManager
-                )
+                    clientManager: clientManager)
                 self.externalTools[externalTool.name] = externalTool
                 self.logger.debug("Registered external tool: \(externalTool.name)")
             }
         }
-        
-        self.logger.info("Registered \(self.externalTools.count) external tools from \(externalToolsByServer.count) servers")
+
+        self.logger
+            .info("Registered \(self.externalTools.count) external tools from \(externalToolsByServer.count) servers")
     }
-    
+
     /// Refresh external tools from servers
     public func refreshExternalTools() async throws {
-        guard let clientManager = clientManager else {
+        guard let clientManager else {
             throw MCPError.executionFailed("Client manager not set")
         }
-        
-        await registerExternalTools(from: clientManager)
+
+        await self.registerExternalTools(from: clientManager)
     }
-    
+
     /// Get tools organized by source (native vs external)
     public func getToolsBySource() async -> CategorizedTools {
         let nativeTools = Array(tools.values)
-        
+
         // Organize external tools by server
         var externalByServer: [String: [MCPTool]] = [:]
-        for tool in externalTools.values {
+        for tool in self.externalTools.values {
             if let externalTool = tool as? ExternalMCPTool {
                 let serverName = externalTool.serverName
                 if externalByServer[serverName] == nil {
@@ -119,21 +119,21 @@ public final class MCPToolRegistry {
                 externalByServer[serverName]?.append(tool)
             }
         }
-        
+
         return CategorizedTools(native: nativeTools, external: externalByServer)
     }
-    
+
     /// Get a tool with prefix support (e.g., "github:create_issue")
     public func getToolWithPrefix(name: String) -> MCPTool? {
         // First try exact match (handles both native and external tools)
         if let tool = tools[name] ?? externalTools[name] {
             return tool
         }
-        
+
         // If not found and no prefix, try searching external tools
         if !name.contains(":") {
             // Look for external tools that match the unprefixed name
-            for (_, tool) in externalTools {
+            for (_, tool) in self.externalTools {
                 if let externalTool = tool as? ExternalMCPTool {
                     if externalTool.originalTool.name == name {
                         return tool
@@ -141,47 +141,47 @@ public final class MCPToolRegistry {
                 }
             }
         }
-        
+
         return nil
     }
-    
+
     /// Get all tools (native + external)
     public func getAllTools() -> [MCPTool] {
-        return Array(tools.values) + Array(externalTools.values)
+        Array(self.tools.values) + Array(self.externalTools.values)
     }
-    
+
     /// Get external tools only
     public func getExternalTools() -> [MCPTool] {
-        return Array(externalTools.values)
+        Array(self.externalTools.values)
     }
-    
+
     /// Get native tools only
     public func getNativeTools() -> [MCPTool] {
-        return Array(tools.values)
+        Array(self.tools.values)
     }
-    
+
     /// Check if an external tool exists
     public func hasExternalTool(_ name: String) -> Bool {
-        return externalTools[name] != nil
+        self.externalTools[name] != nil
     }
-    
+
     /// Get tool count by type
     public func getToolCounts() -> (native: Int, external: Int, total: Int) {
-        let nativeCount = tools.count
-        let externalCount = externalTools.count
+        let nativeCount = self.tools.count
+        let externalCount = self.externalTools.count
         return (native: nativeCount, external: externalCount, total: nativeCount + externalCount)
     }
-    
+
     // MARK: - Updated Methods for Combined Tools
-    
+
     /// Get a tool by name (checks both native and external)
     public func toolCombined(named name: String) -> MCPTool? {
-        return tools[name] ?? externalTools[name]
+        self.tools[name] ?? self.externalTools[name]
     }
-    
+
     /// Get tool information for MCP (includes external tools)
     public func allToolInfos() -> [MCP.Tool] {
-        let allTools = Array(tools.values) + Array(externalTools.values)
+        let allTools = Array(tools.values) + Array(self.externalTools.values)
         return allTools.map { tool in
             MCP.Tool(
                 name: tool.name,
@@ -189,9 +189,9 @@ public final class MCPToolRegistry {
                 inputSchema: tool.inputSchema)
         }
     }
-    
+
     /// Check if any tool is registered with the given name
     public func hasAnyToolNamed(_ name: String) -> Bool {
-        return tools[name] != nil || externalTools[name] != nil
+        self.tools[name] != nil || self.externalTools[name] != nil
     }
 }

@@ -28,12 +28,13 @@ struct PIDImageCaptureTests {
         let pid = appWithWindows.processIdentifier
 
         // Create image command with PID
-        var command = ImageCommand()
-        command.app = "PID:\(pid)"
-        command.mode = .multi
-        command.format = .png
-        command.path = NSTemporaryDirectory()
-        command.jsonOutput = true
+        var command = try ImageCommand.parse([
+            "--app", "PID:\(pid)",
+            "--mode", "multi",
+            "--format", "png",
+            "--path", NSTemporaryDirectory(),
+            "--json-output",
+        ])
 
         do {
             // Mock the execution context

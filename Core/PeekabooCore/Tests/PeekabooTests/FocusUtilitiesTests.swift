@@ -28,7 +28,7 @@ struct FocusUtilitiesTests {
             "--focus-timeout", "10.0",
             "--focus-retry-count", "5",
             "--space-switch",
-            "--bring-to-current-space"
+            "--bring-to-current-space",
         ])
 
         // Test as protocol

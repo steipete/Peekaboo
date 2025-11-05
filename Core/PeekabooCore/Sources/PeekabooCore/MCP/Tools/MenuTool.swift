@@ -1,6 +1,6 @@
 import Foundation
-import TachikomaMCP
 import MCP
+import TachikomaMCP
 
 /// MCP tool for interacting with application menu bars
 public struct MenuTool: MCPTool {
@@ -113,7 +113,7 @@ public struct MenuTool: MCPTool {
                 return ToolResponse.text("No applications with accessible menus found.")
             }
 
-            var output = "📋 All Application Menus\n\n"
+            var output = "[menu] All Application Menus\n\n"
             for menuInfo in allMenus.sorted(by: { $0.app < $1.app }) {
                 output += "• \(menuInfo.app): \(menuInfo.menuCount) menus, \(menuInfo.itemCount) items\n"
             }
@@ -138,7 +138,7 @@ public struct MenuTool: MCPTool {
         if let path = arguments.getString("path") {
             do {
                 try await PeekabooServices.shared.menu.clickMenuItem(app: app, itemPath: path)
-                return ToolResponse.text("✅ Successfully clicked menu item: \(path)")
+                return ToolResponse.text("\(AgentDisplayTokens.Status.success) Successfully clicked menu item: \(path)")
             } catch {
                 return ToolResponse
                     .error("Failed to click menu item '\(path)' in app '\(app)': \(error.localizedDescription)")
@@ -146,7 +146,7 @@ public struct MenuTool: MCPTool {
         } else if let item = arguments.getString("item") {
             do {
                 try await PeekabooServices.shared.menu.clickMenuItemByName(app: app, itemName: item)
-                return ToolResponse.text("✅ Successfully clicked menu item: \(item)")
+                return ToolResponse.text("\(AgentDisplayTokens.Status.success) Successfully clicked menu item: \(item)")
             } catch {
                 return ToolResponse
                     .error("Failed to click menu item '\(item)' in app '\(app)': \(error.localizedDescription)")
@@ -164,7 +164,8 @@ public struct MenuTool: MCPTool {
 
         do {
             try await PeekabooServices.shared.menu.clickMenuExtra(title: title)
-            return ToolResponse.text("✅ Successfully clicked system menu extra: \(title)")
+            return ToolResponse
+                .text("\(AgentDisplayTokens.Status.success) Successfully clicked system menu extra: \(title)")
         } catch {
             return ToolResponse.error("Failed to click system menu extra '\(title)': \(error.localizedDescription)")
         }
@@ -173,7 +174,7 @@ public struct MenuTool: MCPTool {
     // MARK: - Formatting Helpers
 
     private func formatMenuStructure(_ structure: MenuStructure) -> String {
-        var output = "📋 Menu Structure for \(structure.application.name)\n\n"
+        var output = "[menu] Menu Structure for \(structure.application.name)\n\n"
 
         for menu in structure.menus {
             output += self.formatMenu(menu, indent: 0)

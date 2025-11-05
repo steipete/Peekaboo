@@ -25,7 +25,7 @@ struct ToolRegistryTests {
         #expect(toolNames.contains("hotkey"))
         #expect(toolNames.contains("list_apps"))
         #expect(toolNames.contains("launch_app"))
-        #expect(toolNames.contains("menu"))  // menu_click is now 'menu'
+        #expect(toolNames.contains("menu")) // menu_click is now 'menu'
         #expect(toolNames.contains("shell"))
     }
 
@@ -71,9 +71,9 @@ struct ToolRegistryTests {
 
         // Check expected categories
         #expect(toolsByCategory[.vision] != nil)
-        #expect(toolsByCategory[.ui] != nil)  // automation is now 'ui'
-        #expect(toolsByCategory[.application] != nil)  // app is now 'application'
-        #expect(toolsByCategory[.dialog] != nil)  // menu is now part of 'dialog'
+        #expect(toolsByCategory[.ui] != nil) // automation is now 'ui'
+        #expect(toolsByCategory[.application] != nil) // app is now 'application'
+        #expect(toolsByCategory[.dialog] != nil) // menu is now part of 'dialog'
         #expect(toolsByCategory[.system] != nil)
 
         // Verify tools are in correct categories
@@ -83,7 +83,7 @@ struct ToolRegistryTests {
             // screenshot is now part of 'see' tool
         }
 
-        if let automationTools = toolsByCategory[.ui] {  // automation is now 'ui'
+        if let automationTools = toolsByCategory[.ui] { // automation is now 'ui'
             let automationToolNames = automationTools.map(\.name)
             #expect(automationToolNames.contains("click"))
             #expect(automationToolNames.contains("type"))
@@ -100,11 +100,11 @@ struct ToolRegistryTests {
         }
 
         // Check specific icons
-        #expect(ToolCategory.vision.icon == "👁️")
+        #expect(ToolCategory.vision.icon == "[see]️")
         #expect(ToolCategory.automation.icon == "🤖")
-        #expect(ToolCategory.window.icon == "🪟")
-        #expect(ToolCategory.app.icon == "📱")
-        #expect(ToolCategory.menu.icon == "📋")
+        #expect(ToolCategory.window.icon == "[win]")
+        #expect(ToolCategory.app.icon == "[apps]")
+        #expect(ToolCategory.menu.icon == "[menu]")
         #expect(ToolCategory.system.icon == "⚙️")
         #expect(ToolCategory.element.icon == "🔍")
     }
