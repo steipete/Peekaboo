@@ -1,5 +1,7 @@
 import Foundation
 import MCP
+import OrderedCollections
+import PeekabooExternalDependencies
 import os.log
 import TachikomaMCP
 
@@ -109,15 +111,14 @@ public final class MCPToolRegistry {
         let nativeTools = Array(tools.values)
 
         // Organize external tools by server
-        var externalByServer: [String: [MCPTool]] = [:]
-        for tool in self.externalTools.values {
-            if let externalTool = tool as? ExternalMCPTool {
-                let serverName = externalTool.serverName
-                if externalByServer[serverName] == nil {
-                    externalByServer[serverName] = []
-                }
-                externalByServer[serverName]?.append(tool)
-            }
+        let groupedByServer = Dictionary(grouping: self.externalTools.values.compactMap { $0 as? ExternalMCPTool }) {
+            $0.serverName
+        }
+
+        var externalByServer = OrderedDictionary<String, [MCPTool]>()
+        for serverName in groupedByServer.keys.sorted() {
+            let toolsForServer = groupedByServer[serverName]?.sorted { $0.name < $1.name } ?? []
+            externalByServer[serverName] = toolsForServer.map { $0 as MCPTool }
         }
 
         return CategorizedTools(native: nativeTools, external: externalByServer)

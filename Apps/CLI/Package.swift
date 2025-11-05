@@ -66,7 +66,7 @@ let package = Package(
             targets: ["peekaboo"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.10.2"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
         .package(path: "../../Core/PeekabooFoundation"),

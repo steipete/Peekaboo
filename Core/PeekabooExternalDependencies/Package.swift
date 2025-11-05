@@ -15,10 +15,11 @@ let package = Package(
     dependencies: [
         // External dependencies centralized here
         .package(path: "../AXorcist"),
-        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
+        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.4"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
         .package(url: "https://github.com/apple/swift-log", from: "1.5.3"),
-        .package(url: "https://github.com/apple/swift-system", from: "1.3.0"),
+        .package(url: "https://github.com/apple/swift-system", from: "1.6.3"),
+        .package(url: "https://github.com/apple/swift-collections", from: "1.3.0"),
     ],
     targets: [
         .target(
@@ -29,6 +30,7 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "SystemPackage", package: "swift-system"),
+                .product(name: "OrderedCollections", package: "swift-collections"),
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency"),

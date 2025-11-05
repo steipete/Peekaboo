@@ -11,15 +11,17 @@
 @_exported import AXorcist
 @_exported import Logging
 @_exported import SystemPackage
+@_exported import OrderedCollections
 
 // MARK: - Dependency Version Info
 
 public enum DependencyInfo {
     public static let axorcistVersion = "main"
-    public static let asyncAlgorithmsVersion = "1.0.0"
-    public static let argumentParserVersion = "1.3.0"
+    public static let asyncAlgorithmsVersion = "1.0.4"
+    public static let argumentParserVersion = "1.6.2"
     public static let swiftLogVersion = "1.5.3"
-    public static let swiftSystemVersion = "1.3.0"
+    public static let swiftSystemVersion = "1.6.3"
+    public static let orderedCollectionsVersion = "1.3.0"
 
     public static var allDependencies: [String: String] {
         [
@@ -28,6 +30,7 @@ public enum DependencyInfo {
             "ArgumentParser": argumentParserVersion,
             "SwiftLog": swiftLogVersion,
             "SwiftSystem": swiftSystemVersion,
+            "OrderedCollections": orderedCollectionsVersion,
         ]
     }
 }

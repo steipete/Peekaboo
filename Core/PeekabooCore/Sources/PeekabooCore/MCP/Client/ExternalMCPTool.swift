@@ -1,5 +1,7 @@
 import Foundation
 import MCP
+import OrderedCollections
+import PeekabooExternalDependencies
 import os.log
 import TachikomaMCP
 
@@ -68,11 +70,16 @@ public enum ToolSource: Sendable {
 /// Categorized tools for display purposes
 public struct CategorizedTools: Sendable {
     public let native: [MCPTool]
-    public let external: [String: [MCPTool]]
+    public let external: OrderedDictionary<String, [MCPTool]>
 
-    public init(native: [MCPTool], external: [String: [MCPTool]]) {
+    public init(native: [MCPTool], external: OrderedDictionary<String, [MCPTool]>) {
         self.native = native
         self.external = external
+    }
+
+    public init(native: [MCPTool], external: [String: [MCPTool]]) {
+        let ordered = OrderedDictionary(uniqueKeysWithValues: external.sorted { $0.key < $1.key })
+        self.init(native: native, external: ordered)
     }
 
     /// Get total count of all tools
@@ -176,7 +183,7 @@ public struct ToolOrganizer: Sendable {
     /// Apply filter to categorized tools
     public static func filter(_ tools: CategorizedTools, with filter: ToolFilter) -> CategorizedTools {
         var filteredNative: [MCPTool] = []
-        var filteredExternal: [String: [MCPTool]] = [:]
+        var filteredExternal = OrderedDictionary<String, [MCPTool]>()
 
         // Handle native tools
         if !filter.showMcpOnly {

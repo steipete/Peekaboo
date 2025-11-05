@@ -38,8 +38,8 @@ struct ToolsCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Include disabled servers in output")
     var includeDisabled = false
 
-    @Flag(name: .long, help: "Sort tools alphabetically (default: true)")
-    var sort = false
+    @Flag(name: .customLong("no-sort"), help: "Disable alphabetical sorting")
+    var noSort = false
 
     @Flag(name: .long, help: "Group external tools by server")
     var groupByServer = false
@@ -78,18 +78,11 @@ struct ToolsCommand: AsyncParsableCommand {
 
         await toolRegistry.register(nativeTools)
 
-        // Debug: Check if tools were registered
-        let allToolsCount = await toolRegistry.allTools().count
-        print("DEBUG: Registered \(nativeTools.count) native tools, registry now has \(allToolsCount) total tools")
-
         // Register external tools from client manager
         await toolRegistry.registerExternalTools(from: clientManager)
 
         // Get categorized tools
         let categorizedTools = await toolRegistry.getToolsBySource()
-        print(
-            "DEBUG: Categorized tools - Native: \(categorizedTools.native.count), External: \(categorizedTools.externalCount)"
-        )
 
         // Apply filtering
         let filter = ToolFilter(
@@ -100,14 +93,14 @@ struct ToolsCommand: AsyncParsableCommand {
         )
 
         let filteredTools = ToolOrganizer.filter(categorizedTools, with: filter)
-        let sortedTools = ToolOrganizer.sort(filteredTools, alphabetically: !self.sort) // sort flag inverts default
+        let sortedTools = ToolOrganizer.sort(filteredTools, alphabetically: !self.noSort)
 
         // Configure display options
         let displayOptions = ToolDisplayOptions(
             useServerPrefixes: true,
             groupByServer: groupByServer,
             showToolCount: !self.jsonOutput,
-            sortAlphabetically: !self.sort,
+            sortAlphabetically: !self.noSort,
             showDescription: self.verbose
         )
 
@@ -121,40 +114,62 @@ struct ToolsCommand: AsyncParsableCommand {
     // MARK: - JSON Output
 
     private func outputJSON(tools: CategorizedTools) throws {
-        var output: [String: Any] = [:]
-
-        // Native tools
-        output["native"] = tools.native.map { tool in
-            [
-                "name": tool.name,
-                "description": tool.description,
-                "source": "native"
-            ]
+        struct ToolInfo: Encodable {
+            let name: String
+            let description: String
+            let source: String
+            let server: String?
         }
 
-        // External tools
-        var externalOutput: [String: Any] = [:]
-        for (serverName, serverTools) in tools.external {
-            externalOutput[serverName] = serverTools.map { tool in
-                [
-                    "name": tool.name,
-                    "description": tool.description,
-                    "source": "external",
-                    "server": serverName
-                ]
-            }
+        struct ExternalTools: Encodable {
+            let server: String
+            let tools: [ToolInfo]
         }
-        output["external"] = externalOutput
 
-        // Summary
-        output["summary"] = [
-            "native_count": tools.native.count,
-            "external_count": tools.externalCount,
-            "external_servers": tools.external.count,
-            "total_count": tools.totalCount
-        ]
+        struct Summary: Encodable {
+            let nativeCount: Int
+            let externalCount: Int
+            let externalServers: Int
+            let totalCount: Int
+        }
 
-        let jsonData = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
+        struct Payload: Encodable {
+            let native: [ToolInfo]
+            let external: [ExternalTools]
+            let summary: Summary
+        }
+
+        let nativeTools = tools.native.map { tool in
+            ToolInfo(
+                name: tool.name,
+                description: tool.description,
+                source: "native",
+                server: nil)
+        }
+
+        let externalTools = tools.external.map { serverName, serverTools in
+            ExternalTools(
+                server: serverName,
+                tools: serverTools.map { tool in
+                    ToolInfo(
+                        name: tool.name,
+                        description: tool.description,
+                        source: "external",
+                        server: serverName)
+                })
+        }
+
+        let summary = Summary(
+            nativeCount: tools.native.count,
+            externalCount: tools.externalCount,
+            externalServers: tools.external.count,
+            totalCount: tools.totalCount)
+
+        let payload = Payload(native: nativeTools, external: externalTools, summary: summary)
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let jsonData = try encoder.encode(payload)
         if let jsonString = String(data: jsonData, encoding: .utf8) {
             print(jsonString)
         }
