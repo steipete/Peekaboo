@@ -150,6 +150,7 @@ struct CloseSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Resolve the target window, close it, and surface the outcome in JSON or text form.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -195,6 +196,7 @@ struct MinimizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFor
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Resolve the target window, minimize it to the Dock, and report the action.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -240,6 +242,7 @@ struct MaximizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFor
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Expand the resolved window to fill the available screen real estate and share the updated frame.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -300,6 +303,7 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Focus the targeted window, handling Space switches or relocation according to the provided options.
     func run() async throws {
         logger.debug("FocusSubcommand.run() called")
         Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -377,6 +381,7 @@ struct MoveSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Move the window to the absolute screen coordinates provided by the user.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -445,6 +450,7 @@ struct ResizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Resize the window to the supplied dimensions, preserving its origin.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -509,6 +515,7 @@ struct SetBoundsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFo
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Set both position and size for the window in a single operation, then confirm the new bounds.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -569,6 +576,7 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
     @Flag(name: .long, help: "Group windows by Space (virtual desktop)")
     var groupBySpace = false
 
+    /// List windows for the target application and optionally organize them by Space.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 

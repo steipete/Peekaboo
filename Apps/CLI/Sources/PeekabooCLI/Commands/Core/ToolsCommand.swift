@@ -45,6 +45,7 @@ struct ToolsCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Group external tools by server")
     var groupByServer = false
 
+    /// Gather native and external tool catalogs, apply CLI filters, then emit in the requested format.
     func run() async throws {
         let toolRegistry = await MCPToolRegistry()
         let clientManager = await TachikomaMCPClientManager.shared

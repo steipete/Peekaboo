@@ -86,6 +86,7 @@ struct CheckSubcommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
+    /// Collect the current permission state, emit formatted output, and exit non-zero if anything critical is missing.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -148,6 +149,7 @@ struct CheckSubcommand: AsyncParsableCommand {
         }
     }
 
+    /// Best-effort detection of whether screen recording is fully granted by probing CGWindowList visibility.
     private func checkCGWindowListAccess() -> Bool {
         guard let windowList = CGWindowListCopyWindowInfo(
             [.optionAll, .excludeDesktopElements],

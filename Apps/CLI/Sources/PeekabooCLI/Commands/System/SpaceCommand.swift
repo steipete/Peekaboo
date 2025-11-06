@@ -61,6 +61,7 @@ struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
     var jsonOutput = false
 
     @MainActor
+    /// Enumerate Spaces, optionally hydrate window membership, and render results in the requested format.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -160,6 +161,7 @@ struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Validate the requested Space index, switch to it, and report the outcome.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -227,6 +229,7 @@ struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Move the resolved window into the requested Space (or current Space) and optionally follow the move.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 

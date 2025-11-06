@@ -300,6 +300,7 @@ struct DialogCommand: AsyncParsableCommand {
         var jsonOutput = false
 
         @MainActor
+        /// Describe the active dialog by enumerating buttons, text fields, and static text.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 

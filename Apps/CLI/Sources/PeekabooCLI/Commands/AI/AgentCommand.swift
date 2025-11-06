@@ -535,6 +535,7 @@ struct AgentCommand: AsyncParsableCommand {
         return parsed
     }
 
+    /// Orchestrate a full agent run: configure UX, stream events, respect max steps, and support session resume.
     func executeTask(
         _ agentService: AgentServiceProtocol,
         task: String,
@@ -726,6 +727,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
 
+    /// Render the agent execution result using either JSON output or a rich CLI transcript.
     func displayResult(_ result: AgentExecutionResult) {
         if self.jsonOutput {
             let response = [

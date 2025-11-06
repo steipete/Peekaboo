@@ -94,6 +94,7 @@ private actor MCPClientConnection {
         self.logger = os.Logger(subsystem: "boo.peekaboo.mcp.client", category: name)
     }
 
+    /// Establish a fresh connection to the configured MCP server and cache its tools.
     func connect() async throws {
         guard self.config.enabled else {
             throw MCPClientError.serverDisabled
@@ -144,14 +145,14 @@ private actor MCPClientConnection {
         self.tools
     }
 
+    /// Execute a tool against the active MCP client after validating connectivity.
     func executeTool(name: String, arguments: ToolArguments) async throws -> ToolResponse {
         guard let client = self.client else {
             throw MCPClientError.notConnected
         }
 
         // Convert ToolArguments to dictionary for MCP client
-        let args: [String: Any] = [:]
-        // Note: This is a simplified conversion - may need to be expanded based on actual usage
+        let args = arguments.rawDictionary
 
         return try await client.executeTool(name: name, arguments: args)
     }

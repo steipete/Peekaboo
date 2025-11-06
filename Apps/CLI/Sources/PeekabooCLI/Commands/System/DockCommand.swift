@@ -254,6 +254,7 @@ struct DockCommand: AsyncParsableCommand {
         private var services: PeekabooServices { PeekabooServices.shared }
 
         @MainActor
+        /// Fetch Dock items via Peekaboo services and display them in JSON or a readable list.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 

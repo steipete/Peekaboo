@@ -136,6 +136,7 @@ extension MCPCommand {
         @Flag(name: .long, help: "Show verbose output including connection logs")
         var verbose = false
 
+        /// Initialize the MCP client manager, optionally probe server health, and render the chosen output format.
         func run() async throws {
             // Set verbose mode if requested
             if self.verbose {
@@ -223,6 +224,7 @@ extension MCPCommand {
             }
         }
 
+        /// Render the MCP server inventory and health probes as a JSON payload compatible with scripting use.
         private func outputJSON(serverNames: [String], healthResults: [String: MCPServerHealth]) async throws {
             var servers: [String: Any] = [:]
             var healthyCount = 0
@@ -328,6 +330,7 @@ extension MCPCommand {
             }
         }
 
+        /// Print a human-friendly table of server health, including highlights for defaults and connection state.
         private func outputFormatted(serverNames: [String], healthResults: [String: MCPServerHealth]) async {
             var healthyCount = 0
 
@@ -412,6 +415,7 @@ extension MCPCommand {
         @Argument(parsing: .remaining, help: "Command and arguments to run the MCP server")
         var command: [String] = []
 
+        /// Validate the provided command, persist the new server configuration, and immediately probe connectivity.
         func run() async throws {
             guard !self.command.isEmpty else {
                 Logger.shared.error("Command is required. Use -- to separate command from options.")
@@ -508,6 +512,7 @@ extension MCPCommand {
         @Flag(help: "Skip confirmation prompt")
         var force = false
 
+        /// Disconnect and delete the specified server configuration, prompting unless forced.
         func run() async throws {
             let clientManager = await MCPClientManager.shared
 
@@ -555,6 +560,7 @@ extension MCPCommand {
         @Flag(help: "Show available tools")
         var showTools = false
 
+        /// Probe a single MCP server, report its health, and optionally enumerate exposed tools.
         func run() async throws {
             let clientManager = await MCPClientManager.shared
 
@@ -590,6 +596,7 @@ extension MCPCommand {
         @Flag(name: .long, help: "Output in JSON format")
         var jsonOutput = false
 
+        /// Print configuration and live health details for the specified server in text or JSON form.
         func run() async throws {
             let clientManager = await MCPClientManager.shared
 

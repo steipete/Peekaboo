@@ -39,6 +39,7 @@ struct StatusSubcommand: AsyncParsableCommand {
         abstract: "Check current permission status"
     )
 
+    /// Summarize the current permission state for the agent-centric workflow.
     func run() async throws {
         // Reuse the existing permissions check logic
         let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
@@ -70,6 +71,7 @@ struct RequestScreenRecordingSubcommand: AsyncParsableCommand {
         abstract: "Trigger screen recording permission prompt"
     )
 
+    /// Trigger the screen recording permission prompt using the best available mechanism.
     func run() async throws {
         print("Requesting Screen Recording permission...")
         print("")
@@ -129,6 +131,7 @@ struct RequestAccessibilitySubcommand: AsyncParsableCommand {
         abstract: "Request accessibility permission"
     )
 
+    /// Prompt the user to grant accessibility permission and open the relevant System Settings pane.
     func run() async throws {
         print("Requesting Accessibility permission...")
         print("")

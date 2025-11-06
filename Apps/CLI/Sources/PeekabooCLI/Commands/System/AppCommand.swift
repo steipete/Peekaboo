@@ -64,6 +64,7 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        /// Resolve the requested app target, launch it, optionally wait until ready, and emit output.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
             Logger.shared.verbose("Launching application: \(self.app)")
@@ -194,6 +195,7 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        /// Resolve the targeted applications, issue quit or force-quit requests, and report results per app.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -315,6 +317,7 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        /// Hide the specified application and emit confirmation in either text or JSON form.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -365,6 +368,7 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        /// Unhide the target application and optionally re-activate its main window.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -428,6 +432,7 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        /// Switch focus either by cycling (Cmd+Tab) or by activating a specific application.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -511,6 +516,7 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        /// Enumerate running applications, apply filtering flags, and emit the chosen output representation.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -594,6 +600,7 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        /// Quit the target app, wait if requested, relaunch it, and report success metrics.
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 

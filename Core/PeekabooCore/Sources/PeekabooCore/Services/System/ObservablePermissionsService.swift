@@ -8,11 +8,17 @@ public protocol ObservablePermissionsServiceProtocol {
     var accessibilityStatus: ObservablePermissionsService.PermissionState { get }
     var appleScriptStatus: ObservablePermissionsService.PermissionState { get }
     var hasAllPermissions: Bool { get }
+    /// Refresh the cached permission states by querying the underlying services.
     func checkPermissions()
+    /// Trigger the screen recording permission prompt if needed.
     func requestScreenRecording() throws
+    /// Trigger the accessibility permission prompt if needed.
     func requestAccessibility() throws
+    /// Trigger the AppleScript permission prompt if needed.
     func requestAppleScript() throws
+    /// Begin periodic permission polling with the given interval.
     func startMonitoring(interval: TimeInterval)
+    /// Stop any in-flight monitoring timers.
     func stopMonitoring()
 }
 

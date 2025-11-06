@@ -117,6 +117,7 @@ ApplicationResolvablePositional {
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
+    /// Resolve the target application, retrieve its windows, and emit the requested output format.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -132,41 +133,9 @@ ApplicationResolvablePositional {
             let output = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier, timeout: nil)
 
             if self.jsonOutput {
-                // For JSON output, include window details if requested
-                if self.includeDetails != nil {
-                    // Parse include details options
-                    let detailOptions = self.parseIncludeDetails()
-
-                    // Create modified output with filtered window data
-                    let modifiedWindows = output.data.windows.map { window in
-                        // Create new window with filtered data
-                        ServiceWindowInfo(
-                            windowID: detailOptions.contains(.ids) ? window.windowID : 0,
-                            title: window.title,
-                            bounds: detailOptions.contains(.bounds) ? window.bounds : .zero,
-                            isMinimized: window.isMinimized,
-                            isMainWindow: window.isMainWindow,
-                            windowLevel: window.windowLevel,
-                            alpha: window.alpha,
-                            index: window.index,
-                            spaceID: window.spaceID,
-                            spaceName: window.spaceName
-                        )
-                    }
-
-                    let modifiedData = ServiceWindowListData(
-                        windows: modifiedWindows,
-                        targetApplication: output.data.targetApplication
-                    )
-                    let filteredOutput = UnifiedToolOutput(
-                        data: modifiedData,
-                        summary: output.summary,
-                        metadata: output.metadata
-                    )
-                    try print(filteredOutput.toJSON())
-                } else {
-                    try print(output.toJSON())
-                }
+                let detailOptions = self.includeDetails.map { self.parseIncludeDetails() } ?? []
+                let payload = try self.renderJSON(from: output, detailOptions: detailOptions)
+                print(payload)
             } else {
                 // Use CLIFormatter for human-readable output
                 print(CLIFormatter.format(output))
@@ -180,6 +149,7 @@ ApplicationResolvablePositional {
 
     // Error handling is provided by ErrorHandlingCommand protocol
 
+    /// Parse the `--include-details` flag into a normalized option set.
     private func parseIncludeDetails() -> Set<WindowDetailOption> {
         guard let detailsString = includeDetails else {
             return []
@@ -195,6 +165,56 @@ ApplicationResolvablePositional {
         }
 
         return options
+    }
+
+    /// Produce the JSON payload, redacting heavy fields unless explicitly requested.
+    private func renderJSON(
+        from output: UnifiedToolOutput<ServiceWindowListData>,
+        detailOptions: Set<WindowDetailOption>
+    ) throws -> String {
+        guard !detailOptions.isEmpty else {
+            return try output.toJSON()
+        }
+
+        struct FilteredWindowListData: Codable {
+            struct Window: Codable {
+                let index: Int
+                let title: String
+                let isMinimized: Bool
+                let isMainWindow: Bool
+                let windowID: Int?
+                let bounds: CGRect?
+                let offScreen: Bool?
+                let spaceID: UInt64?
+                let spaceName: String?
+            }
+
+            let windows: [Window]
+            let targetApplication: ServiceApplicationInfo?
+        }
+
+        let windows = output.data.windows.map { window in
+            FilteredWindowListData.Window(
+                index: window.index,
+                title: window.title,
+                isMinimized: window.isMinimized,
+                isMainWindow: window.isMainWindow,
+                windowID: detailOptions.contains(.ids) ? window.windowID : nil,
+                bounds: detailOptions.contains(.bounds) ? window.bounds : nil,
+                offScreen: detailOptions.contains(.off_screen) ? window.isOffScreen : nil,
+                spaceID: window.spaceID,
+                spaceName: window.spaceName
+            )
+        }
+
+        let filteredOutput = UnifiedToolOutput(
+            data: FilteredWindowListData(
+                windows: windows,
+                targetApplication: output.data.targetApplication),
+            summary: output.summary,
+            metadata: output.metadata)
+
+        return try filteredOutput.toJSON()
     }
 }
 
@@ -218,6 +238,7 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
+    /// Summarize the current permission state and present detailed guidance when anything is missing.
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -307,6 +328,7 @@ struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
+    /// Collect menu bar extras and print either a JSON payload or detailed textual breakdown.
     mutating func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -389,6 +411,7 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
     var jsonOutput = false
 
     @MainActor
+    /// Enumerate the connected displays and present a normalized data set (plus highlights for the primary screen).
     mutating func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 

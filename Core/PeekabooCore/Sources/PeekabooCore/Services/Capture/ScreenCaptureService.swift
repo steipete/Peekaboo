@@ -842,6 +842,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         }
     }
 
+    /// Suspend until the next captured frame arrives, throwing if the stream stalls.
     func waitForImage() async throws -> CGImage {
         try await withCheckedThrowingContinuation { continuation in
             self.queue.async(flags: .barrier) {
@@ -866,6 +867,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         }
     }
 
+    /// Feed new screen samples into the pending continuation, delivering captured frames.
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .screen else { return }
 

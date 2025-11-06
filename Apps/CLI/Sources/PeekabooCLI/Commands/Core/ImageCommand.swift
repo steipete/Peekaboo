@@ -93,6 +93,7 @@ ApplicationResolvable {
     @Flag(name: .shortAndLong, help: "Enable verbose logging for detailed output")
     var verbose = false
 
+    /// Validate permissions, capture the requested imagery, optionally run AI analysis, then render output.
     func run() async throws {
         configureVerboseLogging()
         Logger.shared.setJsonOutputMode(self.jsonOutput)
