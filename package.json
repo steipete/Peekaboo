@@ -16,6 +16,7 @@
     "build": "pnpm run build:cli",
     "test:safe": "cd Apps/CLI && swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION",
     "test:automation": "cd Apps/CLI && PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift test",
+    "test:automation:read": "bash -lc 'cd Apps/CLI && RUN_AUTOMATION_READ=true swift test'",
     "test:automation:local": "bash -lc 'cd Apps/CLI && BIN_PATH=$(swift build --show-bin-path) && RUN_LOCAL_TESTS=true PEEKABOO_INCLUDE_AUTOMATION_TESTS=true PEEKABOO_CLI_PATH=\"$BIN_PATH/peekaboo\" swift test'",
     "test:all": "bash -lc 'set -euo pipefail; cd Apps/CLI && swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION && PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift test'",
     "test": "pnpm run test:safe",

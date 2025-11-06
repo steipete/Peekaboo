@@ -36,7 +36,17 @@ Hints:
 - With Swift 6.2 / Swift Testing we had to enable the feature in `Package.swift` via `.enableExperimentalFeature("SwiftTesting")`. Without that, the remote build dies with `no such module 'Testing'`.
 - If you want a log, send output to a file (`… > /tmp/peekaboo-safe.log`).
 
-### 4. Running the Full Automation Suite
+### 4. Running read-only automation checks
+
+To exercise commands that only query system state (help text, listing apps/spaces, JSON output validation) without triggering UI changes, run:
+
+```bash
+pnpm run test:automation:read
+```
+
+This sets `RUN_AUTOMATION_READ=true` and executes the automation target. Tests that would click, drag, or launch apps are skipped.
+
+### 5. Running the Full Automation Suite
 
 If you just want the CLI automation target (without local UI interaction), the existing script still works:
 
@@ -63,13 +73,13 @@ Warnings & learnings:
 - Running inside tmux (`brew install tmux`) is recommended so a frozen SSH session doesn’t kill the run.
 - Grant Accessibility/Screen Recording before launching the script; otherwise macOS silently denies UI automation.
 
-### 5. Diagnosing the Remote Environment
+### 6. Diagnosing the Remote Environment
 
 - `xcode-select -p` confirms which command line tools SwiftPM uses.
 - `swift --version` prints the Swift toolchain (currently Swift 6.2.1 on the VM).
 - If you need a visual check, Peekaboo can ironically be pointed at the VirtualBuddy UI to screenshot status dialogs.
 
-### 6. Known Issues & Follow-up
+### 7. Known Issues & Follow-up
 
 - **Automation freeze**: investigate why `swift test` stalls during automation runs in VirtualBuddy (possibly accessibility permissions or long-running UI automation).
 - **Tooling gaps**: install tmux, pnpm, and poltergeist services on the VM for parity with the Mac Studio workflow.
