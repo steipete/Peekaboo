@@ -529,11 +529,9 @@ public final class DialogService: DialogServiceProtocol {
     }
 
     @MainActor
-    // Walk the accessibility hierarchy to gather every text input element.
     private func collectTextFields(from element: Element) -> [Element] {
         var fields: [Element] = []
 
-        // Recursively traverse the element tree accumulating text inputs.
         func collectFields(from el: Element) {
             if el.role() == "AXTextField" || el.role() == "AXTextArea" {
                 fields.append(el)
@@ -551,7 +549,6 @@ public final class DialogService: DialogServiceProtocol {
     }
 
     @MainActor
-    // Translate the supplied character into its key code and modifier tuple before dispatching synthesised events.
     private func typeCharacter(_ char: Character) throws {
         // Extended key mapping
         let keyMap: [Character: (CGKeyCode, Bool)] = [

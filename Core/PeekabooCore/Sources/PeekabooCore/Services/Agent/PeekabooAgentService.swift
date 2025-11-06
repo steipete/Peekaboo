@@ -14,12 +14,10 @@ import TachikomaMCP
 final class StreamingEventDelegate: @unchecked Sendable, AgentEventDelegate {
     let onChunk: @MainActor @Sendable (String) async -> Void
 
-    // Store the async callback used to forward streaming agent output.
     init(onChunk: @MainActor @escaping @Sendable (String) async -> Void) {
         self.onChunk = onChunk
     }
 
-    // Forward every emitted agent event into the provided streaming callback.
     func agentDidEmitEvent(_ event: AgentEvent) {
         // Extract content from different event types and schedule async work
         Task { @MainActor in
@@ -518,12 +516,10 @@ extension PeekabooAgentService {
 private actor EventHandler {
     private let handler: @Sendable (AgentEvent) async -> Void
 
-    // Capture the async event handler so we can relay events off the main actor.
     init(handler: @escaping @Sendable (AgentEvent) async -> Void) {
         self.handler = handler
     }
 
-    // Forward events to the supplied handler while preserving actor isolation.
     func send(_ event: AgentEvent) async {
         await self.handler(event)
     }

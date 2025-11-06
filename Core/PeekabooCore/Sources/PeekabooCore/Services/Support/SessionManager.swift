@@ -499,7 +499,6 @@ private actor SessionStorageActor {
         // JSONCoding.encoder already has pretty printing and sorted keys configured
     }
 
-    // Persist the supplied automation session to disk for later reuse.
     func saveSession(sessionId: String, data: UIAutomationSession, at sessionPath: URL) throws {
         // Ensure the session directory exists
         try FileManager.default.createDirectory(at: sessionPath, withIntermediateDirectories: true)
@@ -511,7 +510,6 @@ private actor SessionStorageActor {
         try jsonData.write(to: sessionFile, options: .atomic)
     }
 
-    // Restore a persisted automation session while gracefully handling incompatible snapshots.
     func loadSession(sessionId: String, from sessionPath: URL) -> UIAutomationSession? {
         let sessionFile = sessionPath.appendingPathComponent("map.json")
 

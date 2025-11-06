@@ -4,17 +4,14 @@ import Foundation
 public class JSONOutput {
     private var debugLogs: [String] = []
 
-    // Append a diagnostic message to the buffered debug log list.
     func addDebugLog(_ message: String) {
         self.debugLogs.append(message)
     }
 
-    // Return the collected debug log messages in insertion order.
     func getDebugLogs() -> [String] {
         self.debugLogs
     }
 
-    // Remove all buffered debug log messages.
     func clearDebugLogs() {
         self.debugLogs.removeAll()
     }
@@ -101,7 +98,6 @@ enum ErrorCode: String, Codable {
     case INVALID_INPUT
 }
 
-// Serialize the legacy JSONResponse type and print it, falling back to an error payload on failure.
 func outputJSON(_ response: JSONResponse) {
     do {
         let encoder = JSONEncoder()
@@ -126,7 +122,6 @@ func outputJSON(_ response: JSONResponse) {
     }
 }
 
-// Emit a success response encoded via Codable while capturing current debug logs.
 func outputSuccessCodable(data: some Codable, messages: [String]? = nil) {
     let debugLogs = Logger.shared.getDebugLogs()
     let response = CodableJSONResponse(
@@ -135,7 +130,6 @@ func outputSuccessCodable(data: some Codable, messages: [String]? = nil) {
     outputJSONCodable(response)
 }
 
-// Encode any Codable response into pretty-printed JSON and print it to stdout.
 func outputJSONCodable(_ response: some Codable) {
     do {
         let encoder = JSONEncoder()
@@ -173,7 +167,6 @@ struct CodableJSONResponse<T: Codable>: Codable {
     let debug_logs: [String]
 }
 
-// Construct a standardized error payload and print it via the legacy JSON formatter.
 func outputError(message: String, code: ErrorCode, details: String? = nil) {
     let error = ErrorInfo(message: message, code: code, details: details)
     let debugLogs = Logger.shared.getDebugLogs()

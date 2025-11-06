@@ -170,7 +170,6 @@ public final class ElementDetectionService {
 
         // Process UI elements recursively
         func processElement(_ element: Element, parentId: String? = nil, depth: Int = 0) {
-            // Traverse the accessibility tree while building a normalized element record.
             guard depth < 20 else { return }
 
             // Get element properties

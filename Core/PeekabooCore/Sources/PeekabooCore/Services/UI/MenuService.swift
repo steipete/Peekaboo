@@ -651,7 +651,6 @@ public final class MenuService: MenuServiceProtocol {
 
 extension Element {
     @MainActor
-    // Expose the menu bar accessibility element wrapped in AXorcist's Element type.
     func menuBar() -> Element? {
         // Resolve the root menu bar element if the attribute is available.
         guard let menuBar = attribute(Attribute<AXUIElement>("AXMenuBar")) else {
@@ -661,7 +660,6 @@ extension Element {
     }
 
     @MainActor
-    // Provide the system-wide accessibility entry point for menu interactions.
     static func systemWide() -> Element {
         // Return the shared system-wide accessibility element for menu interactions.
         Element(AXUIElementCreateSystemWide())

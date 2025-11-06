@@ -155,7 +155,6 @@ extension TypedValue {
             self.value = value
         }
 
-        // Encode the wrapped value using the underlying Encodable implementation.
         func encode(to encoder: Encoder) throws {
             try self.value.encode(to: encoder)
         }
@@ -167,7 +166,6 @@ extension TypedValue {
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
 extension TypedValue {
     /// Check if the value matches a specific type
-    // Determine whether this value can be represented as the supplied runtime type.
     public func matches(_ type: (some Any).Type) -> Bool {
         switch self {
         case .bool where type == Bool.self:
@@ -190,7 +188,6 @@ extension TypedValue {
     }
 
     /// Try to cast the value to a specific type
-    // Attempt to convert the stored value into the requested generic type.
     public func cast<T>(to type: T.Type) -> T? {
         switch self {
         case let .bool(v) where type == Bool.self:

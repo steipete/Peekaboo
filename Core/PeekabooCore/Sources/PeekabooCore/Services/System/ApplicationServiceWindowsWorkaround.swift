@@ -5,7 +5,6 @@ import Foundation
 extension ApplicationService {
     /// Alternative window listing using CGWindowList API which doesn't hang
     @MainActor
-    // Enumerate and normalize window metadata using the CGWindowList API for reliability.
     func listWindowsUsingCGWindowList(for appIdentifier: String) async throws
     -> UnifiedToolOutput<ServiceWindowListData> {
         let startTime = Date()

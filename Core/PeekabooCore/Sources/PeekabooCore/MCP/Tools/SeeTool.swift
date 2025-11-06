@@ -449,27 +449,23 @@ actor UISession {
     private(set) var createdAt: Date
     private(set) var lastAccessedAt: Date
 
-    // Initialize a fresh session identifier and timestamps for tracking.
     init() {
         self.id = UUID().uuidString
         self.createdAt = Date()
         self.lastAccessedAt = Date()
     }
 
-    // Record the latest screenshot and associated metadata for the session.
     func setScreenshot(path: String, metadata: CaptureMetadata) {
         self.screenshotPath = path
         self.screenshotMetadata = metadata
         self.lastAccessedAt = Date()
     }
 
-    // Replace the cached UI elements while bumping the last accessed time.
     func setUIElements(_ elements: [UIElement]) {
         self.uiElements = elements
         self.lastAccessedAt = Date()
     }
 
-    // Look up the previously captured UI element by its stable identifier.
     func getElement(byId id: String) -> UIElement? {
         self.uiElements.first { $0.id == id }
     }
@@ -482,24 +478,20 @@ actor UISessionManager {
 
     private init() {}
 
-    // Create and store a brand-new UISession for subsequent lookups.
     func createSession() -> UISession {
         let session = UISession()
         self.sessions[session.id] = session
         return session
     }
 
-    // Retrieve a session matching the provided identifier if it exists.
     func getSession(id: String) -> UISession? {
         self.sessions[id]
     }
 
-    // Drop the session from the in-memory cache when it is no longer needed.
     func removeSession(id: String) {
         self.sessions.removeValue(forKey: id)
     }
 
-    // Purge sessions whose last access timestamp predates the cutoff window.
     func cleanupOldSessions(olderThan timeInterval: TimeInterval = 3600) async {
         let cutoffDate = Date().addingTimeInterval(-timeInterval)
         var newSessions: [String: UISession] = [:]

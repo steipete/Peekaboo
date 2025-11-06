@@ -88,14 +88,12 @@ private actor MCPClientConnection {
     private var lastConnected: Date?
     private let logger: os.Logger
 
-    // Capture the remote configuration details and bootstrap a scoped logger.
     init(name: String, config: MCPServerConfig) {
         self.name = name
         self.config = config
         self.logger = os.Logger(subsystem: "boo.peekaboo.mcp.client", category: name)
     }
 
-    // Establish a fresh MCP connection and cache the resolved tool metadata.
     func connect() async throws {
         guard self.config.enabled else {
             throw MCPClientError.serverDisabled
@@ -129,7 +127,6 @@ private actor MCPClientConnection {
         self.logger.info("Connected to MCP server '\(self.name)' with \(self.tools.count) tools")
     }
 
-    // Cleanly shut down the MCP connection and reset local caches.
     func disconnect() async {
         if let client = self.client {
             await client.disconnect()
@@ -139,17 +136,14 @@ private actor MCPClientConnection {
         self.tools = []
     }
 
-    // Report whether a live MCP client instance is currently retained.
     func isConnected() -> Bool {
         self.client != nil
     }
 
-    // Surface the cached tool list for downstream consumers.
     func getTools() -> [Tool] {
         self.tools
     }
 
-    // Forward the invocation to the MCP server after confirming connectivity.
     func executeTool(name: String, arguments: ToolArguments) async throws -> ToolResponse {
         guard let client = self.client else {
             throw MCPClientError.notConnected

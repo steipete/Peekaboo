@@ -125,7 +125,6 @@ public enum RecoveryAction: Sendable {
 
 /// Protocol for error recovery strategies
 public protocol ErrorRecoveryStrategy: Sendable {
-    // Determine the appropriate recovery action for the provided standardized error.
     func suggestRecovery(for error: StandardizedError) -> RecoveryAction?
 }
 
@@ -133,7 +132,6 @@ public protocol ErrorRecoveryStrategy: Sendable {
 public struct DefaultRecoveryStrategy: ErrorRecoveryStrategy {
     public init() {}
 
-    // Map well-known standardized errors into higher level recovery actions.
     public func suggestRecovery(for error: StandardizedError) -> RecoveryAction? {
         switch error.code {
         case .screenRecordingPermissionDenied:

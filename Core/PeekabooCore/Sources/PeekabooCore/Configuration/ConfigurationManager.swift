@@ -5,7 +5,6 @@ import Configuration
 
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, *)
 private struct IdentityKeyDecoder: ConfigKeyDecoder {
-    // Decode a raw configuration key string into a structured ConfigKey while preserving context.
     func decode(_ string: String, context: [String: ConfigContextValue]) -> ConfigKey {
         ConfigKey([string], context: context)
     }
