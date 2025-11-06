@@ -62,7 +62,7 @@ struct SeeCommandAnnotationTests {
         // 3. Capture proceeds without annotation
         // 4. No annotated file is created
 
-        #expect(true) // This is a behavioral test documented here
+        #expect(Bool(true)) // Documentation-only test; use Bool(true) to avoid warning
     }
 
     @Test("Coordinate system conversion for NSGraphicsContext")
@@ -156,7 +156,7 @@ struct SeeCommandAnnotationTests {
         // This test verifies the window context is properly used in detection
         // In actual implementation, this would be tested with a mock service
 
-        let imageData = Data() // Mock image data
+        let imageData = Data(repeating: 0xAB, count: 4)
         let sessionId = "test-session-123"
         let appName = "Safari"
         let windowTitle = "Start Page"
@@ -170,6 +170,38 @@ struct SeeCommandAnnotationTests {
             warnings: []
         )
 
+        let applicationInfo = ServiceApplicationInfo(
+            processIdentifier: 1234,
+            bundleIdentifier: "com.apple.Safari",
+            name: appName,
+            bundlePath: "/Applications/Safari.app",
+            isActive: true,
+            isHidden: false,
+            windowCount: 1
+        )
+
+        let windowInfo = ServiceWindowInfo(
+            windowID: 42,
+            title: windowTitle,
+            bounds: windowBounds,
+            isMinimized: false,
+            isMainWindow: true
+        )
+
+        let captureMetadata = CaptureMetadata(
+            size: windowBounds.size,
+            mode: .window,
+            applicationInfo: applicationInfo,
+            windowInfo: windowInfo,
+            displayInfo: nil,
+            timestamp: Date(timeIntervalSince1970: 0)
+        )
+
+        let captureResult = CaptureResult(
+            imageData: imageData,
+            metadata: captureMetadata
+        )
+
         // Verify the metadata is properly created
         #expect(metadata.detectionTime == 0.5)
         #expect(metadata.elementCount == 10)
@@ -177,6 +209,30 @@ struct SeeCommandAnnotationTests {
 
         // In actual usage, window context would be available from CaptureMetadata
         // which is passed separately to annotation functions
+        #expect(captureResult.imageData == imageData)
+        #expect(captureResult.metadata.applicationInfo?.name == appName)
+        #expect(captureResult.metadata.windowInfo?.bounds == windowBounds)
+
+        let seeResult = SeeResult(
+            session_id: sessionId,
+            screenshot_raw: "raw.png",
+            screenshot_annotated: "raw_annotated.png",
+            ui_map: "map.json",
+            application_name: appName,
+            window_title: windowTitle,
+            is_dialog: false,
+            element_count: metadata.elementCount,
+            interactable_count: metadata.elementCount,
+            capture_mode: captureMetadata.mode.rawValue,
+            analysis: nil,
+            execution_time: metadata.detectionTime,
+            ui_elements: [],
+            menu_bar: nil
+        )
+
+        #expect(seeResult.session_id == sessionId)
+        #expect(seeResult.application_name == appName)
+        #expect(seeResult.window_title == windowTitle)
     }
 
     @Test("Annotation excludes disabled elements")
