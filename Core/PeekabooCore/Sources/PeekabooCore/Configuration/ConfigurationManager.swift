@@ -1,4 +1,15 @@
 import Foundation
+
+#if canImport(Configuration)
+import Configuration
+
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, *)
+private struct IdentityKeyDecoder: ConfigKeyDecoder {
+    func decode(_ string: String, context: [String: ConfigContextValue]) -> ConfigKey {
+        ConfigKey([string], context: context)
+    }
+}
+#endif
 import PeekabooFoundation
 import Tachikoma
 import TachikomaMCP
@@ -49,6 +60,26 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Cached credentials
     private var credentials: [String: String] = [:]
+
+#if canImport(Configuration)
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, *)
+    private static var environmentReader: ConfigReader {
+        struct Holder {
+            static let reader = ConfigReader(
+                keyDecoder: IdentityKeyDecoder(),
+                provider: EnvironmentVariablesProvider(
+                    secretsSpecifier: .dynamic { key, _ in
+                        let lowercased = key.lowercased()
+                        return lowercased.contains("key") ||
+                            lowercased.contains("token") ||
+                            lowercased.contains("secret")
+                    }
+                )
+            )
+        }
+        return Holder.reader
+    }
+#endif
 
     private init() {
         // Load configuration on init, but don't crash if it fails
@@ -360,7 +391,7 @@ public final class ConfigurationManager: @unchecked Sendable {
                 let varNameRange = match.range(at: 1)
                 if let swiftRange = Range(varNameRange, in: text) {
                     let varName = String(text[swiftRange])
-                    if let value = ProcessInfo.processInfo.environment[varName],
+                    if let value = self.environmentValue(for: varName),
                        let fullMatch = Range(match.range, in: text)
                     {
                         result.replaceSubrange(fullMatch, with: value)
@@ -388,7 +419,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
         // Environment variable takes second precedence
         if let envVar,
-           let envValue = ProcessInfo.processInfo.environment[envVar]
+           let envValue = self.environmentValue(for: envVar)
         {
             // Try to convert string to the expected type
             if T.self == String.self {
@@ -428,7 +459,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Get OpenAI API key with proper precedence
     public func getOpenAIAPIKey() -> String? {
         // 1. Environment variable (highest priority)
-        if let envValue = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
+        if let envValue = self.environmentValue(for: "OPENAI_API_KEY", isSecret: true) {
             return envValue
         }
 
@@ -448,7 +479,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Get Anthropic API key with proper precedence
     public func getAnthropicAPIKey() -> String? {
         // 1. Environment variable (highest priority)
-        if let envValue = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
+        if let envValue = self.environmentValue(for: "ANTHROPIC_API_KEY", isSecret: true) {
             return envValue
         }
 
@@ -850,7 +881,7 @@ public final class ConfigurationManager: @unchecked Sendable {
             let varName = String(reference.dropFirst(5).dropLast(1))
 
             // Try environment variable first
-            if let envValue = ProcessInfo.processInfo.environment[varName] {
+            if let envValue = self.environmentValue(for: varName) {
                 return envValue
             }
 
@@ -983,5 +1014,14 @@ public final class ConfigurationManager: @unchecked Sendable {
         } catch {
             return ([], "Failed to parse models response: \(error.localizedDescription)")
         }
+    }
+
+    private func environmentValue(for key: String, isSecret: Bool = false) -> String? {
+#if canImport(Configuration)
+        if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, *) {
+            return Self.environmentReader.string(forKey: key, isSecret: isSecret)
+        }
+#endif
+        return ProcessInfo.processInfo.environment[key]
     }
 }
