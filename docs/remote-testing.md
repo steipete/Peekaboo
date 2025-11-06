@@ -13,7 +13,6 @@ This document captures the current workflow for running Peekaboo’s SwiftPM tes
   ```
 - **Homebrew (optional)**: installed via `curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | /bin/bash` so we can add tooling later (tmux, pnpm, etc.).
 - **Privacy permissions**: macOS only surfaces Accessibility / Screen Recording prompts in the GUI session. If you skip this step when driving tests over SSH, the CLI is denied access and the suite hangs. See [Granting privacy permissions](#granting-privacy-permissions-required-for-automation).
-- **Privacy permissions**: macOS only shows Accessibility / Screen Recording prompts in the foreground GUI session. If you run the tests over SSH before granting them, the prompts never appear and the CLI hangs. See *Granting privacy permissions* below.
 
 ### 2. Sync the Repository
 
@@ -75,6 +74,7 @@ Warnings & learnings:
 - **Automation freeze**: investigate why `swift test` stalls during automation runs in VirtualBuddy (possibly accessibility permissions or long-running UI automation).
 - **Tooling gaps**: install tmux, pnpm, and poltergeist services on the VM for parity with the Mac Studio workflow.
 - **Logs**: standardize capturing test output under `/tmp/peekaboo-*.log` so multiple operators can review results.
+- **Risky suites**: see the table below—anything marked *High* should only run on a disposable VM snapshot.
 
 ### Quick Checklist
 
@@ -92,23 +92,6 @@ Following this flow we successfully ran the non-automation tests remotely; autom
 macOS’ Transparency, Consent, and Control (TCC) framework **never** displays prompts to headless sessions. Launching automation over SSH without first approving the binaries leads to immediate hangs because helper processes (e.g. `swift-run peekaboo …`) are denied Accessibility / Screen Recording access. Fix:
 
 1. Connect via Screen Sharing or VirtualBuddy and log in as the test user.
-2. Open **System Settings → Privacy & Security** and visit **Accessibility**, **Screen Recording**, and **Automation** (optionally **Full Disk Access**).
-3. Add and enable these executables (update paths if SwiftPM rebuilds into a new folder):
-   ```
-   ~/Projects/peekaboo/Apps/CLI/.build/arm64-apple-macosx/debug/peekaboo
-   ~/Projects/peekaboo/Apps/CLI/.build/arm64-apple-macosx/debug/peekabooPackageTests.xctest/Contents/MacOS/peekabooPackageTests
-   /Applications/Xcode.app/Contents/Developer/usr/bin/swift
-   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift
-   ```
-4. Relaunch the automation suite; prompts will not reappear once these are approved.
-
-> There is no supported way to approve these prompts purely over SSH. If GUI access is impossible, pre-approve via an MDM/PPPC payload or script the System Settings UI while logged in locally.
-
-### Granting privacy permissions (required for automation)
-
-macOS’ Transparency, Consent, and Control (TCC) framework **never** displays prompts to headless sessions. Launching the automation suite over SSH without first approving the binaries leads to immediate hangs because helper processes (e.g. `swift-run peekaboo …`) are denied Accessibility / Screen Recording access. The fix must be performed in the VM’s GUI:
-
-1. Connect via Screen Sharing or VirtualBuddy and log in as the test user.
 2. Open **System Settings → Privacy & Security** and visit **Accessibility**, **Screen Recording**, and **Automation** (optionally **Full Disk Access** if needed).
 3. Add and enable these executables (update paths if SwiftPM rebuilds into a new folder):
    ```
@@ -117,6 +100,24 @@ macOS’ Transparency, Consent, and Control (TCC) framework **never** displays p
    /Applications/Xcode.app/Contents/Developer/usr/bin/swift
    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift
    ```
-4. Relaunch the automation suite from SSH once the checkboxes are enabled; no prompts will reappear.
+4. Relaunch the automation suite (from SSH or local Terminal); no prompts reappear once these executables are approved.
 
-> There is no supported way to approve these prompts over plain SSH. If GUI access is impossible, pre-approve the binaries via an MDM/PPPC profile or script the System Settings UI inside a logged-in session.
+> There is no supported way to approve these prompts purely over SSH. If GUI access is impossible, pre-approve via an MDM/PPPC profile or script the System Settings UI while logged in locally.
+
+### Automation suite risk map
+
+| Suite (file) | Env gate | UI/system impact | Risk |
+|--------------|----------|------------------|------|
+| `AgentIntegrationTests.swift` | `RUN_AGENT_TESTS=true` + LLM API key | Launches TextEdit/Safari, types, minimizes windows | **High** |
+| `AgentMenuTests.swift` | `RUN_LOCAL_TESTS=true` + LLM API key | Launches Calculator/TextEdit, agent drives menus | **High** |
+| `AppCommandTests.swift` (integration section) | `RUN_LOCAL_TESTS=true` | Launch/quit/hide/show TextEdit (with `--save-changes`) | **High** |
+| `DragCommandTests.swift` (integration section) | `RUN_LOCAL_TESTS=true` | Real drag gestures, can drop to Trash | **High** |
+| `FocusIntegrationTests.swift`, `ClickCommandFocusTests.swift` | `RUN_LOCAL_TESTS=true` | Generates mouse/keyboard events to focus Finder/TextEdit | **High** |
+| `MenuCommandTests.swift` (integration) | `RUN_LOCAL_TESTS=true` | Navigates Finder menus | **Medium–High** |
+| `DialogCommandTests.swift` (integration) | `RUN_LOCAL_TESTS=true` | Interacts with active dialogs | **Medium** |
+| `WindowCommandTests.swift` (local integration) | `RUN_LOCAL_TESTS=true` | Moves/minimizes TextEdit windows | **Medium** |
+| `SeeCommandAnnotationIntegrationTests.swift` | Disabled by default; needs `RUN_LOCAL_TESTS=true` | Launches Safari to capture screenshots | **Medium** |
+| `ScreenshotValidationTests.swift`, `AnnotationIntegrationTests.swift` | `RUN_LOCAL_TESTS=true` | Creates temporary NSWindows | **Low** |
+| CLI parsing/JSON/configuration suites | none | Pure logic | **Low** |
+
+Only enable the *High*-risk suites when you’re inside a dedicated VM snapshot and expect the UI to shift. Leave `RUN_AGENT_TESTS` unset unless you specifically want to exercise agent-driven flows.
