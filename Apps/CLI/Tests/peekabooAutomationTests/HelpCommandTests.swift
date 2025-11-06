@@ -4,7 +4,17 @@ import Testing
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("Help Command Tests", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
 struct HelpCommandTests {
-    let peekabooPath = ProcessInfo.processInfo.environment["PEEKABOO_CLI_PATH"] ?? "./peekaboo"
+    private let peekabooPath: String = {
+        if let override = ProcessInfo.processInfo.environment["PEEKABOO_CLI_PATH"], !override.isEmpty {
+            return override
+        }
+
+        if let resolved = CLITestEnvironment.peekabooBinaryURL()?.path {
+            return resolved
+        }
+
+        return "./peekaboo"
+    }()
 
     @Test("No arguments shows help")
     func noArgumentsShowsHelp() async throws {
