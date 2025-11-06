@@ -1,10 +1,29 @@
 import Foundation
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
+@testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("Drag Command Tests", .serialized, .tags(.safe), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct DragCommandTests {
+    private struct CommandResult {
+        let output: String
+        let status: Int32
+    }
+
+    private func runCommand(_ args: [String]) async throws -> CommandResult {
+        let services = await self.makeTestServices()
+        let result = try await InProcessCommandRunner.run(args, services: services)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        return CommandResult(output: output, status: result.exitStatus)
+    }
+
+    @MainActor
+    private func makeTestServices() -> PeekabooServices {
+        TestServicesFactory.makePeekabooServices()
+    }
+
     @Test("Drag command exists")
     func dragCommandExists() {
         let config = DragCommand.configuration
@@ -14,7 +33,9 @@ struct DragCommandTests {
 
     @Test("Drag command parameters")
     func dragParameters() async throws {
-        let output = try await runCommand(["drag", "--help"])
+        let result = try await self.runCommand(["drag", "--help"])
+        #expect(result.status == 0)
+        let output = result.output
 
         #expect(output.contains("--from"))
         #expect(output.contains("--to"))
@@ -28,17 +49,15 @@ struct DragCommandTests {
     @Test("Drag command validation - from required")
     func dragFromRequired() async throws {
         // Test missing from
-        await #expect(throws: Error.self) {
-            _ = try await runCommand(["drag", "--to", "B1"])
-        }
+        let result = try await self.runCommand(["drag", "--to", "B1"])
+        #expect(result.status != 0)
     }
 
     @Test("Drag command validation - to required")
     func dragToRequired() async throws {
         // Test missing to
-        await #expect(throws: Error.self) {
-            _ = try await runCommand(["drag", "--from", "B1"])
-        }
+        let result = try await self.runCommand(["drag", "--from", "B1"])
+        #expect(result.status != 0)
     }
 
     @Test("Drag coordinate parsing")
@@ -176,6 +195,8 @@ struct DragCommandIntegrationTests {
 }
 
 // MARK: - Test Helpers
+
+// MARK: - Shared helpers for integration tests
 
 private func runCommand(_ args: [String]) async throws -> String {
     try await PeekabooCLITestRunner.runCommand(args)
