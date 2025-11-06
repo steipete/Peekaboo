@@ -21,7 +21,10 @@ echo "📦 Reading version from version.json..."
 VERSION=$(node -p "require('$PROJECT_ROOT/version.json').version" 2>/dev/null || echo "3.0.0-dev")
 
 echo "💉 Injecting version into Swift code..."
-VERSION_SWIFT_PATH="$SWIFT_PROJECT_PATH/Sources/peekaboo/Version.swift"
+VERSION_SWIFT_PATH="$SWIFT_PROJECT_PATH/Sources/PeekabooCLI/Version.swift"
+if [[ ! -f "$VERSION_SWIFT_PATH" ]]; then
+    VERSION_SWIFT_PATH="$SWIFT_PROJECT_PATH/Sources/peekaboo/Version.swift"
+fi
 
 # Get git information
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")

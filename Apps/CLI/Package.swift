@@ -33,12 +33,12 @@ var targets: [Target] = [
             ]),
         ]),
     .testTarget(
-        name: "peekabooTests",
+        name: "CoreCLITests",
         dependencies: [
             "PeekabooCLI",
             .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
         ],
-        path: "Tests/peekabooSafeTests",
+        path: "Tests/CoreCLITests",
         swiftSettings: []),
 ]
 

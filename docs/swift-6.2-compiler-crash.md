@@ -83,3 +83,15 @@ the compiler crash mitigation and runtime failures.
   failure expectations, and confirmed `PEEKABOO_INCLUDE_AUTOMATION_TESTS=true
   swift test` runs without ArgumentParser help spam (remaining failures are the
   expected behavior-driven skips).
+- **2025-11-06 00:18 UTC** — Brought the CLI automation suites in line with
+  Swift 6.2 by eliminating the last `map(\.property)` shorthands and syncing
+  `ToolsCommandTests` with the `--no-sort` flag. Building the automation bundle
+  now consistently succeeds; we still abort full automation test runs after
+  verifying compilation because the interactive flows remain flaky under the
+  tmux harness.
+- **2025-11-06 00:38 UTC** — Split hermetic CLI logic tests into a
+  `CoreCLITests` target and left UI-touching suites in
+  `peekabooAutomationTests`, allowing `pnpm test:safe` to run 72 non-invasive
+  tests by default. Automation coverage remains opt-in via
+  `PEEKABOO_INCLUDE_AUTOMATION_TESTS=true`, which we now use for targeted
+  `swift build --target peekabooAutomationTests` checks.

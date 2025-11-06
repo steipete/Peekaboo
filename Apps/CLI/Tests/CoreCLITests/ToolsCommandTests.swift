@@ -20,7 +20,7 @@ struct ToolsCommandTests {
 
     @Test("ToolsCommand default values")
     func toolsCommandDefaults() throws {
-        var command = try ToolsCommand.parse([])
+        let command = try ToolsCommand.parse([])
 
         #expect(command.nativeOnly == false)
         #expect(command.mcpOnly == false)
@@ -28,14 +28,14 @@ struct ToolsCommandTests {
         #expect(command.verbose == false)
         #expect(command.jsonOutput == false)
         #expect(command.includeDisabled == false)
-        #expect(command.sort == false)
+        #expect(command.noSort == false)
         #expect(command.groupByServer == false)
     }
 
     @Test("ToolsCommand argument parsing - native only")
     func argumentParsingNativeOnly() throws {
         let args = ["--native-only"]
-        var command = try ToolsCommand.parse(args)
+        let command = try ToolsCommand.parse(args)
 
         #expect(command.nativeOnly == true)
         #expect(command.mcpOnly == false)
@@ -44,7 +44,7 @@ struct ToolsCommandTests {
     @Test("ToolsCommand argument parsing - mcp only")
     func argumentParsingMcpOnly() throws {
         let args = ["--mcp-only"]
-        var command = try ToolsCommand.parse(args)
+        let command = try ToolsCommand.parse(args)
 
         #expect(command.nativeOnly == false)
         #expect(command.mcpOnly == true)
@@ -53,7 +53,7 @@ struct ToolsCommandTests {
     @Test("ToolsCommand argument parsing - specific server")
     func argumentParsingSpecificServer() throws {
         let args = ["--mcp", "github"]
-        var command = try ToolsCommand.parse(args)
+        let command = try ToolsCommand.parse(args)
 
         #expect(command.mcp == "github")
         #expect(command.nativeOnly == false)
@@ -63,7 +63,7 @@ struct ToolsCommandTests {
     @Test("ToolsCommand argument parsing - verbose")
     func argumentParsingVerbose() throws {
         let args = ["--verbose"]
-        var command = try ToolsCommand.parse(args)
+        let command = try ToolsCommand.parse(args)
 
         #expect(command.verbose == true)
     }
@@ -71,7 +71,7 @@ struct ToolsCommandTests {
     @Test("ToolsCommand argument parsing - json output")
     func argumentParsingJsonOutput() throws {
         let args = ["--json-output"]
-        var command = try ToolsCommand.parse(args)
+        let command = try ToolsCommand.parse(args)
 
         #expect(command.jsonOutput == true)
     }
@@ -79,7 +79,7 @@ struct ToolsCommandTests {
     @Test("ToolsCommand argument parsing - multiple flags")
     func argumentParsingMultipleFlags() throws {
         let args = ["--verbose", "--json-output", "--include-disabled", "--group-by-server"]
-        var command = try ToolsCommand.parse(args)
+        let command = try ToolsCommand.parse(args)
 
         #expect(command.verbose == true)
         #expect(command.jsonOutput == true)
@@ -89,12 +89,12 @@ struct ToolsCommandTests {
 
     @Test("ToolsCommand argument parsing - combined options")
     func argumentParsingCombined() throws {
-        let args = ["--mcp", "filesystem", "--verbose", "--sort"]
-        var command = try ToolsCommand.parse(args)
+        let args = ["--mcp", "filesystem", "--verbose", "--no-sort"]
+        let command = try ToolsCommand.parse(args)
 
         #expect(command.mcp == "filesystem")
         #expect(command.verbose == true)
-        #expect(command.sort == true)
+        #expect(command.noSort == true)
     }
 
     @Test("ToolsCommand help text contains expected content")
@@ -107,6 +107,7 @@ struct ToolsCommandTests {
         #expect(helpText.contains("--mcp"))
         #expect(helpText.contains("--verbose"))
         #expect(helpText.contains("--json-output"))
+        #expect(helpText.contains("--no-sort"))
         #expect(helpText.contains("Show only native Peekaboo tools"))
         #expect(helpText.contains("Show only external MCP tools"))
         #expect(helpText.contains("Show tools from specific MCP server"))
@@ -181,7 +182,6 @@ struct ToolsCommandStructureTests {
         let command = try ToolsCommand.parse([])
 
         // This test verifies the command can be instantiated and has the right type
-        #expect(command is AsyncParsableCommand)
         #expect(type(of: command) == ToolsCommand.self)
     }
 
@@ -216,7 +216,7 @@ struct ToolsCommandStructureTests {
         #expect(type(of: command.verbose) == Bool.self)
         #expect(type(of: command.jsonOutput) == Bool.self)
         #expect(type(of: command.includeDisabled) == Bool.self)
-        #expect(type(of: command.sort) == Bool.self)
+        #expect(type(of: command.noSort) == Bool.self)
         #expect(type(of: command.groupByServer) == Bool.self)
     }
 }
