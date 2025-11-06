@@ -30,6 +30,7 @@ struct TerminalCapabilities {
 enum TerminalDetector {
     /// Detect comprehensive terminal capabilities
     static func detectCapabilities() -> TerminalCapabilities {
+        // Detect comprehensive terminal capabilities
         let isInteractive = self.isInteractiveTerminal()
         let (width, height) = self.getTerminalDimensions()
         let termType = ProcessInfo.processInfo.environment["TERM"]
@@ -54,16 +55,19 @@ enum TerminalDetector {
 
     /// Check if stdout is connected to an interactive terminal
     private static func isInteractiveTerminal() -> Bool {
+        // Check if stdout is connected to an interactive terminal
         isatty(STDOUT_FILENO) != 0
     }
 
     /// Check if output is being piped or redirected
     private static func isPipedOutput() -> Bool {
+        // Check if output is being piped or redirected
         isatty(STDOUT_FILENO) == 0
     }
 
     /// Detect CI/automation environments
     private static func isCIEnvironment() -> Bool {
+        // Detect CI/automation environments
         let ciVariables = [
             "CI", "CONTINUOUS_INTEGRATION",
             "GITHUB_ACTIONS", "GITHUB_WORKSPACE",
@@ -84,6 +88,7 @@ enum TerminalDetector {
 
     /// Get terminal dimensions using ioctl
     private static func getTerminalDimensions() -> (width: Int, height: Int) {
+        // Get terminal dimensions using ioctl
         var windowSize = winsize()
 
         guard ioctl(STDOUT_FILENO, TIOCGWINSZ, &windowSize) == 0 else {
@@ -103,6 +108,7 @@ enum TerminalDetector {
 
     /// Detect color support using multiple methods
     private static func detectColorSupport(termType: String?, isInteractive: Bool) -> Bool {
+        // Detect color support using multiple methods
         guard isInteractive else { return false }
 
         // Method 1: Check COLORTERM environment variable (most reliable)
@@ -145,6 +151,7 @@ enum TerminalDetector {
 
     /// Detect true color (24-bit) support
     private static func detectTrueColorSupport() -> Bool {
+        // Detect true color (24-bit) support
         let env = ProcessInfo.processInfo.environment
 
         // Check COLORTERM for explicit true color support
@@ -173,6 +180,7 @@ enum TerminalDetector {
 
     /// Get a human-readable description of terminal capabilities
     static func capabilitiesDescription(_ caps: TerminalCapabilities) -> String {
+        // Get a human-readable description of terminal capabilities
         var features: [String] = []
 
         if caps.isInteractive { features.append("interactive") }
@@ -189,6 +197,7 @@ enum TerminalDetector {
 
     /// Check if we should force a specific output mode based on environment
     static func shouldForceOutputMode() -> OutputMode? {
+        // Check if we should force a specific output mode based on environment
         let env = ProcessInfo.processInfo.environment
 
         // Check for explicit output mode environment variables

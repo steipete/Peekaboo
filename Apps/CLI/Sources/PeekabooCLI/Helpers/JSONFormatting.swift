@@ -4,6 +4,7 @@ import Foundation
 
 /// Format JSON for pretty printing with optional indentation
 func formatJSON(_ jsonString: String, indent: String = "   ") -> String? {
+    // Format JSON for pretty printing with optional indentation
     guard let data = jsonString.data(using: .utf8),
           let json = try? JSONSerialization.jsonObject(with: data),
           let prettyData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]),

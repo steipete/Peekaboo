@@ -281,6 +281,7 @@ struct ToolsCommand: AsyncParsableCommand {
 extension ToolFilter {
     /// Validate filter combinations
     private func validate() throws {
+        // Validate filter combinations
         if showNativeOnly && showMcpOnly {
             throw ValidationError("Cannot specify both --native-only and --mcp-only")
         }

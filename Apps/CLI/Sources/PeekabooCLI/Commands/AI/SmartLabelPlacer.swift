@@ -48,6 +48,7 @@ final class SmartLabelPlacer {
         existingLabels: [(rect: NSRect, element: DetectedElement)],
         allElements: [(element: DetectedElement, rect: NSRect)]
     ) -> (labelRect: NSRect, connectionPoint: NSPoint?)? {
+        // Finds the best position for a label given an element's bounds
         if self.debugMode {
             Logger.shared.verbose(
                 "Finding position for \(element.id) (\(element.type)) with \(element.label ?? "no label")",

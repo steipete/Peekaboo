@@ -90,6 +90,7 @@ final class AcceleratedTextDetector {
 
     /// Scores a region for label placement (higher = better)
     func scoreRegionForLabelPlacement(_ rect: NSRect, in image: NSImage) -> Float {
+        // Scores a region for label placement (higher = better)
         let result = self.analyzeRegion(rect, in: image)
 
         // Log edge detection results when verbose mode is enabled

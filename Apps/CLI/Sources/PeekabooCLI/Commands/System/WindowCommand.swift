@@ -93,6 +93,7 @@ struct WindowIdentificationOptions: ParsableArguments, ApplicationResolvable {
 
     /// Convert to WindowTarget for service layer
     func toWindowTarget() throws -> WindowTarget {
+        // Convert to WindowTarget for service layer
         let appIdentifier = try self.resolveApplicationIdentifier()
 
         if let index = windowIndex {

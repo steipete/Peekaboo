@@ -11,6 +11,7 @@ protocol VerboseCommand {
 extension VerboseCommand {
     /// Configure logger for verbose mode if enabled
     func configureVerboseLogging() {
+        // Configure logger for verbose mode if enabled
         Logger.shared.setVerboseMode(verbose)
         if verbose {
             Logger.shared.verbose("Verbose logging enabled")

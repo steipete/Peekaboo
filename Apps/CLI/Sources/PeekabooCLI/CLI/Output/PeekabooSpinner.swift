@@ -19,11 +19,13 @@ final class PeekabooSpinner {
 
     /// Start spinner with default "Thinking..." message
     func start() {
+        // Start spinner with default "Thinking..." message
         self.start(message: "Thinking...")
     }
 
     /// Start spinner with custom message
     func start(message: String) {
+        // Start spinner with custom message
         self.stop() // Ensure no previous spinner is running
 
         if self.supportsColors {
@@ -38,41 +40,48 @@ final class PeekabooSpinner {
 
     /// Stop spinner without completion message
     func stop() {
+        // Stop spinner without completion message
         self.spinner?.clear()
         self.spinner = nil
     }
 
     /// Stop spinner with success message
     func success(_ message: String? = nil) {
+        // Stop spinner with success message
         self.spinner?.success(message)
         self.spinner = nil
     }
 
     /// Stop spinner with error message
     func error(_ message: String? = nil) {
+        // Stop spinner with error message
         self.spinner?.error(message)
         self.spinner = nil
     }
 
     /// Stop spinner with warning message
     func warning(_ message: String? = nil) {
+        // Stop spinner with warning message
         self.spinner?.warning(message)
         self.spinner = nil
     }
 
     /// Stop spinner with info message
     func info(_ message: String? = nil) {
+        // Stop spinner with info message
         self.spinner?.info(message)
         self.spinner = nil
     }
 
     /// Update spinner message while running
     func updateMessage(_ message: String) {
+        // Update spinner message while running
         self.spinner?.message(message)
     }
 
     /// Stop with a brief delay for smoother transitions
     func stopWithDelay() async {
+        // Stop with a brief delay for smoother transitions
         try? await Task.sleep(for: .milliseconds(300))
         self.stop()
     }

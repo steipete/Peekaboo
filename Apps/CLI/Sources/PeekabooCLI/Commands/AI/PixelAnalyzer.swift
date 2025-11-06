@@ -40,6 +40,7 @@ struct PixelAnalyzer {
 
     /// Scores a region using simple variance (fallback method)
     func scoreRegionSimple(_ rect: NSRect) -> Float {
+        // Scores a region using simple variance (fallback method)
         guard self.bitmapRep != nil else { return 0 }
 
         // Clamp rect to image bounds
@@ -62,6 +63,7 @@ struct PixelAnalyzer {
 
     /// Finds the best position from candidates based on background uniformity
     func findBestPosition(from candidates: [NSRect]) -> (rect: NSRect, score: Float)? {
+        // Finds the best position from candidates based on background uniformity
         var bestPosition: (rect: NSRect, score: Float)?
 
         for candidate in candidates {

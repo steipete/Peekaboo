@@ -76,6 +76,7 @@ enum TerminalColor {
 
 /// Get icon for tool name in compact mode
 func iconForTool(_ toolName: String) -> String {
+    // Get icon for tool name in compact mode
     AgentDisplayTokens.icon(for: toolName)
 }
 
@@ -425,6 +426,7 @@ struct AgentCommand: AsyncParsableCommand {
 
     /// Convert internal model names to properly cased display names
     func getDisplayModelName(_ modelName: String) -> String {
+        // Convert internal model names to properly cased display names
         let lowercased = modelName.lowercased()
 
         // OpenAI models - GPT should be uppercase with hyphen
@@ -889,6 +891,7 @@ struct AgentCommand: AsyncParsableCommand {
 
     /// Print detailed terminal detection debugging information
     func printTerminalDetectionDebug(_ capabilities: TerminalCapabilities, actualMode: OutputMode) {
+        // Print detailed terminal detection debugging information
         print("\n" + String(repeating: "=", count: 60))
         print("\(TerminalColor.bold)\(TerminalColor.cyan)TERMINAL DETECTION DEBUG (-vv)\(TerminalColor.reset)")
         print(String(repeating: "=", count: 60))

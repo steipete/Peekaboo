@@ -129,6 +129,7 @@ private func checkFileModificationStaleness() {
 /// Parse git status --porcelain=1 output to extract file paths
 /// Format: "XY filename" or "XY orig_path -> new_path" for renames
 private func parseGitStatusOutput(_ output: String) -> [String] {
+    // Parse git status --porcelain=1 output to extract file paths
     let lines = output.components(separatedBy: .newlines)
     var filePaths: [String] = []
 
@@ -174,6 +175,7 @@ private func parseGitStatusOutput(_ output: String) -> [String] {
 
 /// Get the git repository root directory
 private func getGitRepositoryRoot() -> String? {
+    // Get the git repository root directory
     let gitProcess = Process()
     gitProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
     gitProcess.arguments = ["rev-parse", "--show-toplevel"]
@@ -204,6 +206,7 @@ private func getGitRepositoryRoot() -> String? {
 
 /// Check if a file's modification time is newer than the build date
 private func isFileNewerThanBuild(filePath: String, buildDate: Date, gitRoot: String) -> Bool {
+    // Check if a file's modification time is newer than the build date
     let fileManager = FileManager.default
     // Git status paths are relative to repository root, not current directory
     let fullPath = (filePath.hasPrefix("/")) ? filePath : "\(gitRoot)/\(filePath)"

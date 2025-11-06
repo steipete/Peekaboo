@@ -265,6 +265,7 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
 
     /// Check screen recording permission using CGWindowList heuristic
     private func checkScreenRecordingViaWindowList() -> Bool {
+        // Check screen recording permission using CGWindowList heuristic
         guard let windowList = CGWindowListCopyWindowInfo(
             [.optionAll, .excludeDesktopElements],
             kCGNullWindowID

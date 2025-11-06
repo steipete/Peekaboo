@@ -284,6 +284,7 @@ struct ClickResult: Codable {
 extension ClickCommand {
     /// Parse coordinates string (e.g., "100,200") into CGPoint
     static func parseCoordinates(_ coords: String) -> CGPoint? {
+        // Parse coordinates string (e.g., "100,200") into CGPoint
         let parts = coords.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         guard parts.count == 2,
               let x = Double(parts[0]),

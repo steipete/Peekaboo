@@ -15,6 +15,7 @@ protocol ErrorHandlingCommand {
 extension ErrorHandlingCommand {
     /// Handle errors with appropriate output format
     func handleError(_ error: Error, customCode: ErrorCode? = nil) {
+        // Handle errors with appropriate output format
         if jsonOutput {
             let errorCode = customCode ?? self.mapErrorToCode(error)
             outputError(message: error.localizedDescription, code: errorCode)
@@ -38,6 +39,7 @@ extension ErrorHandlingCommand {
 
     /// Map various error types to error codes
     private func mapErrorToCode(_ error: Error) -> ErrorCode {
+        // Map various error types to error codes
         switch error {
         // PeekabooError mappings
         case let peekabooError as PeekabooError:
@@ -158,6 +160,7 @@ protocol OutputFormattable {
 extension OutputFormattable {
     /// Output data in appropriate format
     func output(_ data: some Codable, humanReadable: () -> Void) {
+        // Output data in appropriate format
         if jsonOutput {
             outputSuccessCodable(data: data)
         } else {
@@ -167,6 +170,7 @@ extension OutputFormattable {
 
     /// Output success with optional data
     func outputSuccess(data: (some Codable)? = nil as Empty?) {
+        // Output success with optional data
         if jsonOutput {
             if let data {
                 outputSuccessCodable(data: data)
@@ -181,6 +185,7 @@ extension OutputFormattable {
 
 /// Check and require screen recording permission
 func requireScreenRecordingPermission() async throws {
+    // Check and require screen recording permission
     guard await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission() else {
         throw CaptureError.screenRecordingPermissionDenied
     }
@@ -201,6 +206,7 @@ func withTimeout<T: Sendable>(
     seconds: TimeInterval,
     operation: @escaping @Sendable () async throws -> T
 ) async throws -> T {
+    // Execute an async operation with a timeout
     let task = Task {
         try await operation()
     }
@@ -228,6 +234,7 @@ func withTimeout<T: Sendable>(
 extension WindowIdentificationOptions {
     /// Create a window target from options
     func createTarget() -> WindowTarget {
+        // Create a window target from options
         if let app {
             if let index = windowIndex {
                 return .index(app: app, index: index)
@@ -242,6 +249,7 @@ extension WindowIdentificationOptions {
 
     /// Select a window from a list based on options
     func selectWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
+        // Select a window from a list based on options
         if let title = windowTitle {
             windows.first { $0.title.localizedCaseInsensitiveContains(title) }
         } else if let index = windowIndex, index < windows.count {

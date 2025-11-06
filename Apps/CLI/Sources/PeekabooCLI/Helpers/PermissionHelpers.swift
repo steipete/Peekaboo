@@ -12,6 +12,7 @@ enum PermissionHelpers {
 
     /// Get current permission status for all Peekaboo permissions
     static func getCurrentPermissions() async -> [PermissionInfo] {
+        // Get current permission status for all Peekaboo permissions
         let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
         let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
 
@@ -33,6 +34,7 @@ enum PermissionHelpers {
 
     /// Format permission status for display
     static func formatPermissionStatus(_ permission: PermissionInfo) -> String {
+        // Format permission status for display
         let status = permission.isGranted ? "Granted" : "Not Granted"
         let requirement = permission.isRequired ? "Required" : "Optional"
         return "\(permission.name) (\(requirement)): \(status)"
@@ -40,6 +42,7 @@ enum PermissionHelpers {
 
     /// Format permissions for help display with dynamic status
     static func formatPermissionsForHelp() async -> String {
+        // Format permissions for help display with dynamic status
         let permissions = await getCurrentPermissions()
         var output = ["PERMISSIONS:"]
 

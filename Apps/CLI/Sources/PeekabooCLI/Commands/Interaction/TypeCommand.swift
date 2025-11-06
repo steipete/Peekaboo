@@ -172,6 +172,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
 
     /// Process text with escape sequences like \n, \t, etc.
     static func processTextWithEscapes(_ text: String) -> [TypeAction] {
+        // Process text with escape sequences like \n, \t, etc.
         var actions: [TypeAction] = []
         var currentText = ""
         var i = text.startIndex

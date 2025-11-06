@@ -16,6 +16,7 @@ extension ApplicationResolvable {
     /// Resolves the application identifier from app and/or pid parameters
     /// Supports lenient handling for redundant but non-conflicting parameters
     func resolveApplicationIdentifier() throws -> String {
+        // Resolves the application identifier from app and/or pid parameters
         switch (app, pid) {
         case (nil, nil):
             throw PeekabooError.invalidInput("Either --app or --pid must be specified")

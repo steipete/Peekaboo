@@ -143,6 +143,7 @@ final class Logger: @unchecked Sendable {
 
     /// Start a performance timer
     func startTimer(_ name: String) {
+        // Start a performance timer
         self.queue.async(flags: .barrier) {
             self.performanceTimers[name] = Date()
             if self.verboseMode {
@@ -159,6 +160,7 @@ final class Logger: @unchecked Sendable {
 
     /// Stop a performance timer and log the duration
     func stopTimer(_ name: String, threshold: TimeInterval? = nil) {
+        // Stop a performance timer and log the duration
         self.queue.async(flags: .barrier) {
             guard let startTime = self.performanceTimers[name] else {
                 self.log(.warning, "Timer '\(name)' was not started", category: "Performance")
@@ -185,6 +187,7 @@ final class Logger: @unchecked Sendable {
 
     /// Log the start of an operation
     func operationStart(_ operation: String, metadata: [String: Any]? = nil) {
+        // Log the start of an operation
         var meta = metadata ?? [:]
         meta["operation"] = operation
         self.verbose("Starting operation", category: "Operation", metadata: meta)
@@ -193,6 +196,7 @@ final class Logger: @unchecked Sendable {
 
     /// Log the completion of an operation
     func operationComplete(_ operation: String, success: Bool = true, metadata: [String: Any]? = nil) {
+        // Log the completion of an operation
         var meta = metadata ?? [:]
         meta["operation"] = operation
         meta["success"] = success
@@ -214,6 +218,7 @@ final class Logger: @unchecked Sendable {
 
     /// For testing - ensures all pending operations are complete
     func flush() {
+        // For testing - ensures all pending operations are complete
         self.queue.sync(flags: .barrier) {
             // This ensures all pending async operations are complete
         }
