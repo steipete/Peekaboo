@@ -146,6 +146,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                     endTime: Date()))
         }
 
+        if let directResult = try await self.handleDirectScreenshotTask(
+            task,
+            eventDelegate: eventDelegate)
+        {
+            return directResult
+        }
+
         // Note: In the new API, we don't need to create agents - we use direct functions
 
         // Execute with streaming if we have an event delegate
@@ -1219,5 +1226,132 @@ extension PeekabooAgentService {
                 modelName: model.description,
                 startTime: startTime,
                 endTime: endTime))
+    }
+
+    // MARK: - Direct Command Handling
+
+    private func handleDirectScreenshotTask(
+        _ task: String,
+        eventDelegate: AgentEventDelegate?) async throws -> AgentExecutionResult?
+    {
+        guard Self.taskRequiresScreenshot(task) else {
+            return nil
+        }
+
+        let startTime = Date()
+        if let eventDelegate {
+            await MainActor.run {
+                eventDelegate.agentDidEmitEvent(.assistantMessage(content: "Capturing the screen (direct tool execution)."))
+                eventDelegate.agentDidEmitEvent(.toolCallStarted(name: "see", arguments: "{}"))
+            }
+        }
+
+        let toolResponse = try await MainActor.run { () -> ToolResponse in
+            let tool = SeeTool()
+            return try tool.execute(arguments: ToolArguments(from: [:]))
+        }
+
+        let summary = Self.extractSummary(from: toolResponse) ?? "Screenshot captured successfully."
+        let sessionId = Self.extractSessionId(from: toolResponse) ?? UUID().uuidString
+
+        let toolCallId = UUID().uuidString
+        let toolCall = AgentToolCall(id: toolCallId, name: "see", arguments: [:])
+        let toolResultValue = convertToolResponseToAgentToolResult(toolResponse)
+        let toolResult = AgentToolResult.success(toolCallId: toolCallId, result: toolResultValue)
+
+        let systemPrompt = AgentSystemPrompt.generate(for: self.defaultLanguageModel)
+        let messages: [ModelMessage] = [
+            .system(systemPrompt),
+            .user(task),
+            ModelMessage(role: .assistant, content: [.toolCall(toolCall)]),
+            ModelMessage(role: .tool, content: [.toolResult(toolResult)]),
+            .assistant(summary),
+        ]
+
+        let endTime = Date()
+        let executionTime = endTime.timeIntervalSince(startTime)
+
+        let session = AgentSession(
+            id: sessionId,
+            modelName: self.defaultLanguageModel.description,
+            messages: messages,
+            metadata: SessionMetadata(
+                toolCallCount: 1,
+                totalExecutionTime: executionTime,
+                customData: ["handled": "direct-see"]),
+            createdAt: startTime,
+            updatedAt: endTime)
+        try self.sessionManager.saveSession(session)
+
+        if let eventDelegate {
+            await MainActor.run {
+                let resultJSON: String
+                if let jsonObject = try? toolResultValue.toJSON(),
+                   JSONSerialization.isValidJSONObject(["result": jsonObject]),
+                   let data = try? JSONSerialization.data(withJSONObject: ["result": jsonObject], options: []),
+                   let string = String(data: data, encoding: .utf8)
+                {
+                    resultJSON = string
+                } else {
+                    let escapedSummary = summary.replacingOccurrences(of: "\"", with: "\\\"")
+                    resultJSON = "{\"result\":\"\(escapedSummary)\"}"
+                }
+
+                eventDelegate.agentDidEmitEvent(.toolCallCompleted(name: "see", result: resultJSON))
+                eventDelegate.agentDidEmitEvent(.assistantMessage(content: summary))
+                eventDelegate.agentDidEmitEvent(.completed(summary: summary, usage: nil))
+            }
+        }
+
+        let resultMetadata = AgentMetadata(
+            executionTime: executionTime,
+            toolCallCount: 1,
+            modelName: self.defaultLanguageModel.description,
+            startTime: startTime,
+            endTime: endTime,
+            context: ["handled": "direct-see"])
+
+        return AgentExecutionResult(
+            content: summary,
+            messages: messages,
+            sessionId: sessionId,
+            usage: nil,
+            metadata: resultMetadata)
+    }
+
+    private static func taskRequiresScreenshot(_ task: String) -> Bool {
+        let lowercaseTask = task.lowercased()
+        let keywords = [
+            "screenshot",
+            "screen shot",
+            "screen capture",
+            "capture the screen",
+            "capture screen",
+            "snapshot of the screen",
+            "grab the screen",
+        ]
+        return keywords.contains(where: { lowercaseTask.contains($0) })
+    }
+
+    private static func extractSummary(from response: ToolResponse) -> String? {
+        let texts = response.content.compactMap { content -> String? in
+            if case let .text(text) = content {
+                return text
+            }
+            return nil
+        }
+        let summary = texts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return summary.isEmpty ? nil : summary
+    }
+
+    private static func extractSessionId(from response: ToolResponse) -> String? {
+        guard
+            let metaObject = response.meta?.objectValue,
+            let sessionValue = metaObject["session_id"]?.stringValue,
+            !sessionValue.isEmpty
+        else {
+            return nil
+        }
+        return sessionValue
     }
 }
