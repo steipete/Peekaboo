@@ -144,7 +144,7 @@ model
 string
 
 Optional
-Model ID used to generate the response, like gpt-4o or o3. OpenAI offers a wide range of models with different capabilities, performance characteristics, and price points. Refer to the model guide to browse and compare available models.
+Model ID used to generate the response, like gpt-4o or gpt-5. OpenAI offers a wide range of models with different capabilities, performance characteristics, and price points. Refer to the model guide to browse and compare available models.
 
 parallel_tool_calls
 boolean or null
@@ -692,7 +692,7 @@ Keys are strings with a maximum length of 64 characters. Values are strings with
 model
 string
 
-Model ID used to generate the response, like gpt-4o or o3. OpenAI offers a wide range of models with different capabilities, performance characteristics, and price points. Refer to the model guide to browse and compare available models.
+Model ID used to generate the response, like gpt-4o or gpt-5. OpenAI offers a wide range of models with different capabilities, performance characteristics, and price points. Refer to the model guide to browse and compare available models.
 
 object
 string
@@ -2817,7 +2817,7 @@ model
 string
 
 Required
-Model ID used to generate the response, like gpt-4o or o3. OpenAI offers a wide range of models with different capabilities, performance characteristics, and price points. Refer to the model guide to browse and compare available models.
+Model ID used to generate the response, like gpt-4o or gpt-5. OpenAI offers a wide range of models with different capabilities, performance characteristics, and price points. Refer to the model guide to browse and compare available models.
 
 audio
 object or null
@@ -3001,7 +3001,7 @@ string / array / null
 
 Optional
 Defaults to null
-Not supported with latest reasoning models o3 and o4-mini.
+Not supported with latest reasoning models gpt-5-thinking and o4-mini.
 
 Up to 4 sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.
 
@@ -7753,7 +7753,7 @@ curl https://api.openai.com/v1/evals \
         "testing_criteria": [
           {
             "type": "label_model",
-            "model": "o3-mini",
+            "model": "o4-mini",
             "input": [
               {
                 "role": "developer",
@@ -7804,7 +7804,7 @@ Response
     {
       "name": "Example label grader",
       "type": "label_model",
-      "model": "o3-mini",
+      "model": "o4-mini",
       "input": [
         {
           "type": "message",
@@ -8083,7 +8083,7 @@ Response
           "name": "Push Notification Summary Grader",
           "id": "Push Notification Summary Grader-9b876f24-4762-4be9-aff4-db7a9b31c673",
           "type": "label_model",
-          "model": "o3-mini",
+          "model": "o4-mini",
           "input": [
             {
               "type": "message",
@@ -8180,8 +8180,8 @@ Response
       "eval_id": "eval_67e0c726d560819083f19a957c4c640b",
       "report_url": "https://platform.openai.com/evaluations/eval_67e0c726d560819083f19a957c4c640b",
       "status": "completed",
-      "model": "o3-mini",
-      "name": "bulk_with_negative_examples_o3-mini",
+      "model": "o4-mini",
+      "name": "bulk_with_negative_examples_o4-mini",
       "created_at": 1742784467,
       "result_counts": {
         "total": 1,
@@ -8191,7 +8191,7 @@ Response
       },
       "per_model_usage": [
         {
-          "model_name": "o3-mini",
+          "model_name": "o4-mini",
           "invocation_count": 1,
           "prompt_tokens": 563,
           "completion_tokens": 874,
@@ -8239,7 +8239,7 @@ Response
             }
           ]
         },
-        "model": "o3-mini",
+        "model": "o4-mini",
         "sampling_params": null
       },
       "error": null,
@@ -20401,7 +20401,7 @@ string / array / null
 
 Optional
 Defaults to null
-Not supported with latest reasoning models o3 and o4-mini.
+Not supported with latest reasoning models o4-mini and o4-mini.
 
 Up to 4 sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.
 

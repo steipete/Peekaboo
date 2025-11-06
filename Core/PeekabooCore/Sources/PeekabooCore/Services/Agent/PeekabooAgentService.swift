@@ -790,14 +790,21 @@ extension PeekabooAgentService {
             // Stream the response
             // Configure settings based on model type
             let settings = switch model {
-            case .openai(.gpt5), .openai(.gpt5Mini), .openai(.gpt5Nano):
+            case .openai(.gpt5),
+                 .openai(.gpt5Pro),
+                 .openai(.gpt5Mini),
+                 .openai(.gpt5Nano),
+                 .openai(.gpt5Thinking),
+                 .openai(.gpt5ThinkingMini),
+                 .openai(.gpt5ThinkingNano),
+                 .openai(.gpt5ChatLatest):
                 // GPT-5 models use verbosity instead of temperature
                 GenerationSettings(
                     maxTokens: 4096,
                     providerOptions: .init(
                         openai: .init(
                             verbosity: .medium)))
-            case .openai(.o3), .openai(.o3Mini), .openai(.o3Pro), .openai(.o4Mini):
+            case .openai(.o4Mini):
                 // Reasoning models use reasoning effort
                 GenerationSettings(
                     maxTokens: 4096,
@@ -916,13 +923,20 @@ extension PeekabooAgentService {
                         do {
                             // Use the same settings as configured above for consistency
                             let toolSettings = switch model {
-                            case .openai(.gpt5), .openai(.gpt5Mini), .openai(.gpt5Nano):
+                            case .openai(.gpt5),
+                                 .openai(.gpt5Pro),
+                                 .openai(.gpt5Mini),
+                                 .openai(.gpt5Nano),
+                                 .openai(.gpt5Thinking),
+                                 .openai(.gpt5ThinkingMini),
+                                 .openai(.gpt5ThinkingNano),
+                                 .openai(.gpt5ChatLatest):
                                 GenerationSettings(
                                     maxTokens: 4096,
                                     providerOptions: .init(
                                         openai: .init(
                                             verbosity: .medium)))
-                            case .openai(.o3), .openai(.o3Mini), .openai(.o3Pro), .openai(.o4Mini):
+                            case .openai(.o4Mini):
                                 GenerationSettings(
                                     maxTokens: 4096,
                                     providerOptions: .init(

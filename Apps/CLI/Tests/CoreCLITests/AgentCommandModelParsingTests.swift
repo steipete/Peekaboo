@@ -25,9 +25,9 @@ struct AgentCommandTests {
         #expect(command.parseModelString("gpt-4o-realtime") == .openai(.gpt4oRealtime))
 
         // Reasoning models
-        #expect(command.parseModelString("o3") == .openai(.o3))
-        #expect(command.parseModelString("o3-mini") == .openai(.o3Mini))
-        #expect(command.parseModelString("o3-pro") == .openai(.o3Pro))
+        #expect(command.parseModelString("o3") == .openai(.gpt5Mini))
+        #expect(command.parseModelString("o3-mini") == .openai(.gpt5Mini))
+        #expect(command.parseModelString("o3-pro") == .openai(.gpt5Mini))
         #expect(command.parseModelString("o4-mini") == .openai(.o4Mini))
     }
 
@@ -44,15 +44,15 @@ struct AgentCommandTests {
         #expect(command.parseModelString("claude-sonnet-4.5") == .anthropic(.sonnet45))
 
         // Claude 3.7 / 3.5 series
-        #expect(command.parseModelString("claude-3-7-sonnet") == .anthropic(.sonnet37))
-        #expect(command.parseModelString("claude-3-5-sonnet") == .anthropic(.sonnet35))
-        #expect(command.parseModelString("claude-3-5-haiku") == .anthropic(.haiku35))
+        #expect(command.parseModelString("claude-3-7-sonnet") == .anthropic(.custom("claude-3-7-sonnet")))
+        #expect(command.parseModelString("claude-3-5-sonnet") == .anthropic(.custom("claude-3-5-sonnet")))
+        #expect(command.parseModelString("claude-3-5-haiku") == .anthropic(.custom("claude-3-5-haiku")))
         #expect(command.parseModelString("claude-haiku-4.5") == .anthropic(.haiku45))
 
         // Legacy Claude 3 series
-        #expect(command.parseModelString("claude-3-opus") == .anthropic(.opus3))
-        #expect(command.parseModelString("claude-3-sonnet") == .anthropic(.sonnet3))
-        #expect(command.parseModelString("claude-3-haiku") == .anthropic(.haiku3))
+        #expect(command.parseModelString("claude-3-opus") == .anthropic(.custom("claude-3-opus")))
+        #expect(command.parseModelString("claude-3-sonnet") == .anthropic(.custom("claude-3-sonnet")))
+        #expect(command.parseModelString("claude-3-haiku") == .anthropic(.custom("claude-3-haiku")))
 
         // Case insensitivity
         #expect(command.parseModelString("CLAUDE-OPUS-4") == .anthropic(.opus4))

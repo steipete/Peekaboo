@@ -226,7 +226,7 @@ Ollama provides a REST API with two main approaches:
 
 3. **Reasoning Support**
    - Check if Ultrathink supports reasoning traces
-   - Implement similar to o3 reasoning summaries
+   - Implement similar to GPT-5 reasoning summaries
    - Display thinking indicators
 
 ### Phase 7: Testing & Integration (2 days)

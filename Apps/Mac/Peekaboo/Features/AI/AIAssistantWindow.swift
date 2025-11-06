@@ -26,7 +26,7 @@ public struct AIAssistantWindow: View {
                         Text("Claude Sonnet 4").tag(Model.anthropic(.sonnet4))
                         Text("GPT-4o").tag(Model.openai(.gpt4o))
                         Text("GPT-4.1").tag(Model.openai(.gpt41))
-                        Text("o3").tag(Model.openai(.o3))
+                        Text("GPT-5 Mini").tag(Model.openai(.gpt5Mini))
                         Text("Grok 4").tag(Model.grok(.grok4))
                         Text("Llama 3.3").tag(Model.ollama(.llama33))
                     }
@@ -129,7 +129,7 @@ public struct CompactAIAssistant: View {
                 Picker("Model", selection: self.$model) {
                     Text("Claude").tag(Model.default)
                     Text("GPT-4o").tag(Model.openai(.gpt4o))
-                    Text("o3").tag(Model.openai(.o3))
+                    Text("GPT-5 Mini").tag(Model.openai(.gpt5Mini))
                     Text("Grok").tag(Model.grok(.grok4))
                 }
                 .pickerStyle(.menu)

@@ -186,7 +186,7 @@ struct ModelSelectionExecutionPathTests {
         let mockServices = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.anthropic(.haiku35)
+        let customModel = LanguageModel.anthropic(.haiku45)
 
         do {
             // No event delegate means non-streaming path
@@ -244,7 +244,7 @@ struct ModelSelectionEdgeCasesTests {
         let mockServices = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        _ = LanguageModel.openai(.o3)
+        _ = LanguageModel.openai(.gpt5Mini)
 
         // Dry run should not make API calls but should still record the model
         let result = try await agentService.executeTask(

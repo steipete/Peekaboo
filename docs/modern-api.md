@@ -216,18 +216,22 @@ public enum Model {
     case custom(provider: any ModelProvider)
     
     public enum OpenAI: String, CaseIterable {
+        case gpt5 = "gpt-5"
+        case gpt5Pro = "gpt-5-pro"
+        case gpt5Mini = "gpt-5-mini"
+        case gpt5Nano = "gpt-5-nano"
+        case o4Mini = "o4-mini"
         case gpt4o = "gpt-4o"
         case gpt4oMini = "gpt-4o-mini"
         case gpt4_1 = "gpt-4.1"
-        case o3 = "o3"
-        case o3Mini = "o3-mini"
         case custom(String)
     }
     
     public enum Anthropic: String, CaseIterable {
-        case opus4 = "claude-opus-4-20250514"
-        case sonnet4 = "claude-sonnet-4-20250514" 
-        case haiku3_5 = "claude-3-5-haiku"
+        case opus4 = "claude-opus-4-1-20250805"
+        case sonnet4 = "claude-sonnet-4-20250514"
+        case sonnet45 = "claude-sonnet-4-5-20250929"
+        case haiku45 = "claude-haiku-4.5"
         case custom(String)
     }
     
@@ -911,7 +915,7 @@ struct ToolCallingExample {
 
 ### Provider System Modernization
 - [ ] **Refactor all providers to use modern patterns**
-  - [ ] OpenAI provider with latest API support (o1, o3, etc.)
+  - [ ] OpenAI provider with latest API support (GPT-5, o4-mini, etc.)
   - [ ] Anthropic provider with Claude 3.5 and tools
   - [ ] Add Google AI (Gemini) provider
   - [ ] Add Mistral AI provider  

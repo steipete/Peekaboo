@@ -195,19 +195,17 @@ public struct AnalyzeTool: MCPTool {
             if lowercased.contains("opus") {
                 return .anthropic(.opus4)
             } else if lowercased.contains("sonnet") {
-                return .anthropic(.sonnet35)
+                return .anthropic(.sonnet45)
             } else if lowercased.contains("haiku") {
-                return .anthropic(.haiku35)
+                return .anthropic(.haiku45)
             } else {
                 return .anthropic(.opus4) // Default Claude
             }
         }
 
         // OpenAI models
-        if lowercased.contains("gpt") || lowercased.contains("o3") || lowercased.contains("o4") {
-            if lowercased.contains("o3") {
-                return .openai(.o3)
-            } else if lowercased.contains("o4") {
+        if lowercased.contains("gpt") || lowercased.contains("o4") {
+            if lowercased.contains("o4") {
                 return .openai(.o4Mini)
             } else if lowercased.contains("4o") {
                 return .openai(.gpt4o)
@@ -216,6 +214,8 @@ public struct AnalyzeTool: MCPTool {
             } else {
                 return .openai(.gpt4o) // Default GPT
             }
+        } else if lowercased.contains("o3") {
+            return .openai(.gpt5Mini)
         }
 
         // Grok models

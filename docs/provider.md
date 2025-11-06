@@ -15,7 +15,7 @@ Peekaboo supports custom AI providers through configuration-based setup. This al
 ## Built-in vs Custom Providers
 
 ### Built-in Providers
-- **OpenAI**: GPT-4.1, GPT-4o, o3, o4 series
+- **OpenAI**: GPT-5 family, GPT-4.1, GPT-4o, o4-mini
 - **Anthropic**: Claude 4, Claude 3.5, Claude 3.7 series  
 - **Grok (xAI)**: Grok 4, Grok 2 series
 - **Ollama**: Local models with tool support

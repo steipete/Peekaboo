@@ -129,9 +129,9 @@ public final class PeekabooAIService {
             .openai(.gpt4o),
             .openai(.gpt4oMini),
             .anthropic(.sonnet45),
-            .anthropic(.sonnet35),
+            .anthropic(.sonnet45),
             .anthropic(.haiku45),
-            .anthropic(.haiku35),
+            .anthropic(.haiku45),
             .google(.gemini15Pro),
             .google(.gemini15Flash),
         ]

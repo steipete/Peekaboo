@@ -10,11 +10,11 @@ struct AnthropicModelTests {
         // Test current Anthropic models
         let opus4 = Model.anthropic(.opus4)
         let sonnet4 = Model.anthropic(.sonnet4)
-        let haiku35 = Model.anthropic(.haiku35)
+        let haiku45 = Model.anthropic(.haiku45)
 
         #expect(opus4.providerName == "Anthropic")
         #expect(sonnet4.providerName == "Anthropic")
-        #expect(haiku35.providerName == "Anthropic")
+        #expect(haiku45.providerName == "Anthropic")
 
         // Test model capabilities
         #expect(opus4.supportsVision == true)
@@ -25,7 +25,7 @@ struct AnthropicModelTests {
         // Test model IDs
         #expect(opus4.modelId.contains("opus"))
         #expect(sonnet4.modelId.contains("sonnet"))
-        #expect(haiku35.modelId.contains("haiku"))
+        #expect(haiku45.modelId.contains("haiku"))
     }
 
     @Test("Anthropic default model selection")
@@ -41,7 +41,7 @@ struct AnthropicModelTests {
         let anthropicModels = [
             Model.anthropic(.opus4),
             Model.anthropic(.sonnet4),
-            Model.anthropic(.haiku35),
+            Model.anthropic(.haiku45),
         ]
 
         for model in anthropicModels {
@@ -80,7 +80,7 @@ struct AnthropicModelTests {
         let visionCapableModels = [
             Model.anthropic(.opus4),
             Model.anthropic(.sonnet4),
-            Model.anthropic(.haiku35),
+            Model.anthropic(.haiku45),
         ]
 
         for model in visionCapableModels {
@@ -92,21 +92,21 @@ struct AnthropicModelTests {
     func modelComparison() {
         let opus4 = Model.anthropic(.opus4)
         let sonnet4 = Model.anthropic(.sonnet4)
-        let haiku35 = Model.anthropic(.haiku35)
+        let haiku45 = Model.anthropic(.haiku45)
 
         // Test model descriptions
         #expect(opus4.description.contains("Anthropic"))
         #expect(sonnet4.description.contains("Anthropic"))
-        #expect(haiku35.description.contains("Anthropic"))
+        #expect(haiku45.description.contains("Anthropic"))
 
         // Test that they're different models
         #expect(opus4.modelId != sonnet4.modelId)
-        #expect(sonnet4.modelId != haiku35.modelId)
-        #expect(opus4.modelId != haiku35.modelId)
+        #expect(sonnet4.modelId != haiku45.modelId)
+        #expect(opus4.modelId != haiku45.modelId)
 
         // Test model hierarchy (Opus > Sonnet > Haiku typically)
         #expect(opus4.contextLength >= sonnet4.contextLength)
-        #expect(sonnet4.contextLength >= haiku35.contextLength)
+        #expect(sonnet4.contextLength >= haiku45.contextLength)
     }
 
     @Test("Anthropic thinking models")
