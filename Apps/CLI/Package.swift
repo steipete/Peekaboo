@@ -39,7 +39,9 @@ var targets: [Target] = [
             .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
         ],
         path: "Tests/CoreCLITests",
-        swiftSettings: []),
+        swiftSettings: [
+            .enableExperimentalFeature("SwiftTesting"),
+        ]),
 ]
 
 if includeAutomationTests {
@@ -51,7 +53,9 @@ if includeAutomationTests {
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
             ],
             path: "Tests/peekabooAutomationTests",
-            swiftSettings: [])
+            swiftSettings: [
+                .enableExperimentalFeature("SwiftTesting"),
+            ])
     )
 }
 
