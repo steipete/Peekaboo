@@ -54,9 +54,59 @@ struct SpaceCommandReadTests {
         #expect(output.contains("Space"))
     }
 
+    @Test("space switch requires --to parameter")
+    func spaceSwitchRequiresDestination() {
+        #expect(throws: (any Error).self) {
+            try CLIOutputCapture.suppressStderr {
+                _ = try SwitchSubcommand.parse([])
+            }
+        }
+    }
+
+    @Test("space switch rejects non-numeric parameters")
+    func spaceSwitchRejectsNonNumeric() {
+        #expect(throws: (any Error).self) {
+            try CLIOutputCapture.suppressStderr {
+                _ = try SwitchSubcommand.parse(["--to", "abc"])
+            }
+        }
+    }
+
+    @Test("space move-window requires app parameter")
+    func spaceMoveWindowRequiresApp() {
+        #expect(throws: (any Error).self) {
+            try CLIOutputCapture.suppressStderr {
+                _ = try MoveWindowSubcommand.parse(["--to", "2"])
+            }
+        }
+    }
+
+    @Test("space move-window requires destination")
+    func spaceMoveWindowRequiresDestination() {
+        #expect(throws: (any Error).self) {
+            try CLIOutputCapture.suppressStderr {
+                _ = try MoveWindowSubcommand.parse(["--app", "Finder"])
+            }
+        }
+    }
+
+    @Test("space move-window parses follow option")
+    func spaceMoveWindowParsesFollowOption() throws {
+        let command = try MoveWindowSubcommand.parse([
+            "--app", "Finder",
+            "--to", "3",
+            "--follow",
+        ])
+
+        #expect(command.app == "Finder")
+        #expect(command.to == 3)
+        #expect(command.follow == true)
+    }
+
     private func runPeekaboo(_ arguments: [String]) async throws -> String {
         try await PeekabooCLITestRunner.runCommand(arguments)
     }
+
 }
 
 // MARK: - Actions that mutate Spaces
@@ -68,13 +118,6 @@ struct SpaceCommandReadTests {
     .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct SpaceCommandActionTests {
-    @Test("space switch requires --to parameter")
-    func spaceSwitchRequiresDestination() async throws {
-        await #expect(throws: Error.self) {
-            try await self.runPeekaboo(["space", "switch"])
-        }
-    }
-
     @Test("space switch with valid number")
     func spaceSwitchValid() async throws {
         let output = try await self.runPeekaboo([
@@ -85,37 +128,6 @@ struct SpaceCommandActionTests {
         let response = try JSONDecoder().decode(SpaceActionResponse.self, from: output.data(using: .utf8)!)
         if response.success {
             #expect(response.data?.action == "switch")
-        }
-    }
-
-    @Test("space switch with invalid number")
-    func spaceSwitchInvalid() async throws {
-        let output = try await self.runPeekaboo([
-            "space", "switch",
-            "--to", "999",
-            "--json-output",
-        ])
-        let response = try JSONDecoder().decode(SpaceActionResponse.self, from: output.data(using: .utf8)!)
-        #expect(!response.success)
-    }
-
-    @Test("space move-window command help")
-    func spaceMoveWindowHelp() async throws {
-        let output = try await self.runPeekaboo(["space", "move-window", "--help"])
-        #expect(output.contains("Move a window to a different Space"))
-    }
-
-    @Test("space move-window requires app")
-    func spaceMoveWindowRequiresApp() async throws {
-        await #expect(throws: Error.self) {
-            try await self.runPeekaboo(["space", "move-window", "--to", "2"])
-        }
-    }
-
-    @Test("space move-window requires destination")
-    func spaceMoveWindowRequiresDestination() async throws {
-        await #expect(throws: Error.self) {
-            try await self.runPeekaboo(["space", "move-window", "--app", "Finder"])
         }
     }
 

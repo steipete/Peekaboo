@@ -2,9 +2,9 @@ import Foundation
 import Testing
 import PeekabooCLI
 
-@Suite("Utility Tests", .tags(.safe))
+@Suite("Utility Tests", .tags(.safe), .serialized)
 struct UtilityTests {
-    @Suite("Logger Tests", .tags(.safe))
+    @Suite("Logger Tests", .tags(.safe), .serialized)
     struct LoggerTests {
         @Test("Logger captures messages in JSON mode")
         func loggerJSONMode() {
