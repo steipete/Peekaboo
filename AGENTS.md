@@ -11,6 +11,7 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **CI note**: when running long Swift test suites use bare `tmux new-session …` invocations (no `while` loops or `tmux wait-for` wrappers). Continuous polling prevents our hang detector from spotting stuck jobs, which defeats the reason we run tests inside tmux. When implementing progress checks or back-off behaviour, cap individual `sleep`/timeout intervals at **≤30s** so the hang detector retains sufficient cadence.
 - **tmux usage**: Avoid `while tmux …` polling or `tmux wait-for`; prefer direct `tmux` commands with occasional bounded `sleep` calls, and investigate any `tmux`-run command that approaches 10 minutes rather than letting it run unattended.
 - **Commit discipline**: Batch related changes before committing. Never commit single files opportunistically—coordinate commit groups so parallel agents aren’t surprised by partially landed work.
+- **Version control hygiene**: Never revert or overwrite files you did not edit. Other agents and humans may be working in parallel, so avoid destructive operations (including `git checkout`, `git reset`, or similar) unless explicitly instructed.
 
 ## Development Philosophy
 
