@@ -71,6 +71,7 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
 
     /// Check all permissions and update state
     public func checkPermissions() {
+        // Check all permissions and update state
         self.logger.debug("Checking all permissions")
         self.status = self.core.checkAllPermissions()
         self.updatePermissionStates()
@@ -78,6 +79,7 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
 
     /// Start monitoring permission changes
     public func startMonitoring(interval: TimeInterval = 1.0) {
+        // Start monitoring permission changes
         guard !self.isMonitoring else { return }
 
         self.logger.info("Starting permission monitoring")
@@ -96,6 +98,7 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
 
     /// Stop monitoring permission changes
     public func stopMonitoring() {
+        // Stop monitoring permission changes
         guard self.isMonitoring else { return }
 
         self.logger.info("Stopping permission monitoring")
@@ -106,16 +109,19 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
 
     /// Request screen recording permission
     public func requestScreenRecording() throws {
+        // Request screen recording permission
         try self.core.requireScreenRecordingPermission()
     }
 
     /// Request accessibility permission
     public func requestAccessibility() throws {
+        // Request accessibility permission
         try self.core.requireAccessibilityPermission()
     }
 
     /// Request AppleScript permission
     public func requestAppleScript() throws {
+        // Request AppleScript permission
         try self.core.requireAppleScriptPermission()
     }
 

@@ -9,6 +9,7 @@ public struct PathResolver: Sendable {
 
     /// Expand tilde and resolve relative paths
     public static func expandPath(_ path: String) -> String {
+        // Expand tilde and resolve relative paths
         (path as NSString).expandingTildeInPath
     }
 
@@ -30,6 +31,7 @@ public struct PathResolver: Sendable {
 
     /// Create parent directory if needed
     public static func createParentDirectoryIfNeeded(for path: String) throws {
+        // Create parent directory if needed
         let parentDir = (path as NSString).deletingLastPathComponent
         if !parentDir.isEmpty, parentDir != "/" {
             try FileManager.default.createDirectory(
@@ -41,6 +43,7 @@ public struct PathResolver: Sendable {
 
     /// Create directory path
     public static func createDirectory(at path: String) throws {
+        // Create directory path
         try FileManager.default.createDirectory(
             atPath: path,
             withIntermediateDirectories: true,
@@ -49,11 +52,13 @@ public struct PathResolver: Sendable {
 
     /// Check if path exists
     public static func pathExists(_ path: String) -> Bool {
+        // Check if path exists
         FileManager.default.fileExists(atPath: path)
     }
 
     /// Check if path is a directory
     public static func isDirectory(_ path: String) -> Bool {
+        // Check if path is a directory
         var isDir: ObjCBool = false
         return FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
     }
@@ -91,6 +96,7 @@ public struct PathResolver: Sendable {
 
     /// Truncate string to valid UTF-8 sequence
     private static func truncateToValidUTF8(_ string: String, maxLength: Int) -> String {
+        // Truncate string to valid UTF-8 sequence
         let data = string.data(using: .utf8)!
         var truncatedData = data.prefix(maxLength)
 

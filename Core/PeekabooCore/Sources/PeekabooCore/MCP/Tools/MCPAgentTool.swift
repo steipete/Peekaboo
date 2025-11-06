@@ -263,5 +263,6 @@ struct AgentInput: Codable {
 
 /// Parse a model string into a LanguageModel enum
 private func parseModelString(_ modelString: String) -> LanguageModel {
+    // Parse a model string into a LanguageModel enum
     LanguageModel.parse(from: modelString) ?? .anthropic(.opus4)
 }

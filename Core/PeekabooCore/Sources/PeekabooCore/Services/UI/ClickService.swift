@@ -177,6 +177,7 @@ public final class ClickService {
 
     /// Perform actual click at coordinates
     private func performClick(at point: CGPoint, clickType: ClickType) async throws {
+        // Perform actual click at coordinates
         self.logger.debug("Performing \(clickType) click at (\(point.x), \(point.y))")
 
         // Create mouse events based on click type

@@ -10,6 +10,7 @@ public struct FileNameGenerator: Sendable {
         windowTitle: String? = nil,
         format: ImageFormat) -> String
     {
+        // Generate a file name based on capture context
         let timestamp = DateFormatter.timestamp.string(from: Date())
         let ext = format.rawValue
 

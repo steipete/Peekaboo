@@ -94,6 +94,7 @@ public struct AnnotationVisualizationPreset: ElementStyleProvider {
 extension AnnotationVisualizationPreset {
     /// Style specifically for the label badge
     public func labelBadgeStyle(for category: ElementCategory, isSelected: Bool = false) -> ElementStyle {
+        // Style specifically for the label badge
         let baseColor = PeekabooColorPalette.color(for: category)
 
         return ElementStyle(
@@ -119,6 +120,7 @@ extension AnnotationVisualizationPreset {
 
     /// Alternative monospaced style for IDs
     public func monospacedLabelStyle(for category: ElementCategory) -> LabelStyle {
+        // Alternative monospaced style for IDs
         let baseColor = PeekabooColorPalette.color(for: category)
 
         return LabelStyle(
@@ -131,6 +133,7 @@ extension AnnotationVisualizationPreset {
 
     /// Compact style for dense element layouts
     public func compactStyle(for category: ElementCategory) -> ElementStyle {
+        // Compact style for dense element layouts
         let baseColor = PeekabooColorPalette.color(for: category)
 
         return ElementStyle(

@@ -94,6 +94,7 @@ public enum TypedValue: Codable, Sendable, Equatable, Hashable {
 
     /// Convert to a JSON-compatible Any type
     public func toJSON() -> Any {
+        // Convert to a JSON-compatible Any type
         switch self {
         case .null:
             NSNull()
@@ -114,6 +115,7 @@ public enum TypedValue: Codable, Sendable, Equatable, Hashable {
 
     /// Create from a JSON-compatible Any type
     public static func fromJSON(_ json: Any) throws -> TypedValue {
+        // Create from a JSON-compatible Any type
         switch json {
         case is NSNull:
             return .null
@@ -228,6 +230,7 @@ extension TypedValue {
 
     /// Decode into a specific Decodable type
     public func decode<T: Decodable>(as type: T.Type) throws -> T {
+        // Decode into a specific Decodable type
         let json = self.toJSON()
         let data = try JSONSerialization.data(withJSONObject: json)
         let decoder = JSONDecoder()
@@ -240,11 +243,13 @@ extension TypedValue {
 extension TypedValue {
     /// Create from a dictionary with string keys
     public static func fromDictionary(_ dict: [String: Any]) throws -> TypedValue {
+        // Create from a dictionary with string keys
         try self.fromJSON(dict)
     }
 
     /// Convert to dictionary if this is an object type
     public func toDictionary() throws -> [String: Any] {
+        // Convert to dictionary if this is an object type
         guard case let .object(dict) = self else {
             throw TypedValueError.conversionFailed(from: "\(self.valueType)", to: "dictionary")
         }

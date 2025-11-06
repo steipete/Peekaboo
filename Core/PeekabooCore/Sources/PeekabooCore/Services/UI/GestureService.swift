@@ -13,6 +13,7 @@ public final class GestureService {
 
     /// Perform a swipe gesture
     public func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int) async throws {
+        // Perform a swipe gesture
         self.logger
             .debug(
                 "Swipe requested - from: (\(from.x), \(from.y)) to: (\(to.x), \(to.y)), duration: \(duration)ms, steps: \(steps)")
@@ -85,6 +86,7 @@ public final class GestureService {
         steps: Int,
         modifiers: String?) async throws
     {
+        // Perform a drag operation with optional modifiers
         self.logger
             .debug(
                 "Drag requested - from: (\(from.x), \(from.y)) to: (\(to.x), \(to.y)), duration: \(duration)ms, modifiers: \(modifiers ?? "none")")
@@ -161,6 +163,7 @@ public final class GestureService {
 
     /// Move mouse to a specific point
     public func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws {
+        // Move mouse to a specific point
         self.logger.debug("Mouse move requested - to: (\(to.x), \(to.y)), duration: \(duration)ms, steps: \(steps)")
 
         guard steps > 0 else {

@@ -368,6 +368,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         target: WindowTarget,
         operation: @MainActor (Element) -> T) async throws -> T
     {
+        // Performs a window operation within MainActor context
         switch target {
         case let .application(appIdentifier):
             let app = try await applicationService.findApplication(identifier: appIdentifier)

@@ -390,6 +390,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         model: LanguageModel? = nil,
         streamHandler: @Sendable @escaping (String) async -> Void) async throws -> AgentExecutionResult
     {
+        // Execute a task with streaming output
         let selectedModel = model ?? self.defaultLanguageModel
         // For streaming without event handler, create a dummy delegate that discards chunks
         let dummyDelegate = StreamingEventDelegate { _ in /* discard */ }
@@ -481,6 +482,7 @@ extension PeekabooAgentService {
 
     /// List available sessions
     public func listSessions() async throws -> [SessionSummary] {
+        // List available sessions
         let sessions = self.sessionManager.listSessions()
         // SessionSummary is already returned from listSessions()
         return sessions
@@ -488,11 +490,13 @@ extension PeekabooAgentService {
 
     /// Get detailed session information
     public func getSessionInfo(sessionId: String) async throws -> AgentSession? {
+        // Get detailed session information
         try await self.sessionManager.loadSession(id: sessionId)
     }
 
     /// Delete a specific session
     public func deleteSession(id: String) async throws {
+        // Delete a specific session
         try await self.sessionManager.deleteSession(id: id)
     }
 
@@ -512,10 +516,12 @@ extension PeekabooAgentService {
 private actor EventHandler {
     private let handler: @Sendable (AgentEvent) async -> Void
 
+    // Capture the async event handler so we can relay events off the main actor.
     init(handler: @escaping @Sendable (AgentEvent) async -> Void) {
         self.handler = handler
     }
 
+    // Forward events to the supplied handler while preserving actor isolation.
     func send(_ event: AgentEvent) async {
         await self.handler(event)
     }
@@ -608,6 +614,7 @@ extension PeekabooAgentService {
 
     /// Create AgentTool instances from native Peekaboo tools
     public func createAgentTools() -> [Tachikoma.AgentTool] {
+        // Create AgentTool instances from native Peekaboo tools
         var agentTools: [Tachikoma.AgentTool] = []
 
         // Vision tools

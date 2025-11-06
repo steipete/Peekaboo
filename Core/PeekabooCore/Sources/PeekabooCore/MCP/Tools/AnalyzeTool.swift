@@ -187,6 +187,7 @@ public struct AnalyzeTool: MCPTool {
 
     /// Parse a model name string into a LanguageModel enum
     private func parseModelName(_ modelName: String) throws -> LanguageModel {
+        // Parse a model name string into a LanguageModel enum
         let lowercased = modelName.lowercased()
 
         // Claude models

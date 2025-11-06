@@ -4,6 +4,7 @@ import Foundation
 /// - Parameter seconds: The duration in seconds
 /// - Returns: A formatted string like "123µs", "45ms", "2.3s", or "1m 30s"
 public func formatDuration(_ seconds: TimeInterval) -> String {
+    // Formats a time duration into a human-readable string
     if seconds < 0.001 {
         return String(format: "%.0fµs", seconds * 1_000_000)
     } else if seconds < 1.0 {
@@ -23,6 +24,7 @@ public func formatDuration(_ seconds: TimeInterval) -> String {
 ///   - now: The reference date (defaults to current date)
 /// - Returns: A formatted string like "just now", "5 minutes ago", "2 hours ago", etc.
 public func formatTimeAgo(_ date: Date, from now: Date = Date()) -> String {
+    // Formats a date relative to now
     let interval = now.timeIntervalSince(date)
 
     if interval < 60 {

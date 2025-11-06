@@ -148,6 +148,7 @@ extension ElementInfo {
 extension FocusInfo {
     /// Convert to dictionary for JSON responses
     public func toDictionary() -> [String: Any] {
+        // Convert to dictionary for JSON responses
         var dict: [String: Any] = [
             "app": app,
             "processId": processId,
@@ -166,6 +167,7 @@ extension FocusInfo {
 extension ElementInfo {
     /// Convert to dictionary for JSON responses
     public func toDictionary() -> [String: Any] {
+        // Convert to dictionary for JSON responses
         var dict: [String: Any] = [
             "role": role,
             "bounds": [

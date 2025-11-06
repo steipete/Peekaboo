@@ -217,6 +217,7 @@ public struct DragTool: MCPTool {
         sessionId: String?,
         parameterName: String) async throws -> (CGPoint, String)
     {
+        // Resolve location from either element query or coordinate string
         if let coords = coordinateString {
             // Parse coordinates
             let point = try parseCoordinates(coords, parameterName: parameterName)

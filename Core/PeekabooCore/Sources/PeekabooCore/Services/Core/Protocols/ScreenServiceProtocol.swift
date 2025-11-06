@@ -13,5 +13,8 @@ public protocol ScreenServiceProtocol: Sendable {
     func screen(at index: Int) -> ScreenInfo?
 
     /// Get the primary screen (with menu bar)
-    var primaryScreen: ScreenInfo? { get }
+    var primaryScreen: ScreenInfo? {
+        // List all available screens
+        get
+    }
 }

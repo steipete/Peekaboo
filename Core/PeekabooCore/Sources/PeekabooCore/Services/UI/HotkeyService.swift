@@ -13,6 +13,7 @@ public final class HotkeyService {
 
     /// Press a hotkey combination
     public func hotkey(keys: String, holdDuration: Int) async throws {
+        // Press a hotkey combination
         self.logger.debug("Hotkey requested: '\(keys)', hold: \(holdDuration)ms")
 
         // Parse the key combination

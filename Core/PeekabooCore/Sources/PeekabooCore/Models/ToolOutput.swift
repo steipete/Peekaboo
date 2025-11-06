@@ -104,6 +104,7 @@ public struct UnifiedToolOutput<T: Codable>: Codable, Sendable where T: Sendable
 extension UnifiedToolOutput {
     /// Convert to JSON string for CLI output
     public func toJSON(prettyPrinted: Bool = true) throws -> String {
+        // Convert to JSON string for CLI output
         let encoder = JSONEncoder()
         if prettyPrinted {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

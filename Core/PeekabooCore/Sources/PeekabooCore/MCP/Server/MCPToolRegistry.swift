@@ -17,12 +17,14 @@ public final class MCPToolRegistry {
 
     /// Register a tool
     public func register(_ tool: MCPTool) {
+        // Register a tool
         self.tools[tool.name] = tool
         self.logger.debug("Registered tool: \(tool.name)")
     }
 
     /// Register multiple tools
     public func register(_ tools: [MCPTool]) {
+        // Register multiple tools
         for tool in tools {
             self.register(tool)
         }
@@ -30,16 +32,19 @@ public final class MCPToolRegistry {
 
     /// Get a tool by name
     public func tool(named name: String) -> MCPTool? {
+        // Get a tool by name
         self.tools[name]
     }
 
     /// Get all registered tools
     public func allTools() -> [MCPTool] {
+        // Get all registered tools
         Array(self.tools.values)
     }
 
     /// Get tool information for MCP
     public func toolInfos() -> [MCP.Tool] {
+        // Get tool information for MCP
         self.allTools().map { tool in
             MCP.Tool(
                 name: tool.name,
@@ -50,17 +55,20 @@ public final class MCPToolRegistry {
 
     /// Check if a tool is registered
     public func hasToolNamed(_ name: String) -> Bool {
+        // Check if a tool is registered
         self.tools[name] != nil
     }
 
     /// Remove a tool
     public func unregister(_ name: String) {
+        // Remove a tool
         self.tools.removeValue(forKey: name)
         self.logger.debug("Unregistered tool: \(name)")
     }
 
     /// Remove all tools
     public func unregisterAll() {
+        // Remove all tools
         self.tools.removeAll()
         self.logger.debug("Unregistered all tools")
     }
@@ -69,11 +77,13 @@ public final class MCPToolRegistry {
 
     /// Set the client manager for external tools
     public func setClientManager(_ clientManager: TachikomaMCPClientManager) {
+        // Set the client manager for external tools
         self.clientManager = clientManager
     }
 
     /// Register external tools from the client manager
     public func registerExternalTools(from clientManager: TachikomaMCPClientManager) async {
+        // Register external tools from the client manager
         self.clientManager = clientManager
 
         // Clear existing external tools
@@ -99,6 +109,7 @@ public final class MCPToolRegistry {
 
     /// Refresh external tools from servers
     public func refreshExternalTools() async throws {
+        // Refresh external tools from servers
         guard let clientManager else {
             throw MCPError.executionFailed("Client manager not set")
         }
@@ -108,6 +119,7 @@ public final class MCPToolRegistry {
 
     /// Get tools organized by source (native vs external)
     public func getToolsBySource() async -> CategorizedTools {
+        // Get tools organized by source (native vs external)
         let nativeTools = Array(tools.values)
 
         // Organize external tools by server
@@ -148,26 +160,31 @@ public final class MCPToolRegistry {
 
     /// Get all tools (native + external)
     public func getAllTools() -> [MCPTool] {
+        // Get all tools (native + external)
         Array(self.tools.values) + Array(self.externalTools.values)
     }
 
     /// Get external tools only
     public func getExternalTools() -> [MCPTool] {
+        // Get external tools only
         Array(self.externalTools.values)
     }
 
     /// Get native tools only
     public func getNativeTools() -> [MCPTool] {
+        // Get native tools only
         Array(self.tools.values)
     }
 
     /// Check if an external tool exists
     public func hasExternalTool(_ name: String) -> Bool {
+        // Check if an external tool exists
         self.externalTools[name] != nil
     }
 
     /// Get tool count by type
     public func getToolCounts() -> (native: Int, external: Int, total: Int) {
+        // Get tool count by type
         let nativeCount = self.tools.count
         let externalCount = self.externalTools.count
         return (native: nativeCount, external: externalCount, total: nativeCount + externalCount)
@@ -177,11 +194,13 @@ public final class MCPToolRegistry {
 
     /// Get a tool by name (checks both native and external)
     public func toolCombined(named name: String) -> MCPTool? {
+        // Get a tool by name (checks both native and external)
         self.tools[name] ?? self.externalTools[name]
     }
 
     /// Get tool information for MCP (includes external tools)
     public func allToolInfos() -> [MCP.Tool] {
+        // Get tool information for MCP (includes external tools)
         let allTools = Array(tools.values) + Array(self.externalTools.values)
         return allTools.map { tool in
             MCP.Tool(
@@ -193,6 +212,7 @@ public final class MCPToolRegistry {
 
     /// Check if any tool is registered with the given name
     public func hasAnyToolNamed(_ name: String) -> Bool {
+        // Check if any tool is registered with the given name
         self.tools[name] != nil || self.externalTools[name] != nil
     }
 }

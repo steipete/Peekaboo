@@ -79,6 +79,7 @@ public final class TypeService {
 
     /// Type actions (advanced typing with special keys)
     public func typeActions(_ actions: [TypeAction], typingDelay: Int, sessionId: String?) async throws -> TypeResult {
+        // Type actions (advanced typing with special keys)
         var totalChars = 0
         var keyPresses = 0
 

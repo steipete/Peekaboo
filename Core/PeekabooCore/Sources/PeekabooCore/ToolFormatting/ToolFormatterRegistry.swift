@@ -156,11 +156,13 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
 
     /// Get formatter for a specific tool type
     public func formatter(for toolType: ToolType) -> ToolFormatter {
+        // Get formatter for a specific tool type
         self.formatters[toolType] ?? BaseToolFormatter(toolType: toolType)
     }
 
     /// Get formatter for a tool name (backward compatibility)
     public func formatter(for toolName: String) -> ToolFormatter? {
+        // Get formatter for a tool name (backward compatibility)
         guard let toolType = ToolType(toolName: toolName) else {
             return nil
         }
@@ -169,11 +171,13 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
 
     /// Check if a tool name is valid
     public func isValidTool(_ toolName: String) -> Bool {
+        // Check if a tool name is valid
         ToolType(toolName: toolName) != nil
     }
 
     /// Get the tool type for a name
     public func toolType(for toolName: String) -> ToolType? {
+        // Get the tool type for a name
         ToolType(toolName: toolName)
     }
 }

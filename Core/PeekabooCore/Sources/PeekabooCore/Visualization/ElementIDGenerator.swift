@@ -29,6 +29,7 @@ public final class ElementIDGenerator {
     ///   - index: Optional specific index (if nil, uses auto-increment)
     /// - Returns: Generated ID string (e.g., "B1", "T2")
     public func generateID(for category: ElementCategory, index: Int? = nil) -> String {
+        // Generate a unique ID for an element
         self.lock.lock()
         defer { lock.unlock() }
 
@@ -50,6 +51,7 @@ public final class ElementIDGenerator {
     /// - Parameter id: The ID string to parse
     /// - Returns: Tuple of category and index, or nil if invalid
     public func parseID(_ id: String) -> (category: ElementCategory, index: Int)? {
+        // Parse an ID to extract category and index
         guard !id.isEmpty else { return nil }
 
         // Extract prefix (usually 1-2 characters)
@@ -66,6 +68,7 @@ public final class ElementIDGenerator {
 
     /// Reset counters for a specific category or all categories
     public func resetCounters(for category: ElementCategory? = nil) {
+        // Reset counters for a specific category or all categories
         self.lock.lock()
         defer { lock.unlock() }
 
@@ -78,6 +81,7 @@ public final class ElementIDGenerator {
 
     /// Get current counter value for a category
     public func currentCount(for category: ElementCategory) -> Int {
+        // Get current counter value for a category
         self.lock.lock()
         defer { lock.unlock() }
 
@@ -121,6 +125,7 @@ extension ElementIDGenerator {
     /// - Parameter elements: Array of tuples containing category and optional label
     /// - Returns: Array of generated IDs
     public func generateBatchIDs(for elements: [(category: ElementCategory, label: String?)]) -> [String] {
+        // Generate IDs for a batch of elements
         self.lock.lock()
         defer { lock.unlock() }
 

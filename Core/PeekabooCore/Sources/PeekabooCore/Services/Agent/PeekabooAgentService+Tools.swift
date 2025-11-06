@@ -549,6 +549,7 @@ private func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> A
 extension AgentToolArguments {
     /// Convert to dictionary for mutation
     func toDictionary() -> [String: Any] {
+        // Convert to dictionary for mutation
         var dict: [String: Any] = [:]
         for key in self.keys {
             if let value = self[key] {

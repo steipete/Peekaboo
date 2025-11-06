@@ -15,6 +15,7 @@ extension Tachikoma.TypedValue {
 
     /// Convert from MCP Value to TypedValue
     public static func fromMCPValue(_ value: MCP.Value) -> Tachikoma.TypedValue {
+        // Convert from MCP Value to TypedValue
         switch value {
         case .null:
             .null
@@ -38,6 +39,7 @@ extension Tachikoma.TypedValue {
 
     /// Convert TypedValue to MCP Value
     public func toMCPValue() -> MCP.Value {
+        // Convert TypedValue to MCP Value
         switch self {
         case .null:
             .null
@@ -60,12 +62,14 @@ extension Tachikoma.TypedValue {
 
     /// Convert from AnyAgentToolValue to TypedValue via JSON
     public static func fromAnyAgentToolValueViaJSON(_ value: AnyAgentToolValue) throws -> Tachikoma.TypedValue {
+        // Convert from AnyAgentToolValue to TypedValue via JSON
         let json = try value.toJSON()
         return try Tachikoma.TypedValue.fromJSON(json)
     }
 
     /// Convert TypedValue to AnyAgentToolValue
     public func toAnyAgentToolValue() -> AnyAgentToolValue {
+        // Convert TypedValue to AnyAgentToolValue
         switch self {
         case .null:
             AnyAgentToolValue(null: ())
@@ -91,11 +95,13 @@ extension Tachikoma.TypedValue {
 extension MCP.Value {
     /// Convert MCP Value to AnyAgentToolValue via TypedValue
     func toAnyAgentToolValue() -> AnyAgentToolValue {
+        // Convert MCP Value to AnyAgentToolValue via TypedValue
         Tachikoma.TypedValue.fromMCPValue(self).toAnyAgentToolValue()
     }
 
     /// Create MCP Value from Any type via TypedValue
     static func fromAny(_ any: Any) -> MCP.Value {
+        // Create MCP Value from Any type via TypedValue
         do {
             let typedValue = try Tachikoma.TypedValue.fromJSON(any)
             return typedValue.toMCPValue()
@@ -112,6 +118,7 @@ extension MCP.Value {
 extension AnyAgentToolValue {
     /// Convert to Any type for interop
     func toAny() -> Any {
+        // Convert to Any type for interop
         do {
             return try self.toJSON()
         } catch {
@@ -122,11 +129,13 @@ extension AnyAgentToolValue {
 
     /// Create from MCP Value via TypedValue
     static func fromMCPValue(_ value: MCP.Value) -> AnyAgentToolValue {
+        // Create from MCP Value via TypedValue
         Tachikoma.TypedValue.fromMCPValue(value).toAnyAgentToolValue()
     }
 
     /// Create from Any type via TypedValue
     static func fromAny(_ any: Any) -> AnyAgentToolValue {
+        // Create from Any type via TypedValue
         do {
             let typedValue = try Tachikoma.TypedValue.fromJSON(any)
             return typedValue.toAnyAgentToolValue()
@@ -138,6 +147,7 @@ extension AnyAgentToolValue {
 
     /// Convert to MCP Value via TypedValue
     func toValue() -> MCP.Value {
+        // Convert to MCP Value via TypedValue
         let typedValue = Tachikoma.TypedValue.from(self as AnyAgentToolValue)
         return typedValue.toMCPValue()
     }

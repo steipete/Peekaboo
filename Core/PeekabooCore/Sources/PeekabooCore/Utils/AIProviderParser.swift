@@ -17,6 +17,7 @@ public enum AIProviderParser {
 
     /// Parse a single provider string in format "provider/model"
     public static func parse(_ input: String) -> ProviderConfig? {
+        // Parse a single provider string in format "provider/model"
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 
@@ -33,23 +34,27 @@ public enum AIProviderParser {
 
     /// Parse a comma-separated list of provider strings
     public static func parseList(_ input: String) -> [ProviderConfig] {
+        // Parse a comma-separated list of provider strings
         let providers = input.split(separator: ",")
         return providers.compactMap { self.parse(String($0)) }
     }
 
     /// Parse and return the first valid provider from a list
     public static func parseFirst(_ input: String) -> ProviderConfig? {
+        // Parse and return the first valid provider from a list
         let list = self.parseList(input)
         return list.first
     }
 
     /// Extract just the provider name from a provider/model string
     public static func extractProvider(from input: String) -> String? {
+        // Extract just the provider name from a provider/model string
         self.parse(input)?.provider
     }
 
     /// Extract just the model name from a provider/model string
     public static func extractModel(from input: String) -> String? {
+        // Extract just the model name from a provider/model string
         self.parse(input)?.model
     }
 

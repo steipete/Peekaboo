@@ -842,6 +842,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         }
     }
 
+    // Suspend until a frame arrives, applying a timeout guard to avoid deadlocks.
     func waitForImage() async throws -> CGImage {
         try await withCheckedThrowingContinuation { continuation in
             self.queue.async(flags: .barrier) {
@@ -866,6 +867,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         }
     }
 
+    // Deliver the captured image to the continuation whenever a screen frame is emitted.
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .screen else { return }
 
@@ -911,6 +913,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
 extension CGImage {
     // Width and height are already properties of CGImage
 
+    // Render the CGImage via NSImage/NSBitmapImageRep to produce PNG encoded data.
     func pngData() throws -> Data {
         let nsImage = NSImage(cgImage: self, size: NSSize(width: width, height: height))
         guard let tiffData = nsImage.tiffRepresentation,

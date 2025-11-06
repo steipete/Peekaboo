@@ -75,6 +75,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Establishes connection to the visualizer service if available
     public func connect() {
+        // Establishes connection to the visualizer service if available
         self.connectionQueue.async { [weak self] in
             self?.connectInternal()
         }
@@ -195,6 +196,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Disconnects from the visualizer service
     public func disconnect() {
+        // Disconnects from the visualizer service
         self.connectionQueue.sync {
             self.retryTimer?.invalidate()
             self.retryTimer = nil
@@ -217,6 +219,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows screenshot flash animation
     public func showScreenshotFlash(in rect: CGRect) async -> Bool {
+        // Shows screenshot flash animation
         self.logger.info("📸 Client: Screenshot flash requested for rect: \(String(describing: rect))")
 
         guard self.isConnected else {
@@ -247,6 +250,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows click feedback
     public func showClickFeedback(at point: CGPoint, type: ClickType) async -> Bool {
+        // Shows click feedback
         self.logger.info("[tap]️ Client: Click feedback requested at point: \(String(describing: point)), type: \(type)")
 
         guard self.isConnected else {
@@ -271,6 +275,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows typing feedback
     public func showTypingFeedback(keys: [String], duration: TimeInterval = 2.0) async -> Bool {
+        // Shows typing feedback
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -282,6 +287,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows scroll feedback
     public func showScrollFeedback(at point: CGPoint, direction: ScrollDirection, amount: Int) async -> Bool {
+        // Shows scroll feedback
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -293,6 +299,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows mouse movement trail
     public func showMouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
+        // Shows mouse movement trail
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -304,6 +311,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows swipe gesture
     public func showSwipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
+        // Shows swipe gesture
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -315,6 +323,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows hotkey display
     public func showHotkeyDisplay(keys: [String], duration: TimeInterval = 1.0) async -> Bool {
+        // Shows hotkey display
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -326,6 +335,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows app launch animation
     public func showAppLaunch(appName: String, iconPath: String? = nil) async -> Bool {
+        // Shows app launch animation
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -337,6 +347,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows app quit animation
     public func showAppQuit(appName: String, iconPath: String? = nil) async -> Bool {
+        // Shows app quit animation
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -352,6 +363,7 @@ public final class VisualizationClient: @unchecked Sendable {
         windowRect: CGRect,
         duration: TimeInterval = 0.5) async -> Bool
     {
+        // Shows window operation feedback
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -367,6 +379,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows menu navigation path
     public func showMenuNavigation(menuPath: [String]) async -> Bool {
+        // Shows menu navigation path
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -378,6 +391,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows dialog interaction feedback
     public func showDialogInteraction(element: String, elementRect: CGRect, action: String) async -> Bool {
+        // Shows dialog interaction feedback
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -390,6 +404,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows space switching animation
     public func showSpaceSwitch(from: Int, to: Int, direction: SpaceDirection) async -> Bool {
+        // Shows space switching animation
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -401,6 +416,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Shows element detection overlays
     public func showElementDetection(elements: [String: CGRect], duration: TimeInterval = 2.0) async -> Bool {
+        // Shows element detection overlays
         guard self.isConnected, self.isEnabled else { return false }
 
         return await withCheckedContinuation { continuation in
@@ -417,6 +433,7 @@ public final class VisualizationClient: @unchecked Sendable {
         windowBounds: CGRect,
         duration: TimeInterval = 3.0) async -> Bool
     {
+        // Shows annotated screenshot with UI element overlays
         self.logger.info("[focus] Client: Annotated screenshot requested with \(elements.count) elements")
 
         guard self.isConnected else {
@@ -455,6 +472,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Updates visualizer settings
     public func updateSettings(_ settings: [String: Any]) async -> Bool {
+        // Updates visualizer settings
         guard self.isConnected else { return false }
 
         let success = await withCheckedContinuation { continuation in
@@ -474,6 +492,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Checks if Peekaboo.app is running
     private func isPeekabooAppRunning() -> Bool {
+        // Checks if Peekaboo.app is running
         let workspace = NSWorkspace.shared
         let runningApps = workspace.runningApplications
 
@@ -496,6 +515,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Handles connection interruption
     private func handleConnectionInterruption() {
+        // Handles connection interruption
         self.logger.warning("XPC connection interrupted")
         self.isConnected = false
 
@@ -507,6 +527,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Handles connection invalidation
     private func handleConnectionInvalidation() {
+        // Handles connection invalidation
         self.logger.warning("XPC connection invalidated")
         self.isConnected = false
         self.connection = nil
@@ -518,6 +539,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Schedules a connection retry
     private func scheduleConnectionRetry() {
+        // Schedules a connection retry
         guard self.retryAttempt < self.maxRetryAttempts else {
             self.logger.error("Max retry attempts reached, giving up")
             return

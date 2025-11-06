@@ -18,6 +18,7 @@ public final class PeekabooAIService {
 
     /// Analyze an image with a question using AI
     public func analyzeImage(imageData: Data, question: String, model: LanguageModel? = nil) async throws -> String {
+        // Analyze an image with a question using AI
         let selectedModel = model ?? self.defaultModel
 
         // Create a message with the image using Tachikoma's API
@@ -41,6 +42,7 @@ public final class PeekabooAIService {
         question: String,
         model: LanguageModel? = nil) async throws -> AnalysisResult
     {
+        // Analyze an image with a question returning structured metadata
         let selectedModel = model ?? self.defaultModel
 
         // Create a message with the image using Tachikoma's API
@@ -92,6 +94,7 @@ public final class PeekabooAIService {
         question: String,
         model: LanguageModel? = nil) async throws -> AnalysisResult
     {
+        // Analyze an image file returning structured metadata
         let url = URL(fileURLWithPath: path.replacingOccurrences(of: "~", with: NSHomeDirectory()))
         let imageData = try Data(contentsOf: url)
         return try await self.analyzeImageDetailed(imageData: imageData, question: question, model: model)
@@ -99,6 +102,7 @@ public final class PeekabooAIService {
 
     /// Generate text from a prompt
     public func generateText(prompt: String, model: LanguageModel? = nil) async throws -> String {
+        // Generate text from a prompt
         let selectedModel = model ?? self.defaultModel
 
         let messages = [
@@ -114,6 +118,7 @@ public final class PeekabooAIService {
 
     /// List available models
     public func availableModels() -> [LanguageModel] {
+        // List available models
         [
             .openai(.gpt5),
             .openai(.gpt5Pro),

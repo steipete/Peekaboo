@@ -44,6 +44,7 @@ public final class CoordinateTransformer {
         from sourceSpace: CoordinateSpace,
         to targetSpace: CoordinateSpace) -> CGPoint
     {
+        // Transform a point from one coordinate space to another
         let bounds = CGRect(origin: point, size: .zero)
         let transformed = self.transform(bounds, from: sourceSpace, to: targetSpace)
         return transformed.origin
@@ -53,6 +54,7 @@ public final class CoordinateTransformer {
 
     /// Convert bounds to normalized coordinates (0.0 - 1.0)
     private func normalize(_ bounds: CGRect, from space: CoordinateSpace) -> CGRect {
+        // Convert bounds to normalized coordinates (0.0 - 1.0)
         switch space {
         case .screen:
             // Assume primary screen for normalization
@@ -94,6 +96,7 @@ public final class CoordinateTransformer {
 
     /// Convert from normalized coordinates to target space
     private func denormalize(_ bounds: CGRect, to space: CoordinateSpace) -> CGRect {
+        // Convert from normalized coordinates to target space
         switch space {
         case .screen:
             #if canImport(AppKit)
@@ -151,6 +154,7 @@ public final class CoordinateTransformer {
         viewSize: CGSize,
         flipY: Bool = false) -> CGRect
     {
+        // Convert from screen coordinates to SwiftUI view coordinates
         #if canImport(AppKit)
         guard let screen = NSScreen.main else { return bounds }
         let screenSize = screen.frame.size
@@ -179,6 +183,7 @@ public final class CoordinateTransformer {
 
     /// Convert window-relative coordinates to screen coordinates
     public func fromWindowToScreen(_ bounds: CGRect, windowFrame: CGRect) -> CGRect {
+        // Convert window-relative coordinates to screen coordinates
         CGRect(
             x: bounds.origin.x + windowFrame.origin.x,
             y: bounds.origin.y + windowFrame.origin.y,
@@ -188,6 +193,7 @@ public final class CoordinateTransformer {
 
     /// Convert screen coordinates to window-relative coordinates
     public func fromScreenToWindow(_ bounds: CGRect, windowFrame: CGRect) -> CGRect {
+        // Convert screen coordinates to window-relative coordinates
         CGRect(
             x: bounds.origin.x - windowFrame.origin.x,
             y: bounds.origin.y - windowFrame.origin.y,
@@ -199,6 +205,7 @@ public final class CoordinateTransformer {
 
     /// Scale bounds by a factor
     public func scale(_ bounds: CGRect, by factor: CGFloat) -> CGRect {
+        // Scale bounds by a factor
         CGRect(
             x: bounds.origin.x * factor,
             y: bounds.origin.y * factor,
@@ -208,6 +215,7 @@ public final class CoordinateTransformer {
 
     /// Scale bounds with different X and Y factors
     public func scale(_ bounds: CGRect, xFactor: CGFloat, yFactor: CGFloat) -> CGRect {
+        // Scale bounds with different X and Y factors
         CGRect(
             x: bounds.origin.x * xFactor,
             y: bounds.origin.y * yFactor,
@@ -217,6 +225,7 @@ public final class CoordinateTransformer {
 
     /// Offset bounds by a delta
     public func offset(_ bounds: CGRect, by delta: CGPoint) -> CGRect {
+        // Offset bounds by a delta
         CGRect(
             x: bounds.origin.x + delta.x,
             y: bounds.origin.y + delta.y,
@@ -226,6 +235,7 @@ public final class CoordinateTransformer {
 
     /// Clamp bounds within container
     public func clamp(_ bounds: CGRect, to container: CGRect) -> CGRect {
+        // Clamp bounds within container
         let x = max(container.minX, min(bounds.origin.x, container.maxX - bounds.width))
         let y = max(container.minY, min(bounds.origin.y, container.maxY - bounds.height))
 
@@ -271,11 +281,13 @@ extension CoordinateTransformer {
 
     /// Find which screen contains a point
     public func screen(containing point: CGPoint) -> NSScreen? {
+        // Find which screen contains a point
         NSScreen.screens.first { $0.frame.contains(point) }
     }
 
     /// Find which screen contains the majority of a rect
     public func screen(containing bounds: CGRect) -> NSScreen? {
+        // Find which screen contains the majority of a rect
         var bestScreen: NSScreen?
         var bestArea: CGFloat = 0
 

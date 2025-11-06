@@ -40,6 +40,7 @@ public final class ScreenService: ScreenServiceProtocol {
 
     /// List all available screens
     public func listScreens() -> [ScreenInfo] {
+        // List all available screens
         let screens = NSScreen.screens
         let mainScreen = NSScreen.main
 
@@ -60,6 +61,7 @@ public final class ScreenService: ScreenServiceProtocol {
 
     /// Find which screen contains a window based on its bounds
     public func screenContainingWindow(bounds: CGRect) -> ScreenInfo? {
+        // Find which screen contains a window based on its bounds
         let screens = self.listScreens()
 
         // Find the screen that contains the center of the window
@@ -89,6 +91,7 @@ public final class ScreenService: ScreenServiceProtocol {
 
     /// Get screen by index
     public func screen(at index: Int) -> ScreenInfo? {
+        // Get screen by index
         let screens = self.listScreens()
         guard index >= 0, index < screens.count else { return nil }
         return screens[index]

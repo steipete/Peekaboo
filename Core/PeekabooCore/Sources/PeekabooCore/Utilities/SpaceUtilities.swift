@@ -73,64 +73,79 @@ public typealias CGSSpaceType = Int
 
 /// Use _CGSDefaultConnection instead of CGSMainConnectionID for better reliability
 @_silgen_name("_CGSDefaultConnection")
+// Bridge to private CoreGraphics call that returns the default WindowServer connection.
 func _CGSDefaultConnection() -> CGSConnectionID
 
 /// Returns an array of all space IDs matching the given mask
 /// The result is a CFArray that may contain space IDs as NSNumbers
 @_silgen_name("CGSCopySpaces")
+// Bridge function that retrieves Space identifiers matching the supplied mask.
 func CGSCopySpaces(_ cid: CGSConnectionID, _ mask: Int) -> CFArray?
 
 /// Given an array of window numbers, returns the IDs of the spaces those windows lie on
 /// The windowIDs parameter should be a CFArray of CGWindowID values
 @_silgen_name("CGSCopySpacesForWindows")
+// Bridge function returning the Spaces that currently host the referenced window list.
 func CGSCopySpacesForWindows(_ cid: CGSConnectionID, _ mask: Int, _ windowIDs: CFArray) -> CFArray?
 
 /// Gets the type of a space (user, fullscreen, system)
 @_silgen_name("CGSSpaceGetType")
+// Bridge function mapping a Space identifier to its classification.
 func CGSSpaceGetType(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CGSSpaceType
 
 /// Gets the ID of the space currently visible to the user
 @_silgen_name("CGSGetActiveSpace")
+// Bridge function returning the currently active Space identifier.
 func CGSGetActiveSpace(_ cid: CGSConnectionID) -> CGSSpaceID
 
 /// Creates a new space with the given options dictionary
 /// Valid keys are: "type": CFNumberRef, "uuid": CFStringRef
 @_silgen_name("CGSSpaceCreate")
+// Bridge function that requests creation of a new Space with the given options.
 func CGSSpaceCreate(_ cid: CGSConnectionID, _ null: UnsafeRawPointer, _ options: CFDictionary) -> CGSSpaceID
 
 /// Removes and destroys the space corresponding to the given space ID
 @_silgen_name("CGSSpaceDestroy")
+// Bridge function that destroys the specified Space.
 func CGSSpaceDestroy(_ cid: CGSConnectionID, _ sid: CGSSpaceID)
 
 /// Get and set the human-readable name of a space
 @_silgen_name("CGSSpaceCopyName")
+// Bridge function fetching the human-readable Space name.
 func CGSSpaceCopyName(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CFString
 
 @_silgen_name("CGSSpaceSetName")
+// Bridge function assigning a new name to the Space.
 func CGSSpaceSetName(_ cid: CGSConnectionID, _ sid: CGSSpaceID, _ name: CFString) -> CGError
 
 /// Returns an array of PIDs of applications that have ownership of a given space
 @_silgen_name("CGSSpaceCopyOwners")
+// Bridge function listing process identifiers owning the Space.
 func CGSSpaceCopyOwners(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CFArray
 
 /// Connection-local data in a given space
 @_silgen_name("CGSSpaceCopyValues")
+// Bridge function copying assorted metadata values for the Space.
 func CGSSpaceCopyValues(_ cid: CGSConnectionID, _ space: CGSSpaceID) -> CFDictionary
 
 @_silgen_name("CGSSpaceSetValues")
+// Bridge function persisting metadata values for the Space.
 func CGSSpaceSetValues(_ cid: CGSConnectionID, _ sid: CGSSpaceID, _ values: CFDictionary) -> CGError
 
 /// Changes the active space for a given display
 /// Takes a CFString display identifier
 @_silgen_name("CGSManagedDisplaySetCurrentSpace")
+// Bridge function that activates the specified Space on a managed display.
 func CGSManagedDisplaySetCurrentSpace(_ cid: CGSConnectionID, _ display: CFString, _ space: CGSSpaceID)
 
 /// Given an array of space IDs, each space is shown to the user
 @_silgen_name("CGSShowSpaces")
+// Bridge function that reveals the provided Spaces to the user.
 func CGSShowSpaces(_ cid: CGSConnectionID, _ spaces: CFArray)
 
 /// Given an array of space IDs, each space is hidden from the user
 @_silgen_name("CGSHideSpaces")
+// Bridge function that hides the provided Spaces from the user.
 func CGSHideSpaces(_ cid: CGSConnectionID, _ spaces: CFArray)
 
 /// Main display identifier constant
@@ -139,18 +154,22 @@ let kCGSPackagesMainDisplayIdentifier: CFString
 
 /// Given an array of window numbers and an array of space IDs, adds each window to each space
 @_silgen_name("CGSAddWindowsToSpaces")
+// Bridge function that associates each window with the specified Spaces.
 func CGSAddWindowsToSpaces(_ cid: CGSConnectionID, _ windows: CFArray, _ spaces: CFArray)
 
 /// Given an array of window numbers and an array of space IDs, removes each window from each space
 @_silgen_name("CGSRemoveWindowsFromSpaces")
+// Bridge function that detaches windows from the specified Spaces.
 func CGSRemoveWindowsFromSpaces(_ cid: CGSConnectionID, _ windows: CFArray, _ spaces: CFArray)
 
 /// Returns information about managed display spaces
 @_silgen_name("CGSCopyManagedDisplaySpaces")
+// Bridge function returning the managed display Space descriptors.
 func CGSCopyManagedDisplaySpaces(_ cid: CGSConnectionID) -> CFArray
 
 /// Get the level (z-order) of a window
 @_silgen_name("CGSGetWindowLevel")
+// Bridge function retrieving a window's z-order level from CGS.
 func CGSGetWindowLevel(
     _ cid: CGSConnectionID,
     _ windowID: CGWindowID,
@@ -226,6 +245,7 @@ public final class SpaceManagementService {
     // MARK: - Space Information
 
     /// Get information about all Spaces
+    // Enumerate every known desktop space and normalize its metadata.
     public func getAllSpaces() -> [SpaceInfo] {
         // Check if we have a valid connection
         guard connection != 0 else {
@@ -290,6 +310,7 @@ public final class SpaceManagementService {
     }
 
     /// Get information about all Spaces organized by display
+    // Build a mapping of displays to their associated desktop spaces.
     public func getAllSpacesByDisplay() -> [CGDirectDisplayID: [SpaceInfo]] {
         // Check if we have a valid connection
         guard connection != 0 else {
@@ -370,6 +391,7 @@ public final class SpaceManagementService {
     }
 
     /// Get the current active Space
+    // Retrieve metadata describing the desktop Space currently visible to the user.
     public func getCurrentSpace() -> SpaceInfo? {
         // Check if we have a valid connection
         guard connection != 0 else {
@@ -407,6 +429,7 @@ public final class SpaceManagementService {
     }
 
     /// Get Spaces that contain a specific window
+    // Enumerate the desktop Spaces that currently host the provided window.
     public func getSpacesForWindow(windowID: CGWindowID) -> [SpaceInfo] {
         // Check if we have a valid connection
         guard connection != 0 else {
@@ -475,7 +498,9 @@ public final class SpaceManagementService {
     // MARK: - Space Switching
 
     /// Switch to a specific Space
+    // Animate and instruct the system to activate the target desktop Space.
     public func switchToSpace(_ spaceID: CGSSpaceID) async throws {
+        // Switch to a specific Space
         let currentSpace = CGSGetActiveSpace(connection)
         let direction: SpaceDirection = spaceID > currentSpace ? .right : .left
 
@@ -490,7 +515,9 @@ public final class SpaceManagementService {
     }
 
     /// Switch to the Space containing a specific window
+    // Jump to whichever Space contains the referenced window.
     public func switchToWindowSpace(windowID: CGWindowID) async throws {
+        // Switch to the Space containing a specific window
         let spaces = getSpacesForWindow(windowID: windowID)
 
         guard let targetSpace = spaces.first else {
@@ -509,6 +536,7 @@ public final class SpaceManagementService {
     // MARK: - Window Information
 
     /// Get the window level (z-order) for a window
+    // Query the CGS window level so callers can reason about stacking order.
     public func getWindowLevel(windowID: CGWindowID) -> Int32? {
         // Check if we have a valid connection
         guard connection != 0 else {
@@ -531,7 +559,9 @@ public final class SpaceManagementService {
     // MARK: - Window Movement
 
     /// Move a window to a specific Space
+    // Reassign the given window to the target Space, removing prior memberships first.
     public func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) throws {
+        // Move a window to a specific Space
         let windowArray = [windowID] as CFArray
         let spaceArray = [spaceID] as CFArray
 
@@ -551,7 +581,9 @@ public final class SpaceManagementService {
     }
 
     /// Move a window to the current Space
+    // Convenience wrapper that relocates the window into whichever Space is active now.
     public func moveWindowToCurrentSpace(windowID: CGWindowID) throws {
+        // Move a window to the current Space
         guard let currentSpace = getCurrentSpace() else {
             throw SpaceError.failedToGetCurrentSpace
         }
@@ -561,6 +593,7 @@ public final class SpaceManagementService {
 
     // MARK: - Private Helpers
 
+    // Map a Space identifier to an associated display when known.
     private func getDisplayForSpace(_ spaceID: CGSSpaceID) -> CGDirectDisplayID? {
         // Simplified implementation that avoids the problematic CGSManagedDisplayGetCurrentSpace
         // For now, just return the main display ID

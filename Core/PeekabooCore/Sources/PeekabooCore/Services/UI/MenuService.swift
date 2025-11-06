@@ -170,6 +170,7 @@ public final class MenuService: MenuServiceProtocol {
 
     /// Click a menu item by searching for it recursively in the menu hierarchy
     public func clickMenuItemByName(app: String, itemName: String) async throws {
+        // Click a menu item by searching for it recursively in the menu hierarchy
         let appInfo = try await applicationService.findApplication(identifier: app)
 
         // First, get the menu structure to find the full path
@@ -200,6 +201,7 @@ public final class MenuService: MenuServiceProtocol {
 
     /// Recursively find the full path to a menu item by name
     private func findItemPath(itemName: String, in items: [MenuItem], currentPath: String) -> String? {
+        // Recursively find the full path to a menu item by name
         for item in items {
             if item.title == itemName, !item.isSeparator {
                 return "\(currentPath) > \(item.title)"
@@ -573,6 +575,7 @@ public final class MenuService: MenuServiceProtocol {
 
     /// List all menu bar items (status items)
     public func listMenuBarItems() async throws -> [MenuBarItemInfo] {
+        // List all menu bar items (status items)
         let extras = try await listMenuExtras()
 
         // Convert MenuExtraInfo to MenuBarItemInfo with index
@@ -621,6 +624,7 @@ public final class MenuService: MenuServiceProtocol {
 
     /// Click a menu bar item by index
     public func clickMenuBarItem(at index: Int) async throws -> ClickResult {
+        // Click a menu bar item by index
         let extras = try await listMenuExtras()
 
         guard index >= 0, index < extras.count else {
@@ -648,6 +652,7 @@ public final class MenuService: MenuServiceProtocol {
 extension Element {
     @MainActor
     func menuBar() -> Element? {
+        // Resolve the root menu bar element if the attribute is available.
         guard let menuBar = attribute(Attribute<AXUIElement>("AXMenuBar")) else {
             return nil
         }
@@ -656,6 +661,7 @@ extension Element {
 
     @MainActor
     static func systemWide() -> Element {
+        // Return the shared system-wide accessibility element for menu interactions.
         Element(AXUIElementCreateSystemWide())
     }
 }

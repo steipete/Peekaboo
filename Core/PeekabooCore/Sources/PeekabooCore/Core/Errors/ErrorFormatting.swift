@@ -7,6 +7,7 @@ import PeekabooFoundation
 public enum ErrorFormatter {
     /// Format an error for CLI output
     public static func formatForCLI(_ error: Error, verbose: Bool = false) -> String {
+        // Format an error for CLI output
         let standardized = ErrorStandardizer.standardize(error)
 
         var output = standardized.userMessage
@@ -27,6 +28,7 @@ public enum ErrorFormatter {
 
     /// Format an error for JSON output
     public static func formatForJSON(_ error: Error) -> [String: Any] {
+        // Format an error for JSON output
         let standardized = ErrorStandardizer.standardize(error)
 
         var json: [String: Any] = [
@@ -44,6 +46,7 @@ public enum ErrorFormatter {
 
     /// Format an error for logging
     public static func formatForLog(_ error: Error) -> String {
+        // Format an error for logging
         let standardized = ErrorStandardizer.standardize(error)
 
         var output = "[\(standardized.code.rawValue)] \(standardized.userMessage)"
@@ -61,6 +64,7 @@ public enum ErrorFormatter {
 
     /// Format multiple errors into a summary
     public static func formatMultipleErrors(_ errors: [Error]) -> String {
+        // Format multiple errors into a summary
         guard !errors.isEmpty else { return "No errors" }
 
         if errors.count == 1 {

@@ -5,6 +5,7 @@ import Configuration
 
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, *)
 private struct IdentityKeyDecoder: ConfigKeyDecoder {
+    // Decode a raw configuration key string into a structured ConfigKey while preserving context.
     func decode(_ string: String, context: [String: ConfigContextValue]) -> ConfigKey {
         ConfigKey([string], context: context)
     }
@@ -88,6 +89,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Migrate from legacy configuration if needed
     public func migrateIfNeeded() throws {
+        // Migrate from legacy configuration if needed
         let fileManager = FileManager.default
 
         // Check if legacy config exists but new config doesn't
@@ -155,6 +157,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     ///
     /// Returns the loaded configuration or loads it if not already loaded.
     public func getConfiguration() -> Configuration? {
+        // Get the current configuration.
         if self.configuration == nil {
             _ = self.loadConfiguration()
         }
@@ -163,6 +166,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Load configuration from a specific path
     private func loadConfigurationFromPath(_ configPath: String) -> Configuration? {
+        // Load configuration from a specific path
         guard FileManager.default.fileExists(atPath: configPath) else {
             return nil
         }
@@ -221,6 +225,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Load credentials from file
     private func loadCredentials() {
+        // Load credentials from file
         guard FileManager.default.fileExists(atPath: Self.credentialsPath) else {
             return
         }
@@ -288,6 +293,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Strip comments from JSONC content
     public func stripJSONComments(from json: String) -> String {
+        // Strip comments from JSONC content
         var result = ""
         var inString = false
         var escapeNext = false
@@ -376,6 +382,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Expand environment variables in the format ${VAR_NAME}
     public func expandEnvironmentVariables(in text: String) -> String {
+        // Expand environment variables in the format ${VAR_NAME}
         let pattern = #"\$\{([A-Za-z_][A-Za-z0-9_]*)\}"#
 
         do {
@@ -449,6 +456,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get AI providers with proper precedence
     public func getAIProviders(cliValue: String? = nil) -> String {
+        // Get AI providers with proper precedence
         self.getValue(
             cliValue: cliValue,
             envVar: "PEEKABOO_AI_PROVIDERS",
@@ -498,6 +506,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get Ollama base URL with proper precedence
     public func getOllamaBaseURL() -> String {
+        // Get Ollama base URL with proper precedence
         self.getValue(
             cliValue: nil as String?,
             envVar: "PEEKABOO_OLLAMA_BASE_URL",
@@ -507,6 +516,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get default save path with proper precedence
     public func getDefaultSavePath(cliValue: String? = nil) -> String {
+        // Get default save path with proper precedence
         let path = self.getValue(
             cliValue: cliValue,
             envVar: "PEEKABOO_DEFAULT_SAVE_PATH",
@@ -517,6 +527,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get log level with proper precedence
     public func getLogLevel() -> String {
+        // Get log level with proper precedence
         self.getValue(
             cliValue: nil as String?,
             envVar: "PEEKABOO_LOG_LEVEL",
@@ -526,6 +537,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get log path with proper precedence
     public func getLogPath() -> String {
+        // Get log path with proper precedence
         let path = self.getValue(
             cliValue: nil as String?,
             envVar: "PEEKABOO_LOG_PATH",
@@ -536,6 +548,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Create default configuration file
     public func createDefaultConfiguration() throws {
+        // Create default configuration file
         let configPath = Self.configPath
 
         // Create directory with proper permissions
@@ -663,11 +676,13 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get agent model
     public func getAgentModel() -> String? {
+        // Get agent model
         self.configuration?.agent?.defaultModel
     }
 
     /// Get agent temperature
     public func getAgentTemperature() -> Double {
+        // Get agent temperature
         self.getValue(
             cliValue: nil as Double?,
             envVar: nil,
@@ -677,6 +692,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get agent max tokens
     public func getAgentMaxTokens() -> Int {
+        // Get agent max tokens
         self.getValue(
             cliValue: nil as Int?,
             envVar: nil,
@@ -710,6 +726,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Test method to verify module interface
     public func testMethod() -> String {
+        // Test method to verify module interface
         "test"
     }
 
@@ -717,6 +734,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get MCP client servers dictionary
     public func getMCPClientServers() -> [String: Configuration.MCPClientConfig] {
+        // Get MCP client servers dictionary
         self.getConfiguration()?.mcpClients ?? [:]
     }
 
@@ -754,6 +772,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     ///   - id: Unique identifier for the provider
     /// - Throws: Configuration errors if save fails
     public func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
+        // Add a custom AI provider to the configuration
         var config = self.loadConfiguration() ?? Configuration()
 
         // Initialize customProviders if needed
@@ -775,6 +794,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// - Parameter id: Provider identifier to remove
     /// - Throws: Configuration errors if save fails
     public func removeCustomProvider(id: String) throws {
+        // Remove a custom provider from the configuration
         var config = self.loadConfiguration() ?? Configuration()
 
         // Remove the provider if it exists
@@ -796,12 +816,14 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// - Parameter id: Provider identifier
     /// - Returns: The custom provider if found
     public func getCustomProvider(id: String) -> Configuration.CustomProvider? {
+        // Get a specific custom provider by ID
         self.loadConfiguration()?.customProviders?[id]
     }
 
     /// List all configured custom providers
     /// - Returns: Dictionary of provider ID to provider configuration
     public func listCustomProviders() -> [String: Configuration.CustomProvider] {
+        // List all configured custom providers
         self.loadConfiguration()?.customProviders ?? [:]
     }
 
@@ -809,6 +831,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// - Parameter id: Provider identifier to test
     /// - Returns: True if connection successful
     public func testCustomProvider(id: String) async -> (success: Bool, error: String?) {
+        // Test connection to a custom provider
         guard let provider = getCustomProvider(id: id) else {
             return (false, "Provider '\(id)' not found")
         }
@@ -835,6 +858,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// - Parameter id: Provider identifier
     /// - Returns: List of available model IDs
     public func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
+        // Discover available models from a custom provider
         guard let provider = getCustomProvider(id: id) else {
             return ([], "Provider '\(id)' not found")
         }
@@ -861,6 +885,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Save configuration to disk
     private func saveConfiguration(_ config: Configuration) throws {
+        // Save configuration to disk
         let encoder = JSONCoding.encoder
         let data = try encoder.encode(config)
 
@@ -902,6 +927,7 @@ public final class ConfigurationManager: @unchecked Sendable {
         provider: Configuration.CustomProvider,
         apiKey: String) async throws -> (success: Bool, error: String?)
     {
+        // Test OpenAI-compatible provider connection
         let url = URL(string: "\(provider.options.baseURL)/models")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -976,6 +1002,7 @@ public final class ConfigurationManager: @unchecked Sendable {
         provider: Configuration.CustomProvider,
         apiKey: String) async throws -> (models: [String], error: String?)
     {
+        // Discover models from OpenAI-compatible provider
         let url = URL(string: "\(provider.options.baseURL)/models")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"

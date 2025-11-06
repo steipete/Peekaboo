@@ -69,6 +69,7 @@ public protocol LoggingServiceProtocol: Sendable {
 
 /// Convenience extensions with default parameters
 extension LoggingServiceProtocol {
+    // Log a message with structured metadata
     public func trace(
         _ message: String,
         category: String,
@@ -221,6 +222,7 @@ public struct CategoryLogger: Sendable {
 
     /// Create a child logger with the same category but different correlation ID
     public func withCorrelationId(_ correlationId: String) -> CategoryLogger {
+        // Create a child logger with the same category but different correlation ID
         CategoryLogger(service: self.service, category: self.category, defaultCorrelationId: correlationId)
     }
 }

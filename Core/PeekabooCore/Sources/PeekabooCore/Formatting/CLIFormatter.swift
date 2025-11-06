@@ -4,6 +4,7 @@ import Foundation
 public enum CLIFormatter {
     /// Format any UnifiedToolOutput for CLI display
     public static func format(_ output: UnifiedToolOutput<some Any>) -> String {
+        // Format any UnifiedToolOutput for CLI display
         var result = output.summary.brief
 
         // Add counts if any
@@ -52,6 +53,7 @@ public enum CLIFormatter {
 
     /// Format specific data types
     private static func formatSpecificData(_ data: some Any) -> String {
+        // Format specific data types
         var result = ""
 
         switch data {

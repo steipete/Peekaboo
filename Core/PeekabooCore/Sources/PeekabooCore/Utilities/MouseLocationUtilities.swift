@@ -10,6 +10,7 @@ public enum MouseLocationUtilities {
     /// Find the application that has a window at the current mouse location
     /// - Returns: The application at the mouse location, or the frontmost app as fallback
     public static func findApplicationAtMouseLocation() -> NSRunningApplication? {
+        // Find the application that has a window at the current mouse location
         let mouseLocation = NSEvent.mouseLocation
 
         // Performance optimization: Start with frontmost app if mouse is over it

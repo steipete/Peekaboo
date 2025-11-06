@@ -88,12 +88,14 @@ private actor MCPClientConnection {
     private var lastConnected: Date?
     private let logger: os.Logger
 
+    // Capture the remote configuration details and bootstrap a scoped logger.
     init(name: String, config: MCPServerConfig) {
         self.name = name
         self.config = config
         self.logger = os.Logger(subsystem: "boo.peekaboo.mcp.client", category: name)
     }
 
+    // Establish a fresh MCP connection and cache the resolved tool metadata.
     func connect() async throws {
         guard self.config.enabled else {
             throw MCPClientError.serverDisabled
@@ -127,6 +129,7 @@ private actor MCPClientConnection {
         self.logger.info("Connected to MCP server '\(self.name)' with \(self.tools.count) tools")
     }
 
+    // Cleanly shut down the MCP connection and reset local caches.
     func disconnect() async {
         if let client = self.client {
             await client.disconnect()
@@ -136,14 +139,17 @@ private actor MCPClientConnection {
         self.tools = []
     }
 
+    // Report whether a live MCP client instance is currently retained.
     func isConnected() -> Bool {
         self.client != nil
     }
 
+    // Surface the cached tool list for downstream consumers.
     func getTools() -> [Tool] {
         self.tools
     }
 
+    // Forward the invocation to the MCP server after confirming connectivity.
     func executeTool(name: String, arguments: ToolArguments) async throws -> ToolResponse {
         guard let client = self.client else {
             throw MCPClientError.notConnected
@@ -195,6 +201,7 @@ public final class MCPClientManager {
 
     /// Configure MCP servers
     public func configure(_ configs: [String: MCPServerConfig]) {
+        // Configure MCP servers
         self.configs = configs
 
         // Create connections for each config
@@ -208,6 +215,7 @@ public final class MCPClientManager {
 
     /// Add a single server
     public func addServer(name: String, config: MCPServerConfig) async throws {
+        // Add a single server
         self.configs[name] = config
         let connection = MCPClientConnection(name: name, config: config)
         self.connections[name] = connection
@@ -221,6 +229,7 @@ public final class MCPClientManager {
 
     /// Initialize default servers
     public func initializeDefaultServers(userConfigs: [String: MCPServerConfig]) async {
+        // Initialize default servers
         self.logger.info("Initializing default MCP servers...")
 
         // Define default browser server configuration
@@ -295,6 +304,7 @@ public final class MCPClientManager {
 
     /// Connect to all enabled servers
     public func connectAll() async {
+        // Connect to all enabled servers
         await withTaskGroup(of: (String, Result<Void, TachikomaMCP.MCPError>).self) { group in
             for (name, connection) in self.connections {
                 guard let config = configs[name], config.enabled else { continue }
@@ -324,6 +334,7 @@ public final class MCPClientManager {
 
     /// Disconnect from all servers
     public func disconnectAll() async {
+        // Disconnect from all servers
         for connection in self.connections.values {
             await connection.disconnect()
         }
@@ -331,6 +342,7 @@ public final class MCPClientManager {
 
     /// Get information about all configured servers
     public func getServerInfos() async -> [MCPServerInfo] {
+        // Get information about all configured servers
         var infos: [MCPServerInfo] = []
 
         for (name, connection) in self.connections {
@@ -368,6 +380,7 @@ public final class MCPClientManager {
 
     /// Get all available tools from all connected servers
     public func getAllTools() async -> [Tool] {
+        // Get all available tools from all connected servers
         var allTools: [Tool] = []
 
         for connection in self.connections.values {
@@ -384,6 +397,7 @@ public final class MCPClientManager {
         toolName: String,
         arguments: ToolArguments) async throws -> ToolResponse
     {
+        // Execute an external tool
         guard let connection = connections[serverName] else {
             throw MCPClientError.executionFailed("Server '\(serverName)' not found")
         }
@@ -393,6 +407,7 @@ public final class MCPClientManager {
 
     /// Get external tools from all connected servers
     public func getExternalTools() async -> [String: [Tool]] {
+        // Get external tools from all connected servers
         var toolsByServer: [String: [Tool]] = [:]
 
         for (name, connection) in self.connections {
@@ -407,6 +422,7 @@ public final class MCPClientManager {
 
     /// Convert MCP response to ToolResponse
     private func convertResponse(_ content: [MCP.Tool.Content]) -> ToolResponse {
+        // Convert MCP response to ToolResponse
         ToolResponse(content: content)
     }
 
@@ -414,6 +430,7 @@ public final class MCPClientManager {
 
     /// Get all server names
     public func getServerNames() async -> [String] {
+        // Get all server names
         let names = Array(connections.keys).sorted()
         self.logger.info("Returning \(names.count) server names: \(names)")
         return names
@@ -421,6 +438,7 @@ public final class MCPClientManager {
 
     /// Check health status for all servers
     public func checkAllServersHealth() async -> [String: MCPServerHealth] {
+        // Check health status for all servers
         var healthResults: [String: MCPServerHealth] = [:]
 
         await withTaskGroup(of: (String, MCPServerHealth).self) { group in
@@ -441,6 +459,7 @@ public final class MCPClientManager {
 
     /// Check health status for a specific server
     public func checkServerHealth(name: String, timeout: Int = 5000) async -> MCPServerHealth {
+        // Check health status for a specific server
         guard let connection = connections[name] else {
             return .unknown
         }
@@ -470,6 +489,7 @@ public final class MCPClientManager {
 
     /// Get information about a specific server
     public func getServerInfo(name: String) async -> MCPServerInfo? {
+        // Get information about a specific server
         guard let connection = connections[name] else {
             return nil
         }
@@ -509,6 +529,7 @@ public final class MCPClientManager {
 
     /// Remove a server
     public func removeServer(name: String) async throws {
+        // Remove a server
         guard let connection = connections[name] else {
             throw MCPClientError.executionFailed("Server '\(name)' not found")
         }
@@ -522,6 +543,7 @@ public final class MCPClientManager {
 
     /// Enable a server
     public func enableServer(name: String) async throws {
+        // Enable a server
         guard var config = configs[name] else {
             throw MCPClientError.executionFailed("Server '\(name)' not found")
         }
@@ -538,6 +560,7 @@ public final class MCPClientManager {
 
     /// Disable a server
     public func disableServer(name: String) async throws {
+        // Disable a server
         guard var config = configs[name] else {
             throw MCPClientError.executionFailed("Server '\(name)' not found")
         }

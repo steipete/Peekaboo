@@ -108,6 +108,7 @@ public struct InspectorVisualizationPreset: ElementStyleProvider {
 extension InspectorVisualizationPreset {
     /// Special style for the circle indicator itself
     public func circleStyle(for category: ElementCategory, isHovered: Bool) -> ElementStyle {
+        // Special style for the circle indicator itself
         let baseColor = PeekabooColorPalette.color(for: category)
 
         return ElementStyle(
@@ -127,6 +128,7 @@ extension InspectorVisualizationPreset {
 
     /// Style for the hover frame overlay
     public func frameOverlayStyle(for category: ElementCategory) -> ElementStyle {
+        // Style for the hover frame overlay
         let baseColor = PeekabooColorPalette.color(for: category)
 
         return ElementStyle(
@@ -141,6 +143,7 @@ extension InspectorVisualizationPreset {
 
     /// Style for the info bubble shown on hover
     public func infoBubbleStyle() -> ElementStyle {
+        // Style for the info bubble shown on hover
         ElementStyle(
             primaryColor: CGColor(gray: 0, alpha: 1),
             fillOpacity: 0.8,

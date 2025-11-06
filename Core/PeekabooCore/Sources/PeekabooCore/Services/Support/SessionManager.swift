@@ -233,6 +233,7 @@ public final class SessionManager: SessionManagerProtocol {
         windowTitle: String?,
         windowBounds: CGRect?) async throws
     {
+        // Store raw screenshot and build UI map
         let sessionPath = self.getSessionPath(for: sessionId)
 
         // Load or create session data
@@ -255,6 +256,7 @@ public final class SessionManager: SessionManagerProtocol {
 
     /// Get element by ID from session
     public func getElement(sessionId: String, elementId: String) async throws -> UIElement? {
+        // Get element by ID from session
         let sessionPath = self.getSessionPath(for: sessionId)
         guard let sessionData = await sessionActor.loadSession(sessionId: sessionId, from: sessionPath) else {
             throw SessionError.sessionNotFound
@@ -264,6 +266,7 @@ public final class SessionManager: SessionManagerProtocol {
 
     /// Find elements matching a query
     public func findElements(sessionId: String, matching query: String) async throws -> [UIElement] {
+        // Find elements matching a query
         let sessionPath = self.getSessionPath(for: sessionId)
         guard let sessionData = await sessionActor.loadSession(sessionId: sessionId, from: sessionPath) else {
             throw SessionError.sessionNotFound
@@ -496,6 +499,7 @@ private actor SessionStorageActor {
         // JSONCoding.encoder already has pretty printing and sorted keys configured
     }
 
+    // Persist the supplied automation session to disk for later reuse.
     func saveSession(sessionId: String, data: UIAutomationSession, at sessionPath: URL) throws {
         // Ensure the session directory exists
         try FileManager.default.createDirectory(at: sessionPath, withIntermediateDirectories: true)
@@ -507,6 +511,7 @@ private actor SessionStorageActor {
         try jsonData.write(to: sessionFile, options: .atomic)
     }
 
+    // Restore a persisted automation session while gracefully handling incompatible snapshots.
     func loadSession(sessionId: String, from sessionPath: URL) -> UIAutomationSession? {
         let sessionFile = sessionPath.appendingPathComponent("map.json")
 

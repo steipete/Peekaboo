@@ -18,7 +18,10 @@ public protocol ObservableService: AnyObject {
     func stopMonitoring() async
 
     /// Check if monitoring is active
-    var isMonitoring: Bool { get }
+    var isMonitoring: Bool {
+        // Start monitoring for state changes
+        get
+    }
 }
 
 // MARK: - Observable Service State
@@ -44,7 +47,10 @@ public protocol RefreshableService: ObservableService {
     func refresh() async throws
 
     /// Check if refresh is available
-    var canRefresh: Bool { get }
+    var canRefresh: Bool {
+        // Manually refresh the service state
+        get
+    }
 
     /// Check if currently refreshing
     var isRefreshing: Bool { get }
@@ -85,7 +91,10 @@ public protocol ServiceLifecycle: AnyObject {
     func cleanup() async
 
     /// Current lifecycle state
-    var lifecycleState: ServiceLifecycleState { get }
+    var lifecycleState: ServiceLifecycleState {
+        // Initialize the service
+        get
+    }
 }
 
 /// Service lifecycle states
@@ -118,7 +127,10 @@ public protocol ServiceRegistry {
     func contains(_ type: (some Any).Type) -> Bool
 
     /// Get all registered service types
-    var registeredTypes: [String] { get }
+    var registeredTypes: [String] {
+        // Register a service
+        get
+    }
 }
 
 // MARK: - Service Event
@@ -145,6 +157,7 @@ public protocol ServiceObserver: AnyObject {
 // MARK: - Default Implementations
 
 extension ServiceState {
+    // Handle a service event
     public var isLoading: Bool { false }
     public var lastError: Error? { nil }
     public var lastUpdated: Date { Date() }

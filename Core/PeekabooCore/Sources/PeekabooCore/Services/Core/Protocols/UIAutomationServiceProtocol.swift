@@ -156,6 +156,7 @@ public struct DetectedElements: Sendable {
 
     /// Find element by ID
     public func findById(_ id: String) -> DetectedElement? {
+        // Find element by ID
         self.all.first { $0.id == id }
     }
 

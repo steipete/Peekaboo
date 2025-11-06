@@ -13,6 +13,7 @@ extension TypedValue {
 
     /// Encode a value into a container with type checking
     public static func encode(_ value: Any, to container: inout some UnkeyedEncodingContainer) throws {
+        // Encode a value into a container with type checking
         let typedValue = try TypedValue.fromJSON(value)
         switch typedValue {
         case .null:
@@ -43,6 +44,7 @@ extension TypedValue {
         _ dict: [String: Any],
         to container: inout KeyedEncodingContainer<DynamicCodingKey>) throws
     {
+        // Encode a dictionary with heterogeneous values
         for (key, value) in dict {
             let typedValue = try TypedValue.fromJSON(value)
             let codingKey = DynamicCodingKey(stringValue: key)
@@ -75,6 +77,7 @@ extension TypedValue {
 
     /// Decode from a single value container
     public static func decode(from container: SingleValueDecodingContainer) throws -> TypedValue {
+        // Decode from a single value container
         if container.decodeNil() {
             return .null
         } else if let bool = try? container.decode(Bool.self) {
@@ -112,11 +115,13 @@ public struct DynamicCodingKey: CodingKey {
     public let intValue: Int?
 
     public init(stringValue: String) {
+        // Capture the provided string key while marking the integer form as unavailable.
         self.stringValue = stringValue
         self.intValue = nil
     }
 
     public init?(intValue: Int) {
+        // Store the integer key while also keeping the string representation in sync.
         self.stringValue = String(intValue)
         self.intValue = intValue
     }
@@ -161,6 +166,7 @@ extension TypedValue {
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *)
 extension TypedValue {
     /// Check if the value matches a specific type
+    // Determine whether this value can be represented as the supplied runtime type.
     public func matches(_ type: (some Any).Type) -> Bool {
         switch self {
         case .bool where type == Bool.self:
@@ -183,6 +189,7 @@ extension TypedValue {
     }
 
     /// Try to cast the value to a specific type
+    // Attempt to convert the stored value into the requested generic type.
     public func cast<T>(to type: T.Type) -> T? {
         switch self {
         case let .bool(v) where type == Bool.self:
@@ -209,11 +216,13 @@ extension TypedValue {
 extension [TypedValue] {
     /// Convert array of TypedValues to JSON array
     public func toJSONArray() -> [Any] {
+        // Convert array of TypedValues to JSON array
         map { $0.toJSON() }
     }
 
     /// Create from JSON array
     public static func fromJSONArray(_ jsonArray: [Any]) throws -> [TypedValue] {
+        // Create from JSON array
         try jsonArray.map { try TypedValue.fromJSON($0) }
     }
 }
@@ -222,11 +231,13 @@ extension [TypedValue] {
 extension [String: TypedValue] {
     /// Convert dictionary of TypedValues to JSON dictionary
     public func toJSONDictionary() -> [String: Any] {
+        // Convert dictionary of TypedValues to JSON dictionary
         mapValues { $0.toJSON() }
     }
 
     /// Create from JSON dictionary
     public static func fromJSONDictionary(_ jsonDict: [String: Any]) throws -> [String: TypedValue] {
+        // Create from JSON dictionary
         try jsonDict.mapValues { try TypedValue.fromJSON($0) }
     }
 }

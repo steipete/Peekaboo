@@ -139,6 +139,7 @@ public enum ToolResultExtractor {
 
     /// Extract a Double value from the result (unified)
     public static func doubleUnified(_ key: String, from result: [String: Any]) -> Double? {
+        // Extract a Double value from the result (unified)
         if let value = result[key] as? Double { return value }
         if let value = result[key] as? Int { return Double(value) }
         if let stringValue = string(key, from: result), let d = Double(stringValue) { return d }

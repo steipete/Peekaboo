@@ -34,6 +34,7 @@ public protocol ToolFormatter {
 
 /// Base implementation of ToolFormatter with common functionality
 open class BaseToolFormatter: ToolFormatter {
+    // Format the tool execution start message
     public let toolType: ToolType
 
     public init(toolType: ToolType) {
@@ -93,6 +94,7 @@ open class BaseToolFormatter: ToolFormatter {
 
     /// Format duration in a human-readable way
     func formatDuration(_ seconds: TimeInterval) -> String {
+        // Format duration in a human-readable way
         if seconds < 0.001 {
             return String(format: "%.0fµs", seconds * 1_000_000)
         } else if seconds < 1.0 {
@@ -108,6 +110,7 @@ open class BaseToolFormatter: ToolFormatter {
 
     /// Format keyboard shortcuts with proper symbols
     func formatKeyboardShortcut(_ keys: String) -> String {
+        // Format keyboard shortcuts with proper symbols
         keys.replacingOccurrences(of: "cmd", with: "⌘")
             .replacingOccurrences(of: "command", with: "⌘")
             .replacingOccurrences(of: "shift", with: "⇧")
@@ -122,6 +125,7 @@ open class BaseToolFormatter: ToolFormatter {
 
     /// Truncate text if too long
     func truncate(_ text: String, maxLength: Int = 30) -> String {
+        // Truncate text if too long
         if text.count > maxLength {
             return String(text.prefix(maxLength)) + "..."
         }

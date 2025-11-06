@@ -70,6 +70,7 @@ extension URLSession {
         response: URLResponse,
         context: String) throws
     {
+        // Handle error responses in a generic way
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PeekabooError.networkError("Invalid response type")
         }
@@ -102,6 +103,7 @@ extension URLSession {
         response: URLResponse,
         context: String) throws
     {
+        // Handle provider-specific error response
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PeekabooError.networkError("Invalid response type")
         }
@@ -156,6 +158,7 @@ extension PeekabooError {
         message: String,
         context: String) -> PeekabooError
     {
+        // Create appropriate PeekabooError based on HTTP status code
         switch statusCode {
         case 400:
             .invalidInput("\(context): Bad request - \(message)")

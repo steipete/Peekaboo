@@ -8,6 +8,7 @@ import PeekabooFoundation
 extension Element {
     /// Set a messaging timeout for this element to prevent hangs
     @MainActor
+    // Apply the requested messaging timeout directly to the accessibility element.
     func setMessagingTimeout(_ timeout: Float) {
         let error = AXUIElementSetMessagingTimeout(self.underlyingElement, timeout)
         if error != .success {
@@ -18,6 +19,7 @@ extension Element {
 
     /// Get windows with timeout protection
     @MainActor
+    // Retrieve child windows while temporarily tightening the messaging timeout.
     func windowsWithTimeout(timeout: Float = 2.0) -> [Element]? {
         // Set a shorter timeout to prevent hanging
         self.setMessagingTimeout(timeout)
@@ -33,6 +35,7 @@ extension Element {
 
     /// Get menu bar with timeout protection
     @MainActor
+    // Access the menu bar while applying a shorter timeout window.
     func menuBarWithTimeout(timeout: Float = 2.0) -> Element? {
         // Set a shorter timeout to prevent hanging
         self.setMessagingTimeout(timeout)
@@ -51,6 +54,7 @@ extension Element {
 public enum AXTimeoutConfiguration {
     /// Set the global messaging timeout for all AX operations
     @MainActor
+    // Update the system-wide messaging timeout so future AX calls inherit the new limit.
     public static func setGlobalTimeout(_ timeout: Float) {
         let systemWide = AXUIElementCreateSystemWide()
         let error = AXUIElementSetMessagingTimeout(systemWide, timeout)
@@ -76,6 +80,7 @@ public struct AXTimeoutWrapper {
 
     /// Execute an AX operation with timeout protection and retry logic
     @MainActor
+    // Attempt the operation multiple times before surfacing the final failure.
     public func execute<T>(_ operation: () throws -> T?) async throws -> T? {
         var lastError: Error?
 
@@ -111,6 +116,7 @@ public enum AXDispatchTimeout {
         timeout: TimeInterval,
         operation: @escaping () -> T?) async throws -> T?
     {
+        // Dispatch the operation onto a background queue and enforce the timeout with cancellable continuation.
         try await withCheckedThrowingContinuation { continuation in
             let workItem = DispatchWorkItem {
                 let result = operation()

@@ -39,6 +39,7 @@ public enum ToolRegistry {
 
     /// Get parameter by name from a tool
     public static func parameter(named name: String, from tool: PeekabooToolDefinition) -> ParameterDefinition? {
+        // Get parameter by name from a tool
         tool.parameters.first { $0.name == name }
     }
 
@@ -84,6 +85,7 @@ public enum ToolRegistry {
 
     /// Convert agent tool parameters to parameter definitions
     private static func convertAgentParameters(_ params: AgentToolParameters?) -> [ParameterDefinition] {
+        // Convert agent tool parameters to parameter definitions
         guard let params else { return [] }
 
         var definitions: [ParameterDefinition] = []

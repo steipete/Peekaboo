@@ -26,6 +26,7 @@ public final class ElementLayoutEngine {
         for bounds: CGRect,
         style: IndicatorStyle) -> CGPoint
     {
+        // Calculate position for element indicator
         switch style {
         case let .circle(diameter, position):
             let halfDiameter = diameter / 2
@@ -69,6 +70,7 @@ public final class ElementLayoutEngine {
         labelSize: CGSize = CGSize(width: 60, height: 20),
         indicatorStyle: IndicatorStyle) -> CGPoint
     {
+        // Calculate optimal position for element label
         let spacing: CGFloat = 4
         let halfLabelHeight = labelSize.height / 2
         let halfLabelWidth = labelSize.width / 2
@@ -132,6 +134,7 @@ public final class ElementLayoutEngine {
         for bounds: CGRect,
         expansion: CGFloat = 2) -> CGRect
     {
+        // Calculate expanded bounds for hover effects
         bounds.insetBy(dx: -expansion, dy: -expansion)
     }
 
@@ -139,6 +142,7 @@ public final class ElementLayoutEngine {
     /// - Parameter elements: Array of elements to group
     /// - Returns: Bounding box containing all elements
     public func groupBounds(for elements: [VisualizableElement]) -> CGRect? {
+        // Calculate bounds for element group
         guard !elements.isEmpty else { return nil }
 
         var minX = CGFloat.greatestFiniteMagnitude
@@ -164,6 +168,7 @@ public final class ElementLayoutEngine {
 
     /// Check if two elements overlap
     public func elementsOverlap(_ element1: VisualizableElement, _ element2: VisualizableElement) -> Bool {
+        // Check if two elements overlap
         element1.bounds.intersects(element2.bounds)
     }
 
@@ -172,6 +177,7 @@ public final class ElementLayoutEngine {
         VisualizableElement,
         VisualizableElement)]
     {
+        // Find overlapping elements in a collection
         var overlaps: [(VisualizableElement, VisualizableElement)] = []
 
         for i in 0..<elements.count {
@@ -194,6 +200,7 @@ public final class ElementLayoutEngine {
         labelSize: CGSize = CGSize(width: 60, height: 20),
         indicatorStyle: IndicatorStyle) -> [String: CGPoint]
     {
+        // Optimize label positions to avoid overlaps
         var positions: [String: CGPoint] = [:]
         var occupiedRects: [CGRect] = []
 

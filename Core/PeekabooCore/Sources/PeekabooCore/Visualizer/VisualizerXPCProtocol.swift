@@ -200,6 +200,7 @@ public let VisualizerXPCServiceName = "boo.peekaboo.visualizer"
 
 /// Notification names for visualizer events
 extension Notification.Name {
+    // Shows a camera flash effect for screenshot capture
     public static let visualizerConnected = Notification.Name("boo.peekaboo.visualizer.connected")
     public static let visualizerDisconnected = Notification.Name("boo.peekaboo.visualizer.disconnected")
     public static let visualizerSettingsChanged = Notification.Name("boo.peekaboo.visualizer.settingsChanged")

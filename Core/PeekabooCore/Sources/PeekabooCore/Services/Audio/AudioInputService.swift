@@ -113,6 +113,7 @@ public final class AudioInputService {
 
     /// Start recording audio from the microphone
     public func startRecording() async throws {
+        // Start recording audio from the microphone
         do {
             try await self.recorder.startRecording()
             self.logger.info("Started audio recording")
@@ -135,6 +136,7 @@ public final class AudioInputService {
 
     /// Stop recording and return the transcription
     public func stopRecording() async throws -> String {
+        // Stop recording and return the transcription
         do {
             let audioData = try await recorder.stopRecording()
             self.logger.info("Stopped audio recording")
@@ -169,6 +171,7 @@ public final class AudioInputService {
 
     /// Cancel recording without transcription
     public func cancelRecording() async {
+        // Cancel recording without transcription
         await self.recorder.cancelRecording()
         self.logger.info("Cancelled audio recording")
     }

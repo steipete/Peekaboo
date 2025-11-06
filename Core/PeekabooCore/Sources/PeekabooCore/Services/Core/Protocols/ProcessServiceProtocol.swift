@@ -34,6 +34,7 @@ public protocol ProcessServiceProtocol: Sendable {
 
 /// Script structure for Peekaboo automation
 public struct PeekabooScript: Codable, Sendable {
+    // Load and validate a Peekaboo script from file
     public let description: String?
     public let steps: [ScriptStep]
 

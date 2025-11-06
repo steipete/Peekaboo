@@ -99,11 +99,13 @@ public struct CategorizedTools: Sendable {
 
     /// Get tools from a specific server
     public func tools(from serverName: String) -> [MCPTool] {
+        // Get tools from a specific server
         self.external[serverName] ?? []
     }
 
     /// Check if a server has any tools
     public func hasTools(from serverName: String) -> Bool {
+        // Check if a server has any tools
         !(self.external[serverName]?.isEmpty ?? true)
     }
 }
@@ -138,6 +140,7 @@ public struct ToolFilter: Sendable {
 
     /// Create filter for specific MCP server
     public static func server(_ name: String) -> ToolFilter {
+        // Create filter for specific MCP server
         ToolFilter(specificServer: name)
     }
 }
@@ -182,6 +185,7 @@ public struct ToolDisplayOptions: Sendable {
 public struct ToolOrganizer: Sendable {
     /// Apply filter to categorized tools
     public static func filter(_ tools: CategorizedTools, with filter: ToolFilter) -> CategorizedTools {
+        // Apply filter to categorized tools
         var filteredNative: [MCPTool] = []
         var filteredExternal = OrderedDictionary<String, [MCPTool]>()
 
@@ -208,6 +212,7 @@ public struct ToolOrganizer: Sendable {
 
     /// Sort tools within categories
     public static func sort(_ tools: CategorizedTools, alphabetically: Bool = true) -> CategorizedTools {
+        // Sort tools within categories
         guard alphabetically else { return tools }
 
         let sortedNative = tools.native.sorted { $0.name < $1.name }
@@ -220,6 +225,7 @@ public struct ToolOrganizer: Sendable {
 
     /// Get display name for a tool based on options
     public static func displayName(for tool: MCPTool, options: ToolDisplayOptions) -> String {
+        // Get display name for a tool based on options
         if let externalTool = tool as? ExternalMCPTool {
             if options.useServerPrefixes {
                 return externalTool.name // Already includes server prefix
@@ -232,6 +238,7 @@ public struct ToolOrganizer: Sendable {
 
     /// Format tool description for display
     public static func formatDescription(_ description: String, maxLength: Int = 80) -> String {
+        // Format tool description for display
         if description.count <= maxLength {
             return description
         }

@@ -45,6 +45,7 @@ extension PeekabooAgentService {
 
     /// Enhance error with context-specific information
     private func enhanceError(_ error: PeekabooError, for toolName: String) -> ErrorInfo {
+        // Enhance error with context-specific information
         var message = error.localizedDescription
         var suggestion: String?
         var metadata: [String: String] = [:]

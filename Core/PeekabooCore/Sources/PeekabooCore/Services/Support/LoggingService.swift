@@ -37,6 +37,7 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
 
     /// Get or create a Logger for the specified category
     private func osLogger(category: String) -> os.Logger {
+        // Get or create a Logger for the specified category
         self.queue.sync {
             if let logger = loggers[category] {
                 return logger
@@ -48,6 +49,7 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
 
     /// Store a logger for reuse
     private func storeLogger(_ logger: os.Logger, category: String) {
+        // Store a logger for reuse
         self.queue.async(flags: .barrier) {
             self.loggers[category] = logger
         }

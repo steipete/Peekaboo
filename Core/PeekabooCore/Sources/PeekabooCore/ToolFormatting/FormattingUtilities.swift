@@ -9,6 +9,7 @@ import Foundation
 public enum FormattingUtilities {
     /// Format keyboard shortcut with proper symbols
     public static func formatKeyboardShortcut(_ keys: String) -> String {
+        // Format keyboard shortcut with proper symbols
         keys.replacingOccurrences(of: "cmd", with: "⌘")
             .replacingOccurrences(of: "command", with: "⌘")
             .replacingOccurrences(of: "shift", with: "⇧")
@@ -31,6 +32,7 @@ public enum FormattingUtilities {
 
     /// Truncate text for display
     public static func truncate(_ text: String, maxLength: Int = 50, suffix: String = "...") -> String {
+        // Truncate text for display
         guard maxLength > 0 else { return suffix }
         if text.count <= maxLength {
             return text
@@ -42,11 +44,13 @@ public enum FormattingUtilities {
 
     /// Format a file path to show only the filename
     public static func filename(from path: String) -> String {
+        // Format a file path to show only the filename
         (path as NSString).lastPathComponent
     }
 
     /// Format plural text
     public static func pluralize(_ count: Int, singular: String, plural: String? = nil) -> String {
+        // Format plural text
         if count == 1 {
             "\(count) \(singular)"
         } else {
@@ -56,18 +60,21 @@ public enum FormattingUtilities {
 
     /// Format coordinates
     public static func formatCoordinates(x: Any?, y: Any?) -> String? {
+        // Format coordinates
         guard let x, let y else { return nil }
         return "(\(x), \(y))"
     }
 
     /// Format size/dimensions
     public static func formatDimensions(width: Any?, height: Any?) -> String? {
+        // Format size/dimensions
         guard let width, let height else { return nil }
         return "\(width)×\(height)"
     }
 
     /// Format menu path with nice separators
     public static func formatMenuPath(_ path: String) -> String {
+        // Format menu path with nice separators
         let components = path.components(separatedBy: ">").map { $0.trimmingCharacters(in: .whitespaces) }
         if components.count > 1 {
             return components.joined(separator: " → ")
@@ -77,6 +84,7 @@ public enum FormattingUtilities {
 
     /// Parse JSON arguments string to dictionary
     public static func parseArguments(_ arguments: String) -> [String: Any] {
+        // Parse JSON arguments string to dictionary
         guard let data = arguments.data(using: .utf8),
               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
@@ -87,6 +95,7 @@ public enum FormattingUtilities {
 
     /// Format JSON for pretty printing
     public static func formatJSON(_ json: String) -> String? {
+        // Format JSON for pretty printing
         guard let data = json.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
               let formatted = try? JSONSerialization.data(withJSONObject: object, options: .prettyPrinted),
@@ -99,6 +108,7 @@ public enum FormattingUtilities {
 
     /// Format duration for display
     public static func formatDetailedDuration(_ seconds: TimeInterval) -> String {
+        // Format duration for display
         if seconds < 0.001 {
             return String(format: "%.0fµs", seconds * 1_000_000)
         } else if seconds < 1.0 {
@@ -114,6 +124,7 @@ public enum FormattingUtilities {
 
     /// Format a byte count into a human-readable string
     public static func formatFileSize(_ bytes: Int) -> String {
+        // Format a byte count into a human-readable string
         let units = ["B", "KB", "MB", "GB", "TB"]
         var value = Double(bytes)
         var unitIndex = 0

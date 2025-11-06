@@ -140,6 +140,7 @@ public protocol ConversationSessionStorageProtocol: Sendable {
 
 /// Summary information about a conversation session
 public struct ConversationSessionSummary: Identifiable, Sendable {
+    // Create a new session
     public let id: String
     public let title: String
     public let startTime: Date

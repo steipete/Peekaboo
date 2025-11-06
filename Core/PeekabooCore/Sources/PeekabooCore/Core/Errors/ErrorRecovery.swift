@@ -50,6 +50,7 @@ public enum RetryHandler {
         policy: RetryPolicy = .standard,
         operation: @Sendable () async throws -> T) async throws -> T
     {
+        // Execute an operation with retry logic
         var lastError: Error?
         var delay = policy.initialDelay
 
@@ -86,6 +87,7 @@ public enum RetryHandler {
         delayForAttempt: @Sendable (Int) -> TimeInterval,
         operation: @Sendable () async throws -> T) async throws -> T
     {
+        // Execute an operation with custom retry logic
         var lastError: Error?
 
         for attempt in 1...maxAttempts {
@@ -123,6 +125,7 @@ public enum RecoveryAction: Sendable {
 
 /// Protocol for error recovery strategies
 public protocol ErrorRecoveryStrategy: Sendable {
+    // Determine the appropriate recovery action for the provided standardized error.
     func suggestRecovery(for error: StandardizedError) -> RecoveryAction?
 }
 
@@ -130,6 +133,7 @@ public protocol ErrorRecoveryStrategy: Sendable {
 public struct DefaultRecoveryStrategy: ErrorRecoveryStrategy {
     public init() {}
 
+    // Map well-known standardized errors into higher level recovery actions.
     public func suggestRecovery(for error: StandardizedError) -> RecoveryAction? {
         switch error.code {
         case .screenRecordingPermissionDenied:

@@ -27,11 +27,13 @@ public protocol AgentEventDelegate: AnyObject, Sendable {
 extension AgentEventDelegate {
     /// Helper method for backward compatibility
     func agentDidStart() async {
+        // Helper method for backward compatibility
         self.agentDidEmitEvent(.started(task: ""))
     }
 
     /// Helper method for backward compatibility
     func agentDidReceiveChunk(_ chunk: String) async {
+        // Helper method for backward compatibility
         self.agentDidEmitEvent(.assistantMessage(content: chunk))
     }
 }
@@ -256,6 +258,7 @@ public final class AgentSessionManager: @unchecked Sendable {
 
     /// List all available sessions
     public func listSessions() -> [SessionSummary] {
+        // List all available sessions
         do {
             let sessionFiles = try fileManager.contentsOfDirectory(
                 at: self.sessionDirectory,
@@ -294,6 +297,7 @@ public final class AgentSessionManager: @unchecked Sendable {
 
     /// Save a session to persistent storage
     public func saveSession(_ session: AgentSession) throws {
+        // Save a session to persistent storage
         let sessionFile = self.sessionDirectory.appendingPathComponent("\(session.id).json")
         let data = try JSONEncoder().encode(session)
         try data.write(to: sessionFile)
@@ -336,6 +340,7 @@ public final class AgentSessionManager: @unchecked Sendable {
 
     /// Delete a session
     public func deleteSession(id: String) async throws {
+        // Delete a session
         let sessionFile = self.sessionDirectory.appendingPathComponent("\(id).json")
         try self.fileManager.removeItem(at: sessionFile)
 
@@ -347,6 +352,7 @@ public final class AgentSessionManager: @unchecked Sendable {
 
     /// Clean up expired sessions
     public func cleanupExpiredSessions() async throws {
+        // Clean up expired sessions
         let sessions = self.listSessions()
         let expiredSessions = sessions.filter { self.isSessionExpired($0.lastAccessedAt) }
 

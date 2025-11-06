@@ -19,7 +19,10 @@ public protocol ElementStyleProvider: Sendable {
     func style(for category: ElementCategory, state: ElementVisualizationState) -> ElementStyle
 
     /// Get indicator style for the visualization
-    var indicatorStyle: IndicatorStyle { get }
+    var indicatorStyle: IndicatorStyle {
+        // Get style for an element in a given state
+        get
+    }
 
     /// Whether to show labels
     var showsLabels: Bool { get }
@@ -65,6 +68,7 @@ public enum PeekabooColorPalette {
 
     /// Get color for element category
     public static func color(for category: ElementCategory) -> CGColor {
+        // Get color for element category
         switch category {
         case .button, .link, .menu:
             self.interactive

@@ -484,6 +484,7 @@ extension PeekabooServices {
         appIdentifier: String,
         actions: [AutomationAction]) async throws -> AutomationResult
     {
+        // Perform UI automation with automatic session management
         self.logger.info("\(AgentDisplayTokens.Status.running) Starting automation for app: \(appIdentifier)")
         self.logger.debug("Number of actions: \(actions.count)")
 
@@ -590,6 +591,7 @@ extension PeekabooServices {
 
     /// Parse model string to LanguageModel enum
     private static func parseModelStringForAgent(_ modelString: String) -> LanguageModel {
+        // Parse model string to LanguageModel enum
         LanguageModel.parse(from: modelString) ?? .openai(.gpt5Mini)
     }
 

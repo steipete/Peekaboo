@@ -65,6 +65,7 @@ public final class WindowIdentityService {
 
     /// Extract CGWindowID from an AXUIElement window
     public func getWindowID(from windowElement: AXUIElement) -> CGWindowID? {
+        // Extract CGWindowID from an AXUIElement window
         var windowID: CGWindowID = 0
         let result = _AXUIElementGetWindow(windowElement, &windowID)
 
@@ -106,6 +107,7 @@ public final class WindowIdentityService {
 
     /// Find AXUIElement window by CGWindowID
     public func findWindow(byID windowID: CGWindowID, in app: NSRunningApplication) -> Element? {
+        // Find AXUIElement window by CGWindowID
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         let element = Element(appElement)
 
@@ -233,6 +235,7 @@ public final class WindowIdentityService {
 
     /// Check if a window is on screen (not minimized)
     public func isWindowOnScreen(windowID: CGWindowID) -> Bool {
+        // Check if a window is on screen (not minimized)
         let options: CGWindowListOption = [.optionIncludingWindow, .optionOnScreenOnly]
         guard let windowInfoList = CGWindowListCopyWindowInfo(options, windowID) as? [[String: Any]] else {
             return false
@@ -242,6 +245,7 @@ public final class WindowIdentityService {
 
     /// Get all windows for a specific application
     public func getWindows(for app: NSRunningApplication) -> [WindowIdentityInfo] {
+        // Get all windows for a specific application
         let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
         guard let windowInfoList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return []

@@ -14,6 +14,7 @@ public final class PermissionsService {
 
     /// Check if Screen Recording permission is granted
     public func checkScreenRecordingPermission() -> Bool {
+        // Check if Screen Recording permission is granted
         self.logger.debug("Checking screen recording permission")
 
         // Use CGWindowListCreateImage which doesn't require async
@@ -27,6 +28,7 @@ public final class PermissionsService {
 
     /// Check if Accessibility permission is granted
     public func checkAccessibilityPermission() -> Bool {
+        // Check if Accessibility permission is granted
         self.logger.debug("Checking accessibility permission")
 
         // Check if we have accessibility permission
@@ -39,6 +41,7 @@ public final class PermissionsService {
 
     /// Check if AppleScript permission is granted
     public func checkAppleScriptPermission() -> Bool {
+        // Check if AppleScript permission is granted
         self.logger.debug("Checking AppleScript permission")
 
         // Check if we have permission to send AppleEvents
@@ -68,6 +71,7 @@ public final class PermissionsService {
 
     /// Require Screen Recording permission, throwing if not granted
     public func requireScreenRecordingPermission() throws {
+        // Require Screen Recording permission, throwing if not granted
         self.logger.debug("Requiring screen recording permission")
 
         if !self.checkScreenRecordingPermission() {
@@ -78,6 +82,7 @@ public final class PermissionsService {
 
     /// Require Accessibility permission, throwing if not granted
     public func requireAccessibilityPermission() throws {
+        // Require Accessibility permission, throwing if not granted
         self.logger.debug("Requiring accessibility permission")
 
         if !self.checkAccessibilityPermission() {
@@ -88,6 +93,7 @@ public final class PermissionsService {
 
     /// Require AppleScript permission, throwing if not granted
     public func requireAppleScriptPermission() throws {
+        // Require AppleScript permission, throwing if not granted
         self.logger.debug("Requiring AppleScript permission")
 
         if !self.checkAppleScriptPermission() {
@@ -98,6 +104,7 @@ public final class PermissionsService {
 
     /// Check all permissions and return their status
     public func checkAllPermissions() -> PermissionsStatus {
+        // Check all permissions and return their status
         self.logger.debug("Checking all permissions")
 
         let screenRecording = self.checkScreenRecordingPermission()
