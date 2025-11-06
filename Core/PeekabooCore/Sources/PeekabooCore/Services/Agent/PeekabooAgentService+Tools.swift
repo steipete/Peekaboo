@@ -511,7 +511,7 @@ extension ToolArguments {
 
 // MARK: - Helper function to convert ToolResponse to AnyAgentToolValue
 
-private func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AnyAgentToolValue {
+func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AnyAgentToolValue {
     // If there's an error, return error message
     if response.isError {
         let errorMessage = response.content.compactMap { content -> String? in
