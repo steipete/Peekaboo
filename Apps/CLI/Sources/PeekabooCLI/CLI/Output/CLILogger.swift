@@ -63,6 +63,7 @@ final class Logger: @unchecked Sendable {
     }
 
     func setJsonOutputMode(_ enabled: Bool) {
+        // Toggle whether log output is buffered for JSON responses or sent to stderr.
         self.queue.sync(flags: .barrier) {
             self.isJsonOutputMode = enabled
             // Don't clear logs automatically - let tests manage this explicitly
@@ -70,6 +71,7 @@ final class Logger: @unchecked Sendable {
     }
 
     func setVerboseMode(_ enabled: Bool) {
+        // Enable verbose logging and lower the minimum log level when requested.
         self.queue.sync(flags: .barrier) {
             self.verboseMode = enabled
             if enabled {
@@ -79,6 +81,7 @@ final class Logger: @unchecked Sendable {
     }
 
     var isVerbose: Bool {
+        // Expose whether verbose logging is currently active.
         self.queue.sync {
             self.verboseMode
         }
@@ -116,26 +119,32 @@ final class Logger: @unchecked Sendable {
     }
 
     func verbose(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        // Log a verbose-level message, respecting buffered output mode.
         self.log(.verbose, message, category: category, metadata: metadata)
     }
 
     func debug(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        // Log a debug-level message, respecting buffered output mode.
         self.log(.debug, message, category: category, metadata: metadata)
     }
 
     func info(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        // Log an info-level message, respecting buffered output mode.
         self.log(.info, message, category: category, metadata: metadata)
     }
 
     func warn(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        // Log a warning-level message, respecting buffered output mode.
         self.log(.warning, message, category: category, metadata: metadata)
     }
 
     func error(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        // Log an error-level message, respecting buffered output mode.
         self.log(.error, message, category: category, metadata: metadata)
     }
 
     func critical(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        // Log a critical-level message, respecting buffered output mode.
         self.log(.critical, message, category: category, metadata: metadata)
     }
 
@@ -205,12 +214,14 @@ final class Logger: @unchecked Sendable {
     }
 
     func getDebugLogs() -> [String] {
+        // Retrieve the buffered debug logs on the reader's thread.
         self.queue.sync {
             self.debugLogs
         }
     }
 
     func clearDebugLogs() {
+        // Remove all buffered debug logs, typically after emitting a JSON response.
         self.queue.sync(flags: .barrier) {
             self.debugLogs.removeAll()
         }
@@ -226,36 +237,44 @@ final class Logger: @unchecked Sendable {
 }
 
 public func logVerbose(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+    // Convenience wrapper to log a verbose-level message via the shared logger.
     Logger.shared.verbose(message, category: category, metadata: metadata)
 }
 
 public func logDebug(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+    // Convenience wrapper to log a debug-level message via the shared logger.
     Logger.shared.debug(message, category: category, metadata: metadata)
 }
 
 public func logInfo(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+    // Convenience wrapper to log an info-level message via the shared logger.
     Logger.shared.info(message, category: category, metadata: metadata)
 }
 
 public func logWarn(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+    // Convenience wrapper to log a warning-level message via the shared logger.
     Logger.shared.warn(message, category: category, metadata: metadata)
 }
 
 public func logError(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+    // Convenience wrapper to log an error-level message via the shared logger.
     Logger.shared.error(message, category: category, metadata: metadata)
 }
 
 public func logCritical(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+    // Convenience wrapper to log a critical-level message via the shared logger.
     Logger.shared.critical(message, category: category, metadata: metadata)
 }
 
 public enum CLIInstrumentation {
     public enum LoggerControl {
         public static func setJsonOutputMode(_ enabled: Bool) {
+            // Switch the shared logger between buffered JSON mode and standard stderr output.
             Logger.shared.setJsonOutputMode(enabled)
         }
 
         public static func setVerboseMode(_ enabled: Bool) {
+            // Toggle verbose logging mode through the shared logger.
             Logger.shared.setVerboseMode(enabled)
         }
 
