@@ -1,4 +1,5 @@
 import Foundation
+@testable import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
@@ -118,12 +119,13 @@ struct WindowCommandCLITests {
     }
 
     private func runCommand(_ arguments: [String]) async throws -> CommandResult {
-        let services = self.makeTestServices()
+        let services = await self.makeTestServices()
         let result = try await InProcessCommandRunner.run(arguments, services: services)
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         return CommandResult(output: output, status: result.exitStatus)
     }
 
+    @MainActor
     private func makeTestServices() -> PeekabooServices {
         let applications: [ServiceApplicationInfo] = [
             ServiceApplicationInfo(

@@ -1,8 +1,9 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import PeekabooCLI
-import PeekabooCore
+@testable import PeekabooCLI
+@testable import PeekabooCore
+import PeekabooFoundation
 
 enum TestStubError: Error {
     case unimplemented(String)
@@ -208,7 +209,6 @@ final class StubApplicationService: ApplicationServiceProtocol {
     }
 }
 
-@MainActor
 final class StubSessionManager: SessionManagerProtocol {
     func createSession() async throws -> String {
         UUID().uuidString
@@ -263,7 +263,6 @@ final class StubSessionManager: SessionManagerProtocol {
     }
 }
 
-@MainActor
 final class StubFileService: FileServiceProtocol {
     func cleanAllSessions(dryRun: Bool) async throws -> CleanResult {
         CleanResult(sessionsRemoved: 0, bytesFreed: 0, sessionDetails: [], dryRun: dryRun)
@@ -315,8 +314,16 @@ final class StubProcessService: ProcessServiceProtocol {
 
 @MainActor
 final class StubDockService: DockServiceProtocol {
+    var items: [DockItem]
+    var autoHidden: Bool
+
+    init(items: [DockItem] = [], autoHidden: Bool = false) {
+        self.items = items
+        self.autoHidden = autoHidden
+    }
+
     func listDockItems(includeAll: Bool) async throws -> [DockItem] {
-        []
+        self.items
     }
 
     func launchFromDock(appName: String) async throws {
@@ -344,11 +351,14 @@ final class StubDockService: DockServiceProtocol {
     }
 
     func isDockAutoHidden() async -> Bool {
-        false
+        self.autoHidden
     }
 
     func findDockItem(name: String) async throws -> DockItem {
-        throw TestStubError.unimplemented(#function)
+        guard let match = self.items.first(where: { $0.title == name }) else {
+            throw PeekabooError.elementNotFound(name)
+        }
+        return match
     }
 }
 
@@ -428,11 +438,11 @@ final class StubMenuService: MenuServiceProtocol {
         []
     }
 
-    func clickMenuBarItem(named name: String) async throws -> ClickResult {
+    func clickMenuBarItem(named name: String) async throws -> PeekabooCore.ClickResult {
         throw TestStubError.unimplemented(#function)
     }
 
-    func clickMenuBarItem(at index: Int) async throws -> ClickResult {
+    func clickMenuBarItem(at index: Int) async throws -> PeekabooCore.ClickResult {
         throw TestStubError.unimplemented(#function)
     }
 }
@@ -447,7 +457,7 @@ final class StubDialogService: DialogServiceProtocol {
 
     func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
         guard let elements = self.dialogElements else {
-            throw PeekabooError.dialogNotFound(windowTitle ?? "dialog")
+            throw PeekabooError.elementNotFound(windowTitle ?? "dialog")
         }
         return elements.dialogInfo
     }
@@ -475,7 +485,7 @@ final class StubDialogService: DialogServiceProtocol {
 
     func listDialogElements(windowTitle: String?) async throws -> DialogElements {
         guard let elements = self.dialogElements else {
-            throw PeekabooError.dialogNotFound(windowTitle ?? "dialog")
+            throw PeekabooError.elementNotFound(windowTitle ?? "dialog")
         }
         return elements
     }
@@ -570,10 +580,14 @@ final class StubSpaceService: SpaceCommandSpaceService {
 @MainActor
 enum TestServicesFactory {
     static func makePeekabooServices(
-        applications: ApplicationServiceProtocol,
-        windows: WindowManagementServiceProtocol,
-        menu: MenuServiceProtocol,
-        dialogs: DialogServiceProtocol,
+        applications: ApplicationServiceProtocol = StubApplicationService(applications: []),
+        windows: WindowManagementServiceProtocol = StubWindowService(windowsByApp: [:]),
+        menu: MenuServiceProtocol = StubMenuService(menusByApp: [:]),
+        dialogs: DialogServiceProtocol = StubDialogService(),
+        dock: DockServiceProtocol = StubDockService(),
+        sessions: SessionManagerProtocol = StubSessionManager(),
+        files: FileServiceProtocol = StubFileService(),
+        process: ProcessServiceProtocol = StubProcessService(),
         screens: [ScreenInfo] = []
     ) -> PeekabooServices {
         let screenService = StubScreenService(screens: screens)
@@ -584,11 +598,11 @@ enum TestServicesFactory {
             automation: StubAutomationService(),
             windows: windows,
             menu: menu,
-            dock: StubDockService(),
+            dock: dock,
             dialogs: dialogs,
-            sessions: StubSessionManager(),
-            files: StubFileService(),
-            process: StubProcessService(),
+            sessions: sessions,
+            files: files,
+            process: process,
             permissions: PermissionsService(),
             audioInput: AudioInputService(aiService: PeekabooAIService()),
             agent: nil,

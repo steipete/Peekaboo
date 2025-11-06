@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+@testable import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
@@ -104,7 +106,7 @@ struct SpaceCommandReadTests {
     }
 
     private func runPeekaboo(_ arguments: [String]) async throws -> String {
-        let context = self.makeTestContext()
+        let context = await self.makeTestContext()
         let result = try await InProcessCommandRunner.run(
             arguments,
             services: context.services,
@@ -113,6 +115,7 @@ struct SpaceCommandReadTests {
         return result.stdout
     }
 
+    @MainActor
     private func makeTestContext() -> (services: PeekabooServices, spaceService: SpaceCommandSpaceService) {
         let applications: [ServiceApplicationInfo] = [
             ServiceApplicationInfo(

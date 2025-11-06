@@ -1,6 +1,8 @@
 import Foundation
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
+@testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
 // Import the necessary types from the menu command
@@ -45,12 +47,12 @@ struct MenuCommandTests {
 
     @Test("Menu click command help")
     func menuClickHelp() async throws {
-        let output = try await runCommand(["menu", "click", "--help"])
-
-        #expect(output.contains("Click a menu item"))
-        #expect(output.contains("--app"))
-        #expect(output.contains("--path"))
-        #expect(output.contains("--item"))
+        let result = try await runCommand(["menu", "click", "--help"])
+        #expect(result.status == 0)
+        #expect(result.output.contains("Click a menu item"))
+        #expect(result.output.contains("--app"))
+        #expect(result.output.contains("--path"))
+        #expect(result.output.contains("--item"))
     }
 
     @Test("Menu click requires app and path/item")
@@ -81,26 +83,46 @@ struct MenuCommandTests {
 
     @Test("Menu click-system command help")
     func menuSystemHelp() async throws {
-        let output = try await runCommand(["menu", "click-system", "--help"])
-
-        #expect(output.contains("Click system menu items"))
-        #expect(output.contains("--title"))
-        #expect(output.contains("--item"))
+        let result = try await runCommand(["menu", "click-system", "--help"])
+        #expect(result.status == 0)
+        #expect(result.output.contains("Click system menu items"))
+        #expect(result.output.contains("--title"))
+        #expect(result.output.contains("--item"))
     }
 
     @Test("Menu list command help")
     func menuListHelp() async throws {
-        let output = try await runCommand(["menu", "list", "--help"])
-
-        #expect(output.contains("List all menu items"))
-        #expect(output.contains("--app"))
-        #expect(output.contains("--include-disabled"))
+        let result = try await runCommand(["menu", "list", "--help"])
+        #expect(result.status == 0)
+        #expect(result.output.contains("List all menu items"))
+        #expect(result.output.contains("--app"))
+        #expect(result.output.contains("--include-disabled"))
     }
 
     @Test("Menu error codes")
     func menuErrorCodes() {
         #expect(ErrorCode.MENU_BAR_NOT_FOUND.rawValue == "MENU_BAR_NOT_FOUND")
         #expect(ErrorCode.MENU_ITEM_NOT_FOUND.rawValue == "MENU_ITEM_NOT_FOUND")
+    }
+
+    private struct CommandFailure: Error {
+        let status: Int32
+        let stderr: String
+    }
+
+    private func runCommand(_ args: [String]) async throws -> (output: String, status: Int32) {
+        let services = await self.makeTestServices()
+        let result = try await InProcessCommandRunner.run(args, services: services)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        if result.exitStatus != 0 {
+            throw CommandFailure(status: result.exitStatus, stderr: output)
+        }
+        return (output, result.exitStatus)
+    }
+
+    @MainActor
+    private func makeTestServices() -> PeekabooServices {
+        TestServicesFactory.makePeekabooServices()
     }
 }
 

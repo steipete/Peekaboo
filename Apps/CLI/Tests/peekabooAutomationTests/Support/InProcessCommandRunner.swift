@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import PeekabooCLI
+@testable import PeekabooCLI
 import PeekabooCore
 
 struct CommandRunResult {
@@ -86,8 +86,8 @@ enum InProcessCommandRunner {
             close(originalStderr)
             return (status, stdoutData, stderrData)
         } catch {
-            let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            _ = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            _ = stderrPipe.fileHandleForReading.readDataToEndOfFile()
             stdoutPipe.fileHandleForReading.closeFile()
             stderrPipe.fileHandleForReading.closeFile()
             dup2(originalStdout, STDOUT_FILENO)

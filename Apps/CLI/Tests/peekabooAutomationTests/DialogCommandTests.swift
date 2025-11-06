@@ -34,7 +34,9 @@ struct DialogCommandTests {
 
     @Test("Dialog  click command help")
     func dialogClickHelp() async throws {
-        let output = try await runCommand(["dialog", "click", "--help"])
+        let result = try await runCommand(["dialog", "click", "--help"])
+        #expect(result.status == 0)
+        let output = result.output
 
         #expect(output.contains("OVERVIEW: Click a button in a dialog using DialogService"))
         #expect(output.contains("--button"))
@@ -44,7 +46,9 @@ struct DialogCommandTests {
 
     @Test("Dialog  input command help")
     func dialogInputHelp() async throws {
-        let output = try await runCommand(["dialog", "input", "--help"])
+        let result = try await runCommand(["dialog", "input", "--help"])
+        #expect(result.status == 0)
+        let output = result.output
 
         #expect(output.contains("OVERVIEW: Enter text in a dialog field using DialogService"))
         #expect(output.contains("--text"))
@@ -55,7 +59,9 @@ struct DialogCommandTests {
 
     @Test("Dialog  file command help")
     func dialogFileHelp() async throws {
-        let output = try await runCommand(["dialog", "file", "--help"])
+        let result = try await runCommand(["dialog", "file", "--help"])
+        #expect(result.status == 0)
+        let output = result.output
 
         #expect(output.contains("OVERVIEW: Handle file save/open dialogs using DialogService"))
         #expect(output.contains("--path"))
@@ -65,7 +71,9 @@ struct DialogCommandTests {
 
     @Test("Dialog  dismiss command help")
     func dialogDismissHelp() async throws {
-        let output = try await runCommand(["dialog", "dismiss", "--help"])
+        let result = try await runCommand(["dialog", "dismiss", "--help"])
+        #expect(result.status == 0)
+        let output = result.output
 
         #expect(output.contains("OVERVIEW: Dismiss a dialog using DialogService"))
         #expect(output.contains("--force"))
@@ -74,7 +82,9 @@ struct DialogCommandTests {
 
     @Test("Dialog  list command help")
     func dialogListHelp() async throws {
-        let output = try await runCommand(["dialog", "list", "--help"])
+        let result = try await runCommand(["dialog", "list", "--help"])
+        #expect(result.status == 0)
+        let output = result.output
 
         #expect(output.contains("OVERVIEW: List elements in current dialog using DialogService"))
         #expect(output.contains("--json-output"))
@@ -103,8 +113,28 @@ struct DialogCommandTests {
     @MainActor
     func dialogServiceIntegration() {
         // Verify that PeekabooServices includes the dialog service
-        let services = PeekabooServices.shared
+        let services = self.makeTestServices()
         _ = services.dialogs // This should compile without errors
+    }
+
+    private struct CommandFailure: Error {
+        let status: Int32
+        let stderr: String
+    }
+
+    private func runCommand(_ args: [String]) async throws -> (output: String, status: Int32) {
+        let services = await self.makeTestServices()
+        let result = try await InProcessCommandRunner.run(args, services: services)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        if result.exitStatus != 0 {
+            throw CommandFailure(status: result.exitStatus, stderr: output)
+        }
+        return (output, result.exitStatus)
+    }
+
+    @MainActor
+    private func makeTestServices() -> PeekabooServices {
+        TestServicesFactory.makePeekabooServices()
     }
 }
 

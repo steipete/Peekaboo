@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+@testable import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
@@ -7,22 +9,8 @@ import Testing
 struct DockCommandTests {
     @Test("Help output is consistent with V1")
     func helpOutput() async throws {
-        // Test that the help command provides comprehensive information
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-        process.arguments = ["run", "peekaboo", "dock", "--help"]
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-        process.currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-
-        try process.run()
-        process.waitUntilExit()
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let result = try await self.runCommand(["dock", "--help"])
+        let output = result.output
 
         // Check for expected help content
         #expect(output.contains("Interact with the macOS Dock"))
@@ -35,22 +23,8 @@ struct DockCommandTests {
 
     @Test("List command JSON structure")
     func listCommandJSON() async throws {
-        // Test that list command returns valid JSON
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-        process.arguments = ["run", "peekaboo", "dock", "list", "--json-output"]
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-        process.currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-
-        try process.run()
-        process.waitUntilExit()
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let result = try await self.runCommand(["dock", "list", "--json-output"])
+        let output = result.output
 
         // Parse JSON
         let jsonData = output.data(using: .utf8)!
@@ -59,6 +33,42 @@ struct DockCommandTests {
         #expect(response.success == true)
         // For now, just check success since we don't have access to the response data structure
         // This would need to be updated based on the actual dock command response format
+    }
+
+    private struct CommandResult {
+        let output: String
+        let status: Int32
+    }
+
+    private func runCommand(_ arguments: [String]) async throws -> CommandResult {
+        let services = await self.makeTestServices()
+        let result = try await InProcessCommandRunner.run(arguments, services: services)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        return CommandResult(output: output, status: result.exitStatus)
+    }
+
+    @MainActor
+    private func makeTestServices() -> PeekabooServices {
+        let applications = StubApplicationService(applications: [])
+        let dockItems = [
+            DockItem(
+                index: 0,
+                title: "Finder",
+                itemType: .application,
+                isRunning: true,
+                bundleIdentifier: "com.apple.finder",
+                position: CGPoint(x: 0, y: 0),
+                size: CGSize(width: 64, height: 64)
+            ),
+        ]
+        let dockService = StubDockService(items: dockItems, autoHidden: false)
+        return TestServicesFactory.makePeekabooServices(
+            applications: applications,
+            windows: StubWindowService(windowsByApp: [:]),
+            menu: StubMenuService(menusByApp: [:]),
+            dialogs: StubDialogService(),
+            dock: dockService
+        )
     }
 }
 #endif
