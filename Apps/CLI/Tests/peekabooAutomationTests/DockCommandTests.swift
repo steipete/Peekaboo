@@ -3,7 +3,7 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("DockCommand", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("DockCommand", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct DockCommandTests {
     @Test("Help output is consistent with V1")
     func helpOutput() async throws {
@@ -33,7 +33,7 @@ struct DockCommandTests {
         #expect(output.contains("list"))
     }
 
-    @Test("List command JSON structure", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil))
+    @Test("List command JSON structure")
     func listCommandJSON() async throws {
         // Test that list command returns valid JSON
         let outputPipe = Pipe()

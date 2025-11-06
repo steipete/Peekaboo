@@ -2,8 +2,12 @@ import Foundation
 
 enum PeekabooCLITestRunner {
     struct CommandError: Error, CustomStringConvertible {
-        let message: String
-        var description: String { self.message }
+        let status: Int32
+        let output: String
+
+        var description: String {
+            "Command failed with status \(self.status)\nOutput:\n\(self.output)"
+        }
     }
 
     private static let executionQueue = DispatchQueue(label: "peekaboo.cli.test-runner")
@@ -36,18 +40,12 @@ enum PeekabooCLITestRunner {
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else {
-            throw CommandError(message: "Failed to decode command output")
+            throw CommandError(status: process.terminationStatus, output: "Failed to decode command output")
         }
 
-        guard process.terminationStatus == 0 else {
-            throw CommandError(
-                message: """
-                Command exited with code \(process.terminationStatus)
-                Arguments: \(arguments.joined(separator: " "))
-                Output:
-                \(output)
-                """
-            )
+        let status = process.terminationStatus
+        guard status == 0 else {
+            throw CommandError(status: status, output: output)
         }
 
         return output

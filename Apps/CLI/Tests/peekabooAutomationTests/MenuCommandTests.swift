@@ -23,7 +23,7 @@ private struct MenuItemData: Codable {
     let submenu: [MenuItemData]?
 }
 
-@Suite("Menu Command Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("Menu Command Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct MenuCommandTests {
     @Test("Menu command exists")
     func menuCommandExists() {
@@ -109,7 +109,7 @@ struct MenuCommandTests {
 @Suite(
     "Menu Command Integration Tests",
     .serialized,
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+    .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct MenuCommandIntegrationTests {
     @Test("Click menu item in Finder")

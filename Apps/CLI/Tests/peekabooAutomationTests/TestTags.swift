@@ -44,8 +44,20 @@ extension Tag {
 enum CLITestEnvironment {
     private static let env = ProcessInfo.processInfo.environment
 
+    private static var runAutomationTests: Bool {
+        env["RUN_AUTOMATION_TESTS"] == "true"
+    }
+
+    static var runAutomationRead: Bool {
+        runAutomationTests || env["RUN_AUTOMATION_READ"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+    }
+
+    static var runAutomationActions: Bool {
+        runAutomationTests || env["RUN_AUTOMATION_ACTIONS"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+    }
+
     static var runAutomationScenarios: Bool {
-        env["RUN_AUTOMATION_TESTS"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+        runAutomationRead || runAutomationActions
     }
 
     static func peekabooBinaryURL() -> URL? {

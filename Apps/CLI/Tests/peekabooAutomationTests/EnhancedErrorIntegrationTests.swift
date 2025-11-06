@@ -4,7 +4,7 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Enhanced Error Integration Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("Enhanced Error Integration Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
 struct EnhancedErrorIntegrationTests {
     // These tests run against the actual services to verify error messages
     // They are marked with a condition to only run when explicitly enabled

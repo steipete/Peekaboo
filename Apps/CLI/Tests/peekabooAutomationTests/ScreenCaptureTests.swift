@@ -9,7 +9,7 @@ import Testing
 #if !PEEKABOO_SKIP_AUTOMATION
 // TODO: ScreenCaptureTests commented out - API changes needed (ApplicationFinder, WindowManager missing)
 /*
- @Suite("ScreenCapture Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+ @Suite("ScreenCapture Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
  struct ScreenCaptureTests {
 
      @Suite("Display Capture Tests", .tags(.localOnly))
@@ -160,7 +160,7 @@ import Testing
          }
      }
 
-     @Suite("Permission Error Detection", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+     @Suite("Permission Error Detection", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
      struct PermissionErrorDetectionTests {
          @Test("Captures convert to permission errors when appropriate")
          @MainActor
@@ -198,7 +198,7 @@ import Testing
          }
      }
 
-     @Suite("Capture Configuration", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+     @Suite("Capture Configuration", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
      struct CaptureConfigurationTests {
          @Test("Default configuration includes cursor")
          func defaultConfigurationIncludesCursor() {

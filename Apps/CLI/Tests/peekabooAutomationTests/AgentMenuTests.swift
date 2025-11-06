@@ -26,7 +26,7 @@ private func runPeekabooCommand(_ args: [String]) async throws -> String {
     return String(data: data, encoding: .utf8) ?? ""
 }
 
-@Suite("Agent Menu Integration Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("Agent Menu Integration Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
 struct AgentMenuTests {
     @Test("Agent can discover menus using list subcommand")
     func agentMenuDiscovery() async throws {

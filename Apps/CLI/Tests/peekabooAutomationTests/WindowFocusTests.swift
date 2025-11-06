@@ -3,7 +3,7 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Window Focus Enhancement Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("Window Focus Enhancement Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
 struct WindowFocusTests {
     // Helper function to run peekaboo commands
     private func runPeekabooCommand(_ arguments: [String]) async throws -> String {

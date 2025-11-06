@@ -9,7 +9,7 @@ import Testing
     "Dialog Command  Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: CLITestEnvironment.runAutomationScenarios)
+    .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct DialogCommandTests {
     @Test("Dialog  command exists")
@@ -114,7 +114,7 @@ struct DialogCommandTests {
     "Dialog Command  Integration Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+    .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct DialogCommandIntegrationTests {
     @Test("List active dialogs with ")

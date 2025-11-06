@@ -7,7 +7,7 @@ import Testing
     "Focus Integration Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: CLITestEnvironment.runAutomationScenarios)
+    .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct FocusIntegrationTests {
     // Helper function to run peekaboo commands

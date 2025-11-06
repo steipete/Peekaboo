@@ -3,7 +3,7 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("App Command Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("App Command Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct AppCommandTests {
     @Test("App command exists")
     func appCommandExists() {
@@ -96,7 +96,7 @@ struct AppCommandTests {
 @Suite(
     "App Command Integration Tests",
     .serialized,
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+    .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct AppCommandIntegrationTests {
     @Test("Launch application")

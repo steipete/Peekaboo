@@ -3,11 +3,12 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Window Command CLI Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("Window Command CLI Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct WindowCommandCLITests {
     @Test("Window help output")
     func windowHelpOutput() async throws {
-        let output = try await runCommand(["window", "--help"])
+        let (output, status) = try await runCommand(["window", "--help"])
+        #expect(status == 0)
 
         #expect(output.contains("Manipulate application windows"))
         #expect(output.contains("close"))
@@ -22,7 +23,8 @@ struct WindowCommandCLITests {
 
     @Test("Window close help")
     func windowCloseHelp() async throws {
-        let output = try await runCommand(["window", "close", "--help"])
+        let (output, status) = try await runCommand(["window", "close", "--help"])
+        #expect(status == 0)
 
         #expect(output.contains("Close a window"))
         #expect(output.contains("--app"))
@@ -32,7 +34,8 @@ struct WindowCommandCLITests {
 
     @Test("Window move help")
     func windowMoveHelp() async throws {
-        let output = try await runCommand(["window", "move", "--help"])
+        let (output, status) = try await runCommand(["window", "move", "--help"])
+        #expect(status == 0)
 
         #expect(output.contains("Move a window"))
         #expect(output.contains("--x"))
@@ -41,7 +44,8 @@ struct WindowCommandCLITests {
 
     @Test("Window resize help")
     func windowResizeHelp() async throws {
-        let output = try await runCommand(["window", "resize", "--help"])
+        let (output, status) = try await runCommand(["window", "resize", "--help"])
+        #expect(status == 0)
 
         #expect(output.contains("Resize a window"))
         #expect(output.contains("--width"))
@@ -50,7 +54,8 @@ struct WindowCommandCLITests {
 
     @Test("Window list delegates to list windows")
     func windowListDelegation() async throws {
-        let output = try await runCommand(["window", "list", "--app", "NonExistentApp", "--json-output"])
+        let (output, status) = try await runCommand(["window", "list", "--app", "NonExistentApp", "--json-output"])
+        #expect(status != 0)
 
         // Should get JSON output
         #expect(output.contains("{"))
@@ -66,18 +71,13 @@ struct WindowCommandCLITests {
 
     @Test("Missing required app parameter")
     func missingAppParameter() async throws {
-        do {
-            _ = try await self.runCommand(["window", "close", "--json-output"])
-            Issue.record("Expected command to fail")
-        } catch {
-            // Expected to fail
-            #expect(true)
-        }
+        let (_, status) = try await self.runCommand(["window", "close", "--json-output"])
+        #expect(status != 0)
     }
 
     @Test("Invalid window index")
     func invalidWindowIndex() async throws {
-        let output = try await runCommand([
+        let (output, status) = try await runCommand([
             "window",
             "close",
             "--app",
@@ -86,6 +86,7 @@ struct WindowCommandCLITests {
             "999",
             "--json-output",
         ])
+        #expect(status != 0)
 
         if let data = output.data(using: .utf8) {
             let response = try JSONDecoder().decode(JSONResponse.self, from: data)
@@ -99,9 +100,10 @@ struct WindowCommandCLITests {
         let operations = ["close", "minimize", "maximize", "focus"]
 
         for operation in operations {
-            let output = try await runCommand(["window", operation, "--app", "NonExistentApp123", "--json-output"])
+            let result = try await runCommand(["window", operation, "--app", "NonExistentApp123", "--json-output"])
+            #expect(result.status != 0)
 
-            if let data = output.data(using: .utf8) {
+            if let data = result.output.data(using: .utf8) {
                 let response = try JSONDecoder().decode(JSONResponse.self, from: data)
                 #expect(response.success == false)
                 #expect(response.error?.code == "APP_NOT_FOUND")
@@ -110,38 +112,20 @@ struct WindowCommandCLITests {
     }
 
     // Helper to run commands
-    private func runCommand(_ arguments: [String]) async throws -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-        process.arguments = ["run", "peekaboo"] + arguments
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-
-        // Allow expected exit codes
-        if process.terminationStatus != 0, process.terminationStatus != 1, process.terminationStatus != 64 {
-            throw CommandError.unexpectedExitCode(process.terminationStatus)
+    private func runCommand(_ arguments: [String]) async throws -> (output: String, status: Int32) {
+        do {
+            let output = try await PeekabooCLITestRunner.runCommand(arguments)
+            return (output, 0)
+        } catch let error as PeekabooCLITestRunner.CommandError {
+            return (error.output, error.status)
         }
-
-        return output
-    }
-
-    enum CommandError: Error {
-        case unexpectedExitCode(Int32)
     }
 }
 
 @Suite(
     "Window Command Integration Tests",
     .serialized,
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+    .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct WindowCommandLocalTests {
     @Test("Window operations with TextEdit")

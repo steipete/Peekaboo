@@ -3,7 +3,7 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Click Command Focus Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("Click Command Focus Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
 struct ClickCommandFocusTests {
     // Helper function to run peekaboo commands
     private func runPeekabooCommand(_ arguments: [String]) async throws -> String {

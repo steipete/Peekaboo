@@ -3,7 +3,7 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Drag Command Tests", .serialized, .tags(.safe), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("Drag Command Tests", .serialized, .tags(.safe), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct DragCommandTests {
     @Test("Drag command exists")
     func dragCommandExists() {
@@ -89,7 +89,7 @@ struct DragCommandTests {
     "Drag Command Integration Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+    .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct DragCommandIntegrationTests {
     @Test("Drag between coordinates")

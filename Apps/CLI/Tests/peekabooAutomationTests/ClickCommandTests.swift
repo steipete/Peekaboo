@@ -6,7 +6,7 @@ import Testing
 @Suite(
     "ClickCommand Tests",
     .tags(.automation),
-    .enabled(if: CLITestEnvironment.runAutomationScenarios)
+    .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct ClickCommandTests {
     @Test("Click command  requires argument or option")

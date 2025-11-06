@@ -9,7 +9,7 @@ import Testing
     "Screenshot Validation Tests",
     .serialized,
     .tags(.localOnly, .screenshot, .integration),
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+    .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct ScreenshotValidationTests {
     // MARK: - Image Analysis Tests

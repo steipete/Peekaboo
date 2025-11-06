@@ -2,7 +2,7 @@ import Foundation
 import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Help Command Tests", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationScenarios))
+@Suite("Help Command Tests", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct HelpCommandTests {
     private let peekabooPath: String = {
         if let override = ProcessInfo.processInfo.environment["PEEKABOO_CLI_PATH"], !override.isEmpty {

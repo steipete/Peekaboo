@@ -4,7 +4,7 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 
-@Suite("Agent Integration Tests", .serialized, .tags(.integration, .automation))
+@Suite("Agent Integration Tests", .serialized, .tags(.integration, .automation), .enabled(if: CLITestEnvironment.runAutomationActions))
 struct AgentIntegrationTests {
     // Only run these tests if explicitly enabled
     let runIntegrationTests = ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"

@@ -3,7 +3,12 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("All Commands JSON Output Support", .serialized, .tags(.integration))
+@Suite(
+    "All Commands JSON Output Support",
+    .serialized,
+    .tags(.integration),
+    .enabled(if: CLITestEnvironment.runAutomationRead)
+)
 struct AllCommandsJSONOutputTests {
     @Test("All commands support --json-output flag")
     func verifyAllCommandsHaveJSONOutputFlag() throws {

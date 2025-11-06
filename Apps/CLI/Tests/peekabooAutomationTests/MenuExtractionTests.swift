@@ -95,7 +95,7 @@ struct AnyCodable: Codable {
     "Menu Extraction Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: CLITestEnvironment.runAutomationScenarios),
+    .enabled(if: CLITestEnvironment.runAutomationActions),
     .disabled("Requires local testing with RUN_LOCAL_TESTS")
 )
 struct MenuExtractionTests {
