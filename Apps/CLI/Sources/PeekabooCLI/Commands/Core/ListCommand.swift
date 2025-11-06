@@ -133,7 +133,7 @@ ApplicationResolvablePositional {
             let output = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier, timeout: nil)
 
             if self.jsonOutput {
-                let detailOptions = self.includeDetails.map { self.parseIncludeDetails() } ?? []
+                let detailOptions = self.parseIncludeDetails()
                 let payload = try self.renderJSON(from: output, detailOptions: detailOptions)
                 print(payload)
             } else {
@@ -193,6 +193,12 @@ ApplicationResolvablePositional {
             let targetApplication: ServiceApplicationInfo?
         }
 
+        struct FilteredOutput: Codable {
+            let data: FilteredWindowListData
+            let summary: UnifiedToolOutput<ServiceWindowListData>.Summary
+            let metadata: UnifiedToolOutput<ServiceWindowListData>.Metadata
+        }
+
         let windows = output.data.windows.map { window in
             FilteredWindowListData.Window(
                 index: window.index,
@@ -207,14 +213,17 @@ ApplicationResolvablePositional {
             )
         }
 
-        let filteredOutput = UnifiedToolOutput(
+        let filteredOutput = FilteredOutput(
             data: FilteredWindowListData(
                 windows: windows,
                 targetApplication: output.data.targetApplication),
             summary: output.summary,
             metadata: output.metadata)
 
-        return try filteredOutput.toJSON()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let jsonData = try encoder.encode(filteredOutput)
+        return String(data: jsonData, encoding: .utf8) ?? "{}"
     }
 }
 

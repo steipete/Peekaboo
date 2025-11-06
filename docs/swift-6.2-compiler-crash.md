@@ -17,7 +17,7 @@ any tests execute, so the `--skip .automation` flag alone is not sufficient.
 ### Test Target Split
 - Created `Tests/peekabooAutomationTests` for the suites that shell out to the
   real CLI or do UI automation.
-- Moved the remaining “safe” suites under `Tests/peekabooSafeTests`; these are
+- Moved the remaining “safe” suites under `Tests/CoreCLITests`; these are
   the only tests included in the default `peekabooTests` target.
 
 ### Conditional Compilation Flags
@@ -62,7 +62,7 @@ the compiler crash mitigation and runtime failures.
 
 ### Progress Log
 - **2025-11-05 22:01 UTC** — Added `PEEKABOO_SKIP_AUTOMATION` flag and the
-  `peekabooSafeTests` target; `swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION`
+  `CoreCLITests` target; `swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION`
   now compiles and executes the safe suites without crashing (UtilityTests only
   for now).
 - **2025-11-05 22:20 UTC** — Exposed safe logger controls for tests, removed
