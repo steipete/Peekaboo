@@ -171,13 +171,6 @@ struct MenuCommandIntegrationTests {
 // MARK: - Test Helpers
 
 private func runCommand(_ args: [String]) async throws -> String {
-    let output = try await runPeekabooCommand(args)
-    return output
-}
-
-private func runPeekabooCommand(_ args: [String]) async throws -> String {
-    // This is a placeholder - in real tests, this would execute the actual CLI
-    // For unit tests, we're mainly testing command structure and validation
-    ""
+    try await PeekabooCLITestRunner.runCommand(args)
 }
 #endif

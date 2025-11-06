@@ -36,7 +36,8 @@ final class Logger: @unchecked Sendable {
     private var debugLogs: [String] = []
     private var isJsonOutputMode = false
     private var verboseMode = false
-    private var minimumLogLevel: LogLevel = .info
+    private let defaultMinimumLogLevel: LogLevel
+    private var minimumLogLevel: LogLevel
     private let queue = DispatchQueue(label: "logger.queue", attributes: .concurrent)
     private let iso8601Formatter: ISO8601DateFormatter
 
@@ -48,18 +49,21 @@ final class Logger: @unchecked Sendable {
         self.iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         // Check environment for log level
+        var configuredLevel: LogLevel = .info
         if let envLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
             switch envLevel {
-            case "trace": self.minimumLogLevel = .trace
-            case "verbose": self.minimumLogLevel = .verbose
-            case "debug": self.minimumLogLevel = .debug
-            case "info": self.minimumLogLevel = .info
-            case "warning", "warn": self.minimumLogLevel = .warning
-            case "error": self.minimumLogLevel = .error
-            case "critical": self.minimumLogLevel = .critical
+            case "trace": configuredLevel = .trace
+            case "verbose": configuredLevel = .verbose
+            case "debug": configuredLevel = .debug
+            case "info": configuredLevel = .info
+            case "warning", "warn": configuredLevel = .warning
+            case "error": configuredLevel = .error
+            case "critical": configuredLevel = .critical
             default: break
             }
         }
+        self.defaultMinimumLogLevel = configuredLevel
+        self.minimumLogLevel = configuredLevel
     }
 
     func setJsonOutputMode(_ enabled: Bool) {
@@ -75,6 +79,18 @@ final class Logger: @unchecked Sendable {
             if enabled {
                 self.minimumLogLevel = .verbose
             }
+        }
+    }
+
+    func setMinimumLogLevel(_ level: LogLevel) {
+        self.queue.sync(flags: .barrier) {
+            self.minimumLogLevel = level
+        }
+    }
+
+    func resetMinimumLogLevel() {
+        self.queue.sync(flags: .barrier) {
+            self.minimumLogLevel = self.defaultMinimumLogLevel
         }
     }
 
@@ -269,6 +285,14 @@ public enum CLIInstrumentation {
 
         public static func flush() {
             Logger.shared.flush()
+        }
+
+        public static func setMinimumLogLevel(_ level: LogLevel) {
+            Logger.shared.setMinimumLogLevel(level)
+        }
+
+        public static func resetMinimumLogLevel() {
+            Logger.shared.resetMinimumLogLevel()
         }
     }
 }

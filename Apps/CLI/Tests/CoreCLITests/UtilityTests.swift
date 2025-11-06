@@ -10,6 +10,8 @@ struct UtilityTests {
         func loggerJSONMode() {
             CLIInstrumentation.LoggerControl.clearDebugLogs()
             CLIInstrumentation.LoggerControl.setJsonOutputMode(true)
+            CLIInstrumentation.LoggerControl.setMinimumLogLevel(.debug)
+            defer { CLIInstrumentation.LoggerControl.resetMinimumLogLevel() }
 
             logDebug("Debug message")
             logInfo("Info message")
@@ -30,6 +32,8 @@ struct UtilityTests {
         @Test("Logger clears debug logs")
         func loggerClearLogs() {
             CLIInstrumentation.LoggerControl.setJsonOutputMode(true)
+            CLIInstrumentation.LoggerControl.setMinimumLogLevel(.debug)
+            defer { CLIInstrumentation.LoggerControl.resetMinimumLogLevel() }
 
             logDebug("Test message")
             Thread.sleep(forTimeInterval: 0.1)
@@ -53,6 +57,8 @@ struct UtilityTests {
             Thread.sleep(forTimeInterval: 0.05)
             CLIInstrumentation.LoggerControl.setJsonOutputMode(false)
             Thread.sleep(forTimeInterval: 0.05)
+            CLIInstrumentation.LoggerControl.setMinimumLogLevel(.debug)
+            defer { CLIInstrumentation.LoggerControl.resetMinimumLogLevel() }
 
             // These will output to stderr, we just verify they don't crash
             logDebug("Debug to stderr")

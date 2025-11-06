@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Configuration Tests", .tags(.unit))
+@Suite("Configuration Tests", .tags(.unit), .serialized)
 struct ConfigurationTests {
     // MARK: - JSONC Parser Tests
 

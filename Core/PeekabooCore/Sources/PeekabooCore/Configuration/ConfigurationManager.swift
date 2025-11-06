@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 #if canImport(Configuration)
 import Configuration
@@ -1043,11 +1044,9 @@ public final class ConfigurationManager: @unchecked Sendable {
     }
 
     private func environmentValue(for key: String, isSecret: Bool = false) -> String? {
-#if canImport(Configuration)
-        if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, *) {
-            return Self.environmentReader.string(forKey: key, isSecret: isSecret)
+        guard let rawValue = getenv(key) else {
+            return nil
         }
-#endif
-        return ProcessInfo.processInfo.environment[key]
+        return String(cString: rawValue)
     }
 }
