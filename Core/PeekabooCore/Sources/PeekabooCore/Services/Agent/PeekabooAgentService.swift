@@ -14,10 +14,12 @@ import TachikomaMCP
 final class StreamingEventDelegate: @unchecked Sendable, AgentEventDelegate {
     let onChunk: @MainActor @Sendable (String) async -> Void
 
+    // Store the async callback used to forward streaming agent output.
     init(onChunk: @MainActor @escaping @Sendable (String) async -> Void) {
         self.onChunk = onChunk
     }
 
+    // Forward every emitted agent event into the provided streaming callback.
     func agentDidEmitEvent(_ event: AgentEvent) {
         // Extract content from different event types and schedule async work
         Task { @MainActor in

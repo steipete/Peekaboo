@@ -54,6 +54,7 @@ private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowIde
 /// Private API to extract CGWindowID from an AXUIElement
 /// - Warning: This is a private API that may change between macOS versions
 @_silgen_name("_AXUIElementGetWindow")
+// Bridge to the private AX API that reveals a window's CGWindowID.
 func _AXUIElementGetWindow(_ element: AXUIElement, _ windowID: inout CGWindowID) -> AXError
 
 // MARK: - Window Identity Service

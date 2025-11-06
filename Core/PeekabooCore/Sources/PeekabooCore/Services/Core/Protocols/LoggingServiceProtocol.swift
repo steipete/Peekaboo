@@ -50,11 +50,17 @@ public protocol LoggingServiceProtocol: Sendable {
     func log(_ entry: LogEntry)
 
     /// Convenience methods for different log levels
+    // Emit a trace-level message with structured metadata.
     func trace(_ message: String, category: String, metadata: [String: Any], correlationId: String?)
+    // Emit a debug-level message with structured metadata.
     func debug(_ message: String, category: String, metadata: [String: Any], correlationId: String?)
+    // Emit an info-level message with structured metadata.
     func info(_ message: String, category: String, metadata: [String: Any], correlationId: String?)
+    // Emit a warning-level message with structured metadata.
     func warning(_ message: String, category: String, metadata: [String: Any], correlationId: String?)
+    // Emit an error-level message with structured metadata.
     func error(_ message: String, category: String, metadata: [String: Any], correlationId: String?)
+    // Emit a critical-level message with structured metadata.
     func critical(_ message: String, category: String, metadata: [String: Any], correlationId: String?)
 
     /// Start a performance measurement
@@ -69,7 +75,7 @@ public protocol LoggingServiceProtocol: Sendable {
 
 /// Convenience extensions with default parameters
 extension LoggingServiceProtocol {
-    // Log a message with structured metadata
+    // Emit a trace-level message using optional defaults for metadata and correlation ID.
     public func trace(
         _ message: String,
         category: String,
@@ -84,6 +90,7 @@ extension LoggingServiceProtocol {
             correlationId: correlationId))
     }
 
+    // Emit a debug-level message using optional defaults for metadata and correlation ID.
     public func debug(
         _ message: String,
         category: String,
@@ -98,7 +105,13 @@ extension LoggingServiceProtocol {
             correlationId: correlationId))
     }
 
-    public func info(_ message: String, category: String, metadata: [String: Any] = [:], correlationId: String? = nil) {
+    // Emit an info-level message using optional defaults for metadata and correlation ID.
+    public func info(
+        _ message: String,
+        category: String,
+        metadata: [String: Any] = [:],
+        correlationId: String? = nil)
+    {
         log(LogEntry(
             level: .info,
             message: message,
@@ -107,6 +120,7 @@ extension LoggingServiceProtocol {
             correlationId: correlationId))
     }
 
+    // Emit a warning-level message using optional defaults for metadata and correlation ID.
     public func warning(
         _ message: String,
         category: String,
@@ -121,6 +135,7 @@ extension LoggingServiceProtocol {
             correlationId: correlationId))
     }
 
+    // Emit an error-level message using optional defaults for metadata and correlation ID.
     public func error(
         _ message: String,
         category: String,
@@ -135,6 +150,7 @@ extension LoggingServiceProtocol {
             correlationId: correlationId))
     }
 
+    // Emit a critical-level message using optional defaults for metadata and correlation ID.
     public func critical(
         _ message: String,
         category: String,

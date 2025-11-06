@@ -8,11 +8,17 @@ public protocol ObservablePermissionsServiceProtocol {
     var accessibilityStatus: ObservablePermissionsService.PermissionState { get }
     var appleScriptStatus: ObservablePermissionsService.PermissionState { get }
     var hasAllPermissions: Bool { get }
+    // Re-evaluate the current permission states and publish updates.
     func checkPermissions()
+    // Prompt the system flow for screen recording authorization.
     func requestScreenRecording() throws
+    // Prompt the system flow for accessibility authorization.
     func requestAccessibility() throws
+    // Prompt the system flow for AppleScript authorization.
     func requestAppleScript() throws
+    // Begin periodic monitoring of permission state changes.
     func startMonitoring(interval: TimeInterval)
+    // Stop the active permission monitoring timer.
     func stopMonitoring()
 }
 
@@ -137,6 +143,7 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
 
     // MARK: - Private Methods
 
+    // Synchronize the per-permission state flags with the latest status snapshot.
     private func updatePermissionStates() {
         self.screenRecordingStatus = self.status.screenRecording ? .authorized : .denied
         self.accessibilityStatus = self.status.accessibility ? .authorized : .denied

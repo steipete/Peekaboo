@@ -533,6 +533,7 @@ public final class DialogService: DialogServiceProtocol {
     private func collectTextFields(from element: Element) -> [Element] {
         var fields: [Element] = []
 
+        // Recursively traverse the element tree accumulating text inputs.
         func collectFields(from el: Element) {
             if el.role() == "AXTextField" || el.role() == "AXTextArea" {
                 fields.append(el)

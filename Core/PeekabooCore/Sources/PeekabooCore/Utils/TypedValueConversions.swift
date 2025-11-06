@@ -155,6 +155,7 @@ extension TypedValue {
             self.value = value
         }
 
+        // Encode the wrapped value using the underlying Encodable implementation.
         func encode(to encoder: Encoder) throws {
             try self.value.encode(to: encoder)
         }

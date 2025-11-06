@@ -814,6 +814,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 // MARK: - Stream Delegate
 
 private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Sendable {
+    // Report when the underlying ScreenCapture stream stops due to an error.
     func stream(_ stream: SCStream, didStopWithError error: Error) {
         // Log the error but don't need to do anything else since CaptureOutput handles errors
         print("SCStream stopped with error: \(error)")
