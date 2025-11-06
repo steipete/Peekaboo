@@ -78,6 +78,11 @@ public struct AgentSystemPrompt {
 
             Keep preambles concise but informative. Users should understand your approach and progress without being overwhelmed by details.
 
+            **Screenshot Requests:** When the user asks for any kind of screenshot, screen capture, or visual context:
+            1. Immediately call the `see` tool (with the appropriate parameters) to capture the screen.
+            2. Do **not** claim that you can't take screenshots—the `see` tool gives you direct access.
+            3. Only fall back to instructions or alternatives if the `see` tool fails.
+
             """
         }
 
