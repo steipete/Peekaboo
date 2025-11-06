@@ -104,7 +104,107 @@ struct SpaceCommandReadTests {
     }
 
     private func runPeekaboo(_ arguments: [String]) async throws -> String {
-        try await PeekabooCLITestRunner.runCommand(arguments)
+        let context = self.makeTestContext()
+        let result = try await InProcessCommandRunner.run(
+            arguments,
+            services: context.services,
+            spaceService: context.spaceService
+        )
+        return result.stdout
+    }
+
+    private func makeTestContext() -> (services: PeekabooServices, spaceService: SpaceCommandSpaceService) {
+        let applications: [ServiceApplicationInfo] = [
+            ServiceApplicationInfo(
+                processIdentifier: 101,
+                bundleIdentifier: "com.apple.finder",
+                name: "Finder",
+                bundlePath: "/System/Library/CoreServices/Finder.app",
+                isActive: true,
+                isHidden: false,
+                windowCount: 1
+            ),
+            ServiceApplicationInfo(
+                processIdentifier: 202,
+                bundleIdentifier: "com.apple.TextEdit",
+                name: "TextEdit",
+                bundlePath: "/System/Applications/TextEdit.app",
+                isActive: false,
+                isHidden: false,
+                windowCount: 1
+            ),
+        ]
+
+        let finderWindow = ServiceWindowInfo(
+            windowID: 1,
+            title: "Finder Window",
+            bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0,
+            spaceID: 1,
+            spaceName: "Desktop 1",
+            screenIndex: 0,
+            screenName: "Built-in"
+        )
+
+        let textEditWindow = ServiceWindowInfo(
+            windowID: 2,
+            title: "Document",
+            bounds: CGRect(x: 100, y: 100, width: 700, height: 500),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0,
+            spaceID: 2,
+            spaceName: "Desktop 2",
+            screenIndex: 0,
+            screenName: "Built-in"
+        )
+
+        let windowsByApp: [String: [ServiceWindowInfo]] = [
+            "Finder": [finderWindow],
+            "TextEdit": [textEditWindow],
+        ]
+
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: StubApplicationService(applications: applications, windowsByApp: windowsByApp),
+            windows: StubWindowService(windowsByApp: windowsByApp),
+            menu: StubMenuService(menusByApp: [:]),
+            dialogs: StubDialogService(),
+            screens: []
+        )
+
+        let spaceInfos: [SpaceInfo] = [
+            SpaceInfo(
+                id: 1,
+                type: .user,
+                isActive: true,
+                displayID: 1,
+                name: "Desktop 1",
+                ownerPIDs: [101]
+            ),
+            SpaceInfo(
+                id: 2,
+                type: .user,
+                isActive: false,
+                displayID: 1,
+                name: "Desktop 2",
+                ownerPIDs: [202]
+            ),
+        ]
+
+        let windowSpaces: [Int: [SpaceInfo]] = [
+            1: [spaceInfos[0]],
+            2: [spaceInfos[1]],
+        ]
+
+        let spaceService = StubSpaceService(spaces: spaceInfos, windowSpaces: windowSpaces)
+
+        return (services, spaceService)
     }
 
 }

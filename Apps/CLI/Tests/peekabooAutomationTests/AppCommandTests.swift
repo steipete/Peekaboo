@@ -89,6 +89,85 @@ struct AppCommandTests {
         #expect(showCmd.count > 3)
         #expect(quitCmd.count > 3)
     }
+
+    private struct CommandFailure: Error {
+        let status: Int32
+        let stderr: String
+    }
+
+    private func runCommand(_ args: [String]) async throws -> String {
+        let services = self.makeTestServices()
+        let result = try await InProcessCommandRunner.run(args, services: services)
+        if result.exitStatus != 0 {
+            throw CommandFailure(status: result.exitStatus, stderr: result.stderr)
+        }
+        return result.stdout
+    }
+
+    private func makeTestServices() -> PeekabooServices {
+        let applications: [ServiceApplicationInfo] = [
+            ServiceApplicationInfo(
+                processIdentifier: 101,
+                bundleIdentifier: "com.apple.finder",
+                name: "Finder",
+                bundlePath: "/System/Library/CoreServices/Finder.app",
+                isActive: true,
+                isHidden: false,
+                windowCount: 1
+            ),
+            ServiceApplicationInfo(
+                processIdentifier: 202,
+                bundleIdentifier: "com.apple.TextEdit",
+                name: "TextEdit",
+                bundlePath: "/System/Applications/TextEdit.app",
+                isActive: false,
+                isHidden: false,
+                windowCount: 1
+            ),
+        ]
+
+        let finderWindow = ServiceWindowInfo(
+            windowID: 1,
+            title: "Finder Window",
+            bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0,
+            spaceID: 1,
+            spaceName: "Desktop 1",
+            screenIndex: 0,
+            screenName: "Built-in"
+        )
+
+        let textEditWindow = ServiceWindowInfo(
+            windowID: 2,
+            title: "Document",
+            bounds: CGRect(x: 100, y: 100, width: 700, height: 500),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0,
+            spaceID: 2,
+            spaceName: "Desktop 2",
+            screenIndex: 0,
+            screenName: "Built-in"
+        )
+
+        let windowsByApp = [
+            "Finder": [finderWindow],
+            "TextEdit": [textEditWindow],
+        ]
+
+        return TestServicesFactory.makePeekabooServices(
+            applications: StubApplicationService(applications: applications, windowsByApp: windowsByApp),
+            windows: StubWindowService(windowsByApp: windowsByApp),
+            menu: StubMenuService(menusByApp: [:]),
+            dialogs: StubDialogService()
+        )
+    }
 }
 
 // MARK: - App Command Integration Tests
@@ -218,11 +297,12 @@ struct AppCommandIntegrationTests {
             #expect(response.data["action"] == "hide")
         }
     }
+
+    private func runCommand(_ args: [String]) async throws -> String {
+        try await PeekabooCLITestRunner.runCommand(args)
+    }
 }
 
 // MARK: - Test Helpers
 
-private func runCommand(_ args: [String]) async throws -> String {
-    try await PeekabooCLITestRunner.runCommand(args)
-}
 #endif

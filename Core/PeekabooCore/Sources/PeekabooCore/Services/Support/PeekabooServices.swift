@@ -56,9 +56,28 @@ import Tachikoma
  * - Since: PeekabooCore 1.0.0
  */
 public final class PeekabooServices: @unchecked Sendable {
-    /// Shared instance for convenient access in typical usage scenarios
-    @MainActor
-    public static let shared = PeekabooServices.createShared()
+    @TaskLocal
+    private static var taskOverride: PeekabooServices?
+
+    /// Shared instance for convenient access in typical usage scenarios.
+    /// Tests can inject custom service collections via `withTestServices`.
+    private static let defaultShared: PeekabooServices = MainActor.assumeIsolated {
+        PeekabooServices.createShared()
+    }
+
+    public static var shared: PeekabooServices {
+        self.taskOverride ?? self.defaultShared
+    }
+
+    /// Execute the supplied async operation with a temporary override for `PeekabooServices.shared`.
+    public static func withTestServices<T>(
+        _ services: PeekabooServices,
+        perform operation: () async throws -> T
+    ) async rethrows -> T {
+        try await $taskOverride.withValue(services) {
+            try await operation()
+        }
+    }
 
     /// Internal logger for debugging service initialization and coordination
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "Services")

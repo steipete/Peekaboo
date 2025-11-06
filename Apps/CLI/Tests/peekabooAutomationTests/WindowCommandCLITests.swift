@@ -7,62 +7,62 @@ import Testing
 struct WindowCommandCLITests {
     @Test("Window help output")
     func windowHelpOutput() async throws {
-        let (output, status) = try await runCommand(["window", "--help"])
-        #expect(status == 0)
+        let result = try await runCommand(["window", "--help"])
+        #expect(result.status == 0)
 
-        #expect(output.contains("Manipulate application windows"))
-        #expect(output.contains("close"))
-        #expect(output.contains("minimize"))
-        #expect(output.contains("maximize"))
-        #expect(output.contains("move"))
-        #expect(output.contains("resize"))
-        #expect(output.contains("set-bounds"))
-        #expect(output.contains("focus"))
-        #expect(output.contains("list"))
+        #expect(result.output.contains("Manipulate application windows"))
+        #expect(result.output.contains("close"))
+        #expect(result.output.contains("minimize"))
+        #expect(result.output.contains("maximize"))
+        #expect(result.output.contains("move"))
+        #expect(result.output.contains("resize"))
+        #expect(result.output.contains("set-bounds"))
+        #expect(result.output.contains("focus"))
+        #expect(result.output.contains("list"))
     }
 
     @Test("Window close help")
     func windowCloseHelp() async throws {
-        let (output, status) = try await runCommand(["window", "close", "--help"])
-        #expect(status == 0)
+        let result = try await runCommand(["window", "close", "--help"])
+        #expect(result.status == 0)
 
-        #expect(output.contains("Close a window"))
-        #expect(output.contains("--app"))
-        #expect(output.contains("--window-title"))
-        #expect(output.contains("--window-index"))
+        #expect(result.output.contains("Close a window"))
+        #expect(result.output.contains("--app"))
+        #expect(result.output.contains("--window-title"))
+        #expect(result.output.contains("--window-index"))
     }
 
     @Test("Window move help")
     func windowMoveHelp() async throws {
-        let (output, status) = try await runCommand(["window", "move", "--help"])
-        #expect(status == 0)
+        let result = try await runCommand(["window", "move", "--help"])
+        #expect(result.status == 0)
 
-        #expect(output.contains("Move a window"))
-        #expect(output.contains("--x"))
-        #expect(output.contains("--y"))
+        #expect(result.output.contains("Move a window"))
+        #expect(result.output.contains("--x"))
+        #expect(result.output.contains("--y"))
     }
 
     @Test("Window resize help")
     func windowResizeHelp() async throws {
-        let (output, status) = try await runCommand(["window", "resize", "--help"])
-        #expect(status == 0)
+        let result = try await runCommand(["window", "resize", "--help"])
+        #expect(result.status == 0)
 
-        #expect(output.contains("Resize a window"))
-        #expect(output.contains("--width"))
-        #expect(output.contains("--height"))
+        #expect(result.output.contains("Resize a window"))
+        #expect(result.output.contains("--width"))
+        #expect(result.output.contains("--height"))
     }
 
     @Test("Window list delegates to list windows")
     func windowListDelegation() async throws {
-        let (output, status) = try await runCommand(["window", "list", "--app", "NonExistentApp", "--json-output"])
-        #expect(status != 0)
+        let result = try await runCommand(["window", "list", "--app", "NonExistentApp", "--json-output"])
+        #expect(result.status != 0)
 
         // Should get JSON output
-        #expect(output.contains("{"))
-        #expect(output.contains("}"))
+        #expect(result.output.contains("{"))
+        #expect(result.output.contains("}"))
 
         // Parse and verify structure
-        if let data = output.data(using: .utf8) {
+        if let data = result.output.data(using: .utf8) {
             let response = try JSONDecoder().decode(JSONResponse.self, from: data)
             #expect(response.success == false)
             #expect(response.error?.code == "APP_NOT_FOUND")
@@ -71,13 +71,13 @@ struct WindowCommandCLITests {
 
     @Test("Missing required app parameter")
     func missingAppParameter() async throws {
-        let (_, status) = try await self.runCommand(["window", "close", "--json-output"])
-        #expect(status != 0)
+        let result = try await self.runCommand(["window", "close", "--json-output"])
+        #expect(result.status != 0)
     }
 
     @Test("Invalid window index")
     func invalidWindowIndex() async throws {
-        let (output, status) = try await runCommand([
+        let result = try await runCommand([
             "window",
             "close",
             "--app",
@@ -86,9 +86,9 @@ struct WindowCommandCLITests {
             "999",
             "--json-output",
         ])
-        #expect(status != 0)
+        #expect(result.status != 0)
 
-        if let data = output.data(using: .utf8) {
+        if let data = result.output.data(using: .utf8) {
             let response = try JSONDecoder().decode(JSONResponse.self, from: data)
             #expect(response.success == false)
             #expect(response.error != nil)
@@ -112,13 +112,65 @@ struct WindowCommandCLITests {
     }
 
     // Helper to run commands
-    private func runCommand(_ arguments: [String]) async throws -> (output: String, status: Int32) {
-        do {
-            let output = try await PeekabooCLITestRunner.runCommand(arguments)
-            return (output, 0)
-        } catch let error as PeekabooCLITestRunner.CommandError {
-            return (error.output, error.status)
-        }
+    private struct CommandResult {
+        let output: String
+        let status: Int32
+    }
+
+    private func runCommand(_ arguments: [String]) async throws -> CommandResult {
+        let services = self.makeTestServices()
+        let result = try await InProcessCommandRunner.run(arguments, services: services)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        return CommandResult(output: output, status: result.exitStatus)
+    }
+
+    private func makeTestServices() -> PeekabooServices {
+        let applications: [ServiceApplicationInfo] = [
+            ServiceApplicationInfo(
+                processIdentifier: 101,
+                bundleIdentifier: "com.apple.finder",
+                name: "Finder",
+                bundlePath: "/System/Library/CoreServices/Finder.app",
+                isActive: true,
+                isHidden: false,
+                windowCount: 1
+            ),
+            ServiceApplicationInfo(
+                processIdentifier: 202,
+                bundleIdentifier: "com.apple.TextEdit",
+                name: "TextEdit",
+                bundlePath: "/System/Applications/TextEdit.app",
+                isActive: false,
+                isHidden: false,
+                windowCount: 1
+            ),
+        ]
+
+        let finderWindow = ServiceWindowInfo(
+            windowID: 1,
+            title: "Finder Window",
+            bounds: CGRect(x: 0, y: 0, width: 1024, height: 768),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0,
+            spaceID: 1,
+            spaceName: "Desktop 1",
+            screenIndex: 0,
+            screenName: "Built-in"
+        )
+
+        let windowsByApp: [String: [ServiceWindowInfo]] = [
+            "Finder": [finderWindow],
+        ]
+
+        return TestServicesFactory.makePeekabooServices(
+            applications: StubApplicationService(applications: applications, windowsByApp: windowsByApp),
+            windows: StubWindowService(windowsByApp: windowsByApp),
+            menu: StubMenuService(menusByApp: [:]),
+            dialogs: StubDialogService()
+        )
     }
 }
 
