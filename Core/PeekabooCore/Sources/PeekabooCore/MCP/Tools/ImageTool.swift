@@ -350,7 +350,7 @@ private func buildImageSummary(savedFiles: [MCPSavedFile], captureCount: Int) ->
 
 private func analyzeImage(at path: String, question: String) async throws -> (text: String, modelUsed: String) {
     // Use the AI service to analyze the image
-    let aiService = await PeekabooAIService()
+        let aiService = PeekabooAIService()
     let result = try await aiService.analyzeImageFile(at: path, question: question)
     return (text: result, modelUsed: "gpt-5")
 }

@@ -5,11 +5,12 @@ import Testing
 @testable import PeekabooCore
 
 @Suite("MCPToolRegistry Tests")
+@MainActor
 struct MCPToolRegistryTests {
     @Test("Registry initialization")
     func registryInitialization() async {
-        let registry = await MCPToolRegistry()
-        let tools = await registry.allTools()
+        let registry = MCPToolRegistry()
+        let tools = registry.allTools()
 
         // Registry should start empty
         #expect(tools.isEmpty)
@@ -17,39 +18,39 @@ struct MCPToolRegistryTests {
 
     @Test("Register single tool")
     func registerSingleTool() async {
-        let registry = await MCPToolRegistry()
+        let registry = MCPToolRegistry()
         let mockTool = MockTool(
             name: "test-tool",
             description: "A test tool",
             inputSchema: .object([:]))
 
-        await registry.register(mockTool)
+        registry.register(mockTool)
 
-        let tools = await registry.allTools()
+        let tools = registry.allTools()
         #expect(tools.count == 1)
 
-        let registeredTool = await registry.tool(named: "test-tool")
+        let registeredTool = registry.tool(named: "test-tool")
         #expect(registeredTool != nil)
         #expect(registeredTool?.name == "test-tool")
     }
 
     @Test("Register multiple tools")
     func registerMultipleTools() async {
-        let registry = await MCPToolRegistry()
+        let registry = MCPToolRegistry()
         let tools = [
             MockTool(name: "tool1", description: "Tool 1", inputSchema: .object([:])),
             MockTool(name: "tool2", description: "Tool 2", inputSchema: .object([:])),
             MockTool(name: "tool3", description: "Tool 3", inputSchema: .object([:])),
         ]
 
-        await registry.register(tools)
+        registry.register(tools)
 
-        let allTools = await registry.allTools()
+        let allTools = registry.allTools()
         #expect(allTools.count == 3)
 
         // Verify each tool can be retrieved
         for tool in tools {
-            let retrieved = await registry.tool(named: tool.name)
+            let retrieved = registry.tool(named: tool.name)
             #expect(retrieved != nil)
             #expect(retrieved?.name == tool.name)
         }
@@ -57,7 +58,7 @@ struct MCPToolRegistryTests {
 
     @Test("Tool overwriting")
     func toolOverwriting() async {
-        let registry = await MCPToolRegistry()
+        let registry = MCPToolRegistry()
 
         let tool1 = MockTool(
             name: "duplicate",
@@ -69,27 +70,27 @@ struct MCPToolRegistryTests {
             description: "Replacement tool",
             inputSchema: .object(["newField": .string("test")]))
 
-        await registry.register(tool1)
-        await registry.register(tool2)
+        registry.register(tool1)
+        registry.register(tool2)
 
-        let tools = await registry.allTools()
+        let tools = registry.allTools()
         #expect(tools.count == 1)
 
-        let retrieved = await registry.tool(named: "duplicate")
+        let retrieved = registry.tool(named: "duplicate")
         #expect(retrieved?.description == "Replacement tool")
     }
 
     @Test("Tool not found")
     func toolNotFound() async {
-        let registry = await MCPToolRegistry()
+        let registry = MCPToolRegistry()
 
-        let tool = await registry.tool(named: "nonexistent")
+        let tool = registry.tool(named: "nonexistent")
         #expect(tool == nil)
     }
 
     @Test("Tool info conversion")
     func toolInfoConversion() async {
-        let registry = await MCPToolRegistry()
+        let registry = MCPToolRegistry()
 
         let mockTool = MockTool(
             name: "info-test",
@@ -101,9 +102,9 @@ struct MCPToolRegistryTests {
                 ],
                 required: ["param1"]))
 
-        await registry.register(mockTool)
+        registry.register(mockTool)
 
-        let toolInfos = await registry.toolInfos()
+        let toolInfos = registry.toolInfos()
         #expect(toolInfos.count == 1)
 
         let info = toolInfos.first!
@@ -127,7 +128,7 @@ struct MCPToolRegistryTests {
 
     @Test("Registry thread safety")
     func registryThreadSafety() async {
-        let registry = await MCPToolRegistry()
+        let registry = MCPToolRegistry()
 
         // Concurrently register many tools
         await withTaskGroup(of: Void.self) { group in
@@ -142,20 +143,20 @@ struct MCPToolRegistryTests {
             }
         }
 
-        let tools = await registry.allTools()
+        let tools = registry.allTools()
         #expect(tools.count == 100)
 
         // Verify all tools were registered correctly
         for i in 0..<100 {
-            let tool = await registry.tool(named: "concurrent-\(i)")
+            let tool = registry.tool(named: "concurrent-\(i)")
             #expect(tool != nil)
         }
     }
 
     @Test("Empty registry tool infos")
     func emptyRegistryToolInfos() async {
-        let registry = await MCPToolRegistry()
-        let infos = await registry.toolInfos()
+        let registry = MCPToolRegistry()
+        let infos = registry.toolInfos()
 
         #expect(infos.isEmpty)
     }
@@ -165,10 +166,10 @@ struct MCPToolRegistryTests {
 struct MCPToolRegistryIntegrationTests {
     @Test("Register all Peekaboo tools")
     func registerAllPeekabooTools() async {
-        let registry = await MCPToolRegistry()
+        let registry = MCPToolRegistry()
 
         // Register the actual Peekaboo tools
-        await registry.register([
+        registry.register([
             ImageTool(),
             AnalyzeTool(),
             ListTool(),
@@ -191,13 +192,13 @@ struct MCPToolRegistryIntegrationTests {
             SpaceTool(),
         ])
 
-        let tools = await registry.allTools()
+        let tools = registry.allTools()
         #expect(tools.count == 20)
 
         // Verify some key tools are present
-        let imageToolExists = await registry.tool(named: "image") != nil
-        let clickToolExists = await registry.tool(named: "click") != nil
-        let agentToolExists = await registry.tool(named: "agent") != nil
+        let imageToolExists = registry.tool(named: "image") != nil
+        let clickToolExists = registry.tool(named: "click") != nil
+        let agentToolExists = registry.tool(named: "agent") != nil
 
         #expect(imageToolExists)
         #expect(clickToolExists)

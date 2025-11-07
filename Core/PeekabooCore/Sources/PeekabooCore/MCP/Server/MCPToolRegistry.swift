@@ -130,7 +130,7 @@ public final class MCPToolRegistry {
         var externalByServer = OrderedDictionary<String, [any MCPTool]>()
         for serverName in groupedByServer.keys.sorted() {
             let toolsForServer = groupedByServer[serverName]?.sorted { $0.name < $1.name } ?? []
-            externalByServer[serverName] = toolsForServer.map { $0 as MCPTool }
+            externalByServer[serverName] = toolsForServer.map { $0 as any MCPTool }
         }
 
         return CategorizedTools(native: nativeTools, external: externalByServer)

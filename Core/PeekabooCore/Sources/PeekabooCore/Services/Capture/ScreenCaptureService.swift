@@ -201,7 +201,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
     }
 
-    // swiftlint:disable function_body_length
     /**
      * Capture a specific application window with precise targeting.
      *
@@ -293,8 +292,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             }
         }
     }
-
-    // swiftlint:enable function_body_length
 
     public func captureFrontmost() async throws -> CaptureResult {
         try await self.performOperation(.frontmost) { correlationId in
