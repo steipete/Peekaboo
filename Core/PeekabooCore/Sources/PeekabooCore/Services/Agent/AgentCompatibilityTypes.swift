@@ -231,11 +231,11 @@ public struct SessionMetadata: Sendable, Codable {
 }
 
 /// Manages agent conversation sessions with persistence and caching
+@MainActor
 public final class AgentSessionManager: @unchecked Sendable {
     private let fileManager = FileManager.default
     private let sessionDirectory: URL
     private var sessionCache: [String: AgentSession] = [:]
-    private let cacheQueue = DispatchQueue(label: "peekaboo.session.cache", attributes: .concurrent)
 
     /// Maximum number of sessions to keep in memory cache
     public static let maxCacheSize = 50
@@ -302,21 +302,13 @@ public final class AgentSessionManager: @unchecked Sendable {
         let data = try JSONEncoder().encode(session)
         try data.write(to: sessionFile)
 
-        // Update cache
-        self.cacheQueue.async(flags: .barrier) {
-            self.sessionCache[session.id] = session
-            self.evictOldCacheEntries()
-        }
+        self.sessionCache[session.id] = session
+        self.evictOldCacheEntries()
     }
 
     /// Load a session from storage
     public func loadSession(id: String) async throws -> AgentSession? {
-        // Check cache first
-        let cachedSession = self.cacheQueue.sync {
-            self.sessionCache[id]
-        }
-
-        if let cachedSession {
+        if let cachedSession = self.sessionCache[id] {
             return cachedSession
         }
 
@@ -329,11 +321,8 @@ public final class AgentSessionManager: @unchecked Sendable {
         let data = try Data(contentsOf: sessionFile)
         let session = try JSONDecoder().decode(AgentSession.self, from: data)
 
-        // Add to cache
-        self.cacheQueue.async(flags: .barrier) {
-            self.sessionCache[id] = session
-            self.evictOldCacheEntries()
-        }
+        self.sessionCache[id] = session
+        self.evictOldCacheEntries()
 
         return session
     }
@@ -344,10 +333,7 @@ public final class AgentSessionManager: @unchecked Sendable {
         let sessionFile = self.sessionDirectory.appendingPathComponent("\(id).json")
         try self.fileManager.removeItem(at: sessionFile)
 
-        // Remove from cache
-        self.cacheQueue.async(flags: .barrier) {
-            self.sessionCache.removeValue(forKey: id)
-        }
+        self.sessionCache.removeValue(forKey: id)
     }
 
     /// Clean up expired sessions
