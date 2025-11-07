@@ -6,10 +6,10 @@
 - Package status: beta, owned by the Swift project, with the first stable release targeted for early 2026. Expect API polishing; keep adoption behind our own façade so we can react to breaking changes quickly.citeturn1open0turn1open1
 
 ## Pilot Scope (Tests First)
-- Focus the first integration on the CLI automation test harness (`Apps/CLI/Tests/peekabooAutomationTests/Support/CommandRunner.swift`) because every CLI test routes through `PeekabooCLITestRunner.runCommand(_:)`. Replacing this one helper exercises child-process launch, output capture, and failure reporting in a controlled environment.
+- Focus the first integration on the now-retired CLI runner (`Apps/CLI/Tests/CLIAutomationTests/Support/CommandRunner.swift`). All “safe” suites run via `InProcessCommandRunner`, and historical references to `PeekabooCLITestRunner` have been removed.
 - Audit additional hot spots once the pilot lands:
   - `AXorcist` test helpers (`Core/AXorcist/Tests/AXorcistTests/CommonTestHelpers.swift`) when invoking the `axorc` binary.
-  - CLI automation tests that manually stand up `Process` instances for menu/window focus helpers (`Apps/CLI/Tests/peekabooAutomationTests/*.swift`, see `rg "Pipe()"` output). These can eventually share a common helper that wraps Subprocess.
+  - CLI automation tests that manually stand up `Process` instances for menu/window focus helpers (`Apps/CLI/Tests/CLIAutomationTests/*.swift`, see `rg "Pipe()"` output). These can eventually share a common helper that wraps Subprocess.
 - Production code paths (e.g. `ShellTool`, `DockService`) remain untouched until the test pilot proves stable and we design a broader façade for long-lived services.
 
 ## Integration Plan
@@ -19,9 +19,8 @@
 2. **Wrap Subprocess behind a helper**  
    - Introduce a small internal type (e.g. `TestChildProcess`) that mirrors the subset of features we rely on (arguments, environment, streaming stdout/stderr, timeout). This wrapper will call into Subprocess’ `ChildProcess.spawn(...)`, surface async iteration of `process.stdout.lines`, and return collected output on success/failure.
    - Preserve our existing error surface (`CommandError(status:output:)`) by translating `SubprocessError` into our domain model. Include the captured stderr text in thrown errors.
-3. **Refactor `PeekabooCLITestRunner`**  
-   - Replace `Process`/`Pipe` plumbing with the wrapper, enabling async streaming to avoid waiting until exit to read data. This allows us to log incremental output when diagnosing flakes and to cancel on timeouts.
-   - Add tests for the helper itself using a trivial command (`/usr/bin/env`, `swift --version`) to ensure deterministic behavior across macOS 14 CI.
+3. **Retire `PeekabooCLITestRunner`**  
+   - Historical note: the runner has been removed now that every automation suite runs via the harness.
 4. **Roll out to other helpers**  
    - Migrate AXorcist’s `runAXORCCommand` and similar utilities once the CLI pilot is stable for a week of CI runs.
    - Document any platform-specific observations (e.g. sandbox quirks, resource cleanup) in this file as we go.

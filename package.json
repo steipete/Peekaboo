@@ -20,6 +20,7 @@
     "test:automation:local": "bash -lc 'cd Apps/CLI && BIN_PATH=$(swift build --show-bin-path) && RUN_LOCAL_TESTS=true PEEKABOO_INCLUDE_AUTOMATION_TESTS=true PEEKABOO_CLI_PATH=\"$BIN_PATH/peekaboo\" swift test'",
     "test:all": "bash -lc 'set -euo pipefail; cd Apps/CLI && swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION && PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift test'",
     "test": "pnpm run test:safe",
+    "tachikoma:test:integration": "bash -lc 'cd Tachikoma && source ~/.profile && INTEGRATION_TESTS=1 swift test --parallel -Xswiftc -DLIVE_PROVIDER_TESTS'",
     "lint:swift": "cd Apps/CLI && swiftlint",
     "lint": "pnpm run lint:swift",
     "format:swift": "cd Apps/CLI && swiftformat .",

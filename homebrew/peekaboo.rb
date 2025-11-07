@@ -27,7 +27,7 @@ class Peekaboo < Formula
       2. Enable access for your Terminal application
       
       For AI analysis features, configure your AI providers:
-        export PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest"
+        export PEEKABOO_AI_PROVIDERS="openai/gpt-5,anthropic/claude-sonnet-4.5"
         export OPENAI_API_KEY="your-api-key"
       
       Or create a config file:

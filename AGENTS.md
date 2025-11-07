@@ -10,6 +10,7 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **Next steps**: file Swift compiler crash with stack dump, add test subsets so automation suites compile in smaller batches, and revisit `tmux`-logged test strategy once the compiler issue is resolved.
 - **CI note**: when running long Swift test suites use bare `tmux new-session …` invocations (no `while` loops or `tmux wait-for` wrappers). Continuous polling prevents our hang detector from spotting stuck jobs, which defeats the reason we run tests inside tmux. When implementing progress checks or back-off behaviour, cap individual `sleep`/timeout intervals at **≤30s** so the hang detector retains sufficient cadence.
 - **tmux usage**: Avoid `while tmux …` polling or `tmux wait-for`; prefer direct `tmux` commands with occasional bounded `sleep` calls, and investigate any `tmux`-run command that approaches 10 minutes rather than letting it run unattended.
+- **Loops & polling**: Never write open-ended `while` loops (especially in test scripts) that can block indefinitely. Always bound the iteration count or timeout (e.g., break after N checks) so hung processes can’t stall the agent forever.
 - **Commit discipline**: Batch related changes before committing. Never commit single files opportunistically—coordinate commit groups so parallel agents aren’t surprised by partially landed work.
 - **Version control hygiene**: Never revert or overwrite files you did not edit. Other agents and humans may be working in parallel, so avoid destructive operations (including `git checkout`, `git reset`, or similar) unless explicitly instructed.
 
@@ -33,6 +34,8 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - Use `@State` and `@Environment` for dependency injection
 - Embrace SwiftUI's declarative nature, don't fight the framework
 - See `/Users/steipete/Projects/vibetunnel/apple/docs/modern-swift.md` for details
+
+**Swift 6.2 Approachable Concurrency**: Every package shares the same SwiftPM settings (`StrictConcurrency`, `ExistentialAny`, `NonisolatedNonsendingByDefault`, and `.defaultIsolation(MainActor.self)`) *except* the top-level `peekaboo` CLI target. ArgumentParser still synthesizes its `ParsableCommand` conformances assuming non-actor types, so the CLI target skips the `.defaultIsolation` flag while retaining the rest. If you add new modules, keep the default isolation enabled unless you hit a similar toolchain limitation and document the exception in `docs/concurrency.md`.
 
 **Minimum macOS Version**: This project targets macOS 14.0 (Sonoma) and later. Do not add availability checks for macOS versions below 14.0.
 

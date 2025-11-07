@@ -597,9 +597,8 @@ To start, enable a single upcoming concurrency feature:
 
 Proposal    | Description | Feature Flag 
 :-----------|-------------|-------------
-[SE-0401][] | Remove Actor Isolation Inference caused by Property Wrappers | `DisableOutwardActorInference`
-[SE-0412][] | Strict concurrency for global variables | `GlobalConcurrency`
-[SE-0418][] | Inferring `Sendable` for methods and key path literals | `InferSendableFromCaptures`
+
+> **Note:** As of Swift 6.2 these concurrency proposals ship in the language by default (BareSlashRegexLiterals, ConciseMagicFile, ForwardTrailingClosures, ImportObjcForwardDeclarations, DeprecateApplicationMain, GlobalConcurrency, IsolatedDefaultValues, InferIsolatedConformances, InferSendableFromCaptures, DisableOutwardActorInference, GlobalActorIsolatedTypesUsability). Enabling their flags in `Package.swift` now only produces “already enabled” warnings, so rely on the toolchain defaults instead.
 
 [SE-0401]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/0401-remove-property-wrapper-isolation.md
 [SE-0412]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/0412-strict-concurrency-for-global-variables.md
@@ -789,6 +788,5 @@ These are all opt-in for the Swift 5 language mode.
 
 - **NonfrozenEnumExhaustivity**: Lack of a required `@unknown default` has changed from a warning to an error
 - **StrictConcurrency**: Will introduce errors for any code that risks data races
-- **DeprecateApplicationMain**: Will introduce an error for any code that has not migrated to using `@main`
 
 For a complete list of source compatibility changes, consult the Swift Evolution proposals.

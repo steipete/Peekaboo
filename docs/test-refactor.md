@@ -7,27 +7,22 @@ read suites now run hermetically. The remaining work below will finish the migra
 so the entire “safe” matrix can execute without touching live macOS services.
 
 ## 1. Complete the Command Harness Rollout
-- **ScrollCommandTests.swift**, **SwipeCommandTests.swift**, **MoveCommandTests.swift**, **PressCommandTests.swift**  
-  These suites still call into the live automation service. Create fixture contexts
-  (similar to `DragCommandTests`) and route the help/validation cases through
-  `InProcessCommandRunner`. Stub out automation calls in `TestServicesFactory` as needed.
-- **AnalyzeCommandTests.swift**, **RunCommandTests.swift**, **ListCommandTests** (CLI variants)  
-  Audit each suite for parsing-only tests that still shell out. If no real UI work is
-  required, wire them to the harness with appropriate test data.
-- **PeekabooCLITestRunner.swift**  
-  Once no read suite references this helper, delete the file and clean any imports.
+- ✅ **ScrollCommandTests.swift**, **SwipeCommandTests.swift**, **MoveCommandTests.swift**, **PressCommandTests.swift**, **AppCommandTests.swift**, **DragCommandTests.swift**  
+  All four suites now run via `InProcessCommandRunner` with Fixture-driven `TestServicesFactory` contexts.
+- ✅ **RunCommandTests.swift**, ✅ **ListCommandTests** (CLI variants)  
+  Command coverage moved to the harness by wiring `StubProcessService`, `StubScreenCaptureService`, and in-memory application/window fixtures.
+- ~~**AnalyzeCommandTests.swift**~~  
+  Removed (no standalone `analyze` CLI command exists—`image --analyze` already has coverage inside `ImageCommandTests`). Reintroduce only if a dedicated `AnalyzeCommand` is added to the CLI.
 
 ## 2. Extend/Adjust Test Stubs
-- Flesh out automation stubs so commands that issue `click`, `type`, `scroll`, etc.
-  can be called safely. At a minimum, record the request and return success so the
-  CLI logic continues past validation.
-- Add helper builders in `TestServicesFactory` for frequently used scenarios
-  (e.g., common application/window fixtures) to keep future tests concise.
+- ✅ Automation stubs now record calls/results for `scroll`, `swipe`, `press`, `moveMouse`, wait-for-element, etc., enabling hermetic CLI coverage.
+- ✅ Added `TestServicesFactory.AutomationTestContext`, injectable `StubProcessService`, and configurable `StubScreenCaptureService` to keep new harness suites concise.
+- TODO: continue identifying repetitive fixture construction in remaining suites and upstream them into `TestServicesFactory`.
 
 ## 3. Documentation & Guardrails
 - Update `swift-subprocess.md` and any onboarding docs once the harness covers all
   read suites so new contributors know to use the in-process approach by default.
-- Consider adding a lightweight lint (or test) that fails if new tests import
+- Consider adding a lightweight lint (or test) that fails if anyone reintroduces
   `PeekabooCLITestRunner`, keeping the suite hermetic.
 
 ## 4. Verification

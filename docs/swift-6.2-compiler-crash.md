@@ -15,7 +15,7 @@ any tests execute, so the `--skip .automation` flag alone is not sufficient.
 - Switched back to the stable 26.1 toolchain after the attempt.
 
 ### Test Target Split
-- Created `Tests/peekabooAutomationTests` for the suites that shell out to the
+- Created `Tests/CLIAutomationTests` for the suites that shell out to the
   real CLI or do UI automation.
 - Moved the remaining “safe” suites under `Tests/CoreCLITests`; these are
   the only tests included in the default `peekabooTests` target.
@@ -46,7 +46,7 @@ tmux new-session -d -s pb-auto 'bash -lc "cd /Users/steipete/Projects/Peekaboo/A
 ```
 The safe command builds and executes the pared-down bundle without issues.
 The automation command now compiles but currently fails inside
-`peekabooAutomationTests` due to outdated assertions; see the progress log for
+`CLIAutomationTests` due to outdated assertions; see the progress log for
 the compiler crash mitigation and runtime failures.
 
 ## Next Steps
@@ -76,7 +76,7 @@ the compiler crash mitigation and runtime failures.
   `/tmp/automation-tests.log`).
 - **2025-11-05 22:36 UTC** — Replaced key-path shorthand closures in automation
   suites with explicit closures; `PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift
-  build --target peekabooAutomationTests` now succeeds and `swift test` proceeds
+  build --target CLIAutomationTests` now succeeds and `swift test` proceeds
   to runtime assertions instead of compiler crashes.
 - **2025-11-05 22:55 UTC** — Repointed automation tests that spawn the CLI to
   `.build/debug/peekaboo`, added `CLIOutputCapture.suppressStderr` around parse
@@ -91,7 +91,7 @@ the compiler crash mitigation and runtime failures.
   tmux harness.
 - **2025-11-06 00:38 UTC** — Split hermetic CLI logic tests into a
   `CoreCLITests` target and left UI-touching suites in
-  `peekabooAutomationTests`, allowing `pnpm test:safe` to run 72 non-invasive
+  `CLIAutomationTests`, allowing `pnpm test:safe` to run 72 non-invasive
   tests by default. Automation coverage remains opt-in via
   `PEEKABOO_INCLUDE_AUTOMATION_TESTS=true`, which we now use for targeted
-  `swift build --target peekabooAutomationTests` checks.
+  `swift build --target CLIAutomationTests` checks.
