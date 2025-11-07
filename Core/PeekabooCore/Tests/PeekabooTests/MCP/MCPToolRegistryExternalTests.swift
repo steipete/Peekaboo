@@ -211,8 +211,13 @@ struct MCPToolRegistryExternalTests {
     func refreshExternalToolsWithoutClientManager() async {
         let registry = MCPToolRegistry()
 
-        await #expect(throws: MCPError.self) {
+        do {
             try await registry.refreshExternalTools()
+            Issue.record("Expected refreshExternalTools to throw when no client manager is configured")
+        } catch let error as PeekabooCore.MCPError {
+            #expect(error.localizedDescription.contains("Client manager not set"))
+        } catch {
+            Issue.record("Unexpected error: \(error)")
         }
     }
 

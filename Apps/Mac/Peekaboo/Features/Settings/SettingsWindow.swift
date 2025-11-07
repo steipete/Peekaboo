@@ -77,19 +77,12 @@ struct AISettingsView: View {
     private var allModels: [(provider: String, models: [(id: String, name: String)])] {
         var models: [(provider: String, models: [(id: String, name: String)])] = [
             ("openai", [
-                ("gpt-4.1", "GPT-4.1"),
-                ("gpt-4.1-mini", "GPT-4.1 mini"),
-                ("gpt-4o", "GPT-4o"),
-                ("gpt-4o-mini", "GPT-4o mini"),
-                ("o3", "o3"),
-                ("o3-pro", "o3 pro"),
-                ("o4-mini", "o4-mini"),
+                ("gpt-5", "GPT-5"),
+                ("gpt-5-mini", "GPT-5 mini"),
             ]),
             ("anthropic", [
-                ("claude-opus-4-20250514", "Claude Opus 4"),
-                ("claude-sonnet-4-20250514", "Claude Sonnet 4"),
-                ("claude-3-5-haiku", "Claude 3.5 Haiku"),
-                ("claude-3-5-sonnet", "Claude 3.5 Sonnet"),
+                ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
+                ("claude-haiku-4.5", "Claude Haiku 4.5"),
             ]),
             ("ollama", [
                 ("llava:latest", "LLaVA"),
@@ -111,18 +104,11 @@ struct AISettingsView: View {
     private var modelDescriptions: [String: String] {
         [
             // OpenAI models
-            "gpt-4o": "Flagship multimodal model with strong performance across text, vision, and audio. Excellent for general-purpose tasks with 128K context window.",
-            "gpt-4o-mini": "Fast and cost-effective multimodal model. Great for high-volume tasks while maintaining vision capabilities.",
-            "gpt-4.1": "Latest generation with superior coding and instruction following. Supports up to 1M tokens context window.",
-            "gpt-4.1-mini": "Small but powerful model that outperforms GPT-4o in many benchmarks. Perfect for fast, efficient multimodal tasks.",
-            "o3": "Advanced reasoning model with integrated vision analysis. Can combine tools and analyze visual inputs in its reasoning chain.",
-            "o3-pro": "Same as o3 but with extended reasoning time for complex tasks. Best for challenging problems requiring deep analysis.",
-            "o4-mini": "Optimized for fast, cost-efficient reasoning with strong performance in math, coding, and visual tasks.",
+            "gpt-5": "Flagship GPT-5 model with 400K context and best-in-class coding + automation skills.",
+            "gpt-5-mini": "Cost-optimized GPT-5 Mini with the same tools + 400K context at a friendlier price.",
             // Anthropic models
-            "claude-opus-4-20250514": "World's best coding model. Leads on SWE-bench (72.5%) and Terminal-bench (43.2%). Can work continuously for several hours on complex tasks.",
-            "claude-sonnet-4-20250514": "Cost-optimized general-purpose model with excellent performance across various tasks.",
-            "claude-3-5-haiku": "Fast and efficient model perfect for simple tasks and high-volume usage.",
-            "claude-3-5-sonnet": "Balanced model with computer use capabilities for automation tasks.",
+            "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5 with new tools + computer use, tuned for long-running automation tasks.",
+            "claude-haiku-4.5": "Claude Haiku 4.5 for ultra-low latency assistant tasks with the updated reasoning stack.",
             // Ollama models
             "llava:latest": "Open-source multimodal model that runs locally. Good for privacy-conscious users and offline usage.",
             "llama3.2-vision:latest": "Meta's latest vision-capable model with strong performance on visual understanding tasks.",

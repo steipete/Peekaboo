@@ -1,4 +1,4 @@
 #!/bin/bash
-# Wrapper script for Playwright MCP server
+# Wrapper script for Chrome DevTools MCP server
 cd /Users/steipete/Projects/Peekaboo
-exec npx @playwright/mcp@latest
+exec npx -y chrome-devtools-mcp@latest

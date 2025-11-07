@@ -212,7 +212,7 @@ public final class FocusManagementService {
         windowID: CGWindowID,
         options: FocusOptions) async throws
     {
-        var lastError: Error?
+        var lastError: (any Error)?
 
         for attempt in 1...options.retryCount {
             // Try to focus the window

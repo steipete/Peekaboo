@@ -1,5 +1,5 @@
 #!/bin/bash
-# MCP Playwright server wrapper that works around stdio buffering issues
+# MCP Chrome DevTools server wrapper that works around stdio buffering issues
 # This script ensures proper process handling for Swift Process class
 
 # Set up environment to avoid TTY detection issues
@@ -13,4 +13,4 @@ export PATH="/Users/steipete/.nvm/versions/node/v24.4.1/bin:/opt/homebrew/bin:/u
 # Use stdbuf to disable buffering on stdout/stderr
 # This is critical to prevent hanging with pipes
 exec stdbuf -o0 -e0 /Users/steipete/.nvm/versions/node/v24.4.1/bin/node \
-  /Users/steipete/.nvm/versions/node/v24.4.1/lib/node_modules/@playwright/mcp/cli.js "$@"
+  /Users/steipete/.nvm/versions/node/v24.4.1/lib/node_modules/chrome-devtools-mcp/build/src/index.js "$@"

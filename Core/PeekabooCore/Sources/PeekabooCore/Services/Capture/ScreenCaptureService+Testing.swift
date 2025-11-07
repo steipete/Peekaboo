@@ -128,6 +128,7 @@ private struct StubPermissionEvaluator: ScreenRecordingPermissionEvaluating {
     }
 }
 
+@MainActor
 private final class MockVisualizationClient: VisualizationClientProtocol, @unchecked Sendable {
     private(set) var flashes: [CGRect] = []
 

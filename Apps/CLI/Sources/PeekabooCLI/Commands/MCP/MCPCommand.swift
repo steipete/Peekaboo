@@ -292,7 +292,7 @@ struct List: @MainActor MainActorAsyncParsableCommand {
                             let components = afterModules.split(separator: "/")
                             if components.count >= 1 {
                                 if components[0].starts(with: "@") && components.count >= 2 {
-                                    // Scoped package like @playwright/mcp
+                                    // Scoped package like @agent-infra/mcp-server-browser
                                     return "\(components[0])/\(components[1])"
                                 } else {
                                     // Regular package

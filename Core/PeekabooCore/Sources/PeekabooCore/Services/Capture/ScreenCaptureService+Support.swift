@@ -19,6 +19,7 @@ protocol ModernScreenCaptureOperating: Sendable {
     func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult
 }
 
+@MainActor
 protocol VisualizationClientProtocol: Sendable {
     func connect()
     func showScreenshotFlash(in rect: CGRect) async -> Bool

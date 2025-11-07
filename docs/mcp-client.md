@@ -44,7 +44,7 @@ Peekaboo now operates as both:
                     │ │ • github:create_issue   │ │
                     │ │ • github:list_repos     │ │
                     │ │ • files:read_file       │ │
-                    │ │ • playwright:click      │ │
+                    │ │ • chrome-devtools:click │ │
                     │ └─────────────────────────┘ │
                     └─────────────────────────────┘
 ```
@@ -101,8 +101,8 @@ External Tools (45):
   github:get_file           [github] Get file contents
   files:read_file           [files] Read file from filesystem
   files:write_file          [files] Write file to filesystem
-  playwright:click          [playwright] Click element on webpage
-  playwright:navigate       [playwright] Navigate to URL
+  chrome-devtools:click     [chrome-devtools] Click element on webpage
+  chrome-devtools:navigate_page [chrome-devtools] Navigate to URL
   ...
 
 Summary:
@@ -241,14 +241,14 @@ Full configuration example with additional servers:
       "autoReconnect": true,
       "description": "Filesystem operations"
     },
-    "playwright": {
+    "chrome-devtools": {
       "transport": "stdio",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"],
+      "args": ["-y", "chrome-devtools-mcp@latest"],
       "enabled": true,
       "timeout": 15.0,
       "autoReconnect": false,
-      "description": "Web browser automation"
+      "description": "Chrome DevTools automation"
     }
   },
   "toolDisplay": {
@@ -326,7 +326,7 @@ peekaboo mcp add files -- npx -y @modelcontextprotocol/server-filesystem /allowe
 
 ### Playwright Server
 ```bash
-peekaboo mcp add playwright -- npx -y @playwright/mcp@latest
+peekaboo mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest
 ```
 **Tools**: navigate, click, type, screenshot, pdf, wait_for_selector, get_text, get_attribute, evaluate
 

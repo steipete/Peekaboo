@@ -43,7 +43,7 @@ final class PeekabooSettings {
         didSet { self.save() }
     }
 
-    var selectedModel: String = "claude-opus-4-20250514" {
+    var selectedModel: String = "claude-sonnet-4-5-20250929" {
         didSet {
             self.save()
             self.updateConfigFile()
@@ -58,7 +58,7 @@ final class PeekabooSettings {
         }
     }
 
-    var customVisionModel: String = "gpt-4o" {
+    var customVisionModel: String = "gpt-5" {
         didSet {
             self.save()
             self.updateConfigFile()
@@ -378,15 +378,15 @@ final class PeekabooSettings {
         // Set default model based on provider
         let defaultProvider = self.selectedProvider
         let defaultModel = if defaultProvider == "openai" {
-            "gpt-4.1"
+            "gpt-5-mini"
         } else if defaultProvider == "anthropic" {
-            "claude-opus-4-20250514"
+            "claude-sonnet-4-5-20250929"
         } else {
             "llava:latest"
         }
         self.selectedModel = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedModel") ?? defaultModel
         self.useCustomVisionModel = self.userDefaults.bool(forKey: "\(self.keyPrefix)useCustomVisionModel")
-        self.customVisionModel = self.userDefaults.string(forKey: "\(self.keyPrefix)customVisionModel") ?? "gpt-4o"
+        self.customVisionModel = self.userDefaults.string(forKey: "\(self.keyPrefix)customVisionModel") ?? "gpt-5"
         self.temperature = self.userDefaults.double(forKey: "\(self.keyPrefix)temperature")
         if self.temperature == 0 { self.temperature = 0.7 } // Default if not set
         self.maxTokens = self.userDefaults.integer(forKey: "\(self.keyPrefix)maxTokens")
@@ -612,7 +612,7 @@ final class PeekabooSettings {
                 case "ollama":
                     "ollama/\(self.selectedModel)"
                 default:
-                    "anthropic/claude-opus-4-20250514"
+                    "anthropic/claude-sonnet-4-5-20250929"
                 }
 
                 // Set providers string with fallbacks
@@ -664,7 +664,7 @@ final class PeekabooSettings {
                     if self.customProviders[self.selectedProvider] != nil {
                         "\(self.selectedProvider)/\(self.selectedModel)"
                     } else {
-                        "anthropic/claude-opus-4-20250514"
+                        "anthropic/claude-sonnet-4-5-20250929"
                     }
                 }
 

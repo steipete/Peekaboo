@@ -655,6 +655,7 @@ extension PeekabooAgentService {
 
         // Application tools
         agentTools.append(createListAppsTool())
+        agentTools.append(createLaunchAppTool())
         agentTools.append(createAppTool()) // Full app management (launch, quit, focus, etc.)
 
         // Space management
