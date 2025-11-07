@@ -14,6 +14,17 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **Commit discipline**: Batch related changes before committing. Never commit single files opportunistically—coordinate commit groups so parallel agents aren’t surprised by partially landed work.
 - **Version control hygiene**: Never revert or overwrite files you did not edit. Other agents and humans may be working in parallel, so avoid destructive operations (including `git checkout`, `git reset`, or similar) unless explicitly instructed.
 
+### Commit Messages
+
+We **always** use [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Stick to the format `<type>(<optional scope>)!: <description>` using the allowed types `feat|fix|refactor|build|ci|chore|docs|style|perf|test`.
+
+Examples you can copy:
+- `feat: Prevent racing of requests`
+- `chore!: Drop support for iOS 16`
+- `feat(api): Add basic telemetry`
+
+If you need to introduce a breaking change, add the `!`. Always make sure the type matches the intent of the change.
+
 ## Development Philosophy
 
 **NEVER PUBLISH TO NPM WITHOUT EXPLICIT PERMISSION**: Under no circumstances should you publish any packages to npm or any other public registry without explicit permission from the user. This is a critical security and trust boundary that must never be crossed.
