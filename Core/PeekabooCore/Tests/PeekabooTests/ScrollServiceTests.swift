@@ -7,7 +7,7 @@ import Testing
 @Suite(
     "ScrollService Tests",
     .tags(.ui, .automation),
-    .enabled(if: TestEnvironment.runAutomationScenarios))
+    .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
 struct ScrollServiceTests {
     @Test("ScrollService initializes successfully with default configuration")

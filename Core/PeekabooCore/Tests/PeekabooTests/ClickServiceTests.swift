@@ -6,7 +6,7 @@ import Testing
 @Suite(
     "ClickService Tests",
     .tags(.ui, .automation),
-    .enabled(if: TestEnvironment.runAutomationScenarios))
+    .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
 struct ClickServiceTests {
     @Suite("Initialization")

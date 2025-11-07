@@ -7,7 +7,7 @@ import Testing
 @Suite(
     "TypeService Tests",
     .tags(.ui, .automation),
-    .enabled(if: TestEnvironment.runAutomationScenarios))
+    .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
 struct TypeServiceTests {
     @Test("Initialize TypeService")

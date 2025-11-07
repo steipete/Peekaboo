@@ -6,7 +6,7 @@ import Testing
 @Suite(
     "HotkeyService Tests",
     .tags(.ui, .automation),
-    .enabled(if: TestEnvironment.runAutomationScenarios))
+    .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
 struct HotkeyServiceTests {
     @Test("Initialize HotkeyService")

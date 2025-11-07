@@ -11,6 +11,11 @@ enum EnvironmentFlags {
         isEnabled("RUN_AUTOMATION_TESTS") || isEnabled("RUN_LOCAL_TESTS")
     }
 
+    /// Input-device automation (key/mouse) opt-in flag shared with the CLI suite.
+    @preconcurrency nonisolated static var runInputAutomationScenarios: Bool {
+        isEnabled("PEEKABOO_INCLUDE_AUTOMATION_TESTS")
+    }
+
     @preconcurrency nonisolated static var runScreenCaptureScenarios: Bool {
         isEnabled("RUN_SCREEN_TESTS") || runAutomationScenarios
     }
@@ -59,6 +64,11 @@ enum TestEnvironment {
     /// Enable automation-focused tests (input devices, hotkeys, typing).
     @preconcurrency nonisolated(unsafe) static var runAutomationScenarios: Bool {
         EnvironmentFlags.runAutomationScenarios
+    }
+
+    /// Enable tests that drive actual keyboard/mouse events.
+    @preconcurrency nonisolated(unsafe) static var runInputAutomationScenarios: Bool {
+        EnvironmentFlags.runInputAutomationScenarios
     }
 
     /// Enable screen capture and multi-display validation scenarios.

@@ -6,7 +6,7 @@ import Testing
 @Suite(
     "GestureService Tests",
     .tags(.ui, .automation, .requiresDisplay),
-    .enabled(if: TestEnvironment.runAutomationScenarios))
+    .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
 struct GestureServiceTests {
     @Test("Initialize GestureService")
