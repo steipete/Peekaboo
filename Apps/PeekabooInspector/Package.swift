@@ -1,6 +1,13 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
+let approachableConcurrencySettings: [SwiftSetting] = [
+    .enableExperimentalFeature("StrictConcurrency"),
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .defaultIsolation(MainActor.self),
+]
+
 let package = Package(
     name: "PeekabooInspector",
     platforms: [.macOS(.v14)],
@@ -27,7 +34,5 @@ let package = Package(
                 .process("Assets.xcassets"),
                 .process("AppIcon.icon"),
             ],
-            swiftSettings: [
-                .swiftLanguageMode(.v6),
-            ]),
+            swiftSettings: approachableConcurrencySettings),
     ])

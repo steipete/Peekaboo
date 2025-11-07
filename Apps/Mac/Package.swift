@@ -3,6 +3,13 @@
 
 import PackageDescription
 
+let approachableConcurrencySettings: [SwiftSetting] = [
+    .enableExperimentalFeature("StrictConcurrency"),
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .defaultIsolation(MainActor.self),
+]
+
 let package = Package(
     name: "Peekaboo",
     platforms: [
@@ -34,11 +41,13 @@ let package = Package(
             resources: [
                 .process("Assets.xcassets"),
                 .process("AppIcon.icon"),
-            ]),
+            ],
+            swiftSettings: approachableConcurrencySettings),
         .testTarget(
             name: "PeekabooTests",
             dependencies: ["Peekaboo"],
             path: "PeekabooTests",
-            exclude: ["README.md"]),
+            exclude: ["README.md"],
+            swiftSettings: approachableConcurrencySettings),
     ],
     swiftLanguageModes: [.v6])

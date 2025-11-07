@@ -6,7 +6,7 @@ import Tachikoma
 @available(macOS 14.0, *)
 public struct AIAssistantWindow: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedModel: Model = .default
+    @State private var selectedModel: Model = .openai(.gpt5)
     @State private var systemPrompt: String = "You are a helpful assistant specialized in macOS automation and development using Peekaboo."
     @State private var showSettings = false
 
@@ -22,13 +22,8 @@ public struct AIAssistantWindow: View {
                         .font(.headline)
 
                     Picker("Model", selection: self.$selectedModel) {
-                        Text("Claude Opus 4").tag(Model.anthropic(.opus4))
-                        Text("Claude Sonnet 4").tag(Model.anthropic(.sonnet4))
-                        Text("GPT-4o").tag(Model.openai(.gpt4o))
-                        Text("GPT-4.1").tag(Model.openai(.gpt41))
-                        Text("GPT-5 Mini").tag(Model.openai(.gpt5Mini))
-                        Text("Grok 4").tag(Model.grok(.grok4))
-                        Text("Llama 3.3").tag(Model.ollama(.llama33))
+                        Text("GPT-5").tag(Model.openai(.gpt5))
+                        Text("Claude Sonnet 4.5").tag(Model.anthropic(.sonnet45))
                     }
                     .pickerStyle(.menu)
                 }
@@ -110,7 +105,7 @@ public struct AIAssistantWindow: View {
 /// A more compact version suitable for smaller windows or panels
 @available(macOS 14.0, *)
 public struct CompactAIAssistant: View {
-    @State private var model: Model = .default
+    @State private var model: Model = .openai(.gpt5)
     let systemPrompt: String
 
     public init(systemPrompt: String = "You are a helpful assistant.") {
@@ -127,10 +122,8 @@ public struct CompactAIAssistant: View {
                 Spacer()
 
                 Picker("Model", selection: self.$model) {
-                    Text("Claude").tag(Model.default)
-                    Text("GPT-4o").tag(Model.openai(.gpt4o))
-                    Text("GPT-5 Mini").tag(Model.openai(.gpt5Mini))
-                    Text("Grok").tag(Model.grok(.grok4))
+                    Text("GPT-5").tag(Model.openai(.gpt5))
+                    Text("Claude Sonnet 4.5").tag(Model.anthropic(.sonnet45))
                 }
                 .pickerStyle(.menu)
                 .controlSize(.small)
