@@ -448,67 +448,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             ],
             correlationId: correlationId)
 
-        let image: CGImage
-        if #available(macOS 15.0, *) {
-            image = try await self.captureWindowWithScreenshotManager(
-                windowID: windowID,
-                correlationId: correlationId)
-        } else {
-            var legacyImage = CGWindowListCreateImage(
-                CGRect.null,
-                .optionIncludingWindow,
-                windowID,
-                [.boundsIgnoreFraming, .nominalResolution])
-
-            if legacyImage == nil {
-                self.logger.warning(
-                    "Window capture failed; attempting screen-crop fallback",
-                    metadata: [
-                        "windowID": windowID,
-                        "appName": app.name,
-                    ],
-                    correlationId: correlationId)
-
-                let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
-                                let x = boundsDict["X"] as? CGFloat,
-                                let y = boundsDict["Y"] as? CGFloat,
-                                let width = boundsDict["Width"] as? CGFloat,
-                                let height = boundsDict["Height"] as? CGFloat
-                { CGRect(x: x, y: y, width: width, height: height) } else { CGRect.null }
-
-                if !bounds.isNull {
-                    let screens = NSScreen.screens
-                    if let primary = screens.first {
-                        let quartzRect = CGRect(
-                            x: bounds.origin.x,
-                            y: primary.frame.maxY - bounds.maxY,
-                            width: bounds.width,
-                            height: bounds.height)
-                        legacyImage = CGWindowListCreateImage(
-                            quartzRect,
-                            .optionOnScreenBelowWindow,
-                            kCGNullWindowID,
-                            .nominalResolution)
-                    }
-                }
-            }
-
-            guard let unwrapped = legacyImage else {
-                self.logger.error(
-                    "CGWindowListCreateImage failed (including fallback)",
-                    metadata: [
-                        "windowID": windowID,
-                        "appName": app.name,
-                    ],
-                    correlationId: correlationId)
-                throw OperationError.captureFailed(
-                    reason: """
-                    Failed to create window image for window ID \(windowID) (app: \(app.name)).
-                    Window may be minimized, hidden, or in another space.
-                    """)
-            }
-            image = unwrapped
-        }
+        let image = try await self.captureWindowWithScreenshotManager(
+            windowID: windowID,
+            correlationId: correlationId)
 
         let imageData: Data
         do {
@@ -835,32 +777,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
         let screenBounds = targetScreen.frame
 
-        // Convert NSScreen coordinates (bottom-left origin, Y up) to Quartz coordinates (top-left origin, Y down)
-        // We need to flip the Y coordinate relative to the primary screen
-        let primaryScreen = screens.first!
-        let quartzBounds = CGRect(
-            x: screenBounds.origin.x,
-            y: primaryScreen.frame.maxY - screenBounds.maxY,
-            width: screenBounds.width,
-            height: screenBounds.height)
-
-        let image: CGImage
-        if #available(macOS 15.0, *) {
-            image = try await self.captureDisplayWithScreenshotManager(
-                screen: targetScreen,
-                displayIndex: displayIndex ?? 0,
-                correlationId: correlationId)
-        } else {
-            guard let legacyImage = CGWindowListCreateImage(
-                quartzBounds,
-                .optionOnScreenBelowWindow,
-                kCGNullWindowID,
-                .nominalResolution)
-            else {
-                throw OperationError.captureFailed(reason: "Failed to create screen image using legacy API")
-            }
-            image = legacyImage
-        }
+        let image = try await self.captureDisplayWithScreenshotManager(
+            screen: targetScreen,
+            displayIndex: displayIndex ?? 0,
+            correlationId: correlationId)
 
         let imageData: Data
         do {
@@ -892,7 +812,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             metadata: metadata)
     }
 
-    @available(macOS 15.0, *)
+    @available(macOS 14.0, *)
     private func captureDisplayWithScreenshotManager(
         screen: NSScreen,
         displayIndex: Int,
@@ -923,7 +843,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             configuration: self.makeScreenshotConfiguration())
     }
 
-    @available(macOS 15.0, *)
+    @available(macOS 14.0, *)
     private func resolveDisplay(
         for screen: NSScreen,
         displayIndex: Int,
@@ -942,7 +862,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         return availableDisplays[displayIndex]
     }
 
-    @available(macOS 15.0, *)
+    @available(macOS 14.0, *)
     private func captureWindowWithScreenshotManager(
         windowID: CGWindowID,
         correlationId: String) async throws -> CGImage
@@ -972,91 +892,16 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         return CGDirectDisplayID(number.uint32Value)
     }
 
-    @available(macOS 15.0, *)
+    @available(macOS 14.0, *)
     private func makeScreenshotConfiguration() -> SCStreamConfiguration {
         let configuration = SCStreamConfiguration()
         configuration.backgroundColor = .clear
         configuration.shouldBeOpaque = true
         configuration.showsCursor = false
         configuration.capturesAudio = false
-        configuration.maximumFPS = 30
         return configuration
     }
 
-    @available(macOS, introduced: 10.10, obsoleted: 15.0)
-    private func captureDisplayWithCGWindowList(bounds: CGRect) throws -> CGImage {
-        guard let image = CGWindowListCreateImage(
-            bounds,
-            .optionOnScreenBelowWindow,
-            kCGNullWindowID,
-            .nominalResolution)
-        else {
-            throw OperationError.captureFailed(reason: "Failed to create screen image using legacy API")
-        }
-        return image
-    }
-
-    @available(macOS, introduced: 10.10, obsoleted: 15.0)
-    private func captureWindowWithCGWindowList(
-        windowID: CGWindowID,
-        targetWindow: [String: Any],
-        app: ServiceApplicationInfo,
-        correlationId: String) throws -> CGImage
-    {
-        var image = CGWindowListCreateImage(
-            CGRect.null,
-            .optionIncludingWindow,
-            windowID,
-            [.boundsIgnoreFraming, .nominalResolution])
-
-        if image == nil {
-            self.logger.warning(
-                "Window capture failed; attempting screen-crop fallback",
-                metadata: [
-                    "windowID": windowID,
-                    "appName": app.name,
-                ],
-                correlationId: correlationId)
-
-            let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
-                            let x = boundsDict["X"] as? CGFloat,
-                            let y = boundsDict["Y"] as? CGFloat,
-                            let width = boundsDict["Width"] as? CGFloat,
-                            let height = boundsDict["Height"] as? CGFloat
-            { CGRect(x: x, y: y, width: width, height: height) } else { CGRect.null }
-
-            if !bounds.isNull {
-                if let primary = NSScreen.screens.first {
-                    let quartzRect = CGRect(
-                        x: bounds.origin.x,
-                        y: primary.frame.maxY - bounds.maxY,
-                        width: bounds.width,
-                        height: bounds.height)
-                    image = CGWindowListCreateImage(
-                        quartzRect,
-                        .optionOnScreenBelowWindow,
-                        kCGNullWindowID,
-                        .nominalResolution)
-                }
-            }
-        }
-
-        guard let image else {
-            self.logger.error(
-                "CGWindowListCreateImage failed (including fallback)",
-                metadata: [
-                    "windowID": windowID,
-                    "appName": app.name,
-                ],
-                correlationId: correlationId)
-            throw OperationError.captureFailed(
-                reason: """
-                Failed to create window image for window ID \(windowID) (app: \(app.name)).
-                Window may be minimized, hidden, or in another space.
-                """)
-        }
-        return image
-    }
     // swiftlint:enable function_body_length
 }
 
