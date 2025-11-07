@@ -11,36 +11,35 @@ let approachableConcurrencySettings: [SwiftSetting] = [
 ]
 
 let package = Package(
-    name: "Peekaboo",
+    name: "Playground",
     platforms: [
         .macOS(.v14),
     ],
     products: [
         .library(
-            name: "Peekaboo",
-            targets: ["Peekaboo"]),
+            name: "Playground",
+            targets: ["Playground"]),
     ],
     dependencies: [
         .package(path: "../../Core/PeekabooCore"),
     ],
     targets: [
         .target(
-            name: "Peekaboo",
+            name: "Playground",
             dependencies: [
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
             ],
-            path: "Peekaboo",
-            exclude: ["PeekabooApp.swift", "Info.plist"],
+            path: "Playground",
+            exclude: ["PlaygroundApp.swift", "Info.plist"],
             resources: [
                 .process("Assets.xcassets"),
+                .process("AppIcon.icon"),
             ],
             swiftSettings: approachableConcurrencySettings),
         .testTarget(
-            name: "PeekabooTests",
-            dependencies: ["Peekaboo"],
-            path: "PeekabooTests",
-            exclude: ["README.md"],
+            name: "PlaygroundTests",
+            dependencies: ["Playground"],
+            path: "Tests/PlaygroundTests",
             swiftSettings: approachableConcurrencySettings),
     ],
     swiftLanguageModes: [.v6])
-
