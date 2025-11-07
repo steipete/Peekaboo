@@ -1,6 +1,13 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
+let approachableConcurrencySettings: [SwiftSetting] = [
+    .enableExperimentalFeature("StrictConcurrency"),
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .defaultIsolation(MainActor.self),
+]
+
 let package = Package(
     name: "PeekabooTestHost",
     platforms: [
@@ -17,7 +24,7 @@ let package = Package(
             name: "PeekabooTestHost",
             path: ".",
             sources: ["TestHostApp.swift", "ContentView.swift"],
-            swiftSettings: []
+            swiftSettings: approachableConcurrencySettings
         ),
     ],
     swiftLanguageModes: [.v6]

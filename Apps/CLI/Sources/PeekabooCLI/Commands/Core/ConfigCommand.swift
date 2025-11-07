@@ -1,10 +1,11 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 
 /// Manage Peekaboo configuration files and settings
 @available(macOS 14.0, *)
-struct ConfigCommand: ParsableCommand {
+@MainActor
+struct ConfigCommand: @MainActor MainActorParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "config",
         abstract: "Manage Peekaboo configuration",
@@ -45,7 +46,8 @@ struct ConfigCommand: ParsableCommand {
     )
 
     /// Subcommand to create a default configuration file
-    struct InitCommand: AsyncParsableCommand {
+    @MainActor
+struct InitCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "init",
             abstract: "Create a default configuration file"
@@ -112,7 +114,8 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to display current configuration
-    struct ShowCommand: AsyncParsableCommand {
+    @MainActor
+struct ShowCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
             abstract: "Display current configuration"
@@ -240,7 +243,8 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to open configuration in an editor
-    struct EditCommand: AsyncParsableCommand {
+    @MainActor
+struct EditCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "edit",
             abstract: "Open configuration file in your default editor"
@@ -335,7 +339,8 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to validate configuration syntax
-    struct ValidateCommand: AsyncParsableCommand {
+    @MainActor
+struct ValidateCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "validate",
             abstract: "Validate configuration file syntax"
@@ -409,7 +414,8 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to set credentials securely
-    struct SetCredentialCommand: AsyncParsableCommand {
+    @MainActor
+struct SetCredentialCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "set-credential",
             abstract: "Set an API key or credential securely"
@@ -460,7 +466,8 @@ struct ConfigCommand: ParsableCommand {
     // MARK: - Custom Provider Management Commands
 
     /// Subcommand to add a custom AI provider
-    struct AddProviderCommand: AsyncParsableCommand {
+    @MainActor
+struct AddProviderCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "add-provider",
             abstract: "Add a custom AI provider",
@@ -652,7 +659,8 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to list custom AI providers
-    struct ListProvidersCommand: AsyncParsableCommand {
+    @MainActor
+struct ListProvidersCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-providers",
             abstract: "List configured custom AI providers",
@@ -718,7 +726,8 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to test a custom AI provider connection
-    struct TestProviderCommand: AsyncParsableCommand {
+    @MainActor
+struct TestProviderCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "test-provider",
             abstract: "Test connection to a custom AI provider",
@@ -779,7 +788,8 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to remove a custom AI provider
-    struct RemoveProviderCommand: AsyncParsableCommand {
+    @MainActor
+struct RemoveProviderCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "remove-provider",
             abstract: "Remove a custom AI provider",
@@ -865,7 +875,8 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to discover models from a custom AI provider
-    struct ModelsProviderCommand: AsyncParsableCommand {
+    @MainActor
+struct ModelsProviderCommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "models-provider",
             abstract: "List available models from a custom AI provider",
@@ -969,7 +980,7 @@ private struct SuccessOutput: Encodable {
         case success, data
     }
 
-    func encode(to encoder: Encoder) throws {
+    func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.success, forKey: .success)
         try container.encode(JSONValue(self.data), forKey: .data)
@@ -990,7 +1001,7 @@ private struct JSONValue: Encodable {
         self.value = value
     }
 
-    func encode(to encoder: Encoder) throws {
+    func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
 
         if let dict = value as? [String: Any] {

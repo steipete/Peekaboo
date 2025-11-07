@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 
@@ -15,14 +15,14 @@ protocol SpaceCommandSpaceService: Sendable {
 @MainActor
 enum SpaceCommandEnvironment {
     @TaskLocal
-    private static var override: SpaceCommandSpaceService?
+    private static var override: (any SpaceCommandSpaceService)?
 
-    static var service: SpaceCommandSpaceService {
+    static var service: any SpaceCommandSpaceService {
         self.override ?? LiveSpaceService.shared
     }
 
     static func withSpaceService<T>(
-        _ service: SpaceCommandSpaceService,
+        _ service: any SpaceCommandSpaceService,
         perform operation: () async throws -> T
     ) async rethrows -> T {
         try await $override.withValue(service) {
@@ -59,7 +59,8 @@ enum SpaceCommandEnvironment {
 }
 
 /// Manage macOS Spaces (virtual desktops)
-struct SpaceCommand: AsyncParsableCommand {
+@MainActor
+struct SpaceCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "space",
         abstract: "Manage macOS Spaces (virtual desktops)",
@@ -103,7 +104,8 @@ struct SpaceCommand: AsyncParsableCommand {
 
 // MARK: - List Spaces
 
-struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List all Spaces and their windows"
@@ -120,7 +122,7 @@ struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
-        let spaceService = await SpaceCommandEnvironment.service
+        let spaceService = SpaceCommandEnvironment.service
         let spaces = spaceService.getAllSpaces()
 
         if self.jsonOutput {
@@ -204,7 +206,8 @@ struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
 
 // MARK: - Switch Space
 
-struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "switch",
         abstract: "Switch to a different Space"
@@ -221,7 +224,7 @@ struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            let spaceService = await SpaceCommandEnvironment.service
+            let spaceService = SpaceCommandEnvironment.service
             let spaces = await MainActor.run { spaceService.getAllSpaces() }
 
             // Convert 1-based index to actual Space
@@ -254,7 +257,8 @@ struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
 
 // MARK: - Move Window to Space
 
-struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+@MainActor
+struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "move-window",
         abstract: "Move a window to a different Space"
@@ -317,7 +321,7 @@ struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
 
             let windowID = CGWindowID(info.windowID)
 
-            let spaceService = await SpaceCommandEnvironment.service
+            let spaceService = SpaceCommandEnvironment.service
 
             if self.toCurrent {
                 // Move to current Space

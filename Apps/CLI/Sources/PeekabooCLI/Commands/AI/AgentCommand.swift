@@ -1,4 +1,5 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
+import Darwin
 import Dispatch
 import Foundation
 import Logging
@@ -82,7 +83,8 @@ func iconForTool(_ toolName: String) -> String {
 
 /// AI Agent command that uses new Chat Completions API architecture
 @available(macOS 14.0, *)
-struct AgentCommand: AsyncParsableCommand {
+@MainActor
+struct AgentCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "agent",
         abstract: "Execute complex automation tasks using AI agent"
@@ -106,7 +108,7 @@ struct AgentCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Maximum number of steps the agent can take")
     var maxSteps: Int?
 
-    @Option(name: .long, help: "AI model to use (e.g., o3, claude-3-opus-latest)")
+    @Option(name: .long, help: "AI model to use (allowed: gpt-5 or claude-sonnet-4.5)")
     var model: String?
 
     @Flag(name: .long, help: "Output in JSON format")
@@ -157,7 +159,6 @@ struct AgentCommand: AsyncParsableCommand {
         return capabilities.recommendedOutputMode
     }
 
-    @MainActor
     mutating func run() async throws {
         // Show terminal detection debug if requested
         if self.debugTerminal {
@@ -182,7 +183,6 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
 
-    @MainActor
     mutating func runInternal() async throws {
         // Initialize MCP clients first so agent has access to external tools
         // Only show MCP initialization in verbose mode
@@ -526,18 +526,36 @@ struct AgentCommand: AsyncParsableCommand {
         if isDebugLoggingEnabled {
             print("DEBUG AgentCommand: Parsing model string: '\(modelString)'")
         }
-        let parsed = LanguageModel.parse(from: modelString)
-
-        if isDebugLoggingEnabled {
-            print("DEBUG AgentCommand: Parsed model: \(String(describing: parsed))")
+        guard let parsed = LanguageModel.parse(from: modelString) else {
+            if isDebugLoggingEnabled {
+                print("DEBUG AgentCommand: Parsed model: nil (unsupported input)")
+            }
+            return nil
         }
 
-        return parsed
+        let restricted = self.restrictedPeekabooModel(for: parsed)
+
+        if isDebugLoggingEnabled {
+            print("DEBUG AgentCommand: Parsed model: \(String(describing: restricted))")
+        }
+
+        return restricted
+    }
+
+    private func restrictedPeekabooModel(for model: LanguageModel) -> LanguageModel? {
+        switch model {
+        case .openai:
+            return .openai(.gpt5)
+        case .anthropic:
+            return .anthropic(.sonnet45)
+        default:
+            return nil
+        }
     }
 
     /// Orchestrate a full agent run: configure UX, stream events, respect max steps, and support session resume.
     func executeTask(
-        _ agentService: AgentServiceProtocol,
+        _ agentService: any AgentServiceProtocol,
         task: String,
         maxSteps: Int = 20,
         sessionId: String? = nil
@@ -555,7 +573,7 @@ struct AgentCommand: AsyncParsableCommand {
         let displayModelName = self.getDisplayModelName(actualModelName)
 
         // Create event delegate for real-time updates
-        let eventDelegate: AgentEventDelegate = await MainActor.run {
+        let eventDelegate: any AgentEventDelegate = await MainActor.run {
             AgentOutputDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
         }
 
@@ -652,6 +670,10 @@ struct AgentCommand: AsyncParsableCommand {
             if isDebugLoggingEnabled {
                 print("DEBUG AgentCommand: CLI model parameter: \(String(describing: self.model))")
                 print("DEBUG AgentCommand: Parsed language model: \(String(describing: languageModel))")
+            }
+
+            if let requestedModel = self.model, languageModel == nil {
+                fputs("⚠️  Unsupported model '\(requestedModel)'. Peekaboo only supports gpt-5 and claude-sonnet-4.5.\n", stderr)
             }
 
             let result = try await peekabooAgent.executeTask(
@@ -775,7 +797,7 @@ struct AgentCommand: AsyncParsableCommand {
 
     // MARK: - Session Management
 
-    func showSessions(_ agentService: AgentServiceProtocol) async throws {
+    func showSessions(_ agentService: any AgentServiceProtocol) async throws {
         // Cast to PeekabooAgentService - this should always succeed
         guard let peekabooService = agentService as? PeekabooAgentService else {
             throw PeekabooError.commandFailed("Agent service not properly initialized")
@@ -846,7 +868,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
 
-    func resumeAgentSession(_ agentService: AgentServiceProtocol, sessionId: String, task: String) async throws {
+    func resumeAgentSession(_ agentService: any AgentServiceProtocol, sessionId: String, task: String) async throws {
         if !self.jsonOutput {
             print(
                 "\(TerminalColor.cyan)\(TerminalColor.bold)\(AgentDisplayTokens.Status.info) Resuming session \(sessionId.prefix(8))...\(TerminalColor.reset)\n"

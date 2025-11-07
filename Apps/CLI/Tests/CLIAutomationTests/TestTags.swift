@@ -41,39 +41,27 @@ extension Tag {
     @Tag static var requiresNetwork: Self
 }
 
+@preconcurrency
 enum CLITestEnvironment {
-    private static let env = ProcessInfo.processInfo.environment
+    @inline(__always)
+    private static func flag(_ key: String) -> Bool {
+        ProcessInfo.processInfo.environment[key]?.lowercased() == "true"
+    }
 
     private static var runAutomationTests: Bool {
-        env["RUN_AUTOMATION_TESTS"] == "true"
+        flag("RUN_AUTOMATION_TESTS")
     }
 
-    static var runAutomationRead: Bool {
-        runAutomationTests || env["RUN_AUTOMATION_READ"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+    @preconcurrency nonisolated(unsafe) static var runAutomationRead: Bool {
+        runAutomationTests || flag("RUN_AUTOMATION_READ") || flag("RUN_LOCAL_TESTS")
     }
 
-    static var runAutomationActions: Bool {
-        runAutomationTests || env["RUN_AUTOMATION_ACTIONS"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+    @preconcurrency nonisolated(unsafe) static var runAutomationActions: Bool {
+        runAutomationTests || flag("RUN_AUTOMATION_ACTIONS") || flag("RUN_LOCAL_TESTS")
     }
 
-    static var runAutomationScenarios: Bool {
+    @preconcurrency nonisolated(unsafe) static var runAutomationScenarios: Bool {
         runAutomationRead || runAutomationActions
-    }
-
-    static func peekabooBinaryURL() -> URL? {
-        let workingDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let candidates = [
-            workingDirectory.appendingPathComponent(".build/debug/peekaboo"),
-            workingDirectory.appendingPathComponent(".build/Debug/peekaboo"),
-            workingDirectory.appendingPathComponent(".build/release/peekaboo"),
-            workingDirectory.appendingPathComponent(".build/Release/peekaboo"),
-        ]
-
-        for url in candidates where FileManager.default.isExecutableFile(atPath: url.path) {
-            return url
-        }
-
-        return nil
     }
 }
 
@@ -96,13 +84,18 @@ enum CLIOutputCapture {
         dup2(writeFD, STDERR_FILENO)
         close(writeFD)
 
+        let captureGroup = DispatchGroup()
+        captureGroup.enter()
+        DispatchQueue.global(qos: .utility).async {
+            var buffer = [UInt8](repeating: 0, count: 1024)
+            while read(readFD, &buffer, buffer.count) > 0 {}
+            captureGroup.leave()
+        }
+
         defer {
             dup2(originalFD, STDERR_FILENO)
             close(originalFD)
-
-            // Drain any remaining data
-            var buffer = [UInt8](repeating: 0, count: 1024)
-            while read(readFD, &buffer, buffer.count) > 0 {}
+            captureGroup.wait()
             close(readFD)
         }
 

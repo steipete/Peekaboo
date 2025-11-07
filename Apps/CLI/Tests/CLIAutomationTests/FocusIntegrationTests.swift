@@ -11,37 +11,15 @@ import Testing
 )
 struct FocusIntegrationTests {
     // Helper function to run peekaboo commands
-    private func runPeekabooCommand(_ arguments: [String]) async throws -> String {
-        let projectRoot = URL(fileURLWithPath: #file)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-        process.currentDirectoryURL = projectRoot
-        process.arguments = ["run", "peekaboo"] + arguments
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: data, encoding: .utf8) else {
-            throw ProcessError(message: "Failed to decode output")
-        }
-
-        guard process.terminationStatus == 0 else {
-            throw ProcessError(message: "Process failed with exit code: \(process.terminationStatus)\nOutput: \(output)"
-            )
-        }
-
-        return output
+    private func runPeekabooCommand(
+        _ arguments: [String],
+        allowedExitStatuses: Set<Int32> = [0]
+    ) async throws -> String {
+        let result = try await InProcessCommandRunner.runShared(
+            arguments,
+            allowedExitCodes: allowedExitStatuses
+        )
+        return result.combinedOutput
     }
 
     // MARK: - Session-based Focus Tests
@@ -59,7 +37,7 @@ struct FocusIntegrationTests {
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
             Issue.record("Failed to create session")
-            throw ProcessError(message: "Failed to create session")
+            throw ProcessError.message("Failed to create session")
         }
 
         // Click should auto-focus the Finder window
@@ -141,7 +119,7 @@ struct FocusIntegrationTests {
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
             Issue.record("Failed to create session")
-            throw ProcessError(message: "Failed to create session")
+            throw ProcessError.message("Failed to create session")
         }
 
         // Click with auto-focus disabled
@@ -291,7 +269,8 @@ private struct WindowActionResponse: Codable {
     let error: String?
 }
 
-private struct ProcessError: Error {
-    let message: String
+private enum ProcessError: Error {
+    case message(String)
+    case binaryMissing
 }
 #endif

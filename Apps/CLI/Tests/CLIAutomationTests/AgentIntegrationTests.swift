@@ -18,9 +18,6 @@ struct AgentIntegrationTests {
             throw TestError.missingAPIKey
         }
 
-        // Create a temporary file to capture output
-        let outputFile = FileManager.default.temporaryDirectory.appendingPathComponent("agent-test-\(UUID()).json")
-
         // Build command arguments
         let args = [
             "agent",
@@ -29,25 +26,8 @@ struct AgentIntegrationTests {
             "--max-steps", "10",
         ]
 
-        // Execute the command
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = args
-        process.standardOutput = FileHandle(forWritingAtPath: outputFile.path)
-        process.standardError = FileHandle.standardError
-
-        process.environment = ProcessInfo.processInfo.environment
-        process.environment?["OPENAI_API_KEY"] = apiKey
-
-        try process.run()
-        process.waitUntilExit()
-
-        // Read and parse output
-        let outputData = try Data(contentsOf: outputFile)
+        let outputString = try await self.runAgentCommand(args)
+        let outputData = outputString.data(using: .utf8) ?? Data()
         let output = try JSONDecoder().decode(AgentTestOutput.self, from: outputData)
 
         // Verify results
@@ -59,8 +39,7 @@ struct AgentIntegrationTests {
         #expect(stepCommands.contains("peekaboo_app") || stepCommands.contains("peekaboo_see"))
         #expect(stepCommands.contains("peekaboo_type"))
 
-        // Clean up
-        try? FileManager.default.removeItem(at: outputFile)
+        // No temp files to remove when running in-process
     }
 
     @Test(
@@ -72,9 +51,6 @@ struct AgentIntegrationTests {
             throw TestError.missingAPIKey
         }
 
-        let outputFile = FileManager.default.temporaryDirectory
-            .appendingPathComponent("agent-window-test-\(UUID()).json")
-
         let args = [
             "agent",
             "Open Safari, wait 2 seconds, then minimize it",
@@ -82,19 +58,8 @@ struct AgentIntegrationTests {
             "--verbose",
         ]
 
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = args
-        process.standardOutput = FileHandle(forWritingAtPath: outputFile.path)
-
-        try process.run()
-        process.waitUntilExit()
-
-        let outputData = try Data(contentsOf: outputFile)
+        let outputString = try await self.runAgentCommand(args)
+        let outputData = outputString.data(using: .utf8) ?? Data()
         let output = try JSONDecoder().decode(AgentTestOutput.self, from: outputData)
 
         // Window automation can be flaky due to timing and system state
@@ -107,7 +72,6 @@ struct AgentIntegrationTests {
             #expect(stepCommands.contains("peekaboo_sleep"))
         }
 
-        try? FileManager.default.removeItem(at: outputFile)
     }
 
     @Test("Agent dry run mode", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
@@ -116,8 +80,6 @@ struct AgentIntegrationTests {
             throw TestError.missingAPIKey
         }
 
-        let outputFile = FileManager.default.temporaryDirectory.appendingPathComponent("agent-dry-run-\(UUID()).json")
-
         let args = [
             "agent",
             "Click on all buttons in the current window",
@@ -125,19 +87,8 @@ struct AgentIntegrationTests {
             "--json-output",
         ]
 
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = args
-        process.standardOutput = FileHandle(forWritingAtPath: outputFile.path)
-
-        try process.run()
-        process.waitUntilExit()
-
-        let outputData = try Data(contentsOf: outputFile)
+        let outputString = try await self.runAgentCommand(args)
+        let outputData = outputString.data(using: .utf8) ?? Data()
         let output = try JSONDecoder().decode(AgentTestOutput.self, from: outputData)
 
         #expect(output.success == true)
@@ -147,7 +98,6 @@ struct AgentIntegrationTests {
             #expect(step.output == nil || step.output?.contains("dry run") == true)
         }
 
-        try? FileManager.default.removeItem(at: outputFile)
     }
 
     @Test("Direct Peekaboo invocation", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
@@ -156,28 +106,14 @@ struct AgentIntegrationTests {
             throw TestError.missingAPIKey
         }
 
-        let outputFile = FileManager.default.temporaryDirectory
-            .appendingPathComponent("direct-invocation-\(UUID()).json")
-
         // Direct invocation without "agent" subcommand
         let args = [
             "Take a screenshot of the current window",
             "--json-output",
         ]
 
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = args
-        process.standardOutput = FileHandle(forWritingAtPath: outputFile.path)
-
-        try process.run()
-        process.waitUntilExit()
-
-        let outputData = try Data(contentsOf: outputFile)
+        let outputString = try await self.runAgentCommand(args)
+        let outputData = outputString.data(using: .utf8) ?? Data()
         let output = try JSONDecoder().decode(AgentTestOutput.self, from: outputData)
 
         #expect(output.success == true)
@@ -186,7 +122,6 @@ struct AgentIntegrationTests {
         } ?? false
         #expect(hasImageOrSeeCommand == true)
 
-        try? FileManager.default.removeItem(at: outputFile)
     }
 
     @Test("Agent respects max steps", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
@@ -195,8 +130,6 @@ struct AgentIntegrationTests {
             throw TestError.missingAPIKey
         }
 
-        let outputFile = FileManager.default.temporaryDirectory.appendingPathComponent("max-steps-\(UUID()).json")
-
         let args = [
             "agent",
             "Do 20 different things with various applications",
@@ -204,25 +137,24 @@ struct AgentIntegrationTests {
             "--json-output",
         ]
 
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = args
-        process.standardOutput = FileHandle(forWritingAtPath: outputFile.path)
-
-        try process.run()
-        process.waitUntilExit()
-
-        let outputData = try Data(contentsOf: outputFile)
+        let outputString = try await self.runAgentCommand(args)
+        let outputData = outputString.data(using: .utf8) ?? Data()
         let output = try JSONDecoder().decode(AgentTestOutput.self, from: outputData)
 
         // Should stop at 3 steps
         #expect((output.data?.steps.count ?? 0) <= 3)
 
-        try? FileManager.default.removeItem(at: outputFile)
+    }
+
+    private func runAgentCommand(
+        _ arguments: [String],
+        allowedExitStatuses: Set<Int32> = [0]
+    ) async throws -> String {
+        let result = try await InProcessCommandRunner.runShared(
+            arguments,
+            allowedExitCodes: allowedExitStatuses
+        )
+        return result.stdout.isEmpty ? result.stderr : result.stdout
     }
 }
 

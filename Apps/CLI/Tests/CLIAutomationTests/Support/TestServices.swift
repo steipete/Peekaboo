@@ -18,6 +18,12 @@ func stubUnimplemented(_ function: StaticString = #function) -> Never {
 
 @MainActor
 final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
+    var permissionGranted: Bool
+
+    init(permissionGranted: Bool = true) {
+        self.permissionGranted = permissionGranted
+    }
+
     func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
         throw TestStubError.unimplemented(#function)
     }
@@ -35,12 +41,98 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     }
 
     func hasScreenRecordingPermission() async -> Bool {
-        false
+        self.permissionGranted
     }
 }
 
 @MainActor
 final class StubAutomationService: UIAutomationServiceProtocol {
+    struct ClickCall: Sendable {
+        let target: ClickTarget
+        let clickType: ClickType
+        let sessionId: String?
+    }
+
+    struct TypeTextCall: Sendable {
+        let text: String
+        let target: String?
+        let clearExisting: Bool
+        let typingDelay: Int
+        let sessionId: String?
+    }
+
+    struct TypeActionsCall: Sendable {
+        let actions: [TypeAction]
+        let typingDelay: Int
+        let sessionId: String?
+    }
+
+    struct ScrollCall: Sendable {
+        let direction: ScrollDirection
+        let amount: Int
+        let target: String?
+        let smooth: Bool
+        let delay: Int
+        let sessionId: String?
+    }
+
+    struct SwipeCall: Sendable {
+        let from: CGPoint
+        let to: CGPoint
+        let duration: Int
+        let steps: Int
+    }
+
+    struct DragCall: Sendable {
+        let from: CGPoint
+        let to: CGPoint
+        let duration: Int
+        let steps: Int
+        let modifiers: String?
+    }
+
+    struct MoveMouseCall: Sendable {
+        let destination: CGPoint
+        let duration: Int
+        let steps: Int
+    }
+
+    struct HotkeyCall: Sendable {
+        let keys: String
+        let holdDuration: Int
+    }
+
+    struct WaitForElementCall: Sendable {
+        let target: ClickTarget
+        let timeout: TimeInterval
+        let sessionId: String?
+    }
+
+    private enum WaitTargetKey: Hashable {
+        case elementId(String)
+        case query(String)
+        case coordinates(x: Double, y: Double)
+    }
+
+    var clickCalls: [ClickCall] = []
+    var typeTextCalls: [TypeTextCall] = []
+    var typeActionsCalls: [TypeActionsCall] = []
+    var scrollCalls: [ScrollCall] = []
+    var swipeCalls: [SwipeCall] = []
+    var dragCalls: [DragCall] = []
+    var moveMouseCalls: [MoveMouseCall] = []
+    var hotkeyCalls: [HotkeyCall] = []
+    var waitForElementCalls: [WaitForElementCall] = []
+
+    var nextTypeActionsResult: TypeResult?
+    var typeActionsResultProvider: (([TypeAction], Int, String?) -> TypeResult)?
+    var waitForElementProvider: ((ClickTarget, TimeInterval, String?) -> WaitForElementResult)?
+    private var waitForElementResults: [WaitTargetKey: WaitForElementResult] = [:]
+
+    func setWaitForElementResult(_ result: WaitForElementResult, for target: ClickTarget) {
+        self.waitForElementResults[self.key(for: target)] = result
+    }
+
     func detectElements(
         in imageData: Data,
         sessionId: String?,
@@ -50,7 +142,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     }
 
     func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.clickCalls.append(ClickCall(target: target, clickType: clickType, sessionId: sessionId))
     }
 
     func type(
@@ -60,7 +152,13 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         typingDelay: Int,
         sessionId: String?
     ) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.typeTextCalls.append(
+            TypeTextCall(
+                text: text,
+                target: target,
+                clearExisting: clearExisting,
+                typingDelay: typingDelay,
+                sessionId: sessionId))
     }
 
     func typeActions(
@@ -68,7 +166,30 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         typingDelay: Int,
         sessionId: String?
     ) async throws -> TypeResult {
-        throw TestStubError.unimplemented(#function)
+        self.typeActionsCalls.append(
+            TypeActionsCall(actions: actions, typingDelay: typingDelay, sessionId: sessionId)
+        )
+
+        if let provider = self.typeActionsResultProvider {
+            return provider(actions, typingDelay, sessionId)
+        }
+
+        if let nextResult = self.nextTypeActionsResult {
+            return nextResult
+        }
+
+        let totals = actions.reduce(into: (characters: 0, keyPresses: 0)) { partial, action in
+            switch action {
+            case let .text(text):
+                partial.characters += text.count
+            case .key:
+                partial.keyPresses += 1
+            case .clear:
+                break
+            }
+        }
+
+        return TypeResult(totalCharacters: totals.characters, keyPresses: totals.keyPresses)
     }
 
     func scroll(
@@ -79,19 +200,27 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         delay: Int,
         sessionId: String?
     ) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.scrollCalls.append(
+            ScrollCall(
+                direction: direction,
+                amount: amount,
+                target: target,
+                smooth: smooth,
+                delay: delay,
+                sessionId: sessionId)
+        )
     }
 
     func hotkey(keys: String, holdDuration: Int) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.hotkeyCalls.append(HotkeyCall(keys: keys, holdDuration: holdDuration))
     }
 
     func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.swipeCalls.append(SwipeCall(from: from, to: to, duration: duration, steps: steps))
     }
 
     func hasAccessibilityPermission() async -> Bool {
-        false
+        true
     }
 
     func waitForElement(
@@ -99,15 +228,31 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         timeout: TimeInterval,
         sessionId: String?
     ) async throws -> WaitForElementResult {
-        throw TestStubError.unimplemented(#function)
+        self.waitForElementCalls.append(
+            WaitForElementCall(target: target, timeout: timeout, sessionId: sessionId)
+        )
+
+        if let provider = self.waitForElementProvider {
+            return provider(target, timeout, sessionId)
+        }
+
+        if let stored = self.waitForElementResults[self.key(for: target)] {
+            return stored
+        }
+
+        return WaitForElementResult(found: false, element: nil, waitTime: 0)
     }
 
     func drag(from: CGPoint, to: CGPoint, duration: Int, steps: Int, modifiers: String?) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.dragCalls.append(
+            DragCall(from: from, to: to, duration: duration, steps: steps, modifiers: modifiers)
+        )
     }
 
     func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.moveMouseCalls.append(
+            MoveMouseCall(destination: to, duration: duration, steps: steps)
+        )
     }
 
     func getFocusedElement() -> UIFocusInfo? {
@@ -120,16 +265,37 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     ) async throws -> DetectedElement {
         throw TestStubError.unimplemented(#function)
     }
+
+    private func key(for target: ClickTarget) -> WaitTargetKey {
+        switch target {
+        case let .elementId(identifier):
+            .elementId(identifier)
+        case let .query(query):
+            .query(query)
+        case let .coordinates(point):
+            .coordinates(x: point.x, y: point.y)
+        }
+    }
 }
 
 @MainActor
 final class StubApplicationService: ApplicationServiceProtocol {
     var applications: [ServiceApplicationInfo]
     var windowsByApp: [String: [ServiceWindowInfo]]
+    var launchResults: [String: ServiceApplicationInfo]
+    var launchCalls: [String] = []
+    var activateCalls: [String] = []
+    var quitCalls: [(identifier: String, force: Bool)] = []
+    var quitShouldSucceed = true
+    var hideCalls: [String] = []
+    var unhideCalls: [String] = []
+    var hideOtherCalls: [String] = []
+    var showAllCallCount = 0
 
     init(applications: [ServiceApplicationInfo], windowsByApp: [String: [ServiceWindowInfo]] = [:]) {
         self.applications = applications
         self.windowsByApp = windowsByApp
+        self.launchResults = [:]
     }
 
     func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
@@ -181,61 +347,144 @@ final class StubApplicationService: ApplicationServiceProtocol {
     }
 
     func launchApplication(identifier: String) async throws -> ServiceApplicationInfo {
-        throw TestStubError.unimplemented(#function)
+        self.launchCalls.append(identifier)
+        if let result = self.launchResults[identifier] {
+            return result
+        }
+        if let existing = self.applications.first(where: { $0.name == identifier || $0.bundleIdentifier == identifier }) {
+            return existing
+        }
+        return ServiceApplicationInfo(
+            processIdentifier: Int32.random(in: 1000...2000),
+            bundleIdentifier: "launched.\(identifier)",
+            name: identifier)
     }
 
     func activateApplication(identifier: String) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.activateCalls.append(identifier)
     }
 
     func quitApplication(identifier: String, force: Bool) async throws -> Bool {
-        throw TestStubError.unimplemented(#function)
+        self.quitCalls.append((identifier: identifier, force: force))
+        return self.quitShouldSucceed
     }
 
     func hideApplication(identifier: String) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.hideCalls.append(identifier)
     }
 
     func unhideApplication(identifier: String) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.unhideCalls.append(identifier)
     }
 
     func hideOtherApplications(identifier: String) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.hideOtherCalls.append(identifier)
     }
 
     func showAllApplications() async throws {
-        throw TestStubError.unimplemented(#function)
+        self.showAllCallCount += 1
     }
 }
 
-final class StubSessionManager: SessionManagerProtocol {
+final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
+    private(set) var detectionResults: [String: ElementDetectionResult] = [:]
+    private(set) var sessionInfos: [String: SessionInfo] = [:]
+    private(set) var storedElements: [String: [String: PeekabooCore.UIElement]] = [:]
+    var mostRecentSessionId: String?
+
     func createSession() async throws -> String {
-        UUID().uuidString
+        let sessionId = UUID().uuidString
+        let now = Date()
+        self.sessionInfos[sessionId] = SessionInfo(
+            id: sessionId,
+            processId: 0,
+            createdAt: now,
+            lastAccessedAt: now,
+            sizeInBytes: 0,
+            screenshotCount: 0,
+            isActive: true
+        )
+        self.mostRecentSessionId = sessionId
+        return sessionId
     }
 
-    func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {}
+    func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
+        self.detectionResults[sessionId] = result
+        self.mostRecentSessionId = sessionId
+
+        let existingInfo = self.sessionInfos[sessionId]
+        let createdAt = existingInfo?.createdAt ?? Date()
+        self.sessionInfos[sessionId] = SessionInfo(
+            id: sessionId,
+            processId: existingInfo?.processId ?? 0,
+            createdAt: createdAt,
+            lastAccessedAt: Date(),
+            sizeInBytes: existingInfo?.sizeInBytes ?? 0,
+            screenshotCount: (existingInfo?.screenshotCount ?? 0) + 1,
+            isActive: true
+        )
+
+        self.storedElements[sessionId] = result.elements.all
+            .reduce(into: [String: PeekabooCore.UIElement]()) { partial, element in
+                partial[element.id] = PeekabooCore.UIElement(
+                    id: element.id,
+                    elementId: element.id,
+                    role: element.type.rawValue,
+                    title: element.label,
+                    label: element.label,
+                    value: element.value,
+                    description: nil,
+                    help: nil,
+                    roleDescription: nil,
+                    identifier: element.attributes["identifier"],
+                    frame: element.bounds,
+                    isActionable: true,
+                    parentId: nil,
+                    children: [],
+                    keyboardShortcut: nil
+                )
+            }
+    }
 
     func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult? {
-        nil
+        self.detectionResults[sessionId]
     }
 
     func getMostRecentSession() async -> String? {
-        nil
+        self.mostRecentSessionId
     }
 
     func listSessions() async throws -> [SessionInfo] {
-        []
+        Array(self.sessionInfos.values)
     }
 
-    func cleanSession(sessionId: String) async throws {}
+    func cleanSession(sessionId: String) async throws {
+        self.detectionResults.removeValue(forKey: sessionId)
+        self.sessionInfos.removeValue(forKey: sessionId)
+        self.storedElements.removeValue(forKey: sessionId)
+        if self.mostRecentSessionId == sessionId {
+            self.mostRecentSessionId = nil
+        }
+    }
 
     func cleanSessionsOlderThan(days: Int) async throws -> Int {
-        0
+        let threshold = Date().addingTimeInterval(TimeInterval(-days * 24 * 60 * 60))
+        let ids = self.sessionInfos.values
+            .filter { $0.lastAccessedAt < threshold }
+            .map { $0.id }
+        for id in ids {
+            try await self.cleanSession(sessionId: id)
+        }
+        return ids.count
     }
 
     func cleanAllSessions() async throws -> Int {
-        0
+        let count = self.sessionInfos.count
+        self.detectionResults.removeAll()
+        self.sessionInfos.removeAll()
+        self.storedElements.removeAll()
+        self.mostRecentSessionId = nil
+        return count
     }
 
     func getSessionStoragePath() -> String {
@@ -248,14 +497,30 @@ final class StubSessionManager: SessionManagerProtocol {
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?
-    ) async throws {}
+    ) async throws {
+        let existingInfo = self.sessionInfos[sessionId]
+        let createdAt = existingInfo?.createdAt ?? Date()
+        let screenshotCount = (existingInfo?.screenshotCount ?? 0) + 1
+        self.sessionInfos[sessionId] = SessionInfo(
+            id: sessionId,
+            processId: existingInfo?.processId ?? 0,
+            createdAt: createdAt,
+            lastAccessedAt: Date(),
+            sizeInBytes: existingInfo?.sizeInBytes ?? 0,
+            screenshotCount: screenshotCount,
+            isActive: existingInfo?.isActive ?? true
+        )
+    }
 
     func getElement(sessionId: String, elementId: String) async throws -> PeekabooCore.UIElement? {
-        nil
+        self.storedElements[sessionId]?[elementId]
     }
 
     func findElements(sessionId: String, matching query: String) async throws -> [PeekabooCore.UIElement] {
-        []
+        self.storedElements[sessionId]?.values.filter {
+            $0.label?.localizedCaseInsensitiveContains(query) == true ||
+                $0.title?.localizedCaseInsensitiveContains(query) == true
+        } ?? []
     }
 
     func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
@@ -290,9 +555,50 @@ final class StubFileService: FileServiceProtocol {
 }
 
 @available(macOS 14.0, *)
-@MainActor
-final class StubProcessService: ProcessServiceProtocol {
+final class StubProcessService: ProcessServiceProtocol, @unchecked Sendable {
+    struct LoadScriptCall {
+        let path: String
+    }
+
+    struct ExecuteScriptCall {
+        let script: PeekabooScript
+        let failFast: Bool
+        let verbose: Bool
+    }
+
+    struct ExecuteStepCall {
+        let step: ScriptStep
+        let sessionId: String?
+    }
+
+    var loadScriptCalls: [LoadScriptCall] = []
+    var executeScriptCalls: [ExecuteScriptCall] = []
+    var executeStepCalls: [ExecuteStepCall] = []
+
+    var scriptsByPath: [String: PeekabooScript] = [:]
+    var loadScriptProvider: ((String) async throws -> PeekabooScript)?
+    var executeScriptProvider: ((PeekabooScript, Bool, Bool) async throws -> [StepResult])?
+    var executeStepProvider: ((ScriptStep, String?) async throws -> StepExecutionResult)?
+
+    var nextScript: PeekabooScript?
+    var nextExecuteScriptResults: [StepResult]?
+    var nextStepResult: StepExecutionResult?
+
     func loadScript(from path: String) async throws -> PeekabooScript {
+        self.loadScriptCalls.append(LoadScriptCall(path: path))
+
+        if let provider = self.loadScriptProvider {
+            return try await provider(path)
+        }
+
+        if let script = self.scriptsByPath[path] ?? self.scriptsByPath["*"] {
+            return script
+        }
+
+        if let script = self.nextScript {
+            return script
+        }
+
         throw TestStubError.unimplemented(#function)
     }
 
@@ -301,13 +607,33 @@ final class StubProcessService: ProcessServiceProtocol {
         failFast: Bool,
         verbose: Bool
     ) async throws -> [StepResult] {
-        throw TestStubError.unimplemented(#function)
+        self.executeScriptCalls.append(ExecuteScriptCall(script: script, failFast: failFast, verbose: verbose))
+
+        if let provider = self.executeScriptProvider {
+            return try await provider(script, failFast, verbose)
+        }
+
+        if let results = self.nextExecuteScriptResults {
+            return results
+        }
+
+        return []
     }
 
     func executeStep(
         _ step: ScriptStep,
         sessionId: String?
     ) async throws -> StepExecutionResult {
+        self.executeStepCalls.append(ExecuteStepCall(step: step, sessionId: sessionId))
+
+        if let provider = self.executeStepProvider {
+            return try await provider(step, sessionId)
+        }
+
+        if let result = self.nextStepResult {
+            return result
+        }
+
         throw TestStubError.unimplemented(#function)
     }
 }
@@ -393,6 +719,10 @@ final class StubMenuService: MenuServiceProtocol {
     var menusByApp: [String: MenuStructure]
     var frontmostMenus: MenuStructure?
     var menuExtras: [MenuExtraInfo]
+    var clickPathCalls: [(app: String, path: String)] = []
+    var clickItemCalls: [(app: String, item: String)] = []
+    var clickExtraCalls: [String] = []
+    var listMenusRequests: [String] = []
 
     init(
         menusByApp: [String: MenuStructure],
@@ -405,6 +735,7 @@ final class StubMenuService: MenuServiceProtocol {
     }
 
     func listMenus(for appIdentifier: String) async throws -> MenuStructure {
+        self.listMenusRequests.append(appIdentifier)
         guard let structure = self.menusByApp[appIdentifier] else {
             throw PeekabooError.menuNotFound(appIdentifier)
         }
@@ -419,15 +750,24 @@ final class StubMenuService: MenuServiceProtocol {
     }
 
     func clickMenuItem(app: String, itemPath: String) async throws {
-        throw TestStubError.unimplemented(#function)
+        guard self.menusByApp[app] != nil else {
+            throw PeekabooError.menuNotFound(app)
+        }
+        self.clickPathCalls.append((app, itemPath))
     }
 
     func clickMenuItemByName(app: String, itemName: String) async throws {
-        throw TestStubError.unimplemented(#function)
+        guard self.menusByApp[app] != nil else {
+            throw PeekabooError.menuNotFound(app)
+        }
+        self.clickItemCalls.append((app, itemName))
     }
 
     func clickMenuExtra(title: String) async throws {
-        throw TestStubError.unimplemented(#function)
+        guard self.menuExtras.contains(where: { $0.title == title }) else {
+            throw PeekabooError.menuNotFound(title)
+        }
+        self.clickExtraCalls.append(title)
     }
 
     func listMenuExtras() async throws -> [MenuExtraInfo] {
@@ -554,6 +894,9 @@ final class StubWindowService: WindowManagementServiceProtocol {
 final class StubSpaceService: SpaceCommandSpaceService {
     var spaces: [SpaceInfo]
     var windowSpaces: [Int: [SpaceInfo]]
+    var switchCalls: [CGSSpaceID] = []
+    var moveWindowCalls: [(windowID: CGWindowID, spaceID: CGSSpaceID?)] = []
+    var moveToCurrentCalls: [CGWindowID] = []
 
     init(spaces: [SpaceInfo], windowSpaces: [Int: [SpaceInfo]] = [:]) {
         self.spaces = spaces
@@ -568,11 +911,17 @@ final class StubSpaceService: SpaceCommandSpaceService {
         self.windowSpaces[Int(windowID)] ?? []
     }
 
-    func moveWindowToCurrentSpace(windowID: CGWindowID) throws {}
+    func moveWindowToCurrentSpace(windowID: CGWindowID) throws {
+        self.moveToCurrentCalls.append(windowID)
+    }
 
-    func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) throws {}
+    func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) throws {
+        self.moveWindowCalls.append((windowID, spaceID))
+    }
 
-    func switchToSpace(_ spaceID: CGSSpaceID) async throws {}
+    func switchToSpace(_ spaceID: CGSSpaceID) async throws {
+        self.switchCalls.append(spaceID)
+    }
 }
 
 // MARK: - Aggregator
@@ -588,14 +937,16 @@ enum TestServicesFactory {
         sessions: SessionManagerProtocol = StubSessionManager(),
         files: FileServiceProtocol = StubFileService(),
         process: ProcessServiceProtocol = StubProcessService(),
-        screens: [ScreenInfo] = []
+        screens: [ScreenInfo] = [],
+        automation: UIAutomationServiceProtocol = StubAutomationService(),
+        screenCapture: ScreenCaptureServiceProtocol = StubScreenCaptureService()
     ) -> PeekabooServices {
         let screenService = StubScreenService(screens: screens)
         let services = PeekabooServices(
             logging: LoggingService(),
-            screenCapture: StubScreenCaptureService(),
+            screenCapture: screenCapture,
             applications: applications,
-            automation: StubAutomationService(),
+            automation: automation,
             windows: windows,
             menu: menu,
             dock: dock,
@@ -610,5 +961,42 @@ enum TestServicesFactory {
             screens: screenService)
 
         return services
+    }
+
+    @MainActor
+    struct AutomationTestContext {
+        let services: PeekabooServices
+        let automation: StubAutomationService
+        let sessions: StubSessionManager
+    }
+
+    static func makeAutomationTestContext(
+        automation: StubAutomationService = StubAutomationService(),
+        sessions: StubSessionManager = StubSessionManager(),
+        applications: ApplicationServiceProtocol = StubApplicationService(applications: []),
+        windows: WindowManagementServiceProtocol = StubWindowService(windowsByApp: [:]),
+        menu: MenuServiceProtocol = StubMenuService(menusByApp: [:]),
+        dialogs: DialogServiceProtocol = StubDialogService(),
+        dock: DockServiceProtocol = StubDockService(),
+        files: FileServiceProtocol = StubFileService(),
+        process: ProcessServiceProtocol = StubProcessService(),
+        screens: [ScreenInfo] = [],
+        screenCapture: ScreenCaptureServiceProtocol = StubScreenCaptureService()
+    ) -> AutomationTestContext {
+        let services = self.makePeekabooServices(
+            applications: applications,
+            windows: windows,
+            menu: menu,
+            dialogs: dialogs,
+            dock: dock,
+            sessions: sessions,
+            files: files,
+            process: process,
+            screens: screens,
+            automation: automation,
+            screenCapture: screenCapture
+        )
+
+        return AutomationTestContext(services: services, automation: automation, sessions: sessions)
     }
 }

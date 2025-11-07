@@ -1,8 +1,144 @@
 // swiftlint:disable file_length
 import ArgumentParser
+import CoreGraphics
 import Foundation
+import PeekabooCore
 import Testing
 @testable import PeekabooCLI
+
+#if !PEEKABOO_SKIP_AUTOMATION
+@Suite(
+    "ListCommand CLI Harness Tests",
+    .serialized,
+    .tags(.safe),
+    .enabled(if: CLITestEnvironment.runAutomationRead)
+)
+struct ListCommandCLIHarnessTests {
+    @Test("list apps outputs stub data in JSON mode")
+    func listAppsJSON() async throws {
+        let applications = [
+            ServiceApplicationInfo(processIdentifier: 101, bundleIdentifier: "com.example.alpha", name: "AlphaApp", isActive: true, windowCount: 2),
+            ServiceApplicationInfo(processIdentifier: 202, bundleIdentifier: "com.example.beta", name: "BetaApp", isActive: false, windowCount: 1),
+        ]
+        let context = await self.makeContext(applications: applications)
+
+        let result = try await self.runList(arguments: ["list", "apps", "--json-output"], services: context.services)
+        #expect(result.exitStatus == 0)
+
+        let data = try #require(self.output(from: result).data(using: .utf8))
+        let payload = try JSONDecoder().decode(UnifiedToolOutput<ServiceApplicationListData>.self, from: data)
+        #expect(payload.data.applications.count == 2)
+        #expect(payload.data.applications.first?.name == "AlphaApp")
+    }
+
+    @Test("list apps renders human-readable output")
+    func listAppsHumanReadable() async throws {
+        let applications = [
+            ServiceApplicationInfo(processIdentifier: 333, bundleIdentifier: "com.example.viewer", name: "Viewer", isActive: true, windowCount: 4),
+        ]
+        let context = await self.makeContext(applications: applications)
+
+        let result = try await self.runList(arguments: ["list", "apps"], services: context.services)
+        #expect(result.exitStatus == 0)
+        let output = self.output(from: result)
+        #expect(output.contains("Viewer"))
+        #expect(output.contains("PID"))
+    }
+
+    @Test("list windows with include details filters output")
+    func listWindowsWithDetails() async throws {
+        let appName = "Finder"
+        let applications = [
+            ServiceApplicationInfo(processIdentifier: 404, bundleIdentifier: "com.apple.finder", name: appName, isActive: true, windowCount: 1),
+        ]
+        let windows = [
+            ServiceWindowInfo(
+                windowID: 9001,
+                title: "Documents",
+                bounds: CGRect(x: 10, y: 20, width: 800, height: 600),
+                isMinimized: false,
+                isMainWindow: true,
+                index: 0,
+                spaceID: 4,
+                spaceName: "Work"
+            ),
+        ]
+        let applicationService = await MainActor.run {
+            StubApplicationService(applications: applications, windowsByApp: [appName: windows])
+        }
+        let context = await self.makeContext(applicationService: applicationService)
+
+        let result = try await self.runList(
+            arguments: [
+                "list", "windows",
+                "--app", appName,
+                "--include-details", "bounds,ids",
+                "--json-output",
+            ],
+            services: context.services
+        )
+
+        #expect(result.exitStatus == 0)
+        let output = self.output(from: result)
+        #expect(output.contains("\"window_id\""))
+        #expect(output.contains("\"bounds\""))
+        #expect(output.contains("\"spaceID\""))
+    }
+
+    @Test("list apps fails when screen recording permission missing")
+    func listAppsPermissionDenied() async throws {
+        let applications = [
+            ServiceApplicationInfo(processIdentifier: 101, bundleIdentifier: "com.example.alpha", name: "AlphaApp", isActive: true, windowCount: 2),
+        ]
+        let screenCapture = await MainActor.run {
+            StubScreenCaptureService(permissionGranted: false)
+        }
+        let context = await self.makeContext(applications: applications, screenCapture: screenCapture)
+
+        let result = try await self.runList(arguments: ["list", "apps"], services: context.services)
+        #expect(result.exitStatus != 0)
+        #expect(self.output(from: result).contains("Screen recording permission"))
+    }
+
+    // MARK: - Helpers
+
+    private func runList(arguments: [String], services: PeekabooServices) async throws -> CommandRunResult {
+        try await InProcessCommandRunner.run(arguments, services: services)
+    }
+
+    private func output(from result: CommandRunResult) -> String {
+        result.stdout.isEmpty ? result.stderr : result.stdout
+    }
+
+    private func makeContext(
+        applications: [ServiceApplicationInfo],
+        screenCapture: StubScreenCaptureService? = nil
+    ) async -> HarnessContext {
+        let applicationService = await MainActor.run {
+            StubApplicationService(applications: applications)
+        }
+        return await self.makeContext(applicationService: applicationService, screenCapture: screenCapture)
+    }
+
+    @MainActor
+    private func makeContext(
+        applicationService: ApplicationServiceProtocol,
+        screenCapture: StubScreenCaptureService? = nil
+    ) async -> HarnessContext {
+        let captureService = screenCapture ?? StubScreenCaptureService(permissionGranted: true)
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: applicationService,
+            screenCapture: captureService
+        )
+
+        return HarnessContext(services: services)
+    }
+
+    private struct HarnessContext {
+        let services: PeekabooServices
+    }
+}
+#endif
 
 @Suite("ListCommand Tests", .serialized, .tags(.unit))
 // swiftlint:disable:next type_body_length
@@ -260,7 +396,7 @@ struct ListCommandTests {
     )
     func applicationListEncodingPerformance(appCount: Int) throws {
         // Test performance of encoding many applications
-        let apps = (0..<appCount).map { index in
+        let apps = (0..<appCount).map { index -> ApplicationInfo in
             ApplicationInfo(
                 app_name: "App\(index)",
                 bundle_id: "com.example.app\(index)",

@@ -1,5 +1,5 @@
 import ApplicationServices
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -24,7 +24,8 @@ struct PermissionStatusData: Codable {
 ///
 /// Provides a direct way to check permissions without going through the list subcommand.
 /// Testing notifications: This change should trigger a build notification.
-struct PermissionsCommand: AsyncParsableCommand {
+@MainActor
+struct PermissionsCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "permissions",
         abstract: "Check and request system permissions required for Peekaboo",
@@ -77,7 +78,8 @@ struct PermissionsCommand: AsyncParsableCommand {
 
 // MARK: - Check Subcommand
 
-struct CheckSubcommand: AsyncParsableCommand {
+@MainActor
+struct CheckSubcommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "check",
         abstract: "Check current permission status"
@@ -176,7 +178,8 @@ struct CheckSubcommand: AsyncParsableCommand {
 
 // MARK: - Request Subcommand
 
-struct RequestSubcommand: AsyncParsableCommand {
+@MainActor
+struct RequestSubcommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "request",
         abstract: "Request system permissions",

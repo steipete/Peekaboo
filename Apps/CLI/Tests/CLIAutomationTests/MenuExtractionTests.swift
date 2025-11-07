@@ -287,18 +287,7 @@ struct MenuExtractionTests {
 // MARK: - Test Helpers
 
 private func runPeekabooCommand(_ args: [String]) async throws -> String {
-    let task = Process()
-    task.executableURL = URL(fileURLWithPath: "./.build/debug/peekaboo")
-    task.arguments = args
-
-    let pipe = Pipe()
-    task.standardOutput = pipe
-    task.standardError = pipe
-
-    try task.run()
-    task.waitUntilExit()
-
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    return String(data: data, encoding: .utf8) ?? ""
+    let result = try await InProcessCommandRunner.runShared(args)
+    return result.combinedOutput
 }
 #endif

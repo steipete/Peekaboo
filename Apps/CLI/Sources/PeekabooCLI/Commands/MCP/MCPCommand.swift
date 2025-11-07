@@ -1,4 +1,4 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import Logging
 import MCP
@@ -6,7 +6,8 @@ import PeekabooCore
 import TachikomaMCP
 
 /// Command for Model Context Protocol server operations
-struct MCPCommand: AsyncParsableCommand {
+@MainActor
+struct MCPCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mcp",
         abstract: "Model Context Protocol server and client operations",
@@ -39,7 +40,8 @@ struct MCPCommand: AsyncParsableCommand {
 
 extension MCPCommand {
     /// Start MCP server
-    struct Serve: AsyncParsableCommand {
+    @MainActor
+struct Serve: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "serve",
             abstract: "Start Peekaboo as an MCP server",
@@ -82,7 +84,8 @@ extension MCPCommand {
     }
 
     /// Call tool on MCP server
-    struct Call: AsyncParsableCommand {
+    @MainActor
+struct Call: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "call",
             abstract: "Call a tool on another MCP server",
@@ -111,7 +114,8 @@ extension MCPCommand {
     }
 
     /// List available MCP servers with health checking
-    struct List: AsyncParsableCommand {
+    @MainActor
+struct List: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List configured MCP servers with health status",
@@ -372,7 +376,8 @@ extension MCPCommand {
     }
 
     /// Add a new MCP server
-    struct Add: AsyncParsableCommand {
+    @MainActor
+struct Add: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "add",
             abstract: "Add a new external MCP server",
@@ -499,7 +504,8 @@ extension MCPCommand {
     }
 
     /// Remove an MCP server
-    struct Remove: AsyncParsableCommand {
+    @MainActor
+struct Remove: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "remove",
             abstract: "Remove an external MCP server",
@@ -544,7 +550,8 @@ extension MCPCommand {
     }
 
     /// Test connection to an MCP server
-    struct Test: AsyncParsableCommand {
+    @MainActor
+struct Test: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "test",
             abstract: "Test connection to an MCP server",
@@ -583,7 +590,8 @@ extension MCPCommand {
     }
 
     /// Show detailed information about an MCP server
-    struct Info: AsyncParsableCommand {
+    @MainActor
+struct Info: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "info",
             abstract: "Show detailed information about an MCP server",
@@ -652,7 +660,8 @@ extension MCPCommand {
     }
 
     /// Enable an MCP server
-    struct Enable: AsyncParsableCommand {
+    @MainActor
+struct Enable: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "enable",
             abstract: "Enable a disabled MCP server",
@@ -681,7 +690,8 @@ extension MCPCommand {
     }
 
     /// Disable an MCP server
-    struct Disable: AsyncParsableCommand {
+    @MainActor
+struct Disable: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "disable",
             abstract: "Disable an MCP server",
@@ -705,7 +715,8 @@ extension MCPCommand {
     }
 
     /// Inspect MCP connection
-    struct Inspect: AsyncParsableCommand {
+    @MainActor
+struct Inspect: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "inspect",
             abstract: "Debug MCP connections",

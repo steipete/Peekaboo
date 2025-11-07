@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -24,7 +24,8 @@ struct ImageAnalysisData: Codable {
     let text: String
 }
 
-struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
+@MainActor
+struct ImageCommand: @MainActor MainActorAsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "image",

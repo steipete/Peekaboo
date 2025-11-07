@@ -1,10 +1,13 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 
+private typealias ScreenOutput = UnifiedToolOutput<ScreenListData>
+
 /// List running applications, windows, or check system permissions.
-struct ListCommand: AsyncParsableCommand {
+@MainActor
+struct ListCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List running applications, windows, or check permissions",
@@ -52,7 +55,8 @@ struct ListCommand: AsyncParsableCommand {
 }
 
 /// Subcommand for listing all running applications using PeekabooServices.shared.
-struct AppsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct AppsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "apps",
         abstract: "List all running applications with details",
@@ -94,7 +98,8 @@ struct AppsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
 }
 
 /// Subcommand for listing windows of a specific application using PeekabooServices.shared.
-struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+@MainActor
+struct WindowsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvablePositional {
     static let configuration = CommandConfiguration(
         commandName: "windows",
@@ -228,7 +233,8 @@ ApplicationResolvablePositional {
 }
 
 /// Subcommand for checking system permissions using PeekabooServices.shared.
-struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
+@MainActor
+struct PermissionsSubcommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "permissions",
         abstract: "Check system permissions required for Peekaboo",
@@ -323,7 +329,8 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
 // MARK: - Helper Functions (error mapping removed - now in CommandUtilities)
 
 /// Subcommand for listing menu bar items
-struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct MenuBarSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "menubar",
         abstract: "List all menu bar items (status icons)",
@@ -401,7 +408,8 @@ struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
 }
 
 /// Subcommand for listing all available screens/displays
-struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct ScreensSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "screens",
         abstract: "List all available displays/monitors with details",
@@ -457,20 +465,20 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
 
             let output = UnifiedToolOutput(
                 data: screenListData,
-                summary: UnifiedToolOutput<ScreenListData>.Summary(
+                summary: ScreenOutput.Summary(
                     brief: "Found \(screens.count) screen\(screens.count == 1 ? "" : "s")",
                     detail: nil,
-                    status: .success,
+                    status: ScreenOutput.Summary.Status.success,
                     counts: ["screens": screens.count],
                     highlights: screens.enumerated().compactMap { index, screen in
-                        screen.isPrimary ? UnifiedToolOutput<ScreenListData>.Summary.Highlight(
+                        screen.isPrimary ? ScreenOutput.Summary.Highlight(
                             label: "Primary",
                             value: "\(screen.name) (Index \(index))",
-                            kind: .primary
+                            kind: ScreenOutput.Summary.Highlight.HighlightKind.primary
                         ) : nil
                     }
                 ),
-                metadata: UnifiedToolOutput<ScreenListData>.Metadata(
+                metadata: ScreenOutput.Metadata(
                     duration: 0.0,
                     warnings: [],
                     hints: ["Use 'peekaboo see --screen-index N' to capture a specific screen"]
@@ -506,11 +514,11 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
 
 // MARK: - Screen List Data Model
 
-struct ScreenListData: Codable {
+struct ScreenListData {
     let screens: [ScreenDetails]
     let primaryIndex: Int?
 
-    struct ScreenDetails: Codable {
+    struct ScreenDetails {
         let index: Int
         let name: String
         let resolution: Resolution
@@ -521,13 +529,18 @@ struct ScreenListData: Codable {
         let displayID: Int
     }
 
-    struct Resolution: Codable {
+    struct Resolution {
         let width: Int
         let height: Int
     }
 
-    struct Position: Codable {
+    struct Position {
         let x: Int
         let y: Int
     }
 }
+
+nonisolated extension ScreenListData: Sendable, Codable {}
+nonisolated extension ScreenListData.ScreenDetails: Sendable, Codable {}
+nonisolated extension ScreenListData.Resolution: Sendable, Codable {}
+nonisolated extension ScreenListData.Position: Sendable, Codable {}

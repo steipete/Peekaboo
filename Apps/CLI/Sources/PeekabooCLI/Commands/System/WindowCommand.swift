@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -9,7 +9,8 @@ import PeekabooFoundation
 private let logger = Logger.shared
 
 /// Manipulate application windows with various actions
-struct WindowCommand: AsyncParsableCommand {
+@MainActor
+struct WindowCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "window",
         abstract: "Manipulate application windows",
@@ -71,7 +72,9 @@ struct WindowCommand: AsyncParsableCommand {
 
 // MARK: - Common Options
 
-struct WindowIdentificationOptions: ParsableArguments, ApplicationResolvable {
+@MainActor
+
+struct WindowIdentificationOptions: @MainActor MainActorParsableArguments, ApplicationResolvable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
 
@@ -139,7 +142,8 @@ private func createWindowActionResult(
 
 // MARK: - Subcommands
 
-struct CloseSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct CloseSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "close",
         abstract: "Close a window"
@@ -185,7 +189,8 @@ struct CloseSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
     }
 }
 
-struct MinimizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct MinimizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "minimize",
         abstract: "Minimize a window to the Dock"
@@ -231,7 +236,8 @@ struct MinimizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFor
     }
 }
 
-struct MaximizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct MaximizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "maximize",
         abstract: "Maximize a window (full screen)"
@@ -277,7 +283,8 @@ struct MaximizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFor
     }
 }
 
-struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct FocusSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "focus",
         abstract: "Bring a window to the foreground",
@@ -298,7 +305,7 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
     )
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
-    @OptionGroup var focusOptions: FocusOptions
+    @OptionGroup var focusOptions: FocusCommandOptions
 
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
@@ -333,7 +340,7 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
                     windowID: CGWindowID(windowID),
                     applicationName: self.windowOptions.app,
                     windowTitle: self.windowOptions.windowTitle,
-                    options: self.focusOptions
+                    options: self.focusOptions.asFocusOptions
                 )
             } else {
                 // Fallback to regular focus if no window ID
@@ -364,7 +371,8 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
 
 // MARK: - Move Command
 
-struct MoveSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct MoveSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "move",
         abstract: "Move a window to a new position"
@@ -433,7 +441,8 @@ struct MoveSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
 
 // MARK: - Resize Command
 
-struct ResizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct ResizeSubcommand: @preconcurrency AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "resize",
         abstract: "Resize a window"
@@ -492,7 +501,8 @@ struct ResizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
 
 // MARK: - Set Bounds Command
 
-struct SetBoundsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct SetBoundsSubcommand: @preconcurrency AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "set-bounds",
         abstract: "Set window position and size in one operation"
@@ -558,7 +568,8 @@ struct SetBoundsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFo
 
 // MARK: - List Command
 
-struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+@MainActor
+struct WindowListSubcommand: @preconcurrency AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List windows for an application"

@@ -1,11 +1,11 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 
 /// Executes a batch script of Peekaboo commands using the ProcessService.
 /// Supports .peekaboo.json files with sequential command execution.
 @available(macOS 14.0, *)
-struct RunCommand: AsyncParsableCommand {
+struct RunCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "run",
         abstract: "Execute a Peekaboo automation script",
@@ -45,7 +45,6 @@ struct RunCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    @MainActor
     mutating func run() async throws {
         let startTime = Date()
 

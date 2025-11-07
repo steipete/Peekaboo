@@ -1,12 +1,13 @@
 import AppKit
 import ApplicationServices
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import AXorcist
 import Foundation
 import PeekabooCore
 
 /// Interact with the macOS Dock
-struct DockCommand: AsyncParsableCommand {
+@MainActor
+struct DockCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dock",
         abstract: "Interact with the macOS Dock",
@@ -37,7 +38,8 @@ struct DockCommand: AsyncParsableCommand {
 
     // MARK: - Launch from Dock
 
-    struct LaunchSubcommand: AsyncParsableCommand {
+    @MainActor
+struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "launch",
             abstract: "Launch an application from the Dock"
@@ -52,7 +54,6 @@ struct DockCommand: AsyncParsableCommand {
         @MainActor
         private var services: PeekabooServices { PeekabooServices.shared }
 
-        @MainActor
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -91,7 +92,8 @@ struct DockCommand: AsyncParsableCommand {
 
     // MARK: - Right-Click Dock Item
 
-    struct RightClickSubcommand: AsyncParsableCommand {
+    @MainActor
+struct RightClickSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "right-click",
             abstract: "Right-click a Dock item and optionally select from menu"
@@ -109,7 +111,6 @@ struct DockCommand: AsyncParsableCommand {
         @MainActor
         private var services: PeekabooServices { PeekabooServices.shared }
 
-        @MainActor
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -154,7 +155,8 @@ struct DockCommand: AsyncParsableCommand {
 
     // MARK: - Hide Dock
 
-    struct HideSubcommand: AsyncParsableCommand {
+    @MainActor
+struct HideSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "hide",
             abstract: "Hide the Dock"
@@ -196,7 +198,8 @@ struct DockCommand: AsyncParsableCommand {
 
     // MARK: - Show Dock
 
-    struct ShowSubcommand: AsyncParsableCommand {
+    @MainActor
+struct ShowSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
             abstract: "Show the Dock"
@@ -238,7 +241,8 @@ struct DockCommand: AsyncParsableCommand {
 
     // MARK: - List Dock Items
 
-    struct ListSubcommand: AsyncParsableCommand {
+    @MainActor
+struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List all Dock items"

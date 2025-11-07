@@ -1,11 +1,12 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 
 // MARK: - Learn Command
 
 /// Command to display comprehensive Peekaboo usage guide for AI agents
-struct LearnCommand: AsyncParsableCommand {
+@MainActor
+struct LearnCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "learn",
         abstract: "Display comprehensive usage guide for AI agents",
@@ -25,7 +26,6 @@ struct LearnCommand: AsyncParsableCommand {
         """
     )
 
-    @MainActor
     func run() async throws {
         // Get the system prompt
         let systemPrompt = AgentSystemPrompt.generate()

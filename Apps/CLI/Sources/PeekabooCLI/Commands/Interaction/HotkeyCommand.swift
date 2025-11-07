@@ -1,10 +1,11 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 
 /// Presses key combinations like Cmd+C, Ctrl+A, etc. using the UIAutomationService.
 @available(macOS 14.0, *)
-struct HotkeyCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct HotkeyCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "hotkey",
         abstract: "Press keyboard shortcuts and key combinations",
@@ -43,7 +44,7 @@ struct HotkeyCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    @OptionGroup var focusOptions: FocusOptions
+    @OptionGroup var focusOptions: FocusCommandOptions
 
     mutating func run() async throws {
         let startTime = Date()

@@ -5,25 +5,12 @@ import Testing
 #if !PEEKABOO_SKIP_AUTOMATION
 // MARK: - Test Helpers
 
-private func runCommand(_ args: [String]) async throws -> String {
-    let output = try await runPeekabooCommand(args)
-    return output
-}
-
-private func runPeekabooCommand(_ args: [String]) async throws -> String {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: ".build/debug/peekaboo")
-    process.arguments = args
-
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.standardError = pipe
-
-    try process.run()
-    process.waitUntilExit()
-
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    return String(data: data, encoding: .utf8) ?? ""
+private func runCommand(
+    _ args: [String],
+    allowedExitStatuses: Set<Int32> = [0]
+) async throws -> String {
+    let result = try await InProcessCommandRunner.runShared(args, allowedExitCodes: allowedExitStatuses)
+    return result.combinedOutput
 }
 
 @Suite("Agent Menu Integration Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))

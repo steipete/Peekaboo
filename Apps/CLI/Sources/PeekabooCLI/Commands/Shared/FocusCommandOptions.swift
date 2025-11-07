@@ -1,0 +1,39 @@
+@preconcurrency import ArgumentParser
+import Foundation
+import PeekabooCore
+
+/// CLI-facing wrapper that maps command-line flags to core focus options.
+struct FocusCommandOptions: @MainActor MainActorParsableArguments, FocusOptionsProtocol {
+    @Flag(name: .long, help: "Disable automatic focus before interaction (not recommended)")
+    var noAutoFocus = false
+
+    @Option(name: .long, help: "Timeout for focus operations in seconds")
+    var focusTimeoutSeconds: TimeInterval?
+
+    @Option(name: .long, help: "Number of retries for focus operations")
+    var focusRetryCountValue: Int?
+
+    @Flag(name: .long, help: "Switch to window's Space if on different Space")
+    var spaceSwitch = false
+
+    @Flag(name: .long, help: "Bring window to current Space instead of switching")
+    var bringToCurrentSpace = false
+
+    // MARK: FocusOptionsProtocol
+
+    var autoFocus: Bool { !self.noAutoFocus }
+    var focusTimeout: TimeInterval? { self.focusTimeoutSeconds }
+    var focusRetryCount: Int? { self.focusRetryCountValue }
+
+    // MARK: Bridging helper
+
+    /// Convert to the core FocusOptions value type.
+    var asFocusOptions: FocusOptions {
+        FocusOptions(
+            autoFocus: self.autoFocus,
+            focusTimeout: self.focusTimeout,
+            focusRetryCount: self.focusRetryCount,
+            spaceSwitch: self.spaceSwitch,
+            bringToCurrentSpace: self.bringToCurrentSpace)
+    }
+}

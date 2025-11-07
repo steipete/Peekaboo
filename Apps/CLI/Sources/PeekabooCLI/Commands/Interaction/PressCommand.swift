@@ -1,11 +1,12 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
 /// Press individual keys or key sequences
 @available(macOS 14.0, *)
-struct PressCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct PressCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "press",
         abstract: "Press individual keys or key sequences",
@@ -60,7 +61,7 @@ struct PressCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    @OptionGroup var focusOptions: FocusOptions
+    @OptionGroup var focusOptions: FocusCommandOptions
 
     mutating func run() async throws {
         let startTime = Date()

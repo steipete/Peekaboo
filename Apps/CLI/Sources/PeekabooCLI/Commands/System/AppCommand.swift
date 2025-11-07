@@ -1,13 +1,14 @@
 import AppKit
 import ApplicationServices
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import AXorcist
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
 /// Control macOS applications
-struct AppCommand: AsyncParsableCommand {
+@MainActor
+struct AppCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "app",
         abstract: "Control applications - launch, quit, hide, show, and switch between apps",
@@ -46,7 +47,8 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Launch Application
 
-    struct LaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+    @MainActor
+struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
         static let configuration = CommandConfiguration(
             commandName: "launch",
             abstract: "Launch an application"
@@ -170,7 +172,8 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Quit Application
 
-    struct QuitSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
+    @MainActor
+struct QuitSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
     ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "quit",
@@ -301,7 +304,8 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Hide Application
 
-    struct HideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    @MainActor
+struct HideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
     ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "hide",
@@ -349,7 +353,8 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Unhide Application
 
-    struct UnhideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    @MainActor
+struct UnhideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
     ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "unhide",
@@ -417,7 +422,8 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Switch Application
 
-    struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {
+    @MainActor
+struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "switch",
             abstract: "Switch to another application"
@@ -501,7 +507,8 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - List Applications
 
-    struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+    @MainActor
+struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List running applications"
@@ -575,7 +582,8 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Relaunch Application
 
-    struct RelaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    @MainActor
+struct RelaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
     ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "relaunch",

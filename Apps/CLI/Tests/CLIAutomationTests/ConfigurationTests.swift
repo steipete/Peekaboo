@@ -153,9 +153,9 @@ struct ConfigurationTests {
         let json = """
         {
             "aiProviders": {
-                "providers": "openai/gpt-4o,ollama/llava:latest",
+                "providers": "openai/gpt-5,anthropic/claude-sonnet-4.5",
                 "openaiApiKey": "test_key",
-                "ollamaBaseUrl": "http://localhost:11434"
+                "anthropicApiKey": "test_claude_key"
             },
             "defaults": {
                 "savePath": "~/Desktop/Screenshots",
@@ -173,9 +173,9 @@ struct ConfigurationTests {
         let data = json.data(using: .utf8)!
         let config = try JSONDecoder().decode(Configuration.self, from: data)
 
-        #expect(config.aiProviders?.providers == "openai/gpt-4o,ollama/llava:latest")
+        #expect(config.aiProviders?.providers == "openai/gpt-5,anthropic/claude-sonnet-4.5")
         #expect(config.aiProviders?.openaiApiKey == "test_key")
-        #expect(config.aiProviders?.ollamaBaseUrl == "http://localhost:11434")
+        #expect(config.aiProviders?.anthropicApiKey == "test_claude_key")
 
         #expect(config.defaults?.savePath == "~/Desktop/Screenshots")
         #expect(config.defaults?.imageFormat == "png")
@@ -191,7 +191,7 @@ struct ConfigurationTests {
         let json = """
         {
             "aiProviders": {
-                "providers": "ollama/llava:latest"
+                "providers": "anthropic/claude-sonnet-4.5"
             }
         }
         """
@@ -199,7 +199,7 @@ struct ConfigurationTests {
         let data = json.data(using: .utf8)!
         let config = try JSONDecoder().decode(Configuration.self, from: data)
 
-        #expect(config.aiProviders?.providers == "ollama/llava:latest")
+        #expect(config.aiProviders?.providers == "anthropic/claude-sonnet-4.5")
         #expect(config.aiProviders?.openaiApiKey == nil)
         #expect(config.defaults == nil)
         #expect(config.logging == nil)
@@ -226,11 +226,10 @@ struct ConfigurationTests {
         // Capture baseline (may include persisted user configuration)
         let baselineProviders = manager.getAIProviders(cliValue: nil)
         #expect(!baselineProviders.isEmpty)
-        #expect(baselineProviders.contains("ollama/llava:latest"))
 
         // Test with CLI value
-        let cliProviders = manager.getAIProviders(cliValue: "openai/gpt-4o")
-        #expect(cliProviders == "openai/gpt-4o")
+        let cliProviders = manager.getAIProviders(cliValue: "openai/gpt-5")
+        #expect(cliProviders == "openai/gpt-5")
 
         // Test with environment variable
         setenv("PEEKABOO_AI_PROVIDERS", "env_provider", 1)

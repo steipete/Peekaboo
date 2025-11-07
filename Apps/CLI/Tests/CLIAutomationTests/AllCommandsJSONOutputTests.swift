@@ -11,17 +11,13 @@ import Testing
 )
 struct AllCommandsJSONOutputTests {
     @Test("All commands support --json-output flag")
-    func verifyAllCommandsHaveJSONOutputFlag() throws {
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
+    func verifyAllCommandsHaveJSONOutputFlag() async throws {
+        var missingJSONOutputCommands: [String] = []
 
         // Comprehensive list of all Peekaboo commands and subcommands
         let allCommands = [
             // Basic commands
             ["image"],
-            ["analyze"],
             ["permissions"],
             ["see"],
             ["click"],
@@ -66,37 +62,25 @@ struct AllCommandsJSONOutputTests {
             ["menu", "click"],
 
             // Dock subcommands
+            ["dock", "launch"],
+            ["dock", "right-click"],
             ["dock", "show"],
             ["dock", "hide"],
-            ["dock", "click"],
+            ["dock", "list"],
 
             // Dialog subcommands
-            ["dialog", "accept"],
+            ["dialog", "click"],
+            ["dialog", "input"],
+            ["dialog", "file"],
             ["dialog", "dismiss"],
-            ["dialog", "type"],
+            ["dialog", "list"],
         ]
-
-        var missingJSONOutputCommands: [String] = []
 
         for commandArgs in allCommands {
             let commandName = commandArgs.joined(separator: " ")
+            let result = try await InProcessCommandRunner.runShared(commandArgs + ["--help"])
+            let output = result.combinedOutput
 
-            // Run command with --help to check available options
-            let process = Process()
-            process.executableURL = executableURL
-            process.arguments = commandArgs + ["--help"]
-
-            let outputPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = Pipe()
-
-            try process.run()
-            process.waitUntilExit()
-
-            let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-
-            // Check if --json-output is mentioned in help text
             if !output.contains("--json-output") {
                 missingJSONOutputCommands.append(commandName)
             }
@@ -110,11 +94,6 @@ struct AllCommandsJSONOutputTests {
 
     @Test("Commands produce valid JSON with --json-output")
     func verifyCommandsProduceValidJSON() async throws {
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
-
         // Commands that can be safely tested without side effects
         let testableCommands: [(args: [String], description: String)] = [
             (["permissions", "--json-output"], "permissions"),
@@ -127,26 +106,8 @@ struct AllCommandsJSONOutputTests {
         var invalidJSONCommands: [String] = []
 
         for (commandArgs, description) in testableCommands {
-            let process = Process()
-            process.executableURL = executableURL
-            process.arguments = commandArgs
-
-            let outputPipe = Pipe()
-            let errorPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = errorPipe
-
-            try process.run()
-
-            // For async commands like sleep, wait briefly
-            if commandArgs.contains("sleep") {
-                try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-            }
-
-            process.waitUntilExit()
-
-            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            let outputString = String(data: outputData, encoding: .utf8) ?? ""
+            let result = try await InProcessCommandRunner.runShared(commandArgs)
+            let outputString = result.combinedOutput
 
             // Skip empty output (some commands might not output anything in test environment)
             guard !outputString.isEmpty else { continue }
@@ -168,23 +129,8 @@ struct AllCommandsJSONOutputTests {
 
     @Test("JSON output follows consistent schema")
     func verifyJSONOutputSchema() async throws {
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
-
-        // Test a command that should always succeed
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = ["permissions", "--json-output"]
-
-        let outputPipe = Pipe()
-        process.standardOutput = outputPipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let result = try await InProcessCommandRunner.runShared(["permissions", "--json-output"])
+        let data = Data(result.combinedOutput.utf8)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             Issue.record("Failed to parse JSON output from permissions command")
             return
@@ -226,31 +172,12 @@ struct AllCommandsJSONOutputTests {
             (["sleep", "--json-output", "--", "-100"], "negative sleep duration"),
             (["run", "missing.peekaboo.json", "--json-output"], "missing automation script"),
         ]
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
         var nonJSONErrors: [String] = []
 
         for (commandArgs, description) in errorCommands {
-            let process = Process()
-            process.executableURL = executableURL
-            process.arguments = commandArgs
-
-            let outputPipe = Pipe()
-            let errorPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = errorPipe
-
-            try process.run()
-            process.waitUntilExit()
-
-            // Check both stdout and stderr for JSON error
-            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-
-            let outputString = String(data: outputData, encoding: .utf8) ?? ""
-            let errorString = String(data: errorData, encoding: .utf8) ?? ""
+            let result = try await InProcessCommandRunner.runWithSharedServices(commandArgs)
+            let outputString = result.stdout
+            let errorString = result.stderr
 
             // Try to find JSON in either output
             let jsonString = !outputString.isEmpty ? outputString : errorString
@@ -286,38 +213,20 @@ struct AllCommandsJSONOutputTests {
     }
 
     @Test("Subcommands properly inherit JSON output")
-    func verifySubcommandsInheritJSONOutput() throws {
+    func verifySubcommandsInheritJSONOutput() async throws {
         // Test that subcommands can be called with --json-output
         let subcommandTests: [(args: [String], description: String)] = [
             (["app", "list", "--json-output"], "app list"),
             (["config", "show", "--json-output"], "config show"),
             (["list", "permissions", "--json-output"], "list permissions"),
         ]
-        guard let executableURL = CLITestEnvironment.peekabooBinaryURL() else {
-            Issue.record("peekaboo binary not found; build the CLI before running automation tests")
-            return
-        }
         var failedSubcommands: [String] = []
 
         for (commandArgs, description) in subcommandTests {
-            let process = Process()
-            process.executableURL = executableURL
-            process.arguments = commandArgs
+            let result = try await InProcessCommandRunner.runWithSharedServices(commandArgs)
 
-            let outputPipe = Pipe()
-            let errorPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = errorPipe
-
-            try process.run()
-            process.waitUntilExit()
-
-            // Check if command succeeded (exit code 0)
-            if process.terminationStatus != 0 {
-                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                let errorString = String(data: errorData, encoding: .utf8) ?? ""
-
-                // Check if error mentions --json-output as unknown
+            if result.exitStatus != 0 {
+                let errorString = result.stderr
                 if errorString.contains("Unknown option"), errorString.contains("json-output") {
                     failedSubcommands.append(description)
                 }

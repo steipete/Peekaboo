@@ -33,16 +33,16 @@ public enum LogLevel: Int, Comparable, Sendable {
 /// and buffered collection (for JSON output mode) to avoid interfering with structured output.
 final class Logger: @unchecked Sendable {
     static let shared = Logger()
-    private var debugLogs: [String] = []
-    private var isJsonOutputMode = false
-    private var verboseMode = false
+    nonisolated(unsafe) private var debugLogs: [String] = []
+    nonisolated(unsafe) private var isJsonOutputMode = false
+    nonisolated(unsafe) private var verboseMode = false
     private let defaultMinimumLogLevel: LogLevel
-    private var minimumLogLevel: LogLevel
+    nonisolated(unsafe) private var minimumLogLevel: LogLevel
     private let queue = DispatchQueue(label: "logger.queue", attributes: .concurrent)
     private let iso8601Formatter: ISO8601DateFormatter
 
     // Performance tracking
-    private var performanceTimers: [String: Date] = [:]
+    nonisolated(unsafe) private var performanceTimers: [String: Date] = [:]
 
     private init() {
         self.iso8601Formatter = ISO8601DateFormatter()
@@ -107,28 +107,30 @@ final class Logger: @unchecked Sendable {
             dict.isEmpty ? nil : dict.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
         }
 
-        self.queue.async(flags: .barrier) { [metadataString] in
-            guard level >= self.minimumLogLevel || (level == .verbose && self.verboseMode) else { return }
+        guard level >= self.minimumLogLevel || (level == .verbose && self.verboseMode) else { return }
 
-            let timestamp = self.iso8601Formatter.string(from: Date())
-            var formattedMessage = "[\(timestamp)] \(level.name): \(message)"
+        let timestamp = self.iso8601Formatter.string(from: Date())
+        let levelName = level.name
+        var formattedMessage = "[\(timestamp)] \(levelName): \(message)"
 
-            // Add category if provided
-            if let category {
-                formattedMessage = "[\(timestamp)] \(level.name) [\(category)]: \(message)"
-            }
+        if let category {
+            formattedMessage = "[\(timestamp)] \(levelName) [\(category)]: \(message)"
+        }
 
-            // Add metadata if provided
-            if let metadataString {
-                formattedMessage += " {\(metadataString)}"
-            }
+        if let metadataString {
+            formattedMessage += " {\(metadataString)}"
+        }
 
-            if self.isJsonOutputMode {
+        let shouldBuffer = self.isJsonOutputMode
+
+        self.queue.async(flags: .barrier) { [formattedMessage] in
+            if shouldBuffer {
                 self.debugLogs.append(formattedMessage)
             } else {
                 fputs("\(formattedMessage)\n", stderr)
             }
         }
+
     }
 
     func verbose(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
@@ -160,12 +162,15 @@ final class Logger: @unchecked Sendable {
     /// Start a performance timer
     func startTimer(_ name: String) {
         // Start a performance timer
+        let timestamp = self.iso8601Formatter.string(from: Date())
+        let verboseEnabled = self.verboseMode
+        let shouldBuffer = self.isJsonOutputMode
+
         self.queue.async(flags: .barrier) {
             self.performanceTimers[name] = Date()
-            if self.verboseMode {
-                let timestamp = self.iso8601Formatter.string(from: Date())
+            if verboseEnabled {
                 let message = "[\(timestamp)] VERBOSE [Performance]: Starting timer '\(name)'"
-                if self.isJsonOutputMode {
+                if shouldBuffer {
                     self.debugLogs.append(message)
                 } else {
                     fputs("\(message)\n", stderr)
@@ -176,26 +181,26 @@ final class Logger: @unchecked Sendable {
 
     /// Stop a performance timer and log the duration
     func stopTimer(_ name: String, threshold: TimeInterval? = nil) {
-        // Stop a performance timer and log the duration
-        self.queue.async(flags: .barrier) {
-            guard let startTime = self.performanceTimers[name] else {
-                self.log(.warning, "Timer '\(name)' was not started", category: "Performance")
-                return
-            }
-
-            let duration = Date().timeIntervalSince(startTime)
+        var startTime: Date?
+        self.queue.sync(flags: .barrier) {
+            startTime = self.performanceTimers[name]
             self.performanceTimers.removeValue(forKey: name)
+        }
 
-            // Only log if verbose mode or if duration exceeds threshold
-            if self.verboseMode || (threshold != nil && duration > threshold!) {
-                let durationMs = Int(duration * 1000)
-                self.log(
-                    .verbose,
-                    "Timer '\(name)' completed",
-                    category: "Performance",
-                    metadata: ["duration_ms": durationMs]
-                )
-            }
+        guard let startTime else {
+            self.log(.warning, "Timer '\(name)' was not started", category: "Performance")
+            return
+        }
+
+        let duration = Date().timeIntervalSince(startTime)
+        if self.verboseMode || (threshold != nil && duration > threshold!) {
+            let durationMs = Int(duration * 1000)
+            self.log(
+                .verbose,
+                "Timer '\(name)' completed",
+                category: "Performance",
+                metadata: ["duration_ms": durationMs]
+            )
         }
     }
 

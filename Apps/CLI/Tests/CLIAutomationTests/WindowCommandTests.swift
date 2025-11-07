@@ -106,35 +106,32 @@ struct WindowCommandTests {
     }
 
     // Helper function to run peekaboo commands
-    private func runPeekabooCommand(_ arguments: [String]) async throws -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-        process.arguments = ["run", "peekaboo"] + arguments
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-
-        if process.terminationStatus != 0, process.terminationStatus != 64 {
-            throw TestError.commandFailed(status: process.terminationStatus, output: output)
+    private func runPeekabooCommand(
+        _ arguments: [String],
+        allowedExitStatuses: Set<Int32> = [0, 64]
+    ) async throws -> String {
+        do {
+            let result = try await InProcessCommandRunner.runShared(
+                arguments,
+                allowedExitCodes: allowedExitStatuses
+            )
+            return result.combinedOutput
+        } catch let error as CommandExecutionError {
+            let output = error.stdout.isEmpty ? error.stderr : error.stdout
+            throw TestError.commandFailed(status: error.status, output: output)
         }
-
-        return output
     }
 
     enum TestError: Error, LocalizedError {
         case commandFailed(status: Int32, output: String)
+        case binaryMissing
 
         var errorDescription: String? {
             switch self {
             case let .commandFailed(status, output):
                 "Command failed with exit status: \(status). Output: \(output)"
+            case .binaryMissing:
+                "Peekaboo binary missing"
             }
         }
     }
@@ -229,48 +226,32 @@ struct WindowCommandLocalIntegrationTests {
     }
 
     // Helper function for local tests
-    private func runPeekabooCommand(_ arguments: [String]) async throws -> String {
-        let projectRoot = URL(fileURLWithPath: #file)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-
-        let executablePath = projectRoot
-            .appendingPathComponent("peekaboo-cli")
-            .appendingPathComponent(".build")
-            .appendingPathComponent("debug")
-            .appendingPathComponent("peekaboo")
-            .path
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = arguments
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-
-        if process.terminationStatus != 0, process.terminationStatus != 64, process.terminationStatus != 1 {
-            throw TestError.commandFailed(status: process.terminationStatus, output: output)
+    private func runPeekabooCommand(
+        _ arguments: [String],
+        allowedExitStatuses: Set<Int32> = [0, 1, 64]
+    ) async throws -> String {
+        do {
+            let result = try await InProcessCommandRunner.runShared(
+                arguments,
+                allowedExitCodes: allowedExitStatuses
+            )
+            return result.combinedOutput
+        } catch let error as CommandExecutionError {
+            let output = error.stdout.isEmpty ? error.stderr : error.stdout
+            throw TestError.commandFailed(status: error.status, output: output)
         }
-
-        return output
     }
 
     enum TestError: Error, LocalizedError {
         case commandFailed(status: Int32, output: String)
+        case binaryMissing
 
         var errorDescription: String? {
             switch self {
             case let .commandFailed(status, output):
                 "Exit status: \(status)"
+            case .binaryMissing:
+                "Peekaboo binary missing"
             }
         }
     }

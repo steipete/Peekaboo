@@ -116,7 +116,7 @@ struct SpaceCommandReadTests {
     }
 
     @MainActor
-    private func makeTestContext() -> (services: PeekabooServices, spaceService: SpaceCommandSpaceService) {
+    func makeTestContext() -> (services: PeekabooServices, spaceService: SpaceCommandSpaceService) {
         let applications: [ServiceApplicationInfo] = [
             ServiceApplicationInfo(
                 processIdentifier: 101,
@@ -223,49 +223,86 @@ struct SpaceCommandReadTests {
 struct SpaceCommandActionTests {
     @Test("space switch with valid number")
     func spaceSwitchValid() async throws {
-        let output = try await self.runPeekaboo([
+        let context = await self.makeSpaceContext()
+        let result = try await self.runSpaceCommand([
             "space", "switch",
             "--to", "1",
             "--json-output",
-        ])
-        let response = try JSONDecoder().decode(SpaceActionResponse.self, from: output.data(using: .utf8)!)
-        if response.success {
-            #expect(response.data?.action == "switch")
-        }
+        ], context: context)
+        #expect(result.exitStatus == 0)
+        let response = try JSONDecoder().decode(SpaceActionResponse.self, from: self.output(from: result).data(using: .utf8)!)
+        #expect(response.success)
+        let switchCalls = await self.spaceState(context) { $0.switchCalls }
+        #expect(switchCalls.contains(1))
     }
 
     @Test("space move-window to current Space")
     func spaceMoveWindowToCurrent() async throws {
-        let output = try await self.runPeekaboo([
+        let context = await self.makeSpaceContext()
+        let result = try await self.runSpaceCommand([
             "space", "move-window",
             "--app", "Finder",
             "--to-current",
             "--json-output",
-        ])
-        let response = try JSONDecoder().decode(WindowSpaceActionResponse.self, from: output.data(using: .utf8)!)
-        if response.success {
-            #expect(response.data?.moved_to_current == true)
-        }
+        ], context: context)
+        #expect(result.exitStatus == 0)
+        let response = try JSONDecoder().decode(WindowSpaceActionResponse.self, from: self.output(from: result).data(using: .utf8)!)
+        #expect(response.success)
+        let moveCalls = await self.spaceState(context) { $0.moveToCurrentCalls }
+        #expect(!moveCalls.isEmpty)
     }
 
     @Test("space move-window with follow option")
     func spaceMoveWindowWithFollow() async throws {
-        let output = try await self.runPeekaboo([
+        let context = await self.makeSpaceContext()
+        let result = try await self.runSpaceCommand([
             "space", "move-window",
             "--app", "TextEdit",
             "--to", "1",
             "--follow",
             "--json-output",
-        ])
-        let response = try JSONDecoder().decode(WindowSpaceActionResponse.self, from: output.data(using: .utf8)!)
-        if response.success {
-            #expect(response.data?.followed == true)
+        ], context: context)
+        #expect(result.exitStatus == 0)
+        let response = try JSONDecoder().decode(WindowSpaceActionResponse.self, from: self.output(from: result).data(using: .utf8)!)
+        #expect(response.success)
+        let moveCalls = await self.spaceState(context) { $0.moveWindowCalls }
+        #expect(moveCalls.contains { $0.spaceID == 1 })
+    }
+
+    private func runSpaceCommand(
+        _ arguments: [String],
+        context: SpaceHarnessContext
+    ) async throws -> CommandRunResult {
+        try await SpaceCommandEnvironment.withSpaceService(context.spaceService) {
+            try await InProcessCommandRunner.run(arguments, services: context.services, spaceService: context.spaceService)
         }
     }
 
-    private func runPeekaboo(_ arguments: [String]) async throws -> String {
-        try await PeekabooCLITestRunner.runCommand(arguments)
+    @MainActor
+    private func makeSpaceContext() -> SpaceHarnessContext {
+        let base = SpaceCommandReadTests().makeTestContext()
+        let spaceService = StubSpaceService(spaces: base.spaceService.getAllSpaces(), windowSpaces: [:])
+        let services = base.services
+        return SpaceHarnessContext(services: services, spaceService: spaceService)
     }
+
+    private func output(from result: CommandRunResult) -> String {
+        result.stdout.isEmpty ? result.stderr : result.stdout
+    }
+
+    private func spaceState<T: Sendable>(
+        _ context: SpaceHarnessContext,
+        _ operation: @MainActor (StubSpaceService) -> T
+    ) async -> T {
+        await MainActor.run {
+            operation(context.spaceService)
+        }
+    }
+}
+
+private struct SpaceHarnessContext {
+    let services: PeekabooServices
+    let spaceService: StubSpaceService
 }
 
 // MARK: - Response types shared by tests

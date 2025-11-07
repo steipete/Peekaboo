@@ -40,10 +40,14 @@ extension Tag {
     @Tag static var requiresNetwork: Self
 }
 
+@preconcurrency
 enum CLITestEnvironment {
-    private static let env = ProcessInfo.processInfo.environment
+    @inline(__always)
+    nonisolated private static func flag(_ key: String) -> Bool {
+        ProcessInfo.processInfo.environment[key]?.lowercased() == "true"
+    }
 
-    static var runAutomationScenarios: Bool {
-        env["RUN_AUTOMATION_TESTS"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+    @preconcurrency nonisolated(unsafe) static var runAutomationScenarios: Bool {
+        flag("RUN_AUTOMATION_TESTS") || flag("RUN_LOCAL_TESTS")
     }
 }

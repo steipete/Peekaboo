@@ -218,30 +218,15 @@ struct WindowCommandLocalTests {
     }
 
     // Helper for local tests using built binary
-    private func runBuiltCommand(_ arguments: [String]) async throws -> String {
-        let projectRoot = URL(fileURLWithPath: #file)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-
-        let binaryPath = projectRoot
-            .appendingPathComponent(".build/debug/peekaboo")
-            .path
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: binaryPath)
-        process.arguments = arguments
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8) ?? ""
+    private func runBuiltCommand(
+        _ arguments: [String],
+        allowedExitStatuses: Set<Int32> = [0, 64]
+    ) async throws -> String {
+        let result = try await InProcessCommandRunner.runShared(
+            arguments,
+            allowedExitCodes: allowedExitStatuses
+        )
+        return result.combinedOutput
     }
 }
 #endif

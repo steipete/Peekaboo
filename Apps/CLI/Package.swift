@@ -2,6 +2,20 @@
 import Foundation
 import PackageDescription
 
+let concurrencyBaseSettings: [SwiftSetting] = [
+    .enableExperimentalFeature("StrictConcurrency"),
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+]
+
+let cliConcurrencySettings = concurrencyBaseSettings + [
+    .defaultIsolation(MainActor.self),
+]
+
+let swiftTestingSettings = cliConcurrencySettings + [
+    .enableExperimentalFeature("SwiftTesting"),
+]
+
 let includeAutomationTests = ProcessInfo.processInfo.environment["PEEKABOO_INCLUDE_AUTOMATION_TESTS"] == "true"
 
 var targets: [Target] = [
@@ -15,13 +29,15 @@ var targets: [Target] = [
             .product(name: "Tachikoma", package: "Tachikoma"),
             .product(name: "TachikomaMCP", package: "Tachikoma"),
         ],
-        path: "Sources/PeekabooCLI"),
+        path: "Sources/PeekabooCLI",
+        swiftSettings: cliConcurrencySettings),
     .executableTarget(
         name: "peekaboo",
         dependencies: [
             "PeekabooCLI",
         ],
         path: "Sources/PeekabooExec",
+        swiftSettings: cliConcurrencySettings,
         linkerSettings: [
             .unsafeFlags([
                 "-Xlinker", "-sectcreate",
@@ -39,23 +55,20 @@ var targets: [Target] = [
             .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
         ],
         path: "Tests/CoreCLITests",
-        swiftSettings: [
-            .enableExperimentalFeature("SwiftTesting"),
-        ]),
+        swiftSettings: swiftTestingSettings),
 ]
 
 if includeAutomationTests {
     targets.append(
         .testTarget(
-            name: "peekabooAutomationTests",
+            name: "CLIAutomationTests",
             dependencies: [
                 "PeekabooCLI",
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
+                .product(name: "Subprocess", package: "swift-subprocess"),
             ],
-            path: "Tests/peekabooAutomationTests",
-            swiftSettings: [
-                .enableExperimentalFeature("SwiftTesting"),
-            ])
+            path: "Tests/CLIAutomationTests",
+            swiftSettings: swiftTestingSettings)
     )
 }
 
@@ -70,9 +83,10 @@ let package = Package(
             targets: ["peekaboo"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
+        .package(name: "swift-argument-parser", path: "/Users/steipete/Projects/swift-argument-parser"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.10.2"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
+        .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "0.2.1"),
         .package(path: "../../Core/PeekabooFoundation"),
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Tachikoma"),

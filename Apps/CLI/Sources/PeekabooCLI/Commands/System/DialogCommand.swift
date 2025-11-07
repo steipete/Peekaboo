@@ -1,11 +1,12 @@
 import ApplicationServices
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import AXorcist
 import Foundation
 import PeekabooCore
 
 /// Interact with system dialogs and alerts
-struct DialogCommand: AsyncParsableCommand {
+@MainActor
+struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dialog",
         abstract: "Interact with system dialogs and alerts",
@@ -38,7 +39,8 @@ struct DialogCommand: AsyncParsableCommand {
 
     // MARK: - Click Dialog Button
 
-    struct ClickSubcommand: AsyncParsableCommand {
+    @MainActor
+struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "click",
             abstract: "Click a button in a dialog using DialogService"
@@ -53,7 +55,6 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        @MainActor
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -94,7 +95,8 @@ struct DialogCommand: AsyncParsableCommand {
 
     // MARK: - Input Text in Dialog
 
-    struct InputSubcommand: AsyncParsableCommand {
+    @MainActor
+struct InputSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "input",
             abstract: "Enter text in a dialog field using DialogService"
@@ -115,7 +117,6 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        @MainActor
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -163,7 +164,8 @@ struct DialogCommand: AsyncParsableCommand {
 
     // MARK: - Handle File Dialog
 
-    struct FileSubcommand: AsyncParsableCommand {
+    @MainActor
+struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "file",
             abstract: "Handle file save/open dialogs using DialogService"
@@ -181,7 +183,6 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        @MainActor
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -228,7 +229,8 @@ struct DialogCommand: AsyncParsableCommand {
 
     // MARK: - Dismiss Dialog
 
-    struct DismissSubcommand: AsyncParsableCommand {
+    @MainActor
+struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "dismiss",
             abstract: "Dismiss a dialog using DialogService"
@@ -243,7 +245,6 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        @MainActor
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
@@ -290,7 +291,8 @@ struct DialogCommand: AsyncParsableCommand {
 
     // MARK: - List Dialog Elements
 
-    struct ListSubcommand: AsyncParsableCommand {
+    @MainActor
+struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List elements in current dialog using DialogService"

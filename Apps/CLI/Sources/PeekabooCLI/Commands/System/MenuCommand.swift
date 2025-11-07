@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -14,7 +14,8 @@ enum MenuError: Error {
 }
 
 /// Interact with application menu bar items and system menu extras
-struct MenuCommand: AsyncParsableCommand {
+@MainActor
+struct MenuCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "menu",
         abstract: "Interact with application menu bar",
@@ -44,7 +45,8 @@ struct MenuCommand: AsyncParsableCommand {
 
     // MARK: - Click Menu Item
 
-    struct ClickSubcommand: AsyncParsableCommand, ApplicationResolvablePositional {
+    @MainActor
+struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "click",
             abstract: "Click a menu item"
@@ -65,7 +67,7 @@ struct MenuCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        @OptionGroup var focusOptions: FocusOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
 
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -165,7 +167,7 @@ struct MenuCommand: AsyncParsableCommand {
             }
         }
 
-        private func handleGenericError(_ error: Error) {
+        private func handleGenericError(_ error: any Error) {
             if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
@@ -180,7 +182,8 @@ struct MenuCommand: AsyncParsableCommand {
 
     // MARK: - Click System Menu Extra
 
-    struct ClickExtraSubcommand: AsyncParsableCommand {
+    @MainActor
+struct ClickExtraSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "click-extra",
             abstract: "Click a system menu extra (status bar item)"
@@ -195,7 +198,7 @@ struct MenuCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        @OptionGroup var focusOptions: FocusOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
 
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -270,7 +273,7 @@ struct MenuCommand: AsyncParsableCommand {
             }
         }
 
-        private func handleGenericError(_ error: Error) {
+        private func handleGenericError(_ error: any Error) {
             if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
@@ -285,7 +288,8 @@ struct MenuCommand: AsyncParsableCommand {
 
     // MARK: - List Menu Items
 
-    struct ListSubcommand: AsyncParsableCommand, ApplicationResolvablePositional {
+    @MainActor
+struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List all menu items for an application"
@@ -303,7 +307,7 @@ struct MenuCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        @OptionGroup var focusOptions: FocusOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
 
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -474,7 +478,7 @@ struct MenuCommand: AsyncParsableCommand {
             }
         }
 
-        private func handleGenericError(_ error: Error) {
+        private func handleGenericError(_ error: any Error) {
             if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
@@ -489,7 +493,8 @@ struct MenuCommand: AsyncParsableCommand {
 
     // MARK: - List All Menu Bar Items
 
-    struct ListAllSubcommand: AsyncParsableCommand {
+    @MainActor
+struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-all",
             abstract: "List all menu bar items system-wide (including status items)"
@@ -504,7 +509,7 @@ struct MenuCommand: AsyncParsableCommand {
         @Flag(help: "Include item frames (pixel positions)")
         var includeFrames = false
 
-        @OptionGroup var focusOptions: FocusOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
 
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -709,7 +714,7 @@ struct MenuCommand: AsyncParsableCommand {
             }
         }
 
-        private func handleGenericError(_ error: Error) {
+        private func handleGenericError(_ error: any Error) {
             if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,

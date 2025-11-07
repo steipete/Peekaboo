@@ -28,7 +28,7 @@ struct AppCommandTests {
 
     @Test("App launch command help")
     func appLaunchHelp() async throws {
-        let output = try await runCommand(["app", "launch", "--help"])
+        let output = try await runAppCommand(["app", "launch", "--help"])
 
         #expect(output.contains("Launch an application"))
         #expect(output.contains("--app"))
@@ -41,19 +41,19 @@ struct AppCommandTests {
     func appQuitValidation() async throws {
         // Test missing app/all
         await #expect(throws: Error.self) {
-            _ = try await runCommand(["app", "quit"])
+            _ = try await runAppCommand(["app", "quit"])
         }
 
         // Test conflicting options
         await #expect(throws: Error.self) {
-            _ = try await runCommand(["app", "quit", "--app", "Finder", "--all"])
+            _ = try await runAppCommand(["app", "quit", "--app", "Finder", "--all"])
         }
     }
 
     @Test("App hide command validation")
     func appHideValidation() async throws {
         // Normal hide should work
-        let output = try await runCommand(["app", "hide", "--app", "Finder", "--help"])
+        let output = try await runAppCommand(["app", "hide", "--app", "Finder", "--help"])
         #expect(output.contains("Hide applications"))
 
         // Test --others flag
@@ -64,7 +64,7 @@ struct AppCommandTests {
     func appShowValidation() async throws {
         // Test missing app/all
         await #expect(throws: Error.self) {
-            _ = try await runCommand(["app", "show"])
+            _ = try await runAppCommand(["app", "show"])
         }
     }
 
@@ -72,7 +72,7 @@ struct AppCommandTests {
     func appSwitchValidation() async throws {
         // Test missing to/cycle
         await #expect(throws: Error.self) {
-            _ = try await runCommand(["app", "switch"])
+            _ = try await runAppCommand(["app", "switch"])
         }
     }
 
@@ -82,7 +82,7 @@ struct AppCommandTests {
         let launchCmd = ["app", "launch", "--app", "TextEdit", "--wait"]
         let hideCmd = ["app", "hide", "--app", "TextEdit"]
         let showCmd = ["app", "show", "--app", "TextEdit"]
-        let quitCmd = ["app", "quit", "--app", "TextEdit", "--save-changes"]
+        let quitCmd = ["app", "quit", "--app", "TextEdit", "--json-output"]
 
         // Verify command structure is valid
         #expect(launchCmd.count > 3)
@@ -91,85 +91,6 @@ struct AppCommandTests {
         #expect(quitCmd.count > 3)
     }
 
-    private struct CommandFailure: Error {
-        let status: Int32
-        let stderr: String
-    }
-
-    private func runCommand(_ args: [String]) async throws -> String {
-        let services = await self.makeTestServices()
-        let result = try await InProcessCommandRunner.run(args, services: services)
-        if result.exitStatus != 0 {
-            throw CommandFailure(status: result.exitStatus, stderr: result.stderr)
-        }
-        return result.stdout
-    }
-
-    @MainActor
-    private func makeTestServices() -> PeekabooServices {
-        let applications: [ServiceApplicationInfo] = [
-            ServiceApplicationInfo(
-                processIdentifier: 101,
-                bundleIdentifier: "com.apple.finder",
-                name: "Finder",
-                bundlePath: "/System/Library/CoreServices/Finder.app",
-                isActive: true,
-                isHidden: false,
-                windowCount: 1
-            ),
-            ServiceApplicationInfo(
-                processIdentifier: 202,
-                bundleIdentifier: "com.apple.TextEdit",
-                name: "TextEdit",
-                bundlePath: "/System/Applications/TextEdit.app",
-                isActive: false,
-                isHidden: false,
-                windowCount: 1
-            ),
-        ]
-
-        let finderWindow = ServiceWindowInfo(
-            windowID: 1,
-            title: "Finder Window",
-            bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
-            isMinimized: false,
-            isMainWindow: true,
-            windowLevel: 0,
-            alpha: 1.0,
-            index: 0,
-            spaceID: 1,
-            spaceName: "Desktop 1",
-            screenIndex: 0,
-            screenName: "Built-in"
-        )
-
-        let textEditWindow = ServiceWindowInfo(
-            windowID: 2,
-            title: "Document",
-            bounds: CGRect(x: 100, y: 100, width: 700, height: 500),
-            isMinimized: false,
-            isMainWindow: true,
-            windowLevel: 0,
-            alpha: 1.0,
-            index: 0,
-            spaceID: 2,
-            spaceName: "Desktop 2",
-            screenIndex: 0,
-            screenName: "Built-in"
-        )
-
-        let windowsByApp = [
-            "Finder": [finderWindow],
-            "TextEdit": [textEditWindow],
-        ]
-
-        return TestServicesFactory.makePeekabooServices(
-            applications: StubApplicationService(applications: applications, windowsByApp: windowsByApp),
-            windows: StubWindowService(windowsByApp: windowsByApp),
-            menu: StubMenuService(menusByApp: [:]),
-            dialogs: StubDialogService()
-        )
-    }
 }
 
 // MARK: - App Command Integration Tests
@@ -182,7 +103,7 @@ struct AppCommandTests {
 struct AppCommandIntegrationTests {
     @Test("Launch application")
     func launchApp() async throws {
-        let output = try await runCommand([
+        let (output, appService) = try await runAppCommandWithService([
             "app", "launch",
             "--app", "TextEdit",
             "--wait",
@@ -205,12 +126,14 @@ struct AppCommandIntegrationTests {
         #expect(response.data.action == "launch")
         #expect(response.data.app_name == "TextEdit")
         #expect(response.data.pid > 0)
+        let launchCalls = await appServiceState(appService) { $0.launchCalls }
+        #expect(launchCalls.contains("TextEdit"))
     }
 
     @Test("Hide and show application")
     func hideShowApp() async throws {
         // First hide
-        let hideOutput = try await runCommand([
+        let (hideOutput, hideService) = try await runAppCommandWithService([
             "app", "hide",
             "--app", "TextEdit",
             "--json-output",
@@ -218,9 +141,11 @@ struct AppCommandIntegrationTests {
 
         let hideData = try JSONDecoder().decode(JSONResponse.self, from: hideOutput.data(using: .utf8)!)
         #expect(hideData.success == true)
+        let hideCalls = await appServiceState(hideService) { $0.hideCalls }
+        #expect(hideCalls.contains("TextEdit"))
 
         // Then show
-        let showOutput = try await runCommand([
+        let (showOutput, showService) = try await runAppCommandWithService([
             "app", "show",
             "--app", "TextEdit",
             "--json-output",
@@ -228,12 +153,14 @@ struct AppCommandIntegrationTests {
 
         let showData = try JSONDecoder().decode(JSONResponse.self, from: showOutput.data(using: .utf8)!)
         #expect(showData.success == true)
+        let unhideCalls = await appServiceState(showService) { $0.unhideCalls }
+        #expect(unhideCalls.contains("TextEdit"))
     }
 
     @Test("Switch between applications")
     func switchApps() async throws {
         // Cycle to next app
-        let cycleOutput = try await runCommand([
+        let (cycleOutput, cycleService) = try await runAppCommandWithService([
             "app", "switch",
             "--cycle",
             "--json-output",
@@ -241,9 +168,11 @@ struct AppCommandIntegrationTests {
 
         let cycleData = try JSONDecoder().decode(JSONResponse.self, from: cycleOutput.data(using: .utf8)!)
         #expect(cycleData.success == true)
+        let cycleCalls = await appServiceState(cycleService) { $0.activateCalls }
+        #expect(!cycleCalls.isEmpty)
 
         // Switch to specific app
-        let switchOutput = try await runCommand([
+        let (switchOutput, switchService) = try await runAppCommandWithService([
             "app", "switch",
             "--to", "Finder",
             "--json-output",
@@ -251,14 +180,15 @@ struct AppCommandIntegrationTests {
 
         let switchData = try JSONDecoder().decode(JSONResponse.self, from: switchOutput.data(using: .utf8)!)
         #expect(switchData.success == true)
+        let switchCalls = await appServiceState(switchService) { $0.activateCalls }
+        #expect(switchCalls.contains("Finder"))
     }
 
     @Test("Quit application with save")
     func quitWithSave() async throws {
-        let output = try await runCommand([
+        let (output, appService) = try await runAppCommandWithService([
             "app", "quit",
             "--app", "TextEdit",
-            "--save-changes",
             "--json-output",
         ])
 
@@ -276,15 +206,14 @@ struct AppCommandIntegrationTests {
         }
 
         let response = try JSONDecoder().decode(CodableJSONResponse<QuitResult>.self, from: output.data(using: .utf8)!)
-        // App might not be running
-        if response.success {
-            #expect(!response.data.results.isEmpty)
-        }
+        #expect(response.success == true)
+        let quitCalls = await appServiceState(appService) { $0.quitCalls }
+        #expect(quitCalls.contains { $0.identifier == "TextEdit" && $0.force == false })
     }
 
     @Test("Hide others functionality")
     func hideOthers() async throws {
-        let output = try await runCommand([
+        let (output, appService) = try await runAppCommandWithService([
             "app", "hide",
             "--app", "Finder",
             "--others",
@@ -295,16 +224,131 @@ struct AppCommandIntegrationTests {
             CodableJSONResponse<[String: String]>.self,
             from: output.data(using: .utf8)!
         )
-        if response.success {
-            #expect(response.data["action"] == "hide")
-        }
+        #expect(response.success == true)
+        let hideOtherCalls = await appServiceState(appService) { $0.hideOtherCalls }
+        #expect(hideOtherCalls.contains("Finder"))
     }
 
-    private func runCommand(_ args: [String]) async throws -> String {
-        try await PeekabooCLITestRunner.runCommand(args)
+}
+
+// MARK: - Shared Helpers
+
+private struct CommandFailure: Error {
+    let status: Int32
+    let stderr: String
+}
+
+private func runAppCommand(
+    _ args: [String],
+    configure: (@MainActor (StubApplicationService) -> Void)? = nil
+) async throws -> String {
+    let (output, _) = try await runAppCommandWithService(args, configure: configure)
+    return output
+}
+
+private func runAppCommandWithService(
+    _ args: [String],
+    configure: (@MainActor (StubApplicationService) -> Void)? = nil
+) async throws -> (String, StubApplicationService) {
+    let context = await makeAppCommandContext()
+    if let configure {
+        await MainActor.run {
+            configure(context.applicationService)
+        }
+    }
+    let result = try await InProcessCommandRunner.run(args, services: context.services)
+    let output = result.stdout.isEmpty ? result.stderr : result.stdout
+    if result.exitStatus != 0 {
+        throw CommandFailure(status: result.exitStatus, stderr: output)
+    }
+    return (output, context.applicationService)
+}
+
+@MainActor
+private func makeAppCommandContext() -> AppCommandContext {
+    let data = defaultAppCommandData()
+    let applicationService = StubApplicationService(applications: data.applications, windowsByApp: data.windowsByApp)
+    let windowService = StubWindowService(windowsByApp: data.windowsByApp)
+    let services = TestServicesFactory.makePeekabooServices(
+        applications: applicationService,
+        windows: windowService
+    )
+    return AppCommandContext(services: services, applicationService: applicationService)
+}
+
+private func appServiceState<T: Sendable>(
+    _ service: StubApplicationService,
+    _ operation: @MainActor (StubApplicationService) -> T
+) async -> T {
+    await MainActor.run {
+        operation(service)
     }
 }
 
-// MARK: - Test Helpers
+private struct AppCommandContext {
+    let services: PeekabooServices
+    let applicationService: StubApplicationService
+}
+
+@MainActor
+private func defaultAppCommandData() -> (applications: [ServiceApplicationInfo], windowsByApp: [String: [ServiceWindowInfo]]) {
+    let applications: [ServiceApplicationInfo] = [
+        ServiceApplicationInfo(
+            processIdentifier: 101,
+            bundleIdentifier: "com.apple.finder",
+            name: "Finder",
+            bundlePath: "/System/Library/CoreServices/Finder.app",
+            isActive: true,
+            isHidden: false,
+            windowCount: 1
+        ),
+        ServiceApplicationInfo(
+            processIdentifier: 202,
+            bundleIdentifier: "com.apple.TextEdit",
+            name: "TextEdit",
+            bundlePath: "/System/Applications/TextEdit.app",
+            isActive: false,
+            isHidden: false,
+            windowCount: 1
+        ),
+    ]
+
+    let finderWindow = ServiceWindowInfo(
+        windowID: 1,
+        title: "Finder Window",
+        bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
+        isMinimized: false,
+        isMainWindow: true,
+        windowLevel: 0,
+        alpha: 1.0,
+        index: 0,
+        spaceID: 1,
+        spaceName: "Desktop 1",
+        screenIndex: 0,
+        screenName: "Built-in"
+    )
+
+    let textEditWindow = ServiceWindowInfo(
+        windowID: 2,
+        title: "Document",
+        bounds: CGRect(x: 100, y: 100, width: 700, height: 500),
+        isMinimized: false,
+        isMainWindow: true,
+        windowLevel: 0,
+        alpha: 1.0,
+        index: 0,
+        spaceID: 2,
+        spaceName: "Desktop 2",
+        screenIndex: 0,
+        screenName: "Built-in"
+    )
+
+    let windowsByApp: [String: [ServiceWindowInfo]] = [
+        "Finder": [finderWindow],
+        "TextEdit": [textEditWindow],
+    ]
+
+    return (applications, windowsByApp)
+}
 
 #endif

@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -7,8 +7,11 @@ import PeekabooFoundation
 
 /// Click on UI elements identified in the current session using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
-struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = UIAutomationToolDefinitions.click.commandConfiguration
+@MainActor
+struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+    static var configuration: CommandConfiguration {
+        UIAutomationToolDefinitions.click.commandConfiguration
+    }
 
     @Argument(help: "Element text or query to click")
     var query: String?
@@ -40,7 +43,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    @OptionGroup var focusOptions: FocusOptions
+    @OptionGroup var focusOptions: FocusCommandOptions
 
     mutating func validate() throws {
         guard self.query != nil || self.on != nil || self.id != nil || self.coords != nil else {

@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import AXorcist
 import CoreGraphics
 import Foundation
@@ -9,7 +9,8 @@ import ScreenCaptureKit
 
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
-struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
+@MainActor
+struct SeeCommand: @MainActor MainActorAsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvable {
     static let configuration = VisionToolDefinitions.see.commandConfiguration
 
@@ -52,7 +53,6 @@ ApplicationResolvable {
         case frontmost
     }
 
-    @MainActor
     mutating func run() async throws {
         let startTime = Date()
         configureVerboseLogging()
@@ -655,7 +655,7 @@ struct MenuBarSummary: Codable {
 extension SeeCommand {
     private func performAnalysisDetailed(imagePath: String, prompt: String) async throws -> SeeAnalysisData {
         // Use PeekabooCore AI service which is configured via ConfigurationManager/Tachikoma
-        let ai = await PeekabooAIService()
+        let ai = PeekabooAIService()
         let res = try await ai.analyzeImageFileDetailed(at: imagePath, question: prompt, model: nil)
         return SeeAnalysisData(provider: res.provider, model: res.model, text: res.text)
     }

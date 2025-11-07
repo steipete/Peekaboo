@@ -1,10 +1,11 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 
 /// Pauses execution for a specified duration.
 /// Useful for timing in automation scripts.
 @available(macOS 14.0, *)
-struct SleepCommand: AsyncParsableCommand {
+@MainActor
+struct SleepCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "sleep",
         abstract: "Pause execution for a specified duration",

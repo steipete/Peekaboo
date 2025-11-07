@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -7,7 +7,8 @@ import PeekabooFoundation
 
 /// Moves the mouse cursor to specific coordinates or UI elements.
 @available(macOS 14.0, *)
-struct MoveCommand: AsyncParsableCommand {
+@MainActor
+struct MoveCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "move",
         abstract: "Move the mouse cursor to coordinates or UI elements",
@@ -206,13 +207,15 @@ struct MoveCommand: AsyncParsableCommand {
         }
     }
 
+    @MainActor
     private func formatElementInfo(_ element: DetectedElement) -> String {
         let roleDescription = element.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
         let label = element.label ?? element.value ?? element.id
         return "\(roleDescription): \(label)"
     }
 
-    private func handleError(_ error: Error) {
+    @MainActor
+    private func handleError(_ error: any Error) {
         if self.jsonOutput {
             let errorCode: ErrorCode = if error is PeekabooError {
                 switch error as? PeekabooError {
@@ -227,7 +230,7 @@ struct MoveCommand: AsyncParsableCommand {
                 }
             } else if error is ArgumentParser.ValidationError {
                 .INVALID_INPUT
-            } else if let standardError = error as? StandardizedError {
+            } else if let standardError = error as? any StandardizedError {
                 switch standardError.code {
                 case .interactionFailed:
                     .INTERACTION_FAILED

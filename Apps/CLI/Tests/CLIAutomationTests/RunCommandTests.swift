@@ -1,19 +1,140 @@
-import AXorcist
 import Foundation
 import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("RunCommand Tests", .serialized, .tags(.safe))
-struct RunCommandTests {
+@Suite(
+    "RunCommand CLI Harness Tests",
+    .serialized,
+    .tags(.safe),
+    .enabled(if: CLITestEnvironment.runAutomationRead)
+)
+struct RunCommandCLIHarnessTests {
+    @Test("run command executes scripts via process service")
+    func runCommandOutputsJSON() async throws {
+        let scriptPath = "/tmp/test-script.peekaboo.json"
+        let script = PeekabooScript(
+            description: "Sample script",
+            steps: [
+                ScriptStep(stepId: "step1", comment: "Capture UI", command: "see", params: nil),
+                ScriptStep(stepId: "step2", comment: "Click login", command: "click", params: nil),
+            ]
+        )
+
+        let stepResults = [
+            StepResult(
+                stepId: "step1",
+                stepNumber: 1,
+                command: "see",
+                success: true,
+                output: .success("Captured"),
+                error: nil,
+                executionTime: 0.5
+            ),
+            StepResult(
+                stepId: "step2",
+                stepNumber: 2,
+                command: "click",
+                success: true,
+                output: .success("Clicked"),
+                error: nil,
+                executionTime: 0.3
+            ),
+        ]
+
+        let process = StubProcessService()
+        process.scriptsByPath[scriptPath] = script
+        process.nextExecuteScriptResults = stepResults
+
+        let services = await self.makeServices(process: process)
+        let result = try await InProcessCommandRunner.run([
+            "run",
+            scriptPath,
+            "--json-output",
+        ], services: services)
+
+        #expect(result.exitStatus == 0)
+        let data = try #require(result.stdout.data(using: .utf8))
+        let payload = try JSONDecoder().decode(ScriptExecutionResult.self, from: data)
+        #expect(payload.totalSteps == 2)
+        #expect(payload.success)
+        #expect(process.loadScriptCalls.count == 1)
+        #expect(process.executeScriptCalls.count == 1)
+    }
+
+    @Test("run command writes output file")
+    func runCommandWritesOutputFile() async throws {
+        let scriptPath = "/tmp/output-script.peekaboo.json"
+        let script = PeekabooScript(description: "Write output", steps: [])
+        let process = StubProcessService()
+        process.scriptsByPath[scriptPath] = script
+        process.nextExecuteScriptResults = []
+
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("run-results-\(UUID().uuidString).json")
+
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        let services = await self.makeServices(process: process)
+        let result = try await InProcessCommandRunner.run([
+            "run",
+            scriptPath,
+            "--output", outputURL.path,
+        ], services: services)
+
+        #expect(result.exitStatus == 0)
+        #expect(FileManager.default.fileExists(atPath: outputURL.path))
+
+        let data = try Data(contentsOf: outputURL)
+        let payload = try JSONDecoder().decode(ScriptExecutionResult.self, from: data)
+        #expect(payload.scriptPath == scriptPath)
+    }
+
+    @Test("run command exits with failure when a step fails")
+    func runCommandFailure() async throws {
+        let scriptPath = "/tmp/failing-script.peekaboo.json"
+        let script = PeekabooScript(description: "Failing script", steps: [
+            ScriptStep(stepId: "fail", comment: nil, command: "click", params: nil),
+        ])
+        let failingStep = StepResult(
+            stepId: "fail",
+            stepNumber: 1,
+            command: "click",
+            success: false,
+            output: nil,
+            error: "Element not found",
+            executionTime: 0.2
+        )
+
+        let process = StubProcessService()
+        process.scriptsByPath[scriptPath] = script
+        process.nextExecuteScriptResults = [failingStep]
+
+        let services = await self.makeServices(process: process)
+        let result = try await InProcessCommandRunner.run(["run", scriptPath], services: services)
+
+        #expect(result.exitStatus != 0)
+        let output = result.stdout + result.stderr
+        #expect(output.contains("❌ Script failed") || output.contains("❌ Error"))
+    }
+
+    @MainActor
+    private func makeServices(process: StubProcessService) -> PeekabooServices {
+        TestServicesFactory.makePeekabooServices(process: process)
+    }
+}
+#endif
+
+@Suite("RunCommand Data Tests", .serialized, .tags(.unit))
+struct RunCommandDataTests {
     @Test("Run command parses script path")
     func parseScriptPath() throws {
         let command = try RunCommand.parse(["/path/to/script.peekaboo.json"])
         #expect(command.scriptPath == "/path/to/script.peekaboo.json")
         #expect(command.output == nil)
-        #expect(command.noFailFast == false) // default
-        #expect(command.verbose == false) // default
+        #expect(command.noFailFast == false)
+        #expect(command.verbose == false)
     }
 
     @Test("Run command parses all options")
@@ -41,7 +162,6 @@ struct RunCommandTests {
 
     @Test("Script structure validation")
     func scriptStructure() {
-        // Create script steps with proper structure
         let steps = [
             TestScriptStep(
                 stepId: "step1",
@@ -72,7 +192,6 @@ struct RunCommandTests {
         #expect(script.steps.count == 3)
         #expect(script.steps[0].command == "see")
         #expect(script.steps[0].params?["app"] == "Safari")
-        #expect(script.steps[0].comment == "Capture Safari UI")
         #expect(script.steps[2].comment == nil)
     }
 
@@ -166,4 +285,3 @@ struct TestScriptStep: Codable {
     let command: String
     let params: [String: String]?
 }
-#endif

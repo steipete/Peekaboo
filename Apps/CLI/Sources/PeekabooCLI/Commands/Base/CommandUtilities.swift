@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -14,7 +14,7 @@ protocol ErrorHandlingCommand {
 
 extension ErrorHandlingCommand {
     /// Handle errors with appropriate output format
-    func handleError(_ error: Error, customCode: ErrorCode? = nil) {
+    func handleError(_ error: any Error, customCode: ErrorCode? = nil) {
         // Handle errors with appropriate output format
         if jsonOutput {
             let errorCode = customCode ?? self.mapErrorToCode(error)
@@ -38,7 +38,7 @@ extension ErrorHandlingCommand {
     }
 
     /// Map various error types to error codes
-    private func mapErrorToCode(_ error: Error) -> ErrorCode {
+    private func mapErrorToCode(_ error: any Error) -> ErrorCode {
         // Map various error types to error codes
         switch error {
         // PeekabooError mappings
@@ -266,7 +266,8 @@ extension WindowIdentificationOptions {
 // to avoid compilation issues with ArgumentParser Option types.
 /*
  /// Base struct for commands that work with windows
- struct WindowCommandBase: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+ @MainActor
+struct WindowCommandBase: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
  @Option(name: .shortAndLong, help: "Target application name or bundle ID")
  var app: String?
 

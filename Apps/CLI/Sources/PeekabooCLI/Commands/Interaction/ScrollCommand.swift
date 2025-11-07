@@ -1,4 +1,4 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -7,7 +7,8 @@ import PeekabooFoundation
 /// Scrolls the mouse wheel in a specified direction.
 /// Supports scrolling on specific elements or at the current mouse position.
 @available(macOS 14.0, *)
-struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct ScrollCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "scroll",
         abstract: "Scroll the mouse wheel in any direction",
@@ -56,7 +57,7 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Target application to focus before scrolling")
     var app: String?
 
-    @OptionGroup var focusOptions: FocusOptions
+    @OptionGroup var focusOptions: FocusCommandOptions
 
     mutating func run() async throws {
         let startTime = Date()

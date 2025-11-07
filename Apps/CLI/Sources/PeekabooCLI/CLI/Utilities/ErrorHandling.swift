@@ -27,10 +27,10 @@ private func emitError(
 // ApplicationError has been replaced by PeekabooError
 // Callers should use handleGenericError instead
 
-func handleGenericError(_ error: Error, jsonOutput: Bool) {
+func handleGenericError(_ error: any Error, jsonOutput: Bool) {
     emitError(message: error.localizedDescription, code: .UNKNOWN_ERROR, jsonOutput: jsonOutput)
 }
 
-func handleValidationError(_ error: Error, jsonOutput: Bool) {
+func handleValidationError(_ error: any Error, jsonOutput: Bool) {
     emitError(message: error.localizedDescription, code: .VALIDATION_ERROR, jsonOutput: jsonOutput)
 }

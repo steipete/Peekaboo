@@ -1,4 +1,4 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -20,14 +20,12 @@ func getDynamicPermissionsSection() -> String {
 }
 
 /// Primary command-line interface definition.
-public struct Peekaboo: AsyncParsableCommand {
+@MainActor
+public struct Peekaboo: @MainActor MainActorAsyncParsableCommand {
     public init() {}
 
-    public static let configuration = CommandConfiguration(
-        commandName: "peekaboo",
-        abstract: "Lightning-fast macOS screenshots, AI vision analysis, " +
-            "and GUI automation with intelligent focus management",
-        discussion: """
+    public static var configuration: CommandConfiguration {
+        let discussion = """
         VERSION: \(Version.fullVersion)
 
         EXAMPLES:
@@ -98,44 +96,50 @@ public struct Peekaboo: AsyncParsableCommand {
         SEE ALSO:
           Website: https://peekaboo.boo
           GitHub: https://github.com/steipete/peekaboo
+        """
 
-        """,
-        version: Version.fullVersion,
-        subcommands: [
-            // Core commands
-            ImageCommand.self,
-            ListCommand.self,
-            ToolsCommand.self,
-            ConfigCommand.self,
-            PermissionsCommand.self,
-            LearnCommand.self,
-            // Interaction commands
-            SeeCommand.self,
-            ClickCommand.self,
-            TypeCommand.self,
-            PressCommand.self,
-            ScrollCommand.self,
-            HotkeyCommand.self,
-            SwipeCommand.self,
-            DragCommand.self,
-            MoveCommand.self,
-            // System commands
-            RunCommand.self,
-            SleepCommand.self,
-            CleanCommand.self,
-            WindowCommand.self,
-            MenuCommand.self,
-            MenuBarCommand.self,
-            AppCommand.self,
-            DockCommand.self,
-            DialogCommand.self,
-            SpaceCommand.self,
-            // Agent commands
-            AgentCommand.self,
-            // MCP commands
-            MCPCommand.self,
-        ]
-    )
+        return CommandConfiguration(
+            commandName: "peekaboo",
+            abstract: "Lightning-fast macOS screenshots, AI vision analysis, " +
+                "and GUI automation with intelligent focus management",
+            discussion: discussion,
+            version: Version.fullVersion,
+            subcommands: [
+                // Core commands
+                ImageCommand.self,
+                ListCommand.self,
+                ToolsCommand.self,
+                ConfigCommand.self,
+                PermissionsCommand.self,
+                LearnCommand.self,
+                // Interaction commands
+                SeeCommand.self,
+                ClickCommand.self,
+                TypeCommand.self,
+                PressCommand.self,
+                ScrollCommand.self,
+                HotkeyCommand.self,
+                SwipeCommand.self,
+                DragCommand.self,
+                MoveCommand.self,
+                // System commands
+                RunCommand.self,
+                SleepCommand.self,
+                CleanCommand.self,
+                WindowCommand.self,
+                MenuCommand.self,
+                MenuBarCommand.self,
+                AppCommand.self,
+                DockCommand.self,
+                DialogCommand.self,
+                SpaceCommand.self,
+                // Agent commands
+                AgentCommand.self,
+                // MCP commands
+                MCPCommand.self,
+            ]
+        )
+    }
 }
 
 /// Shared entry point used by the executable target.

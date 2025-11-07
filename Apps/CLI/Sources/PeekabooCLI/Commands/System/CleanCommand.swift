@@ -1,10 +1,11 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 
 /// Clean up session cache and temporary files
 @available(macOS 14.0, *)
-struct CleanCommand: AsyncParsableCommand {
+@MainActor
+struct CleanCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "clean",
         abstract: "Clean up session cache and temporary files",

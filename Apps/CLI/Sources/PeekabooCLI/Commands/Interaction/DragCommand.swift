@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import AXorcist
 import CoreGraphics
 import Foundation
@@ -8,7 +8,8 @@ import PeekabooFoundation
 
 /// Perform drag and drop operations using intelligent element finding
 @available(macOS 14.0, *)
-struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "drag",
         abstract: "Perform drag and drop operations",
@@ -64,9 +65,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    @OptionGroup var focusOptions: FocusOptions
+    @OptionGroup var focusOptions: FocusCommandOptions
 
-    @MainActor
     mutating func run() async throws {
         let startTime = Date()
         Logger.shared.setJsonOutputMode(self.jsonOutput)

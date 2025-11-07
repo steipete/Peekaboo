@@ -1,11 +1,12 @@
 import ApplicationServices
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
 
 /// Manage and request system permissions
-struct PermissionCommand: AsyncParsableCommand {
+@MainActor
+struct PermissionCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "permission",
         abstract: "Manage system permissions for Peekaboo",
@@ -33,7 +34,8 @@ struct PermissionCommand: AsyncParsableCommand {
 
 // MARK: - Status Subcommand
 
-struct StatusSubcommand: AsyncParsableCommand {
+@MainActor
+struct StatusSubcommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "status",
         abstract: "Check current permission status"
@@ -65,7 +67,8 @@ struct StatusSubcommand: AsyncParsableCommand {
 
 // MARK: - Request Screen Recording Subcommand
 
-struct RequestScreenRecordingSubcommand: AsyncParsableCommand {
+@MainActor
+struct RequestScreenRecordingSubcommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "request-screen-recording",
         abstract: "Trigger screen recording permission prompt"
@@ -125,7 +128,8 @@ struct RequestScreenRecordingSubcommand: AsyncParsableCommand {
 
 // MARK: - Request Accessibility Subcommand
 
-struct RequestAccessibilitySubcommand: AsyncParsableCommand {
+@MainActor
+struct RequestAccessibilitySubcommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "request-accessibility",
         abstract: "Request accessibility permission"

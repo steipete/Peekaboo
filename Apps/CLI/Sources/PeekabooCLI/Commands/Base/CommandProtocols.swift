@@ -1,5 +1,19 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
+
+// MARK: - Concurrency Helpers
+
+/// Marker protocol that bridges `ParsableArguments` into our MainActor-isolated world.
+@preconcurrency
+protocol MainActorParsableArguments: ParsableArguments {}
+
+/// Marker protocol that bridges `AsyncParsableCommand` into our MainActor-isolated world.
+@preconcurrency
+protocol MainActorAsyncParsableCommand: AsyncParsableCommand {}
+
+/// Marker protocol that bridges `ParsableCommand` into our MainActor-isolated world.
+@preconcurrency
+protocol MainActorParsableCommand: ParsableCommand {}
 
 // MARK: - Verbose Protocol
 

@@ -1,24 +1,14 @@
 import Foundation
+import PeekabooCore
 import Testing
+@testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("Help Command Tests", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct HelpCommandTests {
-    private let peekabooPath: String = {
-        if let override = ProcessInfo.processInfo.environment["PEEKABOO_CLI_PATH"], !override.isEmpty {
-            return override
-        }
-
-        if let resolved = CLITestEnvironment.peekabooBinaryURL()?.path {
-            return resolved
-        }
-
-        return "./peekaboo"
-    }()
-
     @Test("No arguments shows help")
     func noArgumentsShowsHelp() async throws {
-        let output = try await runPeekaboo([])
+        let output = try await runPeekaboo([]).stdout
 
         // Verify help content is shown
         #expect(output.contains("OVERVIEW: Lightning-fast macOS screenshots"))
@@ -31,7 +21,7 @@ struct HelpCommandTests {
 
     @Test("--help flag shows help")
     func helpFlagShowsHelp() async throws {
-        let output = try await runPeekaboo(["--help"])
+        let output = try await runPeekaboo(["--help"]).stdout
 
         // Should show same help as no arguments
         #expect(output.contains("OVERVIEW: Lightning-fast macOS screenshots"))
@@ -44,8 +34,8 @@ struct HelpCommandTests {
             ("image", "Capture screenshots"),
             ("list", "List running applications, windows, or check permissions"),
             ("config", "Manage Peekaboo configuration"),
-            ("permissions", "Check system permissions required for Peekaboo"),
-            ("see", "Capture screen and map UI elements"),
+            ("permissions", "Check and request system permissions required for Peekaboo"),
+            ("see", "Capture and analyze UI elements for automation"),
             ("click", "Click on UI elements or coordinates"),
             ("type", "Type text or send keyboard input"),
             ("scroll", "Scroll the mouse wheel in any direction"),
@@ -65,7 +55,7 @@ struct HelpCommandTests {
         ]
 
         for (subcommand, expectedOverview) in subcommands {
-            let output = try await runPeekaboo(["help", subcommand])
+            let output = try await runPeekaboo(["help", subcommand]).stdout
 
             // Each subcommand help should contain OVERVIEW and USAGE
             #expect(output.contains("OVERVIEW:"), "Help for \(subcommand) should contain OVERVIEW")
@@ -81,11 +71,12 @@ struct HelpCommandTests {
     @Test("help with invalid subcommand")
     func helpWithInvalidSubcommand() async throws {
         // This should show an error, not invoke the agent
-        let result = try await runPeekabooWithExitCode(["help", "nonexistent"])
+        let result = try await runPeekaboo(["help", "nonexistent"])
 
-        #expect(result.exitCode != 0)
-        #expect(result.output.contains("Error:") || result.output.contains("Unknown subcommand"))
-        #expect(!result.output.contains("[info] Peekaboo Agent"))
+        #expect(result.exitStatus != 0)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        #expect(output.contains("Error:") || output.contains("Unknown subcommand"))
+        #expect(!output.contains("[info] Peekaboo Agent"))
     }
 
     @Test("Subcommand --help flag")
@@ -94,7 +85,7 @@ struct HelpCommandTests {
         let subcommands = ["image", "list", "config", "agent", "see", "click"]
 
         for subcommand in subcommands {
-            let output = try await runPeekaboo([subcommand, "--help"])
+            let output = try await runPeekaboo([subcommand, "--help"]).stdout
 
             #expect(output.contains("OVERVIEW:"), "\(subcommand) --help should show overview")
             #expect(output.contains("USAGE:"), "\(subcommand) --help should show usage")
@@ -104,38 +95,8 @@ struct HelpCommandTests {
 
     // MARK: - Helper Methods
 
-    private func runPeekaboo(_ arguments: [String]) async throws -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: self.peekabooPath)
-        process.arguments = arguments
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8) ?? ""
-    }
-
-    private func runPeekabooWithExitCode(_ arguments: [String]) async throws -> (output: String, exitCode: Int32) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: self.peekabooPath)
-        process.arguments = arguments
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-
-        return (output, process.terminationStatus)
+    private func runPeekaboo(_ arguments: [String]) async throws -> CommandRunResult {
+        try await InProcessCommandRunner.runWithSharedServices(arguments)
     }
 }
 #endif

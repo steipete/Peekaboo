@@ -9,6 +9,7 @@ import CoreGraphics
 import Foundation
 
 /// High-performance text detection using Accelerate framework's vImage convolution
+@MainActor
 final class AcceleratedTextDetector {
     // MARK: - Types
 
@@ -51,8 +52,8 @@ final class AcceleratedTextDetector {
         self.allocateBuffers()
     }
 
-    deinit {
-        deallocateBuffers()
+    @MainActor deinit {
+        self.deallocateBuffers()
     }
 
     // MARK: - Public Methods

@@ -1,5 +1,5 @@
 import AppKit
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import AXorcist
 import CoreGraphics
 import Foundation
@@ -8,7 +8,8 @@ import PeekabooFoundation
 
 /// Performs swipe gestures using intelligent element finding and service-based architecture.
 @available(macOS 14.0, *)
-struct SwipeCommand: AsyncParsableCommand {
+@MainActor
+struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "swipe",
         abstract: "Perform swipe gestures",
@@ -199,7 +200,7 @@ struct SwipeCommand: AsyncParsableCommand {
         }
     }
 
-    private func handleError(_ error: Error) {
+    private func handleError(_ error: any Error) {
         if self.jsonOutput {
             let errorCode: ErrorCode
             let message: String

@@ -149,7 +149,7 @@ struct DialogCommandTests {
 struct DialogCommandIntegrationTests {
     @Test("List active dialogs with ")
     func listActiveDialogs() async throws {
-        let output = try await runCommand([
+        let output = try await runAutomationCommand([
             "dialog", "list",
             "--json-output",
         ])
@@ -187,7 +187,7 @@ struct DialogCommandIntegrationTests {
     @Test("Dialog  click workflow")
     func dialogClickWorkflow() async throws {
         // This would click a button if a dialog is present
-        let output = try await runCommand([
+        let output = try await runAutomationCommand([
             "dialog", "click",
             "--button", "OK",
             "--json-output",
@@ -202,7 +202,7 @@ struct DialogCommandIntegrationTests {
 
     @Test("Dialog  input workflow")
     func dialogInputWorkflow() async throws {
-        let output = try await runCommand([
+        let output = try await runAutomationCommand([
             "dialog", "input",
             "--text", "Test input",
             "--field", "Name",
@@ -218,7 +218,7 @@ struct DialogCommandIntegrationTests {
 
     @Test("Dialog  dismiss with escape")
     func dialogDismissEscape() async throws {
-        let output = try await runCommand([
+        let output = try await runAutomationCommand([
             "dialog", "dismiss",
             "--force",
             "--json-output",
@@ -242,7 +242,7 @@ struct DialogCommandIntegrationTests {
 
     @Test("File dialog  handling")
     func fileDialogHandling() async throws {
-        let output = try await runCommand([
+        let output = try await runAutomationCommand([
             "dialog", "file",
             "--path", "/tmp",
             "--name", "test.txt",
@@ -277,79 +277,14 @@ struct DialogCommandIntegrationTests {
 
 // MARK: - Test Helpers
 
-private func runCommand(_ args: [String]) async throws -> String {
-    let output = try await runPeekabooCommand(args)
-    return output
-}
-
-private func runPeekabooCommand(_ args: [String]) async throws -> String {
-    let projectRoot = dialogProjectRoot()
-    let binaryURL = try ensurePeekabooBinary(at: projectRoot)
-
-    let process = Process()
-    process.executableURL = binaryURL
-    process.currentDirectoryURL = projectRoot
-    process.arguments = args
-
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.standardError = pipe
-
-    try process.run()
-    process.waitUntilExit()
-
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let output = String(data: data, encoding: .utf8) ?? ""
-
-    // Allow command-line validation failures
-    let allowedStatuses: Set<Int32> = [0, 1, 64]
-    guard allowedStatuses.contains(process.terminationStatus) else {
-        throw CommandError(status: process.terminationStatus, output: output)
-    }
-
-    return output
-}
-
-private func dialogProjectRoot() -> URL {
-    let thisFile = URL(fileURLWithPath: #filePath)
-    return thisFile
-        .deletingLastPathComponent() // DialogCommandTests.swift
-        .deletingLastPathComponent() // peekabooTests
-        .deletingLastPathComponent() // Tests
-}
-
-private func ensurePeekabooBinary(at root: URL) throws -> URL {
-    let binaryURL = root.appendingPathComponent(".build/debug/peekaboo")
-    if FileManager.default.isExecutableFile(atPath: binaryURL.path) {
-        return binaryURL
-    }
-
-    let buildProcess = Process()
-    buildProcess.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-    buildProcess.currentDirectoryURL = root
-    buildProcess.arguments = ["build", "--product", "peekaboo"]
-
-    let buildPipe = Pipe()
-    buildProcess.standardOutput = buildPipe
-    buildProcess.standardError = buildPipe
-
-    try buildProcess.run()
-    buildProcess.waitUntilExit()
-
-    guard buildProcess.terminationStatus == 0 else {
-        let buildOutput = String(data: buildPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        throw CommandError(status: buildProcess.terminationStatus, output: buildOutput)
-    }
-
-    return binaryURL
-}
-
-private struct CommandError: Error, CustomStringConvertible {
-    let status: Int32
-    let output: String
-
-    var description: String {
-        "Command failed with exit code \(self.status). Output: \(self.output)"
-    }
+private func runAutomationCommand(
+    _ args: [String],
+    allowedExitStatuses: Set<Int32> = [0, 1, 64]
+) async throws -> String {
+    let result = try await InProcessCommandRunner.runShared(
+        args,
+        allowedExitCodes: allowedExitStatuses
+    )
+    return result.combinedOutput
 }
 #endif

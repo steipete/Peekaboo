@@ -1,11 +1,12 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
 /// Types text into focused elements or sends keyboard input using the UIAutomationService.
 @available(macOS 14.0, *)
-struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+@MainActor
+struct TypeCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "type",
         abstract: "Type text or send keyboard input",
@@ -77,7 +78,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
     @Option(name: .long, help: "Target application to focus before typing")
     var app: String?
 
-    @OptionGroup var focusOptions: FocusOptions
+    @OptionGroup var focusOptions: FocusCommandOptions
 
     mutating func run() async throws {
         let startTime = Date()

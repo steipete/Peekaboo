@@ -1,10 +1,11 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Foundation
 import OrderedCollections
 import PeekabooCore
 import TachikomaMCP
 
-struct ToolsCommand: AsyncParsableCommand {
+@MainActor
+struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "tools",
         abstract: "List available tools with filtering and display options",
@@ -47,11 +48,11 @@ struct ToolsCommand: AsyncParsableCommand {
 
     /// Gather native and external tool catalogs, apply CLI filters, then emit in the requested format.
     func run() async throws {
-        let toolRegistry = await MCPToolRegistry()
-        let clientManager = await TachikomaMCPClientManager.shared
+        let toolRegistry = MCPToolRegistry()
+        let clientManager = TachikomaMCPClientManager.shared
 
         // Register native Peekaboo tools
-        let nativeTools: [MCPTool] = [
+        let nativeTools: [any MCPTool] = [
             // Core tools
             ImageTool(),
             AnalyzeTool(),
@@ -78,7 +79,7 @@ struct ToolsCommand: AsyncParsableCommand {
             SpaceTool(),
         ]
 
-        await toolRegistry.register(nativeTools)
+        toolRegistry.register(nativeTools)
 
         // Register external tools from client manager
         await toolRegistry.registerExternalTools(from: clientManager)
@@ -184,7 +185,7 @@ struct ToolsCommand: AsyncParsableCommand {
     // MARK: - Formatted Output
 
     private func outputFormatted(tools: CategorizedTools, options: ToolDisplayOptions) async {
-        let clientManager = await TachikomaMCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager.shared
 
         // Display header
         if !tools.native.isEmpty || !tools.external.isEmpty {
@@ -198,7 +199,7 @@ struct ToolsCommand: AsyncParsableCommand {
 
         // Display native tools
         if !tools.native.isEmpty && !self.mcpOnly {
-            self.displayNativeTools(tools.native, options: options)
+            await self.displayNativeTools(tools.native, options: options)
         }
 
         // Display external tools
@@ -208,11 +209,12 @@ struct ToolsCommand: AsyncParsableCommand {
 
         // Display summary
         if options.showToolCount {
-            self.displaySummary(tools: tools)
+            await self.displaySummary(tools: tools)
         }
     }
 
-    private func displayNativeTools(_ tools: [MCPTool], options: ToolDisplayOptions) {
+    @MainActor
+    private func displayNativeTools(_ tools: [any MCPTool], options: ToolDisplayOptions) {
         print("Native Tools (\(tools.count)):")
 
         for tool in tools {
@@ -228,8 +230,9 @@ struct ToolsCommand: AsyncParsableCommand {
         print()
     }
 
+    @MainActor
     private func displayExternalTools(
-        _ toolsByServer: OrderedDictionary<String, [MCPTool]>,
+        _ toolsByServer: OrderedDictionary<String, [any MCPTool]>,
         options: ToolDisplayOptions,
         clientManager: TachikomaMCPClientManager
     ) async {

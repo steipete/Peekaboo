@@ -7,6 +7,33 @@ struct CommandRunResult {
     let stdout: String
     let stderr: String
     let exitStatus: Int32
+
+    var combinedOutput: String {
+        self.stdout.isEmpty ? self.stderr : self.stdout
+    }
+
+    func validateExitStatus(allowedExitCodes: Set<Int32>, arguments: [String]) throws {
+        guard allowedExitCodes.contains(self.exitStatus) else {
+            throw CommandExecutionError(
+                status: self.exitStatus,
+                stdout: self.stdout,
+                stderr: self.stderr,
+                arguments: arguments
+            )
+        }
+    }
+}
+
+struct CommandExecutionError: Error, CustomStringConvertible {
+    let status: Int32
+    let stdout: String
+    let stderr: String
+    let arguments: [String]
+
+    var description: String {
+        "Command \(self.arguments.joined(separator: " ")) failed with exit code \(self.status)." +
+            "\nstdout: \(self.stdout)\nstderr: \(self.stderr)"
+    }
 }
 
 enum InProcessCommandRunner {
@@ -24,6 +51,21 @@ enum InProcessCommandRunner {
                 return try await self.execute(arguments: arguments)
             }
         }
+    }
+
+    /// Run the CLI using the default shared services (no overrides).
+    static func runWithSharedServices(_ arguments: [String]) async throws -> CommandRunResult {
+        try await self.execute(arguments: arguments)
+    }
+
+    /// Convenience helper for tests that rely on the shared service stack and expect specific exit codes.
+    static func runShared(
+        _ arguments: [String],
+        allowedExitCodes: Set<Int32> = [0]
+    ) async throws -> CommandRunResult {
+        let result = try await self.runWithSharedServices(arguments)
+        try result.validateExitStatus(allowedExitCodes: allowedExitCodes, arguments: arguments)
+        return result
     }
 
     private static func execute(arguments: [String]) async throws -> CommandRunResult {

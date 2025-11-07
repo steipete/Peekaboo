@@ -1,6 +1,6 @@
 import AppKit
 import ApplicationServices
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import AXorcist
 import Foundation
 import PeekabooCore
@@ -34,8 +34,8 @@ extension Element {
 // MARK: - Action Extensions
 
 extension Attribute where T == String {
-    nonisolated(unsafe) static let hide = Attribute<String>("AXHide")
-    nonisolated(unsafe) static let unhide = Attribute<String>("AXUnhide")
+    static var hide: Attribute<String> { Attribute("AXHide") }
+    static var unhide: Attribute<String> { Attribute("AXUnhide") }
 }
 
 // MARK: - Application Finding
