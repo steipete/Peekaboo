@@ -29,10 +29,16 @@ let package = Package(
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "PeekabooUICore", package: "PeekabooUICore"),
             ],
-            path: "PeekabooInspector",
+            path: "Inspector",
+            exclude: ["Info.plist", "PeekabooInspector.entitlements"],
             resources: [
                 .process("Assets.xcassets"),
                 .process("AppIcon.icon"),
             ],
+            swiftSettings: approachableConcurrencySettings),
+        .testTarget(
+            name: "PeekabooInspectorTests",
+            dependencies: ["PeekabooInspector"],
+            path: "Tests/PeekabooInspectorTests",
             swiftSettings: approachableConcurrencySettings),
     ])
