@@ -93,7 +93,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         let args = self.parseArguments(arguments)
 
         // Get formatter for this tool
-        let formatter: ToolFormatter
+        let formatter: any ToolFormatter
         let toolType: ToolType?
 
         if let type = ToolType(rawValue: name) {
@@ -210,7 +210,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         }
 
         // Get formatter for this tool
-        let formatter: ToolFormatter
+        let formatter: any ToolFormatter
         let toolType: ToolType?
 
         if let type = ToolType(rawValue: name) {

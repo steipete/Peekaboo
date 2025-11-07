@@ -110,7 +110,7 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
         if self.jsonOutput {
             try self.outputJSON(tools: sortedTools)
         } else {
-            await self.outputFormatted(tools: sortedTools, options: displayOptions)
+            self.outputFormatted(tools: sortedTools, options: displayOptions)
         }
     }
 
@@ -184,9 +184,7 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Formatted Output
 
-    private func outputFormatted(tools: CategorizedTools, options: ToolDisplayOptions) async {
-        let clientManager = TachikomaMCPClientManager.shared
-
+    private func outputFormatted(tools: CategorizedTools, options: ToolDisplayOptions) {
         // Display header
         if !tools.native.isEmpty || !tools.external.isEmpty {
             print("Available Tools")
@@ -199,17 +197,17 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
 
         // Display native tools
         if !tools.native.isEmpty && !self.mcpOnly {
-            await self.displayNativeTools(tools.native, options: options)
+            self.displayNativeTools(tools.native, options: options)
         }
 
         // Display external tools
         if !tools.external.isEmpty && !self.nativeOnly {
-            await self.displayExternalTools(tools.external, options: options, clientManager: clientManager)
+            self.displayExternalTools(tools.external, options: options)
         }
 
         // Display summary
         if options.showToolCount {
-            await self.displaySummary(tools: tools)
+            self.displaySummary(tools: tools)
         }
     }
 
@@ -233,9 +231,8 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
     @MainActor
     private func displayExternalTools(
         _ toolsByServer: OrderedDictionary<String, [any MCPTool]>,
-        options: ToolDisplayOptions,
-        clientManager: TachikomaMCPClientManager
-    ) async {
+        options: ToolDisplayOptions
+    ) {
         if options.groupByServer {
             // Group by server
             for (serverName, serverTools) in toolsByServer {

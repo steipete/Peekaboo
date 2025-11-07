@@ -380,7 +380,7 @@ ApplicationResolvable {
     }
 
     private func analyzeImage(at path: String, with prompt: String) async throws -> ImageAnalysisData {
-        let ai = await PeekabooAIService()
+        let ai = PeekabooAIService()
         let result = try await ai.analyzeImageFileDetailed(at: path, question: prompt, model: nil)
         return ImageAnalysisData(provider: result.provider, model: result.model, text: result.text)
     }
