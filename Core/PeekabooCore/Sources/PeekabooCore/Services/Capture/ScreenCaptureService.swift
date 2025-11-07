@@ -4,11 +4,6 @@ import Foundation
 import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
 
-// Feature flag to toggle between modern ScreenCaptureKit and legacy CGWindowList APIs
-// Set to true to use modern API, false to use legacy API
-// This is a workaround for SCShareableContent.current hanging on macOS beta versions
-private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["PEEKABOO_USE_MODERN_CAPTURE"] == "true"
-
 /**
  * Screen and window capture service with dual API support.
  *
@@ -37,19 +32,72 @@ private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["
  * ```
  *
  * ## API Control
- * Use `PEEKABOO_USE_MODERN_CAPTURE=false` to force legacy CGWindowList API.
+ * Use `PEEKABOO_USE_MODERN_CAPTURE=true` to prefer ScreenCaptureKit with automatic legacy fallback.
  *
  * - Important: Requires Screen Recording permission
  * - Note: Performance 20-150ms depending on operation and display size
  * - Since: PeekabooCore 1.0.0
  */
 @MainActor
+// swiftlint:disable type_body_length
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
-    private let logger: CategoryLogger
-    private let visualizerClient = VisualizationClient.shared
+    struct Dependencies: Sendable {
+        let visualizerClient: VisualizationClientProtocol
+        let permissionEvaluator: ScreenRecordingPermissionEvaluating
+        let fallbackRunner: ScreenCaptureFallbackRunner
+        let applicationResolver: ApplicationResolving
+        let makeModernOperator: @MainActor @Sendable (CategoryLogger, VisualizationClientProtocol)
+            -> ModernScreenCaptureOperating
 
-    public init(loggingService: LoggingServiceProtocol) {
+        init(
+            visualizerClient: VisualizationClientProtocol,
+            permissionEvaluator: ScreenRecordingPermissionEvaluating,
+            fallbackRunner: ScreenCaptureFallbackRunner,
+            applicationResolver: ApplicationResolving,
+            makeModernOperator: @escaping @MainActor @Sendable (CategoryLogger, VisualizationClientProtocol)
+                -> ModernScreenCaptureOperating)
+        {
+            self.visualizerClient = visualizerClient
+            self.permissionEvaluator = permissionEvaluator
+            self.fallbackRunner = fallbackRunner
+            self.applicationResolver = applicationResolver
+            self.makeModernOperator = makeModernOperator
+        }
+
+        static func live(environment: [String: String] = ProcessInfo.processInfo.environment) -> Dependencies {
+            Dependencies(
+                visualizerClient: VisualizationClient.shared,
+                permissionEvaluator: ScreenRecordingPermissionChecker(),
+                fallbackRunner: ScreenCaptureFallbackRunner(apis: ScreenCaptureAPIResolver
+                    .resolve(environment: environment)),
+                applicationResolver: PeekabooApplicationResolver(),
+                makeModernOperator: { logger, visualizer in
+                    ScreenCaptureKitOperator(logger: logger, visualizerClient: visualizer)
+                })
+        }
+    }
+
+    private let logger: CategoryLogger
+    private let visualizerClient: VisualizationClientProtocol
+    private let permissionEvaluator: ScreenRecordingPermissionEvaluating
+    private let fallbackRunner: ScreenCaptureFallbackRunner
+    private let applicationResolver: ApplicationResolving
+    private let modernOperator: ModernScreenCaptureOperating
+
+    public convenience init(loggingService: LoggingServiceProtocol) {
+        self.init(loggingService: loggingService, dependencies: .live())
+    }
+
+    init(
+        loggingService: LoggingServiceProtocol,
+        dependencies: Dependencies)
+    {
         self.logger = loggingService.logger(category: LoggingService.Category.screenCapture)
+        self.visualizerClient = dependencies.visualizerClient
+        self.permissionEvaluator = dependencies.permissionEvaluator
+        self.fallbackRunner = dependencies.fallbackRunner
+        self.applicationResolver = dependencies.applicationResolver
+        self.modernOperator = dependencies.makeModernOperator(self.logger, self.visualizerClient)
 
         // Only connect to visualizer if we're not running inside the Mac app
         // The Mac app provides the visualizer service, not consumes it
@@ -85,95 +133,21 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             throw PermissionError.screenRecording()
         }
 
-        // Try modern API first if enabled
-        if USE_MODERN_SCREENCAPTURE_API {
-            do {
-                // Get available displays
-                self.logger.debug("Fetching shareable content", correlationId: correlationId)
-                // Wrap in timeout to avoid hangs on some systems
-                let content = try await withTimeout(seconds: 5.0) {
-                    try await SCShareableContent.current
-                }
-                let displays = content.displays
-
-                self.logger.debug("Found displays", metadata: ["count": displays.count], correlationId: correlationId)
-                guard !displays.isEmpty else {
-                    self.logger.error("No displays found", correlationId: correlationId)
-                    throw OperationError.captureFailed(reason: "No displays available for capture")
-                }
-
-                // Select display
-                let targetDisplay: SCDisplay
-                if let index = displayIndex {
-                    guard index >= 0, index < displays.count else {
-                        throw PeekabooError.invalidInput(
-                            "displayIndex: Index \(index) is out of range. Available displays: 0-\(displays.count - 1)")
-                    }
-                    targetDisplay = displays[index]
-                } else {
-                    // Use main display
-                    targetDisplay = displays.first!
-                }
-
-                // Create screenshot with retry logic
-                self.logger.debug(
-                    "Creating screenshot of display",
-                    metadata: ["displayID": targetDisplay.displayID],
-                    correlationId: correlationId)
-
-                let image = try await RetryHandler.withRetry(
-                    policy: .standard,
-                    operation: {
-                        try await self.createScreenshot(of: targetDisplay)
-                    })
-
-                let imageData: Data
-                do {
-                    imageData = try image.pngData()
-                } catch {
-                    throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
-                }
-
-                self.logger.debug("Screenshot created", metadata: [
-                    "imageSize": "\(image.width)x\(image.height)",
-                    "dataSize": imageData.count,
-                ], correlationId: correlationId)
-
-                // Show screenshot flash animation if available
-                _ = await self.visualizerClient.showScreenshotFlash(in: targetDisplay.frame)
-
-                // Create metadata
-                let metadata = CaptureMetadata(
-                    size: CGSize(width: image.width, height: image.height),
-                    mode: .screen,
-                    displayInfo: DisplayInfo(
-                        index: displayIndex ?? 0,
-                        name: targetDisplay.displayID.description,
-                        bounds: targetDisplay.frame,
-                        scaleFactor: 2.0 // Default for Retina displays
-                    ))
-
-                return CaptureResult(
-                    imageData: imageData,
-                    metadata: metadata)
-            } catch {
-                // If modern API fails with timeout, try legacy API as fallback
-                if case OperationError.timeout = error {
-                    self.logger.warning(
-                        "Modern screen capture timed out, falling back to legacy API",
-                        metadata: ["error": String(describing: error)],
-                        correlationId: correlationId)
-                    return try await self.captureScreenLegacy(displayIndex: displayIndex, correlationId: correlationId)
-                } else {
-                    throw error
-                }
+        return try await self.fallbackRunner.run(
+            operationName: "captureScreen",
+            logger: self.logger,
+            correlationId: correlationId)
+        { api in
+            switch api {
+            case .modern:
+                try await self.modernOperator.captureScreen(displayIndex: displayIndex, correlationId: correlationId)
+            case .legacy:
+                try await self.captureScreenLegacy(displayIndex: displayIndex, correlationId: correlationId)
             }
-        } else {
-            // Use legacy API directly
-            return try await self.captureScreenLegacy(displayIndex: displayIndex, correlationId: correlationId)
         }
     }
 
+    // swiftlint:disable function_body_length
     /**
      * Capture a specific application window with precise targeting.
      *
@@ -211,19 +185,24 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
      */
     public func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
         let correlationId = UUID().uuidString
-        self.logger.info("Starting window capture", metadata: [
-            "appIdentifier": appIdentifier,
-            "windowIndex": windowIndex ?? "frontmost",
-        ], correlationId: correlationId)
+        self.logger.info(
+            "Starting window capture",
+            metadata: [
+                "appIdentifier": appIdentifier,
+                "windowIndex": windowIndex ?? "frontmost",
+            ],
+            correlationId: correlationId)
 
         let measurementId = self.logger.startPerformanceMeasurement(
             operation: "captureWindow",
             correlationId: correlationId)
         defer {
-            logger.endPerformanceMeasurement(measurementId: measurementId, metadata: [
-                "appIdentifier": appIdentifier,
-                "windowIndex": windowIndex ?? "frontmost",
-            ])
+            logger.endPerformanceMeasurement(
+                measurementId: measurementId,
+                metadata: [
+                    "appIdentifier": appIdentifier,
+                    "windowIndex": windowIndex ?? "frontmost",
+                ])
         }
 
         // Check permissions
@@ -234,42 +213,43 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         // Find application
-        self.logger.debug("Finding application", metadata: ["identifier": appIdentifier], correlationId: correlationId)
+        self.logger.debug(
+            "Finding application",
+            metadata: ["identifier": appIdentifier],
+            correlationId: correlationId)
         let app = try await findApplication(matching: appIdentifier)
-        self.logger.debug("Found application", metadata: [
-            "name": app.name,
-            "pid": app.processIdentifier,
-            "bundleId": app.bundleIdentifier ?? "unknown",
-        ], correlationId: correlationId)
+        self.logger.debug(
+            "Found application",
+            metadata: [
+                "name": app.name,
+                "pid": app.processIdentifier,
+                "bundleId": app.bundleIdentifier ?? "unknown",
+            ],
+            correlationId: correlationId)
 
-        // Get windows for the application
-        if USE_MODERN_SCREENCAPTURE_API {
-            self.logger.debug("Using modern ScreenCaptureKit API", correlationId: correlationId)
-            do {
-                return try await self.captureWindowModernImpl(
+        return try await self.fallbackRunner.run(
+            operationName: "captureWindow",
+            logger: self.logger,
+            correlationId: correlationId)
+        { api in
+            switch api {
+            case .modern:
+                self.logger.debug("Using modern ScreenCaptureKit API", correlationId: correlationId)
+                return try await self.modernOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
                     correlationId: correlationId)
-            } catch {
-                // If modern API fails with timeout, try legacy API as fallback
-                if case OperationError.timeout = error {
-                    self.logger.warning(
-                        "Modern capture timed out, falling back to legacy API",
-                        metadata: ["error": String(describing: error)],
-                        correlationId: correlationId)
-                    return try await self.captureWindowLegacy(
-                        app: app,
-                        windowIndex: windowIndex,
-                        correlationId: correlationId)
-                } else {
-                    throw error
-                }
+            case .legacy:
+                self.logger.debug("Using legacy CGWindowList API", correlationId: correlationId)
+                return try await self.captureWindowLegacy(
+                    app: app,
+                    windowIndex: windowIndex,
+                    correlationId: correlationId)
             }
-        } else {
-            self.logger.debug("Using legacy CGWindowList API", correlationId: correlationId)
-            return try await self.captureWindowLegacy(app: app, windowIndex: windowIndex, correlationId: correlationId)
         }
     }
+
+    // swiftlint:enable function_body_length
 
     public func captureFrontmost() async throws -> CaptureResult {
         let correlationId = UUID().uuidString
@@ -296,28 +276,36 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         let appIdentifier = app.bundleIdentifier ?? app.localizedName ?? "Unknown"
-        self.logger.debug("Found frontmost application", metadata: [
-            "name": app.localizedName ?? "unknown",
-            "bundleId": app.bundleIdentifier ?? "none",
-            "pid": app.processIdentifier,
-        ], correlationId: correlationId)
+        self.logger.debug(
+            "Found frontmost application",
+            metadata: [
+                "name": app.localizedName ?? "unknown",
+                "bundleId": app.bundleIdentifier ?? "none",
+                "pid": app.processIdentifier,
+            ],
+            correlationId: correlationId)
 
         return try await self.captureWindow(appIdentifier: appIdentifier, windowIndex: nil)
     }
 
     public func captureArea(_ rect: CGRect) async throws -> CaptureResult {
         let correlationId = UUID().uuidString
-        self.logger.info("Starting area capture", metadata: [
-            "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
-        ], correlationId: correlationId)
+        self.logger.info(
+            "Starting area capture",
+            metadata: [
+                "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
+            ],
+            correlationId: correlationId)
 
         let measurementId = self.logger.startPerformanceMeasurement(
             operation: "captureArea",
             correlationId: correlationId)
         defer {
-            logger.endPerformanceMeasurement(measurementId: measurementId, metadata: [
-                "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
-            ])
+            logger.endPerformanceMeasurement(
+                measurementId: measurementId,
+                metadata: [
+                    "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
+                ])
         }
 
         // Check permissions
@@ -327,103 +315,15 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             throw PermissionError.screenRecording()
         }
 
-        // Find display containing the rect
-        self.logger.debug("Finding display containing rect", correlationId: correlationId)
-        let content = try await SCShareableContent.current
-        guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
-            self.logger.error("No display contains the specified area", metadata: [
-                "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
-            ], correlationId: correlationId)
-            throw PeekabooError.invalidInput(
-                "captureArea: The specified area is not within any display bounds")
-        }
-        self.logger.debug(
-            "Found display for area",
-            metadata: ["displayID": display.displayID],
-            correlationId: correlationId)
-
-        // Create content filter for the area
-        let filter = SCContentFilter(display: display, excludingWindows: [])
-
-        // Configure stream for single frame capture
-        let config = SCStreamConfiguration()
-        config.sourceRect = rect
-        config.width = Int(rect.width)
-        config.height = Int(rect.height)
-        config.showsCursor = false
-
-        // Capture the area with retry logic
-        let image = try await RetryHandler.withRetry(
-            policy: .standard,
-            operation: {
-                try await self.captureWithStream(filter: filter, configuration: config)
-            })
-
-        let imageData: Data
-        do {
-            imageData = try image.pngData()
-        } catch {
-            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
-        }
-
-        // Create metadata
-        let metadata = CaptureMetadata(
-            size: CGSize(width: image.width, height: image.height),
-            mode: .area,
-            displayInfo: DisplayInfo(
-                index: 0,
-                name: display.displayID.description,
-                bounds: display.frame,
-                scaleFactor: 2.0 // Default for Retina displays
-            ))
-
-        return CaptureResult(
-            imageData: imageData,
-            metadata: metadata)
+        return try await self.modernOperator.captureArea(rect, correlationId: correlationId)
     }
 
     public func hasScreenRecordingPermission() async -> Bool {
-        // Check if we have permission by trying to get content with timeout
-        do {
-            // Use excludingDesktopWindows which is more reliable
-            _ = try await self.withTimeout(seconds: 3.0) {
-                try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            }
-            return true
-        } catch {
-            self.logger.warning("Permission check failed or timed out: \(error)")
-            return false
-        }
+        await self.permissionEvaluator.hasPermission(logger: self.logger)
     }
 
     // Helper function for timeout handling
-    private func withTimeout<T: Sendable>(
-        seconds: TimeInterval,
-        operation: @escaping @Sendable () async throws -> T) async throws -> T
-    {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            // Add the main operation
-            group.addTask {
-                try await operation()
-            }
-
-            // Add timeout task
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                throw OperationError.timeout(operation: "SCShareableContent", duration: seconds)
-            }
-
-            // Wait for the first task to complete
-            guard let result = try await group.next() else {
-                throw OperationError.timeout(operation: "SCShareableContent", duration: seconds)
-            }
-
-            // Cancel remaining tasks
-            group.cancelAll()
-
-            return result
-        }
-    }
+    @MainActor
 
     // MARK: - Private Helpers
 
@@ -488,105 +388,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     }
 
     private func findApplication(matching identifier: String) async throws -> ServiceApplicationInfo {
-        // Delegate to ApplicationService for consistent app resolution
-        try await PeekabooServices.shared.applications.findApplication(identifier: identifier)
-    }
-
-    // MARK: - Modern API Implementation
-
-    private func captureWindowModernImpl(
-        app: ServiceApplicationInfo,
-        windowIndex: Int?,
-        correlationId: String) async throws -> CaptureResult
-    {
-        // Get windows using ScreenCaptureKit
-        // Note: We set onScreenWindowsOnly to false to capture windows on all screens, not just the primary
-        let content = try await withTimeout(seconds: 5.0) {
-            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        }
-
-        let appWindows = content.windows.filter { window in
-            window.owningApplication?.processID == app.processIdentifier
-        }
-
-        self.logger.debug(
-            "Found windows for application",
-            metadata: ["count": appWindows.count],
-            correlationId: correlationId)
-        guard !appWindows.isEmpty else {
-            self.logger.error(
-                "No windows found for application",
-                metadata: ["appName": app.name],
-                correlationId: correlationId)
-            throw NotFoundError.window(app: app.name)
-        }
-
-        // Select window
-        let targetWindow: SCWindow
-        if let index = windowIndex {
-            guard index >= 0, index < appWindows.count else {
-                throw PeekabooError.invalidInput(
-                    "windowIndex: Index \(index) is out of range. Available windows: 0-\(appWindows.count - 1)")
-            }
-            targetWindow = appWindows[index]
-        } else {
-            // Use frontmost window
-            targetWindow = appWindows.first!
-        }
-
-        self.logger.debug("Capturing window", metadata: [
-            "title": targetWindow.title ?? "untitled",
-            "windowID": targetWindow.windowID,
-        ], correlationId: correlationId)
-
-        // Create screenshot with retry logic
-        let image = try await RetryHandler.withRetry(
-            policy: .standard,
-            operation: {
-                try await self.createScreenshot(of: targetWindow)
-            })
-
-        let imageData: Data
-        do {
-            imageData = try image.pngData()
-        } catch {
-            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
-        }
-
-        self.logger.debug("Screenshot created", metadata: [
-            "imageSize": "\(image.width)x\(image.height)",
-            "dataSize": imageData.count,
-        ], correlationId: correlationId)
-
-        // Show screenshot flash animation if available
-        _ = await self.visualizerClient.showScreenshotFlash(in: targetWindow.frame)
-
-        // Create metadata
-        let metadata = CaptureMetadata(
-            size: CGSize(width: image.width, height: image.height),
-            mode: .window,
-            applicationInfo: ServiceApplicationInfo(
-                processIdentifier: app.processIdentifier,
-                bundleIdentifier: app.bundleIdentifier,
-                name: app.name,
-                bundlePath: app.bundlePath),
-            windowInfo: ServiceWindowInfo(
-                windowID: Int(targetWindow.windowID),
-                title: targetWindow.title ?? "",
-                bounds: targetWindow.frame,
-                isMinimized: false,
-                isMainWindow: targetWindow.isOnScreen,
-                windowLevel: 0,
-                alpha: 1.0,
-                index: windowIndex ?? 0))
-
-        return CaptureResult(
-            imageData: imageData,
-            metadata: metadata)
+        try await self.applicationResolver.findApplication(identifier: identifier)
     }
 
     // MARK: - Legacy API Implementation
 
+    // swiftlint:disable function_body_length
     private func captureWindowLegacy(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
@@ -633,10 +440,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         let windowTitle = targetWindow[kCGWindowName as String] as? String ?? "untitled"
-        self.logger.debug("Capturing window (legacy)", metadata: [
-            "title": windowTitle,
-            "windowID": windowID,
-        ], correlationId: correlationId)
+        self.logger.debug(
+            "Capturing window (legacy)",
+            metadata: [
+                "title": windowTitle,
+                "windowID": windowID,
+            ],
+            correlationId: correlationId)
 
         // Capture the window (legacy path). If this fails (minimized/off-space), fall back to cropping from screen.
         var image = CGWindowListCreateImage(
@@ -646,10 +456,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             [.boundsIgnoreFraming, .nominalResolution])
 
         if image == nil {
-            self.logger.warning("Window capture failed; attempting screen-crop fallback", metadata: [
-                "windowID": windowID,
-                "appName": app.name,
-            ], correlationId: correlationId)
+            self.logger.warning(
+                "Window capture failed; attempting screen-crop fallback",
+                metadata: [
+                    "windowID": windowID,
+                    "appName": app.name,
+                ],
+                correlationId: correlationId)
 
             // Attempt screen capture of the display that contains the window bounds and crop it
             let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
@@ -662,9 +475,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             if !bounds.isNull {
                 // Identify a screen that intersects bounds
                 let screens = NSScreen.screens
-                if screens.first(where: { $0.frame.intersects(bounds) }) != nil || screens.first != nil {
-                    // Compute quartz rect for that screen portion
-                    let primary = screens.first!
+                if let primary = screens.first {
                     let quartzRect = CGRect(
                         x: bounds.origin.x,
                         y: primary.frame.maxY - bounds.maxY,
@@ -680,13 +491,18 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         guard let image else {
-            self.logger.error("CGWindowListCreateImage failed (including fallback)", metadata: [
-                "windowID": windowID,
-                "appName": app.name,
-            ], correlationId: correlationId)
-            throw OperationError
-                .captureFailed(
-                    reason: "Failed to create window image for window ID \(windowID) (app: \(app.name)). Window may be minimized, hidden, or in another space.")
+            self.logger.error(
+                "CGWindowListCreateImage failed (including fallback)",
+                metadata: [
+                    "windowID": windowID,
+                    "appName": app.name,
+                ],
+                correlationId: correlationId)
+            throw OperationError.captureFailed(
+                reason: """
+                Failed to create window image for window ID \(windowID) (app: \(app.name)).
+                Window may be minimized, hidden, or in another space.
+                """)
         }
 
         let imageData: Data
@@ -696,10 +512,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
         }
 
-        self.logger.debug("Screenshot created (legacy)", metadata: [
-            "imageSize": "\(image.width)x\(image.height)",
-            "dataSize": imageData.count,
-        ], correlationId: correlationId)
+        self.logger.debug(
+            "Screenshot created (legacy)",
+            metadata: [
+                "imageSize": "\(image.width)x\(image.height)",
+                "dataSize": imageData.count,
+            ],
+            correlationId: correlationId)
 
         // Get window bounds
         let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
@@ -737,8 +556,257 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             metadata: metadata)
     }
 
+    // swiftlint:enable function_body_length
+
+    // MARK: - Modern Screen Capture Operator
+
+    private final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
+        private let logger: CategoryLogger
+        private let visualizerClient: VisualizationClientProtocol
+
+        init(logger: CategoryLogger, visualizerClient: VisualizationClientProtocol) {
+            self.logger = logger
+            self.visualizerClient = visualizerClient
+        }
+
+        func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
+            self.logger.debug("Fetching shareable content", correlationId: correlationId)
+            let content = try await withTimeout(seconds: 5.0) {
+                try await SCShareableContent.current
+            }
+            let displays = content.displays
+
+            self.logger.debug(
+                "Found displays",
+                metadata: ["count": displays.count],
+                correlationId: correlationId)
+            guard !displays.isEmpty else {
+                self.logger.error("No displays found", correlationId: correlationId)
+                throw OperationError.captureFailed(reason: "No displays available for capture")
+            }
+
+            let targetDisplay: SCDisplay
+            if let index = displayIndex {
+                guard index >= 0, index < displays.count else {
+                    throw PeekabooError.invalidInput(
+                        "displayIndex: Index \(index) is out of range. Available displays: 0-\(displays.count - 1)")
+                }
+                targetDisplay = displays[index]
+            } else {
+                targetDisplay = displays.first!
+            }
+
+            self.logger.debug(
+                "Creating screenshot of display",
+                metadata: ["displayID": targetDisplay.displayID],
+                correlationId: correlationId)
+
+            let image = try await RetryHandler.withRetry(policy: .standard) {
+                try await self.createScreenshot(of: targetDisplay)
+            }
+
+            let imageData = try image.pngData()
+
+            self.logger.debug(
+                "Screenshot created",
+                metadata: [
+                    "imageSize": "\(image.width)x\(image.height)",
+                    "dataSize": imageData.count,
+                ],
+                correlationId: correlationId)
+
+            _ = await self.visualizerClient.showScreenshotFlash(in: targetDisplay.frame)
+
+            let metadata = CaptureMetadata(
+                size: CGSize(width: image.width, height: image.height),
+                mode: .screen,
+                displayInfo: DisplayInfo(
+                    index: displayIndex ?? 0,
+                    name: targetDisplay.displayID.description,
+                    bounds: targetDisplay.frame,
+                    scaleFactor: 2.0))
+
+            return CaptureResult(imageData: imageData, metadata: metadata)
+        }
+
+        // swiftlint:disable function_body_length
+        func captureWindow(
+            app: ServiceApplicationInfo,
+            windowIndex: Int?,
+            correlationId: String) async throws -> CaptureResult
+        {
+            let content = try await withTimeout(seconds: 5.0) {
+                try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            }
+
+            let appWindows = content.windows.filter { window in
+                window.owningApplication?.processID == app.processIdentifier
+            }
+
+            self.logger.debug(
+                "Found windows for application",
+                metadata: ["count": appWindows.count],
+                correlationId: correlationId)
+            guard !appWindows.isEmpty else {
+                self.logger.error(
+                    "No windows found for application",
+                    metadata: ["appName": app.name],
+                    correlationId: correlationId)
+                throw NotFoundError.window(app: app.name)
+            }
+
+            let targetWindow: SCWindow
+            if let index = windowIndex {
+                guard index >= 0, index < appWindows.count else {
+                    throw PeekabooError.invalidInput(
+                        "windowIndex: Index \(index) is out of range. Available windows: 0-\(appWindows.count - 1)")
+                }
+                targetWindow = appWindows[index]
+            } else {
+                targetWindow = appWindows.first!
+            }
+
+            self.logger.debug(
+                "Capturing window",
+                metadata: [
+                    "title": targetWindow.title ?? "untitled",
+                    "windowID": targetWindow.windowID,
+                ],
+                correlationId: correlationId)
+
+            let image = try await RetryHandler.withRetry(policy: .standard) {
+                try await self.createScreenshot(of: targetWindow)
+            }
+
+            let imageData = try image.pngData()
+
+            self.logger.debug(
+                "Screenshot created",
+                metadata: [
+                    "imageSize": "\(image.width)x\(image.height)",
+                    "dataSize": imageData.count,
+                ],
+                correlationId: correlationId)
+
+            _ = await self.visualizerClient.showScreenshotFlash(in: targetWindow.frame)
+
+            let metadata = CaptureMetadata(
+                size: CGSize(width: image.width, height: image.height),
+                mode: .window,
+                applicationInfo: ServiceApplicationInfo(
+                    processIdentifier: app.processIdentifier,
+                    bundleIdentifier: app.bundleIdentifier,
+                    name: app.name,
+                    bundlePath: app.bundlePath),
+                windowInfo: ServiceWindowInfo(
+                    windowID: Int(targetWindow.windowID),
+                    title: targetWindow.title ?? "",
+                    bounds: targetWindow.frame,
+                    isMinimized: false,
+                    isMainWindow: targetWindow.isOnScreen,
+                    windowLevel: 0,
+                    alpha: 1.0,
+                    index: windowIndex ?? 0))
+
+            return CaptureResult(imageData: imageData, metadata: metadata)
+        }
+
+        // swiftlint:enable function_body_length
+
+        func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
+            self.logger.debug("Finding display containing rect", correlationId: correlationId)
+            let content = try await SCShareableContent.current
+            guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
+                self.logger.error(
+                    "No display contains the specified area",
+                    metadata: [
+                        "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
+                    ],
+                    correlationId: correlationId)
+                throw PeekabooError.invalidInput(
+                    "captureArea: The specified area is not within any display bounds")
+            }
+
+            self.logger.debug(
+                "Found display for area",
+                metadata: ["displayID": display.displayID],
+                correlationId: correlationId)
+
+            let filter = SCContentFilter(display: display, excludingWindows: [])
+
+            let config = SCStreamConfiguration()
+            config.sourceRect = rect
+            config.width = Int(rect.width)
+            config.height = Int(rect.height)
+            config.showsCursor = false
+
+            let image = try await RetryHandler.withRetry(policy: .standard) {
+                try await self.captureWithStream(filter: filter, configuration: config)
+            }
+
+            let imageData = try image.pngData()
+
+            let metadata = CaptureMetadata(
+                size: CGSize(width: image.width, height: image.height),
+                mode: .area,
+                displayInfo: DisplayInfo(
+                    index: 0,
+                    name: display.displayID.description,
+                    bounds: display.frame,
+                    scaleFactor: 2.0))
+
+            return CaptureResult(imageData: imageData, metadata: metadata)
+        }
+
+        private func createScreenshot(of display: SCDisplay) async throws -> CGImage {
+            let filter = SCContentFilter(display: display, excludingWindows: [])
+            let config = SCStreamConfiguration()
+            config.width = Int(display.width)
+            config.height = Int(display.height)
+            config.sourceRect = CGRect(x: 0, y: 0, width: CGFloat(display.width), height: CGFloat(display.height))
+            config.captureResolution = .best
+            config.showsCursor = false
+
+            return try await self.captureWithStream(filter: filter, configuration: config)
+        }
+
+        private func createScreenshot(of window: SCWindow) async throws -> CGImage {
+            let filter = SCContentFilter(desktopIndependentWindow: window)
+            let config = SCStreamConfiguration()
+            config.width = Int(window.frame.width)
+            config.height = Int(window.frame.height)
+            config.captureResolution = .best
+            config.showsCursor = false
+
+            return try await self.captureWithStream(filter: filter, configuration: config)
+        }
+
+        private func captureWithStream(
+            filter: SCContentFilter,
+            configuration: SCStreamConfiguration) async throws -> CGImage
+        {
+            let streamDelegate = StreamDelegate()
+            let stream = SCStream(filter: filter, configuration: configuration, delegate: streamDelegate)
+            let output = CaptureOutput()
+            try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: nil)
+            try await stream.startCapture()
+
+            let image: CGImage
+            do {
+                image = try await output.waitForImage()
+            } catch {
+                try? await stream.stopCapture()
+                throw error
+            }
+
+            try await stream.stopCapture()
+            return image
+        }
+    }
+
     // MARK: - Legacy Screen Capture
 
+    // swiftlint:disable function_body_length
     private func captureScreenLegacy(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
         self.logger.debug("Using legacy CGWindowList API for screen capture", correlationId: correlationId)
 
@@ -790,10 +858,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
         }
 
-        self.logger.debug("Legacy screenshot created", metadata: [
-            "imageSize": "\(image.width)x\(image.height)",
-            "dataSize": imageData.count,
-        ], correlationId: correlationId)
+        self.logger.debug(
+            "Legacy screenshot created",
+            metadata: [
+                "imageSize": "\(image.width)x\(image.height)",
+                "dataSize": imageData.count,
+            ],
+            correlationId: correlationId)
 
         // Create metadata
         let metadata = CaptureMetadata(
@@ -809,7 +880,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             imageData: imageData,
             metadata: metadata)
     }
+    // swiftlint:enable function_body_length
 }
+
+// swiftlint:enable type_body_length
 
 // MARK: - Stream Delegate
 
@@ -822,40 +896,33 @@ private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Senda
 
 // MARK: - Capture Output Handler
 
+@MainActor
 private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable {
     private var continuation: CheckedContinuation<CGImage, Error>?
     private var timeoutTask: Task<Void, Never>?
-    private let queue = DispatchQueue(label: "com.peekaboo.captureOutput", attributes: .concurrent)
-
     deinit {
         // Cancel timeout task first to prevent race condition
         timeoutTask?.cancel()
 
         // Ensure continuation is resumed if object is deallocated
-        queue.sync(flags: .barrier) {
-            if let continuation = self.continuation {
-                continuation
-                    .resume(throwing: OperationError
-                        .captureFailed(reason: "CaptureOutput deallocated before frame captured"))
-                self.continuation = nil
-            }
+        if let continuation = self.continuation {
+            continuation.resume(throwing: OperationError.captureFailed(
+                reason: "CaptureOutput deallocated before frame captured"))
+            self.continuation = nil
         }
     }
 
     /// Suspend until the next captured frame arrives, throwing if the stream stalls.
     func waitForImage() async throws -> CGImage {
         try await withCheckedThrowingContinuation { continuation in
-            self.queue.async(flags: .barrier) {
-                self.continuation = continuation
-            }
+            self.continuation = continuation
 
             // Add a timeout to ensure the continuation is always resumed
             // Reduced from 10 seconds to 3 seconds for faster failure detection
             self.timeoutTask = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-                guard let self else { return }
-
-                self.queue.async(flags: .barrier) {
+                await MainActor.run {
+                    guard let self else { return }
                     if let cont = self.continuation {
                         cont.resume(throwing: OperationError.timeout(
                             operation: "CaptureOutput.waitForImage",
@@ -871,37 +938,34 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .screen else { return }
 
-        // Cancel timeout task since we received a frame
-        self.timeoutTask?.cancel()
-        self.timeoutTask = nil
+        Task { @MainActor in
+            // Cancel timeout task since we received a frame
+            self.timeoutTask?.cancel()
+            self.timeoutTask = nil
 
-        guard let imageBuffer = sampleBuffer.imageBuffer else {
-            self.queue.async(flags: .barrier) {
-                if let continuation = self.continuation {
-                    continuation.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
+            guard let imageBuffer = sampleBuffer.imageBuffer else {
+                if let cont = self.continuation {
+                    cont.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
                     self.continuation = nil
                 }
+                return
             }
-            return
-        }
 
-        let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-        let context = CIContext()
+            let ciImage = CIImage(cvPixelBuffer: imageBuffer)
+            let context = CIContext()
 
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            self.queue.async(flags: .barrier) {
-                if let continuation = self.continuation {
-                    continuation
-                        .resume(throwing: OperationError.captureFailed(reason: "Failed to create CGImage from buffer"))
+            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+                if let cont = self.continuation {
+                    cont.resume(
+                        throwing: OperationError.captureFailed(
+                            reason: "Failed to create CGImage from buffer"))
                     self.continuation = nil
                 }
+                return
             }
-            return
-        }
 
-        self.queue.async(flags: .barrier) {
-            if let continuation = self.continuation {
-                continuation.resume(returning: cgImage)
+            if let cont = self.continuation {
+                cont.resume(returning: cgImage)
                 self.continuation = nil
             }
         }
@@ -911,8 +975,6 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
 // MARK: - Extensions
 
 extension CGImage {
-    // Width and height are already properties of CGImage
-
     func pngData() throws -> Data {
         let nsImage = NSImage(cgImage: self, size: NSSize(width: width, height: height))
         guard let tiffData = nsImage.tiffRepresentation,
