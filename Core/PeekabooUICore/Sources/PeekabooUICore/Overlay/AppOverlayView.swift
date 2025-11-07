@@ -10,11 +10,11 @@ import SwiftUI
 
 public struct AppOverlayView: View {
     let application: OverlayManager.ApplicationInfo
-    let preset: ElementStyleProvider
+    let preset: any ElementStyleProvider
 
     public init(
         application: OverlayManager.ApplicationInfo,
-        preset: ElementStyleProvider = InspectorVisualizationPreset())
+        preset: any ElementStyleProvider = InspectorVisualizationPreset())
     {
         self.application = application
         self.preset = preset

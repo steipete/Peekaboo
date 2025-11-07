@@ -11,11 +11,11 @@ import SwiftUI
 
 public struct OverlayView: View {
     let element: OverlayManager.UIElement
-    let preset: ElementStyleProvider
+    let preset: any ElementStyleProvider
     @State private var isHovered = false
     @State private var animateIn = false
 
-    public init(element: OverlayManager.UIElement, preset: ElementStyleProvider = InspectorVisualizationPreset()) {
+    public init(element: OverlayManager.UIElement, preset: any ElementStyleProvider = InspectorVisualizationPreset()) {
         self.element = element
         self.preset = preset
     }

@@ -11,11 +11,11 @@ import SwiftUI
 
 public struct AllAppsOverlayView: View {
     @Bindable private var overlayManager: OverlayManager
-    let preset: ElementStyleProvider
+    let preset: any ElementStyleProvider
 
     public init(
         overlayManager: OverlayManager,
-        preset: ElementStyleProvider = InspectorVisualizationPreset())
+        preset: any ElementStyleProvider = InspectorVisualizationPreset())
     {
         self._overlayManager = Bindable(overlayManager)
         self.preset = preset

@@ -38,7 +38,7 @@ public final class OverlayManager {
     public var detailLevel: DetailLevel = .moderate
 
     @ObservationIgnored
-    public weak var delegate: OverlayManagerDelegate?
+    public weak var delegate: (any OverlayManagerDelegate)?
 
     // MARK: - Types
 
@@ -158,8 +158,10 @@ public final class OverlayManager {
 
     // MARK: - Initialization
 
-    public init() {
-        self.setupEventMonitoring()
+    public init(enableMonitoring: Bool = true) {
+        if enableMonitoring {
+            self.setupEventMonitoring()
+        }
     }
 
     deinit {
@@ -267,7 +269,7 @@ public final class OverlayManager {
         var elements: [UIElement] = []
 
         // Get windows
-        if let windows = try? app.windows() {
+        if let windows = app.windows() {
             for window in windows {
                 await self.collectElements(from: window, into: &elements, appBundleID: appBundleID)
             }
@@ -322,7 +324,7 @@ public final class OverlayManager {
         elements.append(uiElement)
 
         // Recurse into children
-        if let children = try? element.children() {
+        if let children = element.children() {
             for child in children {
                 await self.collectElements(
                     from: child,
@@ -423,3 +425,5 @@ public final class OverlayManager {
         }
     }
 }
+
+extension OverlayManager: ObservableObject {}

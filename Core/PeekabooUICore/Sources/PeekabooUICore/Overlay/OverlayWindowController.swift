@@ -13,11 +13,11 @@ import SwiftUI
 public class OverlayWindowController {
     private var overlayWindows: [NSScreen: NSWindow] = [:]
     private let overlayManager: OverlayManager
-    private let preset: ElementStyleProvider
+    private let preset: any ElementStyleProvider
 
     public init(
         overlayManager: OverlayManager,
-        preset: ElementStyleProvider = InspectorVisualizationPreset())
+        preset: any ElementStyleProvider = InspectorVisualizationPreset())
     {
         self.overlayManager = overlayManager
         self.preset = preset
