@@ -3,6 +3,23 @@ import MCP
 import os.log
 import TachikomaMCP
 
+private enum MCPAutoConnectPolicy {
+    private static let forceEnable =
+        ProcessInfo.processInfo.environment["PEEKABOO_FORCE_MCP_AUTOCONNECT"] == "true"
+    private static let forceDisable =
+        ProcessInfo.processInfo.environment["PEEKABOO_DISABLE_MCP_AUTOCONNECT"] == "true"
+    private static let isTestEnvironment: Bool = {
+        let env = ProcessInfo.processInfo.environment
+        return env["XCTestConfigurationFilePath"] != nil || env["SWIFT_PACKAGE_TESTING"] != nil
+    }()
+
+    static var shouldConnect: Bool {
+        if forceEnable { return true }
+        if forceDisable { return false }
+        return !isTestEnvironment
+    }
+}
+
 // Use MCPClientConfig from Configuration.swift
 public typealias MCPServerConfig = Configuration.MCPClientConfig
 
