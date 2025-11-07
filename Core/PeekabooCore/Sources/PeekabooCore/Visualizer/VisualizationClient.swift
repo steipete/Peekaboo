@@ -82,6 +82,13 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     private func connectInternal() {
+        Task { @MainActor [weak self] in
+            self?.connectOnMainActor()
+        }
+    }
+
+    @MainActor
+    private func connectOnMainActor() {
         self.logger.info("🔌 Client: Attempting to connect to visualizer service")
         self.logger
             .info(
@@ -120,17 +127,19 @@ public final class VisualizationClient: @unchecked Sendable {
 
         // Set up interruption handler with weak self to avoid retain cycles
         newConnection.interruptionHandler = { [weak self] in
-            self?.connectionQueue.async {
-                self?.logger.error("🔌 Client: XPC connection interrupted!")
-                self?.handleConnectionInterruption()
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.logger.error("🔌 Client: XPC connection interrupted!")
+                self.handleConnectionInterruption()
             }
         }
 
         // Set up invalidation handler with weak self to avoid retain cycles
         newConnection.invalidationHandler = { [weak self] in
-            self?.connectionQueue.async {
-                self?.logger.error("🔌 Client: XPC connection invalidated!")
-                self?.handleConnectionInvalidation()
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.logger.error("🔌 Client: XPC connection invalidated!")
+                self.handleConnectionInvalidation()
             }
         }
 
@@ -162,23 +171,22 @@ public final class VisualizationClient: @unchecked Sendable {
         self.logger.info("🔌 Client: Testing connection with isVisualFeedbackEnabled call...")
 
         let semaphore = DispatchSemaphore(value: 0)
-        var testSucceeded = false
 
         proxy.isVisualFeedbackEnabled { [weak self] enabled in
-            self?.connectionQueue.async {
-                self?.isConnected = true
-                self?.isEnabled = enabled
-                self?.retryAttempt = 0
-                testSucceeded = true
-                self?.logger
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    semaphore.signal()
+                    return
+                }
+                self.isConnected = true
+                self.isEnabled = enabled
+                self.retryAttempt = 0
+                self.logger
                     .info("🔌 Client: Successfully connected to visualizer service, feedback enabled: \(enabled)")
 
-                // Post notification on main queue
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .visualizerConnected, object: nil)
-                }
+                NotificationCenter.default.post(name: .visualizerConnected, object: nil)
+                semaphore.signal()
             }
-            semaphore.signal()
         }
 
         // Wait for test with timeout

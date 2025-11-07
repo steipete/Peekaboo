@@ -11,8 +11,12 @@ final class SessionTitleGenerator {
     /// - Parameter task: The user's task description
     /// - Returns: A 2-4 word title summarizing the task
     func generateTitle(for task: String) async -> String {
+        let providers = self.configuration.getAIProviders()
+        let hasOpenAI = self.configuration.getOpenAIAPIKey() != nil
+        let hasAnthropic = self.configuration.getAnthropicAPIKey() != nil
+
         // Use race between timeout and title generation
-        await withTaskGroup(of: String.self) { group in
+        return await withTaskGroup(of: String.self) { group in
             // Add timeout task
             group.addTask {
                 do {
@@ -27,10 +31,6 @@ final class SessionTitleGenerator {
             group.addTask {
                 do {
                     // Get the default model from configuration
-                    let providers = self.configuration.getAIProviders()
-                    let hasOpenAI = self.configuration.getOpenAIAPIKey() != nil
-                    let hasAnthropic = self.configuration.getAnthropicAPIKey() != nil
-
                     // Determine the model to use
                     let model: LanguageModel = if providers.contains("anthropic"), hasAnthropic {
                         .anthropic(.opus4)
