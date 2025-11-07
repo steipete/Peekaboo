@@ -20,8 +20,6 @@ jobs:
       RUN_LOCAL_TESTS: "false"
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Cache SwiftPM (PeekabooCore)
         uses: actions/cache@v4
@@ -54,8 +52,6 @@ jobs:
       PEEKABOO_SKIP_AUTOMATION: "1"
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Cache SwiftPM (CLI)
         uses: actions/cache@v4
@@ -88,8 +84,13 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Checkout Tachikoma
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          repository: steipete/Tachikoma
+          ref: main
+          path: Tachikoma
 
       - name: Cache SwiftPM (Tachikoma)
         uses: actions/cache@v4
