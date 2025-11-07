@@ -260,7 +260,7 @@ public final class MCPClientManager {
         let connection = MCPClientConnection(name: name, config: config)
         self.connections[name] = connection
 
-        if config.enabled {
+        if config.enabled, MCPAutoConnectPolicy.shouldConnect {
             do {
                 try await connection.connect()
             } catch {
