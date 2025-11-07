@@ -104,14 +104,18 @@ extension ScreenCaptureService {
     static func makeTestService(
         fixtures: TestFixtures,
         permissionGranted: Bool = true,
+        apis: [ScreenCaptureAPI] = [.modern],
         loggingService: any LoggingServiceProtocol = MockLoggingService()) -> ScreenCaptureService
     {
         let dependencies = Dependencies(
             visualizerClient: MockVisualizationClient(),
             permissionEvaluator: StubPermissionEvaluator(granted: permissionGranted),
-            fallbackRunner: ScreenCaptureFallbackRunner(apis: [.modern]),
+            fallbackRunner: ScreenCaptureFallbackRunner(apis: apis),
             applicationResolver: FixtureApplicationResolver(fixtures: fixtures),
             makeModernOperator: { _, _ in
+                MockModernCaptureOperator(fixtures: fixtures)
+            },
+            makeLegacyOperator: { _ in
                 MockModernCaptureOperator(fixtures: fixtures)
             })
         return ScreenCaptureService(loggingService: loggingService, dependencies: dependencies)
@@ -151,7 +155,8 @@ private struct FixtureApplicationResolver: ApplicationResolving {
     }
 }
 
-private final class MockModernCaptureOperator: ModernScreenCaptureOperating, @unchecked Sendable {
+private final class MockModernCaptureOperator: ModernScreenCaptureOperating, LegacyScreenCaptureOperating,
+@unchecked Sendable {
     private let fixtures: ScreenCaptureService.TestFixtures
 
     init(fixtures: ScreenCaptureService.TestFixtures) {

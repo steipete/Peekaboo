@@ -48,6 +48,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         let applicationResolver: any ApplicationResolving
         let makeModernOperator: @MainActor @Sendable (CategoryLogger, any VisualizationClientProtocol)
             -> any ModernScreenCaptureOperating
+        let makeLegacyOperator: @MainActor @Sendable (CategoryLogger)
+            -> any LegacyScreenCaptureOperating
 
         init(
             visualizerClient: any VisualizationClientProtocol,
@@ -55,13 +57,16 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             fallbackRunner: ScreenCaptureFallbackRunner,
             applicationResolver: any ApplicationResolving,
             makeModernOperator: @escaping @MainActor @Sendable (CategoryLogger, any VisualizationClientProtocol)
-                -> any ModernScreenCaptureOperating)
+                -> any ModernScreenCaptureOperating,
+            makeLegacyOperator: @escaping @MainActor @Sendable (CategoryLogger)
+                -> any LegacyScreenCaptureOperating)
         {
             self.visualizerClient = visualizerClient
             self.permissionEvaluator = permissionEvaluator
             self.fallbackRunner = fallbackRunner
             self.applicationResolver = applicationResolver
             self.makeModernOperator = makeModernOperator
+            self.makeLegacyOperator = makeLegacyOperator
         }
 
         static func live(environment: [String: String] = ProcessInfo.processInfo.environment) -> Dependencies {
@@ -73,6 +78,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 applicationResolver: PeekabooApplicationResolver(),
                 makeModernOperator: { logger, visualizer in
                     ScreenCaptureKitOperator(logger: logger, visualizerClient: visualizer)
+                },
+                makeLegacyOperator: { logger in
+                    LegacyScreenCaptureOperator(logger: logger)
                 })
         }
     }
@@ -83,6 +91,34 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     private let fallbackRunner: ScreenCaptureFallbackRunner
     private let applicationResolver: any ApplicationResolving
     private let modernOperator: any ModernScreenCaptureOperating
+    private let legacyOperator: any LegacyScreenCaptureOperating
+
+    private typealias Metadata = [String: Any]
+
+    private enum CaptureOperation {
+        case screen
+        case window
+        case frontmost
+        case area
+
+        var metricName: String {
+            switch self {
+            case .screen: "captureScreen"
+            case .window: "captureWindow"
+            case .frontmost: "captureFrontmost"
+            case .area: "captureArea"
+            }
+        }
+
+        var logLabel: String {
+            switch self {
+            case .screen: "screen capture"
+            case .window: "window capture"
+            case .frontmost: "frontmost window capture"
+            case .area: "area capture"
+            }
+        }
+    }
 
     public convenience init(loggingService: any LoggingServiceProtocol) {
         self.init(loggingService: loggingService, dependencies: .live())
@@ -98,6 +134,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         self.fallbackRunner = dependencies.fallbackRunner
         self.applicationResolver = dependencies.applicationResolver
         self.modernOperator = dependencies.makeModernOperator(self.logger, self.visualizerClient)
+        self.legacyOperator = dependencies.makeLegacyOperator(self.logger)
 
         // Only connect to visualizer if we're not running inside the Mac app
         // The Mac app provides the visualizer service, not consumes it
@@ -110,39 +147,56 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
     }
 
-    public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
+    private func performOperation<T: Sendable>(
+        _ operation: CaptureOperation,
+        metadata: Metadata = [:],
+        requiresPermission: Bool = true,
+        body: @escaping @MainActor @Sendable (_ correlationId: String) async throws -> T) async throws -> T
+    {
         let correlationId = UUID().uuidString
         self.logger.info(
-            "Starting screen capture",
-            metadata: ["displayIndex": displayIndex ?? "main"],
+            "Starting \(operation.logLabel)",
+            metadata: metadata,
             correlationId: correlationId)
 
         let measurementId = self.logger.startPerformanceMeasurement(
-            operation: "captureScreen",
+            operation: operation.metricName,
             correlationId: correlationId)
         defer {
             logger.endPerformanceMeasurement(
                 measurementId: measurementId,
-                metadata: ["displayIndex": displayIndex ?? "main"])
+                metadata: metadata)
         }
 
-        // Check permissions first
-        self.logger.debug("Checking screen recording permission", correlationId: correlationId)
-        guard await self.hasScreenRecordingPermission() else {
-            self.logger.error("Screen recording permission denied", correlationId: correlationId)
-            throw PermissionError.screenRecording()
+        if requiresPermission {
+            self.logger.debug("Checking screen recording permission", correlationId: correlationId)
+            guard await self.hasScreenRecordingPermission() else {
+                self.logger.error("Screen recording permission denied", correlationId: correlationId)
+                throw PermissionError.screenRecording()
+            }
         }
 
-        return try await self.fallbackRunner.run(
-            operationName: "captureScreen",
-            logger: self.logger,
-            correlationId: correlationId)
-        { api in
-            switch api {
-            case .modern:
-                try await self.modernOperator.captureScreen(displayIndex: displayIndex, correlationId: correlationId)
-            case .legacy:
-                try await self.captureScreenLegacy(displayIndex: displayIndex, correlationId: correlationId)
+        return try await body(correlationId)
+    }
+
+    public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
+        let metadata: Metadata = ["displayIndex": displayIndex ?? "main"]
+        return try await self.performOperation(.screen, metadata: metadata) { correlationId in
+            try await self.fallbackRunner.run(
+                operationName: CaptureOperation.screen.metricName,
+                logger: self.logger,
+                correlationId: correlationId)
+            { api in
+                switch api {
+                case .modern:
+                    try await self.modernOperator.captureScreen(
+                        displayIndex: displayIndex,
+                        correlationId: correlationId)
+                case .legacy:
+                    try await self.legacyOperator.captureScreen(
+                        displayIndex: displayIndex,
+                        correlationId: correlationId)
+                }
             }
         }
     }
@@ -184,51 +238,42 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
      * ```
      */
     public func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
-        let correlationId = UUID().uuidString
-        self.logger.info(
-            "Starting window capture",
-            metadata: [
-                "appIdentifier": appIdentifier,
-                "windowIndex": windowIndex ?? "frontmost",
-            ],
-            correlationId: correlationId)
+        let metadata: Metadata = [
+            "appIdentifier": appIdentifier,
+            "windowIndex": windowIndex ?? "frontmost",
+        ]
 
-        let measurementId = self.logger.startPerformanceMeasurement(
-            operation: "captureWindow",
-            correlationId: correlationId)
-        defer {
-            logger.endPerformanceMeasurement(
-                measurementId: measurementId,
+        return try await self.performOperation(.window, metadata: metadata) { correlationId in
+            self.logger.debug(
+                "Finding application",
+                metadata: ["identifier": appIdentifier],
+                correlationId: correlationId)
+            let app = try await self.findApplication(matching: appIdentifier)
+            self.logger.debug(
+                "Found application",
                 metadata: [
-                    "appIdentifier": appIdentifier,
-                    "windowIndex": windowIndex ?? "frontmost",
-                ])
+                    "name": app.name,
+                    "pid": app.processIdentifier,
+                    "bundleId": app.bundleIdentifier ?? "unknown",
+                ],
+                correlationId: correlationId)
+
+            return try await self.captureWindow(
+                app: app,
+                windowIndex: windowIndex,
+                operation: .window,
+                correlationId: correlationId)
         }
+    }
 
-        // Check permissions
-        self.logger.debug("Checking screen recording permission", correlationId: correlationId)
-        guard await self.hasScreenRecordingPermission() else {
-            self.logger.error("Screen recording permission denied", correlationId: correlationId)
-            throw PermissionError.screenRecording()
-        }
-
-        // Find application
-        self.logger.debug(
-            "Finding application",
-            metadata: ["identifier": appIdentifier],
-            correlationId: correlationId)
-        let app = try await findApplication(matching: appIdentifier)
-        self.logger.debug(
-            "Found application",
-            metadata: [
-                "name": app.name,
-                "pid": app.processIdentifier,
-                "bundleId": app.bundleIdentifier ?? "unknown",
-            ],
-            correlationId: correlationId)
-
-        return try await self.fallbackRunner.run(
-            operationName: "captureWindow",
+    private func captureWindow(
+        app: ServiceApplicationInfo,
+        windowIndex: Int?,
+        operation: CaptureOperation,
+        correlationId: String) async throws -> CaptureResult
+    {
+        try await self.fallbackRunner.run(
+            operationName: operation.metricName,
             logger: self.logger,
             correlationId: correlationId)
         { api in
@@ -241,7 +286,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     correlationId: correlationId)
             case .legacy:
                 self.logger.debug("Using legacy CGWindowList API", correlationId: correlationId)
-                return try await self.captureWindowLegacy(
+                return try await self.legacyOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
                     correlationId: correlationId)
@@ -252,70 +297,38 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     // swiftlint:enable function_body_length
 
     public func captureFrontmost() async throws -> CaptureResult {
-        let correlationId = UUID().uuidString
-        self.logger.info("Starting frontmost window capture", correlationId: correlationId)
+        try await self.performOperation(.frontmost) { correlationId in
+            guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+                self.logger.error("No frontmost application found", correlationId: correlationId)
+                throw NotFoundError.application("frontmost")
+            }
 
-        let measurementId = self.logger.startPerformanceMeasurement(
-            operation: "captureFrontmost",
-            correlationId: correlationId)
-        defer {
-            logger.endPerformanceMeasurement(measurementId: measurementId)
+            self.logger.debug(
+                "Found frontmost application",
+                metadata: [
+                    "name": frontmost.localizedName ?? "unknown",
+                    "bundleId": frontmost.bundleIdentifier ?? "none",
+                    "pid": frontmost.processIdentifier,
+                ],
+                correlationId: correlationId)
+
+            let serviceApp = self.serviceApplicationInfo(from: frontmost)
+            return try await self.captureWindow(
+                app: serviceApp,
+                windowIndex: nil,
+                operation: .frontmost,
+                correlationId: correlationId)
         }
-
-        // Check permissions
-        self.logger.debug("Checking screen recording permission", correlationId: correlationId)
-        guard await self.hasScreenRecordingPermission() else {
-            self.logger.error("Screen recording permission denied", correlationId: correlationId)
-            throw PermissionError.screenRecording()
-        }
-
-        // Get frontmost application - already on main thread due to @MainActor
-        guard let app = NSWorkspace.shared.frontmostApplication else {
-            self.logger.error("No frontmost application found", correlationId: correlationId)
-            throw NotFoundError.application("frontmost")
-        }
-
-        let appIdentifier = app.bundleIdentifier ?? app.localizedName ?? "Unknown"
-        self.logger.debug(
-            "Found frontmost application",
-            metadata: [
-                "name": app.localizedName ?? "unknown",
-                "bundleId": app.bundleIdentifier ?? "none",
-                "pid": app.processIdentifier,
-            ],
-            correlationId: correlationId)
-
-        return try await self.captureWindow(appIdentifier: appIdentifier, windowIndex: nil)
     }
 
     public func captureArea(_ rect: CGRect) async throws -> CaptureResult {
-        let correlationId = UUID().uuidString
-        self.logger.info(
-            "Starting area capture",
-            metadata: [
-                "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
-            ],
-            correlationId: correlationId)
+        let metadata: Metadata = [
+            "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
+        ]
 
-        let measurementId = self.logger.startPerformanceMeasurement(
-            operation: "captureArea",
-            correlationId: correlationId)
-        defer {
-            logger.endPerformanceMeasurement(
-                measurementId: measurementId,
-                metadata: [
-                    "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
-                ])
+        return try await self.performOperation(.area, metadata: metadata) { correlationId in
+            try await self.modernOperator.captureArea(rect, correlationId: correlationId)
         }
-
-        // Check permissions
-        self.logger.debug("Checking screen recording permission", correlationId: correlationId)
-        guard await self.hasScreenRecordingPermission() else {
-            self.logger.error("Screen recording permission denied", correlationId: correlationId)
-            throw PermissionError.screenRecording()
-        }
-
-        return try await self.modernOperator.captureArea(rect, correlationId: correlationId)
     }
 
     public func hasScreenRecordingPermission() async -> Bool {
@@ -391,121 +404,16 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         try await self.applicationResolver.findApplication(identifier: identifier)
     }
 
-    // MARK: - Legacy API Implementation
-
-    // swiftlint:disable function_body_length
-    private func captureWindowLegacy(
-        app: ServiceApplicationInfo,
-        windowIndex: Int?,
-        correlationId: String) async throws -> CaptureResult
-    {
-        // Get windows using CGWindowList
-        // Note: We use .optionAll instead of .optionOnScreenOnly to capture windows on all screens
-        let windowList = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements],
-            kCGNullWindowID) as? [[String: Any]] ?? []
-
-        let appWindows = windowList.filter { windowInfo in
-            guard let pid = windowInfo[kCGWindowOwnerPID as String] as? Int32 else { return false }
-            return pid == app.processIdentifier
-        }
-
-        self.logger.debug(
-            "Found windows for application (legacy)",
-            metadata: ["count": appWindows.count],
-            correlationId: correlationId)
-        guard !appWindows.isEmpty else {
-            self.logger.error(
-                "No windows found for application (legacy)",
-                metadata: ["appName": app.name],
-                correlationId: correlationId)
-            throw NotFoundError.window(app: app.name)
-        }
-
-        // Select window
-        let targetWindow: [String: Any]
-        if let index = windowIndex {
-            guard index >= 0, index < appWindows.count else {
-                throw PeekabooError.invalidInput(
-                    "windowIndex: Index \(index) is out of range. Available windows: 0-\(appWindows.count - 1)")
-            }
-            targetWindow = appWindows[index]
-        } else {
-            // Use frontmost window (first in list)
-            targetWindow = appWindows.first!
-        }
-
-        guard let windowID = targetWindow[kCGWindowNumber as String] as? CGWindowID else {
-            throw OperationError.captureFailed(reason: "Failed to get window ID")
-        }
-
-        let windowTitle = targetWindow[kCGWindowName as String] as? String ?? "untitled"
-        self.logger.debug(
-            "Capturing window (legacy)",
-            metadata: [
-                "title": windowTitle,
-                "windowID": windowID,
-            ],
-            correlationId: correlationId)
-
-        let image = try await self.captureWindowWithScreenshotManager(
-            windowID: windowID,
-            correlationId: correlationId)
-
-        let imageData: Data
-        do {
-            imageData = try image.pngData()
-        } catch {
-            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
-        }
-
-        self.logger.debug(
-            "Screenshot created (legacy)",
-            metadata: [
-                "imageSize": "\(image.width)x\(image.height)",
-                "dataSize": imageData.count,
-            ],
-            correlationId: correlationId)
-
-        // Get window bounds
-        let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
-                        let x = boundsDict["X"] as? CGFloat,
-                        let y = boundsDict["Y"] as? CGFloat,
-                        let width = boundsDict["Width"] as? CGFloat,
-                        let height = boundsDict["Height"] as? CGFloat
-        {
-            CGRect(x: x, y: y, width: width, height: height)
-        } else {
-            CGRect(x: 0, y: 0, width: image.width, height: image.height)
-        }
-
-        // Create metadata
-        let metadata = CaptureMetadata(
-            size: CGSize(width: image.width, height: image.height),
-            mode: .window,
-            applicationInfo: ServiceApplicationInfo(
-                processIdentifier: app.processIdentifier,
-                bundleIdentifier: app.bundleIdentifier,
-                name: app.name,
-                bundlePath: app.bundlePath),
-            windowInfo: ServiceWindowInfo(
-                windowID: Int(windowID),
-                title: windowTitle,
-                bounds: bounds,
-                isMinimized: false,
-                isMainWindow: true,
-                windowLevel: 0,
-                alpha: 1.0,
-                index: windowIndex ?? 0))
-
-        return CaptureResult(
-            imageData: imageData,
-            metadata: metadata)
+    private func serviceApplicationInfo(from application: NSRunningApplication) -> ServiceApplicationInfo {
+        ServiceApplicationInfo(
+            processIdentifier: application.processIdentifier,
+            bundleIdentifier: application.bundleIdentifier,
+            name: application.localizedName ?? application.bundleIdentifier ?? "Unknown",
+            bundlePath: application.bundleURL?.path,
+            isActive: application.isActive,
+            isHidden: application.isHidden,
+            windowCount: 0)
     }
-
-    // swiftlint:enable function_body_length
-
-    // MARK: - Modern Screen Capture Operator
 
     private final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
         private let logger: CategoryLogger
@@ -751,158 +659,261 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
     }
 
-    // MARK: - Legacy Screen Capture
+    @MainActor
+    private final class LegacyScreenCaptureOperator: LegacyScreenCaptureOperating, @unchecked Sendable {
+        private let logger: CategoryLogger
 
-    // swiftlint:disable function_body_length
-    private func captureScreenLegacy(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
-        self.logger.debug("Using legacy CGWindowList API for screen capture", correlationId: correlationId)
-
-        // Get screen bounds
-        let screens = NSScreen.screens
-        guard !screens.isEmpty else {
-            throw OperationError.captureFailed(reason: "No displays available")
+        init(logger: CategoryLogger) {
+            self.logger = logger
         }
 
-        let targetScreen: NSScreen
-        if let index = displayIndex {
-            guard index >= 0, index < screens.count else {
-                throw PeekabooError.invalidInput(
-                    "displayIndex: Index \(index) is out of range. Available displays: 0-\(screens.count - 1)")
-            }
-            targetScreen = screens[index]
-        } else {
-            // Use main screen
-            targetScreen = screens.first!
-        }
-
-        let screenBounds = targetScreen.frame
-
-        let image = try await self.captureDisplayWithScreenshotManager(
-            screen: targetScreen,
-            displayIndex: displayIndex ?? 0,
-            correlationId: correlationId)
-
-        let imageData: Data
-        do {
-            imageData = try image.pngData()
-        } catch {
-            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
-        }
-
-        self.logger.debug(
-            "Legacy screenshot created",
-            metadata: [
-                "imageSize": "\(image.width)x\(image.height)",
-                "dataSize": imageData.count,
-            ],
-            correlationId: correlationId)
-
-        // Create metadata
-        let metadata = CaptureMetadata(
-            size: CGSize(width: image.width, height: image.height),
-            mode: .screen,
-            displayInfo: DisplayInfo(
-                index: displayIndex ?? 0,
-                name: "Display \(displayIndex ?? 0)",
-                bounds: screenBounds,
-                scaleFactor: targetScreen.backingScaleFactor))
-
-        return CaptureResult(
-            imageData: imageData,
-            metadata: metadata)
-    }
-
-    @available(macOS 14.0, *)
-    private func captureDisplayWithScreenshotManager(
-        screen: NSScreen,
-        displayIndex: Int,
-        correlationId: String) async throws -> CGImage
-    {
-        let content = try await SCShareableContent.current
-        let displays = content.displays
-        guard !displays.isEmpty else {
-            throw OperationError.captureFailed(reason: "No ScreenCaptureKit displays available")
-        }
-
-        let display = try self.resolveDisplay(
-            for: screen,
-            displayIndex: displayIndex,
-            availableDisplays: displays)
-
-        let filter = SCContentFilter(display: display, excludingWindows: [])
-        self.logger.debug(
-            "Capturing display via SCScreenshotManager",
-            metadata: [
-                "displayIndex": displayIndex,
-                "displayID": display.displayID,
-            ],
-            correlationId: correlationId)
-
-        return try await SCScreenshotManager.captureImage(
-            contentFilter: filter,
-            configuration: self.makeScreenshotConfiguration())
-    }
-
-    @available(macOS 14.0, *)
-    private func resolveDisplay(
-        for screen: NSScreen,
-        displayIndex: Int,
-        availableDisplays: [SCDisplay]) throws -> SCDisplay
-    {
-        if let displayID = self.displayID(for: screen),
-           let display = availableDisplays.first(where: { $0.displayID == displayID })
+        // swiftlint:disable function_body_length
+        func captureWindow(
+            app: ServiceApplicationInfo,
+            windowIndex: Int?,
+            correlationId: String) async throws -> CaptureResult
         {
-            return display
+            let windowList = CGWindowListCopyWindowInfo(
+                [.optionAll, .excludeDesktopElements],
+                kCGNullWindowID) as? [[String: Any]] ?? []
+
+            let appWindows = windowList.filter { windowInfo in
+                guard let pid = windowInfo[kCGWindowOwnerPID as String] as? Int32 else { return false }
+                return pid == app.processIdentifier
+            }
+
+            self.logger.debug(
+                "Found windows for application (legacy)",
+                metadata: ["count": appWindows.count],
+                correlationId: correlationId)
+            guard !appWindows.isEmpty else {
+                self.logger.error(
+                    "No windows found for application (legacy)",
+                    metadata: ["appName": app.name],
+                    correlationId: correlationId)
+                throw NotFoundError.window(app: app.name)
+            }
+
+            let targetWindow: [String: Any]
+            if let index = windowIndex {
+                guard index >= 0, index < appWindows.count else {
+                    throw PeekabooError.invalidInput(
+                        "windowIndex: Index \(index) is out of range. Available windows: 0-\(appWindows.count - 1)")
+                }
+                targetWindow = appWindows[index]
+            } else {
+                targetWindow = appWindows.first!
+            }
+
+            guard let windowID = targetWindow[kCGWindowNumber as String] as? CGWindowID else {
+                throw OperationError.captureFailed(reason: "Failed to get window ID")
+            }
+
+            let windowTitle = targetWindow[kCGWindowName as String] as? String ?? "untitled"
+            self.logger.debug(
+                "Capturing window (legacy)",
+                metadata: [
+                    "title": windowTitle,
+                    "windowID": windowID,
+                ],
+                correlationId: correlationId)
+
+            let image = try await self.captureWindowWithScreenshotManager(
+                windowID: windowID,
+                correlationId: correlationId)
+
+            let imageData: Data
+            do {
+                imageData = try image.pngData()
+            } catch {
+                throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+            }
+
+            self.logger.debug(
+                "Screenshot created (legacy)",
+                metadata: [
+                    "imageSize": "\(image.width)x\(image.height)",
+                    "dataSize": imageData.count,
+                ],
+                correlationId: correlationId)
+
+            let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
+                            let x = boundsDict["X"] as? CGFloat,
+                            let y = boundsDict["Y"] as? CGFloat,
+                            let width = boundsDict["Width"] as? CGFloat,
+                            let height = boundsDict["Height"] as? CGFloat
+            {
+                CGRect(x: x, y: y, width: width, height: height)
+            } else {
+                CGRect(x: 0, y: 0, width: image.width, height: image.height)
+            }
+
+            let metadata = CaptureMetadata(
+                size: CGSize(width: image.width, height: image.height),
+                mode: .window,
+                applicationInfo: ServiceApplicationInfo(
+                    processIdentifier: app.processIdentifier,
+                    bundleIdentifier: app.bundleIdentifier,
+                    name: app.name,
+                    bundlePath: app.bundlePath),
+                windowInfo: ServiceWindowInfo(
+                    windowID: Int(windowID),
+                    title: windowTitle,
+                    bounds: bounds,
+                    isMinimized: false,
+                    isMainWindow: true,
+                    windowLevel: 0,
+                    alpha: 1.0,
+                    index: windowIndex ?? 0))
+
+            return CaptureResult(
+                imageData: imageData,
+                metadata: metadata)
         }
 
-        guard displayIndex >= 0, displayIndex < availableDisplays.count else {
-            throw PeekabooError.invalidInput("displayIndex \(displayIndex) is out of range for ScreenCaptureKit displays")
+        func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
+            self.logger.debug("Using legacy CGWindowList API for screen capture", correlationId: correlationId)
+
+            let screens = NSScreen.screens
+            guard !screens.isEmpty else {
+                throw OperationError.captureFailed(reason: "No displays available")
+            }
+
+            let targetScreen: NSScreen
+            if let index = displayIndex {
+                guard index >= 0, index < screens.count else {
+                    throw PeekabooError.invalidInput(
+                        "displayIndex: Index \(index) is out of range. Available displays: 0-\(screens.count - 1)")
+                }
+                targetScreen = screens[index]
+            } else {
+                targetScreen = screens.first!
+            }
+
+            let screenBounds = targetScreen.frame
+            let image = try await self.captureDisplayWithScreenshotManager(
+                screen: targetScreen,
+                displayIndex: displayIndex ?? 0,
+                correlationId: correlationId)
+
+            let imageData: Data
+            do {
+                imageData = try image.pngData()
+            } catch {
+                throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+            }
+
+            self.logger.debug(
+                "Legacy screenshot created",
+                metadata: [
+                    "imageSize": "\(image.width)x\(image.height)",
+                    "dataSize": imageData.count,
+                ],
+                correlationId: correlationId)
+
+            let metadata = CaptureMetadata(
+                size: CGSize(width: image.width, height: image.height),
+                mode: .screen,
+                displayInfo: DisplayInfo(
+                    index: displayIndex ?? 0,
+                    name: "Display \(displayIndex ?? 0)",
+                    bounds: screenBounds,
+                    scaleFactor: targetScreen.backingScaleFactor))
+
+            return CaptureResult(
+                imageData: imageData,
+                metadata: metadata)
         }
 
-        return availableDisplays[displayIndex]
-    }
+        private func captureDisplayWithScreenshotManager(
+            screen: NSScreen,
+            displayIndex: Int,
+            correlationId: String) async throws -> CGImage
+        {
+            let content = try await SCShareableContent.current
+            let displays = content.displays
+            guard !displays.isEmpty else {
+                throw OperationError.captureFailed(reason: "No ScreenCaptureKit displays available")
+            }
 
-    @available(macOS 14.0, *)
-    private func captureWindowWithScreenshotManager(
-        windowID: CGWindowID,
-        correlationId: String) async throws -> CGImage
-    {
-        let content = try await SCShareableContent.current
-        guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
-            throw OperationError.captureFailed(
-                reason: "Failed to locate window \(windowID) in ScreenCaptureKit shareable content")
+            let display = try self.resolveDisplay(
+                for: screen,
+                displayIndex: displayIndex,
+                availableDisplays: displays)
+
+            let filter = SCContentFilter(display: display, excludingWindows: [])
+            self.logger.debug(
+                "Capturing display via SCScreenshotManager",
+                metadata: [
+                    "displayIndex": displayIndex,
+                    "displayID": display.displayID,
+                ],
+                correlationId: correlationId)
+
+            return try await SCScreenshotManager.captureImage(
+                contentFilter: filter,
+                configuration: self.makeScreenshotConfiguration())
         }
 
-        let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-        self.logger.debug(
-            "Capturing window via SCScreenshotManager",
-            metadata: ["windowID": windowID],
-            correlationId: correlationId)
+        private func resolveDisplay(
+            for screen: NSScreen,
+            displayIndex: Int,
+            availableDisplays: [SCDisplay]) throws -> SCDisplay
+        {
+            if let displayID = self.displayID(for: screen),
+               let display = availableDisplays.first(where: { $0.displayID == displayID })
+            {
+                return display
+            }
 
-        return try await SCScreenshotManager.captureImage(
-            contentFilter: filter,
-            configuration: self.makeScreenshotConfiguration())
-    }
+            guard displayIndex >= 0, displayIndex < availableDisplays.count else {
+                throw PeekabooError
+                    .invalidInput("displayIndex \(displayIndex) is out of range for ScreenCaptureKit displays")
+            }
 
-    private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
-        let key = NSDeviceDescriptionKey("NSScreenNumber")
-        guard let number = screen.deviceDescription[key] as? NSNumber else {
-            return nil
+            return availableDisplays[displayIndex]
         }
-        return CGDirectDisplayID(number.uint32Value)
-    }
 
-    @available(macOS 14.0, *)
-    private func makeScreenshotConfiguration() -> SCStreamConfiguration {
-        let configuration = SCStreamConfiguration()
-        configuration.backgroundColor = .clear
-        configuration.shouldBeOpaque = true
-        configuration.showsCursor = false
-        configuration.capturesAudio = false
-        return configuration
-    }
+        private func captureWindowWithScreenshotManager(
+            windowID: CGWindowID,
+            correlationId: String) async throws -> CGImage
+        {
+            let content = try await SCShareableContent.current
+            guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
+                throw OperationError.captureFailed(
+                    reason: "Failed to locate window \(windowID) in ScreenCaptureKit shareable content")
+            }
 
-    // swiftlint:enable function_body_length
+            let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+            self.logger.debug(
+                "Capturing window via SCScreenshotManager",
+                metadata: ["windowID": windowID],
+                correlationId: correlationId)
+
+            return try await SCScreenshotManager.captureImage(
+                contentFilter: filter,
+                configuration: self.makeScreenshotConfiguration())
+        }
+
+        private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
+            let key = NSDeviceDescriptionKey("NSScreenNumber")
+            guard let number = screen.deviceDescription[key] as? NSNumber else {
+                return nil
+            }
+            return CGDirectDisplayID(number.uint32Value)
+        }
+
+        private func makeScreenshotConfiguration() -> SCStreamConfiguration {
+            let configuration = SCStreamConfiguration()
+            configuration.backgroundColor = .clear
+            configuration.shouldBeOpaque = true
+            configuration.showsCursor = false
+            configuration.capturesAudio = false
+            return configuration
+        }
+
+        // swiftlint:enable function_body_length
+    }
 }
 
 // swiftlint:enable type_body_length

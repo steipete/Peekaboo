@@ -19,6 +19,12 @@ protocol ModernScreenCaptureOperating: Sendable {
     func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult
 }
 
+protocol LegacyScreenCaptureOperating: Sendable {
+    func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult
+    func captureWindow(app: ServiceApplicationInfo, windowIndex: Int?, correlationId: String) async throws
+        -> CaptureResult
+}
+
 @MainActor
 protocol VisualizationClientProtocol: Sendable {
     func connect()
