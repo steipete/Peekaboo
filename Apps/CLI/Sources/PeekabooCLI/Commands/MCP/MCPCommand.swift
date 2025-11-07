@@ -41,7 +41,7 @@ struct MCPCommand: @MainActor MainActorAsyncParsableCommand {
 extension MCPCommand {
     /// Start MCP server
     @MainActor
-struct Serve: @MainActor MainActorAsyncParsableCommand {
+    struct Serve: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "serve",
             abstract: "Start Peekaboo as an MCP server",
@@ -85,7 +85,7 @@ struct Serve: @MainActor MainActorAsyncParsableCommand {
 
     /// Call tool on MCP server
     @MainActor
-struct Call: @MainActor MainActorAsyncParsableCommand {
+    struct Call: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "call",
             abstract: "Call a tool on another MCP server",
@@ -115,7 +115,7 @@ struct Call: @MainActor MainActorAsyncParsableCommand {
 
     /// List available MCP servers with health checking
     @MainActor
-struct List: @MainActor MainActorAsyncParsableCommand {
+    struct List: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List configured MCP servers with health status",
@@ -158,7 +158,7 @@ struct List: @MainActor MainActorAsyncParsableCommand {
                 autoReconnect: true,
                 description: "Browser automation via BrowserMCP"
             )
-            await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+            TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
 
             // Suppress os_log output unless verbose
             let originalStderr = dup(STDERR_FILENO)
@@ -170,7 +170,7 @@ struct List: @MainActor MainActorAsyncParsableCommand {
 
             // Initialize Tachikoma MCP manager (don't connect yet - let health check measure timing)
             await TachikomaMCPClientManager.shared.initializeFromProfile(connect: false)
-            let serverNames = await TachikomaMCPClientManager.shared.getServerNames()
+            let serverNames = TachikomaMCPClientManager.shared.getServerNames()
 
             // Restore stderr after initialization
             if !self.verbose && devNull != -1 {
@@ -377,7 +377,7 @@ struct List: @MainActor MainActorAsyncParsableCommand {
 
     /// Add a new MCP server
     @MainActor
-struct Add: @MainActor MainActorAsyncParsableCommand {
+    struct Add: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "add",
             abstract: "Add a new external MCP server",
@@ -474,14 +474,14 @@ struct Add: @MainActor MainActorAsyncParsableCommand {
                 autoReconnect: true,
                 description: "Browser automation via BrowserMCP"
             )
-            await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+            TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
 
             // Load existing profile configs, add server, persist, then probe
             await TachikomaMCPClientManager.shared.initializeFromProfile(connect: false)
 
             do {
                 try await TachikomaMCPClientManager.shared.addServer(name: self.name, config: config)
-                try await TachikomaMCPClientManager.shared.persist()
+                try TachikomaMCPClientManager.shared.persist()
                 print("✓ Added MCP server '\(self.name)' and saved to profile")
 
                 if !self.disabled {
@@ -505,7 +505,7 @@ struct Add: @MainActor MainActorAsyncParsableCommand {
 
     /// Remove an MCP server
     @MainActor
-struct Remove: @MainActor MainActorAsyncParsableCommand {
+    struct Remove: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "remove",
             abstract: "Remove an external MCP server",
@@ -520,7 +520,7 @@ struct Remove: @MainActor MainActorAsyncParsableCommand {
 
         /// Disconnect and delete the specified server configuration, prompting unless forced.
         func run() async throws {
-            let clientManager = await MCPClientManager.shared
+            let clientManager = MCPClientManager.shared
 
             // Check if server exists
             let serverInfo = await clientManager.getServerInfo(name: self.name)
@@ -551,7 +551,7 @@ struct Remove: @MainActor MainActorAsyncParsableCommand {
 
     /// Test connection to an MCP server
     @MainActor
-struct Test: @MainActor MainActorAsyncParsableCommand {
+    struct Test: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "test",
             abstract: "Test connection to an MCP server",
@@ -569,7 +569,7 @@ struct Test: @MainActor MainActorAsyncParsableCommand {
 
         /// Probe a single MCP server, report its health, and optionally enumerate exposed tools.
         func run() async throws {
-            let clientManager = await MCPClientManager.shared
+            let clientManager = MCPClientManager.shared
 
             print("Testing connection to MCP server '\(self.name)'...")
 
@@ -591,7 +591,7 @@ struct Test: @MainActor MainActorAsyncParsableCommand {
 
     /// Show detailed information about an MCP server
     @MainActor
-struct Info: @MainActor MainActorAsyncParsableCommand {
+    struct Info: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "info",
             abstract: "Show detailed information about an MCP server",
@@ -606,7 +606,7 @@ struct Info: @MainActor MainActorAsyncParsableCommand {
 
         /// Print configuration and live health details for the specified server in text or JSON form.
         func run() async throws {
-            let clientManager = await MCPClientManager.shared
+            let clientManager = MCPClientManager.shared
 
             guard let serverInfo = await clientManager.getServerInfo(name: name) else {
                 Logger.shared.error("MCP server '\(self.name)' not found")
@@ -661,7 +661,7 @@ struct Info: @MainActor MainActorAsyncParsableCommand {
 
     /// Enable an MCP server
     @MainActor
-struct Enable: @MainActor MainActorAsyncParsableCommand {
+    struct Enable: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "enable",
             abstract: "Enable a disabled MCP server",
@@ -672,7 +672,7 @@ struct Enable: @MainActor MainActorAsyncParsableCommand {
         var name: String
 
         func run() async throws {
-            let clientManager = await MCPClientManager.shared
+            let clientManager = MCPClientManager.shared
 
             do {
                 try await clientManager.enableServer(name: self.name)
@@ -691,7 +691,7 @@ struct Enable: @MainActor MainActorAsyncParsableCommand {
 
     /// Disable an MCP server
     @MainActor
-struct Disable: @MainActor MainActorAsyncParsableCommand {
+    struct Disable: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "disable",
             abstract: "Disable an MCP server",
@@ -702,7 +702,7 @@ struct Disable: @MainActor MainActorAsyncParsableCommand {
         var name: String
 
         func run() async throws {
-            let clientManager = await MCPClientManager.shared
+            let clientManager = MCPClientManager.shared
 
             do {
                 try await clientManager.disableServer(name: self.name)
@@ -716,7 +716,7 @@ struct Disable: @MainActor MainActorAsyncParsableCommand {
 
     /// Inspect MCP connection
     @MainActor
-struct Inspect: @MainActor MainActorAsyncParsableCommand {
+    struct Inspect: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "inspect",
             abstract: "Debug MCP connections",
