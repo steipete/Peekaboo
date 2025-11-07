@@ -14,7 +14,7 @@ public struct ClickTool: MCPTool {
         Clicks on UI elements or coordinates.
         Supports element queries, specific IDs from see command, or raw coordinates.
         Includes smart waiting for elements to become actionable.
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 

@@ -32,7 +32,7 @@ public protocol ServiceState: Sendable {
     var isLoading: Bool { get }
 
     /// Last error encountered by the service
-    var lastError: Error? { get }
+    var lastError: (any Error)? { get }
 
     /// Timestamp of last update
     var lastUpdated: Date { get }
@@ -70,7 +70,7 @@ public protocol ConfigurableService: ObservableService {
     func updateConfiguration(_ configuration: Configuration) async throws
 
     /// Validate a configuration before applying
-    func validateConfiguration(_ configuration: Configuration) -> Result<Void, Error>
+    func validateConfiguration(_ configuration: Configuration) -> Result<Void, any Error>
 }
 
 // MARK: - Service Lifecycle
@@ -138,7 +138,7 @@ public protocol ServiceRegistry {
 /// Events emitted by observable services
 public enum ServiceEvent: Sendable {
     case stateChanged
-    case errorOccurred(Error)
+    case errorOccurred(any Error)
     case refreshStarted
     case refreshCompleted
     case configurationChanged
@@ -159,7 +159,7 @@ public protocol ServiceObserver: AnyObject {
 extension ServiceState {
     // Handle a service event
     public var isLoading: Bool { false }
-    public var lastError: Error? { nil }
+    public var lastError: (any Error)? { nil }
     public var lastUpdated: Date { Date() }
 }
 

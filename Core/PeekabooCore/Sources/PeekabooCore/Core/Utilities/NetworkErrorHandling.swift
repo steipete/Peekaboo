@@ -4,7 +4,7 @@ import PeekabooFoundation
 // MARK: - API Error Response Protocol
 
 /// Common protocol for API error responses
-public protocol APIErrorResponse: Decodable {
+public protocol APIErrorResponse: Decodable, Sendable {
     var message: String { get }
     var code: String? { get }
     var type: String? { get }
@@ -13,7 +13,7 @@ public protocol APIErrorResponse: Decodable {
 // MARK: - Generic Error Response
 
 /// Generic error response that works with most APIs
-public struct GenericErrorResponse: APIErrorResponse {
+public nonisolated struct GenericErrorResponse: APIErrorResponse {
     public let message: String
     public let code: String?
     public let type: String?
@@ -29,7 +29,7 @@ public struct GenericErrorResponse: APIErrorResponse {
         case errorType = "error_type"
     }
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Try different message fields
@@ -130,7 +130,7 @@ extension URLSession {
 // MARK: - Error Formatting
 
 private func formatAPIError(
-    _ error: APIErrorResponse,
+    _ error: any APIErrorResponse,
     statusCode: Int,
     context: String) -> String
 {

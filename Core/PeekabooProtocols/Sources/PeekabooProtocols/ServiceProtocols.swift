@@ -56,7 +56,7 @@ public protocol FileServiceProtocol: Sendable {
 /// Protocol for logging service operations
 public protocol LoggingServiceProtocol: Sendable {
     func log(_ message: String, level: LogLevel)
-    func logError(_ error: Error, context: String?)
+    func logError(_ error: any Error, context: String?)
     func flush() async
 }
 

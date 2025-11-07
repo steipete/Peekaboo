@@ -42,13 +42,12 @@
 ///
 
 import AppKit
-import ArgumentParser
 import AXorcist
 import Foundation
 
 // MARK: - Focus Options Protocol
 
-public protocol FocusOptionsProtocol: Sendable {
+public protocol FocusOptionsProtocol {
     var autoFocus: Bool { get }
     var focusTimeout: TimeInterval? { get }
     var focusRetryCount: Int? { get }
@@ -58,7 +57,7 @@ public protocol FocusOptionsProtocol: Sendable {
 
 // MARK: - Default Focus Options
 
-public struct DefaultFocusOptions: FocusOptionsProtocol, Sendable {
+public struct DefaultFocusOptions: FocusOptionsProtocol {
     public let autoFocus: Bool = true
     public let focusTimeout: TimeInterval? = 5.0
     public let focusRetryCount: Int? = 3
@@ -68,104 +67,31 @@ public struct DefaultFocusOptions: FocusOptionsProtocol, Sendable {
     public init() {}
 }
 
-// MARK: - Focus Options for ArgumentParser
+// MARK: - Focus Options Value Type
 
-public struct FocusOptions: ParsableArguments, FocusOptionsProtocol, Sendable {
-    public init() {}
-    @Flag(name: .long, help: "Disable automatic focus before interaction (not recommended)")
-    public var noAutoFocus = false
+public struct FocusOptions: FocusOptionsProtocol {
+    public let autoFocus: Bool
+    public let focusTimeout: TimeInterval?
+    public let focusRetryCount: Int?
+    public let spaceSwitch: Bool
+    public let bringToCurrentSpace: Bool
 
-    @Option(name: .long, help: "Timeout for focus operations in seconds")
-    public var focusTimeout: TimeInterval?
-
-    @Option(name: .long, help: "Number of retries for focus operations")
-    public var focusRetryCount: Int?
-
-    @Flag(name: .long, help: "Switch to window's Space if on different Space")
-    public var spaceSwitch = false
-
-    @Flag(name: .long, help: "Bring window to current Space instead of switching")
-    public var bringToCurrentSpace = false
-
-    public var autoFocus: Bool { !self.noAutoFocus }
+    public init(
+        autoFocus: Bool = true,
+        focusTimeout: TimeInterval? = nil,
+        focusRetryCount: Int? = nil,
+        spaceSwitch: Bool = false,
+        bringToCurrentSpace: Bool = false)
+    {
+        self.autoFocus = autoFocus
+        self.focusTimeout = focusTimeout
+        self.focusRetryCount = focusRetryCount
+        self.spaceSwitch = spaceSwitch
+        self.bringToCurrentSpace = bringToCurrentSpace
+    }
 }
 
 // MARK: - Focus Command Extension
-
-extension AsyncParsableCommand {
-    /// Ensure the target window is focused before executing a command
-    @MainActor
-    public func ensureFocused(
-        sessionId: String? = nil,
-        windowID: CGWindowID? = nil,
-        applicationName: String? = nil,
-        windowTitle: String? = nil,
-        options: FocusOptionsProtocol = DefaultFocusOptions()) async throws
-    {
-        // Skip if auto-focus is disabled
-        guard options.autoFocus else {
-            // Auto-focus disabled, skipping focus check
-            return
-        }
-
-        // Determine target window
-        let targetWindow: CGWindowID?
-
-        if let windowID {
-            // Explicit window ID provided
-            targetWindow = windowID
-        } else if let sessionId {
-            // Try to get window ID from session
-            let session = try await PeekabooServices.shared.sessions.getUIAutomationSession(sessionId: sessionId)
-            targetWindow = session?.windowID
-        } else if let appName = applicationName {
-            // Find window by app name and optional title
-            targetWindow = try await withCheckedThrowingContinuation { continuation in
-                Task { @MainActor in
-                    do {
-                        let focusService = FocusManagementService()
-                        let windowID = try await focusService.findBestWindow(
-                            applicationName: appName,
-                            windowTitle: windowTitle)
-                        continuation.resume(returning: windowID)
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
-                }
-            }
-        } else {
-            // No target specified, skip focusing
-            // No focus target specified
-            return
-        }
-
-        // Focus the window if we found one
-        if let windowID = targetWindow {
-            // Capture values before Task to avoid data races
-            let timeout = options.focusTimeout ?? 5.0
-            let retryCount = options.focusRetryCount ?? 3
-            let switchSpace = options.spaceSwitch
-            let bringToCurrentSpace = options.bringToCurrentSpace
-
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                Task { @MainActor in
-                    do {
-                        let focusService = FocusManagementService()
-                        let focusOptions = FocusManagementService.FocusOptions(
-                            timeout: timeout,
-                            retryCount: retryCount,
-                            switchSpace: switchSpace,
-                            bringToCurrentSpace: bringToCurrentSpace)
-                        try await focusService.focusWindow(windowID: windowID, options: focusOptions)
-                        continuation.resume()
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
-                }
-            }
-        }
-    }
-}
 
 // MARK: - Focus Management Service
 

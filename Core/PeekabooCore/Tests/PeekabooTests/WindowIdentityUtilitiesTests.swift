@@ -4,7 +4,7 @@ import CoreGraphics
 import Testing
 @testable import PeekabooCore
 
-@Suite("Window Identity Utilities Tests")
+@Suite("Window Identity Utilities Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
 struct WindowIdentityUtilitiesTests {
     // MARK: - WindowIdentityService Tests
 

@@ -14,7 +14,7 @@ public struct AgentSystemPrompt {
             switch model {
             case let .openai(openaiModel):
                 switch openaiModel {
-                case .gpt5, .gpt5Mini, .gpt5Nano:
+                case .gpt5:
                     true
                 default:
                     false

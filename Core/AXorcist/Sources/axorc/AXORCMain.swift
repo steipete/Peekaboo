@@ -10,11 +10,14 @@ import Foundation
 
 @main
 struct AXORCCommand: ParsableCommand {
-    static let configuration: CommandConfiguration = CommandConfiguration(
-        commandName: "axorc",
-        // Use axorcVersion from AXORCModels.swift or a shared constant place
-        abstract: "AXORC CLI - Handles JSON commands via various input methods. Version \(axorcVersion)"
-    )
+    @preconcurrency nonisolated static var configuration: CommandConfiguration {
+        let version = MainActor.assumeIsolated { axorcVersion }
+        return CommandConfiguration(
+            commandName: "axorc",
+            // Use axorcVersion from AXORCModels.swift or a shared constant place
+            abstract: "AXORC CLI - Handles JSON commands via various input methods. Version \(version)"
+        )
+    }
 
     // `--debug` now enables *normal* diagnostic output. Use the new `--verbose` flag for the extremely chatty logs.
     @Flag(name: .long, help: "Enable debug logging (normal detail level). Use --verbose for maximum detail.")
@@ -138,7 +141,8 @@ struct AXORCCommand: ParsableCommand {
 
         // For clarity in stderr output
         if debug || verbose {
-            fputs("AXORCMain.run: AXorc version \(axorcVersion) build \(axorcBuildStamp). Detail level: \(GlobalAXLogger.shared.detailLevel).\n", stderr)
+            let version = MainActor.assumeIsolated { axorcVersion }
+            fputs("AXORCMain.run: AXorc version \(version) build \(axorcBuildStamp). Detail level: \(GlobalAXLogger.shared.detailLevel).\n", stderr)
         }
 
         // <<< TEST LOGGING START >>>
@@ -258,24 +262,26 @@ struct AXORCCommand: ParsableCommand {
     }
 
     private func commandShouldPrintLogsAtEnd() -> Bool {
-        // This is a simplified check. A more robust way would be to check
-        // the actual command type if it's available here.
-        // For now, if stdin is true or json is provided, assume it might be an observe command.
-        // This is imperfect.
-        if let jsonString = InputHandler.parseInput(stdin: stdin, file: file, json: json, directPayload: directPayload).jsonString,
-           let inputData = jsonString.data(using: .utf8) { // Corrected optional chaining and conditional binding
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            if let commands = try? decoder.decode([CommandEnvelope].self, from: inputData),
-               commands.first?.command == .observe {
-                return false
+        MainActor.assumeIsolated {
+            // This is a simplified check. A more robust way would be to check
+            // the actual command type if it's available here.
+            // For now, if stdin is true or json is provided, assume it might be an observe command.
+            // This is imperfect.
+            if let jsonString = InputHandler.parseInput(stdin: stdin, file: file, json: json, directPayload: directPayload).jsonString,
+               let inputData = jsonString.data(using: .utf8) {
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                if let commands = try? decoder.decode([CommandEnvelope].self, from: inputData),
+                   commands.first?.command == .observe {
+                    return false
+                }
+                if let command = try? decoder.decode(CommandEnvelope.self, from: inputData),
+                   command.command == .observe {
+                    return false
+                }
             }
-            if let command = try? decoder.decode(CommandEnvelope.self, from: inputData),
-               command.command == .observe {
-                return false
-            }
+            return true
         }
-        return true
     }
 }
 

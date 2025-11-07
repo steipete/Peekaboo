@@ -11,15 +11,15 @@ struct PeekabooAgentServiceTests {
         let mockServices = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        // Should default to Claude Opus 4
-        #expect(agentService.defaultModel == LanguageModel.anthropic(.opus4).description)
+        // Should default to GPT-5
+        #expect(agentService.defaultModel == LanguageModel.openai(.gpt5).description)
     }
 
     @Test("Custom default model initialization")
     @MainActor
     func customDefaultModelInitialization() async throws {
         let mockServices = PeekabooServices.shared
-        let customModel = LanguageModel.openai(.gpt4o)
+        let customModel = LanguageModel.openai(.gpt5)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: customModel)
@@ -31,7 +31,7 @@ struct PeekabooAgentServiceTests {
     @MainActor
     func modelParameterPrecedence() async throws {
         let mockServices = PeekabooServices.shared
-        let defaultModel = LanguageModel.anthropic(.opus4)
+        let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -40,7 +40,7 @@ struct PeekabooAgentServiceTests {
         let eventDelegate = MockEventDelegate()
 
         // Test with custom model parameter
-        let customModel = LanguageModel.openai(.gpt4o)
+        let customModel = LanguageModel.openai(.gpt5)
 
         // This would normally make an API call, but we're testing the model selection logic
         // In a real test, we'd mock the network layer
@@ -65,7 +65,7 @@ struct PeekabooAgentServiceTests {
     @MainActor
     func modelParameterFallback() async throws {
         let mockServices = PeekabooServices.shared
-        let defaultModel = LanguageModel.anthropic(.sonnet4)
+        let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -96,7 +96,7 @@ struct PeekabooAgentServiceTests {
         let mockServices = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.grok(.grok4)
+        let customModel = LanguageModel.openai(.gpt5)
         _ = MockEventDelegate()
 
         // Test streaming execution with custom model
@@ -122,7 +122,7 @@ struct PeekabooAgentServiceTests {
         let mockServices = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.ollama(.llama33)
+        let customModel = LanguageModel.anthropic(.sonnet45)
 
         // Test resume session with custom model
         do {
@@ -161,7 +161,7 @@ struct ModelSelectionExecutionPathTests {
         // Test that the internal executeWithStreaming method would use the provided model
         // This is tested indirectly through the public API since executeWithStreaming is private
 
-        let customModel = LanguageModel.openai(.gpt41)
+        let customModel = LanguageModel.openai(.gpt5)
         let eventDelegate = MockEventDelegate()
 
         do {
@@ -186,7 +186,7 @@ struct ModelSelectionExecutionPathTests {
         let mockServices = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.anthropic(.haiku45)
+        let customModel = LanguageModel.anthropic(.sonnet45)
 
         do {
             // No event delegate means non-streaming path
@@ -211,10 +211,8 @@ struct ModelSelectionExecutionPathTests {
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let models: [LanguageModel] = [
-            .openai(.gpt4o),
-            .anthropic(.opus4),
-            .grok(.grok4),
-            .ollama(.llama33),
+            .openai(.gpt5),
+            .anthropic(.sonnet45),
         ]
 
         for model in models {
@@ -243,8 +241,6 @@ struct ModelSelectionEdgeCasesTests {
     func dryRunExecutionRespectsModel() async throws {
         let mockServices = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: mockServices)
-
-        _ = LanguageModel.openai(.gpt5Mini)
 
         // Dry run should not make API calls but should still record the model
         let result = try await agentService.executeTask(

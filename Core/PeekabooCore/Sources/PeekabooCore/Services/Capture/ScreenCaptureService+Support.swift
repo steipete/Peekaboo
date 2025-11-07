@@ -8,9 +8,9 @@ import Foundation
 import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
 
-extension SCShareableContent: @unchecked Sendable {}
-extension SCDisplay: @unchecked Sendable {}
-extension SCWindow: @unchecked Sendable {}
+extension SCShareableContent: @retroactive @unchecked Sendable {}
+extension SCDisplay: @retroactive @unchecked Sendable {}
+extension SCWindow: @retroactive @unchecked Sendable {}
 
 protocol ModernScreenCaptureOperating: Sendable {
     func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult

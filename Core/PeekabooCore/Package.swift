@@ -2,6 +2,17 @@
 
 import PackageDescription
 
+let approachableConcurrencySettings: [SwiftSetting] = [
+    .enableExperimentalFeature("StrictConcurrency"),
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .defaultIsolation(MainActor.self),
+]
+
+let coreTargetSettings = approachableConcurrencySettings + [
+    .unsafeFlags(["-parse-as-library"]),
+]
+
 let package = Package(
     name: "PeekabooCore",
     platforms: [
@@ -37,9 +48,7 @@ let package = Package(
                 "Services/README.md",
                 "Services/Agent/Tools/README.md",
             ],
-            swiftSettings: [
-                .unsafeFlags(["-parse-as-library"]),
-            ]),
+            swiftSettings: coreTargetSettings),
         .testTarget(
             name: "PeekabooTests",
             dependencies: [
@@ -49,6 +58,7 @@ let package = Package(
             ],
             resources: [
                 .process("Resources"),
-            ]),
+            ],
+            swiftSettings: approachableConcurrencySettings),
     ],
     swiftLanguageModes: [.v6])

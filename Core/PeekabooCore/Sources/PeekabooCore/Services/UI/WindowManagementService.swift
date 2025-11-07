@@ -40,13 +40,13 @@ import PeekabooFoundation
  */
 @MainActor
 public final class WindowManagementService: WindowManagementServiceProtocol {
-    private let applicationService: ApplicationServiceProtocol
+    private let applicationService: any ApplicationServiceProtocol
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowManagementService")
 
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
 
-    public init(applicationService: ApplicationServiceProtocol? = nil) {
+    public init(applicationService: (any ApplicationServiceProtocol)? = nil) {
         self.applicationService = applicationService ?? ApplicationService()
 
         // Only connect to visualizer if we're not running inside the Mac app

@@ -14,7 +14,7 @@ public struct SwipeTool: MCPTool {
         Performs a swipe/drag gesture from one point to another.
         Useful for dragging elements, swiping through content, or gesture-based interactions.
         Creates smooth movement with configurable duration.
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 

@@ -30,7 +30,7 @@ public struct WindowTool: MCPTool {
         - Close Safari window: { "action": "close", "app": "Safari" }
         - Move window: { "action": "move", "app": "TextEdit", "x": 100, "y": 100 }
         - Resize window: { "action": "resize", "app": "Terminal", "width": 800, "height": 600 }
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 

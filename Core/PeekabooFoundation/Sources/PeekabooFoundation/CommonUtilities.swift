@@ -6,19 +6,25 @@ import Foundation
 /// Shared JSON encoder/decoder configuration for consistent serialization
 public enum JSONCoding {
     /// Shared JSON encoder with pretty printing and sorted keys
-    public static let encoder: JSONEncoder = {
+    public static let encoder: JSONEncoder = makeEncoder()
+
+    /// Shared JSON decoder with consistent configuration
+    public static let decoder: JSONDecoder = makeDecoder()
+
+    /// Create a configured encoder instance
+    public nonisolated static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         return encoder
-    }()
+    }
 
-    /// Shared JSON decoder with consistent configuration
-    public static let decoder: JSONDecoder = {
+    /// Create a configured decoder instance
+    public nonisolated static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
-    }()
+    }
 }
 
 // MARK: - Error Extensions

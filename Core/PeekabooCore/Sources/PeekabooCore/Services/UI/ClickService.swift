@@ -42,9 +42,9 @@ import PeekabooFoundation
 @MainActor
 public final class ClickService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ClickService")
-    private let sessionManager: SessionManagerProtocol
+    private let sessionManager: any SessionManagerProtocol
 
-    public init(sessionManager: SessionManagerProtocol? = nil) {
+    public init(sessionManager: (any SessionManagerProtocol)? = nil) {
         self.sessionManager = sessionManager ?? SessionManager()
     }
 

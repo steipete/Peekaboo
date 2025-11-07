@@ -29,7 +29,7 @@ public struct AnalyzeTool: MCPTool {
         If you have an image '/tmp/chart.png' showing a bar chart, you could ask:
         { "image_path": "/tmp/chart.png", "question": "Which category has the highest value in this bar chart?" }
         The AI will analyze the image and attempt to answer your question based on its visual content.
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 
@@ -82,8 +82,9 @@ public struct AnalyzeTool: MCPTool {
         }
 
         // Resolve AI providers from config manager (env overrides config)
-        let configManager = ConfigurationManager.shared
-        let providers = configManager.getAIProviders()
+        let providers = await MainActor.run {
+            ConfigurationManager.shared.getAIProviders()
+        }
         // Determine default model/provider from config
         let (modelName, providerType) = self.parseAIProviders(providers)
 
@@ -134,7 +135,7 @@ public struct AnalyzeTool: MCPTool {
         }
 
         // Default fallback
-        return ("claude-opus-4-20250514", "anthropic")
+        return ("gpt-5", "openai")
     }
 
     private func analyzeImageWithAI(
@@ -191,52 +192,16 @@ public struct AnalyzeTool: MCPTool {
         let lowercased = modelName.lowercased()
 
         // Claude models
-        if lowercased.contains("claude") {
-            if lowercased.contains("opus") {
-                return .anthropic(.opus4)
-            } else if lowercased.contains("sonnet") {
-                return .anthropic(.sonnet45)
-            } else if lowercased.contains("haiku") {
-                return .anthropic(.haiku45)
-            } else {
-                return .anthropic(.opus4) // Default Claude
-            }
+        if lowercased.contains("claude") || lowercased.contains("sonnet") {
+            return .anthropic(.sonnet45)
         }
 
         // OpenAI models
-        if lowercased.contains("gpt") || lowercased.contains("o4") {
-            if lowercased.contains("o4") {
-                return .openai(.o4Mini)
-            } else if lowercased.contains("4o") {
-                return .openai(.gpt4o)
-            } else if lowercased.contains("gpt-4.1") {
-                return .openai(.gpt41)
-            } else {
-                return .openai(.gpt4o) // Default GPT
-            }
-        } else if lowercased.contains("o3") {
-            return .openai(.gpt5Mini)
+        if lowercased.contains("gpt") {
+            return .openai(.gpt5)
         }
 
-        // Grok models
-        if lowercased.contains("grok") {
-            return .grok(.grok4)
-        }
-
-        // Ollama models
-        if lowercased.contains("llama") || lowercased.contains("llava") || lowercased.contains("mistral") {
-            if lowercased.contains("llava") {
-                return .ollama(.llava)
-            } else if lowercased.contains("llama3.3") {
-                return .ollama(.llama33)
-            } else if lowercased.contains("mistral") {
-                return .ollama(.mistralNemo)
-            } else {
-                return .ollama(.llama33) // Default Ollama
-            }
-        }
-
-        // Default fallback
-        return .anthropic(.opus4)
+        // Default fallback aligns with Peekaboo's supported set
+        return .openai(.gpt5)
     }
 }

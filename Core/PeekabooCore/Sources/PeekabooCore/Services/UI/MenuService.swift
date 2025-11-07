@@ -8,13 +8,13 @@ import PeekabooFoundation
 /// Default implementation of menu interaction operations
 @MainActor
 public final class MenuService: MenuServiceProtocol {
-    private let applicationService: ApplicationServiceProtocol
+    private let applicationService: any ApplicationServiceProtocol
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "MenuService")
 
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
 
-    public init(applicationService: ApplicationServiceProtocol? = nil) {
+    public init(applicationService: (any ApplicationServiceProtocol)? = nil) {
         self.applicationService = applicationService ?? ApplicationService()
         // Connect to visualizer if available
         // Only connect to visualizer if we're not running inside the Mac app

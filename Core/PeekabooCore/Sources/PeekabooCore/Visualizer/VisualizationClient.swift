@@ -492,6 +492,17 @@ public final class VisualizationClient: @unchecked Sendable {
 
     /// Checks if Peekaboo.app is running
     private func isPeekabooAppRunning() -> Bool {
+        if Thread.isMainThread {
+            return self.lookupPeekabooApp()
+        }
+
+        return DispatchQueue.main.sync {
+            self.lookupPeekabooApp()
+        }
+    }
+
+    @MainActor
+    private func lookupPeekabooApp() -> Bool {
         // Checks if Peekaboo.app is running
         let workspace = NSWorkspace.shared
         let runningApps = workspace.runningApplications

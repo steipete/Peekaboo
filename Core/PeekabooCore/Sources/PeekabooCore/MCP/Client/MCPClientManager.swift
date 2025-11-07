@@ -102,6 +102,11 @@ private actor MCPClientConnection {
 
         self.logger.info("Connecting to MCP server '\(self.name)'")
 
+        if !self.commandExists(self.config.command) {
+            self.logger.error("Command '\(self.config.command)' not found on PATH")
+            throw MCPClientError.connectionFailed("Command '\(self.config.command)' not found")
+        }
+
         // Create MCP server config for TachikomaMCP
         let mcpServerConfig = TachikomaMCP.MCPServerConfig(
             transport: "stdio",
@@ -114,8 +119,12 @@ private actor MCPClientConnection {
         let client = MCPClient(name: name, config: mcpServerConfig)
         let provider = MCPToolProvider(client: client)
 
-        // Connect
-        try await provider.connect()
+        do {
+            try await provider.connect()
+        } catch {
+            self.logger.error("Failed to start MCP server '\(self.name)': \(error.localizedDescription)")
+            throw MCPClientError.connectionFailed(error.localizedDescription)
+        }
 
         // Store references
         self.client = client
@@ -156,6 +165,24 @@ private actor MCPClientConnection {
 
         return try await client.executeTool(name: name, arguments: args)
     }
+
+    /// Determine whether the configured command can be resolved in the current execution environment.
+    private func commandExists(_ command: String) -> Bool {
+        if command.contains("/") {
+            let resolved = NSString(string: command).expandingTildeInPath
+            return FileManager.default.isExecutableFile(atPath: resolved)
+        }
+
+        let paths = ProcessInfo.processInfo.environment["PATH"]?.split(separator: ":") ?? []
+        for path in paths {
+            let candidate = "\(path)/\(command)"
+            if FileManager.default.isExecutableFile(atPath: candidate) {
+                return true
+            }
+        }
+
+        return false
+    }
 }
 
 /// Error types for MCP client operations
@@ -180,6 +207,7 @@ public enum MCPClientError: LocalizedError {
             "Invalid response from MCP server"
         }
     }
+
 }
 
 /// Manager for MCP client connections
@@ -216,7 +244,11 @@ public final class MCPClientManager {
         self.connections[name] = connection
 
         if config.enabled {
-            try await connection.connect()
+            do {
+                try await connection.connect()
+            } catch {
+                self.logger.error("Initial connect for '\(name)' failed: \(error.localizedDescription)")
+            }
         }
 
         self.logger.info("Added MCP server '\(name)'")

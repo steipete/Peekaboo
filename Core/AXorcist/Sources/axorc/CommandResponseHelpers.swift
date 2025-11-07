@@ -70,27 +70,16 @@ func encodeToJson(_ object: some Encodable) -> String? {
     }
 }
 
-// Extension for EncodingError details
-protocol CodingPathProvider {
-    var codingPath: [CodingKey] { get }
-}
-
-extension EncodingError.Context: CodingPathProvider {}
-
 extension EncodingError {
-    var detailedDescription: String {
+    @preconcurrency nonisolated var detailedDescription: String {
         switch self {
         case let .invalidValue(value, context):
-            return "InvalidValue: '\(value)' attempting to encode at path '\(context.codingPathString)'. Debug: \(context.debugDescription)"
+            let pathDescription = MainActor.assumeIsolated {
+                context.codingPath.map { $0.stringValue }.joined(separator: ".")
+            }
+            return "InvalidValue: '\(value)' attempting to encode at path '\(pathDescription)'. Debug: \(context.debugDescription)"
         @unknown default:
             return "Unknown encoding error. Localized: \(self.localizedDescription)"
         }
-    }
-}
-
-// Helper for CodingPathProvider to get a string representation
-extension CodingPathProvider {
-    var codingPathString: String {
-        codingPath.map(\.stringValue).joined(separator: ".")
     }
 }

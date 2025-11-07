@@ -13,11 +13,11 @@ public enum CaptureError: Error, LocalizedError, Sendable {
     case accessibilityPermissionDenied
     case appleScriptPermissionDenied
     case invalidDisplayID
-    case captureCreationFailed(Error?)
+    case captureCreationFailed((any Error)?)
     case windowNotFound
     case windowTitleNotFound(String, String, String) // searchTerm, appName, availableTitles
-    case windowCaptureFailed(Error?)
-    case fileWriteError(String, Error?)
+    case windowCaptureFailed((any Error)?)
+    case fileWriteError(String, (any Error)?)
     case appNotFound(String)
     case invalidWindowIndexOld(Int)
     case invalidArgument(String)

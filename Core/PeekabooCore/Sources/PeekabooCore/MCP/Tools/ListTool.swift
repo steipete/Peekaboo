@@ -22,7 +22,7 @@ public struct ListTool: MCPTool {
     - Agent wants to find a specific 'Notes' window to capture.
       { "item_type": "application_windows", "app": "Notes", "include_window_details": ["ids", "bounds"] }
       The agent can then use the window title or ID with the 'image' tool.
-    Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+    Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
     """
 
     public var inputSchema: Value {
@@ -237,7 +237,7 @@ private enum ItemType {
 
 // Extension to get processor architecture
 extension ProcessInfo {
-    fileprivate var processorArchitecture: String {
+    fileprivate nonisolated var processorArchitecture: String {
         #if arch(arm64)
         return "arm64"
         #elseif arch(x86_64)

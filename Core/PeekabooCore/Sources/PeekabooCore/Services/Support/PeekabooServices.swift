@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import os.log
 import PeekabooFoundation
 import Tachikoma
@@ -83,40 +84,40 @@ public final class PeekabooServices: @unchecked Sendable {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "Services")
 
     /// Centralized logging service for consistent logging across all Peekaboo components
-    public let logging: LoggingServiceProtocol
+    public let logging: any LoggingServiceProtocol
 
     /// Screen and window capture service supporting ScreenCaptureKit and legacy APIs
-    public let screenCapture: ScreenCaptureServiceProtocol
+    public let screenCapture: any ScreenCaptureServiceProtocol
 
     /// Application discovery and enumeration service for finding running apps and windows
-    public let applications: ApplicationServiceProtocol
+    public let applications: any ApplicationServiceProtocol
 
     /// Core UI automation service for mouse, keyboard, and accessibility interactions
-    public let automation: UIAutomationServiceProtocol
+    public let automation: any UIAutomationServiceProtocol
 
     /// Window management service for positioning, resizing, and organizing windows
-    public let windows: WindowManagementServiceProtocol
+    public let windows: any WindowManagementServiceProtocol
 
     /// Menu bar interaction service for navigating application menus
-    public let menu: MenuServiceProtocol
+    public let menu: any MenuServiceProtocol
 
     /// macOS Dock interaction service for launching and managing Dock items
-    public let dock: DockServiceProtocol
+    public let dock: any DockServiceProtocol
 
     /// System dialog interaction service for handling alerts, file dialogs, etc.
-    public let dialogs: DialogServiceProtocol
+    public let dialogs: any DialogServiceProtocol
 
     /// Session and state management for automation workflows and history
-    public let sessions: SessionManagerProtocol
+    public let sessions: any SessionManagerProtocol
 
     /// File system operations service for reading, writing, and manipulating files
-    public let files: FileServiceProtocol
+    public let files: any FileServiceProtocol
 
     /// Configuration management for user preferences and API keys
     public let configuration: ConfigurationManager
 
     /// Process execution service for running shell commands and scripts
-    public let process: ProcessServiceProtocol
+    public let process: any ProcessServiceProtocol
 
     /// Permissions verification service for checking macOS privacy permissions
     public let permissions: PermissionsService
@@ -127,10 +128,10 @@ public final class PeekabooServices: @unchecked Sendable {
     // Model provider is now handled internally by Tachikoma
 
     /// Intelligent automation agent service for natural language task execution
-    public private(set) var agent: AgentServiceProtocol?
+    public private(set) var agent: (any AgentServiceProtocol)?
 
     /// Screen management service for multi-monitor support
-    public let screens: ScreenServiceProtocol
+    public let screens: any ScreenServiceProtocol
 
     /// Lock for thread-safe agent updates
     private let agentLock = NSLock()
@@ -216,22 +217,22 @@ public final class PeekabooServices: @unchecked Sendable {
     /// Initialize with custom service implementations (for testing)
     @MainActor
     public init(
-        logging: LoggingServiceProtocol? = nil,
-        screenCapture: ScreenCaptureServiceProtocol,
-        applications: ApplicationServiceProtocol,
-        automation: UIAutomationServiceProtocol,
-        windows: WindowManagementServiceProtocol,
-        menu: MenuServiceProtocol,
-        dock: DockServiceProtocol,
-        dialogs: DialogServiceProtocol,
-        sessions: SessionManagerProtocol,
-        files: FileServiceProtocol,
-        process: ProcessServiceProtocol,
+        logging: (any LoggingServiceProtocol)? = nil,
+        screenCapture: any ScreenCaptureServiceProtocol,
+        applications: any ApplicationServiceProtocol,
+        automation: any UIAutomationServiceProtocol,
+        windows: any WindowManagementServiceProtocol,
+        menu: any MenuServiceProtocol,
+        dock: any DockServiceProtocol,
+        dialogs: any DialogServiceProtocol,
+        sessions: any SessionManagerProtocol,
+        files: any FileServiceProtocol,
+        process: any ProcessServiceProtocol,
         permissions: PermissionsService? = nil,
         audioInput: AudioInputService? = nil,
-        agent: AgentServiceProtocol? = nil,
+        agent: (any AgentServiceProtocol)? = nil,
         configuration: ConfigurationManager? = nil,
-        screens: ScreenServiceProtocol? = nil)
+        screens: (any ScreenServiceProtocol)? = nil)
     {
         self.logger.info("🚀 Initializing PeekabooServices with custom implementations")
         self.logging = logging ?? LoggingService()
@@ -257,22 +258,22 @@ public final class PeekabooServices: @unchecked Sendable {
 
     /// Internal initializer that takes all services including agent
     private init(
-        logging: LoggingServiceProtocol,
-        screenCapture: ScreenCaptureServiceProtocol,
-        applications: ApplicationServiceProtocol,
-        automation: UIAutomationServiceProtocol,
-        windows: WindowManagementServiceProtocol,
-        menu: MenuServiceProtocol,
-        dock: DockServiceProtocol,
-        dialogs: DialogServiceProtocol,
-        sessions: SessionManagerProtocol,
-        files: FileServiceProtocol,
-        process: ProcessServiceProtocol,
+        logging: any LoggingServiceProtocol,
+        screenCapture: any ScreenCaptureServiceProtocol,
+        applications: any ApplicationServiceProtocol,
+        automation: any UIAutomationServiceProtocol,
+        windows: any WindowManagementServiceProtocol,
+        menu: any MenuServiceProtocol,
+        dock: any DockServiceProtocol,
+        dialogs: any DialogServiceProtocol,
+        sessions: any SessionManagerProtocol,
+        files: any FileServiceProtocol,
+        process: any ProcessServiceProtocol,
         permissions: PermissionsService,
         audioInput: AudioInputService,
         configuration: ConfigurationManager,
-        agent: AgentServiceProtocol?,
-        screens: ScreenServiceProtocol)
+        agent: (any AgentServiceProtocol)?,
+        screens: any ScreenServiceProtocol)
     {
         self.logging = logging
         self.screenCapture = screenCapture
@@ -351,21 +352,22 @@ public final class PeekabooServices: @unchecked Sendable {
 
         // Now create agent service if any API key is available
         // Check for OpenAI, Anthropic, or Ollama availability
-        let agent: AgentServiceProtocol?
+        let agent: (any AgentServiceProtocol)?
         let hasOpenAI = config.getOpenAIAPIKey() != nil && !config.getOpenAIAPIKey()!.isEmpty
         let hasAnthropic = config.getAnthropicAPIKey() != nil && !config.getAnthropicAPIKey()!.isEmpty
-        let hasOllama = true // Ollama doesn't require API key
+        let hasOllama = false
 
         if hasOpenAI || hasAnthropic || hasOllama {
             let agentConfig = config.getConfiguration()
             let providers = config.getAIProviders()
-            let isEnvironmentProvided = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] != nil
+            let environmentProviders = EnvironmentVariables.value(for: "PEEKABOO_AI_PROVIDERS")
+            let isEnvironmentProvided = environmentProviders != nil
 
             logger.debug("🔍 AI Providers from config: '\(providers)'")
             logger
                 .debug(
-                    "🔍 Environment PEEKABOO_AI_PROVIDERS: '\(ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] ?? "not set")'")
-            logger.debug("🔍 Has OpenAI: \(hasOpenAI), Has Anthropic: \(hasAnthropic), Has Ollama: \(hasOllama)")
+                    "🔍 Environment PEEKABOO_AI_PROVIDERS: '\(environmentProviders ?? "not set")'")
+            logger.debug("🔍 Has OpenAI: \(hasOpenAI), Has Anthropic: \(hasAnthropic)")
 
             // Determine default model with conflict detection
             let determination = services.determineDefaultModelWithConflict(
@@ -447,7 +449,7 @@ public final class PeekabooServices: @unchecked Sendable {
         let hasOpenAI = self.configuration.getOpenAIAPIKey() != nil && !self.configuration.getOpenAIAPIKey()!.isEmpty
         let hasAnthropic = self.configuration.getAnthropicAPIKey() != nil && !self.configuration.getAnthropicAPIKey()!
             .isEmpty
-        let hasOllama = true // Ollama doesn't require API key
+        let hasOllama = false
 
         if hasOpenAI || hasAnthropic || hasOllama {
             let agentConfig = self.configuration.getConfiguration()
@@ -457,11 +459,13 @@ public final class PeekabooServices: @unchecked Sendable {
             var defaultModel = agentConfig?.agent?.defaultModel
             if defaultModel == nil {
                 if providers.contains("openai"), hasOpenAI {
-                    defaultModel = "gpt-5-mini"
+                    defaultModel = "gpt-5"
                 } else if providers.contains("anthropic"), hasAnthropic {
-                    defaultModel = "claude-opus-4-20250514"
-                } else if providers.contains("ollama") {
-                    defaultModel = "llava:latest"
+                    defaultModel = "claude-sonnet-4.5"
+                } else if hasAnthropic {
+                    defaultModel = "claude-sonnet-4.5"
+                } else if hasOpenAI {
+                    defaultModel = "gpt-5"
                 }
             }
 
@@ -470,7 +474,7 @@ public final class PeekabooServices: @unchecked Sendable {
 
             do {
                 // Convert model string to LanguageModel enum using same parser
-                let languageModel = Self.parseModelStringForAgent(defaultModel ?? "gpt-5-mini")
+                let languageModel = Self.parseModelStringForAgent(defaultModel ?? "gpt-5")
                 self.agent = try PeekabooAgentService(
                     services: self,
                     defaultModel: languageModel)
@@ -487,6 +491,13 @@ public final class PeekabooServices: @unchecked Sendable {
             self.agent = nil
             self.logger.warning("\(AgentDisplayTokens.Status.warning) No API keys available - agent service disabled")
         }
+    }
+}
+
+private enum EnvironmentVariables {
+    static func value(for key: String) -> String? {
+        guard let raw = getenv(key) else { return nil }
+        return String(cString: raw)
     }
 }
 
@@ -611,7 +622,7 @@ extension PeekabooServices {
     /// Parse model string to LanguageModel enum
     private static func parseModelStringForAgent(_ modelString: String) -> LanguageModel {
         // Parse model string to LanguageModel enum
-        LanguageModel.parse(from: modelString) ?? .openai(.gpt5Mini)
+        LanguageModel.parse(from: modelString) ?? .openai(.gpt5)
     }
 
     private func determineDefaultModelWithConflict(
@@ -628,18 +639,16 @@ extension PeekabooServices {
         let hasConflict = isEnvironmentProvided && configuredDefault != nil && configuredDefault != environmentModel
 
         let model: String = if !providers.isEmpty {
-            environmentModel ?? "claude-opus-4-20250514"
+            environmentModel ?? "gpt-5"
         } else if let configuredDefault {
             // Use configured default from config file if no environment provider is set
             configuredDefault
         } else if hasAnthropic {
-            "claude-opus-4-20250514"
+            "claude-sonnet-4.5"
         } else if hasOpenAI {
             "gpt-5" // Default to GPT-5 for OpenAI
-        } else if hasOllama {
-            "llama3.3"
         } else {
-            "claude-opus-4-20250514"
+            "gpt-5"
         }
 
         return ModelDetermination(

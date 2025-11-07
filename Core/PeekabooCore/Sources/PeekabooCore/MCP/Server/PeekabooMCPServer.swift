@@ -9,7 +9,7 @@ public enum TransportType: CustomStringConvertible {
     case http
     case sse
 
-    public var description: String {
+    public nonisolated var description: String {
         switch self {
         case .stdio: "stdio"
         case .http: "http"

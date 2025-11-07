@@ -2,6 +2,20 @@
 
 import PackageDescription
 
+let approachableConcurrencySettings: [SwiftSetting] = [
+    .enableExperimentalFeature("StrictConcurrency"),
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .defaultIsolation(MainActor.self),
+]
+
+let protocolTargetSettings = approachableConcurrencySettings + [
+    .unsafeFlags([
+        "-Xfrontend", "-warn-long-function-bodies=50",
+        "-Xfrontend", "-warn-long-expression-type-checking=50",
+    ], .when(configuration: .debug)),
+]
+
 let package = Package(
     name: "PeekabooProtocols",
     platforms: [
@@ -21,15 +35,10 @@ let package = Package(
             dependencies: [
                 "PeekabooFoundation",
             ],
-            swiftSettings: [
-                .unsafeFlags([
-                    "-Xfrontend", "-warn-long-function-bodies=50",
-                    "-Xfrontend", "-warn-long-expression-type-checking=50",
-                ], .when(configuration: .debug)),
-                .enableExperimentalFeature("StrictConcurrency"),
-            ]),
+            swiftSettings: protocolTargetSettings),
         .testTarget(
             name: "PeekabooProtocolsTests",
-            dependencies: ["PeekabooProtocols"]),
+            dependencies: ["PeekabooProtocols"],
+            swiftSettings: approachableConcurrencySettings),
     ],
     swiftLanguageModes: [.v6])

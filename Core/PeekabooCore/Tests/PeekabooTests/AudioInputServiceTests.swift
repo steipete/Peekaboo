@@ -3,7 +3,14 @@ import Foundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("AudioInputService Tests", .tags(.unit, .agent))
+@preconcurrency
+private enum AudioTestEnvironment {
+    @preconcurrency nonisolated(unsafe) static var shouldRun: Bool {
+        EnvironmentFlags.runAudioScenarios || TestEnvironment.runAutomationScenarios
+    }
+}
+
+@Suite("AudioInputService Tests", .tags(.unit, .agent), .enabled(if: AudioTestEnvironment.shouldRun))
 struct AudioInputServiceTests {
     @Suite("Initialization")
     struct InitializationTests {
@@ -192,7 +199,7 @@ extension AudioInputServiceTests {
 
 // MARK: - Additional Comprehensive Tests
 
-@Suite("AudioInputService Comprehensive Tests", .tags(.unit, .agent))
+@Suite("AudioInputService Comprehensive Tests", .tags(.unit, .agent), .enabled(if: AudioTestEnvironment.shouldRun))
 struct AudioInputServiceComprehensiveTests {
     @Suite("Mock Audio File Tests")
     struct MockAudioFileTests {

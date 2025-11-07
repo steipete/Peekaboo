@@ -83,7 +83,7 @@ public enum RetryHandler {
     /// Execute an operation with custom retry logic
     public static func withCustomRetry<T>(
         maxAttempts: Int = 3,
-        shouldRetry: @Sendable (Error, Int) -> Bool,
+        shouldRetry: @Sendable (any Error, Int) -> Bool,
         delayForAttempt: @Sendable (Int) -> TimeInterval,
         operation: @Sendable () async throws -> T) async throws -> T
     {
@@ -125,14 +125,14 @@ public enum RecoveryAction: Sendable {
 
 /// Protocol for error recovery strategies
 public protocol ErrorRecoveryStrategy: Sendable {
-    func suggestRecovery(for error: StandardizedError) -> RecoveryAction?
+    func suggestRecovery(for error: any StandardizedError) -> RecoveryAction?
 }
 
 /// Default recovery strategy
 public struct DefaultRecoveryStrategy: ErrorRecoveryStrategy {
     public init() {}
 
-    public func suggestRecovery(for error: StandardizedError) -> RecoveryAction? {
+    public func suggestRecovery(for error: any StandardizedError) -> RecoveryAction? {
         switch error.code {
         case .screenRecordingPermissionDenied:
             return .requestPermission("Screen Recording")
@@ -184,11 +184,11 @@ public struct DegradationOptions: Sendable {
 /// Result with partial success information
 public struct DegradedResult<T> {
     public let value: T?
-    public let errors: [Error]
+    public let errors: [any Error]
     public let warnings: [String]
     public let isPartial: Bool
 
-    public init(value: T? = nil, errors: [Error] = [], warnings: [String] = [], isPartial: Bool = false) {
+    public init(value: T? = nil, errors: [any Error] = [], warnings: [String] = [], isPartial: Bool = false) {
         self.value = value
         self.errors = errors
         self.warnings = warnings

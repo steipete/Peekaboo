@@ -37,7 +37,7 @@ public struct MCPAgentTool: MCPTool {
         - "Open TextEdit, write 'Hello World', and save the document"
 
         Requires OPENAI_API_KEY environment variable to be set.
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 
@@ -138,7 +138,7 @@ public struct MCPAgentTool: MCPTool {
                 // Resume specific session
                 result = try await agent.resumeSession(
                     sessionId: resumeSessionId,
-                    model: parseModelString(input.model ?? "claude-opus-4-20250514"))
+                    model: parseModelString(input.model ?? "gpt-5"))
             } else if input.resume {
                 // Resume most recent session - get latest session and resume it
                 let sessions = try await agent.listSessions()
@@ -148,7 +148,7 @@ public struct MCPAgentTool: MCPTool {
 
                 result = try await agent.resumeSession(
                     sessionId: latestSession.id,
-                    model: parseModelString(input.model ?? "claude-opus-4-20250514"))
+                    model: parseModelString(input.model ?? "gpt-5"))
             } else {
                 // Execute new task
                 if input.dryRun {
@@ -163,7 +163,7 @@ public struct MCPAgentTool: MCPTool {
                     result = try await agent.executeTask(
                         task,
                         sessionId: sessionId,
-                        model: parseModelString(input.model ?? "claude-opus-4-20250514"),
+                        model: parseModelString(input.model ?? "gpt-5"),
                         eventDelegate: nil)
                 }
             }

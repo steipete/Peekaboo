@@ -43,13 +43,13 @@ public enum StandardErrorCode: String, Sendable {
 
 /// Base protocol for standardized Peekaboo errors
 public protocol StandardizedError: LocalizedError, Sendable {
-    var code: StandardErrorCode { get }
-    var userMessage: String { get }
-    var context: [String: String] { get }
+    nonisolated var code: StandardErrorCode { get }
+    nonisolated var userMessage: String { get }
+    nonisolated var context: [String: String] { get }
 }
 
 extension StandardizedError {
-    public var errorDescription: String? {
+    public nonisolated var errorDescription: String? {
         userMessage
     }
 }
@@ -84,9 +84,9 @@ public typealias OperationError = PeekabooError
 
 /// Convert various error types to standardized errors
 public enum ErrorStandardizer {
-    public static func standardize(_ error: Error) -> StandardizedError {
+    public static func standardize(_ error: any Error) -> any StandardizedError {
         // If already standardized, return as-is
-        if let standardized = error as? StandardizedError {
+        if let standardized = error as? any StandardizedError {
             return standardized
         }
 
@@ -101,7 +101,7 @@ public enum ErrorStandardizer {
         }
     }
 
-    private static func standardizeNSError(_ error: NSError) -> StandardizedError {
+    private static func standardizeNSError(_ error: NSError) -> any StandardizedError {
         // Handle common Cocoa errors
         switch error.domain {
         case NSCocoaErrorDomain:
@@ -120,7 +120,7 @@ public enum ErrorStandardizer {
 // MARK: - Error Recovery Suggestions
 
 extension StandardizedError {
-    public var recoverySuggestion: String? {
+    public nonisolated var recoverySuggestion: String? {
         switch code {
         case .screenRecordingPermissionDenied:
             "Grant Screen Recording permission in System Settings"

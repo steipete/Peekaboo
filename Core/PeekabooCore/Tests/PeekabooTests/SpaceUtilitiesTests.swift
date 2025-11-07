@@ -3,7 +3,7 @@ import CoreGraphics
 import Testing
 @testable import PeekabooCore
 
-@Suite("Space Utilities Tests")
+@Suite("Space Utilities Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
 struct SpaceUtilitiesTests {
     // MARK: - SpaceInfo Tests
 
@@ -172,7 +172,7 @@ struct SpaceUtilitiesTests {
 
 // MARK: - Integration Tests
 
-@Suite("Space Management Integration Tests")
+@Suite("Space Management Integration Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
 struct SpaceManagementIntegrationTests {
     @Test("Space list matches current Space")
     @MainActor

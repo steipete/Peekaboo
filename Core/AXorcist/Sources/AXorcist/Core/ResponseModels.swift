@@ -76,7 +76,7 @@ public enum AXResponse: Sendable {
 public protocol HandlerDataRepresentable: Codable {}
 
 // Definition for AXElementData based on usage in AXorcist+QueryHandlers.swift
-public struct AXElementData: Codable, HandlerDataRepresentable, Equatable {
+public nonisolated struct AXElementData: Codable, HandlerDataRepresentable, Equatable {
     // MARK: Lifecycle
 
     public init(
@@ -234,7 +234,7 @@ public struct MultiQueryResponse: Codable {
 }
 
 // Response for perform_action command
-public struct PerformResponse: Codable, HandlerDataRepresentable {
+public nonisolated struct PerformResponse: Codable, HandlerDataRepresentable {
     // MARK: Lifecycle
 
     public init(commandId: String, success: Bool, error: String? = nil, debugLogs: [String]? = nil) {
@@ -262,7 +262,7 @@ public struct PerformResponse: Codable, HandlerDataRepresentable {
 }
 
 // New response for extract_text command
-public struct TextExtractionResponse: Codable, HandlerDataRepresentable {
+public nonisolated struct TextExtractionResponse: Codable, HandlerDataRepresentable {
     // MARK: Lifecycle
 
     public init(textContent: String?) {
@@ -420,7 +420,7 @@ public struct BatchResponse: Codable {
 // MARK: - Additional Payload Structs
 
 // NoFocusPayload for when no focused element is found
-public struct NoFocusPayload: Codable, HandlerDataRepresentable {
+public nonisolated struct NoFocusPayload: Codable, HandlerDataRepresentable {
     // MARK: Lifecycle
 
     public init(message: String) {
@@ -433,7 +433,7 @@ public struct NoFocusPayload: Codable, HandlerDataRepresentable {
 }
 
 // TextPayload for text extraction
-public struct TextPayload: Codable, HandlerDataRepresentable {
+public nonisolated struct TextPayload: Codable, HandlerDataRepresentable {
     // MARK: Lifecycle
 
     public init(text: String) {
@@ -446,7 +446,7 @@ public struct TextPayload: Codable, HandlerDataRepresentable {
 }
 
 // BatchResponsePayload for batch operations
-public struct BatchResponsePayload: Codable, HandlerDataRepresentable {
+public nonisolated struct BatchResponsePayload: Codable, HandlerDataRepresentable {
     // MARK: Lifecycle
 
     public init(results: [AnyCodable?]?, errors: [String]?) {

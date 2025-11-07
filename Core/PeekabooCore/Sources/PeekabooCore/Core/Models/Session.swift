@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// UI automation session data for storing screen state and element information
-public struct UIAutomationSession: Codable, Sendable {
+public nonisolated struct UIAutomationSession: Codable, Sendable {
     public static let currentVersion = 6
 
     public let version: Int
@@ -48,7 +48,7 @@ public struct UIAutomationSession: Codable, Sendable {
 }
 
 /// UI element information stored in session
-public struct UIElement: Codable, Sendable {
+public nonisolated struct UIElement: Codable, Sendable {
     public let id: String
     public let elementId: String
     public let role: String
@@ -101,7 +101,7 @@ public struct UIElement: Codable, Sendable {
 }
 
 /// Menu bar information
-public struct MenuBarData: Codable, Sendable {
+public nonisolated struct MenuBarData: Codable, Sendable {
     public let menus: [Menu]
 
     public init(menus: [Menu]) {

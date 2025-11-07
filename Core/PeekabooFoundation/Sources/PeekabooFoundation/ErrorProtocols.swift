@@ -20,25 +20,25 @@ public enum ErrorCategory: String, Sendable {
 /// Enhanced error protocol with categorization and recovery suggestions
 public protocol PeekabooErrorProtocol: LocalizedError, Sendable {
     /// The category this error belongs to
-    var category: ErrorCategory { get }
+    nonisolated var category: ErrorCategory { get }
 
     /// Whether this error can potentially be recovered from
-    var isRecoverable: Bool { get }
+    nonisolated var isRecoverable: Bool { get }
 
     /// Suggested action for the user to resolve this error
-    var suggestedAction: String? { get }
+    nonisolated var suggestedAction: String? { get }
 
     /// Additional context about the error
-    var context: [String: String] { get }
+    nonisolated var context: [String: String] { get }
 
     /// Unique error code for structured responses
-    var errorCode: String { get }
+    nonisolated var errorCode: String { get }
 }
 
 // MARK: - Default Implementations
 
 extension PeekabooErrorProtocol {
-    public var isRecoverable: Bool {
+    public nonisolated var isRecoverable: Bool {
         switch category {
         case .permissions, .configuration, .network:
             true
@@ -47,7 +47,7 @@ extension PeekabooErrorProtocol {
         }
     }
 
-    public var suggestedAction: String? {
+    public nonisolated var suggestedAction: String? {
         switch category {
         case .permissions:
             "Please grant the required permissions in System Settings"
@@ -62,7 +62,7 @@ extension PeekabooErrorProtocol {
         }
     }
 
-    public var context: [String: String] {
+    public nonisolated var context: [String: String] {
         [:]
     }
 }
@@ -75,11 +75,11 @@ public protocol RecoverableError: PeekabooErrorProtocol {
     func attemptRecovery() async throws
 
     /// Maximum number of recovery attempts
-    var maxRecoveryAttempts: Int { get }
+    nonisolated var maxRecoveryAttempts: Int { get }
 }
 
 extension RecoverableError {
-    public var maxRecoveryAttempts: Int { 3 }
+    public nonisolated var maxRecoveryAttempts: Int { 3 }
 }
 
 // MARK: - Network Error Protocol
@@ -87,24 +87,24 @@ extension RecoverableError {
 /// Specialized protocol for network-related errors
 public protocol NetworkError: PeekabooErrorProtocol {
     /// The URL that failed
-    var failedURL: URL? { get }
+    nonisolated var failedURL: URL? { get }
 
     /// HTTP status code if applicable
-    var statusCode: Int? { get }
+    nonisolated var statusCode: Int? { get }
 
     /// Whether this is a temporary failure
-    var isTemporary: Bool { get }
+    nonisolated var isTemporary: Bool { get }
 }
 
 extension NetworkError {
-    public var category: ErrorCategory { .network }
+    public nonisolated var category: ErrorCategory { .network }
 
-    public var isTemporary: Bool {
+    public nonisolated var isTemporary: Bool {
         guard let code = statusCode else { return true }
         return code >= 500 || code == 408 || code == 429
     }
 
-    public var isRecoverable: Bool {
+    public nonisolated var isRecoverable: Bool {
         self.isTemporary
     }
 }
@@ -114,18 +114,18 @@ extension NetworkError {
 /// Protocol for validation-related errors
 public protocol ValidationError: PeekabooErrorProtocol {
     /// The field that failed validation
-    var fieldName: String { get }
+    nonisolated var fieldName: String { get }
 
     /// The validation rule that failed
-    var failedRule: String { get }
+    nonisolated var failedRule: String { get }
 
     /// The invalid value if available
-    var invalidValue: String? { get }
+    nonisolated var invalidValue: String? { get }
 }
 
 extension ValidationError {
-    public var category: ErrorCategory { .validation }
-    public var isRecoverable: Bool { false }
+    public nonisolated var category: ErrorCategory { .validation }
+    public nonisolated var isRecoverable: Bool { false }
 }
 
 // MARK: - Error Context Builder
@@ -204,7 +204,7 @@ public actor ErrorRecoveryManager {
 // MARK: - Error Recovery Failure
 
 /// Error thrown when recovery attempts fail
-public struct ErrorRecoveryFailure: PeekabooErrorProtocol {
+public nonisolated struct ErrorRecoveryFailure: PeekabooErrorProtocol {
     public let originalError: any RecoverableError
     public let attempts: Int
     public let reason: String

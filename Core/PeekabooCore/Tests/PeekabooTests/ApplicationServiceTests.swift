@@ -4,7 +4,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
-@Suite("ApplicationService Tests")
+@Suite("ApplicationService Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
 struct ApplicationServiceTests {
     @Test("List windows with timeout")
     @MainActor

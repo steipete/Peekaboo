@@ -461,7 +461,7 @@ public final class ConfigurationManager: @unchecked Sendable {
             cliValue: cliValue,
             envVar: "PEEKABOO_AI_PROVIDERS",
             configValue: self.configuration?.aiProviders?.providers,
-            defaultValue: "openai/gpt-5-mini,ollama/llava:latest,anthropic/claude-opus-4-20250514")
+            defaultValue: "openai/gpt-5,anthropic/claude-sonnet-4.5")
     }
 
     /// Get OpenAI API key with proper precedence
@@ -564,7 +564,7 @@ public final class ConfigurationManager: @unchecked Sendable {
             // Comma-separated list of AI providers in order of preference
             // Format: "provider/model,provider/model"
             // Supported providers: openai, anthropic, ollama
-            "providers": "anthropic/claude-opus-4-20250514,openai/gpt-4.1,ollama/llava:latest",
+            "providers": "openai/gpt-5,anthropic/claude-sonnet-4.5",
 
             // NOTE: API keys should be stored in ~/.peekaboo/credentials
             // or set as environment variables, not in this file

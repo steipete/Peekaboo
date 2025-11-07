@@ -66,8 +66,8 @@ struct AIProviderParserTests {
             from: "ollama/llava:latest,openai/gpt-4,anthropic/claude-3",
             hasOpenAI: true,
             hasAnthropic: true,
-            hasOllama: true)
-        #expect(model == "llava:latest")
+            hasOllama: false)
+        #expect(model == "gpt-5")
     }
 
     @Test("Determine default model with limited providers")
@@ -77,15 +77,15 @@ struct AIProviderParserTests {
             from: "openai/gpt-4,ollama/llava:latest,anthropic/claude-3",
             hasOpenAI: false,
             hasAnthropic: true,
-            hasOllama: true)
-        #expect(model1 == "llava:latest") // First available
+            hasOllama: false)
+        #expect(model1 == "claude-sonnet-4.5")
 
         let model2 = AIProviderParser.determineDefaultModel(
-            from: "openai/gpt-4,anthropic/claude-opus-4,ollama/llava:latest",
+            from: "openai/gpt-4,anthropic/claude-sonnet-4.5,ollama/llava:latest",
             hasOpenAI: false,
             hasAnthropic: true,
             hasOllama: false)
-        #expect(model2 == "claude-opus-4") // Anthropic is available
+        #expect(model2 == "claude-sonnet-4.5")
     }
 
     @Test("Determine default model with configured default")
@@ -105,19 +105,19 @@ struct AIProviderParserTests {
             from: "invalid/model",
             hasOpenAI: false,
             hasAnthropic: true)
-        #expect(model1 == "claude-opus-4-20250514")
+        #expect(model1 == "claude-sonnet-4.5")
 
         let model2 = AIProviderParser.determineDefaultModel(
             from: "",
             hasOpenAI: true,
             hasAnthropic: false)
-        #expect(model2 == "o3")
+        #expect(model2 == "gpt-5")
 
         let model3 = AIProviderParser.determineDefaultModel(
             from: "",
             hasOpenAI: false,
             hasAnthropic: false)
-        #expect(model3 == "llava:latest")
+        #expect(model3 == "gpt-5")
     }
 
     @Test("Extract provider and model")

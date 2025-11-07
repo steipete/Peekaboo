@@ -27,7 +27,7 @@ public struct SpaceTool: MCPTool {
         - Move window to space 3: { "action": "move-window", "app": "Safari", "to": 3 }
         - Move window to current space: { "action": "move-window", "app": "TextEdit", "to_current": true }
         - Move and follow: { "action": "move-window", "app": "Terminal", "to": 2, "follow": true }
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 

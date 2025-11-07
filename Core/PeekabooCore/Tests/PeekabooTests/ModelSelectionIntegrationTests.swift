@@ -9,10 +9,8 @@ struct ModelSelectionIntegrationTests {
     @MainActor
     func agentServiceModelParameterHandling() async throws {
         let testCases: [LanguageModel] = [
-            .openai(.gpt4o),
-            .anthropic(.opus4),
-            .grok(.grok4),
-            .ollama(.llama33),
+            .openai(.gpt5),
+            .anthropic(.sonnet45),
         ]
 
         for expectedModel in testCases {
@@ -42,7 +40,7 @@ struct ModelSelectionIntegrationTests {
     func nilModelHandlingInFullPipeline() async throws {
         // When nil is passed to agent service, it should use default
         let mockServices = PeekabooServices.shared
-        let defaultModel = LanguageModel.anthropic(.sonnet4)
+        let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -67,10 +65,8 @@ struct ModelSelectionIntegrationTests {
     @MainActor
     func modelDescriptionsAreConsistent() async throws {
         let testModels: [LanguageModel] = [
-            .openai(.gpt4o),
-            .anthropic(.opus4),
-            .grok(.grok4),
-            .ollama(.llama33),
+            .openai(.gpt5),
+            .anthropic(.sonnet45),
         ]
 
         let mockServices = PeekabooServices.shared
@@ -103,13 +99,13 @@ struct ModelSelectionIntegrationTests {
     func modelParameterPrecedenceOverDefault() async throws {
         // Set up agent service with a specific default
         let mockServices = PeekabooServices.shared
-        let defaultModel = LanguageModel.anthropic(.opus4)
+        let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
 
         // Use a different model than the default
-        let overrideModel = LanguageModel.openai(.gpt4o)
+        let overrideModel = LanguageModel.openai(.gpt5)
         #expect(overrideModel.description != defaultModel.description)
 
         do {
@@ -136,7 +132,7 @@ struct ModelSelectionIntegrationTests {
         let mockServices = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let testModel = LanguageModel.anthropic(.sonnet4)
+        let testModel = LanguageModel.anthropic(.sonnet45)
 
         // Test both streaming and non-streaming paths use the same model
         let eventDelegate = MockEventDelegate()
@@ -189,12 +185,12 @@ struct ModelSelectionRegressionTests {
         // with sessionId and model parameters was ignoring the model parameter
 
         let mockServices = PeekabooServices.shared
-        let defaultModel = LanguageModel.anthropic(.opus4)
+        let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
 
-        let customModel = LanguageModel.openai(.gpt4o)
+        let customModel = LanguageModel.openai(.gpt5)
         #expect(customModel.description != defaultModel.description)
 
         do {
@@ -222,12 +218,12 @@ struct ModelSelectionRegressionTests {
         // was using self.defaultLanguageModel instead of the passed model parameter
 
         let mockServices = PeekabooServices.shared
-        let defaultModel = LanguageModel.anthropic(.opus4)
+        let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
 
-        let customModel = LanguageModel.grok(.grok4)
+        let customModel = LanguageModel.openai(.gpt5)
         let eventDelegate = MockEventDelegate()
 
         do {
@@ -254,7 +250,7 @@ struct ModelSelectionRegressionTests {
         // Test that both streaming and non-streaming paths handle nil models correctly
 
         let mockServices = PeekabooServices.shared
-        let defaultModel = LanguageModel.anthropic(.opus4)
+        let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)

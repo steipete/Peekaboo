@@ -14,7 +14,7 @@ public struct DragTool: MCPTool {
         Perform drag and drop operations between UI elements or coordinates.
         Supports element queries, specific IDs, or raw coordinates for both start and end points.
         Includes focus options for handling windows in different spaces.
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 

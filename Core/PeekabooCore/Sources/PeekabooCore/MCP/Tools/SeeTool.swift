@@ -17,7 +17,7 @@ public struct SeeTool: MCPTool {
         Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.)
         that can be used with interaction commands.
         Creates or updates a session for tracking UI state across multiple commands.
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 
@@ -239,7 +239,7 @@ public struct SeeTool: MCPTool {
             windowContext: windowContext)
 
         // Get all detected elements
-        let detectedElements = detectionResult.elements.all
+        let detectedElements = await MainActor.run { detectionResult.elements.all }
 
         // Convert DetectedElement to UIElement
         let elements: [UIElement] = detectedElements.map { detected in

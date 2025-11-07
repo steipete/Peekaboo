@@ -9,21 +9,21 @@ import TachikomaMCP
 @MainActor
 public final class MCPToolRegistry {
     private let logger = Logger(subsystem: "boo.peekaboo.mcp", category: "registry")
-    private var tools: [String: MCPTool] = [:]
-    private var externalTools: [String: MCPTool] = [:]
+    private var tools: [String: any MCPTool] = [:]
+    private var externalTools: [String: any MCPTool] = [:]
     private var clientManager: TachikomaMCPClientManager?
 
     public init() {}
 
     /// Register a tool
-    public func register(_ tool: MCPTool) {
+    public func register(_ tool: any MCPTool) {
         // Register a tool
         self.tools[tool.name] = tool
         self.logger.debug("Registered tool: \(tool.name)")
     }
 
     /// Register multiple tools
-    public func register(_ tools: [MCPTool]) {
+    public func register(_ tools: [any MCPTool]) {
         // Register multiple tools
         for tool in tools {
             self.register(tool)
@@ -31,13 +31,13 @@ public final class MCPToolRegistry {
     }
 
     /// Get a tool by name
-    public func tool(named name: String) -> MCPTool? {
+    public func tool(named name: String) -> (any MCPTool)? {
         // Get a tool by name
         self.tools[name]
     }
 
     /// Get all registered tools
-    public func allTools() -> [MCPTool] {
+    public func allTools() -> [any MCPTool] {
         // Get all registered tools
         Array(self.tools.values)
     }
@@ -127,7 +127,7 @@ public final class MCPToolRegistry {
             $0.serverName
         }
 
-        var externalByServer = OrderedDictionary<String, [MCPTool]>()
+        var externalByServer = OrderedDictionary<String, [any MCPTool]>()
         for serverName in groupedByServer.keys.sorted() {
             let toolsForServer = groupedByServer[serverName]?.sorted { $0.name < $1.name } ?? []
             externalByServer[serverName] = toolsForServer.map { $0 as MCPTool }
@@ -137,7 +137,7 @@ public final class MCPToolRegistry {
     }
 
     /// Get a tool with prefix support (e.g., "github:create_issue")
-    public func getToolWithPrefix(name: String) -> MCPTool? {
+    public func getToolWithPrefix(name: String) -> (any MCPTool)? {
         // First try exact match (handles both native and external tools)
         if let tool = tools[name] ?? externalTools[name] {
             return tool
@@ -159,19 +159,19 @@ public final class MCPToolRegistry {
     }
 
     /// Get all tools (native + external)
-    public func getAllTools() -> [MCPTool] {
+    public func getAllTools() -> [any MCPTool] {
         // Get all tools (native + external)
         Array(self.tools.values) + Array(self.externalTools.values)
     }
 
     /// Get external tools only
-    public func getExternalTools() -> [MCPTool] {
+    public func getExternalTools() -> [any MCPTool] {
         // Get external tools only
         Array(self.externalTools.values)
     }
 
     /// Get native tools only
-    public func getNativeTools() -> [MCPTool] {
+    public func getNativeTools() -> [any MCPTool] {
         // Get native tools only
         Array(self.tools.values)
     }
@@ -193,7 +193,7 @@ public final class MCPToolRegistry {
     // MARK: - Updated Methods for Combined Tools
 
     /// Get a tool by name (checks both native and external)
-    public func toolCombined(named name: String) -> MCPTool? {
+    public func toolCombined(named name: String) -> (any MCPTool)? {
         // Get a tool by name (checks both native and external)
         self.tools[name] ?? self.externalTools[name]
     }

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Main error type for Peekaboo operations
-public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProtocol {
+public nonisolated enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProtocol {
     // Permission errors
     case permissionDeniedScreenRecording
     case permissionDeniedAccessibility

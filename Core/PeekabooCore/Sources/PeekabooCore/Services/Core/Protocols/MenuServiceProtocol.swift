@@ -68,7 +68,7 @@ public struct MenuStructure: Sendable {
     public let menus: [Menu]
 
     /// Total number of menu items
-    public var totalItems: Int {
+    public nonisolated var totalItems: Int {
         self.menus.reduce(0) { $0 + $1.totalItems }
     }
 
@@ -90,7 +90,7 @@ public struct Menu: Sendable {
     public let isEnabled: Bool
 
     /// Total items including submenu items
-    public var totalItems: Int {
+    public nonisolated var totalItems: Int {
         self.items.reduce(0) { $0 + 1 + $1.totalSubitems }
     }
 
@@ -125,7 +125,7 @@ public struct MenuItem: Sendable {
     public let path: String
 
     /// Total subitems in submenu
-    public var totalSubitems: Int {
+    public nonisolated var totalSubitems: Int {
         self.submenu.reduce(0) { $0 + 1 + $1.totalSubitems }
     }
 

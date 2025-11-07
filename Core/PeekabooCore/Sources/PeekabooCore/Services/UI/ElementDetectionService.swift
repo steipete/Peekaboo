@@ -37,9 +37,9 @@ import PeekabooFoundation
 @MainActor
 public final class ElementDetectionService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ElementDetectionService")
-    private let sessionManager: SessionManagerProtocol
+    private let sessionManager: any SessionManagerProtocol
 
-    public init(sessionManager: SessionManagerProtocol? = nil) {
+    public init(sessionManager: (any SessionManagerProtocol)? = nil) {
         self.sessionManager = sessionManager ?? SessionManager()
     }
 

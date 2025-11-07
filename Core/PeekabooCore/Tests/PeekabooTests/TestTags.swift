@@ -1,6 +1,25 @@
 import Foundation
 import Testing
 
+@preconcurrency
+enum EnvironmentFlags {
+    @preconcurrency nonisolated static func isEnabled(_ key: String) -> Bool {
+        ProcessInfo.processInfo.environment[key]?.lowercased() == "true"
+    }
+
+    @preconcurrency nonisolated static var runAutomationScenarios: Bool {
+        isEnabled("RUN_AUTOMATION_TESTS") || isEnabled("RUN_LOCAL_TESTS")
+    }
+
+    @preconcurrency nonisolated static var runScreenCaptureScenarios: Bool {
+        isEnabled("RUN_SCREEN_TESTS") || runAutomationScenarios
+    }
+
+    @preconcurrency nonisolated static var runAudioScenarios: Bool {
+        isEnabled("PEEKABOO_AUDIO_TESTS")
+    }
+}
+
 // MARK: - Common Test Tags
 
 extension Tag {
@@ -35,16 +54,15 @@ extension Tag {
     @Tag static var requiresNetwork: Self
 }
 
+@preconcurrency
 enum TestEnvironment {
-    private static let env = ProcessInfo.processInfo.environment
-
     /// Enable automation-focused tests (input devices, hotkeys, typing).
-    static var runAutomationScenarios: Bool {
-        env["RUN_AUTOMATION_TESTS"] == "true" || env["RUN_LOCAL_TESTS"] == "true"
+    @preconcurrency nonisolated(unsafe) static var runAutomationScenarios: Bool {
+        EnvironmentFlags.runAutomationScenarios
     }
 
     /// Enable screen capture and multi-display validation scenarios.
-    static var runScreenCaptureScenarios: Bool {
-        env["RUN_SCREEN_TESTS"] == "true" || runAutomationScenarios
+    @preconcurrency nonisolated(unsafe) static var runScreenCaptureScenarios: Bool {
+        EnvironmentFlags.runScreenCaptureScenarios
     }
 }

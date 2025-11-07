@@ -106,7 +106,7 @@ public enum AccessibilityError: Error, CustomStringConvertible {
         case let .actionFailed(action, elDesc, axErr):
             var parts = ["Action '\(action)' failed."]
             if let desc = elDesc { parts.append("On element: '\(desc)'.") }
-            if let error = axErr { parts.append("AXError: \(error.stringValue).") }
+            if let error = axErr { parts.append("AXError: \(error).") }
             return parts.joined(separator: " ")
         // Generic & System
         case let .unknownAXError(error): return "An unexpected Accessibility Framework error occurred: \(error)."

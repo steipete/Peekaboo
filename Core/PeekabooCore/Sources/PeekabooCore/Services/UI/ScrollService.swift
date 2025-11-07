@@ -9,10 +9,10 @@ import PeekabooFoundation
 @MainActor
 public final class ScrollService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ScrollService")
-    private let sessionManager: SessionManagerProtocol
+    private let sessionManager: any SessionManagerProtocol
     private let clickService: ClickService
 
-    public init(sessionManager: SessionManagerProtocol? = nil, clickService: ClickService? = nil) {
+    public init(sessionManager: (any SessionManagerProtocol)? = nil, clickService: ClickService? = nil) {
         let manager = sessionManager ?? SessionManager()
         self.sessionManager = manager
         self.clickService = clickService ?? ClickService(sessionManager: manager)

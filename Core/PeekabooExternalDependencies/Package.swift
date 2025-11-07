@@ -2,6 +2,13 @@
 
 import PackageDescription
 
+let approachableConcurrencySettings: [SwiftSetting] = [
+    .enableExperimentalFeature("StrictConcurrency"),
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .defaultIsolation(MainActor.self),
+]
+
 let package = Package(
     name: "PeekabooExternalDependencies",
     platforms: [
@@ -16,8 +23,8 @@ let package = Package(
         // External dependencies centralized here
         .package(path: "../AXorcist"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.4"),
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
-        .package(url: "https://github.com/apple/swift-log", from: "1.5.3"),
+        .package(name: "swift-argument-parser", path: "/Users/steipete/Projects/swift-argument-parser"),
+        .package(url: "https://github.com/apple/swift-log", from: "1.6.4"),
         .package(url: "https://github.com/apple/swift-system", from: "1.6.3"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.3.0"),
     ],
@@ -32,8 +39,6 @@ let package = Package(
                 .product(name: "SystemPackage", package: "swift-system"),
                 .product(name: "OrderedCollections", package: "swift-collections"),
             ],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency"),
-            ]),
+            swiftSettings: approachableConcurrencySettings),
     ],
     swiftLanguageModes: [.v6])

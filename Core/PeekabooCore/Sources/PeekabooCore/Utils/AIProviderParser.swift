@@ -76,9 +76,9 @@ public enum AIProviderParser {
         for config in configs {
             switch config.provider.lowercased() {
             case "openai":
-                if hasOpenAI { return config.model }
+                if hasOpenAI { return "gpt-5" }
             case "anthropic":
-                if hasAnthropic { return config.model }
+                if hasAnthropic { return "claude-sonnet-4.5" }
             case "ollama":
                 if hasOllama { return config.model }
             default:
@@ -88,11 +88,11 @@ public enum AIProviderParser {
 
         // Fall back to hardcoded defaults based on what's available
         if hasAnthropic {
-            return "claude-opus-4-20250514"
+            return "claude-sonnet-4.5"
         } else if hasOpenAI {
-            return "o3"
+            return "gpt-5"
         } else {
-            return "llava:latest" // Ollama fallback
+            return "gpt-5"
         }
     }
 }

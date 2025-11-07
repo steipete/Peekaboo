@@ -42,7 +42,7 @@ import PeekabooFoundation
 @MainActor
 public final class UIAutomationService: UIAutomationServiceProtocol {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "UIAutomationService")
-    private let sessionManager: SessionManagerProtocol
+    private let sessionManager: any SessionManagerProtocol
 
     // Specialized services
     private let elementDetectionService: ElementDetectionService
@@ -95,7 +95,8 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
      * - Important: All services are initialized on the main thread due to UI automation requirements
      * - Note: The visualizer connection is established asynchronously and failures are logged but not thrown
      */
-    public init(sessionManager: SessionManagerProtocol? = nil, loggingService: LoggingServiceProtocol? = nil) {
+    public init(sessionManager: (any SessionManagerProtocol)? = nil,
+                loggingService: (any LoggingServiceProtocol)? = nil) {
         let manager = sessionManager ?? SessionManager()
         self.sessionManager = manager
 

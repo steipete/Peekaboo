@@ -69,15 +69,17 @@ public enum ToolSource: Sendable {
 
 /// Categorized tools for display purposes
 public struct CategorizedTools: Sendable {
-    public let native: [MCPTool]
-    public let external: OrderedDictionary<String, [MCPTool]>
+    public typealias ToolList = [any MCPTool]
 
-    public init(native: [MCPTool], external: OrderedDictionary<String, [MCPTool]>) {
+    public let native: ToolList
+    public let external: OrderedDictionary<String, ToolList>
+
+    public init(native: ToolList, external: OrderedDictionary<String, ToolList>) {
         self.native = native
         self.external = external
     }
 
-    public init(native: [MCPTool], external: [String: [MCPTool]]) {
+    public init(native: ToolList, external: [String: ToolList]) {
         let ordered = OrderedDictionary(uniqueKeysWithValues: external.sorted { $0.key < $1.key })
         self.init(native: native, external: ordered)
     }
@@ -93,12 +95,12 @@ public struct CategorizedTools: Sendable {
     }
 
     /// Get all external tools as a flat array
-    public var allExternalTools: [MCPTool] {
+    public var allExternalTools: ToolList {
         self.external.values.flatMap(\.self)
     }
 
     /// Get tools from a specific server
-    public func tools(from serverName: String) -> [MCPTool] {
+    public func tools(from serverName: String) -> ToolList {
         // Get tools from a specific server
         self.external[serverName] ?? []
     }
@@ -186,11 +188,13 @@ public struct ToolOrganizer: Sendable {
     /// Apply filter to categorized tools
     public static func filter(_ tools: CategorizedTools, with filter: ToolFilter) -> CategorizedTools {
         // Apply filter to categorized tools
-        var filteredNative: [MCPTool] = []
-        var filteredExternal = OrderedDictionary<String, [MCPTool]>()
+        var filteredNative: CategorizedTools.ToolList = []
+        var filteredExternal = OrderedDictionary<String, CategorizedTools.ToolList>()
 
         // Handle native tools
-        if !filter.showMcpOnly {
+        let isServerScoped = filter.specificServer != nil
+
+        if !filter.showMcpOnly, !isServerScoped {
             filteredNative = tools.native
         }
 
@@ -224,7 +228,7 @@ public struct ToolOrganizer: Sendable {
     }
 
     /// Get display name for a tool based on options
-    public static func displayName(for tool: MCPTool, options: ToolDisplayOptions) -> String {
+    public static func displayName(for tool: any MCPTool, options: ToolDisplayOptions) -> String {
         // Get display name for a tool based on options
         if let externalTool = tool as? ExternalMCPTool {
             if options.useServerPrefixes {

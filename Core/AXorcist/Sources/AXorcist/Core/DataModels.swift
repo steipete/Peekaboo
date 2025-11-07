@@ -127,7 +127,7 @@ public struct AXValueWrapper: Codable, Sendable, Equatable {
     // For instance, AXUIElementRef is converted to a placeholder string like "<AXUIElement_RS>".
 }
 
-public struct AXElement: Codable, HandlerDataRepresentable {
+public nonisolated struct AXElement: Codable, HandlerDataRepresentable {
     // MARK: Lifecycle
 
     public init(attributes: ElementAttributes?, path: [String]? = nil) {

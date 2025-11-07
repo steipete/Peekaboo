@@ -144,12 +144,7 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
     public let screenName: String?
 
     /// Whether the window is off-screen
-    public var isOffScreen: Bool {
-        // Check if window is off any visible screen
-        !NSScreen.screens.contains { screen in
-            screen.frame.intersects(self.bounds)
-        }
-    }
+    public let isOffScreen: Bool
 
     public init(
         windowID: Int,
@@ -177,5 +172,8 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         self.spaceName = spaceName
         self.screenIndex = screenIndex
         self.screenName = screenName
+        self.isOffScreen = !NSScreen.screens.contains { screen in
+            screen.frame.intersects(bounds)
+        }
     }
 }

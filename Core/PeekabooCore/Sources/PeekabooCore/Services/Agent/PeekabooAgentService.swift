@@ -114,7 +114,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     public init(
         services: PeekabooServices,
-        defaultModel: LanguageModel = .openai(.gpt5Mini))
+        defaultModel: LanguageModel = .openai(.gpt5))
         throws
     {
         self.services = services
@@ -351,7 +351,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             }
 
             // Run the agent with streaming
-            let selectedModel = model ?? self.defaultLanguageModel
+            let selectedModel = self.resolveModel(model)
 
             // Create event delegate wrapper for streaming
             let streamingDelegate = StreamingEventDelegate { chunk in
@@ -371,7 +371,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             return result
         } else {
             // Non-streaming execution
-            let selectedModel = model ?? self.defaultLanguageModel
+            let selectedModel = self.resolveModel(model)
             return try await self.executeWithoutStreaming(task, model: selectedModel, maxSteps: maxSteps)
         }
     }
@@ -384,7 +384,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         streamHandler: @Sendable @escaping (String) async -> Void) async throws -> AgentExecutionResult
     {
         // Execute a task with streaming output
-        let selectedModel = model ?? self.defaultLanguageModel
+        let selectedModel = self.resolveModel(model)
         // For streaming without event handler, create a dummy delegate that discards chunks
         let dummyDelegate = StreamingEventDelegate { _ in /* discard */ }
         return try await self.executeWithStreaming(
@@ -393,6 +393,19 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             maxSteps: 20,
             streamingDelegate: dummyDelegate,
             eventHandler: nil)
+    }
+
+    private func resolveModel(_ requestedModel: LanguageModel?) -> LanguageModel {
+        let candidate = requestedModel ?? self.defaultLanguageModel
+
+        switch candidate {
+        case .openai:
+            return .openai(.gpt5)
+        case .anthropic:
+            return .anthropic(.sonnet45)
+        default:
+            return .openai(.gpt5)
+        }
     }
 
     // MARK: - Tool Creation
@@ -453,7 +466,7 @@ extension PeekabooAgentService {
             }
 
             // Run the agent with streaming
-            let selectedModel = model ?? self.defaultLanguageModel
+            let selectedModel = self.resolveModel(model)
             let result = try await self.executeWithStreaming(
                 continuationPrompt,
                 model: selectedModel,
@@ -466,7 +479,7 @@ extension PeekabooAgentService {
             return result
         } else {
             // Execute without streaming
-            let selectedModel = model ?? self.defaultLanguageModel
+            let selectedModel = self.resolveModel(model)
             return try await self.executeWithoutStreaming(continuationPrompt, model: selectedModel, maxSteps: 20)
         }
     }
@@ -790,27 +803,13 @@ extension PeekabooAgentService {
             // Stream the response
             // Configure settings based on model type
             let settings = switch model {
-            case .openai(.gpt5),
-                 .openai(.gpt5Pro),
-                 .openai(.gpt5Mini),
-                 .openai(.gpt5Nano),
-                 .openai(.gpt5Thinking),
-                 .openai(.gpt5ThinkingMini),
-                 .openai(.gpt5ThinkingNano),
-                 .openai(.gpt5ChatLatest):
+            case .openai(.gpt5):
                 // GPT-5 models use verbosity instead of temperature
                 GenerationSettings(
                     maxTokens: 4096,
                     providerOptions: .init(
                         openai: .init(
                             verbosity: .medium)))
-            case .openai(.o4Mini):
-                // Reasoning models use reasoning effort
-                GenerationSettings(
-                    maxTokens: 4096,
-                    providerOptions: .init(
-                        openai: .init(
-                            reasoningEffort: .medium)))
             default:
                 // Standard models use default settings
                 GenerationSettings(maxTokens: 4096)
@@ -923,25 +922,12 @@ extension PeekabooAgentService {
                         do {
                             // Use the same settings as configured above for consistency
                             let toolSettings = switch model {
-                            case .openai(.gpt5),
-                                 .openai(.gpt5Pro),
-                                 .openai(.gpt5Mini),
-                                 .openai(.gpt5Nano),
-                                 .openai(.gpt5Thinking),
-                                 .openai(.gpt5ThinkingMini),
-                                 .openai(.gpt5ThinkingNano),
-                                 .openai(.gpt5ChatLatest):
+                            case .openai(.gpt5):
                                 GenerationSettings(
                                     maxTokens: 4096,
                                     providerOptions: .init(
                                         openai: .init(
                                             verbosity: .medium)))
-                            case .openai(.o4Mini):
-                                GenerationSettings(
-                                    maxTokens: 4096,
-                                    providerOptions: .init(
-                                        openai: .init(
-                                            reasoningEffort: .medium)))
                             default:
                                 GenerationSettings(maxTokens: 4096)
                             }

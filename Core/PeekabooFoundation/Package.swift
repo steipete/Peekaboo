@@ -2,6 +2,17 @@
 
 import PackageDescription
 
+let approachableConcurrencySettings: [SwiftSetting] = [
+    .enableExperimentalFeature("StrictConcurrency"),
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .defaultIsolation(MainActor.self),
+]
+
+let foundationTargetSettings = approachableConcurrencySettings + [
+    .unsafeFlags(["-parse-as-library"]),
+]
+
 let package = Package(
     name: "PeekabooFoundation",
     platforms: [
@@ -17,11 +28,10 @@ let package = Package(
         .target(
             name: "PeekabooFoundation",
             dependencies: [],
-            swiftSettings: [
-                .unsafeFlags(["-parse-as-library"]),
-            ]),
+            swiftSettings: foundationTargetSettings),
         .testTarget(
             name: "PeekabooFoundationTests",
-            dependencies: ["PeekabooFoundation"]),
+            dependencies: ["PeekabooFoundation"],
+            swiftSettings: approachableConcurrencySettings),
     ],
     swiftLanguageModes: [.v6])

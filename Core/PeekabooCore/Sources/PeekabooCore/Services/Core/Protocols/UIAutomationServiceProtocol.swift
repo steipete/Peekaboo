@@ -233,7 +233,7 @@ public struct DetectedElement: Sendable, Codable {
 // ElementType is now in PeekabooFoundation
 
 /// Window context information for element detection
-public struct WindowContext: Sendable {
+public nonisolated struct WindowContext: Sendable {
     /// Application name
     public let applicationName: String?
 

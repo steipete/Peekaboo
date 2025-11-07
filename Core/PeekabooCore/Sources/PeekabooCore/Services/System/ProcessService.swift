@@ -7,22 +7,22 @@ import PeekabooFoundation
 @available(macOS 14.0, *)
 @MainActor
 public final class ProcessService: ProcessServiceProtocol {
-    private let applicationService: ApplicationServiceProtocol
-    private let screenCaptureService: ScreenCaptureServiceProtocol
-    private let sessionManager: SessionManagerProtocol
-    private let uiAutomationService: UIAutomationServiceProtocol
-    private let windowManagementService: WindowManagementServiceProtocol
-    private let menuService: MenuServiceProtocol
-    private let dockService: DockServiceProtocol
+    private let applicationService: any ApplicationServiceProtocol
+    private let screenCaptureService: any ScreenCaptureServiceProtocol
+    private let sessionManager: any SessionManagerProtocol
+    private let uiAutomationService: any UIAutomationServiceProtocol
+    private let windowManagementService: any WindowManagementServiceProtocol
+    private let menuService: any MenuServiceProtocol
+    private let dockService: any DockServiceProtocol
 
     public init(
-        applicationService: ApplicationServiceProtocol,
-        screenCaptureService: ScreenCaptureServiceProtocol,
-        sessionManager: SessionManagerProtocol,
-        uiAutomationService: UIAutomationServiceProtocol,
-        windowManagementService: WindowManagementServiceProtocol,
-        menuService: MenuServiceProtocol,
-        dockService: DockServiceProtocol)
+        applicationService: any ApplicationServiceProtocol,
+        screenCaptureService: any ScreenCaptureServiceProtocol,
+        sessionManager: any SessionManagerProtocol,
+        uiAutomationService: any UIAutomationServiceProtocol,
+        windowManagementService: any WindowManagementServiceProtocol,
+        menuService: any MenuServiceProtocol,
+        dockService: any DockServiceProtocol)
     {
         self.applicationService = applicationService
         self.screenCaptureService = screenCaptureService
@@ -42,7 +42,8 @@ public final class ProcessService: ProcessServiceProtocol {
 
         return try await performOperation({
             let data = try Data(contentsOf: url)
-            return try JSONCoding.decoder.decode(PeekabooScript.self, from: data)
+            let decoder = JSONCoding.makeDecoder()
+            return try decoder.decode(PeekabooScript.self, from: data)
         }, errorContext: "Failed to load script from \(path)")
     }
 

@@ -117,7 +117,7 @@ extension UnifiedToolOutput {
 // MARK: - Specific Tool Data Types
 
 /// Data structure for application list results
-public struct ServiceApplicationListData: Codable, Sendable {
+public nonisolated struct ServiceApplicationListData: Codable, Sendable {
     public let applications: [ServiceApplicationInfo]
 
     public init(applications: [ServiceApplicationInfo]) {
@@ -126,7 +126,7 @@ public struct ServiceApplicationListData: Codable, Sendable {
 }
 
 /// Data structure for window list results
-public struct ServiceWindowListData: Codable, Sendable {
+public nonisolated struct ServiceWindowListData: Codable, Sendable {
     public let windows: [ServiceWindowInfo]
     public let targetApplication: ServiceApplicationInfo?
 
@@ -340,7 +340,7 @@ public struct UIAnalysisData: Codable, Sendable {
     }
 
     /// Window context information
-    public struct WindowContext: Codable, Sendable {
+    public nonisolated struct WindowContext: Codable, Sendable {
         public let applicationName: String?
         public let windowTitle: String?
         public let windowBounds: CGRect?

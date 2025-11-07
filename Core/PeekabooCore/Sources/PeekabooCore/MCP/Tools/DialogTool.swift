@@ -27,7 +27,7 @@ public struct DialogTool: MCPTool {
         - Input text: { "action": "input", "text": "Hello", "field": "Name" }
         - Select file: { "action": "file", "path": "/Users/user/document.txt" }
         - Dismiss dialog: { "action": "dismiss", "force": true }
-        Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
 

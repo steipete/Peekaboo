@@ -492,11 +492,13 @@ public final class SessionManager: SessionManagerProtocol {
 
 /// Actor for thread-safe session storage operations
 private actor SessionStorageActor {
-    private let encoder = JSONCoding.encoder
-    private let decoder = JSONCoding.decoder
+    private let encoder: JSONEncoder
+    private let decoder: JSONDecoder
 
     init() {
         // JSONCoding.encoder already has pretty printing and sorted keys configured
+        self.encoder = JSONCoding.makeEncoder()
+        self.decoder = JSONCoding.makeDecoder()
     }
 
     func saveSession(sessionId: String, data: UIAutomationSession, at sessionPath: URL) throws {

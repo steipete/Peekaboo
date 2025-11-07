@@ -9,24 +9,24 @@ import Foundation
 public enum AgentDisplayTokens {
     /// Canonical status markers
     public enum Status {
-        public static let running = "[run]"
-        public static let success = "[ok]"
-        public static let failure = "[err]"
-        public static let warning = "[warn]"
-        public static let info = "[info]"
-        public static let done = "[done]"
-        public static let time = "[time]"
-        public static let planning = "[plan]"
-        public static let dialog = "[dialog]"
+        public nonisolated static let running = "[run]"
+        public nonisolated static let success = "[ok]"
+        public nonisolated static let failure = "[err]"
+        public nonisolated static let warning = "[warn]"
+        public nonisolated static let info = "[info]"
+        public nonisolated static let done = "[done]"
+        public nonisolated static let time = "[time]"
+        public nonisolated static let planning = "[plan]"
+        public nonisolated static let dialog = "[dialog]"
     }
 
     /// Brand glyphs shared across platforms
     public enum Glyph {
-        public static let agent = "👻"
+        public nonisolated static let agent = "👻"
     }
 
     /// Canonical glyphs for tool categories
-    private static let iconByKey: [String: String] = [
+    private nonisolated static let iconByKey: [String: String] = [
         "see": "[see]",
         "screenshot": "[see]",
         "window_capture": "[see]",
@@ -69,7 +69,7 @@ public enum AgentDisplayTokens {
     ]
 
     /// Normalize a tool name for dictionary lookup
-    private static func normalizedToolKey(_ toolName: String) -> String {
+    private nonisolated static func normalizedToolKey(_ toolName: String) -> String {
         // Normalize a tool name for dictionary lookup
         let key = toolName
             .lowercased()
@@ -79,7 +79,7 @@ public enum AgentDisplayTokens {
     }
 
     /// Resolve the glyph token for a tool name, falling back to a generic token.
-    public static func icon(for toolName: String) -> String {
+    public nonisolated static func icon(for toolName: String) -> String {
         // Resolve the glyph token for a tool name, falling back to a generic token.
         let key = self.normalizedToolKey(toolName)
         if let token = iconByKey[key] {
