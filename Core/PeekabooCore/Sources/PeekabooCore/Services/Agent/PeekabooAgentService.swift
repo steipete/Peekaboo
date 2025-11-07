@@ -129,7 +129,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         _ task: String,
         maxSteps: Int = 20,
         dryRun: Bool = false,
-        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
     {
         // For dry run, just return a simulated result
         if dryRun {
@@ -152,7 +152,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
             // This is a legacy API pattern that predates Swift's strict concurrency
-            let unsafeDelegate = UnsafeTransfer<AgentEventDelegate>(eventDelegate!)
+            let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate!)
 
             // Create event stream infrastructure
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
@@ -206,7 +206,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         audioContent: AudioContent,
         maxSteps: Int = 20,
         dryRun: Bool = false,
-        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
     {
         // For dry run, just return a simulated result
         if dryRun {
@@ -230,7 +230,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
             // This is a legacy API pattern that predates Swift's strict concurrency
-            let unsafeDelegate = UnsafeTransfer<AgentEventDelegate>(eventDelegate!)
+            let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate!)
 
             // Create event stream infrastructure
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
@@ -307,7 +307,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         maxSteps: Int = 20,
         sessionId: String? = nil,
         model: LanguageModel? = nil,
-        eventDelegate: AgentEventDelegate? = nil,
+        eventDelegate: (any AgentEventDelegate)? = nil,
         verbose: Bool = false) async throws -> AgentExecutionResult
     {
         // Store the verbose flag for this execution
@@ -323,7 +323,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
             // This is a legacy API pattern that predates Swift's strict concurrency
-            let unsafeDelegate = UnsafeTransfer<AgentEventDelegate>(eventDelegate!)
+            let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate!)
 
             // Create event stream infrastructure
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
@@ -418,7 +418,7 @@ extension PeekabooAgentService {
     public func resumeSession(
         sessionId: String,
         model: LanguageModel? = nil,
-        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
     {
         // Load the session
         guard try await self.sessionManager.loadSession(id: sessionId) != nil else {
@@ -433,7 +433,7 @@ extension PeekabooAgentService {
         // Execute with the loaded session
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
-            let unsafeDelegate = UnsafeTransfer<AgentEventDelegate>(eventDelegate!)
+            let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate!)
 
             // Create event stream infrastructure
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()

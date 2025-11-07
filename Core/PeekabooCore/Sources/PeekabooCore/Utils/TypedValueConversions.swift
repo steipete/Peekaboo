@@ -76,7 +76,7 @@ extension TypedValue {
     // MARK: - Decoding Helpers
 
     /// Decode from a single value container
-    public static func decode(from container: SingleValueDecodingContainer) throws -> TypedValue {
+    public static func decode(from container: any SingleValueDecodingContainer) throws -> TypedValue {
         // Decode from a single value container
         if container.decodeNil() {
             return .null
@@ -155,7 +155,7 @@ extension TypedValue {
             self.value = value
         }
 
-        func encode(to encoder: Encoder) throws {
+        func encode(to encoder: any Encoder) throws {
             try self.value.encode(to: encoder)
         }
     }

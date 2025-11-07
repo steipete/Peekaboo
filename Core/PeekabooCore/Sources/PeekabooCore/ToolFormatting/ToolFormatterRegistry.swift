@@ -11,7 +11,7 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
     public static let shared = ToolFormatterRegistry()
 
     // Dictionary of formatters by tool type
-    private var formatters: [ToolType: ToolFormatter] = [:]
+    private var formatters: [ToolType: any ToolFormatter] = [:]
 
     // MARK: - Initialization
 
@@ -84,7 +84,7 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
         }
     }
 
-    private func createDefaultFormatter(for toolType: ToolType) -> ToolFormatter {
+    private func createDefaultFormatter(for toolType: ToolType) -> any ToolFormatter {
         // Create appropriate formatter based on tool category
         switch toolType.category {
         case .vision:
@@ -116,7 +116,7 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
         }
     }
 
-    private func register(_ formatter: ToolFormatter, for toolTypes: [ToolType]) {
+    private func register(_ formatter: any ToolFormatter, for toolTypes: [ToolType]) {
         for toolType in toolTypes {
             // Create a new instance with the correct tool type
             let specificFormatter = self.createFormatterInstance(formatter, for: toolType)
@@ -124,7 +124,7 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
         }
     }
 
-    private func createFormatterInstance(_ formatter: ToolFormatter, for toolType: ToolType) -> ToolFormatter {
+    private func createFormatterInstance(_ formatter: any ToolFormatter, for toolType: ToolType) -> any ToolFormatter {
         // Create appropriate formatter instance based on type
         switch formatter {
         // Note: These cases are no longer needed since we replaced the base classes
@@ -155,13 +155,13 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
     // MARK: - Lookup
 
     /// Get formatter for a specific tool type
-    public func formatter(for toolType: ToolType) -> ToolFormatter {
+    public func formatter(for toolType: ToolType) -> any ToolFormatter {
         // Get formatter for a specific tool type
         self.formatters[toolType] ?? BaseToolFormatter(toolType: toolType)
     }
 
     /// Get formatter for a tool name (backward compatibility)
-    public func formatter(for toolName: String) -> ToolFormatter? {
+    public func formatter(for toolName: String) -> (any ToolFormatter)? {
         // Get formatter for a tool name (backward compatibility)
         guard let toolType = ToolType(toolName: toolName) else {
             return nil

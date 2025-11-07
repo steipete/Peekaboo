@@ -96,7 +96,7 @@ public struct DockTool: MCPTool {
     // MARK: - Action Handlers
 
     private func handleLaunch(
-        service: DockServiceProtocol,
+        service: any DockServiceProtocol,
         app: String?,
         startTime: Date) async throws -> ToolResponse
     {
@@ -120,7 +120,7 @@ public struct DockTool: MCPTool {
     }
 
     private func handleRightClick(
-        service: DockServiceProtocol,
+        service: any DockServiceProtocol,
         app: String?,
         menuItem: String?,
         startTime: Date) async throws -> ToolResponse
@@ -149,7 +149,7 @@ public struct DockTool: MCPTool {
     }
 
     private func handleHide(
-        service: DockServiceProtocol,
+        service: any DockServiceProtocol,
         startTime: Date) async throws -> ToolResponse
     {
         try await service.hideDock()
@@ -168,7 +168,7 @@ public struct DockTool: MCPTool {
     }
 
     private func handleShow(
-        service: DockServiceProtocol,
+        service: any DockServiceProtocol,
         startTime: Date) async throws -> ToolResponse
     {
         try await service.showDock()
@@ -187,7 +187,7 @@ public struct DockTool: MCPTool {
     }
 
     private func handleList(
-        service: DockServiceProtocol,
+        service: any DockServiceProtocol,
         includeAll: Bool,
         startTime: Date) async throws -> ToolResponse
     {

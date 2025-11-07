@@ -162,7 +162,7 @@ public struct AppTool: MCPTool {
     // MARK: - Action Handlers
 
     private func handleLaunch(
-        service: ApplicationServiceProtocol,
+        service: any ApplicationServiceProtocol,
         name: String?,
         bundleId: String?,
         waitUntilReady: Bool,
@@ -196,7 +196,7 @@ public struct AppTool: MCPTool {
     }
 
     private func handleQuit(
-        service: ApplicationServiceProtocol,
+        service: any ApplicationServiceProtocol,
         name: String?,
         force: Bool,
         all: Bool,
@@ -239,7 +239,7 @@ public struct AppTool: MCPTool {
     }
 
     private func handleQuitAll(
-        service: ApplicationServiceProtocol,
+        service: any ApplicationServiceProtocol,
         except: String?,
         force: Bool,
         startTime: Date) async throws -> ToolResponse
@@ -294,7 +294,7 @@ public struct AppTool: MCPTool {
     }
 
     private func handleRelaunch(
-        service: ApplicationServiceProtocol,
+        service: any ApplicationServiceProtocol,
         name: String?,
         force: Bool,
         wait: Double,
@@ -346,7 +346,7 @@ public struct AppTool: MCPTool {
     }
 
     private func handleFocus(
-        service: ApplicationServiceProtocol,
+        service: any ApplicationServiceProtocol,
         name: String?,
         to: String?,
         cycle: Bool,
@@ -412,7 +412,7 @@ public struct AppTool: MCPTool {
     }
 
     private func handleHide(
-        service: ApplicationServiceProtocol,
+        service: any ApplicationServiceProtocol,
         name: String?,
         startTime: Date) async throws -> ToolResponse
     {
@@ -438,7 +438,7 @@ public struct AppTool: MCPTool {
     }
 
     private func handleUnhide(
-        service: ApplicationServiceProtocol,
+        service: any ApplicationServiceProtocol,
         name: String?,
         startTime: Date) async throws -> ToolResponse
     {
@@ -464,7 +464,7 @@ public struct AppTool: MCPTool {
     }
 
     private func handleList(
-        service: ApplicationServiceProtocol,
+        service: any ApplicationServiceProtocol,
         startTime: Date) async throws -> ToolResponse
     {
         let apps = try await service.listApplications()

@@ -4,19 +4,35 @@ import os.log
 import TachikomaMCP
 
 private enum MCPAutoConnectPolicy {
+    private static let overrideLock = OSAllocatedUnfairLock(initialState: Bool?.none)
     private static let forceEnable =
         ProcessInfo.processInfo.environment["PEEKABOO_FORCE_MCP_AUTOCONNECT"] == "true"
     private static let forceDisable =
         ProcessInfo.processInfo.environment["PEEKABOO_DISABLE_MCP_AUTOCONNECT"] == "true"
     private static let isTestEnvironment: Bool = {
         let env = ProcessInfo.processInfo.environment
-        return env["XCTestConfigurationFilePath"] != nil || env["SWIFT_PACKAGE_TESTING"] != nil
+        if env["PEEKABOO_DISABLE_MCP_AUTOCONNECT"] == "true" { return true }
+        if env["SWIFT_PACKAGE_TESTING"] == "1" { return true }
+        if env["XCTestConfigurationFilePath"] != nil { return true }
+        let processName = ProcessInfo.processInfo.processName.lowercased()
+        let argv0 = CommandLine.arguments.first?.lowercased() ?? ""
+        return processName.contains("xctest")
+            || processName.contains("swiftpm-test")
+            || processName.contains("swiftpm-testing-helper")
+            || argv0.contains(".xctest")
     }()
 
     static var shouldConnect: Bool {
+        if let override = overrideLock.withLock({ $0 }) {
+            return override
+        }
         if forceEnable { return true }
         if forceDisable { return false }
         return !isTestEnvironment
+    }
+
+    static func setOverride(_ value: Bool?) {
+        overrideLock.withLock { $0 = value }
     }
 }
 
@@ -520,6 +536,10 @@ public final class MCPClientManager {
             let tools = await connection.getTools()
             return .connected(toolCount: tools.count, responseTime: responseTime)
         } else {
+            guard MCPAutoConnectPolicy.shouldConnect else {
+                return .disconnected(error: "Auto-connect disabled")
+            }
+
             // Try to connect
             do {
                 try await connection.connect()
@@ -596,6 +616,11 @@ public final class MCPClientManager {
         self.configs[name] = config
 
         if let connection = connections[name] {
+            guard MCPAutoConnectPolicy.shouldConnect else {
+                self.logger.info("Auto-connect disabled; skipping immediate connect for '\(name)'")
+                return
+            }
+
             try await connection.connect()
         }
 
@@ -617,5 +642,12 @@ public final class MCPClientManager {
         }
 
         self.logger.info("Disabled MCP server '\(name)'")
+    }
+}
+
+extension MCPClientManager {
+    @MainActor
+    static func _setAutoConnectOverrideForTesting(_ value: Bool?) {
+        MCPAutoConnectPolicy.setOverride(value)
     }
 }

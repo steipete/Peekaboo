@@ -226,18 +226,26 @@ struct MCPClientConfigurationTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let jsonData = try encoder.encode(config)
-        let jsonString = String(data: jsonData, encoding: .utf8)!
+        let jsonObject = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+        let clients = jsonObject?["mcpClients"] as? [String: Any]
+        #expect(clients?["github"] as? [String: Any] != nil)
+        #expect(clients?["files"] as? [String: Any] != nil)
 
-        // Verify the JSON contains expected structure
-        #expect(jsonString.contains("\"mcpClients\""))
-        #expect(jsonString.contains("\"github\""))
-        #expect(jsonString.contains("\"files\""))
-        #expect(jsonString.contains("\"toolDisplay\""))
-        #expect(jsonString.contains("\"showMcpToolsByDefault\""))
-        #expect(jsonString.contains("\"@modelcontextprotocol/server-github\""))
-        #expect(jsonString.contains("\"${GITHUB_TOKEN}\""))
-        #expect(jsonString.contains("\"enabled\" : false"))
-        #expect(jsonString.contains("\"timeout\" : 5"))
+        if let github = clients?["github"] as? [String: Any] {
+            let args = github["args"] as? [String]
+            #expect(args?.contains("@modelcontextprotocol/server-github") == true)
+            let env = github["env"] as? [String: String]
+            #expect(env?["GITHUB_TOKEN"] == "${GITHUB_TOKEN}")
+        }
+
+        if let files = clients?["files"] as? [String: Any] {
+            #expect(files["enabled"] as? Bool == false)
+            #expect(files["timeout"] as? Double == 5.0)
+        }
+
+        if let toolDisplay = jsonObject?["toolDisplay"] as? [String: Any] {
+            #expect(toolDisplay["showMcpToolsByDefault"] as? Bool == true)
+        }
 
         // Verify it can be decoded back
         let decoder = JSONDecoder()

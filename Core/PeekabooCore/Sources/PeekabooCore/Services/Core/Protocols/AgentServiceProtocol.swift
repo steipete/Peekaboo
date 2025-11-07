@@ -15,7 +15,7 @@ public protocol AgentServiceProtocol: Sendable {
         _ task: String,
         maxSteps: Int,
         dryRun: Bool,
-        eventDelegate: AgentEventDelegate?) async throws -> AgentExecutionResult
+        eventDelegate: (any AgentEventDelegate)?) async throws -> AgentExecutionResult
 
     /// Execute a task with audio content
     /// - Parameters:
@@ -28,7 +28,7 @@ public protocol AgentServiceProtocol: Sendable {
         audioContent: AudioContent,
         maxSteps: Int,
         dryRun: Bool,
-        eventDelegate: AgentEventDelegate?) async throws -> AgentExecutionResult
+        eventDelegate: (any AgentEventDelegate)?) async throws -> AgentExecutionResult
 
     /// Clean up any cached sessions or resources
     func cleanup() async

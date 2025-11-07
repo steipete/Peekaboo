@@ -42,20 +42,20 @@ import PeekabooFoundation
 // swiftlint:disable type_body_length
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     struct Dependencies: Sendable {
-        let visualizerClient: VisualizationClientProtocol
-        let permissionEvaluator: ScreenRecordingPermissionEvaluating
+        let visualizerClient: any VisualizationClientProtocol
+        let permissionEvaluator: any ScreenRecordingPermissionEvaluating
         let fallbackRunner: ScreenCaptureFallbackRunner
-        let applicationResolver: ApplicationResolving
-        let makeModernOperator: @MainActor @Sendable (CategoryLogger, VisualizationClientProtocol)
-            -> ModernScreenCaptureOperating
+        let applicationResolver: any ApplicationResolving
+        let makeModernOperator: @MainActor @Sendable (CategoryLogger, any VisualizationClientProtocol)
+            -> any ModernScreenCaptureOperating
 
         init(
-            visualizerClient: VisualizationClientProtocol,
-            permissionEvaluator: ScreenRecordingPermissionEvaluating,
+            visualizerClient: any VisualizationClientProtocol,
+            permissionEvaluator: any ScreenRecordingPermissionEvaluating,
             fallbackRunner: ScreenCaptureFallbackRunner,
-            applicationResolver: ApplicationResolving,
-            makeModernOperator: @escaping @MainActor @Sendable (CategoryLogger, VisualizationClientProtocol)
-                -> ModernScreenCaptureOperating)
+            applicationResolver: any ApplicationResolving,
+            makeModernOperator: @escaping @MainActor @Sendable (CategoryLogger, any VisualizationClientProtocol)
+                -> any ModernScreenCaptureOperating)
         {
             self.visualizerClient = visualizerClient
             self.permissionEvaluator = permissionEvaluator
@@ -78,18 +78,18 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     }
 
     private let logger: CategoryLogger
-    private let visualizerClient: VisualizationClientProtocol
-    private let permissionEvaluator: ScreenRecordingPermissionEvaluating
+    private let visualizerClient: any VisualizationClientProtocol
+    private let permissionEvaluator: any ScreenRecordingPermissionEvaluating
     private let fallbackRunner: ScreenCaptureFallbackRunner
-    private let applicationResolver: ApplicationResolving
-    private let modernOperator: ModernScreenCaptureOperating
+    private let applicationResolver: any ApplicationResolving
+    private let modernOperator: any ModernScreenCaptureOperating
 
-    public convenience init(loggingService: LoggingServiceProtocol) {
+    public convenience init(loggingService: any LoggingServiceProtocol) {
         self.init(loggingService: loggingService, dependencies: .live())
     }
 
     init(
-        loggingService: LoggingServiceProtocol,
+        loggingService: any LoggingServiceProtocol,
         dependencies: Dependencies)
     {
         self.logger = loggingService.logger(category: LoggingService.Category.screenCapture)
@@ -448,61 +448,66 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             ],
             correlationId: correlationId)
 
-        // Capture the window (legacy path). If this fails (minimized/off-space), fall back to cropping from screen.
-        var image = CGWindowListCreateImage(
-            CGRect.null,
-            .optionIncludingWindow,
-            windowID,
-            [.boundsIgnoreFraming, .nominalResolution])
-
-        if image == nil {
-            self.logger.warning(
-                "Window capture failed; attempting screen-crop fallback",
-                metadata: [
-                    "windowID": windowID,
-                    "appName": app.name,
-                ],
+        let image: CGImage
+        if #available(macOS 15.0, *) {
+            image = try await self.captureWindowWithScreenshotManager(
+                windowID: windowID,
                 correlationId: correlationId)
+        } else {
+            var legacyImage = CGWindowListCreateImage(
+                CGRect.null,
+                .optionIncludingWindow,
+                windowID,
+                [.boundsIgnoreFraming, .nominalResolution])
 
-            // Attempt screen capture of the display that contains the window bounds and crop it
-            let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
-                            let x = boundsDict["X"] as? CGFloat,
-                            let y = boundsDict["Y"] as? CGFloat,
-                            let width = boundsDict["Width"] as? CGFloat,
-                            let height = boundsDict["Height"] as? CGFloat
-            { CGRect(x: x, y: y, width: width, height: height) } else { CGRect.null }
+            if legacyImage == nil {
+                self.logger.warning(
+                    "Window capture failed; attempting screen-crop fallback",
+                    metadata: [
+                        "windowID": windowID,
+                        "appName": app.name,
+                    ],
+                    correlationId: correlationId)
 
-            if !bounds.isNull {
-                // Identify a screen that intersects bounds
-                let screens = NSScreen.screens
-                if let primary = screens.first {
-                    let quartzRect = CGRect(
-                        x: bounds.origin.x,
-                        y: primary.frame.maxY - bounds.maxY,
-                        width: bounds.width,
-                        height: bounds.height)
-                    image = CGWindowListCreateImage(
-                        quartzRect,
-                        .optionOnScreenBelowWindow,
-                        kCGNullWindowID,
-                        .nominalResolution)
+                let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
+                                let x = boundsDict["X"] as? CGFloat,
+                                let y = boundsDict["Y"] as? CGFloat,
+                                let width = boundsDict["Width"] as? CGFloat,
+                                let height = boundsDict["Height"] as? CGFloat
+                { CGRect(x: x, y: y, width: width, height: height) } else { CGRect.null }
+
+                if !bounds.isNull {
+                    let screens = NSScreen.screens
+                    if let primary = screens.first {
+                        let quartzRect = CGRect(
+                            x: bounds.origin.x,
+                            y: primary.frame.maxY - bounds.maxY,
+                            width: bounds.width,
+                            height: bounds.height)
+                        legacyImage = CGWindowListCreateImage(
+                            quartzRect,
+                            .optionOnScreenBelowWindow,
+                            kCGNullWindowID,
+                            .nominalResolution)
+                    }
                 }
             }
-        }
 
-        guard let image else {
-            self.logger.error(
-                "CGWindowListCreateImage failed (including fallback)",
-                metadata: [
-                    "windowID": windowID,
-                    "appName": app.name,
-                ],
-                correlationId: correlationId)
-            throw OperationError.captureFailed(
-                reason: """
-                Failed to create window image for window ID \(windowID) (app: \(app.name)).
-                Window may be minimized, hidden, or in another space.
-                """)
+            guard let unwrapped = legacyImage else {
+                self.logger.error(
+                    "CGWindowListCreateImage failed (including fallback)",
+                    metadata: [
+                        "windowID": windowID,
+                        "appName": app.name,
+                    ],
+                    correlationId: correlationId)
+                throw OperationError.captureFailed(
+                    reason: """
+                    Failed to create window image for window ID \(windowID) (app: \(app.name)).
+                    Window may be minimized, hidden, or in another space.
+                    """)
+            }
+            image = unwrapped
         }
 
         let imageData: Data
@@ -562,9 +567,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
     private final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
         private let logger: CategoryLogger
-        private let visualizerClient: VisualizationClientProtocol
+        private let visualizerClient: any VisualizationClientProtocol
 
-        init(logger: CategoryLogger, visualizerClient: VisualizationClientProtocol) {
+        init(logger: CategoryLogger, visualizerClient: any VisualizationClientProtocol) {
             self.logger = logger
             self.visualizerClient = visualizerClient
         }
@@ -839,16 +844,22 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             width: screenBounds.width,
             height: screenBounds.height)
 
-        // Capture using legacy API
-        // TODO: Migrate to ScreenCaptureKit when ready
-        let image = CGWindowListCreateImage(
-            quartzBounds,
-            .optionOnScreenBelowWindow,
-            kCGNullWindowID,
-            .nominalResolution)
-
-        guard let image else {
-            throw OperationError.captureFailed(reason: "Failed to create screen image using legacy API")
+        let image: CGImage
+        if #available(macOS 15.0, *) {
+            image = try await self.captureDisplayWithScreenshotManager(
+                screen: targetScreen,
+                displayIndex: displayIndex ?? 0,
+                correlationId: correlationId)
+        } else {
+            guard let legacyImage = CGWindowListCreateImage(
+                quartzBounds,
+                .optionOnScreenBelowWindow,
+                kCGNullWindowID,
+                .nominalResolution)
+            else {
+                throw OperationError.captureFailed(reason: "Failed to create screen image using legacy API")
+            }
+            image = legacyImage
         }
 
         let imageData: Data
@@ -880,6 +891,172 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             imageData: imageData,
             metadata: metadata)
     }
+
+    @available(macOS 15.0, *)
+    private func captureDisplayWithScreenshotManager(
+        screen: NSScreen,
+        displayIndex: Int,
+        correlationId: String) async throws -> CGImage
+    {
+        let content = try await SCShareableContent.current
+        let displays = content.displays
+        guard !displays.isEmpty else {
+            throw OperationError.captureFailed(reason: "No ScreenCaptureKit displays available")
+        }
+
+        let display = try self.resolveDisplay(
+            for: screen,
+            displayIndex: displayIndex,
+            availableDisplays: displays)
+
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+        self.logger.debug(
+            "Capturing display via SCScreenshotManager",
+            metadata: [
+                "displayIndex": displayIndex,
+                "displayID": display.displayID,
+            ],
+            correlationId: correlationId)
+
+        return try await SCScreenshotManager.captureImage(
+            contentFilter: filter,
+            configuration: self.makeScreenshotConfiguration())
+    }
+
+    @available(macOS 15.0, *)
+    private func resolveDisplay(
+        for screen: NSScreen,
+        displayIndex: Int,
+        availableDisplays: [SCDisplay]) throws -> SCDisplay
+    {
+        if let displayID = self.displayID(for: screen),
+           let display = availableDisplays.first(where: { $0.displayID == displayID })
+        {
+            return display
+        }
+
+        guard displayIndex >= 0, displayIndex < availableDisplays.count else {
+            throw PeekabooError.invalidInput("displayIndex \(displayIndex) is out of range for ScreenCaptureKit displays")
+        }
+
+        return availableDisplays[displayIndex]
+    }
+
+    @available(macOS 15.0, *)
+    private func captureWindowWithScreenshotManager(
+        windowID: CGWindowID,
+        correlationId: String) async throws -> CGImage
+    {
+        let content = try await SCShareableContent.current
+        guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
+            throw OperationError.captureFailed(
+                reason: "Failed to locate window \(windowID) in ScreenCaptureKit shareable content")
+        }
+
+        let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+        self.logger.debug(
+            "Capturing window via SCScreenshotManager",
+            metadata: ["windowID": windowID],
+            correlationId: correlationId)
+
+        return try await SCScreenshotManager.captureImage(
+            contentFilter: filter,
+            configuration: self.makeScreenshotConfiguration())
+    }
+
+    private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
+        let key = NSDeviceDescriptionKey("NSScreenNumber")
+        guard let number = screen.deviceDescription[key] as? NSNumber else {
+            return nil
+        }
+        return CGDirectDisplayID(number.uint32Value)
+    }
+
+    @available(macOS 15.0, *)
+    private func makeScreenshotConfiguration() -> SCStreamConfiguration {
+        let configuration = SCStreamConfiguration()
+        configuration.backgroundColor = .clear
+        configuration.shouldBeOpaque = true
+        configuration.showsCursor = false
+        configuration.capturesAudio = false
+        configuration.maximumFPS = 30
+        return configuration
+    }
+
+    @available(macOS, introduced: 10.10, obsoleted: 15.0)
+    private func captureDisplayWithCGWindowList(bounds: CGRect) throws -> CGImage {
+        guard let image = CGWindowListCreateImage(
+            bounds,
+            .optionOnScreenBelowWindow,
+            kCGNullWindowID,
+            .nominalResolution)
+        else {
+            throw OperationError.captureFailed(reason: "Failed to create screen image using legacy API")
+        }
+        return image
+    }
+
+    @available(macOS, introduced: 10.10, obsoleted: 15.0)
+    private func captureWindowWithCGWindowList(
+        windowID: CGWindowID,
+        targetWindow: [String: Any],
+        app: ServiceApplicationInfo,
+        correlationId: String) throws -> CGImage
+    {
+        var image = CGWindowListCreateImage(
+            CGRect.null,
+            .optionIncludingWindow,
+            windowID,
+            [.boundsIgnoreFraming, .nominalResolution])
+
+        if image == nil {
+            self.logger.warning(
+                "Window capture failed; attempting screen-crop fallback",
+                metadata: [
+                    "windowID": windowID,
+                    "appName": app.name,
+                ],
+                correlationId: correlationId)
+
+            let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
+                            let x = boundsDict["X"] as? CGFloat,
+                            let y = boundsDict["Y"] as? CGFloat,
+                            let width = boundsDict["Width"] as? CGFloat,
+                            let height = boundsDict["Height"] as? CGFloat
+            { CGRect(x: x, y: y, width: width, height: height) } else { CGRect.null }
+
+            if !bounds.isNull {
+                if let primary = NSScreen.screens.first {
+                    let quartzRect = CGRect(
+                        x: bounds.origin.x,
+                        y: primary.frame.maxY - bounds.maxY,
+                        width: bounds.width,
+                        height: bounds.height)
+                    image = CGWindowListCreateImage(
+                        quartzRect,
+                        .optionOnScreenBelowWindow,
+                        kCGNullWindowID,
+                        .nominalResolution)
+                }
+            }
+        }
+
+        guard let image else {
+            self.logger.error(
+                "CGWindowListCreateImage failed (including fallback)",
+                metadata: [
+                    "windowID": windowID,
+                    "appName": app.name,
+                ],
+                correlationId: correlationId)
+            throw OperationError.captureFailed(
+                reason: """
+                Failed to create window image for window ID \(windowID) (app: \(app.name)).
+                Window may be minimized, hidden, or in another space.
+                """)
+        }
+        return image
+    }
     // swiftlint:enable function_body_length
 }
 
@@ -888,7 +1065,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 // MARK: - Stream Delegate
 
 private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Sendable {
-    func stream(_ stream: SCStream, didStopWithError error: Error) {
+    func stream(_ stream: SCStream, didStopWithError error: any Error) {
         // Log the error but don't need to do anything else since CaptureOutput handles errors
         print("SCStream stopped with error: \(error)")
     }
@@ -898,7 +1075,7 @@ private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Senda
 
 @MainActor
 private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable {
-    private var continuation: CheckedContinuation<CGImage, Error>?
+    private var continuation: CheckedContinuation<CGImage, any Error>?
     private var timeoutTask: Task<Void, Never>?
     deinit {
         // Cancel timeout task first to prevent race condition

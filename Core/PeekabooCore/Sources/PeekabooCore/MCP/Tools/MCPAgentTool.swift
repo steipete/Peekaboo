@@ -243,7 +243,7 @@ struct AgentInput: Codable {
         case listSessions
     }
 
-    init(from decoder: Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         self.task = try container.decodeIfPresent(String.self, forKey: .task)

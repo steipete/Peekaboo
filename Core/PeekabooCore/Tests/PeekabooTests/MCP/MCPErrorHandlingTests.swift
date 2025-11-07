@@ -185,7 +185,7 @@ struct MCPErrorHandlingTests {
         ]
 
         // Execute all tools concurrently
-        let results = await withTaskGroup(of: (String, Result<ToolResponse, Swift.Error>).self) { group in
+        let results = await withTaskGroup(of: (String, Result<ToolResponse, any Error>).self) { group in
             for tool in tools {
                 group.addTask {
                     do {
@@ -197,7 +197,7 @@ struct MCPErrorHandlingTests {
                 }
             }
 
-            var results: [(String, Result<ToolResponse, Swift.Error>)] = []
+            var results: [(String, Result<ToolResponse, any Error>)] = []
             for await result in group {
                 results.append(result)
             }

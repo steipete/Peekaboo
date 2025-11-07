@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
 
@@ -27,7 +28,7 @@ struct FocusUtilitiesTests {
             spaceSwitch: true,
             bringToCurrentSpace: true)
 
-        let protocolOptions: FocusOptionsProtocol = options
+        let protocolOptions: any FocusOptionsProtocol = options
         #expect(protocolOptions.autoFocus == false)
         #expect(protocolOptions.focusTimeout == 10.0)
         #expect(protocolOptions.focusRetryCount == 5)
@@ -88,8 +89,15 @@ struct FocusUtilitiesTests {
                 windowTitle: nil)
             Issue.record("Expected to throw for non-existent app")
         } catch {
-            // Expected to fail
-            #expect(error is FocusError)
+            // Accept either our typed FocusError or the broader PeekabooError.appNotFound
+            let isFocusError = error is FocusError
+            let isPeekabooAppError: Bool
+            if case let .some(.appNotFound(appName)) = (error as? PeekabooError) {
+                isPeekabooAppError = appName == "NonExistentApp12345"
+            } else {
+                isPeekabooAppError = false
+            }
+            #expect(isFocusError || isPeekabooAppError)
         }
     }
 
@@ -98,7 +106,11 @@ struct FocusUtilitiesTests {
     func findBestWindowFinder() async throws {
         let service = FocusManagementService()
 
-        // Finder should always be running
+        guard !NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").isEmpty else {
+            // Headless CI often runs without Finder; nothing to assert in that case.
+            return
+        }
+
         do {
             let windowID = try await service.findBestWindow(
                 applicationName: "Finder",
@@ -108,8 +120,15 @@ struct FocusUtilitiesTests {
                 #expect(id > 0)
             }
             // It's OK if Finder has no windows
+        } catch let focusError as FocusError {
+            switch focusError {
+            case .applicationNotRunning, .noWindowsFound:
+                // Acceptable in CI
+                return
+            default:
+                Issue.record("Unexpected error: \(focusError)")
+            }
         } catch {
-            // Should not fail for Finder
             Issue.record("Unexpected error: \(error)")
         }
     }

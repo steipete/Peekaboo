@@ -205,8 +205,9 @@ struct MCPToolRegistryIntegrationTests {
     }
 
     @Test("Tool info schema validation")
-    func toolInfoSchemaValidation() async {
-        let registry = await MCPToolRegistry()
+    @MainActor
+    func toolInfoSchemaValidation() {
+        let registry = MCPToolRegistry()
 
         // Register a complex tool with full schema
         let complexTool = MockTool(
@@ -230,9 +231,9 @@ struct MCPToolRegistryIntegrationTests {
                 required: ["requiredString"],
                 description: "Complex tool schema"))
 
-        await registry.register(complexTool)
+        registry.register(complexTool)
 
-        let infos = await registry.toolInfos()
+        let infos = registry.toolInfos()
         #expect(infos.count == 1)
 
         let info = infos.first!

@@ -9,7 +9,7 @@ import Tachikoma
 extension PeekabooAgentService {
     /// Handle tool errors with consistent formatting and error enhancement
     func handleToolError(
-        _ error: Error,
+        _ error: any Error,
         for toolName: String,
         in context: PeekabooServices) async -> AnyAgentToolValue
     {

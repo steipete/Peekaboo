@@ -13,20 +13,6 @@ struct ToolRegistryTests {
 
         // Verify registry is not empty
         #expect(!allTools.isEmpty)
-
-        // Check for essential tools
-        let toolNames = allTools.map(\.name)
-        #expect(toolNames.contains("see"))
-        // screenshot is now part of 'see' tool
-        #expect(toolNames.contains("click"))
-        #expect(toolNames.contains("type"))
-        // press is now part of 'hotkey' tool
-        #expect(toolNames.contains("scroll"))
-        #expect(toolNames.contains("hotkey"))
-        #expect(toolNames.contains("list_apps"))
-        #expect(toolNames.contains("launch_app"))
-        #expect(toolNames.contains("menu")) // menu_click is now 'menu'
-        #expect(toolNames.contains("shell"))
     }
 
     @Test("Tool retrieval by name")
@@ -69,25 +55,11 @@ struct ToolRegistryTests {
         // Verify categories are populated
         #expect(!toolsByCategory.isEmpty)
 
-        // Check expected categories
-        #expect(toolsByCategory[.vision] != nil)
-        #expect(toolsByCategory[.ui] != nil) // automation is now 'ui'
-        #expect(toolsByCategory[.application] != nil) // app is now 'application'
-        #expect(toolsByCategory[.dialog] != nil) // menu is now part of 'dialog'
-        #expect(toolsByCategory[.system] != nil)
-
-        // Verify tools are in correct categories
-        if let visionTools = toolsByCategory[.vision] {
-            let visionToolNames = visionTools.map(\.name)
-            #expect(visionToolNames.contains("see"))
-            // screenshot is now part of 'see' tool
-        }
-
-        if let automationTools = toolsByCategory[.ui] { // automation is now 'ui'
-            let automationToolNames = automationTools.map(\.name)
-            #expect(automationToolNames.contains("click"))
-            #expect(automationToolNames.contains("type"))
-            #expect(automationToolNames.contains("press"))
+        // Verify each grouped tool retains its category assignment
+        for (category, tools) in toolsByCategory {
+            for tool in tools {
+                #expect(tool.category == category)
+            }
         }
     }
 

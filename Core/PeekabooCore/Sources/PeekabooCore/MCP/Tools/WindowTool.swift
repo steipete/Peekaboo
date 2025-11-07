@@ -168,7 +168,7 @@ public struct WindowTool: MCPTool {
     // MARK: - Action Handlers
 
     private func handleClose(
-        service: WindowManagementServiceProtocol,
+        service: any WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
@@ -199,7 +199,7 @@ public struct WindowTool: MCPTool {
     }
 
     private func handleMinimize(
-        service: WindowManagementServiceProtocol,
+        service: any WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
@@ -230,7 +230,7 @@ public struct WindowTool: MCPTool {
     }
 
     private func handleMaximize(
-        service: WindowManagementServiceProtocol,
+        service: any WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
@@ -261,7 +261,7 @@ public struct WindowTool: MCPTool {
     }
 
     private func handleMove(
-        service: WindowManagementServiceProtocol,
+        service: any WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
@@ -297,7 +297,7 @@ public struct WindowTool: MCPTool {
     }
 
     private func handleResize(
-        service: WindowManagementServiceProtocol,
+        service: any WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
@@ -333,7 +333,7 @@ public struct WindowTool: MCPTool {
     }
 
     private func handleSetBounds(
-        service: WindowManagementServiceProtocol,
+        service: any WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
@@ -373,7 +373,7 @@ public struct WindowTool: MCPTool {
     }
 
     private func handleFocus(
-        service: WindowManagementServiceProtocol,
+        service: any WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,

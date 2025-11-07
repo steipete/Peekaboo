@@ -26,7 +26,7 @@ public final class VisualizationClient: @unchecked Sendable {
     private var connection: NSXPCConnection?
 
     /// Remote proxy object
-    private var remoteProxy: VisualizerXPCProtocol?
+    private var remoteProxy: (any VisualizerXPCProtocol)?
 
     /// Serial queue for thread-safe connection management
     private let connectionQueue = DispatchQueue(label: "boo.peekaboo.visualizer.connection")
@@ -147,7 +147,7 @@ public final class VisualizationClient: @unchecked Sendable {
             self?.logger.error("🔌 Client: Failed to get remote proxy: \(error.localizedDescription), error: \(error)")
             self?.isConnected = false
             self?.remoteProxy = nil
-        } as? VisualizerXPCProtocol
+        } as? (any VisualizerXPCProtocol)
 
         guard let proxy else {
             self.logger.error("🔌 Client: Failed to create proxy object")

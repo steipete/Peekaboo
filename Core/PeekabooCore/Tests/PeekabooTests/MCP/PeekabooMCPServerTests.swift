@@ -110,7 +110,7 @@ actor MockTransport: Transport {
         }
     }
 
-    func receive() -> AsyncThrowingStream<Data, Swift.Error> {
+    func receive() -> AsyncThrowingStream<Data, any Error> {
         AsyncThrowingStream { continuation in
             Task {
                 guard self.isConnected else {

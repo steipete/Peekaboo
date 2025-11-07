@@ -104,7 +104,7 @@ extension ScreenCaptureService {
     static func makeTestService(
         fixtures: TestFixtures,
         permissionGranted: Bool = true,
-        loggingService: LoggingServiceProtocol = MockLoggingService()) -> ScreenCaptureService
+        loggingService: any LoggingServiceProtocol = MockLoggingService()) -> ScreenCaptureService
     {
         let dependencies = Dependencies(
             visualizerClient: MockVisualizationClient(),

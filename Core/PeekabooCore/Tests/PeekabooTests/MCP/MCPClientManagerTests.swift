@@ -5,9 +5,22 @@ import Testing
 /// Tests for MCPClientManager functionality
 @Suite("MCP Client Manager Tests")
 struct MCPClientManagerTests {
+    private static let disableAutoConnectOnce: Void = {
+        MCPClientManager._setAutoConnectOverrideForTesting(false)
+    }()
+
+    private func ensureAutoConnectDisabled() {
+        _ = Self.disableAutoConnectOnce
+    }
+
+    private func uniqueServerName(_ base: String) -> String {
+        "\(base)-\(UUID().uuidString)"
+    }
+
     @Test("MCPClientManager singleton initialization")
     @MainActor
     func singletonInitialization() async {
+        self.ensureAutoConnectDisabled()
         let manager1 = MCPClientManager.shared
         let manager2 = MCPClientManager.shared
 
@@ -18,7 +31,9 @@ struct MCPClientManagerTests {
     @Test("Add MCP server configuration")
     @MainActor
     func testAddServer() async throws {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
+        let serverName = self.uniqueServerName("test-server")
 
         let config = Configuration.MCPClientConfig(
             command: "echo",
@@ -27,74 +42,80 @@ struct MCPClientManagerTests {
             timeout: 5.0,
             description: "Test server")
 
-        try await manager.addServer(name: "test-server", config: config)
+        try await manager.addServer(name: serverName, config: config)
 
         let serverNames = await manager.getServerNames()
-        #expect(serverNames.contains("test-server"))
+        #expect(serverNames.contains(serverName))
 
-        let serverInfo = await manager.getServerInfo(name: "test-server")
-        #expect(serverInfo?.name == "test-server")
+        let serverInfo = await manager.getServerInfo(name: serverName)
+        #expect(serverInfo?.name == serverName)
         #expect(serverInfo?.config.command == "echo")
         #expect(serverInfo?.config.args == ["test"])
         #expect(serverInfo?.config.enabled == true)
         #expect(serverInfo?.config.description == "Test server")
 
         // Clean up
-        try await manager.removeServer(name: "test-server")
+        try await manager.removeServer(name: serverName)
     }
 
     @Test("Remove MCP server")
     @MainActor
     func testRemoveServer() async throws {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
+        let serverName = self.uniqueServerName("test-remove")
 
         let config = Configuration.MCPClientConfig(
             command: "echo",
             args: ["test"])
 
-        try await manager.addServer(name: "test-remove", config: config)
+        try await manager.addServer(name: serverName, config: config)
         let namesAfterAdd = await manager.getServerNames()
-        #expect(namesAfterAdd.contains("test-remove"))
+        #expect(namesAfterAdd.contains(serverName))
 
-        try await manager.removeServer(name: "test-remove")
+        try await manager.removeServer(name: serverName)
         let namesAfterRemove = await manager.getServerNames()
-        #expect(!namesAfterRemove.contains("test-remove"))
+        #expect(!namesAfterRemove.contains(serverName))
     }
 
     @Test("Enable and disable MCP server")
     @MainActor
     func enableDisableServer() async throws {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
+        let serverName = self.uniqueServerName("test-enable")
 
         let config = Configuration.MCPClientConfig(
             command: "echo",
             args: ["test"],
             enabled: true)
 
-        try await manager.addServer(name: "test-enable", config: config)
+        try await manager.addServer(name: serverName, config: config)
 
         // Initial state should be enabled
-        let initialInfo = await manager.getServerInfo(name: "test-enable")
+        let initialInfo = await manager.getServerInfo(name: serverName)
         #expect(initialInfo?.config.enabled == true)
 
         // Disable server
-        try await manager.disableServer(name: "test-enable")
-        let disabledInfo = await manager.getServerInfo(name: "test-enable")
+        try await manager.disableServer(name: serverName)
+        let disabledInfo = await manager.getServerInfo(name: serverName)
         #expect(disabledInfo?.config.enabled == false)
 
         // Enable server
-        try await manager.enableServer(name: "test-enable")
-        let enabledInfo = await manager.getServerInfo(name: "test-enable")
+        try await manager.enableServer(name: serverName)
+        let enabledInfo = await manager.getServerInfo(name: serverName)
         #expect(enabledInfo?.config.enabled == true)
 
         // Clean up
-        try await manager.removeServer(name: "test-enable")
+        try await manager.removeServer(name: serverName)
     }
 
     @Test("Server health checking with invalid command")
     @MainActor
     func healthCheckInvalidCommand() async throws {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
+        let serverName = self.uniqueServerName("test-invalid")
 
         let config = Configuration.MCPClientConfig(
             command: "nonexistent-command-12345",
@@ -103,9 +124,9 @@ struct MCPClientManagerTests {
             timeout: 1.0 // Short timeout for faster test
         )
 
-        try await manager.addServer(name: "test-invalid", config: config)
+        try await manager.addServer(name: serverName, config: config)
 
-        let health = await manager.checkServerHealth(name: "test-invalid", timeout: 1000)
+        let health = await manager.checkServerHealth(name: serverName, timeout: 1000)
 
         switch health {
         case .disconnected:
@@ -116,13 +137,15 @@ struct MCPClientManagerTests {
         }
 
         // Clean up
-        try await manager.removeServer(name: "test-invalid")
+        try await manager.removeServer(name: serverName)
     }
 
     @Test("Server health checking with disabled server")
     @MainActor
     func healthCheckDisabledServer() async throws {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
+        let serverName = self.uniqueServerName("test-disabled")
 
         let config = Configuration.MCPClientConfig(
             command: "echo",
@@ -130,9 +153,9 @@ struct MCPClientManagerTests {
             enabled: false // Disabled server
         )
 
-        try await manager.addServer(name: "test-disabled", config: config)
+        try await manager.addServer(name: serverName, config: config)
 
-        let health = await manager.checkServerHealth(name: "test-disabled")
+        let health = await manager.checkServerHealth(name: serverName)
 
         switch health {
         case .disabled:
@@ -143,13 +166,16 @@ struct MCPClientManagerTests {
         }
 
         // Clean up
-        try await manager.removeServer(name: "test-disabled")
+        try await manager.removeServer(name: serverName)
     }
 
     @Test("Get server configurations")
     @MainActor
     func getServerConfigs() async throws {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
+        let serverName1 = self.uniqueServerName("server1")
+        let serverName2 = self.uniqueServerName("server2")
 
         let config1 = Configuration.MCPClientConfig(
             command: "echo",
@@ -161,26 +187,30 @@ struct MCPClientManagerTests {
             args: ["/dev/null"],
             description: "Second test server")
 
-        try await manager.addServer(name: "server1", config: config1)
-        try await manager.addServer(name: "server2", config: config2)
+        try await manager.addServer(name: serverName1, config: config1)
+        try await manager.addServer(name: serverName2, config: config2)
 
         let configs = await manager.getServerInfos()
         #expect(configs.count >= 2)
 
-        let server1 = configs.first(where: { $0.name == "server1" })
-        let server2 = configs.first(where: { $0.name == "server2" })
+        let server1 = configs.first(where: { $0.name == serverName1 })
+        let server2 = configs.first(where: { $0.name == serverName2 })
         #expect(server1?.config.command == "echo")
         #expect(server2?.config.command == "cat")
 
         // Clean up
-        try await manager.removeServer(name: "server1")
-        try await manager.removeServer(name: "server2")
+        try await manager.removeServer(name: serverName1)
+        try await manager.removeServer(name: serverName2)
     }
 
     @Test("Check all servers health")
     @MainActor
     func testCheckAllServersHealth() async throws {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
+        let validName = self.uniqueServerName("test-valid")
+        let invalidName = self.uniqueServerName("test-invalid")
+        let disabledName = self.uniqueServerName("test-disabled")
 
         let validConfig = Configuration.MCPClientConfig(
             command: "echo",
@@ -199,41 +229,42 @@ struct MCPClientManagerTests {
             args: ["test"],
             enabled: false)
 
-        try await manager.addServer(name: "test-valid", config: validConfig)
-        try await manager.addServer(name: "test-invalid", config: invalidConfig)
-        try await manager.addServer(name: "test-disabled", config: disabledConfig)
+        try await manager.addServer(name: validName, config: validConfig)
+        try await manager.addServer(name: invalidName, config: invalidConfig)
+        try await manager.addServer(name: disabledName, config: disabledConfig)
 
         let healthResults = await manager.checkAllServersHealth()
 
         #expect(healthResults.count >= 3)
 
         // Check that we got results for all servers
-        #expect(healthResults["test-valid"] != nil)
-        #expect(healthResults["test-invalid"] != nil)
-        #expect(healthResults["test-disabled"] != nil)
+        #expect(healthResults[validName] != nil)
+        #expect(healthResults[invalidName] != nil)
+        #expect(healthResults[disabledName] != nil)
 
         // Check expected health states
-        if case .disabled = healthResults["test-disabled"]! {
+        if case .disabled = healthResults[disabledName]! {
             // Expected
         } else {
             Issue.record("Expected disabled status for test-disabled server")
         }
 
-        if case .disconnected = healthResults["test-invalid"]! {
+        if case .disconnected = healthResults[invalidName]! {
             // Expected for invalid command
         } else {
             Issue.record("Expected disconnected status for test-invalid server")
         }
 
         // Clean up
-        try await manager.removeServer(name: "test-valid")
-        try await manager.removeServer(name: "test-invalid")
-        try await manager.removeServer(name: "test-disabled")
+        try await manager.removeServer(name: validName)
+        try await manager.removeServer(name: invalidName)
+        try await manager.removeServer(name: disabledName)
     }
 
     @Test("Error handling for non-existent server")
     @MainActor
     func nonExistentServerError() async {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
 
         let serverInfo = await manager.getServerInfo(name: "non-existent-server")
@@ -264,7 +295,9 @@ struct MCPClientManagerTests {
     @Test("Server configuration validation")
     @MainActor
     func serverConfigValidation() async throws {
+        self.ensureAutoConnectDisabled()
         let manager = MCPClientManager.shared
+        let serverName = self.uniqueServerName("test-env")
 
         // Test with environment variables
         let configWithEnv = Configuration.MCPClientConfig(
@@ -273,14 +306,14 @@ struct MCPClientManagerTests {
             env: ["TEST_VAR": "test_value", "ANOTHER_VAR": "another_value"],
             enabled: true)
 
-        try await manager.addServer(name: "test-env", config: configWithEnv)
+        try await manager.addServer(name: serverName, config: configWithEnv)
 
-        let serverInfo = await manager.getServerInfo(name: "test-env")
+        let serverInfo = await manager.getServerInfo(name: serverName)
         #expect(serverInfo?.config.env["TEST_VAR"] == "test_value")
         #expect(serverInfo?.config.env["ANOTHER_VAR"] == "another_value")
 
         // Clean up
-        try await manager.removeServer(name: "test-env")
+        try await manager.removeServer(name: serverName)
     }
 }
 

@@ -160,7 +160,7 @@ public struct CategoryLogger: Sendable {
     private let category: String
     private let defaultCorrelationId: String?
 
-    init(service: LoggingServiceProtocol, category: String, defaultCorrelationId: String? = nil) {
+    init(service: any LoggingServiceProtocol, category: String, defaultCorrelationId: String? = nil) {
         self.service = service
         self.category = category
         self.defaultCorrelationId = defaultCorrelationId

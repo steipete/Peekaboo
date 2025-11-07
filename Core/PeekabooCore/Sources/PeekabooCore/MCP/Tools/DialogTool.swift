@@ -143,7 +143,7 @@ public struct DialogTool: MCPTool {
     // MARK: - Action Handlers
 
     private func handleList(
-        service: DialogServiceProtocol,
+        service: any DialogServiceProtocol,
         window: String?,
         startTime: Date) async throws -> ToolResponse
     {
@@ -219,7 +219,7 @@ public struct DialogTool: MCPTool {
     }
 
     private func handleClick(
-        service: DialogServiceProtocol,
+        service: any DialogServiceProtocol,
         button: String,
         window: String?,
         startTime: Date) async throws -> ToolResponse
@@ -247,7 +247,7 @@ public struct DialogTool: MCPTool {
     }
 
     private func handleInput(
-        service: DialogServiceProtocol,
+        service: any DialogServiceProtocol,
         text: String,
         field: String?,
         clear: Bool,
@@ -284,7 +284,7 @@ public struct DialogTool: MCPTool {
     }
 
     private func handleFile(
-        service: DialogServiceProtocol,
+        service: any DialogServiceProtocol,
         path: String?,
         select: String?,
         window: String?,
@@ -332,7 +332,7 @@ public struct DialogTool: MCPTool {
     }
 
     private func handleDismiss(
-        service: DialogServiceProtocol,
+        service: any DialogServiceProtocol,
         force: Bool,
         window: String?,
         startTime: Date) async throws -> ToolResponse

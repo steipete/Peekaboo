@@ -147,7 +147,7 @@ public enum TypedValue: Codable, Sendable, Equatable, Hashable {
 
     // MARK: - Codable Implementation
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
 
         if container.decodeNil() {
@@ -179,7 +179,7 @@ public enum TypedValue: Codable, Sendable, Equatable, Hashable {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
 
         switch self {
