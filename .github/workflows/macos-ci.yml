@@ -23,6 +23,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache SwiftPM (PeekabooCore)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swiftpm
+            ~/.cache/org.swift.swiftpm
+            Core/PeekabooCore/.build
+          key: ${{ runner.os }}-spm-core-${{ hashFiles('Core/PeekabooCore/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-core-
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -46,6 +57,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache SwiftPM (CLI)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swiftpm
+            ~/.cache/org.swift.swiftpm
+            Apps/CLI/.build
+          key: ${{ runner.os }}-spm-cli-${{ hashFiles('Apps/CLI/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-cli-
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -68,6 +90,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Cache SwiftPM (Tachikoma)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swiftpm
+            ~/.cache/org.swift.swiftpm
+            Tachikoma/.build
+          key: ${{ runner.os }}-spm-tachikoma-${{ hashFiles('Tachikoma/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-tachikoma-
 
       - name: Show Xcode version
         run: xcodebuild -version
