@@ -1,0 +1,58 @@
+name: macOS CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: macos-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  peekaboo-core:
+    name: PeekabooCore build & tests
+    runs-on: macos-15
+    env:
+      PEEKABOO_INCLUDE_AUTOMATION_TESTS: "false"
+      RUN_AUTOMATION_TESTS: "false"
+      RUN_LOCAL_TESTS: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build PeekabooCore
+        working-directory: Core/PeekabooCore
+        run: swift build --configuration debug
+
+      - name: Run focused Swift tests
+        working-directory: Core/PeekabooCore
+        run: swift test --filter ScreenCaptureServiceFlowTests
+
+  peekaboo-cli:
+    name: Peekaboo CLI build & tests
+    runs-on: macos-15
+    needs: peekaboo-core
+    env:
+      PEEKABOO_INCLUDE_AUTOMATION_TESTS: "false"
+      PEEKABOO_SKIP_AUTOMATION: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build CLI target
+        working-directory: Apps/CLI
+        run: swift build --configuration debug
+
+      - name: Run CLI unit tests (skip automation)
+        working-directory: Apps/CLI
+        run: swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
