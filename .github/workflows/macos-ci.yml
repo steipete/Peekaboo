@@ -26,6 +26,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout Tachikoma subrepo
+        uses: actions/checkout@v4
+        with:
+          repository: steipete/Tachikoma
+          ref: main
+          path: Tachikoma
+
       - name: Cache SwiftPM (PeekabooCore)
         uses: actions/cache@v4
         with:
@@ -73,6 +80,13 @@ jobs:
       PEEKABOO_SKIP_AUTOMATION: "1"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Checkout Tachikoma subrepo
+        uses: actions/checkout@v4
+        with:
+          repository: steipete/Tachikoma
+          ref: main
+          path: Tachikoma
 
       - name: Cache SwiftPM (CLI)
         uses: actions/cache@v4
