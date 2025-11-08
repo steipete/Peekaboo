@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import PeekabooCLI
@@ -143,5 +144,99 @@ struct SeeCommandTests {
         ])
         #expect(command.app == "Safari")
         #expect(command.windowTitle == "GitHub")
+    }
+}
+
+@Suite("SeeCommand Runtime Tests", .serialized, .tags(.fast))
+struct SeeCommandRuntimeTests {
+    @Test("See command stores screenshot metadata and prints summary")
+    func seeCommandStoresScreenshot() async throws {
+        let sessionId = UUID().uuidString
+        let windowBounds = CGRect(x: 10, y: 20, width: 800, height: 600)
+        let applicationInfo = ServiceApplicationInfo(
+            processIdentifier: 4242,
+            bundleIdentifier: "com.example.app",
+            name: "ExampleApp",
+            isActive: true,
+            windowCount: 1
+        )
+        let windowInfo = ServiceWindowInfo(
+            windowID: 101,
+            title: "Main Window",
+            bounds: windowBounds,
+            isMainWindow: true
+        )
+        let captureMetadata = CaptureMetadata(
+            size: CGSize(width: 1280, height: 720),
+            mode: .window,
+            applicationInfo: applicationInfo,
+            windowInfo: windowInfo
+        )
+        let captureResult = CaptureResult(
+            imageData: Data(repeating: 0xAB, count: 1024),
+            metadata: captureMetadata
+        )
+
+        let screenCapture = StubScreenCaptureService(permissionGranted: true)
+        screenCapture.defaultCaptureResult = captureResult
+
+        let detectedElement = DetectedElement(
+            id: "B1",
+            type: .button,
+            label: "OK",
+            bounds: CGRect(x: 30, y: 40, width: 100, height: 30)
+        )
+
+        let detectionMetadata = DetectionMetadata(
+            detectionTime: 0.1,
+            elementCount: 1,
+            method: "stub",
+            windowContext: WindowContext(
+                applicationName: applicationInfo.name,
+                windowTitle: windowInfo.title,
+                windowBounds: windowBounds
+            )
+        )
+
+        let detectionResult = ElementDetectionResult(
+            sessionId: sessionId,
+            screenshotPath: "/tmp/ignored.png",
+            elements: DetectedElements(buttons: [detectedElement]),
+            metadata: detectionMetadata
+        )
+
+        let automation = StubAutomationService()
+        automation.nextDetectionResult = detectionResult
+
+        let sessions = StubSessionManager()
+
+        let context = TestServicesFactory.makeAutomationTestContext(
+            automation: automation,
+            sessions: sessions,
+            screenCapture: screenCapture
+        )
+
+        let outputURL = FileManager.default
+            .temporaryDirectory
+            .appendingPathComponent("peekaboo-see-runtime.png")
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        let result = try await InProcessCommandRunner.run(
+            [
+                "see",
+                "--mode", "frontmost",
+                "--path", outputURL.path,
+            ],
+            services: context.services
+        )
+
+        #expect(result.exitStatus == 0)
+        #expect(result.stdout.contains("Screenshot captured successfully"))
+
+        let storedScreenshots = sessions.storedScreenshots[sessionId] ?? []
+        #expect(storedScreenshots.count == 1)
+        #expect(storedScreenshots.first?.path == outputURL.path)
+        #expect(storedScreenshots.first?.applicationName == applicationInfo.name)
+        #expect(storedScreenshots.first?.windowTitle == windowInfo.title)
     }
 }

@@ -19,29 +19,53 @@ func stubUnimplemented(_ function: StaticString = #function) -> Never {
 @MainActor
 final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     var permissionGranted: Bool
+    var defaultCaptureResult: CaptureResult?
+    var captureScreenHandler: ((Int?) async throws -> CaptureResult)?
+    var captureWindowHandler: ((String, Int?) async throws -> CaptureResult)?
+    var captureFrontmostHandler: (() async throws -> CaptureResult)?
+    var captureAreaHandler: ((CGRect) async throws -> CaptureResult)?
 
     init(permissionGranted: Bool = true) {
         self.permissionGranted = permissionGranted
     }
 
     func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
-        throw TestStubError.unimplemented(#function)
+        if let handler = self.captureScreenHandler {
+            return try await handler(displayIndex)
+        }
+        return try await self.makeDefaultCaptureResult(function: #function)
     }
 
     func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
-        throw TestStubError.unimplemented(#function)
+        if let handler = self.captureWindowHandler {
+            return try await handler(appIdentifier, windowIndex)
+        }
+        return try await self.makeDefaultCaptureResult(function: #function)
     }
 
     func captureFrontmost() async throws -> CaptureResult {
-        throw TestStubError.unimplemented(#function)
+        if let handler = self.captureFrontmostHandler {
+            return try await handler()
+        }
+        return try await self.makeDefaultCaptureResult(function: #function)
     }
 
     func captureArea(_ rect: CGRect) async throws -> CaptureResult {
-        throw TestStubError.unimplemented(#function)
+        if let handler = self.captureAreaHandler {
+            return try await handler(rect)
+        }
+        return try await self.makeDefaultCaptureResult(function: #function)
     }
 
     func hasScreenRecordingPermission() async -> Bool {
         self.permissionGranted
+    }
+
+    private func makeDefaultCaptureResult(function: StaticString) async throws -> CaptureResult {
+        if let result = self.defaultCaptureResult {
+            return result
+        }
+        throw TestStubError.unimplemented(function)
     }
 }
 
@@ -123,11 +147,14 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     var moveMouseCalls: [MoveMouseCall] = []
     var hotkeyCalls: [HotkeyCall] = []
     var waitForElementCalls: [WaitForElementCall] = []
+    var detectElementsCalls: [(imageData: Data, sessionId: String?, windowContext: WindowContext?)] = []
 
     var nextTypeActionsResult: TypeResult?
     var typeActionsResultProvider: (([TypeAction], Int, String?) -> TypeResult)?
     var waitForElementProvider: ((ClickTarget, TimeInterval, String?) -> WaitForElementResult)?
     private var waitForElementResults: [WaitTargetKey: WaitForElementResult] = [:]
+    var detectElementsHandler: ((Data, String?, WindowContext?) async throws -> ElementDetectionResult)?
+    var nextDetectionResult: ElementDetectionResult?
 
     func setWaitForElementResult(_ result: WaitForElementResult, for target: ClickTarget) {
         self.waitForElementResults[self.key(for: target)] = result
@@ -138,6 +165,16 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         sessionId: String?,
         windowContext: WindowContext?
     ) async throws -> ElementDetectionResult {
+        self.detectElementsCalls.append((imageData, sessionId, windowContext))
+
+        if let handler = self.detectElementsHandler {
+            return try await handler(imageData, sessionId, windowContext)
+        }
+
+        if let nextDetectionResult {
+            return nextDetectionResult
+        }
+
         throw TestStubError.unimplemented(#function)
     }
 
@@ -391,6 +428,13 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
     private(set) var sessionInfos: [String: SessionInfo] = [:]
     private(set) var storedElements: [String: [String: PeekabooCore.UIElement]] = [:]
     var mostRecentSessionId: String?
+    struct ScreenshotRecord: Sendable {
+        let path: String
+        let applicationName: String?
+        let windowTitle: String?
+        let windowBounds: CGRect?
+    }
+    private(set) var storedScreenshots: [String: [ScreenshotRecord]] = [:]
 
     func createSession() async throws -> String {
         let sessionId = UUID().uuidString
@@ -510,6 +554,16 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
             screenshotCount: screenshotCount,
             isActive: existingInfo?.isActive ?? true
         )
+        var records = self.storedScreenshots[sessionId] ?? []
+        records.append(
+            ScreenshotRecord(
+                path: screenshotPath,
+                applicationName: applicationName,
+                windowTitle: windowTitle,
+                windowBounds: windowBounds
+            )
+        )
+        self.storedScreenshots[sessionId] = records
     }
 
     func getElement(sessionId: String, elementId: String) async throws -> PeekabooCore.UIElement? {

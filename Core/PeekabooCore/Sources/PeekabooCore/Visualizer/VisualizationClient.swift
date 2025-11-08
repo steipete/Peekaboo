@@ -3,7 +3,6 @@
 //  PeekabooCore
 //
 
-import AppKit
 import CoreGraphics
 import Foundation
 import os
@@ -48,7 +47,6 @@ public final class VisualizationClient: @unchecked Sendable {
     private let consoleLogHandler: (String) -> Void
     private let shouldMirrorToConsole: Bool
     private let isRunningInsideMacApp: Bool
-    private let isRunningInsideSwiftPMHelper: Bool
 
     // MARK: - Initialization
 
@@ -57,7 +55,6 @@ public final class VisualizationClient: @unchecked Sendable {
 
         let bundleIdentifier = Bundle.main.bundleIdentifier
         self.isRunningInsideMacApp = VisualizationClient.isPeekabooMacBundle(identifier: bundleIdentifier)
-        self.isRunningInsideSwiftPMHelper = ProcessInfo.processInfo.processName == "swiftpm-testing-helper"
 
         let environment = ProcessInfo.processInfo.environment
         if let override = VisualizationClient.parseBooleanEnvironmentValue(environment["PEEKABOO_VISUALIZER_STDOUT"]) {
@@ -69,9 +66,6 @@ public final class VisualizationClient: @unchecked Sendable {
         if environment["PEEKABOO_VISUAL_FEEDBACK"] == "false" {
             self.isEnabled = false
             self.log(.info, "Visual feedback disabled via environment variable")
-        } else if self.isRunningInsideSwiftPMHelper {
-            self.isEnabled = false
-            self.log(.info, "Visual feedback disabled inside swiftpm-testing-helper context")
         }
     }
 
@@ -121,22 +115,11 @@ public final class VisualizationClient: @unchecked Sendable {
             return
         }
 
-        guard self.isPeekabooAppRunning() else {
-            self.log(.info, "🔌 Client: Peekaboo.app is not running, visual feedback unavailable")
-            return
-        }
-
-        self.log(.info, "🔌 Client: Peekaboo.app is running, requesting visualizer endpoint")
-
         self.invalidateConnection()
-
-        guard let endpoint = await self.fetchVisualizerEndpoint() else {
-            self.log(.warning, "🔌 Client: Visualizer endpoint unavailable; will retry")
-            self.scheduleConnectionRetry()
-            return
-        }
-
-        let newConnection = NSXPCConnection(listenerEndpoint: endpoint)
+        let options: NSXPCConnection.Options = self.isRunningInsideMacApp ? [] : [.privileged]
+        let newConnection = NSXPCConnection(
+            machServiceName: VisualizerXPCServiceName,
+            options: options)
         newConnection.remoteObjectInterface = NSXPCInterface(with: (any VisualizerXPCProtocol).self)
 
         newConnection.interruptionHandler = { [weak self] in
@@ -182,16 +165,18 @@ public final class VisualizationClient: @unchecked Sendable {
         }
     }
 
-    private func makeRemoteProxy(from connection: NSXPCConnection) -> (any VisualizerXPCProtocol)? {
+    nonisolated private func makeRemoteProxy(from connection: NSXPCConnection) -> (any VisualizerXPCProtocol)? {
         connection.synchronousRemoteObjectProxyWithErrorHandler { [weak self] error in
-            guard let self else { return }
-            self.log(.error, "🔌 Client: Failed to get remote proxy: \(error.localizedDescription), error: \(error)")
-            self.isConnected = false
-            self.remoteProxy = nil
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.log(.error, "🔌 Client: Failed to get remote proxy: \(error.localizedDescription), error: \(error)")
+                self.isConnected = false
+                self.remoteProxy = nil
+            }
         } as? (any VisualizerXPCProtocol)
     }
 
-    private func fetchVisualFeedbackState(proxy: any VisualizerXPCProtocol) async throws -> Bool {
+    nonisolated private func fetchVisualFeedbackState(proxy: any VisualizerXPCProtocol) async throws -> Bool {
         let resumeState = OSAllocatedUnfairLock(initialState: false)
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -221,50 +206,6 @@ public final class VisualizationClient: @unchecked Sendable {
                 if shouldResume {
                     timeoutTask.cancel()
                     continuation.resume(returning: enabled)
-                }
-            }
-        }
-    }
-
-    private func fetchVisualizerEndpoint() async -> NSXPCListenerEndpoint? {
-        await withCheckedContinuation { continuation in
-            let connection = NSXPCConnection(serviceName: VisualizerEndpointBrokerServiceName)
-            connection.remoteObjectInterface = NSXPCInterface(with: VisualizerEndpointBrokerProtocol.self)
-            connection.resume()
-
-            let resumeLock = OSAllocatedUnfairLock(initialState: false)
-            let finish: (NSXPCListenerEndpoint?) -> Void = { endpoint in
-                let shouldResume = resumeLock.withLock { resumed in
-                    if resumed { return false }
-                    resumed = true
-                    return true
-                }
-                guard shouldResume else { return }
-                connection.invalidate()
-                continuation.resume(returning: endpoint)
-            }
-
-            guard let broker = connection.remoteObjectProxyWithErrorHandler({ [weak self] error in
-                Task { @MainActor [weak self] in
-                    self?.log(.error, "🔌 Client: Broker connection failed: \(error.localizedDescription)")
-                    finish(nil)
-                }
-            }) as? VisualizerEndpointBrokerProtocol else {
-                Task { @MainActor [weak self] in
-                    self?.log(.error, "🔌 Client: Failed to create broker proxy")
-                    finish(nil)
-                }
-                return
-            }
-
-            broker.fetchVisualizerEndpoint { endpoint in
-                Task { @MainActor [weak self] in
-                    if endpoint == nil {
-                        self?.log(.warning, "🔌 Client: Broker returned no endpoint")
-                    } else {
-                        self?.log(.info, "🔌 Client: Received visualizer endpoint from broker")
-                    }
-                    finish(endpoint)
                 }
             }
         }
@@ -515,25 +456,6 @@ public final class VisualizationClient: @unchecked Sendable {
         }
 
         return success
-    }
-
-    // MARK: - Private Methods
-
-    private func isPeekabooAppRunning() -> Bool {
-        let runningApps = NSWorkspace.shared.runningApplications
-        let peekabooApps = runningApps.filter { app in
-            VisualizationClient.isPeekabooMacBundle(identifier: app.bundleIdentifier)
-        }
-
-        if peekabooApps.isEmpty {
-            self.log(.debug, "🔌 Client: No Peekaboo.app instances found in running apps")
-        } else {
-            for app in peekabooApps {
-                self.log(.debug, "🔌 Client: Found Peekaboo.app - Bundle: \(app.bundleIdentifier ?? "unknown"), PID: \(app.processIdentifier)")
-            }
-        }
-
-        return !peekabooApps.isEmpty
     }
 
     private func log(_ level: LogLevel, _ message: String) {

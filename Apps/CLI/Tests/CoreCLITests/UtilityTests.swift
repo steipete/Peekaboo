@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import PeekabooCLI
+@testable import PeekabooCLI
 
 @Suite("Utility Tests", .tags(.safe), .serialized)
 struct UtilityTests {

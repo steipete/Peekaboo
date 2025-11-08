@@ -220,6 +220,14 @@ ApplicationResolvable {
             metadata: detectionResult.metadata
         )
 
+        try await PeekabooServices.shared.sessions.storeScreenshot(
+            sessionId: detectionResult.sessionId,
+            screenshotPath: outputPath,
+            applicationName: windowContext.applicationName,
+            windowTitle: windowContext.windowTitle,
+            windowBounds: windowContext.windowBounds
+        )
+
         // Store the result in session
         try await PeekabooServices.shared.sessions.storeDetectionResult(
             sessionId: detectionResult.sessionId,
