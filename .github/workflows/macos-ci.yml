@@ -43,7 +43,7 @@ jobs:
             cd /Users/steipete/Projects/swift-argument-parser
             git fetch origin approachable-concurrency
             git checkout approachable-concurrency
-            git reset --hard origin/approachable-concurrency
+            git pull --ff-only origin approachable-concurrency
           else
             git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
           fi
@@ -113,7 +113,7 @@ jobs:
             cd /Users/steipete/Projects/swift-argument-parser
             git fetch origin approachable-concurrency
             git checkout approachable-concurrency
-            git reset --hard origin/approachable-concurrency
+            git pull --ff-only origin approachable-concurrency
           else
             git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
           fi
@@ -183,7 +183,7 @@ jobs:
             cd /Users/steipete/Projects/swift-argument-parser
             git fetch origin approachable-concurrency
             git checkout approachable-concurrency
-            git reset --hard origin/approachable-concurrency
+            git pull --ff-only origin approachable-concurrency
           else
             git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
           fi
