@@ -5,14 +5,17 @@ import Foundation
 
 /// Marker protocol that bridges `ParsableArguments` into our MainActor-isolated world.
 @preconcurrency
+@MainActor
 protocol MainActorParsableArguments: ParsableArguments {}
 
 /// Marker protocol that bridges `AsyncParsableCommand` into our MainActor-isolated world.
 @preconcurrency
+@MainActor
 protocol MainActorAsyncParsableCommand: AsyncParsableCommand {}
 
 /// Marker protocol that bridges `ParsableCommand` into our MainActor-isolated world.
 @preconcurrency
+@MainActor
 protocol MainActorParsableCommand: ParsableCommand {}
 
 // MARK: - Verbose Protocol

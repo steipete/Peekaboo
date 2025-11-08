@@ -87,6 +87,23 @@ struct WindowIdentificationOptions: @MainActor MainActorParsableArguments, Appli
     @Option(name: .long, help: "Target window by index (0-based, frontmost is 0)")
     var windowIndex: Int?
 
+    enum CodingKeys: String, CodingKey {
+        case app
+        case pid
+        case windowTitle
+        case windowIndex
+    }
+
+    init() {}
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.app = try container.decodeIfPresent(String.self, forKey: .app)
+        self.pid = try container.decodeIfPresent(Int32.self, forKey: .pid)
+        self.windowTitle = try container.decodeIfPresent(String.self, forKey: .windowTitle)
+        self.windowIndex = try container.decodeIfPresent(Int.self, forKey: .windowIndex)
+    }
+
     func validate() throws {
         // Ensure we have some way to identify the window
         if self.app == nil && self.pid == nil {
