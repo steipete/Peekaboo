@@ -48,15 +48,11 @@ jobs:
 
       - name: Build PeekabooCore
         working-directory: Core/PeekabooCore
-        env:
-          TOOLCHAINS: ${{ env.SWIFT_TOOLCHAIN }}
-        run: swift build --configuration debug
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift build --configuration debug
 
       - name: Run focused Swift tests
         working-directory: Core/PeekabooCore
-        env:
-          TOOLCHAINS: ${{ env.SWIFT_TOOLCHAIN }}
-        run: swift test --filter ScreenCaptureServiceFlowTests
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift test --filter ScreenCaptureServiceFlowTests
 
   peekaboo-cli:
     name: Peekaboo CLI build & tests
@@ -91,15 +87,11 @@ jobs:
 
       - name: Build CLI target
         working-directory: Apps/CLI
-        env:
-          TOOLCHAINS: ${{ env.SWIFT_TOOLCHAIN }}
-        run: swift build --configuration debug
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift build --configuration debug
 
       - name: Run CLI unit tests (skip automation)
         working-directory: Apps/CLI
-        env:
-          TOOLCHAINS: ${{ env.SWIFT_TOOLCHAIN }}
-        run: swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
 
   tachikoma:
     name: Tachikoma build & tests
@@ -141,15 +133,11 @@ jobs:
 
       - name: Build Tachikoma
         working-directory: Tachikoma
-        env:
-          TOOLCHAINS: ${{ env.SWIFT_TOOLCHAIN }}
-        run: swift build --configuration debug
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift build --configuration debug
 
       - name: Run Tachikoma unit tests
         working-directory: Tachikoma
-        env:
-          TOOLCHAINS: ${{ env.SWIFT_TOOLCHAIN }}
-        run: swift test --filter unit
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift test --filter unit
 
   lint:
     name: SwiftLint (core + CLI)
