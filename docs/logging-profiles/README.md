@@ -63,19 +63,19 @@ After testing, we discovered that **sudo doesn't always reveal private data** in
 
 ## Solutions
 
-### Solution 1: Configuration Profile (Temporary Debugging) ⭐ RECOMMENDED
+### Solution 1: Configuration Profile (Required for Peekaboo Development) ⭐ RECOMMENDED
 
-The most reliable way to see private data is to install a logging profile that tells macOS to capture the actual values when logs are written.
+The most reliable—and now **mandatory**—way to see private data is to install the Peekaboo logging profile so macOS captures the actual values when logs are written. We keep this profile installed on every development machine so investigations always match the behavior described in [Logging Privacy Shenanigans](https://steipete.me/posts/2025/logging-privacy-shenanigans/).
 
-#### ⚠️ IMPORTANT SECURITY WARNING ⚠️
+#### ⚠️ SECURITY NOTE ⚠️
 
-**This profile disables privacy protection for logs!** This means:
-- Passwords, tokens, and sensitive data may be logged in plain text
-- Other applications with log access can see this data
-- **ONLY use this temporarily for debugging**
-- **REMOVE immediately after debugging**
+Keeping the profile installed means:
+- Passwords, tokens, and file paths might appear in logs
+- Any app with log access could read this data
 
-#### Installation
+Only skip the profile on customer-facing demo hardware or other locked-down systems. Reinstall it as soon as you return to day-to-day development.
+
+#### Installation (one-time, keep installed)
 
 1. **Open the profile**:
    ```bash
@@ -105,17 +105,15 @@ You should now see actual values instead of `<private>`:
 - Session IDs will show as `session-ABC123...`
 - File paths will show as `/Users/username/...`
 
-#### Removal (CRITICAL!)
+Leave the profile installed so these values stay visible. Only remove it when onboarding to a machine that must retain the default privacy posture, and reinstall it afterward.
 
-**Remove the profile immediately after debugging:**
+If you are on a system that forbids custom profiles, run the following instead and keep it active for the duration of your debugging session:
 
-1. Go to:
-   - **macOS 15 (Sequoia) and later**: System Settings > General > Device Management
-   - **macOS 14 (Sonoma) and earlier**: System Settings > Privacy & Security > Profiles
-2. Select "Peekaboo Private Data Logging"
-3. Click the minus (-) button to remove
-4. Authenticate to confirm
-5. Verify logs show `<private>` again
+```bash
+sudo log config --mode private_data:on --subsystem boo.peekaboo.core --subsystem boo.peekaboo.mac --persist
+```
+
+Remember to reset (`sudo log config --reset private_data`) only when you explicitly need to revert to the stock policy.
 
 #### How It Works
 
@@ -224,7 +222,7 @@ Peekaboo includes built-in privacy test logging:
    ./peekaboo --version
    ```
 
-2. **Check logs without the profile** (see what's redacted):
+2. **(Optional) Check logs without the profile** (only on sacrificial VMs):
    ```bash
    ./scripts/pblog.sh -c PrivacyTest -l 1m
    ```
@@ -233,7 +231,7 @@ Peekaboo includes built-in privacy test logging:
    - Some values like email/token are visible
    - Session IDs and paths show as `<private>`
 
-3. **After installing the profile**, check again:
+3. **After (re)installing the profile**, check again:
    ```bash
    ./scripts/pblog.sh -c PrivacyTest -l 1m
    ```

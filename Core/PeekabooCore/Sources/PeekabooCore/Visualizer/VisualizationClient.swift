@@ -7,7 +7,9 @@ import AppKit
 import CoreGraphics
 import Foundation
 import os
+import os.lock
 import PeekabooFoundation
+import _Concurrency
 
 @MainActor
 public final class VisualizationClient: @unchecked Sendable {
@@ -15,29 +17,56 @@ public final class VisualizationClient: @unchecked Sendable {
         case connectionTimedOut
     }
 
+    private enum LogLevel {
+        case debug
+        case info
+        case notice
+        case warning
+        case error
+        case fault
+    }
+
     // MARK: - Properties
 
     public static let shared = VisualizationClient()
+
+    private static let macAppBundlePrefix = "boo.peekaboo.mac"
 
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "VisualizationClient")
 
     private var connection: NSXPCConnection?
     private var remoteProxy: (any VisualizerXPCProtocol)?
     private var connectionTask: Task<Void, Never>?
+    private var retryTask: Task<Void, Never>?
 
     public private(set) var isConnected: Bool = false
     private var isEnabled: Bool = true
 
-    private var retryTimer: Timer?
     private let maxRetryAttempts = 3
     private var retryAttempt = 0
 
+    private let consoleLogHandler: (String) -> Void
+    private let shouldMirrorToConsole: Bool
+    private let isRunningInsideMacApp: Bool
+
     // MARK: - Initialization
 
-    public init() {
-        if ProcessInfo.processInfo.environment["PEEKABOO_VISUAL_FEEDBACK"] == "false" {
+    public init(consoleLogHandler: ((String) -> Void)? = nil) {
+        self.consoleLogHandler = consoleLogHandler ?? VisualizationClient.defaultConsoleLogHandler
+
+        let bundleIdentifier = Bundle.main.bundleIdentifier
+        self.isRunningInsideMacApp = VisualizationClient.isPeekabooMacBundle(identifier: bundleIdentifier)
+
+        let environment = ProcessInfo.processInfo.environment
+        if let override = VisualizationClient.parseBooleanEnvironmentValue(environment["PEEKABOO_VISUALIZER_STDOUT"]) {
+            self.shouldMirrorToConsole = override
+        } else {
+            self.shouldMirrorToConsole = !self.isRunningInsideMacApp
+        }
+
+        if environment["PEEKABOO_VISUAL_FEEDBACK"] == "false" {
             self.isEnabled = false
-            self.logger.info("Visual feedback disabled via environment variable")
+            self.log(.info, "Visual feedback disabled via environment variable")
         }
     }
 
@@ -45,17 +74,17 @@ public final class VisualizationClient: @unchecked Sendable {
 
     public func connect() {
         guard self.isEnabled else {
-            self.logger.info("🔌 Client: Visual feedback is disabled, skipping connection")
+            self.log(.info, "🔌 Client: Visual feedback is disabled, skipping connection")
             return
         }
 
         if self.isConnected, self.connection != nil {
-            self.logger.info("🔌 Client: Already connected, skipping")
+            self.log(.info, "🔌 Client: Already connected, skipping")
             return
         }
 
         if let existingTask = self.connectionTask, !existingTask.isCancelled {
-            self.logger.debug("🔌 Client: Connection attempt already in progress")
+            self.log(.debug, "🔌 Client: Connection attempt already in progress")
             return
         }
 
@@ -67,42 +96,48 @@ public final class VisualizationClient: @unchecked Sendable {
     public func disconnect() {
         self.connectionTask?.cancel()
         self.connectionTask = nil
-        self.invalidateRetryTimer()
+        self.cancelRetryTask()
         self.isConnected = false
         self.invalidateConnection()
-        self.logger.info("Disconnected from visualizer service")
+        self.log(.info, "Disconnected from visualizer service")
         NotificationCenter.default.post(name: .visualizerDisconnected, object: nil)
     }
 
     private func establishConnection() async {
         defer { self.connectionTask = nil }
 
-        self.logger.info("🔌 Client: Attempting to connect to visualizer service")
-        self.logger.info("🔌 Client: Bundle ID: \(Bundle.main.bundleIdentifier ?? "nil"), Process: \(ProcessInfo.processInfo.processName)")
+        self.log(.info, "🔌 Client: Attempting to connect to visualizer service")
+        self.log(.info, "🔌 Client: Bundle ID: \(Bundle.main.bundleIdentifier ?? "nil"), Process: \(ProcessInfo.processInfo.processName)")
 
         guard self.isEnabled else { return }
 
         if self.isConnected, self.connection != nil {
-            self.logger.info("🔌 Client: Already connected, skipping")
+            self.log(.info, "🔌 Client: Already connected, skipping")
             return
         }
 
         guard self.isPeekabooAppRunning() else {
-            self.logger.info("🔌 Client: Peekaboo.app is not running, visual feedback unavailable")
+            self.log(.info, "🔌 Client: Peekaboo.app is not running, visual feedback unavailable")
             return
         }
 
-        self.logger.info("🔌 Client: Peekaboo.app is running, establishing XPC connection to '\(VisualizerXPCServiceName)'")
+        self.log(.info, "🔌 Client: Peekaboo.app is running, loading visualizer endpoint")
 
         self.invalidateConnection()
 
-        let newConnection = NSXPCConnection(machServiceName: VisualizerXPCServiceName)
+        guard let endpoint = self.loadVisualizerEndpoint() else {
+            self.log(.warning, "🔌 Client: Visualizer endpoint unavailable; will retry")
+            self.scheduleConnectionRetry()
+            return
+        }
+
+        let newConnection = NSXPCConnection(listenerEndpoint: endpoint)
         newConnection.remoteObjectInterface = NSXPCInterface(with: (any VisualizerXPCProtocol).self)
 
         newConnection.interruptionHandler = { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.logger.error("🔌 Client: XPC connection interrupted!")
+                self.log(.error, "🔌 Client: XPC connection interrupted!")
                 self.handleConnectionInterruption()
             }
         }
@@ -110,17 +145,17 @@ public final class VisualizationClient: @unchecked Sendable {
         newConnection.invalidationHandler = { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.logger.error("🔌 Client: XPC connection invalidated!")
+                self.log(.error, "🔌 Client: XPC connection invalidated!")
                 self.handleConnectionInvalidation()
             }
         }
 
         self.connection = newConnection
-        self.logger.info("🔌 Client: Resuming XPC connection...")
+        self.log(.info, "🔌 Client: Resuming XPC connection...")
         newConnection.resume()
 
         guard let proxy = self.makeRemoteProxy(from: newConnection) else {
-            self.logger.error("🔌 Client: Failed to create proxy object")
+            self.log(.error, "🔌 Client: Failed to create proxy object")
             self.invalidateConnection()
             return
         }
@@ -131,10 +166,11 @@ public final class VisualizationClient: @unchecked Sendable {
             self.isConnected = true
             self.isEnabled = enabled
             self.retryAttempt = 0
-            self.logger.info("🔌 Client: Successfully connected to visualizer service, feedback enabled: \(enabled)")
+            self.cancelRetryTask()
+            self.log(.info, "🔌 Client: Successfully connected to visualizer service, feedback enabled: \(enabled)")
             NotificationCenter.default.post(name: .visualizerConnected, object: nil)
         } catch {
-            self.logger.error("🔌 Client: Connection test failed: \(String(describing: error))")
+            self.log(.error, "🔌 Client: Connection test failed: \(String(describing: error))")
             self.isConnected = false
             self.invalidateConnection()
             self.scheduleConnectionRetry()
@@ -144,32 +180,56 @@ public final class VisualizationClient: @unchecked Sendable {
     private func makeRemoteProxy(from connection: NSXPCConnection) -> (any VisualizerXPCProtocol)? {
         connection.synchronousRemoteObjectProxyWithErrorHandler { [weak self] error in
             guard let self else { return }
-            self.logger.error("🔌 Client: Failed to get remote proxy: \(error.localizedDescription), error: \(error)")
+            self.log(.error, "🔌 Client: Failed to get remote proxy: \(error.localizedDescription), error: \(error)")
             self.isConnected = false
             self.remoteProxy = nil
         } as? (any VisualizerXPCProtocol)
     }
 
     private func fetchVisualFeedbackState(proxy: any VisualizerXPCProtocol) async throws -> Bool {
-        return try await withCheckedThrowingContinuation { continuation in
-            var didResume = false
+        let resumeState = OSAllocatedUnfairLock(initialState: false)
 
-            let timeoutTask = Task { @MainActor in
+        return try await withCheckedThrowingContinuation { continuation in
+            let timeoutTask = Task.detached { [resumeState] in
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
-                guard !didResume else { return }
-                didResume = true
-                continuation.resume(throwing: VisualizationClientError.connectionTimedOut)
+                let shouldResume = resumeState.withLock { resumed in
+                    if resumed {
+                        return false
+                    }
+                    resumed = true
+                    return true
+                }
+                if shouldResume {
+                    continuation.resume(throwing: VisualizationClientError.connectionTimedOut)
+                }
             }
 
             proxy.isVisualFeedbackEnabled { enabled in
-                Task { @MainActor in
-                    guard !didResume else { return }
-                    didResume = true
+                let shouldResume = resumeState.withLock { resumed in
+                    if resumed {
+                        return false
+                    }
+                    resumed = true
+                    return true
+                }
+
+                if shouldResume {
                     timeoutTask.cancel()
                     continuation.resume(returning: enabled)
                 }
             }
         }
+    }
+
+    private func loadVisualizerEndpoint() -> NSXPCListenerEndpoint? {
+        do {
+            return try VisualizerEndpointStore.readEndpoint()
+        } catch VisualizerEndpointStoreError.endpointNotFound {
+            self.log(.debug, "🔌 Client: Visualizer endpoint file not found")
+        } catch {
+            self.log(.error, "🔌 Client: Failed to read visualizer endpoint: \(error)")
+        }
+        return nil
     }
 
     private func invalidateConnection() {
@@ -178,59 +238,59 @@ public final class VisualizationClient: @unchecked Sendable {
         self.remoteProxy = nil
     }
 
-    private func invalidateRetryTimer() {
-        self.retryTimer?.invalidate()
-        self.retryTimer = nil
+    private func cancelRetryTask() {
+        self.retryTask?.cancel()
+        self.retryTask = nil
     }
 
     // MARK: - Visual Feedback Methods
 
     public func showScreenshotFlash(in rect: CGRect) async -> Bool {
-        self.logger.info("📸 Client: Screenshot flash requested for rect: \(String(describing: rect))")
+        self.log(.info, "📸 Client: Screenshot flash requested for rect: \(String(describing: rect))")
 
         guard self.isConnected else {
-            self.logger.warning("📸 Client: Not connected to visualizer service")
+            self.log(.warning, "📸 Client: Not connected to visualizer service")
             return false
         }
 
         guard self.isEnabled else {
-            self.logger.info("📸 Client: Visual feedback disabled")
+            self.log(.info, "📸 Client: Visual feedback disabled")
             return false
         }
 
         if ProcessInfo.processInfo.environment["PEEKABOO_VISUAL_SCREENSHOTS"] == "false" {
-            self.logger.info("📸 Client: Screenshot visual feedback disabled via environment variable")
+            self.log(.info, "📸 Client: Screenshot visual feedback disabled via environment variable")
             return false
         }
 
-        self.logger.info("📸 Client: Sending screenshot flash to XPC service")
+        self.log(.info, "📸 Client: Sending screenshot flash to XPC service")
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showScreenshotFlash(in: rect) { success in
-                self.logger.info("📸 Client: Screenshot flash result: \(success)")
+                self.log(.info, "📸 Client: Screenshot flash result: \(success)")
                 continuation.resume(returning: success)
             }
         }
     }
 
     public func showClickFeedback(at point: CGPoint, type: ClickType) async -> Bool {
-        self.logger.info("[tap]️ Client: Click feedback requested at point: \(String(describing: point)), type: \(type)")
+        self.log(.info, "[tap]️ Client: Click feedback requested at point: \(String(describing: point)), type: \(type)")
 
         guard self.isConnected else {
-            self.logger.warning("[tap]️ Client: Not connected to visualizer service")
+            self.log(.warning, "[tap]️ Client: Not connected to visualizer service")
             return false
         }
 
         guard self.isEnabled else {
-            self.logger.info("[tap]️ Client: Visual feedback disabled")
+            self.log(.info, "[tap]️ Client: Visual feedback disabled")
             return false
         }
 
-        self.logger.info("[tap]️ Client: Sending click feedback to XPC service")
+        self.log(.info, "[tap]️ Client: Sending click feedback to XPC service")
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showClickFeedback(at: point, type: type.rawValue) { success in
-                self.logger.info("[tap]️ Client: Click feedback result: \(success)")
+                self.log(.info, "[tap]️ Client: Click feedback result: \(success)")
                 continuation.resume(returning: success)
             }
         }
@@ -369,15 +429,15 @@ public final class VisualizationClient: @unchecked Sendable {
         windowBounds: CGRect,
         duration: TimeInterval = 3.0) async -> Bool
     {
-        self.logger.info("[focus] Client: Annotated screenshot requested with \(elements.count) elements")
+        self.log(.info, "[focus] Client: Annotated screenshot requested with \(elements.count) elements")
 
         guard self.isConnected else {
-            self.logger.warning("[focus] Client: Not connected to visualizer service")
+            self.log(.warning, "[focus] Client: Not connected to visualizer service")
             return false
         }
 
         guard self.isEnabled else {
-            self.logger.info("[focus] Client: Visual feedback disabled")
+            self.log(.info, "[focus] Client: Visual feedback disabled")
             return false
         }
 
@@ -391,12 +451,12 @@ public final class VisualizationClient: @unchecked Sendable {
                     elementData: elementData,
                     windowBounds: windowBounds,
                     duration: duration) { success in
-                        self.logger.info("[focus] Client: Annotated screenshot result: \(success)")
+                        self.log(.info, "[focus] Client: Annotated screenshot result: \(success)")
                         continuation.resume(returning: success)
                     }
             }
         } catch {
-            self.logger.error("[focus] Client: Failed to encode elements: \(error)")
+            self.log(.error, "[focus] Client: Failed to encode elements: \(error)")
             return false
         }
     }
@@ -424,28 +484,78 @@ public final class VisualizationClient: @unchecked Sendable {
     private func isPeekabooAppRunning() -> Bool {
         let runningApps = NSWorkspace.shared.runningApplications
         let peekabooApps = runningApps.filter { app in
-            app.bundleIdentifier == "boo.peekaboo.mac" || app.bundleIdentifier == "boo.peekaboo.mac.debug"
+            VisualizationClient.isPeekabooMacBundle(identifier: app.bundleIdentifier)
         }
 
         if peekabooApps.isEmpty {
-            self.logger.debug("🔌 Client: No Peekaboo.app instances found in running apps")
+            self.log(.debug, "🔌 Client: No Peekaboo.app instances found in running apps")
         } else {
             for app in peekabooApps {
-                self.logger.debug("🔌 Client: Found Peekaboo.app - Bundle: \(app.bundleIdentifier ?? "unknown"), PID: \(app.processIdentifier)")
+                self.log(.debug, "🔌 Client: Found Peekaboo.app - Bundle: \(app.bundleIdentifier ?? "unknown"), PID: \(app.processIdentifier)")
             }
         }
 
         return !peekabooApps.isEmpty
     }
 
+    private func log(_ level: LogLevel, _ message: String) {
+        let osLogType: OSLogType
+        switch level {
+        case .debug: osLogType = .debug
+        case .info: osLogType = .info
+        case .notice: osLogType = .default
+        case .warning: osLogType = .default
+        case .error: osLogType = .error
+        case .fault: osLogType = .fault
+        }
+
+        self.logger.log(level: osLogType, "\(message, privacy: .public)")
+
+        guard self.shouldMirrorToConsole else { return }
+
+        let emoji: String
+        switch level {
+        case .debug: emoji = "DEBUG"
+        case .info: emoji = "INFO"
+        case .notice: emoji = "NOTICE"
+        case .warning: emoji = "WARN"
+        case .error: emoji = "ERROR"
+        case .fault: emoji = "FAULT"
+        }
+
+        self.consoleLogHandler("[Visualizer][\(emoji)] \(message)")
+    }
+
+    private static func parseBooleanEnvironmentValue(_ rawValue: String?) -> Bool? {
+        guard let rawValue else { return nil }
+        switch rawValue.lowercased() {
+        case "1", "true", "yes", "y", "on":
+            return true
+        case "0", "false", "no", "n", "off":
+            return false
+        default:
+            return nil
+        }
+    }
+
+    private static func isPeekabooMacBundle(identifier: String?) -> Bool {
+        guard let identifier else { return false }
+        return identifier.hasPrefix(Self.macAppBundlePrefix)
+    }
+
+    private static func defaultConsoleLogHandler(_ message: String) {
+        guard let data = (message + "\n").data(using: .utf8) else { return }
+        try? FileHandle.standardError.write(contentsOf: data)
+    }
+
     private func handleConnectionInterruption() {
-        self.logger.warning("XPC connection interrupted")
+        self.log(.warning, "XPC connection interrupted")
         self.isConnected = false
         self.scheduleConnectionRetry()
     }
 
     private func handleConnectionInvalidation() {
-        self.logger.warning("XPC connection invalidated")
+        self.log(.warning, "XPC connection invalidated")
         self.isConnected = false
         self.invalidateConnection()
         self.scheduleConnectionRetry()
@@ -453,18 +563,30 @@ public final class VisualizationClient: @unchecked Sendable {
 
     private func scheduleConnectionRetry() {
         guard self.retryAttempt < self.maxRetryAttempts else {
-            self.logger.error("Max retry attempts reached, giving up")
+            self.log(.error, "Max retry attempts reached, giving up")
             return
         }
 
         self.retryAttempt += 1
         let delay = TimeInterval(self.retryAttempt * 2)
 
-        self.logger.info("Scheduling connection retry #\(self.retryAttempt) in \(delay) seconds")
+        self.log(.info, "Scheduling connection retry #\(self.retryAttempt) in \(delay) seconds")
 
-        self.invalidateRetryTimer()
-        self.retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in
+        self.cancelRetryTask()
+
+        let delayNanoseconds = UInt64(delay * 1_000_000_000)
+        self.retryTask = Task { [weak self] in
+            guard delayNanoseconds > 0 else {
+                await MainActor.run {
+                    self?.connect()
+                }
+                return
+            }
+
+            try? await Task.sleep(nanoseconds: delayNanoseconds)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
                 self?.connect()
             }
         }

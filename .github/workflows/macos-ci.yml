@@ -33,6 +33,21 @@ jobs:
           ref: main
           path: Tachikoma
 
+      - name: Prepare Swift Argument Parser fork
+        run: |
+          sudo mkdir -p /Users/steipete/Projects
+          sudo chown $USER /Users/steipete
+          sudo mkdir -p /Users/steipete/Projects
+          sudo chown $USER /Users/steipete/Projects
+          if [ -d /Users/steipete/Projects/swift-argument-parser ]; then
+            cd /Users/steipete/Projects/swift-argument-parser
+            git fetch origin approachable-concurrency
+            git checkout approachable-concurrency
+            git reset --hard origin/approachable-concurrency
+          else
+            git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
+          fi
+
       - name: Cache SwiftPM (PeekabooCore)
         uses: actions/cache@v4
         with:
@@ -88,6 +103,21 @@ jobs:
           ref: main
           path: Tachikoma
 
+      - name: Prepare Swift Argument Parser fork
+        run: |
+          sudo mkdir -p /Users/steipete/Projects
+          sudo chown $USER /Users/steipete
+          sudo mkdir -p /Users/steipete/Projects
+          sudo chown $USER /Users/steipete/Projects
+          if [ -d /Users/steipete/Projects/swift-argument-parser ]; then
+            cd /Users/steipete/Projects/swift-argument-parser
+            git fetch origin approachable-concurrency
+            git checkout approachable-concurrency
+            git reset --hard origin/approachable-concurrency
+          else
+            git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
+          fi
+
       - name: Cache SwiftPM (CLI)
         uses: actions/cache@v4
         with:
@@ -142,6 +172,21 @@ jobs:
           repository: steipete/Tachikoma
           ref: main
           path: Tachikoma
+
+      - name: Prepare Swift Argument Parser fork
+        run: |
+          sudo mkdir -p /Users/steipete/Projects
+          sudo chown $USER /Users/steipete
+          sudo mkdir -p /Users/steipete/Projects
+          sudo chown $USER /Users/steipete/Projects
+          if [ -d /Users/steipete/Projects/swift-argument-parser ]; then
+            cd /Users/steipete/Projects/swift-argument-parser
+            git fetch origin approachable-concurrency
+            git checkout approachable-concurrency
+            git reset --hard origin/approachable-concurrency
+          else
+            git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
+          fi
 
       - name: Cache SwiftPM (Tachikoma)
         uses: actions/cache@v4
