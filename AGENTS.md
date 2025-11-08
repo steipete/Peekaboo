@@ -14,13 +14,14 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **Loops & polling**: Never write open-ended `while` loops (especially in test scripts) that can block indefinitely. Always bound the iteration count or timeout (e.g., break after N checks) so hung processes can’t stall the agent forever.
 - **Commit discipline**: Batch related changes before committing. Never commit single files opportunistically—coordinate commit groups so parallel agents aren’t surprised by partially landed work.
 - **Version control hygiene**: Never revert or overwrite files you did not edit. Other agents and humans may be working in parallel, so avoid destructive operations (including `git checkout`, `git reset`, or similar) unless explicitly instructed.
+- **Custom dependency forks**: When touching `swift-argument-parser`, always use Peter’s fork (see “Custom Forks” below). Swapping to upstream removes the approachable-concurrency fixes we rely on.
+- **Submodule safety**: Peter edits `Tachikoma/` directly. Never run destructive git commands (`git checkout -- .`, `git reset --hard`, etc.) inside Tachikoma without his explicit approval.
+- **Runner awareness**: Any task that regularly runs longer than ~1 minute (heavy builds, lint, long tests) must use the extended runner window—update the runner keyword list whenever a new long job appears so CI doesn’t evict your work.
+- **Peeking at upstream files**: When you need to inspect another revision, redirect the file into `/tmp/` (or another scratch path) for reference. Never overwrite tracked files via redirection; copy the necessary hunks back with `apply_patch` so in-progress edits stay intact.
 
 ## Custom Forks / Dependencies
 
 - **Swift Argument Parser**: use Peter's fork (https://github.com/steipete/swift-argument-parser.git) on branch `approachable-concurrency`. This carries the approachable-concurrency annotations; do not swap back to upstream Apple.
-
-- **Custom dependency forks**: When touching `swift-argument-parser`, always use Peter’s fork (see “Custom Forks” below). Swapping to upstream removes the approachable-concurrency fixes we rely on.
-- **Submodule safety**: Peter edits `Tachikoma/` directly. Never run destructive git commands (`git checkout -- .`, `git reset --hard`, etc.) inside Tachikoma without his explicit approval.
 
 ### Commit Messages
 
