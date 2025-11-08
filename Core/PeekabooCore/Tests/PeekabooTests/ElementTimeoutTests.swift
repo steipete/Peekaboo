@@ -49,7 +49,11 @@ struct ElementTimeoutTests {
         #expect(windows != nil)
         // Note: Finder windows may vary, so we just check that the method works
         if let windowArray = windows {
-            #expect(windowArray.count >= 0) // Sanity check – call succeeded
+            if windowArray.isEmpty {
+                Issue.record("Finder windows call succeeded but returned 0 entries")
+            } else {
+                #expect(true) // Non-empty result proves timeout path worked
+            }
         } else {
             Issue.record("Finder windows not accessible")
         }
@@ -75,7 +79,11 @@ struct ElementTimeoutTests {
         // Then - should get some children (menu bar, windows, etc.)
         #expect(children != nil)
         if let childArray = children {
-            #expect(childArray.count >= 0)
+            if childArray.isEmpty {
+                Issue.record("Finder reported zero AX children")
+            } else {
+                #expect(true)
+            }
         } else {
             Issue.record("Finder children not accessible")
         }
@@ -182,7 +190,11 @@ struct ElementTimeoutTests {
         let menuItems = menuBar.children() ?? []
 
         // Then - menu enumeration should succeed even if Finder is not focused
-        #expect(menuItems.count >= 0)
+        if menuItems.isEmpty {
+            Issue.record("Menu bar children enumeration returned no items")
+        } else {
+            #expect(true)
+        }
 
         // Test that menu items are valid Elements
         for menuItem in menuItems {

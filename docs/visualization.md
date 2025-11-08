@@ -5,6 +5,16 @@ Peekaboo's visualization pipeline has two moving pieces:
 1. **VisualizerXPCService** runs inside the macOS app and renders click/typing overlays, flashes, and annotations.
 2. **VisualizationClient** ships with the CLI and Core frameworks. It connects to the XPC service, mirrors interesting events to stderr for agent users, and toggles visual feedback during capture.
 
+### XPC transport contract
+
+The macOS app exposes the visualizer via the Mach service `boo.peekaboo.visualizer`. Every CLI or helper creates an `NSXPCConnection(machServiceName: VisualizerXPCServiceName)` and talks directly to the service; no temporary files or endpoint relays are involved. For this to work:
+
+- Peekaboo.app (or its login item) must be running so the listener exists.
+- `Info.plist` must keep the `MachServices` entry so `launchd` lets clients dial the service.
+- `VisualizerXPCService` must stay alive for the lifetime of the app and accept multiple concurrent connections.
+
+If we ever move the host into a helper/login item the Mach service name must remain unchanged so existing CLIs continue to connect.
+
 The sections below capture the current debugging workflow so we do not lose tribal knowledge the next time the overlays appear to be "missing".
 
 ## Runtime Logging

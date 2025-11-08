@@ -39,26 +39,18 @@ final class VisualizerXPCService: NSObject {
 
     /// Starts the XPC service
     func start() {
-        let listener = NSXPCListener.anonymous()
+        let listener = NSXPCListener(machServiceName: VisualizerXPCServiceName)
         listener.delegate = self
         listener.resume()
         self.listener = listener
 
-        do {
-            try VisualizerEndpointStore.write(endpoint: listener.endpoint)
-            self.logger.info("🎨 XPC Service: Published listener endpoint")
-        } catch {
-            self.logger.error("🎨 XPC Service: Failed to publish listener endpoint: \(String(describing: error), privacy: .public)")
-        }
-
-        self.logger.info("🎨 XPC Service: Anonymous listener started")
+        self.logger.info("🎨 XPC Service: Listening on mach service '\(VisualizerXPCServiceName)'")
     }
 
     /// Stops the XPC service
     func stop() {
         self.listener?.invalidate()
         self.listener = nil
-        VisualizerEndpointStore.removeEndpoint()
         self.logger.info("Visualizer XPC service stopped")
     }
 }

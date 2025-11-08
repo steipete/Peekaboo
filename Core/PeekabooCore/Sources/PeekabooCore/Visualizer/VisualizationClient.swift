@@ -121,17 +121,11 @@ public final class VisualizationClient: @unchecked Sendable {
             return
         }
 
-        self.log(.info, "🔌 Client: Peekaboo.app is running, loading visualizer endpoint")
+        self.log(.info, "🔌 Client: Peekaboo.app is running, connecting to '\(VisualizerXPCServiceName)' mach service")
 
         self.invalidateConnection()
 
-        guard let endpoint = self.loadVisualizerEndpoint() else {
-            self.log(.warning, "🔌 Client: Visualizer endpoint unavailable; will retry")
-            self.scheduleConnectionRetry()
-            return
-        }
-
-        let newConnection = NSXPCConnection(listenerEndpoint: endpoint)
+        let newConnection = NSXPCConnection(machServiceName: VisualizerXPCServiceName)
         newConnection.remoteObjectInterface = NSXPCInterface(with: (any VisualizerXPCProtocol).self)
 
         newConnection.interruptionHandler = { [weak self] in
@@ -219,17 +213,6 @@ public final class VisualizationClient: @unchecked Sendable {
                 }
             }
         }
-    }
-
-    private func loadVisualizerEndpoint() -> NSXPCListenerEndpoint? {
-        do {
-            return try VisualizerEndpointStore.readEndpoint()
-        } catch VisualizerEndpointStoreError.endpointNotFound {
-            self.log(.debug, "🔌 Client: Visualizer endpoint file not found")
-        } catch {
-            self.log(.error, "🔌 Client: Failed to read visualizer endpoint: \(error)")
-        }
-        return nil
     }
 
     private func invalidateConnection() {
