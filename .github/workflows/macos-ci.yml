@@ -11,7 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SWIFT_TOOLCHAIN: swift-6.2-RELEASE
+  SWIFT_TOOLCHAIN_ID: swift-6.2-RELEASE
+  SWIFT_TOOLCHAIN_NAME: swift
   SWIFT_TOOLCHAIN_URL: https://download.swift.org/swift-6.2-release/xcode/swift-6.2-RELEASE/swift-6.2-RELEASE-osx.pkg
 
 jobs:
@@ -38,21 +39,24 @@ jobs:
 
       - name: Install Swift 6.2 toolchain
         run: |
-          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN}.xctoolchain" ]; then
+          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain" ]; then
             curl -L "${SWIFT_TOOLCHAIN_URL}" -o /tmp/swift-toolchain.pkg
             sudo installer -pkg /tmp/swift-toolchain.pkg -target /
           fi
+
+      - name: Show Swift toolchain version
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build PeekabooCore
         working-directory: Core/PeekabooCore
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift build --configuration debug
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift build --configuration debug
 
       - name: Run focused Swift tests
         working-directory: Core/PeekabooCore
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift test --filter ScreenCaptureServiceFlowTests
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift test --filter ScreenCaptureServiceFlowTests
 
   peekaboo-cli:
     name: Peekaboo CLI build & tests
@@ -77,21 +81,24 @@ jobs:
 
       - name: Install Swift 6.2 toolchain
         run: |
-          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN}.xctoolchain" ]; then
+          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain" ]; then
             curl -L "${SWIFT_TOOLCHAIN_URL}" -o /tmp/swift-toolchain.pkg
             sudo installer -pkg /tmp/swift-toolchain.pkg -target /
           fi
+
+      - name: Show Swift toolchain version
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build CLI target
         working-directory: Apps/CLI
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift build --configuration debug
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift build --configuration debug
 
       - name: Run CLI unit tests (skip automation)
         working-directory: Apps/CLI
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
 
   tachikoma:
     name: Tachikoma build & tests
@@ -123,21 +130,24 @@ jobs:
 
       - name: Install Swift 6.2 toolchain
         run: |
-          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN}.xctoolchain" ]; then
+          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain" ]; then
             curl -L "${SWIFT_TOOLCHAIN_URL}" -o /tmp/swift-toolchain.pkg
             sudo installer -pkg /tmp/swift-toolchain.pkg -target /
           fi
+
+      - name: Show Swift toolchain version
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build Tachikoma
         working-directory: Tachikoma
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift build --configuration debug
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift build --configuration debug
 
       - name: Run Tachikoma unit tests
         working-directory: Tachikoma
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN} swift test --filter unit
+        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift test --filter unit
 
   lint:
     name: SwiftLint (core + CLI)
