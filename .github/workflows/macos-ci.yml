@@ -48,7 +48,8 @@ jobs:
         run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
       - name: Export Swift toolchain binary
-        run: echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
+        run: |
+          echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -93,7 +94,8 @@ jobs:
         run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
       - name: Export Swift toolchain binary
-        run: echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
+        run: |
+          echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -145,7 +147,8 @@ jobs:
         run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
       - name: Export Swift toolchain binary
-        run: echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
+        run: |
+          echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
 
       - name: Show Xcode version
         run: xcodebuild -version
