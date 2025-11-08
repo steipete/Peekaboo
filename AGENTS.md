@@ -15,6 +15,13 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **Commit discipline**: Batch related changes before committing. Never commit single files opportunistically—coordinate commit groups so parallel agents aren’t surprised by partially landed work.
 - **Version control hygiene**: Never revert or overwrite files you did not edit. Other agents and humans may be working in parallel, so avoid destructive operations (including `git checkout`, `git reset`, or similar) unless explicitly instructed.
 
+## Custom Forks / Dependencies
+
+- **Swift Argument Parser**: use Peter's fork (https://github.com/steipete/swift-argument-parser.git) on branch `approachable-concurrency`. This carries the approachable-concurrency annotations; do not swap back to upstream Apple.
+
+- **Custom dependency forks**: When touching `swift-argument-parser`, always use Peter’s fork (see “Custom Forks” below). Swapping to upstream removes the approachable-concurrency fixes we rely on.
+- **Submodule safety**: Peter edits `Tachikoma/` directly. Never run destructive git commands (`git checkout -- .`, `git reset --hard`, etc.) inside Tachikoma without his explicit approval.
+
 ### Commit Messages
 
 We **always** use [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Stick to the format `<type>(<optional scope>)!: <description>` using the allowed types `feat|fix|refactor|build|ci|chore|docs|style|perf|test`.
