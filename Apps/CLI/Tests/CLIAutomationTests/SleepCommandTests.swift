@@ -20,7 +20,7 @@ struct SleepCommandTests {
 
     @Test("Sleep command requires duration")
     func requiresDuration() {
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try SleepCommand.parse([])
             }
@@ -52,7 +52,7 @@ struct SleepCommandTests {
         // Runtime validation checks if > 0
         if duration < 0 {
             // Negative numbers fail at parse time
-            #expect(throws: Error.self) {
+            #expect(throws: (any Error).self) {
                 try CLIOutputCapture.suppressStderr {
                     _ = try SleepCommand.parse([String(duration)])
                 }

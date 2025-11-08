@@ -60,12 +60,12 @@ struct MenuCommandTests {
     @Test("Menu click requires app and path/item")
     func menuClickValidation() async throws {
         // Test missing app
-        await #expect(throws: Error.self) {
+        await #expect(throws: (any Error).self) {
             _ = try await self.runMenuCommand(["menu", "click", "--path", "File > New"])
         }
 
         // Test missing path/item
-        await #expect(throws: Error.self) {
+        await #expect(throws: (any Error).self) {
             _ = try await self.runMenuCommand(["menu", "click", "--app", "Finder"])
         }
     }

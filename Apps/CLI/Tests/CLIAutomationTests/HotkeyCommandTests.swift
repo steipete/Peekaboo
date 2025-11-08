@@ -30,7 +30,7 @@ import Testing
 
     @Test func invalidInputHandling() async throws {
         // Test missing keys
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try HotkeyCommand.parse([])
             }

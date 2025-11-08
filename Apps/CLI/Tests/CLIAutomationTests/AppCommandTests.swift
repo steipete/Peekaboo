@@ -40,12 +40,12 @@ struct AppCommandTests {
     @Test("App quit command validation")
     func appQuitValidation() async throws {
         // Test missing app/all
-        await #expect(throws: Error.self) {
+        await #expect(throws: (any Error).self) {
             _ = try await runAppCommand(["app", "quit"])
         }
 
         // Test conflicting options
-        await #expect(throws: Error.self) {
+        await #expect(throws: (any Error).self) {
             _ = try await runAppCommand(["app", "quit", "--app", "Finder", "--all"])
         }
     }
@@ -63,7 +63,7 @@ struct AppCommandTests {
     @Test("App show command validation")
     func appShowValidation() async throws {
         // Test missing app/all
-        await #expect(throws: Error.self) {
+        await #expect(throws: (any Error).self) {
             _ = try await runAppCommand(["app", "show"])
         }
     }
@@ -71,7 +71,7 @@ struct AppCommandTests {
     @Test("App switch command validation")
     func appSwitchValidation() async throws {
         // Test missing to/cycle
-        await #expect(throws: Error.self) {
+        await #expect(throws: (any Error).self) {
             _ = try await runAppCommand(["app", "switch"])
         }
     }

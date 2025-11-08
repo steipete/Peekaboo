@@ -132,7 +132,7 @@ struct ClickCommandAdvancedTests {
 
     @Test("Command validation rejects both --on and --coords")
     func validationRejectsBothOptions() {
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             _ = try ClickCommand.parse(["--on", "B1", "--coords", "100,200"])
         }
     }

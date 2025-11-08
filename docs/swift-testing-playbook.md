@@ -1,3 +1,9 @@
+---
+summary: "The Ultimate Swift Testing Playbook (2024 WWDC Edition, expanded with Apple docs from June 2025)"
+read_when:
+  - Working on the ultimate swift testing playbook (2024 wwdc edition, expanded with apple docs from june 2025) topics
+---
+
 # The Ultimate Swift Testing Playbook (2024 WWDC Edition, expanded with Apple docs from June 2025)
 https://developer.apple.com/xcode/swift-testing/
 
@@ -95,7 +101,7 @@ Use this table as a cheat sheet when migrating your `XCTest` assertions.
 | `XCTAssertFalse(a)` | `#expect(!a)` | Use the `!` operator to negate the expression. |
 | `XCTAssertGreaterThan(a, b)` | `#expect(a > b)` | Use any standard comparison operator: `>`, `<`, `>=`, `<=` |
 | `XCTUnwrap(a)` | `try #require(a)` | The preferred, safer way to unwrap optionals. |
-| `XCTAssertThrowsError(expr)` | `#expect(throws: Error.self) { expr }` | The basic form for checking any error. |
+| `XCTAssertThrowsError(expr)` | `#expect(throws: (any Error).self) { expr }` | The basic form for checking any error. |
 | `XCTAssertNoThrow(expr)` | `#expect(throws: Never.self) { expr }` | The explicit way to assert that no error is thrown. |
 
 ### Action Items
@@ -193,7 +199,7 @@ Go beyond `do/catch` with a dedicated, expressive API for validating thrown erro
 
 | Overload | Replaces... | Example & Use Case |
 |---|---|---|
-| **`#expect(throws: Error.self)`**| Basic `XCTAssertThrowsError` | Verifies that *any* error was thrown. |
+| **`#expect(throws: (any Error).self)`**| Basic `XCTAssertThrowsError` | Verifies that *any* error was thrown. |
 | **`#expect(throws: BrewingError.self)`** | Typed `XCTAssertThrowsError` | Ensures an error of a specific *type* is thrown. |
 | **`#expect(throws: BrewingError.outOfBeans)`**| Specific Error `XCTAssertThrowsError`| Validates a specific error *value* is thrown. |
 | **`#expect(throws: ... ) catch: { ... }`** | `do/catch` with `switch` | **Payload Introspection.** The ultimate tool for errors with associated values. It gives you a closure to inspect the thrown error. <br> ```swift #expect(throws: BrewingError.self) { try brew(beans: 0) } catch: { error in guard case let .notEnoughBeans(needed) = error else { Issue.record("Wrong error case thrown"); return } #expect(needed > 0) } ``` |

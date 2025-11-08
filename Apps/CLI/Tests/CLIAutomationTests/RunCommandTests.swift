@@ -153,7 +153,7 @@ struct RunCommandDataTests {
 
     @Test("Run command requires script path")
     func requiresScriptPath() {
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try RunCommand.parse([])
             }

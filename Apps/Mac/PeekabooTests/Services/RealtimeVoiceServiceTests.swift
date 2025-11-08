@@ -74,7 +74,7 @@ struct RealtimeVoiceServiceTests {
             sessionStore: sessionStore,
             settings: settings)
 
-        await #expect(throws: Error.self) {
+        await #expect(throws: (any Error).self) {
             try await service.startSession()
         }
 

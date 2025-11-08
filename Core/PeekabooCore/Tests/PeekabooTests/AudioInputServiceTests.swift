@@ -134,7 +134,7 @@ struct AudioInputServiceTests {
             try largeData.write(to: largeFile)
             defer { try? FileManager.default.removeItem(at: largeFile) }
 
-            await #expect(throws: any Error.self) { // Will throw fileTooLarge error
+            await #expect(throws: (any Error).self) { // Will throw fileTooLarge error
                 _ = try await service.transcribeAudioFile(largeFile)
             }
         }
@@ -223,7 +223,7 @@ struct MockCredentialProvider: AudioTranscriptionCredentialProviding, Sendable {
 extension AudioInputServiceTests {
     @MainActor
     static func makeService(
-        recorder: AudioRecorderProtocol = MockAudioRecorder(),
+        recorder: any AudioRecorderProtocol = MockAudioRecorder(),
         hasAPIKey: Bool = true) -> AudioInputService
     {
         let aiService = PeekabooAIService()

@@ -104,13 +104,13 @@ struct MCPCommandTests {
 
     @Test("Invalid port number throws error")
     func invalidPortNumber() throws {
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try MCPCommand.Serve.parse(["--port", "-1"])
             }
         }
 
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try MCPCommand.Serve.parse(["--port", "not-a-number"])
             }
@@ -119,7 +119,7 @@ struct MCPCommandTests {
 
     @Test("Call command requires tool argument")
     func callCommandRequiresToolArgument() throws {
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try MCPCommand.Call.parse(["test-server"])
             }
