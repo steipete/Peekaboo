@@ -12,7 +12,14 @@
 		782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
 		78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 78E542AC2E4178650006A8EF /* KeyboardShortcuts */; };
 		78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */ = {isa = PBXBuildFile; productRef = 78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */; };
-		78F900102E5C000100123456 /* PeekabooVisualizerService.xpc in XPCServices */ = {isa = PBXBuildFile; fileRef = 78F900012E5C000100123456 /* PeekabooVisualizerService.xpc */; };
+		78F900102E5C000100123456 /* PeekabooVisualizerBridge.xpc in XPCServices */ = {isa = PBXBuildFile; fileRef = 78F900012E5C000100123456 /* PeekabooVisualizerBridge.xpc */; };
+		78F900172E5C000100123456 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F900142E5C000100123456 /* main.swift */; };
+		78F900202E5C000100123456 /* VisualizerEndpointBroker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F9001F2E5C000100123456 /* VisualizerEndpointBroker.swift */; };
+		78F9001A2E5C000100123456 /* AXorcist in Frameworks (Service) */ = {isa = PBXBuildFile; productRef = 7814F18F2E1C0950000995F8 /* AXorcist */; };
+		78F9001B2E5C000100123456 /* AXorcist in Frameworks (Service 2) */ = {isa = PBXBuildFile; productRef = 782555012E1CA0ED00F1D8DF /* AXorcist */; };
+		78F9001C2E5C000100123456 /* PeekabooCore in Frameworks (Service) */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
+		78F9001D2E5C000100123456 /* PeekabooUICore in Frameworks (Service) */ = {isa = PBXBuildFile; productRef = 78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */; };
+		78F9001E2E5C000100123456 /* KeyboardShortcuts in Frameworks (Service) */ = {isa = PBXBuildFile; productRef = 78E542AC2E4178650006A8EF /* KeyboardShortcuts */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -21,13 +28,17 @@
 			containerPortal = 7814F0FE2E1BD4C8000995F8 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 78F900002E5C000100123456;
-			remoteInfo = PeekabooVisualizerService;
+			remoteInfo = PeekabooVisualizerBridge;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		7814F1062E1BD4C8000995F8 /* Peekaboo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Peekaboo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		78F900012E5C000100123456 /* PeekabooVisualizerService.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = PeekabooVisualizerService.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
+		78F900012E5C000100123456 /* PeekabooVisualizerBridge.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = PeekabooVisualizerBridge.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
+		78F900142E5C000100123456 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PeekabooBridge/PeekabooVisualizerBridge.xpc/main.swift"; sourceTree = SOURCE_ROOT; };
+		78F9001F2E5C000100123456 /* VisualizerEndpointBroker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PeekabooBridge/PeekabooVisualizerBridge.xpc/VisualizerEndpointBroker.swift"; sourceTree = SOURCE_ROOT; };
+		78F900152E5C000100123456 /* VisualizerCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Peekaboo/Services/Visualizer/VisualizerCoordinator.swift"; sourceTree = SOURCE_ROOT; };
+		78F900162E5C000100123456 /* VisualizerXPCService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Peekaboo/Services/Visualizer/VisualizerXPCService.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -36,14 +47,13 @@
 			path = Peekaboo;
 			sourceTree = "<group>";
 		};
-		78F900082E5C000100123456 /* PeekabooVisualizerService.xpc */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Peekaboo/XPCServices/PeekabooVisualizerService.xpc";
-			sourceTree = "<group>";
-		};
-		78F900112E5C000100123456 /* Visualizer */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Peekaboo/Services/Visualizer";
+		78F900082E5C000100123456 /* PeekabooVisualizerBridge.xpc */ = {
+			isa = PBXGroup;
+			children = (
+				78F900142E5C000100123456 /* main.swift */,
+				78F9001F2E5C000100123456 /* VisualizerEndpointBroker.swift */,
+			);
+			path = "PeekabooBridge/PeekabooVisualizerBridge.xpc";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -65,6 +75,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				78F9001A2E5C000100123456 /* AXorcist in Frameworks (Service) */,
+				78F9001B2E5C000100123456 /* AXorcist in Frameworks (Service 2) */,
+				78F9001C2E5C000100123456 /* PeekabooCore in Frameworks (Service) */,
+				78F9001D2E5C000100123456 /* PeekabooUICore in Frameworks (Service) */,
+				78F9001E2E5C000100123456 /* KeyboardShortcuts in Frameworks (Service) */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,7 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				7814F1062E1BD4C8000995F8 /* Peekaboo.app */,
-				78F900012E5C000100123456 /* PeekabooVisualizerService.xpc */,
+				78F900012E5C000100123456 /* PeekabooVisualizerBridge.xpc */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -110,19 +125,15 @@
 			);
 			name = Peekaboo;
 			packageProductDependencies = (
-				7814F18F2E1C0950000995F8 /* AXorcist */,
-				782555012E1CA0ED00F1D8DF /* AXorcist */,
 				782555042E1CA10900F1D8DF /* PeekabooCore */,
-				78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */,
-				78E542AC2E4178650006A8EF /* KeyboardShortcuts */,
 			);
 			productName = Peekaboo;
 			productReference = 7814F1062E1BD4C8000995F8 /* Peekaboo.app */;
 			productType = "com.apple.product-type.application";
 		};
-		78F900002E5C000100123456 /* PeekabooVisualizerService */ = {
+		78F900002E5C000100123456 /* PeekabooVisualizerBridge */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 78F9000E2E5C000100123456 /* Build configuration list for PBXNativeTarget "PeekabooVisualizerService" */;
+			buildConfigurationList = 78F9000E2E5C000100123456 /* Build configuration list for PBXNativeTarget "PeekabooVisualizerBridge" */;
 			buildPhases = (
 				78F900092E5C000100123456 /* Sources */,
 				78F9000A2E5C000100123456 /* Frameworks */,
@@ -131,11 +142,7 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				78F900082E5C000100123456 /* PeekabooVisualizerService.xpc */,
-				78F900112E5C000100123456 /* Visualizer */,
-			);
-			name = PeekabooVisualizerService;
+			name = PeekabooVisualizerBridge;
 			packageProductDependencies = (
 				7814F18F2E1C0950000995F8 /* AXorcist */,
 				782555012E1CA0ED00F1D8DF /* AXorcist */,
@@ -143,8 +150,8 @@
 				78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */,
 				78E542AC2E4178650006A8EF /* KeyboardShortcuts */,
 			);
-			productName = PeekabooVisualizerService;
-			productReference = 78F900012E5C000100123456 /* PeekabooVisualizerService.xpc */;
+			productName = PeekabooVisualizerBridge;
+			productReference = 78F900012E5C000100123456 /* PeekabooVisualizerBridge.xpc */;
 			productType = "com.apple.product-type.xpc-service";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +193,7 @@
 			projectRoot = "";
 			targets = (
 				7814F1052E1BD4C8000995F8 /* Peekaboo */,
-				78F900002E5C000100123456 /* PeekabooVisualizerService */,
+				78F900002E5C000100123456 /* PeekabooVisualizerBridge */,
 			);
 		};
 /* End PBXProject section */
@@ -205,10 +212,10 @@
 		78F9000F2E5C000100123456 /* XPC Services */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 16;
+			dstPath = "Contents/XPCServices";
+			dstSubfolderSpec = 1;
 			files = (
-				78F900102E5C000100123456 /* PeekabooVisualizerService.xpc in XPCServices */,
+				78F900102E5C000100123456 /* PeekabooVisualizerBridge.xpc in XPCServices */,
 			);
 			name = "XPC Services";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -227,10 +234,33 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				78F900172E5C000100123456 /* main.swift in Sources */,
+				78F900202E5C000100123456 /* VisualizerEndpointBroker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		78F900212E5C000100123456 /* Remove Duplicate XPC Copy */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Remove Duplicate XPC Copy";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "RESOURCES_XPC=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PeekabooVisualizerBridge.xpc\"\nif [ -d \"$RESOURCES_XPC\" ]; then\n  rm -rf \"$RESOURCES_XPC\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		7814F10F2E1BD4CA000995F8 /* Debug */ = {
@@ -452,10 +482,11 @@
 		78F9000B2E5C000100123456 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y5PE65HELJ;
-				INFOPLIST_FILE = "Apps/Mac/Peekaboo/XPCServices/PeekabooVisualizerService.xpc/Info.plist";
+				INFOPLIST_FILE = "PeekabooBridge/PeekabooVisualizerBridge.xpc/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = boo.peekaboo.visualizer;
@@ -468,10 +499,11 @@
 		78F9000C2E5C000100123456 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y5PE65HELJ;
-				INFOPLIST_FILE = "Apps/Mac/Peekaboo/XPCServices/PeekabooVisualizerService.xpc/Info.plist";
+				INFOPLIST_FILE = "PeekabooBridge/PeekabooVisualizerBridge.xpc/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = boo.peekaboo.visualizer;
@@ -503,7 +535,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		78F9000E2E5C000100123456 /* Build configuration list for PBXNativeTarget "PeekabooVisualizerService" */ = {
+		78F9000E2E5C000100123456 /* Build configuration list for PBXNativeTarget "PeekabooVisualizerBridge" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				78F9000B2E5C000100123456 /* Debug */,
@@ -543,7 +575,7 @@
 /* Begin PBXTargetDependency section */
 		78F900132E5C000100123456 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 78F900002E5C000100123456 /* PeekabooVisualizerService */;
+			target = 78F900002E5C000100123456 /* PeekabooVisualizerBridge */;
 			targetProxy = 78F900122E5C000100123456 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */

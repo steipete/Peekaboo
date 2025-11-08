@@ -121,11 +121,17 @@ public final class VisualizationClient: @unchecked Sendable {
             return
         }
 
-        self.log(.info, "🔌 Client: Peekaboo.app is running, connecting to service '\(VisualizerXPCServiceName)'")
+        self.log(.info, "🔌 Client: Peekaboo.app is running, requesting visualizer endpoint")
 
         self.invalidateConnection()
 
-        let newConnection = NSXPCConnection(serviceName: VisualizerXPCServiceName)
+        guard let endpoint = await self.fetchVisualizerEndpoint() else {
+            self.log(.warning, "🔌 Client: Visualizer endpoint unavailable; will retry")
+            self.scheduleConnectionRetry()
+            return
+        }
+
+        let newConnection = NSXPCConnection(listenerEndpoint: endpoint)
         newConnection.remoteObjectInterface = NSXPCInterface(with: (any VisualizerXPCProtocol).self)
 
         newConnection.interruptionHandler = { [weak self] in
@@ -210,6 +216,50 @@ public final class VisualizationClient: @unchecked Sendable {
                 if shouldResume {
                     timeoutTask.cancel()
                     continuation.resume(returning: enabled)
+                }
+            }
+        }
+    }
+
+    private func fetchVisualizerEndpoint() async -> NSXPCListenerEndpoint? {
+        await withCheckedContinuation { continuation in
+            let connection = NSXPCConnection(serviceName: VisualizerEndpointBrokerServiceName)
+            connection.remoteObjectInterface = NSXPCInterface(with: VisualizerEndpointBrokerProtocol.self)
+            connection.resume()
+
+            let resumeLock = OSAllocatedUnfairLock(initialState: false)
+            let finish: (NSXPCListenerEndpoint?) -> Void = { endpoint in
+                let shouldResume = resumeLock.withLock { resumed in
+                    if resumed { return false }
+                    resumed = true
+                    return true
+                }
+                guard shouldResume else { return }
+                connection.invalidate()
+                continuation.resume(returning: endpoint)
+            }
+
+            guard let broker = connection.remoteObjectProxyWithErrorHandler({ [weak self] error in
+                Task { @MainActor [weak self] in
+                    self?.log(.error, "🔌 Client: Broker connection failed: \(error.localizedDescription)")
+                    finish(nil)
+                }
+            }) as? VisualizerEndpointBrokerProtocol else {
+                Task { @MainActor [weak self] in
+                    self?.log(.error, "🔌 Client: Failed to create broker proxy")
+                    finish(nil)
+                }
+                return
+            }
+
+            broker.fetchVisualizerEndpoint { endpoint in
+                Task { @MainActor [weak self] in
+                    if endpoint == nil {
+                        self?.log(.warning, "🔌 Client: Broker returned no endpoint")
+                    } else {
+                        self?.log(.info, "🔌 Client: Received visualizer endpoint from broker")
+                    }
+                    finish(endpoint)
                 }
             }
         }

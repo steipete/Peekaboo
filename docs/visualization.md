@@ -1,56 +1,75 @@
 # Visualization Diagnostics
 
-Peekaboo's visualization pipeline has two moving pieces:
+Peekaboo's visualization pipeline now has three coordinated pieces:
 
-1. **VisualizerXPCService** runs inside the macOS app and renders click/typing overlays, flashes, and annotations.
-2. **VisualizationClient** ships with the CLI and Core frameworks. It connects to the XPC service, mirrors interesting events to stderr for agent users, and toggles visual feedback during capture.
+1. **VisualizerXPCService** runs inside the macOS app and renders click/typing overlays, flashes, space switches, and annotations.
+2. **PeekabooVisualizerBridge.xpc** is a lightweight helper bundled with the app. It stores the most recent anonymous listener endpoint exported by `VisualizerXPCService` and serves it to every client that connects.
+3. **VisualizationClient** (part of PeekabooCore/CLI) connects to the bridge, retrieves the latest endpoint, mirrors important events to stderr for agents, and invokes the renderer during CLI operations like `peekaboo see`.
 
-### XPC transport contract
+## XPC Transport Contract
 
-Peekaboo ships an embedded XPC service bundle (`PeekabooVisualizerService.xpc`) whose bundle identifier is `boo.peekaboo.visualizer`. The macOS app copies this service into `Peekaboo.app/Contents/XPCServices` and the service declares a Mach service with the same name, so every CLI can connect via `NSXPCConnection(machServiceName: VisualizerXPCServiceName)`.
+macOS refuses to archive `NSXPCListenerEndpoint` instances outside of an `NSXPCCoder`, so we can no longer persist the endpoint on disk. The flow is therefore:
 
-For this to work reliably:
+1. Peekaboo.app launches, instantiates `VisualizerXPCService`, and obtains an anonymous `NSXPCListener.endpoint`.
+2. The app dials the embedded helper (`boo.peekaboo.visualizer.bridge`) and calls `registerVisualizerEndpoint(_:)`.
+3. Every CLI process calls `fetchVisualizerEndpoint()` on the bridge. If it receives a non-nil endpoint it builds `NSXPCConnection(listenerEndpoint:)` directly to the in-app service. Otherwise it retries later.
 
-- Peekaboo.app (or its login item) must be running so the service bundle is present on disk (launchd will spin up the helper on demand).
-- `Info.plist` must keep the `MachServices` entry so `launchd` lets clients dial the service.
-- `VisualizerXPCService` must stay alive for the lifetime of the app and accept multiple concurrent connections.
+For this to stay reliable:
 
-If we ever move the host into a helper/login item the Mach service name must remain unchanged so existing CLIs continue to connect.
-
-The sections below capture the current debugging workflow so we do not lose tribal knowledge the next time the overlays appear to be "missing".
+- Ensure `PeekabooVisualizerBridge.xpc` only lives inside `Peekaboo.app/Contents/XPCServices`. A stray copy inside `Resources` won’t run.
+- Keep Peekaboo.app (or its login item) running so the anonymous listener keeps registering itself with the bridge.
+- Make sure both the app and the CLI log broker failures loudly—silent timeouts make debugging impossible.
 
 ## Runtime Logging
 
 ### Console mirroring for agents
 
-When the CLI (or any non-macOS-app bundle) instantiates `VisualizationClient.shared`, it mirrors every connection and tool invocation message to `stderr`. This gives instant feedback while running commands such as `peekaboo see`: you will see messages like `INFO Scheduling connection retry #1` directly in the terminal without spelunking `log show`. Set `PEEKABOO_VISUALIZER_STDOUT=false` to silence the console mirroring or `=true` to force it on even inside the macOS app.
+Any non-macOS bundle (CLI, tests, agents) mirrors visualization logs to stderr. You should immediately see messages such as `🔌 Client: Attempting to connect` or `Retrying in 2s` when running `peekaboo see`. Set `PEEKABOO_VISUALIZER_STDOUT=false` to mute the mirror or `=true` to force it on inside the macOS app.
 
 ### Unified logging & privacy overrides
 
-The macOS host still emits the same messages through Apple's unified logging, but Apple redacts dynamic payloads by default. We now keep the Peekaboo logging profile installed at all times so the system captures real values (see `docs/logging-profiles/README.md`). That profile implements Peter Steinberger's "Logging Privacy Shenanigans" playbook for the `boo.peekaboo.core`, `boo.peekaboo.mac`, and `boo.peekaboo.visualizer` subsystems. If you ever end up on a machine without the profile, follow the steps below to install it and leave it in place.
+We permanently install the `EnablePeekabooLogPrivateData` profile (see `docs/logging-profiles/README.md`). This keeps private-data logging enabled across the `boo.peekaboo.core`, `boo.peekaboo.mac`, and `boo.peekaboo.visualizer` subsystems so diagnostics actually contain window titles, endpoints, and process names. Only uninstall the profile if you are prepping a locked-down demo machine; reinstall it immediately afterward.
 
-1. Install the Peekaboo logging profile (preferred) so the OS records full payloads.
-2. If you cannot install profiles on a given box, run `sudo log config --mode private_data:on --subsystem boo.peekaboo.core --subsystem boo.peekaboo.mac --persist` instead and leave it enabled for the duration of your work.
-3. Reproduce the issue and capture logs with `log stream --info --predicate 'subsystem == "boo.peekaboo.core"'`.
-4. Only remove the override when you intentionally need a locked-down environment (`log config --reset private_data`).
+On machines where profiles are forbidden, run the fallback override and leave it in place during your session:
 
-This policy keeps development boxes permanently verbose while still documenting how to tighten things back up for customer demos.
+```bash
+sudo log config --mode private_data:on \
+  --subsystem boo.peekaboo.core \
+  --subsystem boo.peekaboo.mac \
+  --persist
+```
 
-## Smoke tests
+Reset only when you explicitly need the stock policy: `sudo log config --reset private_data`.
 
-Use these steps to verify the visualization stack end-to-end:
+### scripts/visualizer-logs.sh
 
-1. Launch the macOS app (it hosts the XPC service).
-2. Run `polter peekaboo -- see --mode screen --path /tmp/peekaboo-see.png --annotate`.
-3. Confirm the CLI prints the `Visualizer` connection log lines and that `/tmp/peekaboo-see*.png` contains the annotated overlays.
-4. Watch `log stream` from the macOS app to ensure the service logs the requests.
+Use `scripts/visualizer-logs.sh` to capture the relevant unified logs without memorising predicates.
 
-If step 2 succeeds but there are no logs in step 4, install the privacy override profile and try again.
+```bash
+# Show the last 15 minutes of visualization chatter
+scripts/visualizer-logs.sh --last 15m
 
-## Failure modes to look for
+# Stream logs while exercising the CLI
+scripts/visualizer-logs.sh --stream
+```
 
-- **Peekaboo.app is not running:** `VisualizationClient` now logs this explicitly and keeps retrying with exponential backoff instead of silently giving up.
-- **XPC connection interrupted:** the client writes an immediate warning and schedules another attempt after 2, 4, then 6 seconds; no `Timer`/run-loop tricks are required anymore.
-- **Slow or wedged `isVisualFeedbackEnabled`:** we time out on a detached task so the CLI stays responsive instead of freezing the MainActor.
+Pass `--predicate '...'` if you need to dig into a specific subsystem or category.
 
-Keep this document updated whenever we touch the overlay pipeline so we can reference a single living artifact during postmortems.
+## Smoke Tests
+
+1. Launch Peekaboo.app from the latest build output (it publishes the visualizer endpoint).
+2. Run `polter peekaboo -- see --mode screen --annotate --path /tmp/peekaboo-see.png`.
+3. Confirm the CLI prints the VisualizationClient connection logs (`Attempting to connect`, `Successfully connected`, etc.).
+4. Run `scripts/visualizer-logs.sh --last 5m` to ensure the macOS host logs show the incoming requests.
+
+If step 2 works but you do not see logs in step 4, reinstall the logging profile or enable the temporary `log config --mode private_data:on ...` override.
+
+## Failure Modes To Watch
+
+- **Peekaboo.app not running:** The CLI will log `Peekaboo.app is not running` and retry with exponential backoff. Launch the app and re-run the command.
+- **Bridge missing or corrupted:** Both sides log `Failed to connect to endpoint broker`. Rebuild the app to regenerate `PeekabooVisualizerBridge.xpc` and confirm it sits under `Contents/XPCServices`.
+- **Connection interrupted:** The CLI logs the interruption, tears down the proxy, and schedules another attempt (2s, 4s, 6s). You should not see unbounded timers anymore.
+- **Slow `isVisualFeedbackEnabled`:** We now guard the initial RPC with a 2s timeout so the CLI remains responsive.
+- **App crash:** Fetch the `.ips` file via `ls -t ~/Library/Logs/DiagnosticReports | head -n 1`, attach it to the issue, then relaunch the app so the bridge re-registers the endpoint.
+
+Keep this document updated whenever we touch the overlay pipeline so postmortems have a single source of truth.

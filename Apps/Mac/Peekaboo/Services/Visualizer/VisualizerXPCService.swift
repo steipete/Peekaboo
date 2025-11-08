@@ -19,8 +19,12 @@ final class VisualizerXPCService: NSObject {
     /// Logger for debugging
     private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "VisualizerXPCService")
 
+    private let listener: NSXPCListener
+
     /// Visualizer coordinator (manages animations)
     private let visualizerCoordinator: VisualizerCoordinator
+
+    private var brokerRetryTask: Task<Void, Never>?
 
     /// Settings (now comes from connected coordinator)
     // Removed internal settings - coordinator manages its own
@@ -29,7 +33,11 @@ final class VisualizerXPCService: NSObject {
 
     init(visualizerCoordinator: VisualizerCoordinator) {
         self.visualizerCoordinator = visualizerCoordinator
+        self.listener = NSXPCListener.anonymous()
         super.init()
+        self.listener.delegate = self
+        self.listener.resume()
+        self.registerEndpointWithBroker(delay: 0)
     }
 
 }
@@ -315,6 +323,55 @@ extension VisualizerXPCService: @preconcurrency VisualizerXPCProtocol {
             // This method is kept for XPC protocol compatibility but doesn't need to do anything
 
             reply(true)
+        }
+    }
+}
+
+// MARK: - Endpoint Broker
+
+extension VisualizerXPCService {
+    private func registerEndpointWithBroker(delay: TimeInterval) {
+        self.brokerRetryTask?.cancel()
+        self.brokerRetryTask = Task { [weak self] in
+            if delay > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+            await self?.sendEndpointToBroker()
+        }
+    }
+
+    @MainActor
+    private func sendEndpointToBroker() {
+        let connection = NSXPCConnection(serviceName: VisualizerEndpointBrokerServiceName)
+        connection.remoteObjectInterface = NSXPCInterface(with: VisualizerEndpointBrokerProtocol.self)
+        connection.resume()
+
+        guard let broker = connection.remoteObjectProxyWithErrorHandler({ [weak self] error in
+            connection.invalidate()
+            Task { @MainActor [weak self] in
+                self?.logger.error(
+                    "🎨 XPC Service: Broker connection failed: \(error.localizedDescription, privacy: .public)")
+                self?.registerEndpointWithBroker(delay: 1)
+            }
+        }) as? VisualizerEndpointBrokerProtocol else {
+            connection.invalidate()
+            self.logger.error("🎨 XPC Service: Failed to create broker proxy")
+            self.registerEndpointWithBroker(delay: 1)
+            return
+        }
+
+        broker.registerVisualizerEndpoint(self.listener.endpoint) { [weak self] success in
+            Task { @MainActor [weak self] in
+                connection.invalidate()
+                guard let self else { return }
+                if success {
+                    self.logger.info("🎨 XPC Service: Registered endpoint with broker")
+                    self.brokerRetryTask = nil
+                } else {
+                    self.logger.error("🎨 XPC Service: Broker rejected endpoint registration")
+                    self.registerEndpointWithBroker(delay: 1)
+                }
+            }
         }
     }
 }
