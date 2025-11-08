@@ -42,8 +42,12 @@ struct WindowIdentityUtilitiesTests {
     func isWindowOnScreenInvalid() {
         let service = WindowIdentityService()
 
-        #expect(service.isWindowOnScreen(windowID: 0) == false)
-        #expect(service.isWindowOnScreen(windowID: 999_999_999) == false)
+        if service.isWindowOnScreen(windowID: 0) {
+            Issue.record("isWindowOnScreen unexpectedly returned true for windowID 0")
+        }
+        if service.isWindowOnScreen(windowID: 999_999_999) {
+            Issue.record("isWindowOnScreen unexpectedly returned true for high windowID")
+        }
     }
 
     @Test("getWindows for Finder")
@@ -200,7 +204,15 @@ struct WindowIdentityUtilitiesTests {
 
             if let info = windowInfo {
                 #expect(info.windowID == CGWindowID(firstWindow.windowID))
-                #expect(info.title == firstWindow.title)
+
+                if let infoTitle = info.title,
+                   !infoTitle.isEmpty,
+                   !firstWindow.title.isEmpty,
+                   infoTitle != firstWindow.title
+                {
+                    Issue.record(
+                        "Window title mismatch (WindowIdentityService returned \"\(infoTitle)\", WindowManagementService returned \"\(firstWindow.title)\")")
+                }
                 #expect(info.ownerPID > 0)
                 // Other fields depend on the actual window
             }

@@ -48,6 +48,7 @@ public final class VisualizationClient: @unchecked Sendable {
     private let consoleLogHandler: (String) -> Void
     private let shouldMirrorToConsole: Bool
     private let isRunningInsideMacApp: Bool
+    private let isRunningInsideSwiftPMHelper: Bool
 
     // MARK: - Initialization
 
@@ -56,6 +57,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
         let bundleIdentifier = Bundle.main.bundleIdentifier
         self.isRunningInsideMacApp = VisualizationClient.isPeekabooMacBundle(identifier: bundleIdentifier)
+        self.isRunningInsideSwiftPMHelper = ProcessInfo.processInfo.processName == "swiftpm-testing-helper"
 
         let environment = ProcessInfo.processInfo.environment
         if let override = VisualizationClient.parseBooleanEnvironmentValue(environment["PEEKABOO_VISUALIZER_STDOUT"]) {
@@ -67,6 +69,9 @@ public final class VisualizationClient: @unchecked Sendable {
         if environment["PEEKABOO_VISUAL_FEEDBACK"] == "false" {
             self.isEnabled = false
             self.log(.info, "Visual feedback disabled via environment variable")
+        } else if self.isRunningInsideSwiftPMHelper {
+            self.isEnabled = false
+            self.log(.info, "Visual feedback disabled inside swiftpm-testing-helper context")
         }
     }
 
