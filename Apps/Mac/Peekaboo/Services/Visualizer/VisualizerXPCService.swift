@@ -19,9 +19,6 @@ final class VisualizerXPCService: NSObject {
     /// Logger for debugging
     private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "VisualizerXPCService")
 
-    /// XPC listener
-    private var listener: NSXPCListener?
-
     /// Visualizer coordinator (manages animations)
     private let visualizerCoordinator: VisualizerCoordinator
 
@@ -35,24 +32,6 @@ final class VisualizerXPCService: NSObject {
         super.init()
     }
 
-    // MARK: - Service Management
-
-    /// Starts the XPC service
-    func start() {
-        let listener = NSXPCListener(machServiceName: VisualizerXPCServiceName)
-        listener.delegate = self
-        listener.resume()
-        self.listener = listener
-
-        self.logger.info("🎨 XPC Service: Listening on mach service '\(VisualizerXPCServiceName)'")
-    }
-
-    /// Stops the XPC service
-    func stop() {
-        self.listener?.invalidate()
-        self.listener = nil
-        self.logger.info("Visualizer XPC service stopped")
-    }
 }
 
 // MARK: - NSXPCListenerDelegate

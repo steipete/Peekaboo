@@ -121,11 +121,11 @@ public final class VisualizationClient: @unchecked Sendable {
             return
         }
 
-        self.log(.info, "🔌 Client: Peekaboo.app is running, connecting to '\(VisualizerXPCServiceName)' mach service")
+        self.log(.info, "🔌 Client: Peekaboo.app is running, connecting to service '\(VisualizerXPCServiceName)'")
 
         self.invalidateConnection()
 
-        let newConnection = NSXPCConnection(machServiceName: VisualizerXPCServiceName)
+        let newConnection = NSXPCConnection(serviceName: VisualizerXPCServiceName)
         newConnection.remoteObjectInterface = NSXPCInterface(with: (any VisualizerXPCProtocol).self)
 
         newConnection.interruptionHandler = { [weak self] in

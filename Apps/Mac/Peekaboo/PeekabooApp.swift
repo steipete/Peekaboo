@@ -192,7 +192,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Visualizer components
     var visualizerCoordinator: VisualizerCoordinator?
-    private var visualizerXPCService: VisualizerXPCService?
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
@@ -202,12 +201,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Initialize visualizer components
         self.visualizerCoordinator = VisualizerCoordinator()
-
-        if let coordinator = visualizerCoordinator {
-            self.visualizerXPCService = VisualizerXPCService(visualizerCoordinator: coordinator)
-            self.visualizerXPCService?.start()
-            self.logger.info("Visualizer XPC service started")
-        }
 
         // Status bar will be created after state is connected
     }
