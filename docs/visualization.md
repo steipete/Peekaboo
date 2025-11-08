@@ -7,9 +7,11 @@ Peekaboo's visualization pipeline has two moving pieces:
 
 ### XPC transport contract
 
-The macOS app exposes the visualizer via the Mach service `boo.peekaboo.visualizer`. Every CLI or helper creates an `NSXPCConnection(machServiceName: VisualizerXPCServiceName)` and talks directly to the service; no temporary files or endpoint relays are involved. For this to work:
+Peekaboo ships an embedded XPC service bundle (`PeekabooVisualizerService.xpc`) whose bundle identifier is `boo.peekaboo.visualizer`. The macOS app copies this service into `Peekaboo.app/Contents/XPCServices` and the service declares a Mach service with the same name, so every CLI can connect via `NSXPCConnection(machServiceName: VisualizerXPCServiceName)`.
 
-- Peekaboo.app (or its login item) must be running so the listener exists.
+For this to work reliably:
+
+- Peekaboo.app (or its login item) must be running so the service bundle is present on disk (launchd will spin up the helper on demand).
 - `Info.plist` must keep the `MachServices` entry so `launchd` lets clients dial the service.
 - `VisualizerXPCService` must stay alive for the lifetime of the app and accept multiple concurrent connections.
 
