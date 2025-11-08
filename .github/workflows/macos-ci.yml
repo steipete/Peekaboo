@@ -33,6 +33,11 @@ jobs:
           ref: main
           path: Tachikoma
 
+      - name: Remove phantom submodule metadata
+        run: |
+          rm -f .gitmodules
+          git config --local --remove-section submodule.Tachikoma || true
+
       - name: Prepare Swift Argument Parser fork
         run: |
           sudo mkdir -p /Users/steipete/Projects
@@ -103,6 +108,11 @@ jobs:
           ref: main
           path: Tachikoma
 
+      - name: Remove phantom submodule metadata
+        run: |
+          rm -f .gitmodules
+          git config --local --remove-section submodule.Tachikoma || true
+
       - name: Prepare Swift Argument Parser fork
         run: |
           sudo mkdir -p /Users/steipete/Projects
@@ -172,6 +182,11 @@ jobs:
           repository: steipete/Tachikoma
           ref: main
           path: Tachikoma
+
+      - name: Remove phantom submodule metadata
+        run: |
+          rm -f .gitmodules
+          git config --local --remove-section submodule.Tachikoma || true
 
       - name: Prepare Swift Argument Parser fork
         run: |
