@@ -54,6 +54,8 @@ public final class AudioInputService {
     @ObservationIgnored
     private let aiService: PeekabooAIService
     @ObservationIgnored
+    private let configurationManager: ConfigurationManager
+    @ObservationIgnored
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "AudioInputService")
     @ObservationIgnored
     private let recorder = AudioRecorder()
@@ -73,8 +75,12 @@ public final class AudioInputService {
 
     // MARK: - Initialization
 
-    public init(aiService: PeekabooAIService) {
+    public init(
+        aiService: PeekabooAIService,
+        configurationManager: ConfigurationManager = .shared)
+    {
         self.aiService = aiService
+        self.configurationManager = configurationManager
 
         // Observe recorder state changes
         self.stateObservationTask = Task { @MainActor [weak self] in
@@ -199,14 +205,27 @@ public final class AudioInputService {
             }
         }
 
+        try self.requireTranscriptionCredentials()
+
         // Use AI service to transcribe
         do {
             let transcription = try await aiService.transcribeAudio(at: url)
             self.logger.info("Successfully transcribed audio file")
             return transcription
+        } catch let audioError as AudioInputError {
+            throw audioError
         } catch {
             self.logger.error("Transcription failed: \(error)")
             throw AudioInputError.transcriptionFailed(error.localizedDescription)
+        }
+    }
+
+    private func requireTranscriptionCredentials() throws {
+        guard
+            let key = self.configurationManager.getOpenAIAPIKey(),
+            !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            throw AudioInputError.apiKeyMissing
         }
     }
 }
