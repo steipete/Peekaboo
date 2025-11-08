@@ -26,6 +26,7 @@
     "format:swift": "cd Apps/CLI && swiftformat .",
     "format": "pnpm run format:swift",
     "prepare-release": "node scripts/prepare-release.js",
+    "docs:list": "node scripts/docs-list.mjs",
     "poltergeist:start": "./scripts/poltergeist-wrapper.sh start",
     "poltergeist:haunt": "./scripts/poltergeist-wrapper.sh haunt",
     "poltergeist:stop": "./scripts/poltergeist-wrapper.sh stop",
