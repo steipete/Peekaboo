@@ -54,11 +54,11 @@ public final class AudioInputService {
     @ObservationIgnored
     private let aiService: PeekabooAIService
     @ObservationIgnored
-    private let configurationManager: ConfigurationManager
+    private let credentialProvider: any AudioTranscriptionCredentialProviding
     @ObservationIgnored
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "AudioInputService")
     @ObservationIgnored
-    private let recorder = AudioRecorder()
+    private let recorder: any AudioRecorderProtocol
     @ObservationIgnored
     private var stateObservationTask: Task<Void, Never>?
 
@@ -75,12 +75,21 @@ public final class AudioInputService {
 
     // MARK: - Initialization
 
-    public init(
+    public convenience init(aiService: PeekabooAIService) {
+        self.init(
+            aiService: aiService,
+            credentialProvider: ConfigurationCredentialProvider(),
+            recorder: AudioRecorder())
+    }
+
+    init(
         aiService: PeekabooAIService,
-        configurationManager: ConfigurationManager = .shared)
+        credentialProvider: any AudioTranscriptionCredentialProviding,
+        recorder: any AudioRecorderProtocol)
     {
         self.aiService = aiService
-        self.configurationManager = configurationManager
+        self.credentialProvider = credentialProvider
+        self.recorder = recorder
 
         // Observe recorder state changes
         self.stateObservationTask = Task { @MainActor [weak self] in
@@ -122,6 +131,7 @@ public final class AudioInputService {
         // Start recording audio from the microphone
         do {
             try await self.recorder.startRecording()
+            self.isRecording = true
             self.logger.info("Started audio recording")
         } catch let error as AudioRecordingError {
             // Convert AudioRecordingError to AudioInputError
@@ -145,6 +155,8 @@ public final class AudioInputService {
         // Stop recording and return the transcription
         do {
             let audioData = try await recorder.stopRecording()
+            self.isRecording = false
+            self.recordingDuration = 0
             self.logger.info("Stopped audio recording")
 
             // Transcribe the recorded audio using TachikomaAudio
@@ -179,6 +191,7 @@ public final class AudioInputService {
     public func cancelRecording() async {
         // Cancel recording without transcription
         await self.recorder.cancelRecording()
+        self.isRecording = false
         self.logger.info("Cancelled audio recording")
     }
 
@@ -221,12 +234,23 @@ public final class AudioInputService {
     }
 
     private func requireTranscriptionCredentials() throws {
-        guard
-            let key = self.configurationManager.getOpenAIAPIKey(),
-            !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard let key = self.credentialProvider.currentOpenAIKey(),
+              !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
             throw AudioInputError.apiKeyMissing
         }
+    }
+}
+
+// MARK: - Credential Provider
+
+protocol AudioTranscriptionCredentialProviding: Sendable {
+    func currentOpenAIKey() -> String?
+}
+
+struct ConfigurationCredentialProvider: AudioTranscriptionCredentialProviding {
+    func currentOpenAIKey() -> String? {
+        ConfigurationManager.shared.getOpenAIAPIKey()
     }
 }
 
