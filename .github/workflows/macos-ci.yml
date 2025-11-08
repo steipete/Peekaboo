@@ -47,16 +47,19 @@ jobs:
       - name: Show Swift toolchain version
         run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
+      - name: Export Swift toolchain binary
+        run: echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
+
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build PeekabooCore
         working-directory: Core/PeekabooCore
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift build --configuration debug
+        run: "$SWIFT_BIN" build --configuration debug
 
       - name: Run focused Swift tests
         working-directory: Core/PeekabooCore
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift test --filter ScreenCaptureServiceFlowTests
+        run: "$SWIFT_BIN" test --filter ScreenCaptureServiceFlowTests
 
   peekaboo-cli:
     name: Peekaboo CLI build & tests
@@ -89,16 +92,19 @@ jobs:
       - name: Show Swift toolchain version
         run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
+      - name: Export Swift toolchain binary
+        run: echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
+
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build CLI target
         working-directory: Apps/CLI
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift build --configuration debug
+        run: "$SWIFT_BIN" build --configuration debug
 
       - name: Run CLI unit tests (skip automation)
         working-directory: Apps/CLI
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
+        run: "$SWIFT_BIN" test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
 
   tachikoma:
     name: Tachikoma build & tests
@@ -138,16 +144,19 @@ jobs:
       - name: Show Swift toolchain version
         run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
 
+      - name: Export Swift toolchain binary
+        run: echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
+
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build Tachikoma
         working-directory: Tachikoma
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift build --configuration debug
+        run: "$SWIFT_BIN" build --configuration debug
 
       - name: Run Tachikoma unit tests
         working-directory: Tachikoma
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift test --filter unit
+        run: "$SWIFT_BIN" test --filter unit
 
   lint:
     name: SwiftLint (core + CLI)
