@@ -6,7 +6,6 @@ import Foundation
 import PeekabooCore
 
 /// Interact with the macOS Dock
-@MainActor
 struct DockCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dock",
@@ -38,7 +37,6 @@ struct DockCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Launch from Dock
 
-@MainActor
 struct LaunchSubcommand: AsyncRuntimeCommand, OutputFormattable {
         static let mainActorConfiguration = CommandConfiguration(
             commandName: "launch",
@@ -90,7 +88,6 @@ struct LaunchSubcommand: AsyncRuntimeCommand, OutputFormattable {
 
     // MARK: - Right-Click Dock Item
 
-@MainActor
 struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
         static let mainActorConfiguration = CommandConfiguration(
             commandName: "right-click",

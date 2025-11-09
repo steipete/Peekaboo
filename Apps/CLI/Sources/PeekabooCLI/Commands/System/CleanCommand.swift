@@ -4,7 +4,6 @@ import PeekabooCore
 
 /// Clean up session cache and temporary files
 @available(macOS 14.0, *)
-@MainActor
 struct CleanCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "clean",

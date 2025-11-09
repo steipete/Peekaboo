@@ -3,16 +3,14 @@ import AppKit
 import Foundation
 import PeekabooCore
 
-@MainActor
 protocol SpaceCommandSpaceService: Sendable {
-    func getAllSpaces() -> [SpaceInfo]
-    func getSpacesForWindow(windowID: CGWindowID) -> [SpaceInfo]
-    func moveWindowToCurrentSpace(windowID: CGWindowID) throws
-    func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) throws
+    func getAllSpaces() async -> [SpaceInfo]
+    func getSpacesForWindow(windowID: CGWindowID) async -> [SpaceInfo]
+    func moveWindowToCurrentSpace(windowID: CGWindowID) async throws
+    func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) async throws
     func switchToSpace(_ spaceID: CGSSpaceID) async throws
 }
 
-@MainActor
 enum SpaceCommandEnvironment {
     @TaskLocal
     private static var override: (any SpaceCommandSpaceService)?
@@ -32,9 +30,34 @@ enum SpaceCommandEnvironment {
 
     private final class LiveSpaceService: SpaceCommandSpaceService {
         static let shared = LiveSpaceService()
-        private let inner = SpaceManagementService()
+        @MainActor private static let actor = SpaceManagementActor()
 
         private init() {}
+
+        func getAllSpaces() async -> [SpaceInfo] {
+            await Self.actor.getAllSpaces()
+        }
+
+        func getSpacesForWindow(windowID: CGWindowID) async -> [SpaceInfo] {
+            await Self.actor.getSpacesForWindow(windowID: windowID)
+        }
+
+        func moveWindowToCurrentSpace(windowID: CGWindowID) async throws {
+            try await Self.actor.moveWindowToCurrentSpace(windowID: windowID)
+        }
+
+        func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) async throws {
+            try await Self.actor.moveWindowToSpace(windowID: windowID, spaceID: spaceID)
+        }
+
+        func switchToSpace(_ spaceID: CGSSpaceID) async throws {
+            try await Self.actor.switchToSpace(spaceID)
+        }
+    }
+
+    @MainActor
+    private final class SpaceManagementActor {
+        private let inner = SpaceManagementService()
 
         func getAllSpaces() -> [SpaceInfo] {
             self.inner.getAllSpaces()
@@ -59,7 +82,7 @@ enum SpaceCommandEnvironment {
 }
 
 /// Manage macOS Spaces (virtual desktops)
-struct SpaceCommand: MainActorAsyncParsableCommand {
+struct SpaceCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "space",
         abstract: "Manage macOS Spaces (virtual desktops)",
@@ -129,20 +152,18 @@ struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingC
 
     var outputLogger: Logger { self.logger }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Enumerate Spaces, optionally hydrate window membership, and render results in the requested format.
-    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         let spaceService = SpaceCommandEnvironment.service
-        let spaces = spaceService.getAllSpaces()
+        let spaces = await spaceService.getAllSpaces()
 
         if self.jsonOutput {
             let data = SpaceListData(
@@ -179,7 +200,7 @@ struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingC
                         // For each window, find which Space it's on
                         for window in windowsResult.data.windows {
                             let windowID = CGWindowID(window.windowID)
-                            let windowSpaces = spaceService.getSpacesForWindow(windowID: windowID)
+                    let windowSpaces = await spaceService.getSpacesForWindow(windowID: windowID)
 
                             // Add window to each Space it appears on
                             for space in windowSpaces {
@@ -247,21 +268,19 @@ struct SwitchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlin
 
     var outputLogger: Logger { self.logger }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Validate the requested Space index, switch to it, and report the outcome.
-    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             let spaceService = SpaceCommandEnvironment.service
-            let spaces = await MainActor.run { spaceService.getAllSpaces() }
+            let spaces = await spaceService.getAllSpaces()
 
             // Convert 1-based index to actual Space
             guard self.to > 0 && self.to <= spaces.count else {
@@ -337,14 +356,12 @@ struct MoveWindowSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
 
     var outputLogger: Logger { self.logger }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Move the resolved window into the requested Space (or current Space) and optionally follow the move.
-    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -382,9 +399,7 @@ struct MoveWindowSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
 
             if self.toCurrent {
                 // Move to current Space
-                try await MainActor.run {
-                    try spaceService.moveWindowToCurrentSpace(windowID: windowID)
-                }
+                try await spaceService.moveWindowToCurrentSpace(windowID: windowID)
 
                 if self.jsonOutput {
                     let data = WindowSpaceActionResult(
@@ -404,16 +419,14 @@ struct MoveWindowSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
 
             } else if let spaceNum = self.to {
                 // Move to specific Space
-                let spaces = await MainActor.run { spaceService.getAllSpaces() }
+                let spaces = await spaceService.getAllSpaces()
 
                 guard spaceNum > 0 && spaceNum <= spaces.count else {
                     throw ValidationError("Invalid Space number. Available: 1-\(spaces.count)")
                 }
 
                 let targetSpace = spaces[spaceNum - 1]
-                try await MainActor.run {
-                    try spaceService.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
-                }
+                try await spaceService.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
 
                 if self.follow {
                     try await spaceService.switchToSpace(targetSpace.id)

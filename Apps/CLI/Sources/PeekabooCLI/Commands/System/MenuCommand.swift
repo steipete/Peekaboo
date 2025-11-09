@@ -14,7 +14,6 @@ enum MenuError: Error {
 }
 
 /// Interact with application menu bar items and system menu extras
-@MainActor
 struct MenuCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "menu",

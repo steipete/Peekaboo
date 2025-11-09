@@ -5,7 +5,6 @@ import PeekabooCore
 import PeekabooFoundation
 
 /// Command for interacting with macOS menu bar items (status items).
-@MainActor
 struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "menubar",

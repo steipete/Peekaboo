@@ -7,9 +7,8 @@ import PeekabooFoundation
 
 /// Click on UI elements identified in the current session using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
-@MainActor
-struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
-    static var mainActorConfiguration: CommandConfiguration {
+struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+    static var configuration: CommandConfiguration {
         UIAutomationToolDefinitions.click.commandConfiguration
     }
 
@@ -72,6 +71,11 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
     var outputLogger: Logger {
         self.runtime?.logger ?? Logger.shared
+    }
+
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
     }
 
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -289,9 +293,6 @@ struct ClickResult: Codable {
         self.targetApp = targetApp
     }
 }
-
-@MainActor
-extension ClickCommand: AsyncRuntimeCommand {}
 
 // MARK: - Static Helper Methods for Testing
 

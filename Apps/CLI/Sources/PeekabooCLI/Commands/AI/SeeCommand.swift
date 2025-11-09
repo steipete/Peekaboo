@@ -9,8 +9,7 @@ import ScreenCaptureKit
 
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
-@MainActor
-struct SeeCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+struct SeeCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvable {
     static let configuration = VisionToolDefinitions.see.commandConfiguration
 
@@ -63,6 +62,11 @@ ApplicationResolvable {
         case screen
         case window
         case frontmost
+    }
+
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
     }
 
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -696,7 +700,6 @@ extension SeeCommand {
 
     // MARK: - Output Methods
 
-    @MainActor
     private func outputJSONResults(
         sessionId: String,
         screenshotPath: String,
@@ -748,8 +751,7 @@ extension SeeCommand {
         outputSuccessCodable(data: output, logger: self.outputLogger)
     }
 
-    @MainActor
-    private func getMenuBarItemsSummary() async -> MenuBarSummary {
+        private func getMenuBarItemsSummary() async -> MenuBarSummary {
         // Get menu bar items from service
         var menuExtras: [MenuExtraInfo] = []
 
@@ -780,8 +782,7 @@ extension SeeCommand {
         return MenuBarSummary(menus: menus)
     }
 
-    @MainActor
-    private func outputTextResults(
+        private func outputTextResults(
         sessionId: String,
         screenshotPath: String,
         annotatedPath: String?,
@@ -1002,6 +1003,3 @@ extension SeeCommand {
         return formatter.string(fromByteCount: bytes)
     }
 }
-
-@MainActor
-extension SeeCommand: AsyncRuntimeCommand {}

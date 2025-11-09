@@ -8,7 +8,7 @@ import PeekabooFoundation
 // Logger for window command debugging
 
 /// Manipulate application windows with various actions
-struct WindowCommand: MainActorAsyncParsableCommand {
+struct WindowCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "window",
         abstract: "Manipulate application windows",
@@ -70,7 +70,7 @@ struct WindowCommand: MainActorAsyncParsableCommand {
 
 // MARK: - Common Options
 
-struct WindowIdentificationOptions: MainActorParsableArguments, ApplicationResolvable {
+struct WindowIdentificationOptions: ParsableArguments, ApplicationResolvable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
 
@@ -153,6 +153,56 @@ private func createWindowActionResult(
     )
 }
 
+private enum WindowServiceBridge {
+    static func closeWindow(services: PeekabooServices, target: WindowTarget) async throws {
+        try await MainActor.run {
+            try await MainActor.run { try await services.windows.closeWindow(target: target) }
+        }
+    }
+
+    static func minimizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
+        try await MainActor.run {
+            try await MainActor.run { try await services.windows.minimizeWindow(target: target) }
+        }
+    }
+
+    static func maximizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
+        try await MainActor.run {
+            try await MainActor.run { try await services.windows.maximizeWindow(target: target) }
+        }
+    }
+
+    static func moveWindow(services: PeekabooServices, target: WindowTarget, to origin: CGPoint) async throws {
+        try await MainActor.run {
+            try await MainActor.run { try await services.windows.moveWindow(target: target, to: origin) }
+        }
+    }
+
+    static func resizeWindow(services: PeekabooServices, target: WindowTarget, to size: CGSize) async throws {
+        try await MainActor.run {
+            try await MainActor.run { try await services.windows.resizeWindow(target: target, to: size) }
+        }
+    }
+
+    static func setWindowBounds(services: PeekabooServices, target: WindowTarget, bounds: CGRect) async throws {
+        try await MainActor.run {
+            try await MainActor.run { try await services.windows.setWindowBounds(target: target, bounds: bounds) }
+        }
+    }
+
+    static func focusWindow(services: PeekabooServices, target: WindowTarget) async throws {
+        try await MainActor.run {
+            try await WindowFocusActor.shared.focusWindow(target: target, services: services)
+        }
+    }
+
+    static func listWindows(services: PeekabooServices, target: WindowTarget) async throws -> [ServiceWindowInfo] {
+        try await MainActor.run {
+            try await MainActor.run { try await services.windows.listWindows(target: target) }
+        }
+    }
+}
+
 // MARK: - Subcommands
 
 struct CloseSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
@@ -181,14 +231,12 @@ struct CloseSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandling
         self.runtimeOptions.jsonOutput
     }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Resolve the target window, close it, and surface the outcome in JSON or text form.
-    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -198,13 +246,12 @@ struct CloseSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandling
             let target = self.windowOptions.createTarget()
 
             // Get window info before action
-            let windows = try await self.services.windows
-                .listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await WindowServiceBridge.listWindows(services: self.services, target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
 
             // Perform the action
-            try await self.services.windows.closeWindow(target: target)
+            try await WindowServiceBridge.closeWindow(services: self.services, target: target)
 
             let data = createWindowActionResult(
                 action: "close",
@@ -250,15 +297,13 @@ struct MinimizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandl
         self.runtimeOptions.jsonOutput
     }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Resolve the target window, minimize it to the Dock, and report the action.
-    @MainActor
-    mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -267,13 +312,12 @@ struct MinimizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandl
             let target = self.windowOptions.createTarget()
 
             // Get window info before action
-            let windows = try await self.services.windows
-                .listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await WindowServiceBridge.listWindows(services: self.services, target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
 
             // Perform the action
-            try await self.services.windows.minimizeWindow(target: target)
+            try await WindowServiceBridge.minimizeWindow(services: self.services, target: target)
 
             let data = createWindowActionResult(
                 action: "minimize",
@@ -319,15 +363,13 @@ struct MaximizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandl
         self.runtimeOptions.jsonOutput
     }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Expand the resolved window to fill the available screen real estate and share the updated frame.
-    @MainActor
-    mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -336,13 +378,12 @@ struct MaximizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandl
             let target = self.windowOptions.createTarget()
 
             // Get window info before action
-            let windows = try await self.services.windows
-                .listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await WindowServiceBridge.listWindows(services: self.services, target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
 
             // Perform the action
-            try await self.services.windows.maximizeWindow(target: target)
+            try await WindowServiceBridge.maximizeWindow(services: self.services, target: target)
 
             let data = createWindowActionResult(
                 action: "maximize",
@@ -403,15 +444,13 @@ struct FocusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandling
         self.runtimeOptions.jsonOutput
     }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Focus the targeted window, handling Space switches or relocation according to the provided options.
-    @MainActor
-    mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.debug("FocusSubcommand.run() called")
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -424,8 +463,7 @@ struct FocusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandling
             self.logger.debug("Target created: \(target)")
 
             // Get window info before action
-            let windows = try await self.services.windows
-                .listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await WindowServiceBridge.listWindows(services: self.services, target: self.windowOptions.toWindowTarget())
             self.logger.debug("Found \(windows.count) windows")
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
@@ -446,7 +484,7 @@ struct FocusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandling
                 )
             } else {
                 // Fallback to regular focus if no window ID
-                try await self.services.windows.focusWindow(target: target)
+                try await WindowServiceBridge.focusWindow(services: self.services, target: target)
             }
 
             let data = createWindowActionResult(
@@ -504,15 +542,13 @@ struct MoveSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingC
         self.runtimeOptions.jsonOutput
     }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Move the window to the absolute screen coordinates provided by the user.
-    @MainActor
-    mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -521,14 +557,13 @@ struct MoveSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingC
             let target = self.windowOptions.createTarget()
 
             // Get window info
-            let windows = try await self.services.windows
-                .listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await WindowServiceBridge.listWindows(services: self.services, target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
 
             // Move the window
             let newOrigin = CGPoint(x: x, y: y)
-            try await self.services.windows.moveWindow(target: target, to: newOrigin)
+            try await WindowServiceBridge.moveWindow(services: self.services, target: target, to: newOrigin)
 
             // Create result with new bounds
             let updatedInfo = windowInfo.map { info in
@@ -595,15 +630,13 @@ struct ResizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlin
         self.runtimeOptions.jsonOutput
     }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Resize the window to the supplied dimensions, preserving its origin.
-    @MainActor
-    mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -612,14 +645,13 @@ struct ResizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlin
             let target = self.windowOptions.createTarget()
 
             // Get window info
-            let windows = try await self.services.windows
-                .listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await WindowServiceBridge.listWindows(services: self.services, target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
 
             // Resize the window
             let newSize = CGSize(width: width, height: height)
-            try await self.services.windows.resizeWindow(target: target, to: newSize)
+            try await WindowServiceBridge.resizeWindow(services: self.services, target: target, to: newSize)
 
             // We'll pass the original windowInfo as-is since window service would have updated it
             // (In a real implementation, we'd refetch window info after resize)
@@ -682,15 +714,13 @@ struct SetBoundsSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHand
         self.runtimeOptions.jsonOutput
     }
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// Set both position and size for the window in a single operation, then confirm the new bounds.
-    @MainActor
-    mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -699,14 +729,13 @@ struct SetBoundsSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHand
             let target = self.windowOptions.createTarget()
 
             // Get window info
-            let windows = try await self.services.windows
-                .listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await WindowServiceBridge.listWindows(services: self.services, target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
 
             // Set bounds
             let newBounds = CGRect(x: x, y: y, width: width, height: height)
-            try await self.services.windows.setWindowBounds(target: target, bounds: newBounds)
+            try await WindowServiceBridge.setWindowBounds(services: self.services, target: target, bounds: newBounds)
 
             // We'll pass the original windowInfo as-is since window service would have updated it
             // (In a real implementation, we'd refetch window info after set-bounds)
@@ -766,15 +795,13 @@ struct WindowListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
     @Flag(name: .long, help: "Group windows by Space (virtual desktop)")
     var groupBySpace = false
 
-    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
     /// List windows for the target application and optionally organize them by Space.
-    @MainActor
-    mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -784,7 +811,7 @@ struct WindowListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
             let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
 
             let target = WindowTarget.application(appIdentifier)
-            let windows = try await self.services.windows.listWindows(target: target)
+            let windows = try await WindowServiceBridge.listWindows(services: self.services, target: target)
 
             // Convert ServiceWindowInfo to WindowInfo for consistency
             let windowInfos = windows.enumerated().map { index, window in

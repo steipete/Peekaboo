@@ -7,7 +7,6 @@ import PeekabooCore
 import PeekabooFoundation
 
 /// Control macOS applications
-@MainActor
 struct AppCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "app",
@@ -47,8 +46,7 @@ struct AppCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Launch Application
 
-    @MainActor
-struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+    struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
         static let configuration = CommandConfiguration(
             commandName: "launch",
             abstract: "Launch an application"
@@ -189,8 +187,7 @@ struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
 
     // MARK: - Quit Application
 
-    @MainActor
-struct QuitSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
+    struct QuitSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
     ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "quit",
@@ -334,8 +331,7 @@ struct QuitSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
 
     // MARK: - Hide Application
 
-    @MainActor
-struct HideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    struct HideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
     ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "hide",
@@ -395,8 +391,7 @@ struct HideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
 
     // MARK: - Unhide Application
 
-    @MainActor
-struct UnhideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    struct UnhideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
     ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "unhide",
@@ -476,8 +471,7 @@ struct UnhideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
 
     // MARK: - Switch Application
 
-    @MainActor
-struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {
+    struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "switch",
             abstract: "Switch to another application"
@@ -573,8 +567,7 @@ struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
 
     // MARK: - List Applications
 
-    @MainActor
-struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+    struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List running applications"
@@ -660,8 +653,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
 
     // MARK: - Relaunch Application
 
-    @MainActor
-struct RelaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    struct RelaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
     ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "relaunch",

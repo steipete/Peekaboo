@@ -4,9 +4,8 @@ import Foundation
 /// Pauses execution for a specified duration.
 /// Useful for timing in automation scripts.
 @available(macOS 14.0, *)
-@MainActor
-struct SleepCommand: AsyncRuntimeCommand, OutputFormattable {
-    static let mainActorConfiguration = CommandConfiguration(
+struct SleepCommand: AsyncParsableCommand, OutputFormattable {
+    static let configuration = CommandConfiguration(
         commandName: "sleep",
         abstract: "Pause execution for a specified duration",
         discussion: """
@@ -37,6 +36,13 @@ struct SleepCommand: AsyncRuntimeCommand, OutputFormattable {
 
     var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
@@ -69,6 +75,9 @@ struct SleepCommand: AsyncRuntimeCommand, OutputFormattable {
         }
     }
 }
+
+@MainActor
+extension SleepCommand: AsyncRuntimeCommand {}
 
 // MARK: - JSON Output Structure
 

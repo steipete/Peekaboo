@@ -5,7 +5,6 @@ import Foundation
 import PeekabooCore
 
 /// Interact with system dialogs and alerts
-@MainActor
 struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dialog",
@@ -39,8 +38,7 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Click Dialog Button
 
-    @MainActor
-struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "click",
             abstract: "Click a button in a dialog using DialogService"
@@ -111,8 +109,7 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Input Text in Dialog
 
-    @MainActor
-struct InputSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct InputSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "input",
             abstract: "Enter text in a dialog field using DialogService"
@@ -196,8 +193,7 @@ struct InputSubcommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Handle File Dialog
 
-    @MainActor
-struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "file",
             abstract: "Handle file save/open dialogs using DialogService"
@@ -277,8 +273,7 @@ struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Dismiss Dialog
 
-    @MainActor
-struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "dismiss",
             abstract: "Dismiss a dialog using DialogService"
@@ -355,8 +350,7 @@ struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - List Dialog Elements
 
-    @MainActor
-struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List elements in current dialog using DialogService"
