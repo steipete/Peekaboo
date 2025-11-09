@@ -6,6 +6,7 @@
 import AppKit
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Handles intelligent label placement for UI element annotations
 final class SmartLabelPlacer {
@@ -20,15 +21,17 @@ final class SmartLabelPlacer {
 
     // Label placement debugging
     private let debugMode: Bool
+    private let logger: Logger
 
     // MARK: - Initialization
 
-    init(image: NSImage, fontSize: CGFloat = 8, debugMode: Bool = false) {
+    init(image: NSImage, fontSize: CGFloat = 8, debugMode: Bool = false, logger: Logger = Logger.shared) {
         self.image = image
         self.imageSize = image.size
-        self.textDetector = AcceleratedTextDetector()
+        self.textDetector = AcceleratedTextDetector(logger: logger)
         self.fontSize = fontSize
         self.debugMode = debugMode
+        self.logger = logger
     }
 
     // MARK: - Public Methods
@@ -50,7 +53,7 @@ final class SmartLabelPlacer {
     ) -> (labelRect: NSRect, connectionPoint: NSPoint?)? {
         // Finds the best position for a label given an element's bounds
         if self.debugMode {
-            Logger.shared.verbose(
+            self.logger.verbose(
                 "Finding position for \(element.id) (\(element.type)) with \(element.label ?? "no label")",
                 category: "LabelPlacement"
             )
@@ -81,7 +84,7 @@ final class SmartLabelPlacer {
         )
 
         if self.debugMode {
-            Logger.shared.verbose(
+            self.logger.verbose(
                 "Found \(validPositions.count) valid external positions out of \(candidates.count) candidates",
                 category: "LabelPlacement"
             )
@@ -90,7 +93,7 @@ final class SmartLabelPlacer {
         // If no valid positions, try with relaxed constraints before falling back to internal
         if validPositions.isEmpty {
             if self.debugMode {
-                Logger.shared.verbose(
+                self.logger.verbose(
                     "No valid positions with strict constraints, trying relaxed constraints",
                     category: "LabelPlacement"
                 )
@@ -116,7 +119,7 @@ final class SmartLabelPlacer {
 
             if !relaxedValidPositions.isEmpty {
                 if self.debugMode {
-                    Logger.shared.verbose(
+                    self.logger.verbose(
                         "Found \(relaxedValidPositions.count) valid positions with relaxed constraints",
                         category: "LabelPlacement"
                     )
@@ -136,7 +139,7 @@ final class SmartLabelPlacer {
 
             // Only use internal placement as absolute last resort
             if self.debugMode {
-                Logger.shared.info(
+                self.logger.info(
                     "No valid external positions even with relaxed constraints, falling back to internal placement",
                     category: "LabelPlacement"
                 )
@@ -154,13 +157,13 @@ final class SmartLabelPlacer {
         // Pick the best scoring position
         guard let best = scoredPositions.max(by: { $0.score < $1.score }) else {
             if self.debugMode {
-                Logger.shared.verbose("No scored positions available", category: "LabelPlacement")
+                self.logger.verbose("No scored positions available", category: "LabelPlacement")
             }
             return nil
         }
 
         if self.debugMode {
-            Logger.shared.verbose(
+            self.logger.verbose(
                 "Best position for \(element.id): type \(best.type) with score \(best.score) (higher = better, 1.0 = clear area, 0.0 = text/edges)",
                 category: "LabelPlacement",
                 metadata: [
@@ -328,7 +331,7 @@ final class SmartLabelPlacer {
 
                 if !withinBounds {
                     if logRejections {
-                        Logger.shared.verbose(
+                        self.logger.verbose(
                             "Position \(candidate.type) rejected: outside image bounds",
                             category: "LabelPlacement",
                             metadata: [
@@ -345,7 +348,7 @@ final class SmartLabelPlacer {
             for (otherElement, otherRect) in allElements {
                 if otherElement.id != element.id && candidate.rect.intersects(otherRect) {
                     if logRejections {
-                        Logger.shared.verbose(
+                        self.logger.verbose(
                             "Position \(candidate.type) rejected: overlaps with element \(otherElement.id)",
                             category: "LabelPlacement",
                             metadata: [
@@ -362,7 +365,7 @@ final class SmartLabelPlacer {
             for (existingLabel, labelElement) in existingLabels {
                 if candidate.rect.intersects(existingLabel) {
                     if logRejections {
-                        Logger.shared.verbose(
+                        self.logger.verbose(
                             "Position \(candidate.type) rejected: overlaps with label for \(labelElement.id)",
                             category: "LabelPlacement",
                             metadata: [
@@ -407,7 +410,7 @@ final class SmartLabelPlacer {
             score = min(1.0, score)
 
             if self.debugMode {
-                Logger.shared.verbose(
+                self.logger.verbose(
                     "Scoring position \(position.index) (\(position.type))",
                     category: "LabelPlacement",
                     metadata: [

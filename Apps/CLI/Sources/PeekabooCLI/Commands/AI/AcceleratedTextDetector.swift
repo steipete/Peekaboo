@@ -7,6 +7,7 @@ import Accelerate
 import AppKit
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 
 /// High-performance text detection using Accelerate framework's vImage convolution
 @MainActor
@@ -46,9 +47,12 @@ final class AcceleratedTextDetector {
     // Edge detection threshold (0-255 scale)
     private let edgeThreshold: UInt8 = 30
 
+    private let logger: Logger
+
     // MARK: - Initialization
 
-    init() {
+    init(logger: Logger = Logger.shared) {
+        self.logger = logger
         self.allocateBuffers()
     }
 
@@ -95,7 +99,7 @@ final class AcceleratedTextDetector {
         let result = self.analyzeRegion(rect, in: image)
 
         // Log edge detection results when verbose mode is enabled
-        Logger.shared.verbose("Edge detection for region", category: "LabelPlacement", metadata: [
+        self.logger.verbose("Edge detection for region", category: "LabelPlacement", metadata: [
             "rect": "\(rect)",
             "density": result.density,
             "hasText": result.hasText

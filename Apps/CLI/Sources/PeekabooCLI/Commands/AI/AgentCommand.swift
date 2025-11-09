@@ -19,6 +19,9 @@ struct AgentSessionInfo: Codable {
     let messageCount: Int
 }
 
+@MainActor
+extension AgentCommand: AsyncRuntimeCommand {}
+
 // Simple debug logging check
 private var isDebugLoggingEnabled: Bool {
     // Check if verbose mode is enabled via log level
@@ -111,8 +114,7 @@ struct AgentCommand: @MainActor MainActorAsyncParsableCommand {
     @Option(name: .long, help: "AI model to use (allowed: gpt-5 or claude-sonnet-4.5)")
     var model: String?
 
-    @Flag(name: .long, help: "Output in JSON format")
-    var jsonOutput = false
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
     @Flag(name: .long, help: "Resume the most recent session (use with task argument)")
     var resume = false
@@ -159,7 +161,20 @@ struct AgentCommand: @MainActor MainActorAsyncParsableCommand {
         return capabilities.recommendedOutputMode
     }
 
-    mutating func run() async throws {
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         // Show terminal detection debug if requested
         if self.debugTerminal {
             let capabilities = TerminalDetector.detectCapabilities()
@@ -167,7 +182,7 @@ struct AgentCommand: @MainActor MainActorAsyncParsableCommand {
         }
 
         do {
-            try await self.runInternal()
+            try await self.runInternal(runtime: runtime)
         } catch let error as DecodingError {
             aiDebugPrint("DEBUG: Caught DecodingError in run(): \(error)")
             throw error
@@ -183,7 +198,7 @@ struct AgentCommand: @MainActor MainActorAsyncParsableCommand {
         }
     }
 
-    mutating func runInternal() async throws {
+    mutating func runInternal(runtime: CommandRuntime) async throws {
         // Initialize MCP clients first so agent has access to external tools
         // Only show MCP initialization in verbose mode
         let shouldSuppressMCPLogs = !self.verbose && !self.debugTerminal
@@ -223,7 +238,7 @@ struct AgentCommand: @MainActor MainActorAsyncParsableCommand {
         await TachikomaMCPClientManager.shared.initializeFromProfile()
 
         // Initialize services
-        let services = PeekabooServices.shared
+        let services = runtime.services
 
         // Check if agent service is available
         guard let agentService = services.agent else {

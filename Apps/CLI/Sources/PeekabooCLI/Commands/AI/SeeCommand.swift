@@ -10,7 +10,7 @@ import ScreenCaptureKit
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
 @MainActor
-struct SeeCommand: @MainActor MainActorAsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
+struct SeeCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvable {
     static let configuration = VisionToolDefinitions.see.commandConfiguration
 
@@ -41,11 +41,23 @@ ApplicationResolvable {
     @Option(help: "Analyze captured content with AI")
     var analyze: String?
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
 
-    @Flag(name: .shortAndLong, help: "Enable verbose logging for detailed output")
-    var verbose = false
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+    var verbose: Bool { self.runtimeOptions.verbose }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    var outputLogger: Logger { self.logger }
 
     enum CaptureMode: String, ExpressibleByArgument {
         case screen
@@ -53,15 +65,12 @@ ApplicationResolvable {
         case frontmost
     }
 
-    mutating func run() async throws {
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
-        configureVerboseLogging()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
-        if self.jsonOutput && !self.verbose {
-            // Ensure timing/operation logs appear in JSON debug_logs
-            Logger.shared.setVerboseMode(true)
-        }
-        Logger.shared.operationStart("see_command", metadata: [
+        let logger = self.logger
+
+        logger.operationStart("see_command", metadata: [
             "app": self.app ?? "none",
             "mode": self.mode?.rawValue ?? "auto",
             "annotate": self.annotate,
@@ -70,14 +79,14 @@ ApplicationResolvable {
 
         do {
             // Check permissions
-            Logger.shared.verbose("Checking screen recording permissions", category: "Permissions")
-            try await requireScreenRecordingPermission()
-            Logger.shared.verbose("Screen recording permission granted", category: "Permissions")
+            logger.verbose("Checking screen recording permissions", category: "Permissions")
+            try await requireScreenRecordingPermission(services: self.services)
+            logger.verbose("Screen recording permission granted", category: "Permissions")
 
             // Perform capture and element detection
-            Logger.shared.verbose("Starting capture and detection phase", category: "Capture")
+            logger.verbose("Starting capture and detection phase", category: "Capture")
             let captureResult = try await performCaptureWithDetection()
-            Logger.shared.verbose("Capture completed successfully", category: "Capture", metadata: [
+            logger.verbose("Capture completed successfully", category: "Capture", metadata: [
                 "sessionId": captureResult.sessionId,
                 "elementCount": captureResult.elements.all.count,
                 "screenshotSize": self.getFileSize(captureResult.screenshotPath) ?? 0,
@@ -86,12 +95,12 @@ ApplicationResolvable {
             // Generate annotated screenshot if requested
             var annotatedPath: String?
             if self.annotate {
-                Logger.shared.operationStart("generate_annotations")
+                logger.operationStart("generate_annotations")
                 annotatedPath = try await self.generateAnnotatedScreenshot(
                     sessionId: captureResult.sessionId,
                     originalPath: captureResult.screenshotPath
                 )
-                Logger.shared.operationComplete("generate_annotations", metadata: [
+                logger.operationComplete("generate_annotations", metadata: [
                     "annotatedPath": annotatedPath ?? "none",
                 ])
             }
@@ -102,7 +111,7 @@ ApplicationResolvable {
                 // Pre-analysis diagnostics
                 let fileSize = (try? FileManager.default
                     .attributesOfItem(atPath: captureResult.screenshotPath)[.size] as? Int) ?? 0
-                Logger.shared.verbose(
+                logger.verbose(
                     "Starting AI analysis",
                     category: "AI",
                     metadata: [
@@ -111,14 +120,14 @@ ApplicationResolvable {
                         "promptLength": prompt.count
                     ]
                 )
-                Logger.shared.operationStart("ai_analysis", metadata: ["promptPreview": String(prompt.prefix(80))])
-                Logger.shared.startTimer("ai_generate")
+                logger.operationStart("ai_analysis", metadata: ["promptPreview": String(prompt.prefix(80))])
+                logger.startTimer("ai_generate")
                 analysisResult = try await self.performAnalysisDetailed(
                     imagePath: captureResult.screenshotPath,
                     prompt: prompt
                 )
-                Logger.shared.stopTimer("ai_generate")
-                Logger.shared.operationComplete(
+                logger.stopTimer("ai_generate")
+                logger.operationComplete(
                     "ai_analysis",
                     success: analysisResult != nil,
                     metadata: [
@@ -130,7 +139,7 @@ ApplicationResolvable {
 
             // Output results
             let executionTime = Date().timeIntervalSince(startTime)
-            Logger.shared.operationComplete("see_command", metadata: [
+            logger.operationComplete("see_command", metadata: [
                 "executionTimeMs": Int(executionTime * 1000),
                 "success": true,
             ])
@@ -158,7 +167,7 @@ ApplicationResolvable {
             }
 
         } catch {
-            Logger.shared.operationComplete("see_command", success: false, metadata: [
+            logger.operationComplete("see_command", success: false, metadata: [
                 "error": error.localizedDescription,
             ])
             self.handleError(error) // Use protocol's error handling
@@ -177,11 +186,11 @@ ApplicationResolvable {
         if let appName = self.app?.lowercased() {
             switch appName {
             case "menubar":
-                Logger.shared.verbose("Capturing menu bar area", category: "Capture")
+                self.logger.verbose("Capturing menu bar area", category: "Capture")
                 captureResult = try await self.captureMenuBar()
             case "frontmost":
-                Logger.shared.verbose("Capturing frontmost window (via --app frontmost)", category: "Capture")
-                captureResult = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+                self.logger.verbose("Capturing frontmost window (via --app frontmost)", category: "Capture")
+                captureResult = try await self.services.screenCapture.captureFrontmost()
             default:
                 // Use normal capture logic
                 captureResult = try await self.performStandardCapture()
@@ -192,9 +201,9 @@ ApplicationResolvable {
         }
 
         // Save screenshot
-        Logger.shared.startTimer("file_write")
+        self.logger.startTimer("file_write")
         let outputPath = try saveScreenshot(captureResult.imageData)
-        Logger.shared.stopTimer("file_write")
+        self.logger.stopTimer("file_write")
 
         // Create window context from capture metadata
         let windowContext = WindowContext(
@@ -204,13 +213,13 @@ ApplicationResolvable {
         )
 
         // Detect UI elements with window context
-        Logger.shared.operationStart("element_detection")
-        let detectionResult = try await PeekabooServices.shared.automation.detectElements(
+        self.logger.operationStart("element_detection")
+        let detectionResult = try await self.services.automation.detectElements(
             in: captureResult.imageData,
             sessionId: nil,
             windowContext: windowContext
         )
-        Logger.shared.operationComplete("element_detection")
+        self.logger.operationComplete("element_detection")
 
         // Update the result with the correct screenshot path
         let resultWithPath = ElementDetectionResult(
@@ -220,7 +229,7 @@ ApplicationResolvable {
             metadata: detectionResult.metadata
         )
 
-        try await PeekabooServices.shared.sessions.storeScreenshot(
+        try await self.services.sessions.storeScreenshot(
             sessionId: detectionResult.sessionId,
             screenshotPath: outputPath,
             applicationName: windowContext.applicationName,
@@ -229,7 +238,7 @@ ApplicationResolvable {
         )
 
         // Store the result in session
-        try await PeekabooServices.shared.sessions.storeDetectionResult(
+        try await self.services.sessions.storeDetectionResult(
             sessionId: detectionResult.sessionId,
             result: resultWithPath
         )
@@ -244,61 +253,61 @@ ApplicationResolvable {
 
     private func performStandardCapture() async throws -> CaptureResult {
         let effectiveMode = self.determineMode()
-        Logger.shared.verbose(
+        self.logger.verbose(
             "Determined capture mode",
             category: "Capture",
             metadata: ["mode": effectiveMode.rawValue]
         )
 
-        Logger.shared.operationStart("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+        self.logger.operationStart("capture_phase", metadata: ["mode": effectiveMode.rawValue])
         switch effectiveMode {
         case .screen:
             // Handle screen capture with multi-screen support
             let result = try await self.performScreenCapture()
-            Logger.shared.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+            self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
             return result
 
         case .window:
             if self.app != nil || self.pid != nil {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                Logger.shared.verbose("Initiating window capture", category: "Capture", metadata: [
+                self.logger.verbose("Initiating window capture", category: "Capture", metadata: [
                     "app": appIdentifier,
                     "windowTitle": self.windowTitle ?? "any",
                 ])
 
                 // Find specific window if title is provided
                 if let title = windowTitle {
-                    Logger.shared.verbose(
+                    self.logger.verbose(
                         "Searching for window with title",
                         category: "WindowSearch",
                         metadata: ["title": title]
                     )
-                    let windowsOutput = try await PeekabooServices.shared.applications.listWindows(
+                    let windowsOutput = try await self.services.applications.listWindows(
                         for: appIdentifier,
                         timeout: nil
                     )
-                    Logger.shared.verbose(
+                    self.logger.verbose(
                         "Found windows",
                         category: "WindowSearch",
                         metadata: ["count": windowsOutput.data.windows.count]
                     )
 
                     if let windowIndex = windowsOutput.data.windows.firstIndex(where: { $0.title.contains(title) }) {
-                        Logger.shared.verbose(
+                        self.logger.verbose(
                             "Window found at index",
                             category: "WindowSearch",
                             metadata: ["index": windowIndex]
                         )
-                        Logger.shared.startTimer("window_capture")
-                        let result = try await PeekabooServices.shared.screenCapture.captureWindow(
+                        self.logger.startTimer("window_capture")
+                        let result = try await self.services.screenCapture.captureWindow(
                             appIdentifier: appIdentifier,
                             windowIndex: windowIndex
                         )
-                        Logger.shared.stopTimer("window_capture")
-                        Logger.shared.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+                        self.logger.stopTimer("window_capture")
+                        self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
                         return result
                     } else {
-                        Logger.shared.error(
+                        self.logger.error(
                             "Window not found with title",
                             category: "WindowSearch",
                             metadata: ["title": title]
@@ -306,11 +315,11 @@ ApplicationResolvable {
                         throw CaptureError.windowNotFound
                     }
                 } else {
-                    let result = try await PeekabooServices.shared.screenCapture.captureWindow(
+                    let result = try await self.services.screenCapture.captureWindow(
                         appIdentifier: appIdentifier,
                         windowIndex: nil
                     )
-                    Logger.shared.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+                    self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
                     return result
                 }
             } else {
@@ -318,9 +327,9 @@ ApplicationResolvable {
             }
 
         case .frontmost:
-            Logger.shared.verbose("Capturing frontmost window")
-            let result = try await PeekabooServices.shared.screenCapture.captureFrontmost()
-            Logger.shared.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+            self.logger.verbose("Capturing frontmost window")
+            let result = try await self.services.screenCapture.captureFrontmost()
+            self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
             return result
         }
     }
@@ -341,7 +350,7 @@ ApplicationResolvable {
         )
 
         // Capture the menu bar area
-        return try await PeekabooServices.shared.screenCapture.captureArea(menuBarRect)
+        return try await self.services.screenCapture.captureArea(menuBarRect)
     }
 
     private func saveScreenshot(_ imageData: Data) throws -> String {
@@ -365,7 +374,7 @@ ApplicationResolvable {
 
         // Save the image
         try imageData.write(to: URL(fileURLWithPath: outputPath))
-        Logger.shared.verbose("Saved screenshot to: \(outputPath)")
+        self.logger.verbose("Saved screenshot to: \(outputPath)")
 
         return outputPath
     }
@@ -375,9 +384,9 @@ ApplicationResolvable {
         originalPath: String
     ) async throws -> String {
         // Get detection result from session
-        guard let detectionResult = try await PeekabooServices.shared.sessions.getDetectionResult(sessionId: sessionId)
+        guard let detectionResult = try await self.services.sessions.getDetectionResult(sessionId: sessionId)
         else {
-            Logger.shared.info("No detection result found for session")
+            self.logger.info("No detection result found for session")
             return originalPath
         }
 
@@ -412,15 +421,15 @@ ApplicationResolvable {
         // Draw into context
         NSGraphicsContext.saveGraphicsState()
         guard let context = NSGraphicsContext(bitmapImageRep: bitmapRep) else {
-            Logger.shared.error("Failed to create graphics context")
+            self.logger.error("Failed to create graphics context")
             throw CaptureError.captureFailure("Failed to create graphics context")
         }
         NSGraphicsContext.current = context
-        Logger.shared.verbose("Graphics context created successfully")
+        self.logger.verbose("Graphics context created successfully")
 
         // Draw original image
         nsImage.draw(in: NSRect(origin: .zero, size: imageSize))
-        Logger.shared.verbose("Original image drawn")
+        self.logger.verbose("Original image drawn")
 
         // Configure text attributes - smaller font for less occlusion
         let fontSize: CGFloat = 8
@@ -443,15 +452,15 @@ ApplicationResolvable {
         let enabledElements = detectionResult.elements.all.filter(\.isEnabled)
 
         if enabledElements.isEmpty {
-            Logger.shared.info("No enabled elements to annotate. Total elements: \(detectionResult.elements.all.count)")
+            self.logger.info("No enabled elements to annotate. Total elements: \(detectionResult.elements.all.count)")
             print("\(AgentDisplayTokens.Status.warning)  No interactive UI elements found to annotate")
             return originalPath // Return original image if no elements to annotate
         }
 
-        Logger.shared.info(
+        self.logger.info(
             "Annotating \(enabledElements.count) enabled elements out of \(detectionResult.elements.all.count) total"
         )
-        Logger.shared.verbose("Image size: \(imageSize)")
+        self.logger.verbose("Image size: \(imageSize)")
 
         // Calculate window origin from element bounds if we have elements
         var windowOrigin = CGPoint.zero
@@ -460,7 +469,7 @@ ApplicationResolvable {
             let minX = detectionResult.elements.all.map(\.bounds.minX).min() ?? 0
             let minY = detectionResult.elements.all.map(\.bounds.minY).min() ?? 0
             windowOrigin = CGPoint(x: minX, y: minY)
-            Logger.shared.verbose("Estimated window origin from elements: \(windowOrigin)")
+            self.logger.verbose("Estimated window origin from elements: \(windowOrigin)")
         }
 
         // Convert all element bounds to window-relative coordinates and flip Y
@@ -484,13 +493,18 @@ ApplicationResolvable {
         }
 
         // Create smart label placer for intelligent label positioning
-        let labelPlacer = SmartLabelPlacer(image: nsImage, fontSize: fontSize, debugMode: verbose)
+        let labelPlacer = SmartLabelPlacer(
+            image: nsImage,
+            fontSize: fontSize,
+            debugMode: self.verbose,
+            logger: self.logger
+        )
 
         // Draw elements and calculate label positions
         var labelPositions: [(rect: NSRect, connection: NSPoint?, element: DetectedElement)] = []
 
         for (element, rect) in elementRects {
-            Logger.shared
+            self.logger
                 .verbose(
                     "Drawing element: \(element.id), type: \(element.type), original bounds: \(element.bounds), window rect: \(rect)"
                 )
@@ -576,7 +590,7 @@ ApplicationResolvable {
         }
 
         try pngData.write(to: URL(fileURLWithPath: annotatedPath))
-        Logger.shared.verbose("Created annotated screenshot: \(annotatedPath)")
+        self.logger.verbose("Created annotated screenshot: \(annotatedPath)")
 
         // Log annotation info only in non-JSON mode
         if !self.jsonOutput {
@@ -709,7 +723,7 @@ extension SeeCommand {
         let sessionPaths = SessionPaths(
             raw: screenshotPath,
             annotated: annotatedPath ?? screenshotPath,
-            map: PeekabooServices.shared.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
+            map: self.services.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
         )
 
         // Structured analysis is passed in
@@ -731,7 +745,7 @@ extension SeeCommand {
             menu_bar: self.getMenuBarItemsSummary()
         )
 
-        outputSuccessCodable(data: output)
+        outputSuccessCodable(data: output, logger: self.outputLogger)
     }
 
     @MainActor
@@ -740,7 +754,7 @@ extension SeeCommand {
         var menuExtras: [MenuExtraInfo] = []
 
         do {
-            menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+            menuExtras = try await self.services.menu.listMenuExtras()
         } catch {
             // If there's an error, just return empty array
             menuExtras = []
@@ -779,7 +793,7 @@ extension SeeCommand {
         let sessionPaths = SessionPaths(
             raw: screenshotPath,
             annotated: annotatedPath ?? screenshotPath,
-            map: PeekabooServices.shared.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
+            map: self.services.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
         )
 
         let interactableCount = elements.all.count { $0.isEnabled }
@@ -806,7 +820,7 @@ extension SeeCommand {
         // Get menu bar items from service
         let menuExtras: [MenuExtraInfo]
         do {
-            menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+            menuExtras = try await self.services.menu.listMenuExtras()
         } catch {
             // If there's an error, just return empty array
             menuExtras = []
@@ -837,20 +851,20 @@ extension SeeCommand {
     private func performScreenCapture() async throws -> CaptureResult {
         // Log warning if annotation was requested for full screen captures
         if self.annotate {
-            Logger.shared.info("Annotation is disabled for full screen captures due to performance constraints")
+            self.logger.info("Annotation is disabled for full screen captures due to performance constraints")
         }
 
-        Logger.shared.verbose("Initiating screen capture", category: "Capture")
-        Logger.shared.startTimer("screen_capture")
+        self.logger.verbose("Initiating screen capture", category: "Capture")
+        self.logger.startTimer("screen_capture")
 
         defer {
-            Logger.shared.stopTimer("screen_capture")
+            self.logger.stopTimer("screen_capture")
         }
 
         if let index = self.screenIndex ?? (self.analyze != nil ? 0 : nil) {
             // Capture specific screen
-            Logger.shared.verbose("Capturing specific screen", category: "Capture", metadata: ["screenIndex": index])
-            let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
+            self.logger.verbose("Capturing specific screen", category: "Capture", metadata: ["screenIndex": index])
+            let result = try await self.services.screenCapture.captureScreen(displayIndex: index)
 
             // Add display info to output
             if let displayInfo = result.metadata.displayInfo {
@@ -860,7 +874,7 @@ extension SeeCommand {
                 )
             }
 
-            Logger.shared.verbose("Screen capture completed", category: "Capture", metadata: [
+            self.logger.verbose("Screen capture completed", category: "Capture", metadata: [
                 "mode": "screen-index",
                 "screenIndex": index,
                 "imageBytes": result.imageData.count
@@ -868,7 +882,7 @@ extension SeeCommand {
             return result
         } else {
             // Capture all screens
-            Logger.shared.verbose("Capturing all screens", category: "Capture")
+            self.logger.verbose("Capturing all screens", category: "Capture")
             let results = try await self.captureAllScreens()
 
             if results.isEmpty {
@@ -920,7 +934,7 @@ extension SeeCommand {
             }
 
             // Return the primary screen result (first one)
-            Logger.shared.verbose("Multi-screen capture completed", category: "Capture", metadata: [
+            self.logger.verbose("Multi-screen capture completed", category: "Capture", metadata: [
                 "count": results.count,
                 "primaryBytes": results.first?.imageData.count ?? 0
             ])
@@ -939,17 +953,17 @@ extension SeeCommand {
         let content = try await SCShareableContent.current
         let displays = content.displays
 
-        Logger.shared.info("Found \(displays.count) display(s) to capture")
+        self.logger.info("Found \(displays.count) display(s) to capture")
 
         for (index, display) in displays.enumerated() {
-            Logger.shared.verbose("Capturing display \(index)", category: "MultiScreen", metadata: [
+            self.logger.verbose("Capturing display \(index)", category: "MultiScreen", metadata: [
                 "displayID": display.displayID,
                 "width": display.width,
                 "height": display.height
             ])
 
             do {
-                let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
+                let result = try await self.services.screenCapture.captureScreen(displayIndex: index)
 
                 // Update path to include screen index if capturing multiple screens
                 if displays.count > 1 {
@@ -959,7 +973,7 @@ extension SeeCommand {
                     results.append(result)
                 }
             } catch {
-                Logger.shared.error("Failed to capture display \(index): \(error)")
+                self.logger.error("Failed to capture display \(index): \(error)")
                 // Continue capturing other screens even if one fails
             }
         }
@@ -988,3 +1002,6 @@ extension SeeCommand {
         return formatter.string(fromByteCount: bytes)
     }
 }
+
+@MainActor
+extension SeeCommand: AsyncRuntimeCommand {}
