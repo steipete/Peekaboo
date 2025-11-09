@@ -33,7 +33,7 @@ swiftSettings: approachableConcurrencySettings + [
 ]
 ```
 
-**Do not** reintroduce `InternalImportsByDefault`; it makes Foundation types appear `internal` and breaks public protocol inheritance (e.g., `LocalizedError`). The Swift 6.2 toolchain already enables the remaining “upcoming” features globally, so declaring them again just triggers warnings. The only current exception to `.defaultIsolation(MainActor.self)` is the `peekaboo` CLI target: ArgumentParser’s synthesized `ParsableCommand` implementations still assume non-actor types, so the CLI target uses the same settings minus `.defaultIsolation`. If Swift/ArgumentParser resolves that limitation we should re-enable the flag.
+**Do not** reintroduce `InternalImportsByDefault`; it makes Foundation types appear `internal` and breaks public protocol inheritance (e.g., `LocalizedError`). The Swift 6.2 toolchain already enables the remaining "upcoming" features globally, so declaring them again just triggers warnings. All targets, including the CLI, now use `.defaultIsolation(MainActor.self)` thanks to the custom ArgumentParser fork (steipete/swift-argument-parser, branch: `approachable-concurrency`) which properly supports MainActor-isolated command types.
 
 ---
 
