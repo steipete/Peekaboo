@@ -47,19 +47,24 @@ extension AsyncParsableCommand {
     }
 }
 
-@MainActor
-final class FocusManagementActor {
+actor FocusManagementActor {
     static let shared = FocusManagementActor()
 
-    private let inner = FocusManagementService()
+    private let inner: FocusManagementService
 
-    private init() {}
+    init() {
+        self.inner = MainActor.assumeIsolated { FocusManagementService() }
+    }
 
     func findBestWindow(applicationName: String, windowTitle: String?) async throws -> CGWindowID? {
-        try await self.inner.findBestWindow(applicationName: applicationName, windowTitle: windowTitle)
+        try await MainActor.run {
+            try self.inner.findBestWindow(applicationName: applicationName, windowTitle: windowTitle)
+        }
     }
 
     func focusWindow(windowID: CGWindowID, options: FocusManagementService.FocusOptions) async throws {
-        try await self.inner.focusWindow(windowID: windowID, options: options)
+        try await MainActor.run {
+            try self.inner.focusWindow(windowID: windowID, options: options)
+        }
     }
 }

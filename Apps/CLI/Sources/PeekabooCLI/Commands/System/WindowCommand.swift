@@ -155,73 +155,34 @@ private func createWindowActionResult(
 
 private enum WindowServiceBridge {
     static func closeWindow(services: PeekabooServices, target: WindowTarget) async throws {
-        try await WindowManagementActor.shared.closeWindow(services: services, target: target)
-    }
-
-    static func minimizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
-        try await WindowManagementActor.shared.minimizeWindow(services: services, target: target)
-    }
-
-    static func maximizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
-        try await WindowManagementActor.shared.maximizeWindow(services: services, target: target)
-    }
-
-    static func moveWindow(services: PeekabooServices, target: WindowTarget, to origin: CGPoint) async throws {
-        try await WindowManagementActor.shared.moveWindow(services: services, target: target, to: origin)
-    }
-
-    static func resizeWindow(services: PeekabooServices, target: WindowTarget, to size: CGSize) async throws {
-        try await WindowManagementActor.shared.resizeWindow(services: services, target: target, to: size)
-    }
-
-    static func setWindowBounds(services: PeekabooServices, target: WindowTarget, bounds: CGRect) async throws {
-        try await WindowManagementActor.shared.setWindowBounds(services: services, target: target, bounds: bounds)
-    }
-
-    static func focusWindow(services: PeekabooServices, target: WindowTarget) async throws {
-        try await WindowManagementActor.shared.focusWindow(services: services, target: target)
-    }
-
-    static func listWindows(services: PeekabooServices, target: WindowTarget) async throws -> [ServiceWindowInfo] {
-        try await WindowManagementActor.shared.listWindows(services: services, target: target)
-    }
-}
-
-@MainActor
-private final class WindowManagementActor {
-    static let shared = WindowManagementActor()
-
-    private init() {}
-
-    func closeWindow(services: PeekabooServices, target: WindowTarget) async throws {
         try await services.windows.closeWindow(target: target)
     }
 
-    func minimizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
+    static func minimizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
         try await services.windows.minimizeWindow(target: target)
     }
 
-    func maximizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
+    static func maximizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
         try await services.windows.maximizeWindow(target: target)
     }
 
-    func moveWindow(services: PeekabooServices, target: WindowTarget, to origin: CGPoint) async throws {
+    static func moveWindow(services: PeekabooServices, target: WindowTarget, to origin: CGPoint) async throws {
         try await services.windows.moveWindow(target: target, to: origin)
     }
 
-    func resizeWindow(services: PeekabooServices, target: WindowTarget, to size: CGSize) async throws {
+    static func resizeWindow(services: PeekabooServices, target: WindowTarget, to size: CGSize) async throws {
         try await services.windows.resizeWindow(target: target, to: size)
     }
 
-    func setWindowBounds(services: PeekabooServices, target: WindowTarget, bounds: CGRect) async throws {
+    static func setWindowBounds(services: PeekabooServices, target: WindowTarget, bounds: CGRect) async throws {
         try await services.windows.setWindowBounds(target: target, bounds: bounds)
     }
 
-    func focusWindow(services: PeekabooServices, target: WindowTarget) async throws {
+    static func focusWindow(services: PeekabooServices, target: WindowTarget) async throws {
         try await services.windows.focusWindow(target: target)
     }
 
-    func listWindows(services: PeekabooServices, target: WindowTarget) async throws -> [ServiceWindowInfo] {
+    static func listWindows(services: PeekabooServices, target: WindowTarget) async throws -> [ServiceWindowInfo] {
         try await services.windows.listWindows(target: target)
     }
 }
