@@ -9,8 +9,7 @@ import PeekabooCore
 import PeekabooFoundation
 
 /// Shared options that control logging and output behavior.
-@MainActor
-struct CommandRuntimeOptions: MainActorParsableArguments {
+struct CommandRuntimeOptions: ParsableArguments {
     @Flag(name: [.long, .customShort("v")], help: "Enable verbose logging for this command")
     var verbose = false
 

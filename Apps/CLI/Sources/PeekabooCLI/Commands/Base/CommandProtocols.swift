@@ -1,37 +1,21 @@
 @preconcurrency import ArgumentParser
 import Foundation
 
-// MARK: - Concurrency Helpers
-
-/// Marker protocol that bridges `ParsableArguments` into our MainActor-isolated world.
-@preconcurrency
-@MainActor
-protocol MainActorParsableArguments: ParsableArguments {}
-
-/// Marker protocol that bridges `AsyncParsableCommand` into our MainActor-isolated world.
-@preconcurrency
-@MainActor
-protocol MainActorAsyncParsableCommand: AsyncParsableCommand {}
-
-/// Marker protocol that bridges `ParsableCommand` into our MainActor-isolated world.
-@preconcurrency
-@MainActor
-protocol MainActorParsableCommand: ParsableCommand {}
-
 // MARK: - Runtime Command Protocol
 
 /// Protocol for commands that accept runtime context injection.
 /// Commands conforming to this protocol receive a `CommandRuntime` instance
 /// containing logger, services, and configuration instead of accessing singletons.
-@MainActor
-protocol AsyncRuntimeCommand: MainActorAsyncParsableCommand {
+protocol AsyncRuntimeCommand: AsyncParsableCommand {
     /// Run the command with injected runtime context.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws
 }
 
 extension AsyncRuntimeCommand {
     /// Default run() implementation that creates a CommandRuntime from options.
     /// Commands must define `runtimeOptions: CommandRuntimeOptions` to use this.
+    @MainActor
     mutating func run() async throws {
         // Access runtimeOptions via reflection to create runtime
         let mirror = Mirror(reflecting: self)

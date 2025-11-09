@@ -21,7 +21,7 @@ func getDynamicPermissionsSection() -> String {
 
 /// Primary command-line interface definition.
 @MainActor
-public struct Peekaboo: @MainActor MainActorAsyncParsableCommand {
+public struct Peekaboo: @MainActor AsyncParsableCommand {
     public init() {}
 
     public static var configuration: CommandConfiguration {
