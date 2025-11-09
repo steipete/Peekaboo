@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooFoundation
 
 /// Helper class for managing JSON output and debug logs
 public class JSONOutput {
@@ -98,7 +99,7 @@ enum ErrorCode: String, Codable {
     case INVALID_INPUT
 }
 
-func outputJSON(_ response: JSONResponse) {
+func outputJSON(_ response: JSONResponse, logger: Logger) {
     do {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
@@ -107,7 +108,7 @@ func outputJSON(_ response: JSONResponse) {
             print(jsonString)
         }
     } catch {
-        Logger.shared.error("Failed to encode JSON response: \(error)")
+        logger.error("Failed to encode JSON response: \(error)")
         // Fallback to simple error JSON
         print("""
         {
@@ -122,15 +123,15 @@ func outputJSON(_ response: JSONResponse) {
     }
 }
 
-func outputSuccessCodable(data: some Codable, messages: [String]? = nil) {
-    let debugLogs = Logger.shared.getDebugLogs()
+func outputSuccessCodable(data: some Codable, messages: [String]? = nil, logger: Logger) {
+    let debugLogs = logger.getDebugLogs()
     let response = CodableJSONResponse(
         success: true, data: data, messages: messages, debug_logs: debugLogs
     )
-    outputJSONCodable(response)
+    outputJSONCodable(response, logger: logger)
 }
 
-func outputJSONCodable(_ response: some Codable) {
+func outputJSONCodable(_ response: some Codable, logger: Logger) {
     do {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
@@ -141,7 +142,7 @@ func outputJSONCodable(_ response: some Codable) {
             print(jsonString)
         }
     } catch {
-        Logger.shared.error("Failed to encode JSON response: \(error)")
+        logger.error("Failed to encode JSON response: \(error)")
         // Fallback to simple error JSON
         print("""
         {
@@ -167,10 +168,10 @@ struct CodableJSONResponse<T: Codable>: Codable {
     let debug_logs: [String]
 }
 
-func outputError(message: String, code: ErrorCode, details: String? = nil) {
+func outputError(message: String, code: ErrorCode, details: String? = nil, logger: Logger) {
     let error = ErrorInfo(message: message, code: code, details: details)
-    let debugLogs = Logger.shared.getDebugLogs()
-    outputJSON(JSONResponse(success: false, messages: nil, debugLogs: debugLogs, error: error))
+    let debugLogs = logger.getDebugLogs()
+    outputJSON(JSONResponse(success: false, messages: nil, debugLogs: debugLogs, error: error), logger: logger)
 }
 
 /// Empty type for successful responses with no data

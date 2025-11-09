@@ -18,7 +18,13 @@ extension ErrorHandlingCommand {
         // Handle errors with appropriate output format
         if jsonOutput {
             let errorCode = customCode ?? self.mapErrorToCode(error)
-            outputError(message: error.localizedDescription, code: errorCode)
+            let logger: Logger
+            if let formattable = self as? any OutputFormattable {
+                logger = formattable.outputLogger
+            } else {
+                logger = Logger.shared
+            }
+            outputError(message: error.localizedDescription, code: errorCode, logger: logger)
         } else {
             // Get a more descriptive error message
             let errorMessage: String = if let peekabooError = error as? PeekabooError {
@@ -155,6 +161,7 @@ extension ErrorHandlingCommand {
 /// Protocol for commands that support both JSON and human-readable output
 protocol OutputFormattable {
     var jsonOutput: Bool { get }
+    var outputLogger: Logger { get }
 }
 
 extension OutputFormattable {
@@ -162,7 +169,7 @@ extension OutputFormattable {
     func output(_ data: some Codable, humanReadable: () -> Void) {
         // Output data in appropriate format
         if jsonOutput {
-            outputSuccessCodable(data: data)
+            outputSuccessCodable(data: data, logger: self.outputLogger)
         } else {
             humanReadable()
         }
@@ -173,9 +180,9 @@ extension OutputFormattable {
         // Output success with optional data
         if jsonOutput {
             if let data {
-                outputSuccessCodable(data: data)
+                outputSuccessCodable(data: data, logger: self.outputLogger)
             } else {
-                outputJSON(JSONResponse(success: true))
+                outputJSON(JSONResponse(success: true), logger: self.outputLogger)
             }
         }
     }
@@ -184,17 +191,17 @@ extension OutputFormattable {
 // MARK: - Permission Checking
 
 /// Check and require screen recording permission
-func requireScreenRecordingPermission() async throws {
+func requireScreenRecordingPermission(services: PeekabooServices = PeekabooServices.shared) async throws {
     // Check and require screen recording permission
-    guard await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission() else {
+    guard await services.screenCapture.hasScreenRecordingPermission() else {
         throw CaptureError.screenRecordingPermissionDenied
     }
 }
 
 /// Check and require accessibility permission
 @MainActor
-func requireAccessibilityPermission() throws {
-    if !PeekabooServices.shared.permissions.checkAccessibilityPermission() {
+func requireAccessibilityPermission(services: PeekabooServices = PeekabooServices.shared) throws {
+    if !services.permissions.checkAccessibilityPermission() {
         throw CaptureError.accessibilityPermissionDenied
     }
 }
@@ -293,17 +300,14 @@ struct WindowCommandBase: @MainActor MainActorAsyncParsableCommand, ErrorHandlin
 
 // MARK: - Application Resolution
 
-/// Protocol for commands that need to resolve applications
-protocol ApplicationResolver {
-    func resolveApplication(_ identifier: String) async throws -> ServiceApplicationInfo
-}
+/// Marker protocol for commands that need to resolve applications using injected services.
+protocol ApplicationResolver {}
 
 extension ApplicationResolver {
-    func resolveApplication(_ identifier: String) async throws -> ServiceApplicationInfo {
+    func resolveApplication(_ identifier: String, services: PeekabooServices) async throws -> ServiceApplicationInfo {
         do {
-            return try await PeekabooServices.shared.applications.findApplication(identifier: identifier)
+            return try await services.applications.findApplication(identifier: identifier)
         } catch {
-            // Provide more specific error messages if needed
             if identifier.lowercased() == "frontmost" {
                 var message = "Application 'frontmost' not found"
                 message += "\n\n💡 Note: 'frontmost' is not a valid app name. To work with the currently active app:"

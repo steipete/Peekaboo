@@ -43,7 +43,6 @@ extension ApplicationResolvable {
                 // Both specify PID - they must match
                 if appPid == pid {
                     // Redundant but consistent - this is OK
-                    Logger.shared.debug("Redundant PID specification: --app '\(app)' --pid \(pid)")
                     return app
                 } else {
                     throw PeekabooError.invalidInput(
@@ -58,7 +57,6 @@ extension ApplicationResolvable {
         // Case 2: app is a name/bundle ID, pid is provided.
         // We can't reliably cross-check names vs. PIDs without AppKit/main-thread inspection.
         // Log the redundancy and prefer the textual identifier for readability.
-        Logger.shared.debug("Received both --app '\(app)' and --pid \(pid); defaulting to app identifier")
         return app
     }
 }

@@ -10,7 +10,8 @@ extension AsyncParsableCommand {
         windowID: CGWindowID? = nil,
         applicationName: String? = nil,
         windowTitle: String? = nil,
-        options: any FocusOptionsProtocol = DefaultFocusOptions()) async throws
+        options: any FocusOptionsProtocol = DefaultFocusOptions(),
+        services: PeekabooServices) async throws
     {
         guard options.autoFocus else {
             return
@@ -22,7 +23,7 @@ extension AsyncParsableCommand {
         if let windowID {
             targetWindow = windowID
         } else if let sessionId,
-        let session = try await PeekabooServices.shared.sessions.getUIAutomationSession(sessionId: sessionId)
+        let session = try await services.sessions.getUIAutomationSession(sessionId: sessionId)
         {
             targetWindow = session.windowID
         } else if let appName = applicationName {
