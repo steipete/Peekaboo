@@ -5,8 +5,8 @@ import Foundation
 /// Useful for timing in automation scripts.
 @available(macOS 14.0, *)
 @MainActor
-struct SleepCommand: @MainActor MainActorAsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+struct SleepCommand: AsyncRuntimeCommand, OutputFormattable {
+    static let mainActorConfiguration = CommandConfiguration(
         commandName: "sleep",
         abstract: "Pause execution for a specified duration",
         discussion: """
@@ -26,40 +26,43 @@ struct SleepCommand: @MainActor MainActorAsyncParsableCommand {
     @Argument(help: "Duration to sleep in milliseconds")
     var duration: Int
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
 
-    mutating func run() async throws {
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var outputLogger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
 
-        // Validate duration
         guard self.duration > 0 else {
             let error = ValidationError("Duration must be positive")
             if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .INVALID_ARGUMENT
-                )
+                outputError(message: error.localizedDescription, code: .INVALID_ARGUMENT, logger: self.outputLogger)
             } else {
-                var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-                print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
+                var stderrStream = FileHandleTextOutputStream(FileHandle.standardError)
+                print("Error: \(error.localizedDescription)", to: &stderrStream)
             }
             throw ExitCode.failure
         }
 
-        // Perform sleep
         try await Task.sleep(nanoseconds: UInt64(self.duration) * 1_000_000)
 
         let actualDuration = Date().timeIntervalSince(startTime) * 1000 // Convert to ms
 
-        // Output results
         if self.jsonOutput {
             let output = SleepResult(
                 success: true,
                 requested_duration: duration,
                 actual_duration: Int(actualDuration)
             )
-            outputSuccessCodable(data: output)
+            outputSuccessCodable(data: output, logger: self.outputLogger)
         } else {
             let seconds = Double(duration) / 1000.0
             print("✅ Paused for \(seconds)s")
@@ -73,10 +76,4 @@ struct SleepResult: Codable {
     let success: Bool
     let requested_duration: Int
     let actual_duration: Int
-
-    private enum CodingKeys: String, CodingKey {
-        case success
-        case requested_duration
-        case actual_duration
-    }
 }

@@ -46,8 +46,8 @@ struct MenuCommand: @MainActor MainActorAsyncParsableCommand {
     // MARK: - Click Menu Item
 
     @MainActor
-struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationResolvablePositional {
-        static let configuration = CommandConfiguration(
+    struct ClickSubcommand: OutputFormattable, ApplicationResolvablePositional {
+        static let mainActorConfiguration = CommandConfiguration(
             commandName: "click",
             abstract: "Click a menu item"
         )
@@ -64,13 +64,26 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationRes
         @Option(help: "Menu path for nested items (e.g., 'File > Export > PDF')")
         var path: String?
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
-
         @OptionGroup var focusOptions: FocusCommandOptions
 
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
 
             // Validate inputs
             guard self.item != nil || self.path != nil else {
@@ -87,20 +100,19 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationRes
                 // Ensure application is focused before menu interaction
                 try await self.ensureFocused(
                     applicationName: appIdentifier,
-                    options: self.focusOptions
+                    options: self.focusOptions,
+                    services: self.services
                 )
 
                 // If using --item, search recursively; if using --path, use exact path
                 if let itemName = self.item {
-                    // Use recursive search for --item parameter
-                    try await PeekabooServices.shared.menu.clickMenuItemByName(app: appIdentifier, itemName: itemName)
-                } else if let path = self.path {
-                    // Use exact path for --path parameter
-                    try await PeekabooServices.shared.menu.clickMenuItem(app: appIdentifier, itemPath: path)
-                }
+                try await self.services.menu.clickMenuItemByName(app: appIdentifier, itemName: itemName)
+            } else if let path = self.path {
+                try await self.services.menu.clickMenuItem(app: appIdentifier, itemPath: path)
+            }
 
                 // Get app info for response
-                let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: appIdentifier)
+                let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
 
                 // Determine what was clicked for output
                 let clickedPath = self.path ?? self.item!
@@ -113,7 +125,7 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationRes
                         menu_path: clickedPath,
                         clicked_item: clickedPath
                     )
-                    outputSuccessCodable(data: data)
+                    outputSuccessCodable(data: data, logger: self.outputLogger)
                 } else {
                     print("✓ Clicked menu item: \(clickedPath)")
                 }
@@ -148,7 +160,8 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationRes
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to click menu item"
+                    details: "Failed to click menu item",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
@@ -160,7 +173,8 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationRes
                 outputError(
                     message: error.localizedDescription,
                     code: .APP_NOT_FOUND,
-                    details: "Application not found"
+                    details: "Application not found",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
@@ -172,7 +186,8 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationRes
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu operation failed"
+                    details: "Menu operation failed",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
@@ -183,8 +198,8 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationRes
     // MARK: - Click System Menu Extra
 
     @MainActor
-struct ClickExtraSubcommand: @MainActor MainActorAsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+    struct ClickExtraSubcommand: OutputFormattable {
+        static let mainActorConfiguration = CommandConfiguration(
             commandName: "click-extra",
             abstract: "Click a system menu extra (status bar item)"
         )
@@ -195,17 +210,30 @@ struct ClickExtraSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Option(help: "Menu item to click after opening the extra")
         var item: String?
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
-
         @OptionGroup var focusOptions: FocusCommandOptions
 
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
 
             do {
                 // Click the menu extra
-                try await PeekabooServices.shared.menu.clickMenuExtra(title: self.title)
+                try await self.services.menu.clickMenuExtra(title: self.title)
 
                 // If an item was specified, we would need to click it after the menu appears
                 // This would require additional service functionality
@@ -230,7 +258,7 @@ struct ClickExtraSubcommand: @MainActor MainActorAsyncParsableCommand {
                         menu_extra: title,
                         clicked_item: item ?? self.title
                     )
-                    outputSuccessCodable(data: data)
+                    outputSuccessCodable(data: data, logger: self.outputLogger)
                 } else {
                     if let clickedItem = item {
                         print("✓ Clicked '\(clickedItem)' in \(self.title) menu")
@@ -266,7 +294,8 @@ struct ClickExtraSubcommand: @MainActor MainActorAsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to click menu extra"
+                    details: "Failed to click menu extra",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
@@ -304,13 +333,26 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationReso
         @Flag(help: "Include disabled menu items")
         var includeDisabled = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
-
         @OptionGroup var focusOptions: FocusCommandOptions
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
@@ -318,11 +360,12 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationReso
                 // Ensure application is focused before listing menus
                 try await self.ensureFocused(
                     applicationName: appIdentifier,
-                    options: self.focusOptions
+                    options: self.focusOptions,
+                    services: self.services
                 )
 
                 // Get menu structure from service
-                let menuStructure = try await PeekabooServices.shared.menu.listMenus(for: appIdentifier)
+                let menuStructure = try await self.services.menu.listMenus(for: appIdentifier)
 
                 // Filter out disabled items if requested
                 let filteredMenus = self.includeDisabled ? menuStructure.menus : self
@@ -335,7 +378,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationReso
                         bundle_id: menuStructure.application.bundleIdentifier,
                         menu_structure: self.convertMenusToTyped(filteredMenus)
                     )
-                    outputSuccessCodable(data: data)
+                    outputSuccessCodable(data: data, logger: self.outputLogger)
                 } else {
                     print("Menu structure for \(menuStructure.application.name):")
                     for menu in filteredMenus {
@@ -355,7 +398,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationReso
             }
         }
 
-        private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
+private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
             menus.compactMap { menu in
                 guard menu.isEnabled else { return nil }
                 let filteredItems = self.filterDisabledItems(menu.items)
@@ -503,23 +546,35 @@ struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Flag(help: "Include disabled menu items")
         var includeDisabled = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
         @Flag(help: "Include item frames (pixel positions)")
         var includeFrames = false
 
         @OptionGroup var focusOptions: FocusCommandOptions
 
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Get frontmost application menus
-                let frontmostMenus = try await PeekabooServices.shared.menu.listFrontmostMenus()
+                let frontmostMenus = try await self.services.menu.listFrontmostMenus()
 
                 // Get system menu extras
-                let menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+                let menuExtras = try await self.services.menu.listMenuExtras()
 
                 // Filter if needed
                 let filteredMenus = self.includeDisabled ? frontmostMenus.menus : self
@@ -728,6 +783,18 @@ struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
     }
 }
 
+@MainActor
+extension MenuCommand.ClickSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MenuCommand.ClickExtraSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MenuCommand.ListSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MenuCommand.ListAllSubcommand: AsyncRuntimeCommand {}
+
 // MARK: - Data Structures
 
 struct MenuClickResult: Codable {
@@ -764,3 +831,9 @@ struct MenuItemData: Codable {
     let separator: Bool?
     let items: [MenuItemData]?
 }
+
+@MainActor
+extension MenuCommand.ClickSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MenuCommand.ClickExtraSubcommand: AsyncRuntimeCommand {}

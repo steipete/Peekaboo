@@ -49,18 +49,34 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Option(help: "Button text to click (e.g., 'OK', 'Cancel', 'Save')")
         var button: String
 
-        @Option(help: "Specific window/sheet title to target")
-        var window: String?
+    @Option(help: "Specific window/sheet title to target")
+    var window: String?
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Click the button using the service
-                let result = try await PeekabooServices.shared.dialogs.clickButton(
+                let result = try await self.services.dialogs.clickButton(
                     buttonText: self.button,
                     windowTitle: self.window
                 )
@@ -114,18 +130,34 @@ struct InputSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Flag(help: "Clear existing text first")
         var clear = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Determine field identifier (index or label)
                 let fieldIdentifier = self.field ?? self.index.map { String($0) }
 
                 // Enter text using the service
-                let result = try await PeekabooServices.shared.dialogs.enterText(
+                let result = try await self.services.dialogs.enterText(
                     text: self.text,
                     fieldIdentifier: fieldIdentifier,
                     clearExisting: self.clear,
@@ -180,15 +212,31 @@ struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Option(help: "Button to click after entering path/name")
         var select: String = "Save"
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Handle file dialog using the service
-                let result = try await PeekabooServices.shared.dialogs.handleFileDialog(
+                let result = try await self.services.dialogs.handleFileDialog(
                     path: self.path,
                     filename: self.name,
                     actionButton: self.select
@@ -242,15 +290,31 @@ struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Option(help: "Specific window/sheet title to target")
         var window: String?
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Dismiss dialog using the service
-                let result = try await PeekabooServices.shared.dialogs.dismissDialog(
+                let result = try await self.services.dialogs.dismissDialog(
                     force: self.force,
                     windowTitle: self.window
                 )
@@ -298,21 +362,37 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
             abstract: "List elements in current dialog using DialogService"
         )
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
 
         @MainActor
         /// Describe the active dialog by enumerating buttons, text fields, and static text.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // List dialog elements using the service
-                let elements = try await PeekabooServices.shared.dialogs.listDialogElements(windowTitle: nil)
+                let elements = try await self.services.dialogs.listDialogElements(windowTitle: nil)
 
                 // Output result
                 if self.jsonOutput {
-                    struct DialogListResult: Codable {
+struct DialogListResult: Codable {
                         let title: String
                         let role: String
                         let buttons: [String]
@@ -375,6 +455,21 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
         }
     }
 }
+
+@MainActor
+extension DialogCommand.ClickSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension DialogCommand.InputSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension DialogCommand.FileSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension DialogCommand.DismissSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Error Handling
 

@@ -63,13 +63,30 @@ struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
         @Flag(help: "Wait for the application to be ready")
         var waitUntilReady = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
 
         /// Resolve the requested app target, launch it, optionally wait until ready, and emit output.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
-            Logger.shared.verbose("Launching application: \(self.app)")
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            let logger = self.logger
+            logger.verbose("Launching application: \(self.app)")
 
             do {
                 let launchedApp: NSRunningApplication
@@ -195,12 +212,25 @@ struct QuitSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
         @Flag(help: "Force quit (doesn't save changes)")
         var force = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
 
         /// Resolve the targeted applications, issue quit or force-quit requests, and report results per app.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            let logger = self.logger
 
             do {
                 var quitApps: [(String, NSRunningApplication)] = []
@@ -223,7 +253,7 @@ struct QuitSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
                     }
                 } else if let appName = app {
                     // Find specific app
-                    let appInfo = try await resolveApplication(appName)
+                    let appInfo = try await resolveApplication(appName, services: self.services)
                     let runningApps = NSWorkspace.shared.runningApplications
                     if let runningApp = runningApps
                         .first(where: { $0.processIdentifier == appInfo.processIdentifier }) {
@@ -255,12 +285,12 @@ struct QuitSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
                     if !success && !self.jsonOutput {
                         // Check if app might be in a modal state or have unsaved changes
                         if !self.force {
-                            Logger.shared
+                            logger
                                 .debug(
                                     "Quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may have unsaved changes or be showing a dialog. Try --force to force quit."
                                 )
                         } else {
-                            Logger.shared
+                            logger
                                 .debug(
                                     "Force quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may be unresponsive or protected."
                                 )
@@ -318,16 +348,28 @@ struct HideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
 
         /// Hide the specified application and emit confirmation in either text or JSON form.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                let appInfo = try await resolveApplication(appIdentifier)
+                    let appInfo = try await resolveApplication(appIdentifier, services: self.services)
 
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
@@ -370,16 +412,28 @@ struct UnhideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
         @Flag(help: "Bring to front after unhiding")
         var activate = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
 
         /// Unhide the target application and optionally re-activate its main window.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                let appInfo = try await resolveApplication(appIdentifier)
+                let appInfo = try await resolveApplication(appIdentifier, services: self.services)
 
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
@@ -435,12 +489,24 @@ struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
         @Flag(help: "Cycle to next app (Cmd+Tab)")
         var cycle = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
 
         /// Switch focus either by cycling (Cmd+Tab) or by activating a specific application.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
 
             do {
                 if self.cycle {
@@ -466,7 +532,7 @@ struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
                         print("✓ Cycled to next application")
                     }
                 } else if let targetApp = to {
-                    let appInfo = try await resolveApplication(targetApp)
+                    let appInfo = try await resolveApplication(targetApp, services: self.services)
 
                     // Find and activate the app
                     let runningApps = NSWorkspace.shared.runningApplications
@@ -520,15 +586,27 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
         @Flag(help: "Include background apps")
         var includeBackground = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
 
         /// Enumerate running applications, apply filtering flags, and emit the chosen output representation.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
 
             do {
-                let appsOutput = try await PeekabooServices.shared.applications.listApplications()
+                let appsOutput = try await self.services.applications.listApplications()
 
                 // Filter based on flags
                 let filtered = appsOutput.data.applications.filter { app in
@@ -605,17 +683,29 @@ struct RelaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandli
         @Flag(help: "Wait until the app is ready after launch")
         var waitUntilReady = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+        private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
+        var outputLogger: Logger { self.logger }
+
+        var jsonOutput: Bool {
+            self.runtimeOptions.jsonOutput
+        }
 
         /// Quit the target app, wait if requested, relaunch it, and report success metrics.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
 
             do {
                 // Find the application first
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                let appInfo = try await resolveApplication(appIdentifier)
+                let appInfo = try await resolveApplication(appIdentifier, services: self.services)
                 let originalPID = appInfo.processIdentifier
 
                 // Step 1: Quit the app
@@ -720,3 +810,24 @@ struct RelaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandli
         }
     }
 }
+
+@MainActor
+extension AppCommand.LaunchSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension AppCommand.QuitSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension AppCommand.HideSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension AppCommand.UnhideSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension AppCommand.SwitchSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension AppCommand.ListSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension AppCommand.RelaunchSubcommand: AsyncRuntimeCommand {}

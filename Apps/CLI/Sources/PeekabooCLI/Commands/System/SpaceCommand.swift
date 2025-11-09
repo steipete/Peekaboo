@@ -114,13 +114,27 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
     @Flag(name: .long, help: "Include detailed window information")
     var detailed = false
 
-    @Flag(name: .long, help: "Output results in JSON format")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
 
     @MainActor
     /// Enumerate Spaces, optionally hydrate window membership, and render results in the requested format.
-    func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
 
         let spaceService = SpaceCommandEnvironment.service
         let spaces = spaceService.getAllSpaces()
@@ -136,7 +150,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
                     )
                 }
             )
-            outputSuccessCodable(data: data)
+            outputSuccessCodable(data: data, logger: self.logger)
         } else {
             print("Spaces:")
 
@@ -145,7 +159,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
 
         if self.detailed {
             // Get all running applications
-            let appService = PeekabooServices.shared.applications
+            let appService = self.services.applications
             let appListResult = try await appService.listApplications()
 
             // Iterate through all applications to get their windows
@@ -216,12 +230,22 @@ struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
     @Option(name: .long, help: "Space number to switch to (1-based)")
     var to: Int
 
-    @Flag(name: .long, help: "Output results in JSON format")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
 
     /// Validate the requested Space index, switch to it, and report the outcome.
-    func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
 
         do {
             let spaceService = SpaceCommandEnvironment.service
@@ -243,7 +267,7 @@ struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
                     space_id: targetSpace.id,
                     space_number: self.to
                 )
-                outputSuccessCodable(data: data)
+                outputSuccessCodable(data: data, logger: self.logger)
             } else {
                 print("✓ Switched to Space \(self.to)")
             }
@@ -285,12 +309,26 @@ struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHand
     @Flag(name: .long, help: "Switch to the target Space after moving")
     var follow = false
 
-    @Flag(name: .long, help: "Output results in JSON format")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
 
     /// Move the resolved window into the requested Space (or current Space) and optionally follow the move.
-    func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
 
         do {
             // Validate inputs
@@ -312,7 +350,7 @@ struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHand
 
             // Get window info
             let target = try windowOptions.toWindowTarget()
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: target)
+            let windows = try await self.services.windows.listWindows(target: target)
             let windowInfo = windowOptions.selectWindow(from: windows)
 
             guard let info = windowInfo else {
@@ -340,7 +378,7 @@ struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHand
                         moved_to_current: true,
                         followed: nil
                     )
-                    outputSuccessCodable(data: data)
+                    outputSuccessCodable(data: data, logger: self.logger)
                 } else {
                     print("✓ Moved window '\(info.title)' to current Space")
                 }
@@ -373,7 +411,7 @@ struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHand
                         moved_to_current: false,
                         followed: self.follow
                     )
-                    outputSuccessCodable(data: data)
+                    outputSuccessCodable(data: data, logger: self.logger)
                 } else {
                     var message = "✓ Moved window '\(info.title)' to Space \(spaceNum)"
                     if self.follow {
@@ -389,6 +427,15 @@ struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHand
         }
     }
 }
+
+@MainActor
+extension SpaceCommand.ListSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension SpaceCommand.SwitchSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension SpaceCommand.MoveWindowSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Response Types
 

@@ -54,7 +54,18 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
     @Flag(name: .shortAndLong, help: "Show more detailed output")
     var verbose = false
 
-    func run() async throws {
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         switch self.action.lowercased() {
         case "list":
             try await self.listMenuBarItems()

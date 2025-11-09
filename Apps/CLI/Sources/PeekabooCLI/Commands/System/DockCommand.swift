@@ -38,9 +38,9 @@ struct DockCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Launch from Dock
 
-    @MainActor
-struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+@MainActor
+struct LaunchSubcommand: AsyncRuntimeCommand, OutputFormattable {
+        static let mainActorConfiguration = CommandConfiguration(
             commandName: "launch",
             abstract: "Launch an application from the Dock"
         )
@@ -48,18 +48,16 @@ struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Argument(help: "Application name in the Dock")
         var app: String
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        @MainActor
-        private var services: PeekabooServices { PeekabooServices.shared }
-
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            let services = runtime.services
+            let logger = runtime.logger
 
             do {
                 // Launch the app using the service
-                try await self.services.dock.launchFromDock(appName: self.app)
+                try await services.dock.launchFromDock(appName: self.app)
 
                 // Find the launched app's actual name using the service
                 let dockItem = try await services.dock.findDockItem(name: self.app)
@@ -75,13 +73,13 @@ struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand {
                         action: "dock_launch",
                         app: dockItem.title
                     )
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: logger)
                 } else {
                     print("✓ Launched \(dockItem.title) from Dock")
                 }
 
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             } catch {
                 handleGenericError(error, jsonOutput: self.jsonOutput)
@@ -92,9 +90,9 @@ struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Right-Click Dock Item
 
-    @MainActor
-struct RightClickSubcommand: @MainActor MainActorAsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+@MainActor
+struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
+        static let mainActorConfiguration = CommandConfiguration(
             commandName: "right-click",
             abstract: "Right-click a Dock item and optionally select from menu"
         )
@@ -105,21 +103,19 @@ struct RightClickSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Option(help: "Menu item to select after right-clicking")
         var select: String?
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        @MainActor
-        private var services: PeekabooServices { PeekabooServices.shared }
-
-        mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            let services = runtime.services
+            let logger = runtime.logger
 
             do {
                 // Find the dock item first to get its actual name
                 let dockItem = try await services.dock.findDockItem(name: self.app)
 
                 // Right-click the item using the service
-                try await self.services.dock.rightClickDockItem(appName: self.app, menuItem: self.select)
+                try await services.dock.rightClickDockItem(appName: self.app, menuItem: self.select)
 
                 // Output result
                 if self.jsonOutput {
@@ -134,7 +130,7 @@ struct RightClickSubcommand: @MainActor MainActorAsyncParsableCommand {
                         app: dockItem.title,
                         selectedItem: self.select ?? ""
                     )
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: logger)
                 } else {
                     if let selected = select {
                         print("✓ Right-clicked \(dockItem.title) and selected '\(selected)'")
@@ -144,7 +140,7 @@ struct RightClickSubcommand: @MainActor MainActorAsyncParsableCommand {
                 }
 
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             } catch {
                 handleGenericError(error, jsonOutput: self.jsonOutput)
@@ -156,24 +152,22 @@ struct RightClickSubcommand: @MainActor MainActorAsyncParsableCommand {
     // MARK: - Hide Dock
 
     @MainActor
-struct HideSubcommand: @MainActor MainActorAsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+    struct HideSubcommand: ErrorHandlingCommand, OutputFormattable {
+        static let mainActorConfiguration = CommandConfiguration(
             commandName: "hide",
             abstract: "Hide the Dock"
         )
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        @MainActor
-        private var services: PeekabooServices { PeekabooServices.shared }
-
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            let services = runtime.services
+            let logger = runtime.logger
 
             do {
                 // Hide the Dock using the service
-                try await self.services.dock.hideDock()
+                try await services.dock.hideDock()
 
                 // Output result
                 if self.jsonOutput {
@@ -182,12 +176,12 @@ struct HideSubcommand: @MainActor MainActorAsyncParsableCommand {
                     }
 
                     let outputData = DockHideResult(action: "dock_hide")
-                    outputSuccessCodable(data: outputData)
+                outputSuccessCodable(data: outputData, logger: logger)
                 } else {
                     print("✓ Dock hidden")
                 }
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             } catch {
                 handleGenericError(error, jsonOutput: self.jsonOutput)
@@ -199,24 +193,21 @@ struct HideSubcommand: @MainActor MainActorAsyncParsableCommand {
     // MARK: - Show Dock
 
     @MainActor
-struct ShowSubcommand: @MainActor MainActorAsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+    struct ShowSubcommand: ErrorHandlingCommand, OutputFormattable {
+        static let mainActorConfiguration = CommandConfiguration(
             commandName: "show",
             abstract: "Show the Dock"
         )
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        @MainActor
-        private var services: PeekabooServices { PeekabooServices.shared }
-
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            let services = runtime.services
+            let logger = runtime.logger
 
             do {
-                // Show the Dock using the service
-                try await self.services.dock.showDock()
+                try await services.dock.showDock()
 
                 // Output result
                 if self.jsonOutput {
@@ -225,12 +216,12 @@ struct ShowSubcommand: @MainActor MainActorAsyncParsableCommand {
                     }
 
                     let outputData = DockShowResult(action: "dock_show")
-                    outputSuccessCodable(data: outputData)
+                outputSuccessCodable(data: outputData, logger: logger)
                 } else {
                     print("✓ Dock shown")
                 }
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             } catch {
                 handleGenericError(error, jsonOutput: self.jsonOutput)
@@ -242,8 +233,8 @@ struct ShowSubcommand: @MainActor MainActorAsyncParsableCommand {
     // MARK: - List Dock Items
 
     @MainActor
-struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+    struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
+        static let mainActorConfiguration = CommandConfiguration(
             commandName: "list",
             abstract: "List all Dock items"
         )
@@ -251,19 +242,14 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
         @Flag(help: "Include separators and spacers")
         var includeAll = false
 
-        @Flag(help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        @MainActor
-        private var services: PeekabooServices { PeekabooServices.shared }
-
-        @MainActor
-        /// Fetch Dock items via Peekaboo services and display them in JSON or a readable list.
-        func run() async throws {
-            Logger.shared.setJsonOutputMode(self.jsonOutput)
+        mutating func run(using runtime: CommandRuntime) async throws {
+            let services = runtime.services
+            let logger = runtime.logger
 
             do {
-                // Get Dock items using the service
                 let dockItems = try await services.dock.listDockItems(includeAll: self.includeAll)
 
                 // Output result
@@ -295,7 +281,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
                         dockItems: items,
                         count: items.count
                     )
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: logger)
                 } else {
                     print("Dock items:")
                     for item in dockItems {
@@ -307,7 +293,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
                 }
 
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             } catch {
                 handleGenericError(error, jsonOutput: self.jsonOutput)
