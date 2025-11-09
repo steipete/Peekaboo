@@ -5,7 +5,7 @@ import PeekabooCore
 /// Clean up session cache and temporary files
 @available(macOS 14.0, *)
 @MainActor
-struct CleanCommand: @MainActor MainActorAsyncParsableCommand {
+struct CleanCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "clean",
         abstract: "Clean up session cache and temporary files",
@@ -38,10 +38,30 @@ struct CleanCommand: @MainActor MainActorAsyncParsableCommand {
     @Flag(help: "Show what would be deleted without actually deleting")
     var dryRun = false
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    mutating func run() async throws {
+    @RuntimeStorage private var runtime: CommandRuntime?
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
+
+    private var configuration: CommandRuntime.Configuration? {
+        self.runtime?.configuration
+    }
+
+    var jsonOutput: Bool {
+        self.configuration?.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
 
         do {
@@ -55,11 +75,11 @@ struct CleanCommand: @MainActor MainActorAsyncParsableCommand {
             let result: CleanResult
 
             if self.allSessions {
-                result = try await PeekabooServices.shared.files.cleanAllSessions(dryRun: self.dryRun)
+                result = try await self.services.files.cleanAllSessions(dryRun: self.dryRun)
             } else if let hours = olderThan {
-                result = try await PeekabooServices.shared.files.cleanOldSessions(hours: hours, dryRun: self.dryRun)
+                result = try await self.services.files.cleanOldSessions(hours: hours, dryRun: self.dryRun)
             } else if let sessionId = session {
-                result = try await PeekabooServices.shared.files.cleanSpecificSession(
+                result = try await self.services.files.cleanSpecificSession(
                     sessionId: sessionId,
                     dryRun: self.dryRun
                 )
@@ -88,17 +108,17 @@ struct CleanCommand: @MainActor MainActorAsyncParsableCommand {
                     dryRun: result.dryRun,
                     executionTime: executionTime
                 )
-                outputSuccessCodable(data: outputData)
+                outputSuccessCodable(data: outputData, logger: self.outputLogger)
             } else {
                 self.printResults(result, executionTime: executionTime)
             }
 
         } catch let error as FileServiceError {
-            handleFileServiceError(error, jsonOutput: self.jsonOutput)
+            handleFileServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
             throw ExitCode(1)
         } catch {
             if self.jsonOutput {
-                outputError(message: error.localizedDescription, code: .INTERNAL_SWIFT_ERROR)
+                outputError(message: error.localizedDescription, code: .INTERNAL_SWIFT_ERROR, logger: self.outputLogger)
             } else {
                 var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
                 print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
@@ -140,7 +160,7 @@ struct CleanCommand: @MainActor MainActorAsyncParsableCommand {
 
 // MARK: - Error Handling
 
-private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool) {
+private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool, logger: Logger) {
     let errorCode: ErrorCode = switch error {
     case .sessionNotFound:
         .SESSION_NOT_FOUND
@@ -153,9 +173,12 @@ private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool)
     }
 
     if jsonOutput {
-        outputError(message: error.localizedDescription, code: errorCode)
+        outputError(message: error.localizedDescription, code: errorCode, logger: logger)
     } else {
         var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
         print("❌ \(error.localizedDescription)", to: &localStandardErrorStream)
     }
 }
+
+@MainActor
+extension CleanCommand: AsyncRuntimeCommand {}

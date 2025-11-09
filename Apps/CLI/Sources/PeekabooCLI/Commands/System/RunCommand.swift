@@ -5,7 +5,7 @@ import PeekabooCore
 /// Executes a batch script of Peekaboo commands using the ProcessService.
 /// Supports .peekaboo.json files with sequential command execution.
 @available(macOS 14.0, *)
-struct RunCommand: @MainActor MainActorAsyncParsableCommand {
+struct RunCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "run",
         abstract: "Execute a Peekaboo automation script",
@@ -39,27 +39,43 @@ struct RunCommand: @MainActor MainActorAsyncParsableCommand {
     @Flag(help: "Continue execution even if a step fails")
     var noFailFast = false
 
-    @Flag(help: "Show detailed step execution")
-    var verbose = false
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
+    @RuntimeStorage private var runtime: CommandRuntime?
 
-    mutating func run() async throws {
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
+
+    private var configuration: CommandRuntime.Configuration? { self.runtime?.configuration }
+
+    var jsonOutput: Bool {
+        self.configuration?.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
+
+    private var isVerbose: Bool {
+        self.configuration?.verbose ?? self.runtimeOptions.verbose
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
 
         do {
-            // Initialize services
-            let services = PeekabooServices.shared
-
             // Load and validate script
-            let script = try await services.process.loadScript(from: self.scriptPath)
+            let script = try await self.services.process.loadScript(from: self.scriptPath)
 
             // Execute script
-            let results = try await services.process.executeScript(
+            let results = try await self.services.process.executeScript(
                 script,
                 failFast: !self.noFailFast,
-                verbose: self.verbose
+                verbose: self.isVerbose
             )
 
             // Prepare output
@@ -81,11 +97,11 @@ struct RunCommand: @MainActor MainActorAsyncParsableCommand {
                 let data = try encoder.encode(output)
                 try data.write(to: URL(fileURLWithPath: outputPath))
 
-                if !self.verbose, !self.jsonOutput {
+                if !self.isVerbose, !self.jsonOutput {
                     print("✅ Script completed. Results saved to: \(outputPath)")
                 }
             } else if self.jsonOutput {
-                outputSuccessCodable(data: output)
+                outputSuccessCodable(data: output, logger: self.outputLogger)
             } else {
                 // Human-readable output
                 if output.success {
@@ -119,7 +135,7 @@ struct RunCommand: @MainActor MainActorAsyncParsableCommand {
 
         } catch {
             if self.jsonOutput {
-                outputError(message: error.localizedDescription, code: .INVALID_ARGUMENT)
+                outputError(message: error.localizedDescription, code: .INVALID_ARGUMENT, logger: self.outputLogger)
             } else {
                 print("❌ Error: \(error.localizedDescription)")
             }
@@ -140,3 +156,6 @@ struct ScriptExecutionResult: Codable {
     let executionTime: TimeInterval
     let steps: [PeekabooCore.StepResult]
 }
+
+@MainActor
+extension RunCommand: AsyncRuntimeCommand {}
