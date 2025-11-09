@@ -944,7 +944,6 @@ final class StubWindowService: WindowManagementServiceProtocol {
     }
 }
 
-@MainActor
 final class StubSpaceService: SpaceCommandSpaceService {
     var spaces: [SpaceInfo]
     var windowSpaces: [Int: [SpaceInfo]]
@@ -957,19 +956,19 @@ final class StubSpaceService: SpaceCommandSpaceService {
         self.windowSpaces = windowSpaces
     }
 
-    func getAllSpaces() -> [SpaceInfo] {
+    func getAllSpaces() async -> [SpaceInfo] {
         self.spaces
     }
 
-    func getSpacesForWindow(windowID: CGWindowID) -> [SpaceInfo] {
+    func getSpacesForWindow(windowID: CGWindowID) async -> [SpaceInfo] {
         self.windowSpaces[Int(windowID)] ?? []
     }
 
-    func moveWindowToCurrentSpace(windowID: CGWindowID) throws {
+    func moveWindowToCurrentSpace(windowID: CGWindowID) async throws {
         self.moveToCurrentCalls.append(windowID)
     }
 
-    func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) throws {
+    func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) async throws {
         self.moveWindowCalls.append((windowID, spaceID))
     }
 

@@ -279,9 +279,10 @@ struct SpaceCommandActionTests {
     }
 
     @MainActor
-    private func makeSpaceContext() -> SpaceHarnessContext {
+    private func makeSpaceContext() async -> SpaceHarnessContext {
         let base = SpaceCommandReadTests().makeTestContext()
-        let spaceService = StubSpaceService(spaces: base.spaceService.getAllSpaces(), windowSpaces: [:])
+        let spaces = await base.spaceService.getAllSpaces()
+        let spaceService = StubSpaceService(spaces: spaces, windowSpaces: [:])
         let services = base.services
         return SpaceHarnessContext(services: services, spaceService: spaceService)
     }
