@@ -82,7 +82,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
 
             // Ensure window is focused before pressing hotkey (if we have a session and auto-focus is enabled)
             if let sessionId {
-                try await self.ensureFocused(
+                try await ensureFocused(
                     sessionId: sessionId,
                     options: self.focusOptions,
                     services: services
