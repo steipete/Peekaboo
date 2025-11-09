@@ -3,10 +3,10 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Manage and request system permissions
-@MainActor
-struct PermissionCommand: @MainActor MainActorAsyncParsableCommand {
+struct PermissionCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "permission",
         abstract: "Manage system permissions for Peekaboo",
@@ -34,18 +34,51 @@ struct PermissionCommand: @MainActor MainActorAsyncParsableCommand {
 
 // MARK: - Status Subcommand
 
-@MainActor
-struct StatusSubcommand: @MainActor MainActorAsyncParsableCommand {
+struct StatusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
     static let configuration = CommandConfiguration(
         commandName: "status",
         abstract: "Check current permission status"
     )
 
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private var runtime: CommandRuntime?
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    private var jsonOutput: Bool {
+        self.runtimeOptions.jsonOutput
+    }
+
+        mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Summarize the current permission state for the agent-centric workflow.
-    func run() async throws {
-        // Reuse the existing permissions check logic
-        let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-        let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
+        mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
+
+        let screenRecording = await self.services.screenCapture.hasScreenRecordingPermission()
+        let accessibility = await self.services.automation.hasAccessibilityPermission()
+
+        let payload = AgentPermissionStatusPayload(
+            screen_recording: screenRecording,
+            accessibility: accessibility
+        )
+
+        if self.jsonOutput {
+            outputSuccessCodable(data: payload, logger: self.logger)
+            return
+        }
 
         print("Peekaboo Permission Status")
         print("==========================")
@@ -67,47 +100,91 @@ struct StatusSubcommand: @MainActor MainActorAsyncParsableCommand {
 
 // MARK: - Request Screen Recording Subcommand
 
-@MainActor
-struct RequestScreenRecordingSubcommand: @MainActor MainActorAsyncParsableCommand {
+struct RequestScreenRecordingSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
     static let configuration = CommandConfiguration(
         commandName: "request-screen-recording",
         abstract: "Trigger screen recording permission prompt"
     )
 
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private var runtime: CommandRuntime?
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    private var jsonOutput: Bool {
+        self.runtimeOptions.jsonOutput
+    }
+
+        mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Trigger the screen recording permission prompt using the best available mechanism.
-    func run() async throws {
-        print("Requesting Screen Recording permission...")
-        print("")
+        mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
-        // Check current status first
-        let hasPermission = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-
+        let hasPermission = await self.services.screenCapture.hasScreenRecordingPermission()
         if hasPermission {
-            print("✅ Screen Recording permission is already granted!")
+            if self.jsonOutput {
+                outputSuccessCodable(
+                    data: AgentPermissionActionResult(
+                        action: "request-screen-recording",
+                        already_granted: true,
+                        prompt_triggered: false,
+                        granted: true
+                    ),
+                    logger: self.logger
+                )
+            } else {
+                print("✅ Screen Recording permission is already granted!")
+            }
             return
         }
 
-        print("Triggering permission prompt...")
-        print("")
+        if !self.jsonOutput {
+            print("Requesting Screen Recording permission...")
+            print("")
+            print("Triggering permission prompt...")
+            print("")
+        }
 
-        // Method 1: Try CGRequestScreenCaptureAccess if available (macOS 10.15+)
+        var promptTriggered = false
+        var grantedResult: Bool?
+
         if #available(macOS 10.15, *) {
+            promptTriggered = true
             let granted = CGRequestScreenCaptureAccess()
-            if granted {
-                print("✅ Screen Recording permission granted!")
-            } else {
-                print("❌ Screen Recording permission denied")
-                print("")
-                print("To grant manually:")
-                print("1. Open System Settings")
-                print("2. Go to Privacy & Security > Screen Recording")
-                print("3. Enable Peekaboo")
+            grantedResult = granted
+
+            if !self.jsonOutput {
+                if granted {
+                    print("✅ Screen Recording permission granted!")
+                } else {
+                    print("❌ Screen Recording permission denied")
+                    print("")
+                    print("To grant manually:")
+                    print("1. Open System Settings")
+                    print("2. Go to Privacy & Security > Screen Recording")
+                    print("3. Enable Peekaboo")
+                }
             }
         } else {
-            // Fallback: Trigger by attempting to capture
-            print("Attempting screen capture to trigger permission prompt...")
+            promptTriggered = true
 
-            // This will trigger the permission dialog
+            if !self.jsonOutput {
+                print("Attempting screen capture to trigger permission prompt...")
+            }
+
             _ = CGWindowListCreateImage(
                 CGRect(x: 0, y: 0, width: 1, height: 1),
                 .optionAll,
@@ -115,56 +192,133 @@ struct RequestScreenRecordingSubcommand: @MainActor MainActorAsyncParsableComman
                 .nominalResolution
             )
 
-            print("")
-            print("If a permission dialog appeared:")
-            print("- Click 'Open System Settings'")
-            print("- Enable Screen Recording for Peekaboo")
-            print("")
-            print("If no dialog appeared, grant manually in:")
-            print("System Settings > Privacy & Security > Screen Recording")
+            if !self.jsonOutput {
+                print("")
+                print("If a permission dialog appeared:")
+                print("- Click 'Open System Settings'")
+                print("- Enable Screen Recording for Peekaboo")
+                print("")
+                print("If no dialog appeared, grant manually in:")
+                print("System Settings > Privacy & Security > Screen Recording")
+            }
+        }
+
+        if self.jsonOutput {
+            outputSuccessCodable(
+                data: AgentPermissionActionResult(
+                    action: "request-screen-recording",
+                    already_granted: false,
+                    prompt_triggered: promptTriggered,
+                    granted: grantedResult
+                ),
+                logger: self.logger
+            )
         }
     }
 }
 
 // MARK: - Request Accessibility Subcommand
 
-@MainActor
-struct RequestAccessibilitySubcommand: @MainActor MainActorAsyncParsableCommand {
+struct RequestAccessibilitySubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
     static let configuration = CommandConfiguration(
         commandName: "request-accessibility",
         abstract: "Request accessibility permission"
     )
 
-    /// Prompt the user to grant accessibility permission and open the relevant System Settings pane.
-    func run() async throws {
-        print("Requesting Accessibility permission...")
-        print("")
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
 
-        // Check current status first
-        let hasPermission = await PeekabooServices.shared.automation.hasAccessibilityPermission()
+    @RuntimeStorage private var runtime: CommandRuntime?
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    private var jsonOutput: Bool {
+        self.runtimeOptions.jsonOutput
+    }
+
+        mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
+    /// Prompt the user to grant accessibility permission and open the relevant System Settings pane.
+        mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
+
+        let hasPermission = await self.services.automation.hasAccessibilityPermission()
 
         if hasPermission {
-            print("✅ Accessibility permission is already granted!")
+            if self.jsonOutput {
+                outputSuccessCodable(
+                    data: AgentPermissionActionResult(
+                        action: "request-accessibility",
+                        already_granted: true,
+                        prompt_triggered: false,
+                        granted: true
+                    ),
+                    logger: self.logger
+                )
+            } else {
+                print("✅ Accessibility permission is already granted!")
+            }
             return
         }
 
-        print("Opening System Settings to Accessibility permissions...")
-        print("")
+        if !self.jsonOutput {
+            print("Requesting Accessibility permission...")
+            print("")
+            print("Opening System Settings to Accessibility permissions...")
+            print("")
+        }
 
-        // Open System Settings to the Accessibility pane
-        let optionKey = "AXTrustedCheckOptionPrompt" // Use string literal to avoid concurrency issue
+        let optionKey = "AXTrustedCheckOptionPrompt"
         let options = [optionKey: true] as CFDictionary
         let trusted = AXIsProcessTrustedWithOptions(options)
 
-        if trusted {
-            print("✅ Accessibility permission granted!")
-        } else {
-            print("A dialog should have appeared.")
-            print("")
-            print("To grant permission:")
-            print("1. Click 'Open System Settings' in the dialog")
-            print("2. Enable Peekaboo in the Accessibility list")
-            print("3. You may need to restart Peekaboo after granting")
+        if !self.jsonOutput {
+            if trusted {
+                print("✅ Accessibility permission granted!")
+            } else {
+                print("A dialog should have appeared.")
+                print("")
+                print("To grant permission:")
+                print("1. Click 'Open System Settings' in the dialog")
+                print("2. Enable Peekaboo in the Accessibility list")
+                print("3. You may need to restart Peekaboo after granting")
+            }
+        }
+
+        if self.jsonOutput {
+            outputSuccessCodable(
+                data: AgentPermissionActionResult(
+                    action: "request-accessibility",
+                    already_granted: false,
+                    prompt_triggered: true,
+                    granted: trusted
+                ),
+                logger: self.logger
+            )
         }
     }
+}
+
+// MARK: - Response Types
+
+private struct AgentPermissionStatusPayload: Codable {
+    let screen_recording: Bool
+    let accessibility: Bool
+}
+
+private struct AgentPermissionActionResult: Codable {
+    let action: String
+    let already_granted: Bool
+    let prompt_triggered: Bool
+    let granted: Bool?
 }
