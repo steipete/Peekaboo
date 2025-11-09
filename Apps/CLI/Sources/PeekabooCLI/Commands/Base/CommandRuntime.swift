@@ -1,0 +1,81 @@
+//
+//  CommandRuntime.swift
+//  PeekabooCLI
+//
+
+@preconcurrency import ArgumentParser
+import Foundation
+import PeekabooCore
+import PeekabooFoundation
+
+/// Shared options that control logging and output behavior.
+@MainActor
+struct CommandRuntimeOptions: MainActorParsableArguments {
+    @Flag(name: [.long, .customShort("v")], help: "Enable verbose logging for this command")
+    var verbose = false
+
+    @Flag(name: .long, help: "Emit machine-readable JSON output")
+    var jsonOutput = false
+
+    func makeConfiguration() -> CommandRuntime.Configuration {
+        CommandRuntime.Configuration(
+            verbose: self.verbose,
+            jsonOutput: self.jsonOutput
+        )
+    }
+}
+
+/// Runtime context passed to runtime-aware commands.
+@MainActor
+struct CommandRuntime {
+    struct Configuration {
+        var verbose: Bool
+        var jsonOutput: Bool
+    }
+
+    let configuration: Configuration
+    let services: PeekabooServices
+    let logger: Logger
+
+    init(configuration: Configuration) {
+        self.configuration = configuration
+        self.services = PeekabooServices.shared
+        self.logger = Logger.shared
+
+        self.logger.setJsonOutputMode(configuration.jsonOutput)
+        if configuration.jsonOutput && !configuration.verbose {
+            self.logger.setVerboseMode(true)
+        } else {
+            self.logger.setVerboseMode(configuration.verbose)
+        }
+    }
+
+    init(options: CommandRuntimeOptions) {
+        self.init(configuration: options.makeConfiguration())
+    }
+}
+
+@propertyWrapper
+@MainActor
+struct RuntimeStorage<Value> where Value: ExpressibleByNilLiteral {
+    private var storage: Value
+
+    init() {
+        self.storage = nil
+    }
+
+    var wrappedValue: Value {
+        get { self.storage }
+        set { self.storage = newValue }
+    }
+}
+
+extension RuntimeStorage: Codable where Value: ExpressibleByNilLiteral {
+    init(from _: Decoder) throws {
+        self.storage = nil
+    }
+
+    func encode(to _: Encoder) throws {}
+}
+
+extension RuntimeStorage: Sendable where Value: Sendable {}

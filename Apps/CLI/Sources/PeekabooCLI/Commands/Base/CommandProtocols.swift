@@ -18,20 +18,28 @@ protocol MainActorAsyncParsableCommand: AsyncParsableCommand {}
 @MainActor
 protocol MainActorParsableCommand: ParsableCommand {}
 
-// MARK: - Verbose Protocol
+// MARK: - Runtime Command Protocol
 
-/// Protocol for commands that support verbose logging
-protocol VerboseCommand {
-    var verbose: Bool { get }
+/// Protocol for commands that accept runtime context injection.
+/// Commands conforming to this protocol receive a `CommandRuntime` instance
+/// containing logger, services, and configuration instead of accessing singletons.
+@MainActor
+protocol AsyncRuntimeCommand: MainActorAsyncParsableCommand {
+    /// Run the command with injected runtime context.
+    mutating func run(using runtime: CommandRuntime) async throws
 }
 
-extension VerboseCommand {
-    /// Configure logger for verbose mode if enabled
-    func configureVerboseLogging() {
-        // Configure logger for verbose mode if enabled
-        Logger.shared.setVerboseMode(verbose)
-        if verbose {
-            Logger.shared.verbose("Verbose logging enabled")
+extension AsyncRuntimeCommand {
+    /// Default run() implementation that creates a CommandRuntime from options.
+    /// Commands must define `runtimeOptions: CommandRuntimeOptions` to use this.
+    mutating func run() async throws {
+        // Access runtimeOptions via reflection to create runtime
+        let mirror = Mirror(reflecting: self)
+        guard let options = mirror.children.first(where: { $0.label == "runtimeOptions" })?.value as? CommandRuntimeOptions else {
+            fatalError("AsyncRuntimeCommand requires @OptionGroup var runtimeOptions: CommandRuntimeOptions")
         }
+
+        let runtime = CommandRuntime(options: options)
+        try await self.run(using: runtime)
     }
 }
