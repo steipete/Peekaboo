@@ -87,7 +87,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
             }
 
             // Ensure window is focused before scrolling
-        try await self.ensureFocused(
+                try await ensureFocused(
             sessionId: sessionId,
             applicationName: self.app,
             options: self.focusOptions,
