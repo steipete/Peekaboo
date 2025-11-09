@@ -59,8 +59,7 @@ enum SpaceCommandEnvironment {
 }
 
 /// Manage macOS Spaces (virtual desktops)
-@MainActor
-struct SpaceCommand: @MainActor MainActorAsyncParsableCommand {
+struct SpaceCommand: MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "space",
         abstract: "Manage macOS Spaces (virtual desktops)",
@@ -104,8 +103,7 @@ struct SpaceCommand: @MainActor MainActorAsyncParsableCommand {
 
 // MARK: - List Spaces
 
-@MainActor
-struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List all Spaces and their windows"
@@ -119,7 +117,7 @@ struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -132,9 +130,16 @@ struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
     var outputLogger: Logger { self.logger }
 
     @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Enumerate Spaces, optionally hydrate window membership, and render results in the requested format.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         let spaceService = SpaceCommandEnvironment.service
         let spaces = spaceService.getAllSpaces()
@@ -220,8 +225,7 @@ struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
 
 // MARK: - Switch Space
 
-@MainActor
-struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct SwitchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "switch",
         abstract: "Switch to a different Space"
@@ -235,7 +239,7 @@ struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
     private var logger: Logger {
         self.runtime?.logger ?? Logger.shared
@@ -243,9 +247,17 @@ struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
 
     var outputLogger: Logger { self.logger }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Validate the requested Space index, switch to it, and report the outcome.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             let spaceService = SpaceCommandEnvironment.service
@@ -281,8 +293,7 @@ struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
 
 // MARK: - Move Window to Space
 
-@MainActor
-struct MoveWindowSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+struct MoveWindowSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "move-window",
         abstract: "Move a window to a different Space"
@@ -314,7 +325,7 @@ struct MoveWindowSubcommand: ErrorHandlingCommand, OutputFormattable, Applicatio
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -326,9 +337,17 @@ struct MoveWindowSubcommand: ErrorHandlingCommand, OutputFormattable, Applicatio
 
     var outputLogger: Logger { self.logger }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Move the resolved window into the requested Space (or current Space) and optionally follow the move.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Validate inputs
@@ -427,15 +446,6 @@ struct MoveWindowSubcommand: ErrorHandlingCommand, OutputFormattable, Applicatio
         }
     }
 }
-
-@MainActor
-extension ListSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension SwitchSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension MoveWindowSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Response Types
 

@@ -8,8 +8,7 @@ import PeekabooFoundation
 // Logger for window command debugging
 
 /// Manipulate application windows with various actions
-@MainActor
-struct WindowCommand: @MainActor MainActorAsyncParsableCommand {
+struct WindowCommand: MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "window",
         abstract: "Manipulate application windows",
@@ -71,9 +70,7 @@ struct WindowCommand: @MainActor MainActorAsyncParsableCommand {
 
 // MARK: - Common Options
 
-@MainActor
-
-struct WindowIdentificationOptions: @MainActor MainActorParsableArguments, ApplicationResolvable {
+struct WindowIdentificationOptions: MainActorParsableArguments, ApplicationResolvable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
 
@@ -158,8 +155,7 @@ private func createWindowActionResult(
 
 // MARK: - Subcommands
 
-@MainActor
-struct CloseSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct CloseSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "close",
         abstract: "Close a window"
@@ -185,7 +181,14 @@ struct CloseSubcommand: ErrorHandlingCommand, OutputFormattable {
         self.runtimeOptions.jsonOutput
     }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Resolve the target window, close it, and surface the outcome in JSON or text form.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -221,8 +224,7 @@ struct CloseSubcommand: ErrorHandlingCommand, OutputFormattable {
     }
 }
 
-@MainActor
-struct MinimizeSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct MinimizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "minimize",
         abstract: "Minimize a window to the Dock"
@@ -248,7 +250,14 @@ struct MinimizeSubcommand: ErrorHandlingCommand, OutputFormattable {
         self.runtimeOptions.jsonOutput
     }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Resolve the target window, minimize it to the Dock, and report the action.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -284,8 +293,7 @@ struct MinimizeSubcommand: ErrorHandlingCommand, OutputFormattable {
     }
 }
 
-@MainActor
-struct MaximizeSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct MaximizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "maximize",
         abstract: "Maximize a window (full screen)"
@@ -311,7 +319,14 @@ struct MaximizeSubcommand: ErrorHandlingCommand, OutputFormattable {
         self.runtimeOptions.jsonOutput
     }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Expand the resolved window to fill the available screen real estate and share the updated frame.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -347,8 +362,7 @@ struct MaximizeSubcommand: ErrorHandlingCommand, OutputFormattable {
     }
 }
 
-@MainActor
-struct FocusSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct FocusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "focus",
         abstract: "Bring a window to the foreground",
@@ -389,7 +403,14 @@ struct FocusSubcommand: ErrorHandlingCommand, OutputFormattable {
         self.runtimeOptions.jsonOutput
     }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Focus the targeted window, handling Space switches or relocation according to the provided options.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.debug("FocusSubcommand.run() called")
@@ -452,8 +473,7 @@ struct FocusSubcommand: ErrorHandlingCommand, OutputFormattable {
 
 // MARK: - Move Command
 
-@MainActor
-struct MoveSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct MoveSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "move",
         abstract: "Move a window to a new position"
@@ -484,7 +504,14 @@ struct MoveSubcommand: ErrorHandlingCommand, OutputFormattable {
         self.runtimeOptions.jsonOutput
     }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Move the window to the absolute screen coordinates provided by the user.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -537,8 +564,7 @@ struct MoveSubcommand: ErrorHandlingCommand, OutputFormattable {
 
 // MARK: - Resize Command
 
-@MainActor
-struct ResizeSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct ResizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "resize",
         abstract: "Resize a window"
@@ -569,7 +595,14 @@ struct ResizeSubcommand: ErrorHandlingCommand, OutputFormattable {
         self.runtimeOptions.jsonOutput
     }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Resize the window to the supplied dimensions, preserving its origin.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -612,8 +645,7 @@ struct ResizeSubcommand: ErrorHandlingCommand, OutputFormattable {
 
 // MARK: - Set Bounds Command
 
-@MainActor
-struct SetBoundsSubcommand: ErrorHandlingCommand, OutputFormattable {
+struct SetBoundsSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "set-bounds",
         abstract: "Set window position and size in one operation"
@@ -650,7 +682,14 @@ struct SetBoundsSubcommand: ErrorHandlingCommand, OutputFormattable {
         self.runtimeOptions.jsonOutput
     }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Set both position and size for the window in a single operation, then confirm the new bounds.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -694,8 +733,7 @@ struct SetBoundsSubcommand: ErrorHandlingCommand, OutputFormattable {
 
 // MARK: - List Command
 
-@MainActor
-struct WindowListSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+struct WindowListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List windows for an application"
@@ -728,7 +766,14 @@ struct WindowListSubcommand: ErrorHandlingCommand, OutputFormattable, Applicatio
     @Flag(name: .long, help: "Group windows by Space (virtual desktop)")
     var groupBySpace = false
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// List windows for the target application and optionally organize them by Space.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -838,31 +883,6 @@ struct WindowActionResult: Codable {
     let window_title: String?
     let new_bounds: WindowBounds?
 }
-
-@MainActor
-extension CloseSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension MinimizeSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension MaximizeSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension FocusSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension MoveSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ResizeSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension SetBoundsSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension WindowListSubcommand: AsyncRuntimeCommand {}
-
 
 
 // Using PeekabooCore.WindowListData for consistency

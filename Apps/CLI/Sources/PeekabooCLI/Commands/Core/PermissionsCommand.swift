@@ -24,8 +24,7 @@ struct PermissionStatusData: Codable {
 ///
 /// Provides a direct way to check permissions without going through the list subcommand.
 /// Testing notifications: This change should trigger a build notification.
-@MainActor
-struct PermissionsCommand: @MainActor MainActorAsyncParsableCommand {
+struct PermissionsCommand: MainActorAsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "permissions",
         abstract: "Check and request system permissions required for Peekaboo",
@@ -78,8 +77,7 @@ struct PermissionsCommand: @MainActor MainActorAsyncParsableCommand {
 
 // MARK: - Check Subcommand
 
-@MainActor
-struct CheckSubcommand: @MainActor MainActorAsyncParsableCommand {
+struct CheckSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "check",
         abstract: "Check current permission status"
@@ -103,9 +101,17 @@ struct CheckSubcommand: @MainActor MainActorAsyncParsableCommand {
         self.runtimeOptions.jsonOutput
     }
 
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
     /// Collect the current permission state, emit formatted output, and exit non-zero if anything critical is missing.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         // Get permissions using shared helper
         let permissionInfos = await PermissionHelpers.getCurrentPermissions()
@@ -193,8 +199,7 @@ struct CheckSubcommand: @MainActor MainActorAsyncParsableCommand {
 
 // MARK: - Request Subcommand
 
-@MainActor
-struct RequestSubcommand: @MainActor MainActorAsyncParsableCommand {
+struct RequestSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
     static let configuration = CommandConfiguration(
         commandName: "request",
         abstract: "Request system permissions",
@@ -226,8 +231,25 @@ struct RequestSubcommand: @MainActor MainActorAsyncParsableCommand {
         self.runtime?.services ?? PeekabooServices.shared
     }
 
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    private var jsonOutput: Bool {
+        self.runtimeOptions.jsonOutput
+    }
+
+    @MainActor
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
+
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
+
         switch self.permission {
         case .screenRecording:
             try await self.requestScreenRecording()
@@ -241,6 +263,7 @@ struct RequestSubcommand: @MainActor MainActorAsyncParsableCommand {
         }
     }
 
+    @MainActor
     private func requestScreenRecording() async throws {
         print("Requesting Screen Recording permission...")
         print("")
@@ -283,6 +306,7 @@ struct RequestSubcommand: @MainActor MainActorAsyncParsableCommand {
         print("System Settings > Privacy & Security > Screen Recording")
     }
 
+    @MainActor
     private func requestAccessibility() async throws {
         print("Requesting Accessibility permission...")
         print("")
@@ -315,10 +339,3 @@ struct RequestSubcommand: @MainActor MainActorAsyncParsableCommand {
         }
     }
 }
-
-@MainActor
-extension PermissionsCommand.CheckSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension PermissionsCommand.RequestSubcommand: AsyncRuntimeCommand {}
-    var outputLogger: Logger { self.logger }
