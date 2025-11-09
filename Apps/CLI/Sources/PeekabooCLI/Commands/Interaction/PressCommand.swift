@@ -83,7 +83,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
 
             // Ensure window is focused before pressing keys
             if let sessionId {
-                try await self.ensureFocused(
+                try await ensureFocused(
                     sessionId: sessionId,
                     options: self.focusOptions,
                     services: services

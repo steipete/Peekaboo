@@ -118,7 +118,7 @@ struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCom
                 }
 
                 // Ensure window is focused before clicking (if auto-focus is enabled)
-                try await self.ensureFocused(
+                try await ensureFocused(
                     sessionId: activeSessionId,
                     applicationName: self.app,
                     options: self.focusOptions,
