@@ -176,7 +176,8 @@ public final class VisualizationClient: @unchecked Sendable {
         } as? (any VisualizerXPCProtocol)
     }
 
-    nonisolated private func fetchVisualFeedbackState(proxy: any VisualizerXPCProtocol) async throws -> Bool {
+    @MainActor
+    private func fetchVisualFeedbackState(proxy: any VisualizerXPCProtocol) async throws -> Bool {
         let resumeState = OSAllocatedUnfairLock(initialState: false)
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -194,18 +195,20 @@ public final class VisualizationClient: @unchecked Sendable {
                 }
             }
 
-            proxy.isVisualFeedbackEnabled { enabled in
-                let shouldResume = resumeState.withLock { resumed in
-                    if resumed {
-                        return false
+            Task { @MainActor in
+                proxy.isVisualFeedbackEnabled { enabled in
+                    let shouldResume = resumeState.withLock { resumed in
+                        if resumed {
+                            return false
+                        }
+                        resumed = true
+                        return true
                     }
-                    resumed = true
-                    return true
-                }
 
-                if shouldResume {
-                    timeoutTask.cancel()
-                    continuation.resume(returning: enabled)
+                    if shouldResume {
+                        timeoutTask.cancel()
+                        continuation.resume(returning: enabled)
+                    }
                 }
             }
         }
