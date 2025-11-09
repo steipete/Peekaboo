@@ -5,8 +5,8 @@ import PeekabooCore
 /// Presses key combinations like Cmd+C, Ctrl+A, etc. using the UIAutomationService.
 @available(macOS 14.0, *)
 @MainActor
-struct HotkeyCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
+struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
+    static let mainActorConfiguration = CommandConfiguration(
         commandName: "hotkey",
         abstract: "Press keyboard shortcuts and key combinations",
         discussion: """
@@ -41,14 +41,20 @@ struct HotkeyCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCom
     @Option(help: "Session ID (uses latest if not specified)")
     var session: String?
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
-
     @OptionGroup var focusOptions: FocusCommandOptions
 
-    mutating func run() async throws {
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var outputLogger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        let services = runtime.services
 
         do {
             // Parse key names - support both comma-separated and space-separated
@@ -71,19 +77,20 @@ struct HotkeyCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCom
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await PeekabooServices.shared.sessions.getMostRecentSession()
+                await services.sessions.getMostRecentSession()
             }
 
             // Ensure window is focused before pressing hotkey (if we have a session and auto-focus is enabled)
             if let sessionId {
                 try await self.ensureFocused(
                     sessionId: sessionId,
-                    options: self.focusOptions
+                    options: self.focusOptions,
+                    services: services
                 )
             }
 
             // Perform hotkey using the automation service
-            try await PeekabooServices.shared.automation.hotkey(
+            try await services.automation.hotkey(
                 keys: keysString,
                 holdDuration: self.holdDuration
             )
@@ -119,3 +126,6 @@ struct HotkeyResult: Codable {
     let keyCount: Int
     let executionTime: TimeInterval
 }
+
+@MainActor
+extension HotkeyCommand: AsyncRuntimeCommand {}

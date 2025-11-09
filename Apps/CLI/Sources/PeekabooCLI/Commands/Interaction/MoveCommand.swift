@@ -8,7 +8,7 @@ import PeekabooFoundation
 /// Moves the mouse cursor to specific coordinates or UI elements.
 @available(macOS 14.0, *)
 @MainActor
-struct MoveCommand: @MainActor MainActorAsyncParsableCommand {
+struct MoveCommand {
     static let configuration = CommandConfiguration(
         commandName: "move",
         abstract: "Move the mouse cursor to coordinates or UI elements",
@@ -57,8 +57,7 @@ struct MoveCommand: @MainActor MainActorAsyncParsableCommand {
     @Option(help: "Session ID for element resolution")
     var session: String?
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
     mutating func validate() throws {
         // Ensure at least one target is specified
@@ -78,9 +77,16 @@ struct MoveCommand: @MainActor MainActorAsyncParsableCommand {
         }
     }
 
-    mutating func run() async throws {
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var outputLogger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        let services = runtime.services
 
         do {
             // Determine target location
@@ -109,13 +115,13 @@ struct MoveCommand: @MainActor MainActorAsyncParsableCommand {
                 let sessionId: String? = if let providedSession = session {
                     providedSession
                 } else {
-                    await PeekabooServices.shared.sessions.getMostRecentSession()
+                    await services.sessions.getMostRecentSession()
                 }
                 guard let activeSessionId = sessionId else {
                     throw PeekabooError.sessionNotFound("No session found")
                 }
 
-                guard let detectionResult = try? await PeekabooServices.shared.sessions
+                guard let detectionResult = try? await services.sessions
                     .getDetectionResult(sessionId: activeSessionId),
                     let element = detectionResult.elements.findById(elementId)
                 else {
@@ -130,14 +136,14 @@ struct MoveCommand: @MainActor MainActorAsyncParsableCommand {
                 let sessionId: String? = if let providedSession = session {
                     providedSession
                 } else {
-                    await PeekabooServices.shared.sessions.getMostRecentSession()
+                    await services.sessions.getMostRecentSession()
                 }
                 guard let activeSessionId = sessionId else {
                     throw PeekabooError.sessionNotFound("No session found")
                 }
 
                 // Wait for element to be available
-                let waitResult = try await PeekabooServices.shared.automation.waitForElement(
+                let waitResult = try await services.automation.waitForElement(
                     target: .query(query),
                     timeout: 5.0,
                     sessionId: activeSessionId
@@ -171,7 +177,7 @@ struct MoveCommand: @MainActor MainActorAsyncParsableCommand {
             )
 
             // Perform the movement
-            try await PeekabooServices.shared.automation.moveMouse(
+            try await services.automation.moveMouse(
                 to: targetLocation,
                 duration: moveDuration,
                 steps: self.smooth ? self.steps : 1
@@ -189,7 +195,7 @@ struct MoveCommand: @MainActor MainActorAsyncParsableCommand {
                     smooth: smooth,
                     executionTime: Date().timeIntervalSince(startTime)
                 )
-                outputSuccessCodable(data: result)
+                outputSuccessCodable(data: result, logger: self.outputLogger)
             } else {
                 print("✅ Mouse moved successfully")
                 print("🎯 Target: \(targetDescription)")
@@ -286,3 +292,6 @@ struct MoveResult: Codable {
         self.executionTime = executionTime
     }
 }
+
+@MainActor
+extension MoveCommand: AsyncRuntimeCommand {}

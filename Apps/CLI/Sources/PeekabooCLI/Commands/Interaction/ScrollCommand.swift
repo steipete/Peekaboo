@@ -8,8 +8,8 @@ import PeekabooFoundation
 /// Supports scrolling on specific elements or at the current mouse position.
 @available(macOS 14.0, *)
 @MainActor
-struct ScrollCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
+struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
+    static let mainActorConfiguration = CommandConfiguration(
         commandName: "scroll",
         abstract: "Scroll the mouse wheel in any direction",
         discussion: """
@@ -51,17 +51,23 @@ struct ScrollCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCom
     @Flag(help: "Use smooth scrolling with smaller increments")
     var smooth = false
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
-
     @Option(name: .long, help: "Target application to focus before scrolling")
     var app: String?
 
     @OptionGroup var focusOptions: FocusCommandOptions
 
-    mutating func run() async throws {
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var outputLogger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        let services = runtime.services
 
         do {
             // Parse direction
@@ -74,21 +80,22 @@ struct ScrollCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCom
                 if let providedSession = session {
                     providedSession
                 } else {
-                    await PeekabooServices.shared.sessions.getMostRecentSession()
+                    await services.sessions.getMostRecentSession()
                 }
             } else {
                 nil
             }
 
             // Ensure window is focused before scrolling
-            try await self.ensureFocused(
-                sessionId: sessionId,
-                applicationName: self.app,
-                options: self.focusOptions
-            )
+        try await self.ensureFocused(
+            sessionId: sessionId,
+            applicationName: self.app,
+            options: self.focusOptions,
+            services: services
+        )
 
             // Perform scroll using the service
-            try await PeekabooServices.shared.automation.scroll(
+            try await services.automation.scroll(
                 direction: scrollDirection,
                 amount: self.amount,
                 target: self.on,
@@ -104,7 +111,7 @@ struct ScrollCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCom
             let scrollLocation: CGPoint = if let elementId = on {
                 // Try to get element location from session
                 if let activeSessionId = sessionId,
-                   let detectionResult = try? await PeekabooServices.shared.sessions
+                   let detectionResult = try? await services.sessions
                        .getDetectionResult(sessionId: activeSessionId),
                        let element = detectionResult.elements.findById(elementId) {
                     CGPoint(
@@ -130,7 +137,7 @@ struct ScrollCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCom
                     totalTicks: totalTicks,
                     executionTime: Date().timeIntervalSince(startTime)
                 )
-                outputSuccessCodable(data: output)
+                outputSuccessCodable(data: output, logger: self.outputLogger)
             } else {
                 print("✅ Scroll completed")
                 print("🎯 Direction: \(self.direction)")
@@ -160,3 +167,6 @@ struct ScrollResult: Codable {
     let totalTicks: Int
     let executionTime: TimeInterval
 }
+
+@MainActor
+extension ScrollCommand: AsyncRuntimeCommand {}

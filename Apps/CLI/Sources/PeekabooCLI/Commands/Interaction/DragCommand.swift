@@ -9,7 +9,7 @@ import PeekabooFoundation
 /// Perform drag and drop operations using intelligent element finding
 @available(macOS 14.0, *)
 @MainActor
-struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct DragCommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "drag",
         abstract: "Perform drag and drop operations",
@@ -62,14 +62,13 @@ struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
     @Option(help: "Modifier keys to hold during drag (comma-separated: cmd,shift,option,ctrl)")
     var modifiers: String?
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
     @OptionGroup var focusOptions: FocusCommandOptions
 
-    mutating func run() async throws {
+    mutating func run(using runtime: CommandRuntime) async throws {
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        let services = runtime.services
 
         do {
             // Validate inputs
@@ -85,7 +84,7 @@ struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await PeekabooServices.shared.sessions.getMostRecentSession()
+                await services.sessions.getMostRecentSession()
             }
 
             // Ensure window is focused before dragging (if we have a session and auto-focus is enabled)
@@ -102,25 +101,27 @@ struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
                 coords: fromCoords,
                 sessionId: sessionId,
                 description: "from",
-                waitTimeout: 5.0
+                waitTimeout: 5.0,
+                services: services
             )
 
             // Resolve ending point
             let endPoint: CGPoint = if let targetApp = toApp {
                 // Find application window or dock item
-                try await self.findApplicationPoint(targetApp)
+                try await self.findApplicationPoint(targetApp, services: services)
             } else {
                 try await self.resolvePoint(
                     elementId: self.to,
                     coords: self.toCoords,
                     sessionId: sessionId,
                     description: "to",
-                    waitTimeout: 5.0
+                    waitTimeout: 5.0,
+                    services: services
                 )
             }
 
             // Perform the drag using UIAutomationService
-            try await PeekabooServices.shared.automation.drag(
+            try await services.automation.drag(
                 from: startPoint,
                 to: endPoint,
                 duration: self.duration,
@@ -165,7 +166,8 @@ struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
         coords: String?,
         sessionId: String?,
         description: String,
-        waitTimeout: TimeInterval
+        waitTimeout: TimeInterval,
+        services: PeekabooServices
     ) async throws -> CGPoint {
         if let coordString = coords {
             // Parse coordinates
@@ -180,7 +182,7 @@ struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
         } else if let element = elementId, let activeSessionId = sessionId {
             // Resolve from session using waitForElement
             let target = ClickTarget.elementId(element)
-            let waitResult = try await PeekabooServices.shared.automation.waitForElement(
+            let waitResult = try await services.automation.waitForElement(
                 target: target,
                 timeout: waitTimeout,
                 sessionId: activeSessionId
@@ -207,7 +209,7 @@ struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
     }
 
     @MainActor
-    private func findApplicationPoint(_ appName: String) async throws -> CGPoint {
+    private func findApplicationPoint(_ appName: String, services: PeekabooServices) async throws -> CGPoint {
         // Special handling for Trash
         if appName.lowercased() == "trash" {
             // Find Dock and locate Trash
@@ -232,8 +234,8 @@ struct DragCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
 
         // Try to find application window using ApplicationService
         do {
-            _ = try await PeekabooServices.shared.applications.findApplication(identifier: appName)
-            let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appName, timeout: nil)
+            _ = try await services.applications.findApplication(identifier: appName)
+            let windowsOutput = try await services.applications.listWindows(for: appName, timeout: nil)
 
             if let firstWindow = windowsOutput.data.windows.first {
                 // Return center of window
@@ -295,3 +297,6 @@ struct DragResult: Codable {
     let modifiers: String
     let executionTime: TimeInterval
 }
+
+@MainActor
+extension DragCommand: AsyncRuntimeCommand {}

@@ -6,8 +6,8 @@ import PeekabooFoundation
 /// Types text into focused elements or sends keyboard input using the UIAutomationService.
 @available(macOS 14.0, *)
 @MainActor
-struct TypeCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
+struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
+    static let mainActorConfiguration = CommandConfiguration(
         commandName: "type",
         abstract: "Type text or send keyboard input",
         discussion: """
@@ -72,17 +72,23 @@ struct TypeCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
     @Flag(help: "Clear the field before typing (Cmd+A, Delete)")
     var clear = false
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
-
     @Option(name: .long, help: "Target application to focus before typing")
     var app: String?
 
     @OptionGroup var focusOptions: FocusCommandOptions
 
-    mutating func run() async throws {
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var outputLogger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        let services = runtime.services
 
         do {
             var actions: [TypeAction] = []
@@ -125,21 +131,22 @@ struct TypeCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComma
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await PeekabooServices.shared.sessions.getMostRecentSession()
+                await services.sessions.getMostRecentSession()
             }
 
             // Ensure window is focused before typing
-            try await self.ensureFocused(
-                sessionId: sessionId,
-                applicationName: self.app,
-                options: self.focusOptions
-            )
+        try await self.ensureFocused(
+            sessionId: sessionId,
+            applicationName: self.app,
+            options: self.focusOptions,
+            services: services
+        )
 
             // Execute type actions using the service
-            let typeResult = try await PeekabooServices.shared.automation.typeActions(
+            let typeResult = try await services.automation.typeActions(
                 actions,
                 typingDelay: self.delay,
-                sessionId: self.session
+                sessionId: sessionId
             )
 
             // Output results
@@ -264,3 +271,6 @@ struct TypeCommandResult: Codable {
     let totalCharacters: Int
     let executionTime: TimeInterval
 }
+
+@MainActor
+extension TypeCommand: AsyncRuntimeCommand {}

@@ -9,7 +9,7 @@ import PeekabooFoundation
 /// Performs swipe gestures using intelligent element finding and service-based architecture.
 @available(macOS 14.0, *)
 @MainActor
-struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
+struct SwipeCommand {
     static let configuration = CommandConfiguration(
         commandName: "swipe",
         abstract: "Perform swipe gestures",
@@ -66,12 +66,18 @@ struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
     @Flag(help: "Use right mouse button for drag")
     var rightButton = false
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    mutating func run() async throws {
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var outputLogger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        let services = runtime.services
 
         do {
             // Validate inputs
@@ -94,7 +100,7 @@ struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await PeekabooServices.shared.sessions.getMostRecentSession()
+                await services.sessions.getMostRecentSession()
             }
 
             // Get source and destination points
@@ -103,7 +109,8 @@ struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
                 coords: fromCoords,
                 sessionId: sessionId,
                 description: "from",
-                waitTimeout: 5.0
+                waitTimeout: 5.0,
+                services: services
             )
 
             let destPoint = try await resolvePoint(
@@ -111,11 +118,12 @@ struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
                 coords: toCoords,
                 sessionId: sessionId,
                 description: "to",
-                waitTimeout: 5.0
+                waitTimeout: 5.0,
+                services: services
             )
 
             // Perform swipe using UIAutomationService
-            try await PeekabooServices.shared.automation.swipe(
+            try await services.automation.swipe(
                 from: sourcePoint,
                 to: destPoint,
                 duration: self.duration,
@@ -138,7 +146,7 @@ struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
                     duration: self.duration,
                     executionTime: Date().timeIntervalSince(startTime)
                 )
-                outputSuccessCodable(data: output)
+                outputSuccessCodable(data: output, logger: self.outputLogger)
             } else {
                 print("✅ Swipe completed")
                 print("📍 From: (\(Int(sourcePoint.x)), \(Int(sourcePoint.y)))")
@@ -159,7 +167,8 @@ struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
         coords: String?,
         sessionId: String?,
         description: String,
-        waitTimeout: TimeInterval
+        waitTimeout: TimeInterval,
+        services: PeekabooServices
     ) async throws -> CGPoint {
         if let coordString = coords {
             // Parse coordinates
@@ -174,7 +183,7 @@ struct SwipeCommand: @MainActor MainActorAsyncParsableCommand {
         } else if let element = elementId, let activeSessionId = sessionId {
             // Resolve from session using waitForElement
             let target = ClickTarget.elementId(element)
-            let waitResult = try await PeekabooServices.shared.automation.waitForElement(
+            let waitResult = try await services.automation.waitForElement(
                 target: target,
                 timeout: waitTimeout,
                 sessionId: activeSessionId
@@ -249,3 +258,6 @@ struct SwipeResult: Codable {
     let duration: Int
     let executionTime: TimeInterval
 }
+
+@MainActor
+extension SwipeCommand: AsyncRuntimeCommand {}

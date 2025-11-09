@@ -8,8 +8,8 @@ import PeekabooFoundation
 /// Click on UI elements identified in the current session using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
 @MainActor
-struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static var configuration: CommandConfiguration {
+struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
+    static var mainActorConfiguration: CommandConfiguration {
         UIAutomationToolDefinitions.click.commandConfiguration
     }
 
@@ -40,10 +40,9 @@ struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
     @Flag(help: "Right-click (secondary click)")
     var right = false
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
-
     @OptionGroup var focusOptions: FocusCommandOptions
+
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
     mutating func validate() throws {
         guard self.query != nil || self.on != nil || self.id != nil || self.coords != nil else {
@@ -69,9 +68,16 @@ struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
         }
     }
 
-    mutating func run() async throws {
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var outputLogger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        let services = runtime.services
 
         do {
             // Determine click target first to check if we need a session
@@ -94,7 +100,7 @@ struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
                 let sessionId: String? = if let providedSession = session {
                     providedSession
                 } else {
-                    await PeekabooServices.shared.sessions.getMostRecentSession()
+                    await services.sessions.getMostRecentSession()
                 }
                 // Use session if available, otherwise use empty string to indicate no session
                 activeSessionId = sessionId ?? ""
@@ -102,7 +108,7 @@ struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
                 // If app is specified, focus it first
                 if let appName = app {
                     // Focus the specified app
-                    try await PeekabooServices.shared.windows.focusWindow(target: .application(appName))
+                    try await services.windows.focusWindow(target: .application(appName))
                     // Brief delay to ensure focus is complete
                     try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                 }
@@ -110,7 +116,9 @@ struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
                 // Ensure window is focused before clicking (if auto-focus is enabled)
                 try await self.ensureFocused(
                     sessionId: activeSessionId,
-                    options: self.focusOptions
+                    applicationName: self.app,
+                    options: self.focusOptions,
+                    services: services
                 )
 
                 // Use whichever element ID parameter was provided
@@ -119,7 +127,7 @@ struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
                 if let elementId {
                     // Click by element ID with auto-wait
                     clickTarget = .elementId(elementId)
-                    waitResult = try await PeekabooServices.shared.automation.waitForElement(
+                    waitResult = try await services.automation.waitForElement(
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
                         sessionId: activeSessionId.isEmpty ? nil : activeSessionId
@@ -137,7 +145,7 @@ struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
                 } else if let searchQuery = query {
                     // Find element by query with auto-wait
                     clickTarget = .query(searchQuery)
-                    waitResult = try await PeekabooServices.shared.automation.waitForElement(
+                    waitResult = try await services.automation.waitForElement(
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
                         sessionId: activeSessionId.isEmpty ? nil : activeSessionId
@@ -166,14 +174,14 @@ struct ClickCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
             // Perform the click
             if case .coordinates = clickTarget {
                 // For coordinate clicks, pass nil session ID
-                try await PeekabooServices.shared.automation.click(
+                try await services.automation.click(
                     target: clickTarget,
                     clickType: clickType,
                     sessionId: nil
                 )
             } else {
                 // For element-based clicks, pass the session ID
-                try await PeekabooServices.shared.automation.click(
+                try await services.automation.click(
                     target: clickTarget,
                     clickType: clickType,
                     sessionId: activeSessionId.isEmpty ? nil : activeSessionId
@@ -281,6 +289,9 @@ struct ClickResult: Codable {
         self.targetApp = targetApp
     }
 }
+
+@MainActor
+extension ClickCommand: AsyncRuntimeCommand {}
 
 // MARK: - Static Helper Methods for Testing
 

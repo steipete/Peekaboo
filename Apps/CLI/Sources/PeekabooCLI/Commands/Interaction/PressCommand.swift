@@ -6,8 +6,8 @@ import PeekabooFoundation
 /// Press individual keys or key sequences
 @available(macOS 14.0, *)
 @MainActor
-struct PressCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
+struct PressCommand: ErrorHandlingCommand, OutputFormattable {
+    static let mainActorConfiguration = CommandConfiguration(
         commandName: "press",
         abstract: "Press individual keys or key sequences",
         discussion: """
@@ -58,28 +58,35 @@ struct PressCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
     @Option(help: "Session ID (uses latest if not specified)")
     var session: String?
 
-    @Flag(help: "Output in JSON format")
-    var jsonOutput = false
-
     @OptionGroup var focusOptions: FocusCommandOptions
 
-    mutating func run() async throws {
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var outputLogger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        let services = runtime.services
 
         do {
             // Get session if available
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await PeekabooServices.shared.sessions.getMostRecentSession()
+                await services.sessions.getMostRecentSession()
             }
 
             // Ensure window is focused before pressing keys
             if let sessionId {
                 try await self.ensureFocused(
                     sessionId: sessionId,
-                    options: self.focusOptions
+                    options: self.focusOptions,
+                    services: services
                 )
             }
 
@@ -101,7 +108,7 @@ struct PressCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
             }
 
             // Execute key presses
-            let result = try await PeekabooServices.shared.automation.typeActions(
+            let result = try await services.automation.typeActions(
                 actions,
                 typingDelay: self.delay,
                 sessionId: sessionId
@@ -143,6 +150,9 @@ struct PressCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingComm
         }
     }
 }
+
+@MainActor
+extension PressCommand: AsyncRuntimeCommand {}
 
 // MARK: - JSON Output Structure
 
