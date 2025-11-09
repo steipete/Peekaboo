@@ -5,7 +5,7 @@ import Foundation
 import PeekabooCore
 
 /// Interact with system dialogs and alerts
-struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
+struct DialogCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dialog",
         abstract: "Interact with system dialogs and alerts",
@@ -38,7 +38,7 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Click Dialog Button
 
-    struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct ClickSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "click",
             abstract: "Click a button in a dialog using DialogService"
@@ -66,6 +66,11 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
         var jsonOutput: Bool {
             self.runtimeOptions.jsonOutput
+        }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
         }
 
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -109,7 +114,7 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Input Text in Dialog
 
-    struct InputSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct InputSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "input",
             abstract: "Enter text in a dialog field using DialogService"
@@ -143,6 +148,11 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
         var jsonOutput: Bool {
             self.runtimeOptions.jsonOutput
+        }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
         }
 
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -193,7 +203,7 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Handle File Dialog
 
-    struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct FileSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "file",
             abstract: "Handle file save/open dialogs using DialogService"
@@ -224,6 +234,11 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
         var jsonOutput: Bool {
             self.runtimeOptions.jsonOutput
+        }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
         }
 
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -273,7 +288,7 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Dismiss Dialog
 
-    struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct DismissSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "dismiss",
             abstract: "Dismiss a dialog using DialogService"
@@ -301,6 +316,11 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
         var jsonOutput: Bool {
             self.runtimeOptions.jsonOutput
+        }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
         }
 
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -350,7 +370,7 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - List Dialog Elements
 
-    struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List elements in current dialog using DialogService"
@@ -374,7 +394,11 @@ struct DialogCommand: @MainActor MainActorAsyncParsableCommand {
             self.runtimeOptions.jsonOutput
         }
 
-        @MainActor
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         /// Describe the active dialog by enumerating buttons, text fields, and static text.
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -449,21 +473,6 @@ struct DialogListResult: Codable {
         }
     }
 }
-
-@MainActor
-extension DialogCommand.ClickSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension DialogCommand.InputSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension DialogCommand.FileSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension DialogCommand.DismissSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Error Handling
 

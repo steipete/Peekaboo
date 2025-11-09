@@ -4,7 +4,7 @@ import PeekabooCore
 
 /// Clean up session cache and temporary files
 @available(macOS 14.0, *)
-struct CleanCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
+struct CleanCommand: AsyncParsableCommand, AsyncRuntimeCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "clean",
         abstract: "Clean up session cache and temporary files",
@@ -178,6 +178,3 @@ private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool,
         print("❌ \(error.localizedDescription)", to: &localStandardErrorStream)
     }
 }
-
-@MainActor
-extension CleanCommand: AsyncRuntimeCommand {}

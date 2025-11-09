@@ -1,11 +1,11 @@
 @preconcurrency import ArgumentParser
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Manage Peekaboo configuration files and settings
 @available(macOS 14.0, *)
-@MainActor
-struct ConfigCommand: @MainActor MainActorParsableCommand {
+struct ConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "config",
         abstract: "Manage Peekaboo configuration",
@@ -46,8 +46,7 @@ struct ConfigCommand: @MainActor MainActorParsableCommand {
     )
 
     /// Subcommand to create a default configuration file
-    @MainActor
-struct InitCommand: AsyncRuntimeCommand {
+    struct InitCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "init",
             abstract: "Create a default configuration file"
@@ -59,9 +58,23 @@ struct InitCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let configPath = ConfigurationManager.configPath
             let configExists = FileManager.default.fileExists(atPath: configPath)
 
@@ -73,7 +86,7 @@ struct InitCommand: AsyncRuntimeCommand {
                         message: "Configuration file already exists. Use --force to overwrite.",
                         details: "Path: \(configPath)"
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("Configuration file already exists at: \(configPath)")
                     print("Use --force to overwrite.")
@@ -92,7 +105,7 @@ struct InitCommand: AsyncRuntimeCommand {
                             "path": configPath,
                         ]
                     )
-                    outputJSON(successOutput)
+                    outputJSON(successOutput, logger: self.logger)
                 } else {
                     print("✅ Configuration file created at: \(configPath)")
                     print("\nYou can now edit it to customize your settings.")
@@ -106,7 +119,7 @@ struct InitCommand: AsyncRuntimeCommand {
                         message: error.localizedDescription,
                         details: "Path: \(configPath)"
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Failed to create configuration file: \(error)")
                 }
@@ -116,8 +129,7 @@ struct InitCommand: AsyncRuntimeCommand {
     }
 
     /// Subcommand to display current configuration
-    @MainActor
-struct ShowCommand: AsyncRuntimeCommand {
+    struct ShowCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
             abstract: "Display current configuration"
@@ -129,9 +141,23 @@ struct ShowCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let configPath = ConfigurationManager.configPath
             let manager = ConfigurationManager.shared
 
@@ -145,7 +171,7 @@ struct ShowCommand: AsyncRuntimeCommand {
                             message: "No configuration file found",
                             details: "Path: \(configPath). Run 'peekaboo config init' to create one."
                         )
-                        outputJSON(errorOutput)
+                        outputJSON(errorOutput, logger: self.logger)
                     } else {
                         print("No configuration file found at: \(configPath)")
                         print("Run 'peekaboo config init' to create one.")
@@ -169,7 +195,7 @@ struct ShowCommand: AsyncRuntimeCommand {
                                 message: "Failed to parse configuration file",
                                 details: nil
                             )
-                            outputJSON(errorOutput)
+                            outputJSON(errorOutput, logger: self.logger)
                             throw ExitCode.failure
                         }
                     } else {
@@ -183,7 +209,7 @@ struct ShowCommand: AsyncRuntimeCommand {
                             message: error.localizedDescription,
                             details: nil
                         )
-                        outputJSON(errorOutput)
+                        outputJSON(errorOutput, logger: self.logger)
                     } else {
                         print("Failed to read configuration file: \(error)")
                     }
@@ -217,7 +243,7 @@ struct ShowCommand: AsyncRuntimeCommand {
                         success: true,
                         data: effectiveConfig
                     )
-                    outputJSON(successOutput)
+                    outputJSON(successOutput, logger: self.logger)
                 } else {
                     print("Effective Configuration (after merging all sources):")
                     print(String(repeating: "=", count: 50))
@@ -247,8 +273,7 @@ struct ShowCommand: AsyncRuntimeCommand {
     }
 
     /// Subcommand to open configuration in an editor
-    @MainActor
-struct EditCommand: AsyncRuntimeCommand {
+    struct EditCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "edit",
             abstract: "Open configuration file in your default editor"
@@ -260,9 +285,23 @@ struct EditCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let configPath = ConfigurationManager.configPath
             let manager = ConfigurationManager.shared
 
@@ -274,7 +313,7 @@ struct EditCommand: AsyncRuntimeCommand {
                         "path": configPath,
                     ]
                     let successOutput = SuccessOutput(success: true, data: data)
-                    outputJSON(successOutput)
+                    outputJSON(successOutput, logger: self.logger)
                 } else {
                     print("No configuration file found. Creating default configuration...")
                 }
@@ -296,18 +335,18 @@ struct EditCommand: AsyncRuntimeCommand {
 
                 if process.terminationStatus == 0 {
                     if self.jsonOutput {
-                        let data: [String: Any] = [
-                            "message": "Configuration edited successfully",
-                            "editor": editorCommand,
-                            "path": configPath,
-                        ]
-                        let successOutput = SuccessOutput(success: true, data: data)
-                        outputJSON(successOutput)
-                    } else {
-                        print("✅ Configuration saved.")
+                    let data: [String: Any] = [
+                        "message": "Configuration edited successfully",
+                        "editor": editorCommand,
+                        "path": configPath,
+                    ]
+                    let successOutput = SuccessOutput(success: true, data: data)
+                    outputJSON(successOutput, logger: self.logger)
+                } else {
+                    print("✅ Configuration saved.")
 
-                        // Validate the edited configuration
-                        if let _ = manager.loadConfiguration() {
+                    // Validate the edited configuration
+                    if let _ = manager.loadConfiguration() {
                             print("✅ Configuration is valid.")
                         } else {
                             print("⚠️  Warning: Configuration may have errors. Run 'peekaboo config validate' to check.")
@@ -315,18 +354,18 @@ struct EditCommand: AsyncRuntimeCommand {
                     }
                 } else {
                     if self.jsonOutput {
-                        let errorOutput = ErrorOutput(
-                            error: true,
-                            code: "UNKNOWN_ERROR",
-                            message: "Editor exited with non-zero status: \(process.terminationStatus)",
-                            details: "Editor: \(editorCommand)"
-                        )
-                        outputJSON(errorOutput)
-                    } else {
-                        print("Editor exited with status: \(process.terminationStatus)")
-                    }
-                    throw ExitCode.failure
+                    let errorOutput = ErrorOutput(
+                        error: true,
+                        code: "UNKNOWN_ERROR",
+                        message: "Editor exited with non-zero status: \(process.terminationStatus)",
+                        details: "Editor: \(editorCommand)"
+                    )
+                    outputJSON(errorOutput, logger: self.logger)
+                } else {
+                    print("Editor exited with status: \(process.terminationStatus)")
                 }
+                throw ExitCode.failure
+            }
             } catch {
                 if self.jsonOutput {
                     let errorOutput = ErrorOutput(
@@ -335,7 +374,7 @@ struct EditCommand: AsyncRuntimeCommand {
                         message: error.localizedDescription,
                         details: "Editor: \(editorCommand)"
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("Failed to open editor: \(error)")
                 }
@@ -345,8 +384,7 @@ struct EditCommand: AsyncRuntimeCommand {
     }
 
     /// Subcommand to validate configuration syntax
-    @MainActor
-struct ValidateCommand: AsyncRuntimeCommand {
+    struct ValidateCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "validate",
             abstract: "Validate configuration file syntax"
@@ -355,9 +393,23 @@ struct ValidateCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let configPath = ConfigurationManager.configPath
 
             if !FileManager.default.fileExists(atPath: configPath) {
@@ -368,7 +420,7 @@ struct ValidateCommand: AsyncRuntimeCommand {
                         message: "No configuration file found",
                         details: "Path: \(configPath). Run 'peekaboo config init' to create one."
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("No configuration file found at: \(configPath)")
                     print("Run 'peekaboo config init' to create one.")
@@ -388,7 +440,7 @@ struct ValidateCommand: AsyncRuntimeCommand {
                         "hasLogging": config.logging != nil,
                     ]
                     let successOutput = SuccessOutput(success: true, data: data)
-                    outputJSON(successOutput)
+                    outputJSON(successOutput, logger: self.logger)
                 } else {
                     print("✅ Configuration is valid!")
                     print()
@@ -405,7 +457,7 @@ struct ValidateCommand: AsyncRuntimeCommand {
                         message: "Failed to parse configuration file. Check for syntax errors.",
                         details: "Path: \(configPath). Common issues: trailing commas, unclosed comments, invalid JSON syntax."
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Configuration is invalid!")
                     print()
@@ -422,8 +474,7 @@ struct ValidateCommand: AsyncRuntimeCommand {
     }
 
     /// Subcommand to set credentials securely
-    @MainActor
-struct SetCredentialCommand: AsyncRuntimeCommand {
+    struct SetCredentialCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "set-credential",
             abstract: "Set an API key or credential securely"
@@ -438,9 +489,23 @@ struct SetCredentialCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             do {
                 try ConfigurationManager.shared.setCredential(key: self.key, value: self.value)
 
@@ -451,7 +516,7 @@ struct SetCredentialCommand: AsyncRuntimeCommand {
                         "path": ConfigurationManager.credentialsPath,
                     ]
                     let successOutput = SuccessOutput(success: true, data: data)
-                    outputJSON(successOutput)
+                    outputJSON(successOutput, logger: self.logger)
                 } else {
                     print("✅ Credential '\(self.key)' set successfully.")
                     print("Stored in: \(ConfigurationManager.credentialsPath)")
@@ -464,7 +529,7 @@ struct SetCredentialCommand: AsyncRuntimeCommand {
                         message: error.localizedDescription,
                         details: "Failed to save credential"
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Failed to set credential: \(error)")
                 }
@@ -476,8 +541,7 @@ struct SetCredentialCommand: AsyncRuntimeCommand {
     // MARK: - Custom Provider Management Commands
 
     /// Subcommand to add a custom AI provider
-    @MainActor
-struct AddProviderCommand: AsyncRuntimeCommand {
+    struct AddProviderCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "add-provider",
             abstract: "Add a custom AI provider",
@@ -537,12 +601,21 @@ struct AddProviderCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
         @Flag(name: .long, help: "Overwrite existing provider with same ID")
         var force: Bool = false
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let manager = ConfigurationManager.shared
 
             // Validate provider ID format
@@ -557,7 +630,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                         message: "Provider ID must contain only letters, numbers, hyphens, and underscores",
                         details: nil
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Provider ID must contain only letters, numbers, hyphens, and underscores")
                 }
@@ -574,7 +647,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                             message: "Provider '\(providerId)' already exists. Use --force to overwrite.",
                             details: nil
                         )
-                        outputJSON(errorOutput)
+                        outputJSON(errorOutput, logger: self.logger)
                     } else {
                         print("❌ Provider '\(self.providerId)' already exists. Use --force to overwrite.")
                     }
@@ -591,7 +664,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                         message: "Invalid provider type '\(type)'. Must be 'openai' or 'anthropic'.",
                         details: nil
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Invalid provider type '\(self.type)'. Must be 'openai' or 'anthropic'.")
                 }
@@ -643,7 +716,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                             "baseUrl": baseUrl
                         ]
                     )
-                    outputJSON(successOutput)
+                    outputJSON(successOutput, logger: self.logger)
                 } else {
                     print("✅ Added custom provider '\(self.providerId)' (\(self.name))")
                     print("   Type: \(self.type)")
@@ -661,7 +734,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                         message: "Failed to add provider: \(error.localizedDescription)",
                         details: nil
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Failed to add provider: \(error)")
                 }
@@ -671,8 +744,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
     }
 
     /// Subcommand to list custom AI providers
-    @MainActor
-    struct ListProvidersCommand: AsyncRuntimeCommand {
+    struct ListProvidersCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-providers",
             abstract: "List configured custom AI providers",
@@ -687,9 +759,23 @@ struct AddProviderCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let manager = ConfigurationManager.shared
             let customProviders = manager.listCustomProviders()
 
@@ -707,7 +793,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                     }
                 ]
                 let output = SuccessOutput(success: true, data: data)
-                outputJSON(output)
+                outputJSON(output, logger: self.logger)
             } else {
                 if customProviders.isEmpty {
                     print("No custom providers configured.")
@@ -740,8 +826,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
     }
 
     /// Subcommand to test a custom AI provider connection
-    @MainActor
-    struct TestProviderCommand: AsyncRuntimeCommand {
+    struct TestProviderCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "test-provider",
             abstract: "Test connection to a custom AI provider",
@@ -764,9 +849,23 @@ struct AddProviderCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let manager = ConfigurationManager.shared
             let (success, error) = await manager.testCustomProvider(id: self.providerId)
 
@@ -779,7 +878,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                             "connectionStatus": "successful"
                         ]
                     )
-                    outputJSON(successOutput)
+                    outputJSON(successOutput, logger: self.logger)
                 } else {
                     let errorOutput = ErrorOutput(
                         error: true,
@@ -787,7 +886,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                         message: error ?? "Connection test failed",
                         details: nil
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 }
             } else {
                 if success {
@@ -804,8 +903,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
     }
 
     /// Subcommand to remove a custom AI provider
-    @MainActor
-    struct RemoveProviderCommand: AsyncRuntimeCommand {
+    struct RemoveProviderCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "remove-provider",
             abstract: "Remove a custom AI provider",
@@ -823,12 +921,26 @@ struct AddProviderCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
         @Flag(name: .long, help: "Skip confirmation prompt")
         var force: Bool = false
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let manager = ConfigurationManager.shared
 
             // Check if provider exists
@@ -840,7 +952,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                         message: "Provider '\(providerId)' not found",
                         details: nil
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Provider '\(self.providerId)' not found")
                 }
@@ -871,7 +983,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                             "action": "removed"
                         ]
                     )
-                    outputJSON(successOutput)
+                    outputJSON(successOutput, logger: self.logger)
                 } else {
                     print("✅ Removed custom provider '\(self.providerId)'")
                 }
@@ -883,7 +995,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                         message: "Failed to remove provider: \(error.localizedDescription)",
                         details: nil
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Failed to remove provider: \(error)")
                 }
@@ -893,8 +1005,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
     }
 
     /// Subcommand to discover models from a custom AI provider
-    @MainActor
-    struct ModelsProviderCommand: AsyncRuntimeCommand {
+    struct ModelsProviderCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "models-provider",
             abstract: "List available models from a custom AI provider",
@@ -913,12 +1024,26 @@ struct AddProviderCommand: AsyncRuntimeCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger {
+            self.runtime?.logger ?? Logger.shared
+        }
+
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
         @Flag(name: .long, help: "Discover models from API (for OpenAI-compatible providers)")
         var discover: Bool = false
 
-        mutating func run(using _: CommandRuntime) async throws {
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
             let manager = ConfigurationManager.shared
 
             guard let provider = manager.getCustomProvider(id: providerId) else {
@@ -929,7 +1054,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                         message: "Provider '\(providerId)' not found",
                         details: nil
                     )
-                    outputJSON(errorOutput)
+                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("❌ Provider '\(self.providerId)' not found")
                 }
@@ -956,7 +1081,7 @@ struct AddProviderCommand: AsyncRuntimeCommand {
                     "error": apiError as Any
                 ]
                 let output = SuccessOutput(success: apiError == nil, data: data)
-                outputJSON(output)
+                outputJSON(output, logger: self.logger)
             } else {
                 print("Models for provider '\(self.providerId)' (\(provider.name)):")
                 print()
@@ -1044,11 +1169,16 @@ private struct JSONValue: Encodable {
     }
 }
 
-private func outputJSON(_ value: some Encodable) {
+private func outputJSON(_ value: some Encodable, logger: Logger) {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    if let data = try? encoder.encode(value),
-       let json = String(data: data, encoding: .utf8) {
-        print(json)
+    do {
+        let data = try encoder.encode(value)
+        if let json = String(data: data, encoding: .utf8) {
+            print(json)
+        }
+    } catch {
+        logger.error("Failed to encode config JSON output: \(error.localizedDescription)")
+        print("{\n  \"success\": false,\n  \"error\": {\n    \"message\": \"Failed to encode JSON response\"\n  }\n}")
     }
 }

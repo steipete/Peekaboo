@@ -6,7 +6,7 @@ import Foundation
 import PeekabooCore
 
 /// Interact with the macOS Dock
-struct DockCommand: @MainActor MainActorAsyncParsableCommand {
+struct DockCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dock",
         abstract: "Interact with the macOS Dock",
@@ -37,8 +37,8 @@ struct DockCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Launch from Dock
 
-struct LaunchSubcommand: AsyncRuntimeCommand, OutputFormattable {
-        static let mainActorConfiguration = CommandConfiguration(
+struct LaunchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, OutputFormattable {
+        static let configuration = CommandConfiguration(
             commandName: "launch",
             abstract: "Launch an application from the Dock"
         )
@@ -49,9 +49,24 @@ struct LaunchSubcommand: AsyncRuntimeCommand, OutputFormattable {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger { self.runtime?.logger ?? Logger.shared }
+        var outputLogger: Logger { self.logger }
+        private var services: PeekabooServices { self.runtime?.services ?? PeekabooServices.shared }
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
-            let services = runtime.services
-            let logger = runtime.logger
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            let services = self.services
+            let logger = self.outputLogger
 
             do {
                 // Launch the app using the service
@@ -88,8 +103,8 @@ struct LaunchSubcommand: AsyncRuntimeCommand, OutputFormattable {
 
     // MARK: - Right-Click Dock Item
 
-struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
-        static let mainActorConfiguration = CommandConfiguration(
+struct RightClickSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, OutputFormattable {
+        static let configuration = CommandConfiguration(
             commandName: "right-click",
             abstract: "Right-click a Dock item and optionally select from menu"
         )
@@ -103,9 +118,24 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger { self.runtime?.logger ?? Logger.shared }
+        var outputLogger: Logger { self.logger }
+        private var services: PeekabooServices { self.runtime?.services ?? PeekabooServices.shared }
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
-            let services = runtime.services
-            let logger = runtime.logger
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            let services = self.services
+            let logger = self.outputLogger
 
             do {
                 // Find the dock item first to get its actual name
@@ -148,9 +178,8 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
 
     // MARK: - Hide Dock
 
-    @MainActor
-    struct HideSubcommand: ErrorHandlingCommand, OutputFormattable {
-        static let mainActorConfiguration = CommandConfiguration(
+    struct HideSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+        static let configuration = CommandConfiguration(
             commandName: "hide",
             abstract: "Hide the Dock"
         )
@@ -158,9 +187,24 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger { self.runtime?.logger ?? Logger.shared }
+        var outputLogger: Logger { self.logger }
+        private var services: PeekabooServices { self.runtime?.services ?? PeekabooServices.shared }
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
-            let services = runtime.services
-            let logger = runtime.logger
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            let services = self.services
+            let logger = self.outputLogger
 
             do {
                 // Hide the Dock using the service
@@ -189,9 +233,8 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
 
     // MARK: - Show Dock
 
-    @MainActor
-    struct ShowSubcommand: ErrorHandlingCommand, OutputFormattable {
-        static let mainActorConfiguration = CommandConfiguration(
+    struct ShowSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+        static let configuration = CommandConfiguration(
             commandName: "show",
             abstract: "Show the Dock"
         )
@@ -199,9 +242,24 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger { self.runtime?.logger ?? Logger.shared }
+        var outputLogger: Logger { self.logger }
+        private var services: PeekabooServices { self.runtime?.services ?? PeekabooServices.shared }
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
-            let services = runtime.services
-            let logger = runtime.logger
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            let services = self.services
+            let logger = self.outputLogger
 
             do {
                 try await services.dock.showDock()
@@ -229,9 +287,8 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
 
     // MARK: - List Dock Items
 
-    @MainActor
-    struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
-        static let mainActorConfiguration = CommandConfiguration(
+    struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+        static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List all Dock items"
         )
@@ -242,9 +299,24 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var logger: Logger { self.runtime?.logger ?? Logger.shared }
+        var outputLogger: Logger { self.logger }
+        private var services: PeekabooServices { self.runtime?.services ?? PeekabooServices.shared }
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
-            let services = runtime.services
-            let logger = runtime.logger
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            let services = self.services
+            let logger = self.outputLogger
 
             do {
                 let dockItems = try await services.dock.listDockItems(includeAll: self.includeAll)

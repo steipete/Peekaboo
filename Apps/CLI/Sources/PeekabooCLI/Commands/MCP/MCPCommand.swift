@@ -6,8 +6,7 @@ import PeekabooCore
 import TachikomaMCP
 
 /// Command for Model Context Protocol server operations
-@MainActor
-struct MCPCommand: @MainActor MainActorAsyncParsableCommand {
+struct MCPCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mcp",
         abstract: "Model Context Protocol server and client operations",
@@ -40,8 +39,7 @@ struct MCPCommand: @MainActor MainActorAsyncParsableCommand {
 
 extension MCPCommand {
     /// Start MCP server
-    @MainActor
-    struct Serve: @MainActor MainActorAsyncParsableCommand {
+    struct Serve: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "serve",
             abstract: "Start Peekaboo as an MCP server",
@@ -67,6 +65,11 @@ extension MCPCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
             do {
                 // Convert string transport to PeekabooCore.TransportType
@@ -87,8 +90,7 @@ extension MCPCommand {
     }
 
     /// Call tool on MCP server
-    @MainActor
-    struct Call: @MainActor MainActorAsyncParsableCommand {
+    struct Call: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "call",
             abstract: "Call a tool on another MCP server",
@@ -113,6 +115,11 @@ extension MCPCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
             runtime.logger.error("MCP client functionality not yet implemented")
             throw ExitCode.failure
@@ -120,8 +127,7 @@ extension MCPCommand {
     }
 
     /// List available MCP servers with health checking
-    @MainActor
-    struct List: @MainActor MainActorAsyncParsableCommand {
+    struct List: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List configured MCP servers with health status",
@@ -147,6 +153,11 @@ extension MCPCommand {
         private var isVerbose: Bool { self.runtimeOptions.verbose }
 
         /// Initialize the MCP client manager, optionally probe server health, and render the chosen output format.
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
             // Register browser MCP as a default server
             let defaultBrowser = TachikomaMCP.MCPServerConfig(
@@ -377,8 +388,7 @@ extension MCPCommand {
     }
 
     /// Add a new MCP server
-    @MainActor
-    struct Add: @MainActor MainActorAsyncParsableCommand {
+    struct Add: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "add",
             abstract: "Add a new external MCP server",
@@ -423,6 +433,11 @@ extension MCPCommand {
 
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
 
         /// Validate the provided command, persist the new server configuration, and immediately probe connectivity.
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -510,8 +525,7 @@ extension MCPCommand {
     }
 
     /// Remove an MCP server
-    @MainActor
-    struct Remove: @MainActor MainActorAsyncParsableCommand {
+    struct Remove: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "remove",
             abstract: "Remove an external MCP server",
@@ -528,6 +542,11 @@ extension MCPCommand {
         var runtimeOptions: CommandRuntimeOptions
 
         /// Disconnect and delete the specified server configuration, prompting unless forced.
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
             let logger = runtime.logger
             let clientManager = MCPClientManager.shared
@@ -560,8 +579,7 @@ extension MCPCommand {
     }
 
     /// Test connection to an MCP server
-    @MainActor
-    struct Test: @MainActor MainActorAsyncParsableCommand {
+    struct Test: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "test",
             abstract: "Test connection to an MCP server",
@@ -581,6 +599,11 @@ extension MCPCommand {
         var runtimeOptions: CommandRuntimeOptions
 
         /// Probe a single MCP server, report its health, and optionally enumerate exposed tools.
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using _: CommandRuntime) async throws {
             let clientManager = MCPClientManager.shared
 
@@ -603,8 +626,7 @@ extension MCPCommand {
     }
 
     /// Show detailed information about an MCP server
-    @MainActor
-    struct Info: @MainActor MainActorAsyncParsableCommand {
+    struct Info: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "info",
             abstract: "Show detailed information about an MCP server",
@@ -620,6 +642,11 @@ extension MCPCommand {
         private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
         /// Print configuration and live health details for the specified server in text or JSON form.
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
             let clientManager = MCPClientManager.shared
 
@@ -675,8 +702,7 @@ extension MCPCommand {
     }
 
     /// Enable an MCP server
-    @MainActor
-    struct Enable: @MainActor MainActorAsyncParsableCommand {
+    struct Enable: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "enable",
             abstract: "Enable a disabled MCP server",
@@ -688,6 +714,11 @@ extension MCPCommand {
 
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
 
         mutating func run(using runtime: CommandRuntime) async throws {
             let clientManager = MCPClientManager.shared
@@ -708,8 +739,7 @@ extension MCPCommand {
     }
 
     /// Disable an MCP server
-    @MainActor
-    struct Disable: @MainActor MainActorAsyncParsableCommand {
+    struct Disable: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "disable",
             abstract: "Disable an MCP server",
@@ -721,6 +751,11 @@ extension MCPCommand {
 
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
+
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
 
         mutating func run(using runtime: CommandRuntime) async throws {
             let clientManager = MCPClientManager.shared
@@ -736,8 +771,7 @@ extension MCPCommand {
     }
 
     /// Inspect MCP connection
-    @MainActor
-    struct Inspect: @MainActor MainActorAsyncParsableCommand {
+    struct Inspect: AsyncParsableCommand, AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "inspect",
             abstract: "Debug MCP connections",
@@ -750,22 +784,14 @@ extension MCPCommand {
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
+        mutating func run() async throws {
+            let runtime = CommandRuntime(options: self.runtimeOptions)
+            try await self.run(using: runtime)
+        }
+
         mutating func run(using runtime: CommandRuntime) async throws {
             runtime.logger.error("MCP inspection not yet implemented")
             throw ExitCode.failure
         }
     }
 }
-
-// MARK: - Runtime Conformance
-
-extension MCPCommand.Serve: AsyncRuntimeCommand {}
-extension MCPCommand.Call: AsyncRuntimeCommand {}
-extension MCPCommand.List: AsyncRuntimeCommand {}
-extension MCPCommand.Add: AsyncRuntimeCommand {}
-extension MCPCommand.Remove: AsyncRuntimeCommand {}
-extension MCPCommand.Test: AsyncRuntimeCommand {}
-extension MCPCommand.Info: AsyncRuntimeCommand {}
-extension MCPCommand.Enable: AsyncRuntimeCommand {}
-extension MCPCommand.Disable: AsyncRuntimeCommand {}
-extension MCPCommand.Inspect: AsyncRuntimeCommand {}

@@ -83,8 +83,7 @@ func iconForTool(_ toolName: String) -> String {
 
 /// AI Agent command that uses new Chat Completions API architecture
 @available(macOS 14.0, *)
-@MainActor
-struct AgentCommand: AsyncRuntimeCommand {
+struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
     static let configuration = CommandConfiguration(
         commandName: "agent",
         abstract: "Execute complex automation tasks using AI agent"
@@ -169,6 +168,11 @@ struct AgentCommand: AsyncRuntimeCommand {
     }
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    mutating func run() async throws {
+        let runtime = CommandRuntime(options: self.runtimeOptions)
+        try await self.run(using: runtime)
+    }
 
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
