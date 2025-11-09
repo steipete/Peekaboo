@@ -25,7 +25,6 @@ struct CommandRuntimeOptions: ParsableArguments {
 }
 
 /// Runtime context passed to runtime-aware commands.
-@MainActor
 struct CommandRuntime {
     struct Configuration {
         var verbose: Bool
@@ -55,7 +54,6 @@ struct CommandRuntime {
 }
 
 @propertyWrapper
-@MainActor
 struct RuntimeStorage<Value> where Value: ExpressibleByNilLiteral {
     private var storage: Value
 

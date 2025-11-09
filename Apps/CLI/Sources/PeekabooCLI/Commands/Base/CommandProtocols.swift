@@ -8,14 +8,12 @@ import Foundation
 /// containing logger, services, and configuration instead of accessing singletons.
 protocol AsyncRuntimeCommand: AsyncParsableCommand {
     /// Run the command with injected runtime context.
-    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws
 }
 
 extension AsyncRuntimeCommand {
     /// Default run() implementation that creates a CommandRuntime from options.
     /// Commands must define `runtimeOptions: CommandRuntimeOptions` to use this.
-    @MainActor
     mutating func run() async throws {
         // Access runtimeOptions via reflection to create runtime
         let mirror = Mirror(reflecting: self)
