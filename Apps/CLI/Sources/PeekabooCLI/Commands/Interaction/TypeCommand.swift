@@ -135,7 +135,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
             }
 
             // Ensure window is focused before typing
-        try await self.ensureFocused(
+        try await ensureFocused(
             sessionId: sessionId,
             applicationName: self.app,
             options: self.focusOptions,

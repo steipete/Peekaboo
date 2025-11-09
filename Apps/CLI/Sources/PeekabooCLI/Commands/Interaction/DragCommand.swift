@@ -89,7 +89,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
 
             // Ensure window is focused before dragging (if we have a session and auto-focus is enabled)
             if let sessionId {
-                try await self.ensureFocused(
+                try await ensureFocused(
                     sessionId: sessionId,
                     options: self.focusOptions
                 )
