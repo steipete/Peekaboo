@@ -98,46 +98,48 @@ public struct Peekaboo: @MainActor AsyncParsableCommand {
           GitHub: https://github.com/steipete/peekaboo
         """
 
+        let subcommandTypes: [any ParsableCommand.Type] = [
+            // Core commands
+            ImageCommand.self,
+            ListCommand.self,
+            ToolsCommand.self,
+            ConfigCommand.self,
+            PermissionsCommand.self,
+            LearnCommand.self,
+            // Interaction commands
+            SeeCommand.self,
+            ClickCommand.self,
+            TypeCommand.self,
+            PressCommand.self,
+            ScrollCommand.self,
+            HotkeyCommand.self,
+            SwipeCommand.self,
+            DragCommand.self,
+            MoveCommand.self,
+            // System commands
+            RunCommand.self,
+            SleepCommand.self,
+            CleanCommand.self,
+            WindowCommand.self,
+            MenuCommand.self,
+            MenuBarCommand.self,
+            AppCommand.self,
+            DockCommand.self,
+            DialogCommand.self,
+            SpaceCommand.self,
+            // Agent commands
+            AgentCommand.self,
+            // MCP commands
+            MCPCommand.self,
+        ]
+
         return CommandConfiguration(
             commandName: "peekaboo",
             abstract: "Lightning-fast macOS screenshots, AI vision analysis, " +
                 "and GUI automation with intelligent focus management",
             discussion: discussion,
             version: Version.fullVersion,
-            subcommands: [
-                // Core commands
-                ImageCommand.self,
-                ListCommand.self,
-                ToolsCommand.self,
-                ConfigCommand.self,
-                PermissionsCommand.self,
-                LearnCommand.self,
-                // Interaction commands
-                SeeCommand.self,
-                ClickCommand.self,
-                TypeCommand.self,
-                PressCommand.self,
-                ScrollCommand.self,
-                HotkeyCommand.self,
-                SwipeCommand.self,
-                DragCommand.self,
-                MoveCommand.self,
-                // System commands
-                RunCommand.self,
-                SleepCommand.self,
-                CleanCommand.self,
-                WindowCommand.self,
-                MenuCommand.self,
-                MenuBarCommand.self,
-                AppCommand.self,
-                DockCommand.self,
-                DialogCommand.self,
-                SpaceCommand.self,
-                // Agent commands
-                AgentCommand.self,
-                // MCP commands
-                MCPCommand.self,
-            ]
+            subcommands: subcommandTypes
         )
     }
 }
