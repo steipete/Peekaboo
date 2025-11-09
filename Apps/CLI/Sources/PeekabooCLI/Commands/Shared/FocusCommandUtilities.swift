@@ -4,7 +4,6 @@ import PeekabooCore
 
 extension AsyncParsableCommand {
     /// Ensure the target window is focused before executing a command.
-    @MainActor
     func ensureFocused(
         sessionId: String? = nil,
         windowID: CGWindowID? = nil,
@@ -17,7 +16,7 @@ extension AsyncParsableCommand {
             return
         }
 
-        let focusService = FocusManagementService()
+        let focusService = FocusManagementActor.shared
         let targetWindow: CGWindowID?
 
         if let windowID {
@@ -45,5 +44,22 @@ extension AsyncParsableCommand {
             bringToCurrentSpace: options.bringToCurrentSpace)
 
         try await focusService.focusWindow(windowID: windowID, options: focusOptions)
+    }
+}
+
+@MainActor
+final class FocusManagementActor {
+    static let shared = FocusManagementActor()
+
+    private let inner = FocusManagementService()
+
+    private init() {}
+
+    func findBestWindow(applicationName: String, windowTitle: String?) async throws -> CGWindowID? {
+        try await self.inner.findBestWindow(applicationName: applicationName, windowTitle: windowTitle)
+    }
+
+    func focusWindow(windowID: CGWindowID, options: FocusManagementService.FocusOptions) async throws {
+        try await self.inner.focusWindow(windowID: windowID, options: options)
     }
 }

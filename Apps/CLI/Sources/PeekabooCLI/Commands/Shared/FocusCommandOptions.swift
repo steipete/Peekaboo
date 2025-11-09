@@ -3,7 +3,7 @@ import Foundation
 import PeekabooCore
 
 /// CLI-facing wrapper that maps command-line flags to core focus options.
-struct FocusCommandOptions: @MainActor MainActorParsableArguments, FocusOptionsProtocol {
+struct FocusCommandOptions: ParsableArguments, FocusOptionsProtocol {
     @Flag(name: .long, help: "Disable automatic focus before interaction (not recommended)")
     var noAutoFocus = false
 
