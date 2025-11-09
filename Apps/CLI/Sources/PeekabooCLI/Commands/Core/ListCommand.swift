@@ -67,18 +67,50 @@ struct AppsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
         """
     )
 
-    @Flag(name: .long, help: "Output results in JSON format for scripting")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
 
-    func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
 
         do {
             // Check permissions using the service
-            try await requireScreenRecordingPermission()
+            try await requireScreenRecordingPermission(services: self.services)
 
             // Get applications from the service
-            let output = try await PeekabooServices.shared.applications.listApplications()
+            let output = try await self.services.applications.listApplications()
 
             if self.jsonOutput {
                 // Output full UnifiedToolOutput as JSON
@@ -119,23 +151,31 @@ ApplicationResolvablePositional {
     @Option(name: .long, help: "Additional details (comma-separated: off_screen,bounds,ids)")
     var includeDetails: String?
 
-    @Flag(name: .long, help: "Output results in JSON format for scripting")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
 
     /// Resolve the target application, retrieve its windows, and emit the requested output format.
-    func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
 
         do {
             // Check permissions
-            try await requireScreenRecordingPermission()
+            try await requireScreenRecordingPermission(services: self.services)
 
             // Resolve application identifier
             let appIdentifier = try self.resolveApplicationIdentifier()
 
             // Find the target application using the service
             // Get windows for the app using the service
-            let output = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier, timeout: nil)
+            let output = try await self.services.applications.listWindows(for: appIdentifier, timeout: nil)
 
             if self.jsonOutput {
                 let detailOptions = self.parseIncludeDetails()
@@ -250,12 +290,22 @@ struct PermissionsSubcommand: @MainActor MainActorAsyncParsableCommand, OutputFo
         """
     )
 
-    @Flag(name: .long, help: "Output results in JSON format for scripting")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    var outputLogger: Logger { self.logger }
 
     /// Summarize the current permission state and present detailed guidance when anything is missing.
-    func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
 
         // Get permissions using shared helper
         let permissionInfos = await PermissionHelpers.getCurrentPermissions()
@@ -341,16 +391,24 @@ struct MenuBarSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlin
         """
     )
 
-    @Flag(name: .long, help: "Output results in JSON format")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
 
     /// Collect menu bar extras and print either a JSON payload or detailed textual breakdown.
-    mutating func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
 
         do {
             // Use the enhanced menu service to get menu bar items
-            let menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+            let menuExtras = try await self.services.menu.listMenuExtras()
 
             struct MenuBarListResult: Codable {
                 let count: Int
@@ -424,17 +482,25 @@ struct ScreensSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlin
         """
     )
 
-    @Flag(name: .long, help: "Output results in JSON format for scripting")
-    var jsonOutput = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
 
     @MainActor
     /// Enumerate the connected displays and present a normalized data set (plus highlights for the primary screen).
-    mutating func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
 
         do {
             // Get screens from the service
-            let screens = PeekabooServices.shared.screens.listScreens()
+            let screens = self.services.screens.listScreens()
             let primaryIndex = screens.firstIndex { $0.isPrimary }
 
             // Create output data
@@ -511,6 +577,21 @@ struct ScreensSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlin
         }
     }
 }
+
+@MainActor
+extension ListCommand.AppsSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ListCommand.WindowsSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ListCommand.PermissionsSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ListCommand.MenuBarSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ListCommand.ScreensSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Screen List Data Model
 

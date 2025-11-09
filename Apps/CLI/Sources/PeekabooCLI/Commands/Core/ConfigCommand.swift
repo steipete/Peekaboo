@@ -56,10 +56,12 @@ struct InitCommand: @MainActor MainActorAsyncParsableCommand {
         @Flag(name: .long, help: "Force overwrite existing configuration")
         var force = false
 
-        @Flag(name: .long, help: "Output JSON data for programmatic use")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using _: CommandRuntime) async throws {
             let configPath = ConfigurationManager.configPath
             let configExists = FileManager.default.fileExists(atPath: configPath)
 
@@ -124,10 +126,12 @@ struct ShowCommand: @MainActor MainActorAsyncParsableCommand {
         @Flag(name: .long, help: "Show effective configuration (merged with environment)")
         var effective = false
 
-        @Flag(name: .long, help: "Output JSON data for programmatic use")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using _: CommandRuntime) async throws {
             let configPath = ConfigurationManager.configPath
             let manager = ConfigurationManager.shared
 
@@ -253,10 +257,12 @@ struct EditCommand: @MainActor MainActorAsyncParsableCommand {
         @Option(name: .long, help: "Editor to use (defaults to $EDITOR or nano)")
         var editor: String?
 
-        @Flag(name: .long, help: "Output JSON data for programmatic use")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using _: CommandRuntime) async throws {
             let configPath = ConfigurationManager.configPath
             let manager = ConfigurationManager.shared
 
@@ -346,10 +352,12 @@ struct ValidateCommand: @MainActor MainActorAsyncParsableCommand {
             abstract: "Validate configuration file syntax"
         )
 
-        @Flag(name: .long, help: "Output JSON data for programmatic use")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using _: CommandRuntime) async throws {
             let configPath = ConfigurationManager.configPath
 
             if !FileManager.default.fileExists(atPath: configPath) {
@@ -427,10 +435,12 @@ struct SetCredentialCommand: @MainActor MainActorAsyncParsableCommand {
         @Argument(help: "The credential value")
         var value: String
 
-        @Flag(name: .long, help: "Output JSON data for programmatic use")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using _: CommandRuntime) async throws {
             do {
                 try ConfigurationManager.shared.setCredential(key: self.key, value: self.value)
 
@@ -524,13 +534,15 @@ struct AddProviderCommand: @MainActor MainActorAsyncParsableCommand {
         @Option(name: .long, help: "Additional HTTP headers (key:value,key:value)")
         var headers: String?
 
-        @Flag(name: .long, help: "Enable JSON output")
-        var jsonOutput: Bool = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
         @Flag(name: .long, help: "Overwrite existing provider with same ID")
         var force: Bool = false
 
-        mutating func run() async throws {
+        mutating func run(using _: CommandRuntime) async throws {
             let manager = ConfigurationManager.shared
 
             // Validate provider ID format
@@ -672,10 +684,12 @@ struct ListProvidersCommand: @MainActor MainActorAsyncParsableCommand {
             """
         )
 
-        @Flag(name: .long, help: "Enable JSON output")
-        var jsonOutput: Bool = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using _: CommandRuntime) async throws {
             let manager = ConfigurationManager.shared
             let customProviders = manager.listCustomProviders()
 
@@ -747,10 +761,12 @@ struct TestProviderCommand: @MainActor MainActorAsyncParsableCommand {
         @Argument(help: "Provider ID to test")
         var providerId: String
 
-        @Flag(name: .long, help: "Enable JSON output")
-        var jsonOutput: Bool = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
 
-        mutating func run() async throws {
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        mutating func run(using _: CommandRuntime) async throws {
             let manager = ConfigurationManager.shared
             let (success, error) = await manager.testCustomProvider(id: self.providerId)
 
@@ -804,13 +820,15 @@ struct RemoveProviderCommand: @MainActor MainActorAsyncParsableCommand {
         @Argument(help: "Provider ID to remove")
         var providerId: String
 
-        @Flag(name: .long, help: "Enable JSON output")
-        var jsonOutput: Bool = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
         @Flag(name: .long, help: "Skip confirmation prompt")
         var force: Bool = false
 
-        mutating func run() async throws {
+        mutating func run(using _: CommandRuntime) async throws {
             let manager = ConfigurationManager.shared
 
             // Check if provider exists
@@ -892,13 +910,15 @@ struct ModelsProviderCommand: @MainActor MainActorAsyncParsableCommand {
         @Argument(help: "Provider ID to query")
         var providerId: String
 
-        @Flag(name: .long, help: "Enable JSON output")
-        var jsonOutput: Bool = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
         @Flag(name: .long, help: "Discover models from API (for OpenAI-compatible providers)")
         var discover: Bool = false
 
-        mutating func run() async throws {
+        mutating func run(using _: CommandRuntime) async throws {
             let manager = ConfigurationManager.shared
 
             guard let provider = manager.getCustomProvider(id: providerId) else {
@@ -1032,3 +1052,33 @@ private func outputJSON(_ value: some Encodable) {
         print(json)
     }
 }
+
+@MainActor
+extension ConfigCommand.InitCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.ShowCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.EditCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.ValidateCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.SetCredentialCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.AddProviderCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.ListProvidersCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.TestProviderCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.RemoveProviderCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ConfigCommand.ModelsProviderCommand: AsyncRuntimeCommand {}

@@ -26,7 +26,13 @@ struct LearnCommand: @MainActor MainActorAsyncParsableCommand {
         """
     )
 
-    func run() async throws {
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         // Get the system prompt
         let systemPrompt = AgentSystemPrompt.generate()
 
@@ -155,3 +161,6 @@ struct LearnCommand: @MainActor MainActorAsyncParsableCommand {
         """)
     }
 }
+
+@MainActor
+extension LearnCommand: AsyncRuntimeCommand {}

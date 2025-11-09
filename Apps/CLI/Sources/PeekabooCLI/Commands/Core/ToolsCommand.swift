@@ -31,11 +31,18 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
     @Option(name: .long, help: "Show tools from specific MCP server")
     var mcp: String?
 
-    @Flag(name: .long, help: "Show detailed tool information")
-    var verbose = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
 
-    @Flag(name: .long, help: "Output in JSON format")
-    var jsonOutput = false
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    private var jsonOutput: Bool {
+        self.runtimeOptions.jsonOutput
+    }
+
+    private var showDetailedInfo: Bool {
+        self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose
+    }
 
     @Flag(name: .long, help: "Include disabled servers in output")
     var includeDisabled = false
@@ -47,7 +54,8 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
     var groupByServer = false
 
     /// Gather native and external tool catalogs, apply CLI filters, then emit in the requested format.
-    func run() async throws {
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
         let toolRegistry = MCPToolRegistry()
         let clientManager = TachikomaMCPClientManager.shared
 
@@ -104,7 +112,7 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
             groupByServer: groupByServer,
             showToolCount: !self.jsonOutput,
             sortAlphabetically: !self.noSort,
-            showDescription: self.verbose
+            showDescription: self.showDetailedInfo
         )
 
         if self.jsonOutput {
@@ -184,7 +192,7 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
 
     // MARK: - Formatted Output
 
-    private func outputFormatted(tools: CategorizedTools, options: ToolDisplayOptions) {
+private func outputFormatted(tools: CategorizedTools, options: ToolDisplayOptions) {
         // Display header
         if !tools.native.isEmpty || !tools.external.isEmpty {
             print("Available Tools")
@@ -276,6 +284,9 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
         print("  Total: \(tools.totalCount) tools")
     }
 }
+
+@MainActor
+extension ToolsCommand: AsyncRuntimeCommand {}
 
 // MARK: - Tool Filter Extensions
 

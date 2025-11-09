@@ -25,7 +25,7 @@ struct ImageAnalysisData: Codable {
 }
 
 @MainActor
-struct ImageCommand: @MainActor MainActorAsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
+struct ImageCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "image",
@@ -85,20 +85,32 @@ ApplicationResolvable {
     )
     var captureFocus: CaptureFocus = .auto
 
-    @Flag(name: .long, help: "Output results in JSON format for scripting")
-    var jsonOutput = false
-
     @Option(name: .long, help: "Analyze the captured image with AI (provide a question/prompt)")
     var analyze: String?
 
-    @Flag(name: .shortAndLong, help: "Enable verbose logging for detailed output")
-    var verbose = false
+    @OptionGroup
+    var runtimeOptions: CommandRuntimeOptions
+
+    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+
+    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+    private var logger: Logger {
+        self.runtime?.logger ?? Logger.shared
+    }
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
+
+    var outputLogger: Logger { self.logger }
 
     /// Validate permissions, capture the requested imagery, optionally run AI analysis, then render output.
-    func run() async throws {
-        configureVerboseLogging()
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
-        Logger.shared.operationStart("image_command", metadata: [
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
+        let logger = self.logger
+
+        logger.operationStart("image_command", metadata: [
             "mode": self.mode?.rawValue ?? "auto",
             "app": self.app ?? "none",
             "pid": self.pid ?? 0,
@@ -108,19 +120,19 @@ ApplicationResolvable {
 
         do {
             // Check permissions
-            Logger.shared.debug("Checking screen recording permission...")
-            try await requireScreenRecordingPermission()
-            Logger.shared.debug("Screen recording permission granted")
+            logger.debug("Checking screen recording permission...")
+            try await requireScreenRecordingPermission(services: self.services)
+            logger.debug("Screen recording permission granted")
 
             // Perform capture
-            Logger.shared.startTimer("image_capture")
+            logger.startTimer("image_capture")
             let savedFiles = try await performCapture()
-            Logger.shared.stopTimer("image_capture")
+            logger.stopTimer("image_capture")
 
             // Analyze if requested
             if let analyzePrompt = analyze, let firstFile = savedFiles.first {
                 let fileSize = (try? FileManager.default.attributesOfItem(atPath: firstFile.path)[.size] as? Int) ?? 0
-                Logger.shared.verbose(
+                logger.verbose(
                     "Starting AI analysis",
                     category: "AI",
                     metadata: [
@@ -129,14 +141,14 @@ ApplicationResolvable {
                         "promptLength": analyzePrompt.count
                     ]
                 )
-                Logger.shared.operationStart(
+                logger.operationStart(
                     "ai_analysis",
                     metadata: ["promptPreview": String(analyzePrompt.prefix(80))]
                 )
-                Logger.shared.startTimer("ai_generate")
+                logger.startTimer("ai_generate")
                 let analysisResult = try await analyzeImage(at: firstFile.path, with: analyzePrompt)
-                Logger.shared.stopTimer("ai_generate")
-                Logger.shared.operationComplete("ai_analysis", success: true, metadata: [
+                logger.stopTimer("ai_generate")
+                logger.operationComplete("ai_analysis", success: true, metadata: [
                     "provider": analysisResult.provider,
                     "model": analysisResult.model
                 ])
@@ -146,7 +158,7 @@ ApplicationResolvable {
             }
         } catch {
             self.handleError(error)
-            Logger.shared.operationComplete("image_command", success: false, metadata: [
+            logger.operationComplete("image_command", success: false, metadata: [
                 "error": error.localizedDescription
             ])
             throw ExitCode(1)
@@ -167,7 +179,7 @@ ApplicationResolvable {
         }
 
         let captureMode = self.determineMode()
-        Logger.shared.verbose("Starting capture with mode: \(captureMode)")
+        self.logger.verbose("Starting capture with mode: \(captureMode)")
 
         var results: [SavedFile] = []
 
@@ -195,9 +207,9 @@ ApplicationResolvable {
     }
 
     private func captureScreens() async throws -> [SavedFile] {
-        Logger.shared.verbose("Capturing screen(s)")
+        self.logger.verbose("Capturing screen(s)")
 
-        let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: self.screenIndex)
+        let result = try await self.services.screenCapture.captureScreen(displayIndex: self.screenIndex)
         let savedPath = try saveImage(result.imageData, name: "screen")
 
         return [SavedFile(
@@ -211,23 +223,23 @@ ApplicationResolvable {
     }
 
     private func captureApplicationWindow(_ appIdentifier: String) async throws -> [SavedFile] {
-        Logger.shared.verbose("Capturing window for app: \(appIdentifier)")
+        self.logger.verbose("Capturing window for app: \(appIdentifier)")
         let startTime = Date()
 
         // Handle focus if needed
         if self.captureFocus == .foreground {
-            Logger.shared.debug("Activating application...")
-            try await PeekabooServices.shared.applications.activateApplication(identifier: appIdentifier)
+            self.logger.debug("Activating application...")
+            try await self.services.applications.activateApplication(identifier: appIdentifier)
             try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
-            Logger.shared.debug("Application activated (took \(Date().timeIntervalSince(startTime))s)")
+            self.logger.debug("Application activated (took \(Date().timeIntervalSince(startTime))s)")
         }
 
-        Logger.shared.debug("Starting window capture...")
+        self.logger.debug("Starting window capture...")
         let captureStart = Date()
 
         // Add timeout to window capture
         let captureTask = Task {
-            try await PeekabooServices.shared.screenCapture.captureWindow(
+            try await self.services.screenCapture.captureWindow(
                 appIdentifier: appIdentifier,
                 windowIndex: self.windowIndex
             )
@@ -241,12 +253,12 @@ ApplicationResolvable {
         do {
             let result = try await captureTask.value
             timeoutTask.cancel()
-            Logger.shared.debug("Window capture completed (took \(Date().timeIntervalSince(captureStart))s)")
+            self.logger.debug("Window capture completed (took \(Date().timeIntervalSince(captureStart))s)")
             return try await self.processCapture(result, appIdentifier: appIdentifier)
         } catch {
             timeoutTask.cancel()
             if captureTask.isCancelled {
-                Logger.shared.error("Window capture timed out after 5 seconds")
+                self.logger.error("Window capture timed out after 5 seconds")
                 throw OperationError.timeout(operation: "Window capture", duration: 5.0)
             }
             throw error
@@ -267,16 +279,16 @@ ApplicationResolvable {
     }
 
     private func captureAllApplicationWindows(_ appIdentifier: String) async throws -> [SavedFile] {
-        Logger.shared.verbose("Capturing all windows for app: \(appIdentifier)")
+        self.logger.verbose("Capturing all windows for app: \(appIdentifier)")
 
         // Get window count
-        let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier, timeout: nil)
+        let windowsOutput = try await self.services.applications.listWindows(for: appIdentifier, timeout: nil)
         var savedFiles: [SavedFile] = []
 
         for (index, window) in windowsOutput.data.windows.enumerated() {
-            Logger.shared.verbose("Capturing window \(index): \(window.title)")
+            self.logger.verbose("Capturing window \(index): \(window.title)")
 
-            let result = try await PeekabooServices.shared.screenCapture.captureWindow(
+            let result = try await self.services.screenCapture.captureWindow(
                 appIdentifier: appIdentifier,
                 windowIndex: index
             )
@@ -297,9 +309,9 @@ ApplicationResolvable {
     }
 
     private func captureFrontmost() async throws -> [SavedFile] {
-        Logger.shared.verbose("Capturing frontmost window")
+        self.logger.verbose("Capturing frontmost window")
 
-        let result = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+        let result = try await self.services.screenCapture.captureFrontmost()
         let savedPath = try saveImage(result.imageData, name: "frontmost")
 
         return [SavedFile(
@@ -332,7 +344,7 @@ ApplicationResolvable {
 
         // Save the image
         try data.write(to: URL(fileURLWithPath: outputPath))
-        Logger.shared.verbose("Saved image to: \(outputPath)")
+        self.logger.verbose("Saved image to: \(outputPath)")
 
         return outputPath
     }
@@ -348,7 +360,7 @@ ApplicationResolvable {
     }
 
     private func captureMenuBar() async throws -> [SavedFile] {
-        Logger.shared.verbose("Capturing menu bar area")
+        self.logger.verbose("Capturing menu bar area")
 
         // Get the main screen bounds
         guard let mainScreen = NSScreen.main else {
@@ -365,7 +377,7 @@ ApplicationResolvable {
         )
 
         // Capture the menu bar area
-        let result = try await PeekabooServices.shared.screenCapture.captureArea(menuBarRect)
+        let result = try await self.services.screenCapture.captureArea(menuBarRect)
 
         let savedPath = try saveImage(result.imageData, name: "menubar")
 
@@ -427,3 +439,6 @@ extension ImageFormat {
         }
     }
 }
+
+@MainActor
+extension ImageCommand: AsyncRuntimeCommand {}
