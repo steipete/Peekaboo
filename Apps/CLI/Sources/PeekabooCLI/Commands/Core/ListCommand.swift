@@ -70,7 +70,7 @@ struct AppsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
@@ -154,7 +154,7 @@ ApplicationResolvablePositional {
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
@@ -293,7 +293,7 @@ struct PermissionsSubcommand: @MainActor MainActorAsyncParsableCommand, OutputFo
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
@@ -394,7 +394,7 @@ struct MenuBarSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlin
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
@@ -485,7 +485,7 @@ struct ScreensSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlin
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 

@@ -79,10 +79,10 @@ struct LaunchSubcommand: AsyncRuntimeCommand, OutputFormattable {
                 }
 
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: self.jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             }
         }
@@ -140,10 +140,10 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
                 }
 
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: self.jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             }
         }
@@ -181,10 +181,10 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
                     print("✓ Dock hidden")
                 }
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: self.jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             }
         }
@@ -221,10 +221,10 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
                     print("✓ Dock shown")
                 }
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: self.jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             }
         }
@@ -293,10 +293,10 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
                 }
 
             } catch let error as DockError {
-                handleDockServiceError(error, jsonOutput: self.jsonOutput)
+                handleDockServiceError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: logger)
                 throw ExitCode(1)
             }
         }
@@ -305,7 +305,7 @@ struct RightClickSubcommand: AsyncRuntimeCommand, OutputFormattable {
 
 // MARK: - Error Handling
 
-private func handleDockServiceError(_ error: DockError, jsonOutput: Bool) {
+private func handleDockServiceError(_ error: DockError, jsonOutput: Bool, logger: Logger) {
     let errorCode: ErrorCode = switch error {
     case .dockNotFound:
         .DOCK_NOT_FOUND
@@ -331,7 +331,7 @@ private func handleDockServiceError(_ error: DockError, jsonOutput: Bool) {
                 code: errorCode
             )
         )
-        outputJSON(response)
+        outputJSON(response, logger: logger)
     } else {
         fputs("❌ \(error.localizedDescription)\n", stderr)
     }

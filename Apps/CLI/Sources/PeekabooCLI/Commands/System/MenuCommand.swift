@@ -68,7 +68,7 @@ struct MenuCommand: @MainActor MainActorAsyncParsableCommand {
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -214,7 +214,7 @@ struct MenuCommand: @MainActor MainActorAsyncParsableCommand {
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -307,7 +307,8 @@ struct MenuCommand: @MainActor MainActorAsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu extra operation failed"
+                    details: "Menu extra operation failed",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
@@ -318,7 +319,7 @@ struct MenuCommand: @MainActor MainActorAsyncParsableCommand {
     // MARK: - List Menu Items
 
     @MainActor
-struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationResolvablePositional {
+    struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationResolvablePositional, OutputFormattable {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List all menu items for an application"
@@ -336,7 +337,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ApplicationReso
         @OptionGroup var focusOptions: FocusCommandOptions
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -489,7 +490,8 @@ private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
                 outputError(
                     message: error.localizedDescription,
                     code: .APP_NOT_FOUND,
-                    details: "Application not found"
+                    details: "Application not found",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
@@ -514,7 +516,8 @@ private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to list menus"
+                    details: "Failed to list menus",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
@@ -526,7 +529,8 @@ private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu list operation failed"
+                    details: "Menu list operation failed",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
@@ -537,7 +541,7 @@ private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
     // MARK: - List All Menu Bar Items
 
     @MainActor
-struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
+    struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
         static let configuration = CommandConfiguration(
             commandName: "list-all",
             abstract: "List all menu bar items system-wide (including status items)"
@@ -553,7 +557,7 @@ struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
 
         @OptionGroup var focusOptions: FocusCommandOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -564,6 +568,8 @@ struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
         }
 
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+
+        var outputLogger: Logger { self.logger }
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -631,7 +637,7 @@ struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
                     )
 
                     let outputData = MenuAllResult(apps: [appInfo])
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: self.outputLogger)
                 } else {
                     print("\n=== \(frontmostMenus.application.name) ===")
                     for menu in filteredMenus {
@@ -762,7 +768,8 @@ struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to list menus"
+                    details: "Failed to list menus",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
@@ -774,7 +781,8 @@ struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu list operation failed"
+                    details: "Menu list operation failed",
+                    logger: self.outputLogger
                 )
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
@@ -783,11 +791,6 @@ struct ListAllSubcommand: @MainActor MainActorAsyncParsableCommand {
     }
 }
 
-@MainActor
-extension MenuCommand.ClickSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension MenuCommand.ClickExtraSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension MenuCommand.ListSubcommand: AsyncRuntimeCommand {}

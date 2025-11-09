@@ -54,7 +54,7 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand {
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -94,16 +94,16 @@ struct ClickSubcommand: @MainActor MainActorAsyncParsableCommand {
                         button: result.details["button"] ?? self.button,
                         window: result.details["window"] ?? "Dialog"
                     )
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: self.outputLogger)
                 } else {
                     print("✓ Clicked '\(result.details["button"] ?? self.button)' button")
                 }
 
             } catch let error as DialogError {
-                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             }
         }
@@ -132,7 +132,7 @@ struct InputSubcommand: @MainActor MainActorAsyncParsableCommand {
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -179,16 +179,16 @@ struct InputSubcommand: @MainActor MainActorAsyncParsableCommand {
                         textLength: result.details["text_length"] ?? String(self.text.count),
                         cleared: result.details["cleared"] ?? String(self.clear)
                     )
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: self.outputLogger)
                 } else {
                     print("✓ Entered text in '\(result.details["field"] ?? "field")'")
                 }
 
             } catch let error as DialogError {
-                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             }
         }
@@ -214,7 +214,7 @@ struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -257,7 +257,7 @@ struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
                         name: result.details["filename"],
                         buttonClicked: result.details["button_clicked"] ?? self.select
                     )
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: self.outputLogger)
                 } else {
                     print("✓ Handled file dialog")
                     if let p = result.details["path"] { print("  Path: \(p)") }
@@ -266,10 +266,10 @@ struct FileSubcommand: @MainActor MainActorAsyncParsableCommand {
                 }
 
             } catch let error as DialogError {
-                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             }
         }
@@ -292,7 +292,7 @@ struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -332,7 +332,7 @@ struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
                         method: result.details["method"] ?? "unknown",
                         button: result.details["button"]
                     )
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: self.outputLogger)
                 } else {
                     if result.details["method"] == "escape" {
                         print("✓ Dismissed dialog with Escape")
@@ -344,10 +344,10 @@ struct DismissSubcommand: @MainActor MainActorAsyncParsableCommand {
                 }
 
             } catch let error as DialogError {
-                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             }
         }
@@ -364,7 +364,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand {
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -421,7 +421,7 @@ struct DialogListResult: Codable {
                         textFields: textFields,
                         textElements: elements.staticTexts
                     )
-                    outputSuccessCodable(data: outputData)
+                    outputSuccessCodable(data: outputData, logger: self.outputLogger)
                 } else {
                     print("Dialog: \(elements.dialogInfo.title)")
 
@@ -446,10 +446,10 @@ struct DialogListResult: Codable {
                 }
 
             } catch let error as DialogError {
-                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             }
         }
@@ -473,7 +473,7 @@ extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Error Handling
 
-private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool) {
+private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool, logger: Logger) {
     let errorCode: ErrorCode = switch error {
     case .noActiveDialog:
         .NO_ACTIVE_DIALOG
@@ -501,7 +501,7 @@ private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool) {
                 code: errorCode
             )
         )
-        outputJSON(response)
+        outputJSON(response, logger: logger)
     } else {
         fputs("❌ \(error.localizedDescription)\n", stderr)
     }

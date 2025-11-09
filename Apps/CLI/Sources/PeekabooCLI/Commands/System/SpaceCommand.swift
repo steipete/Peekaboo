@@ -117,7 +117,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
@@ -233,7 +233,7 @@ struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
@@ -312,7 +312,7 @@ struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHand
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 

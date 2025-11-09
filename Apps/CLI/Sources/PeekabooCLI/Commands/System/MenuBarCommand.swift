@@ -48,21 +48,31 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
     @Option(help: "Index of the menu bar item (0-based)")
     var index: Int?
 
-    @Flag(name: .shortAndLong, help: "Output results as JSON")
-    var jsonOutput = false
-
-    @Flag(name: .shortAndLong, help: "Show more detailed output")
-    var verbose = false
-
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
+
+    private var services: PeekabooServices {
+        self.runtime?.services ?? PeekabooServices.shared
+    }
 
     private var logger: Logger {
         self.runtime?.logger ?? Logger.shared
     }
 
     var outputLogger: Logger { self.logger }
+
+    private var configuration: CommandRuntime.Configuration? {
+        self.runtime?.configuration
+    }
+
+    var jsonOutput: Bool {
+        self.configuration?.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
+
+    private var isVerbose: Bool {
+        self.configuration?.verbose ?? self.runtimeOptions.verbose
+    }
 
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
@@ -80,7 +90,7 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
         let startTime = Date()
 
         do {
-            let menuBarItems = try await PeekabooServices.shared.menu.listMenuBarItems()
+            let menuBarItems = try await self.services.menu.listMenuBarItems()
 
             if self.jsonOutput {
                 let output = ListJSONOutput(
@@ -95,7 +105,7 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
                     },
                     executionTime: Date().timeIntervalSince(startTime)
                 )
-                outputSuccessCodable(data: output)
+                outputSuccessCodable(data: output, logger: self.outputLogger)
             } else {
                 if menuBarItems.isEmpty {
                     print("No menu bar items found.")
@@ -106,7 +116,7 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
                         if !item.isVisible {
                             info += " (hidden)"
                         }
-                        if let desc = item.description, verbose {
+                        if let desc = item.description, self.isVerbose {
                             info += " - \(desc)"
                         }
                         print(info)
@@ -121,7 +131,7 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
                     error: error.localizedDescription,
                     executionTime: Date().timeIntervalSince(startTime)
                 )
-                outputSuccessCodable(data: output)
+                outputSuccessCodable(data: output, logger: self.outputLogger)
             } else {
                 throw error
             }
@@ -133,11 +143,10 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
 
         do {
             let result: PeekabooCore.ClickResult
-
             if let idx = self.index {
-                result = try await PeekabooServices.shared.menu.clickMenuBarItem(at: idx)
+                result = try await self.services.menu.clickMenuBarItem(at: idx)
             } else if let name = self.itemName {
-                result = try await PeekabooServices.shared.menu.clickMenuBarItem(named: name)
+                result = try await self.services.menu.clickMenuBarItem(named: name)
             } else {
                 throw PeekabooError.invalidInput("Please provide either a menu bar item name or use --index")
             }
@@ -148,10 +157,10 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
                     clicked: result.elementDescription,
                     executionTime: Date().timeIntervalSince(startTime)
                 )
-                outputSuccessCodable(data: output)
+                outputSuccessCodable(data: output, logger: self.outputLogger)
             } else {
                 print("✅ Clicked menu bar item: \(result.elementDescription)")
-                if self.verbose {
+                if self.isVerbose {
                     print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
                 }
             }
@@ -162,7 +171,7 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
                     error: error.localizedDescription,
                     executionTime: Date().timeIntervalSince(startTime)
                 )
-                outputSuccessCodable(data: output)
+                outputSuccessCodable(data: output, logger: self.outputLogger)
             } else {
                 // Provide helpful hints for common errors
                 if error.localizedDescription.contains("not found") {
@@ -205,3 +214,6 @@ private struct JSONErrorOutput: Codable {
     let error: String
     let executionTime: TimeInterval
 }
+
+@MainActor
+extension MenuBarCommand: AsyncRuntimeCommand {}

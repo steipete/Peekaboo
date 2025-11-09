@@ -34,7 +34,7 @@ struct ToolsCommand: @MainActor MainActorAsyncParsableCommand {
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var jsonOutput: Bool {
         self.runtimeOptions.jsonOutput

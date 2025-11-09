@@ -66,7 +66,7 @@ struct LaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var logger: Logger {
             self.runtime?.logger ?? Logger.shared
@@ -215,7 +215,7 @@ struct QuitSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var logger: Logger {
             self.runtime?.logger ?? Logger.shared
@@ -351,7 +351,7 @@ struct HideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var logger: Logger {
             self.runtime?.logger ?? Logger.shared
@@ -415,7 +415,7 @@ struct UnhideSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var logger: Logger {
             self.runtime?.logger ?? Logger.shared
@@ -492,7 +492,7 @@ struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var logger: Logger {
             self.runtime?.logger ?? Logger.shared
@@ -589,7 +589,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
@@ -686,7 +686,7 @@ struct RelaunchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandli
         @OptionGroup
         var runtimeOptions: CommandRuntimeOptions
 
-        @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+        @RuntimeStorage private var runtime: CommandRuntime?
 
         private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared

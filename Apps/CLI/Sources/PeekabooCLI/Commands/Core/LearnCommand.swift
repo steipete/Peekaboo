@@ -29,7 +29,7 @@ struct LearnCommand: @MainActor MainActorAsyncParsableCommand {
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime

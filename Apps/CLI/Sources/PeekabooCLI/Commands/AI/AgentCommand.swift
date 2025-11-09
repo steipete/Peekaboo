@@ -19,9 +19,6 @@ struct AgentSessionInfo: Codable {
     let messageCount: Int
 }
 
-@MainActor
-extension AgentCommand: AsyncRuntimeCommand {}
-
 // Simple debug logging check
 private var isDebugLoggingEnabled: Bool {
     // Check if verbose mode is enabled via log level
@@ -87,7 +84,7 @@ func iconForTool(_ toolName: String) -> String {
 /// AI Agent command that uses new Chat Completions API architecture
 @available(macOS 14.0, *)
 @MainActor
-struct AgentCommand: @MainActor MainActorAsyncParsableCommand {
+struct AgentCommand: AsyncRuntimeCommand {
     static let configuration = CommandConfiguration(
         commandName: "agent",
         abstract: "Execute complex automation tasks using AI agent"
@@ -161,7 +158,7 @@ struct AgentCommand: @MainActor MainActorAsyncParsableCommand {
         return capabilities.recommendedOutputMode
     }
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared

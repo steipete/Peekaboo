@@ -91,7 +91,7 @@ ApplicationResolvable {
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 

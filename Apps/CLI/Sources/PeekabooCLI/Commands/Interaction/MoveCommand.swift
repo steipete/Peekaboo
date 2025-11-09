@@ -77,7 +77,7 @@ struct MoveCommand {
         }
     }
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     var outputLogger: Logger {
         self.runtime?.logger ?? Logger.shared

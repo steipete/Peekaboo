@@ -159,7 +159,7 @@ private func createWindowActionResult(
 // MARK: - Subcommands
 
 @MainActor
-struct CloseSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct CloseSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "close",
         abstract: "Close a window"
@@ -169,7 +169,7 @@ struct CloseSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingC
 
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -222,7 +222,7 @@ struct CloseSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingC
 }
 
 @MainActor
-struct MinimizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct MinimizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "minimize",
         abstract: "Minimize a window to the Dock"
@@ -232,7 +232,7 @@ struct MinimizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandli
 
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -285,7 +285,7 @@ struct MinimizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandli
 }
 
 @MainActor
-struct MaximizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct MaximizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "maximize",
         abstract: "Maximize a window (full screen)"
@@ -295,7 +295,7 @@ struct MaximizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandli
 
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -348,7 +348,7 @@ struct MaximizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandli
 }
 
 @MainActor
-struct FocusSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct FocusSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "focus",
         abstract: "Bring a window to the foreground",
@@ -373,7 +373,7 @@ struct FocusSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingC
 
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -453,7 +453,7 @@ struct FocusSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingC
 // MARK: - Move Command
 
 @MainActor
-struct MoveSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct MoveSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "move",
         abstract: "Move a window to a new position"
@@ -468,7 +468,7 @@ struct MoveSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
     @Option(name: .short, help: "New Y coordinate")
     var y: Int
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -538,7 +538,7 @@ struct MoveSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
 // MARK: - Resize Command
 
 @MainActor
-struct ResizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct ResizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "resize",
         abstract: "Resize a window"
@@ -553,7 +553,7 @@ struct ResizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
     @Option(name: .long, help: "New height")
     var height: Int
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -613,7 +613,7 @@ struct ResizeSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
 // MARK: - Set Bounds Command
 
 @MainActor
-struct SetBoundsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct SetBoundsSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "set-bounds",
         abstract: "Set window position and size in one operation"
@@ -634,7 +634,7 @@ struct SetBoundsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandl
     @Option(name: .long, help: "New height")
     var height: Int
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -695,7 +695,7 @@ struct SetBoundsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandl
 // MARK: - List Command
 
 @MainActor
-struct WindowListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+struct WindowListSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List windows for an application"
@@ -709,7 +709,7 @@ struct WindowListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHand
 
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
@@ -839,28 +839,6 @@ struct WindowActionResult: Codable {
     let new_bounds: WindowBounds?
 }
 
-@MainActor
-extension CloseSubcommand: AsyncRuntimeCommand {}
 
-@MainActor
-extension MinimizeSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension MaximizeSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension FocusSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension MoveSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ResizeSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension SetBoundsSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension WindowListSubcommand: AsyncRuntimeCommand {}
 
 // Using PeekabooCore.WindowListData for consistency

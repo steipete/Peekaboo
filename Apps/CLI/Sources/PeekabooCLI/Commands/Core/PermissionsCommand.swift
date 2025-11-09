@@ -88,7 +88,7 @@ struct CheckSubcommand: @MainActor MainActorAsyncParsableCommand {
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var logger: Logger {
         self.runtime?.logger ?? Logger.shared
@@ -220,7 +220,7 @@ struct RequestSubcommand: @MainActor MainActorAsyncParsableCommand {
     @OptionGroup
     var runtimeOptions: CommandRuntimeOptions
 
-    @RuntimeStorage private @RuntimeStorage var runtime: CommandRuntime?
+    @RuntimeStorage private var runtime: CommandRuntime?
 
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
