@@ -64,7 +64,10 @@ extension MCPCommand {
         @Option(help: "Port for HTTP/SSE transport")
         var port: Int = 8080
 
-        func run() async throws {
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        mutating func run(using runtime: CommandRuntime) async throws {
             do {
                 // Convert string transport to PeekabooCore.TransportType
                 let transportType: PeekabooCore.TransportType = switch self.transport.lowercased() {
@@ -77,7 +80,7 @@ extension MCPCommand {
                 let server = try await PeekabooMCPServer()
                 try await server.serve(transport: transportType, port: self.port)
             } catch {
-                Logger.shared.error("Failed to start MCP server: \(error)")
+                runtime.logger.error("Failed to start MCP server: \(error)")
                 throw ExitCode.failure
             }
         }
@@ -107,8 +110,11 @@ extension MCPCommand {
         @Option(help: "Tool arguments as JSON")
         var args: String = "{}"
 
-        func run() async throws {
-            Logger.shared.error("MCP client functionality not yet implemented")
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            runtime.logger.error("MCP client functionality not yet implemented")
             throw ExitCode.failure
         }
     }
@@ -131,22 +137,17 @@ extension MCPCommand {
             """
         )
 
-        @Flag(name: .long, help: "Output in JSON format")
-        var jsonOutput = false
-
         @Flag(name: .long, help: "Skip health checks (faster)")
         var skipHealthCheck = false
 
-        @Flag(name: .long, help: "Show verbose output including connection logs")
-        var verbose = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        private var wantsJSON: Bool { self.runtimeOptions.jsonOutput }
+        private var isVerbose: Bool { self.runtimeOptions.verbose }
 
         /// Initialize the MCP client manager, optionally probe server health, and render the chosen output format.
-        func run() async throws {
-            // Set verbose mode if requested
-            if self.verbose {
-                Logger.shared.setVerboseMode(true)
-            }
-
+        mutating func run(using runtime: CommandRuntime) async throws {
             // Register browser MCP as a default server
             let defaultBrowser = TachikomaMCP.MCPServerConfig(
                 transport: "stdio",
@@ -163,7 +164,7 @@ extension MCPCommand {
             // Suppress os_log output unless verbose
             let originalStderr = dup(STDERR_FILENO)
             let devNull = open("/dev/null", O_WRONLY)
-            if !self.verbose && devNull != -1 {
+            if !self.isVerbose && devNull != -1 {
                 // Redirect stderr to /dev/null to suppress os_log output
                 dup2(devNull, STDERR_FILENO)
             }
@@ -173,14 +174,14 @@ extension MCPCommand {
             let serverNames = TachikomaMCPClientManager.shared.getServerNames()
 
             // Restore stderr after initialization
-            if !self.verbose && devNull != -1 {
+            if !self.isVerbose && devNull != -1 {
                 dup2(originalStderr, STDERR_FILENO)
                 close(devNull)
                 close(originalStderr)
             }
 
             if serverNames.isEmpty {
-                if self.jsonOutput {
+                if self.wantsJSON {
                     let output = ["servers": [String: Any](), "summary": ["total": 0, "healthy": 0]]
                     let jsonData = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
                     if let jsonString = String(data: jsonData, encoding: .utf8) {
@@ -194,7 +195,7 @@ extension MCPCommand {
                 return
             }
 
-            if !self.skipHealthCheck && !self.jsonOutput {
+            if !self.skipHealthCheck && !self.wantsJSON {
                 print("Checking MCP server health...")
                 print()
             }
@@ -202,7 +203,7 @@ extension MCPCommand {
             // Suppress os_log output during health checks unless verbose
             let originalStderr2 = dup(STDERR_FILENO)
             let devNull2 = open("/dev/null", O_WRONLY)
-            if !self.verbose && devNull2 != -1 {
+            if !self.isVerbose && devNull2 != -1 {
                 dup2(devNull2, STDERR_FILENO)
             }
 
@@ -215,13 +216,13 @@ extension MCPCommand {
             }
 
             // Restore stderr after health checks
-            if !self.verbose && devNull2 != -1 {
+            if !self.isVerbose && devNull2 != -1 {
                 dup2(originalStderr2, STDERR_FILENO)
                 close(devNull2)
                 close(originalStderr2)
             }
 
-            if self.jsonOutput {
+            if self.wantsJSON {
                 try await self.outputJSON(serverNames: serverNames, healthResults: healthResults)
             } else {
                 await self.outputFormatted(serverNames: serverNames, healthResults: healthResults)
@@ -420,10 +421,15 @@ extension MCPCommand {
         @Argument(parsing: .remaining, help: "Command and arguments to run the MCP server")
         var command: [String] = []
 
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
         /// Validate the provided command, persist the new server configuration, and immediately probe connectivity.
-        func run() async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
+            let logger = runtime.logger
+
             guard !self.command.isEmpty else {
-                Logger.shared.error("Command is required. Use -- to separate command from options.")
+                logger.error("Command is required. Use -- to separate command from options.")
                 throw ExitCode.failure
             }
 
@@ -434,7 +440,7 @@ extension MCPCommand {
                 if parts.count == 2 {
                     envDict[String(parts[0])] = String(parts[1])
                 } else {
-                    Logger.shared.error("Invalid environment variable format: \(envVar). Use key=value")
+                    logger.error("Invalid environment variable format: \(envVar). Use key=value")
                     throw ExitCode.failure
                 }
             }
@@ -446,7 +452,7 @@ extension MCPCommand {
                 if parts.count == 2 {
                     headersDict[String(parts[0])] = String(parts[1])
                 } else {
-                    Logger.shared.error("Invalid header format: \(h). Use Key=Value")
+                    logger.error("Invalid header format: \(h). Use Key=Value")
                     throw ExitCode.failure
                 }
             }
@@ -497,7 +503,7 @@ extension MCPCommand {
                     }
                 }
             } catch {
-                Logger.shared.error("Failed to add MCP server: \(error.localizedDescription)")
+                logger.error("Failed to add MCP server: \(error.localizedDescription)")
                 throw ExitCode.failure
             }
         }
@@ -518,14 +524,18 @@ extension MCPCommand {
         @Flag(help: "Skip confirmation prompt")
         var force = false
 
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
         /// Disconnect and delete the specified server configuration, prompting unless forced.
-        func run() async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
+            let logger = runtime.logger
             let clientManager = MCPClientManager.shared
 
             // Check if server exists
             let serverInfo = await clientManager.getServerInfo(name: self.name)
             guard serverInfo != nil else {
-                Logger.shared.error("MCP server '\(self.name)' not found")
+                logger.error("MCP server '\(self.name)' not found")
                 throw ExitCode.failure
             }
 
@@ -543,7 +553,7 @@ extension MCPCommand {
                 try await clientManager.removeServer(name: self.name)
                 print("✓ Removed MCP server '\(self.name)'")
             } catch {
-                Logger.shared.error("Failed to remove MCP server: \(error.localizedDescription)")
+                logger.error("Failed to remove MCP server: \(error.localizedDescription)")
                 throw ExitCode.failure
             }
         }
@@ -567,8 +577,11 @@ extension MCPCommand {
         @Flag(help: "Show available tools")
         var showTools = false
 
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
         /// Probe a single MCP server, report its health, and optionally enumerate exposed tools.
-        func run() async throws {
+        mutating func run(using _: CommandRuntime) async throws {
             let clientManager = MCPClientManager.shared
 
             print("Testing connection to MCP server '\(self.name)'...")
@@ -601,15 +614,17 @@ extension MCPCommand {
         @Argument(help: "Name of the MCP server")
         var name: String
 
-        @Flag(name: .long, help: "Output in JSON format")
-        var jsonOutput = false
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
         /// Print configuration and live health details for the specified server in text or JSON form.
-        func run() async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
             let clientManager = MCPClientManager.shared
 
             guard let serverInfo = await clientManager.getServerInfo(name: name) else {
-                Logger.shared.error("MCP server '\(self.name)' not found")
+                runtime.logger.error("MCP server '\(self.name)' not found")
                 throw ExitCode.failure
             }
 
@@ -671,7 +686,10 @@ extension MCPCommand {
         @Argument(help: "Name of the MCP server to enable")
         var name: String
 
-        func run() async throws {
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        mutating func run(using runtime: CommandRuntime) async throws {
             let clientManager = MCPClientManager.shared
 
             do {
@@ -683,7 +701,7 @@ extension MCPCommand {
                 let health = await clientManager.checkServerHealth(name: self.name)
                 print("\(health.symbol) \(health.statusText)")
             } catch {
-                Logger.shared.error("Failed to enable MCP server: \(error.localizedDescription)")
+                runtime.logger.error("Failed to enable MCP server: \(error.localizedDescription)")
                 throw ExitCode.failure
             }
         }
@@ -701,14 +719,17 @@ extension MCPCommand {
         @Argument(help: "Name of the MCP server to disable")
         var name: String
 
-        func run() async throws {
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        mutating func run(using runtime: CommandRuntime) async throws {
             let clientManager = MCPClientManager.shared
 
             do {
                 try await clientManager.disableServer(name: self.name)
                 print("✓ Disabled MCP server '\(self.name)'")
             } catch {
-                Logger.shared.error("Failed to disable MCP server: \(error.localizedDescription)")
+                runtime.logger.error("Failed to disable MCP server: \(error.localizedDescription)")
                 throw ExitCode.failure
             }
         }
@@ -726,9 +747,25 @@ extension MCPCommand {
         @Argument(help: "Server to inspect", completion: .default)
         var server: String?
 
-        func run() async throws {
-            Logger.shared.error("MCP inspection not yet implemented")
+        @OptionGroup
+        var runtimeOptions: CommandRuntimeOptions
+
+        mutating func run(using runtime: CommandRuntime) async throws {
+            runtime.logger.error("MCP inspection not yet implemented")
             throw ExitCode.failure
         }
     }
 }
+
+// MARK: - Runtime Conformance
+
+extension MCPCommand.Serve: AsyncRuntimeCommand {}
+extension MCPCommand.Call: AsyncRuntimeCommand {}
+extension MCPCommand.List: AsyncRuntimeCommand {}
+extension MCPCommand.Add: AsyncRuntimeCommand {}
+extension MCPCommand.Remove: AsyncRuntimeCommand {}
+extension MCPCommand.Test: AsyncRuntimeCommand {}
+extension MCPCommand.Info: AsyncRuntimeCommand {}
+extension MCPCommand.Enable: AsyncRuntimeCommand {}
+extension MCPCommand.Disable: AsyncRuntimeCommand {}
+extension MCPCommand.Inspect: AsyncRuntimeCommand {}
