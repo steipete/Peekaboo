@@ -105,7 +105,7 @@ struct SpaceCommand: @MainActor MainActorAsyncParsableCommand {
 // MARK: - List Spaces
 
 @MainActor
-struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List all Spaces and their windows"
@@ -221,7 +221,7 @@ struct ListSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCo
 // MARK: - Switch Space
 
 @MainActor
-struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "switch",
         abstract: "Switch to a different Space"
@@ -282,7 +282,7 @@ struct SwitchSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandling
 // MARK: - Move Window to Space
 
 @MainActor
-struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+struct MoveWindowSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "move-window",
         abstract: "Move a window to a different Space"
@@ -429,13 +429,13 @@ struct MoveWindowSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHand
 }
 
 @MainActor
-extension SpaceCommand.ListSubcommand: AsyncRuntimeCommand {}
+extension ListSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
-extension SpaceCommand.SwitchSubcommand: AsyncRuntimeCommand {}
+extension SwitchSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
-extension SpaceCommand.MoveWindowSubcommand: AsyncRuntimeCommand {}
+extension MoveWindowSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Response Types
 

@@ -159,7 +159,7 @@ private func createWindowActionResult(
 // MARK: - Subcommands
 
 @MainActor
-struct CloseSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+struct CloseSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "close",
         abstract: "Close a window"
@@ -222,7 +222,7 @@ struct CloseSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormatt
 }
 
 @MainActor
-struct MinimizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+struct MinimizeSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "minimize",
         abstract: "Minimize a window to the Dock"
@@ -285,7 +285,7 @@ struct MinimizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputForm
 }
 
 @MainActor
-struct MaximizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+struct MaximizeSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "maximize",
         abstract: "Maximize a window (full screen)"
@@ -348,7 +348,7 @@ struct MaximizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputForm
 }
 
 @MainActor
-struct FocusSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+struct FocusSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "focus",
         abstract: "Bring a window to the foreground",
@@ -453,7 +453,7 @@ struct FocusSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormatt
 // MARK: - Move Command
 
 @MainActor
-struct MoveSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+struct MoveSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "move",
         abstract: "Move a window to a new position"
@@ -538,7 +538,7 @@ struct MoveSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormatta
 // MARK: - Resize Command
 
 @MainActor
-struct ResizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+struct ResizeSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "resize",
         abstract: "Resize a window"
@@ -613,7 +613,7 @@ struct ResizeSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormat
 // MARK: - Set Bounds Command
 
 @MainActor
-struct SetBoundsSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+struct SetBoundsSubcommand: ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "set-bounds",
         abstract: "Set window position and size in one operation"
@@ -695,7 +695,7 @@ struct SetBoundsSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFor
 // MARK: - List Command
 
 @MainActor
-struct WindowListSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+struct WindowListSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List windows for an application"
@@ -838,6 +838,30 @@ struct WindowActionResult: Codable {
     let window_title: String?
     let new_bounds: WindowBounds?
 }
+
+@MainActor
+extension CloseSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MinimizeSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MaximizeSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension FocusSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MoveSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ResizeSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension SetBoundsSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension WindowListSubcommand: AsyncRuntimeCommand {}
 
 
 
