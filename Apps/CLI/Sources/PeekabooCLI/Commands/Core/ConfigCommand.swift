@@ -47,7 +47,7 @@ struct ConfigCommand: @MainActor MainActorParsableCommand {
 
     /// Subcommand to create a default configuration file
     @MainActor
-struct InitCommand: @MainActor MainActorAsyncParsableCommand {
+struct InitCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "init",
             abstract: "Create a default configuration file"
@@ -117,7 +117,7 @@ struct InitCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to display current configuration
     @MainActor
-struct ShowCommand: @MainActor MainActorAsyncParsableCommand {
+struct ShowCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
             abstract: "Display current configuration"
@@ -248,7 +248,7 @@ struct ShowCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to open configuration in an editor
     @MainActor
-struct EditCommand: @MainActor MainActorAsyncParsableCommand {
+struct EditCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "edit",
             abstract: "Open configuration file in your default editor"
@@ -346,7 +346,7 @@ struct EditCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to validate configuration syntax
     @MainActor
-struct ValidateCommand: @MainActor MainActorAsyncParsableCommand {
+struct ValidateCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "validate",
             abstract: "Validate configuration file syntax"
@@ -423,7 +423,7 @@ struct ValidateCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to set credentials securely
     @MainActor
-struct SetCredentialCommand: @MainActor MainActorAsyncParsableCommand {
+struct SetCredentialCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "set-credential",
             abstract: "Set an API key or credential securely"
@@ -477,7 +477,7 @@ struct SetCredentialCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to add a custom AI provider
     @MainActor
-struct AddProviderCommand: @MainActor MainActorAsyncParsableCommand {
+struct AddProviderCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "add-provider",
             abstract: "Add a custom AI provider",
@@ -672,7 +672,7 @@ struct AddProviderCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to list custom AI providers
     @MainActor
-struct ListProvidersCommand: @MainActor MainActorAsyncParsableCommand {
+    struct ListProvidersCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-providers",
             abstract: "List configured custom AI providers",
@@ -741,7 +741,7 @@ struct ListProvidersCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to test a custom AI provider connection
     @MainActor
-struct TestProviderCommand: @MainActor MainActorAsyncParsableCommand {
+    struct TestProviderCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "test-provider",
             abstract: "Test connection to a custom AI provider",
@@ -805,7 +805,7 @@ struct TestProviderCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to remove a custom AI provider
     @MainActor
-struct RemoveProviderCommand: @MainActor MainActorAsyncParsableCommand {
+    struct RemoveProviderCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "remove-provider",
             abstract: "Remove a custom AI provider",
@@ -894,7 +894,7 @@ struct RemoveProviderCommand: @MainActor MainActorAsyncParsableCommand {
 
     /// Subcommand to discover models from a custom AI provider
     @MainActor
-struct ModelsProviderCommand: @MainActor MainActorAsyncParsableCommand {
+    struct ModelsProviderCommand: AsyncRuntimeCommand {
         static let configuration = CommandConfiguration(
             commandName: "models-provider",
             abstract: "List available models from a custom AI provider",
@@ -1052,33 +1052,3 @@ private func outputJSON(_ value: some Encodable) {
         print(json)
     }
 }
-
-@MainActor
-extension ConfigCommand.InitCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.ShowCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.EditCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.ValidateCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.SetCredentialCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.AddProviderCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.ListProvidersCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.TestProviderCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.RemoveProviderCommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ConfigCommand.ModelsProviderCommand: AsyncRuntimeCommand {}
