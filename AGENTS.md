@@ -66,7 +66,7 @@ If you need to introduce a breaking change, add the `!`. Always make sure the ty
 - Embrace SwiftUI's declarative nature, don't fight the framework
 - See `/Users/steipete/Projects/vibetunnel/apple/docs/modern-swift.md` for details
 
-**Swift 6.2 Approachable Concurrency**: Every package shares the same SwiftPM settings (`StrictConcurrency`, `ExistentialAny`, `NonisolatedNonsendingByDefault`, and `.defaultIsolation(MainActor.self)`) *except* the top-level `peekaboo` CLI target. ArgumentParser still synthesizes its `ParsableCommand` conformances assuming non-actor types, so the CLI target skips the `.defaultIsolation` flag while retaining the rest. If you add new modules, keep the default isolation enabled unless you hit a similar toolchain limitation and document the exception in `docs/concurrency.md`.
+**Swift 6.2 Approachable Concurrency**: Every package shares the same SwiftPM settings (`StrictConcurrency`, `ExistentialAny`, `NonisolatedNonsendingByDefault`, and `.defaultIsolation(MainActor.self)`) across all targets including the CLI. The custom fork of ArgumentParser (steipete/swift-argument-parser, branch: `approachable-concurrency`) supports `.defaultIsolation`, enabling full approachable concurrency throughout the codebase. If you add new modules, keep the default isolation enabled to maintain consistent concurrency guarantees.
 
 **Minimum macOS Version**: This project targets macOS 14.0 (Sonoma) and later. Do not add availability checks for macOS versions below 14.0.
 
