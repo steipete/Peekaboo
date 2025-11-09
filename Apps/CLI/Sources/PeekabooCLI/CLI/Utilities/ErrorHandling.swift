@@ -8,6 +8,7 @@ private func emitError(
     message: String,
     code: ErrorCode,
     jsonOutput: Bool,
+    logger: Logger,
     prefix: String = "❌"
 ) {
     if jsonOutput {
@@ -18,7 +19,7 @@ private func emitError(
                 code: code
             )
         )
-        outputJSON(response)
+        outputJSON(response, logger: logger)
     } else {
         print("\(prefix) \(message)")
     }
@@ -27,10 +28,20 @@ private func emitError(
 // ApplicationError has been replaced by PeekabooError
 // Callers should use handleGenericError instead
 
-func handleGenericError(_ error: any Error, jsonOutput: Bool) {
-    emitError(message: error.localizedDescription, code: .UNKNOWN_ERROR, jsonOutput: jsonOutput)
+func handleGenericError(_ error: any Error, jsonOutput: Bool, logger: Logger) {
+    emitError(
+        message: error.localizedDescription,
+        code: .UNKNOWN_ERROR,
+        jsonOutput: jsonOutput,
+        logger: logger
+    )
 }
 
-func handleValidationError(_ error: any Error, jsonOutput: Bool) {
-    emitError(message: error.localizedDescription, code: .VALIDATION_ERROR, jsonOutput: jsonOutput)
+func handleValidationError(_ error: any Error, jsonOutput: Bool, logger: Logger) {
+    emitError(
+        message: error.localizedDescription,
+        code: .VALIDATION_ERROR,
+        jsonOutput: jsonOutput,
+        logger: logger
+    )
 }
