@@ -126,38 +126,26 @@ struct SpaceCommand: ParsableCommand {
 
 // MARK: - List Spaces
 
-struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "list",
-        abstract: "List all Spaces and their windows"
-    )
-
+struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
     @Flag(name: .long, help: "Include detailed window information")
     var detailed = false
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
-
-    /// Enumerate Spaces, optionally hydrate window membership, and render results in the requested format.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -177,103 +165,77 @@ struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingC
                 }
             )
             outputSuccessCodable(data: data, logger: self.logger)
-        } else {
-            print("Spaces:")
+            return
+        }
 
-            // If detailed, collect all windows and their Space assignments
-            var windowsBySpace: [UInt64: [(app: String, window: ServiceWindowInfo)]] = [:]
+        print("Spaces:")
+        var windowsBySpace: [UInt64: [(app: String, window: ServiceWindowInfo)]] = [:]
 
         if self.detailed {
-            // Get all running applications
             let appService = self.services.applications
             let appListResult = try await appService.listApplications()
 
-            // Iterate through all applications to get their windows
-            for app in appListResult.data.applications {
-                // Skip apps without windows
-                guard app.windowCount > 0 else { continue }
-
+            for app in appListResult.data.applications where app.windowCount > 0 {
                 do {
-                    // Get windows for this application
                     let windowsResult = try await appService.listWindows(for: app.name, timeout: nil)
-
-                        // For each window, find which Space it's on
-                        for window in windowsResult.data.windows {
-                            let windowID = CGWindowID(window.windowID)
-                    let windowSpaces = await spaceService.getSpacesForWindow(windowID: windowID)
-
-                            // Add window to each Space it appears on
-                            for space in windowSpaces {
-                                if windowsBySpace[space.id] == nil {
-                                    windowsBySpace[space.id] = []
-                                }
-                                windowsBySpace[space.id]?.append((app: app.name, window: window))
-                            }
+                    for window in windowsResult.data.windows {
+                        let windowSpaces = await spaceService.getSpacesForWindow(windowID: CGWindowID(window.windowID))
+                        for space in windowSpaces {
+                            windowsBySpace[space.id, default: []].append((app: app.name, window: window))
                         }
-                    } catch {
-                        // Skip applications we can't access
-                        continue
                     }
+                } catch {
+                    continue
                 }
             }
+        }
 
-            // Display Spaces with their windows
-            for (index, space) in spaces.enumerated() {
-                let marker = space.isActive ? "→" : " "
-                let displayInfo = space.displayID.map { " (Display \($0))" } ?? ""
-                print("\(marker) Space \(index + 1) [ID: \(space.id), Type: \(space.type.rawValue)\(displayInfo)]")
+        for (index, space) in spaces.enumerated() {
+            let marker = space.isActive ? "→" : " "
+            let displayInfo = space.displayID.map { " (Display \($0))" } ?? ""
+            print("\(marker) Space \(index + 1) [ID: \(space.id), Type: \(space.type.rawValue)\(displayInfo)]")
 
-                if self.detailed {
-                    // Display windows for this Space
-                    if let windows = windowsBySpace[space.id], !windows.isEmpty {
-                        for (app, window) in windows {
-                            let title = window.title.isEmpty ? "[Untitled]" : window.title
-                            let minimized = window.isMinimized ? " [MINIMIZED]" : ""
-                            print("    • \(app): \(title)\(minimized)")
-                        }
-                    } else {
-                        print("    (No windows)")
+            if self.detailed {
+                if let windows = windowsBySpace[space.id], !windows.isEmpty {
+                    for (app, window) in windows {
+                        let title = window.title.isEmpty ? "[Untitled]" : window.title
+                        let minimized = window.isMinimized ? " [MINIMIZED]" : ""
+                        print("    • \(app): \(title)\(minimized)")
                     }
+                } else {
+                    print("    (No windows)")
                 }
             }
+        }
 
-            if spaces.isEmpty {
-                print("No Spaces found (this may indicate an API issue)")
-            }
+        if spaces.isEmpty {
+            print("No Spaces found (this may indicate an API issue)")
         }
     }
 }
 
 // MARK: - Switch Space
 
-struct SwitchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "switch",
-        abstract: "Switch to a different Space"
-    )
-
+struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
     @Option(name: .long, help: "Space number to switch to (1-based)")
     var to: Int
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Validate the requested Space index, switch to it, and report the outcome.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -282,13 +244,11 @@ struct SwitchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlin
             let spaceService = SpaceCommandEnvironment.service
             let spaces = await spaceService.getAllSpaces()
 
-            // Convert 1-based index to actual Space
             guard self.to > 0 && self.to <= spaces.count else {
                 throw ValidationError("Invalid Space number. Available: 1-\(spaces.count)")
             }
 
             let targetSpace = spaces[self.to - 1]
-
             try await spaceService.switchToSpace(targetSpace.id)
 
             if self.jsonOutput {
@@ -312,12 +272,7 @@ struct SwitchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlin
 
 // MARK: - Move Window to Space
 
-struct MoveWindowSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
-    static let configuration = CommandConfiguration(
-        commandName: "move-window",
-        abstract: "Move a window to a different Space"
-    )
-
+struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
 
@@ -339,74 +294,58 @@ struct MoveWindowSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
     @Flag(name: .long, help: "Switch to the target Space after moving")
     var follow = false
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
-
-    /// Move the resolved window into the requested Space (or current Space) and optionally follow the move.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
-            // Validate inputs
             let appIdentifier = try self.resolveApplicationIdentifier()
 
             guard self.to != nil || self.toCurrent else {
                 throw ValidationError("Must specify either --to or --to-current")
             }
-
             guard !(self.to != nil && self.toCurrent) else {
                 throw ValidationError("Cannot specify both --to and --to-current")
             }
 
-            // Create window identification options
             var windowOptions = WindowIdentificationOptions()
             windowOptions.app = appIdentifier
             windowOptions.windowTitle = self.windowTitle
             windowOptions.windowIndex = self.windowIndex
 
-            // Get window info
             let target = try windowOptions.toWindowTarget()
             let windows = try await self.services.windows.listWindows(target: target)
-            let windowInfo = windowOptions.selectWindow(from: windows)
-
-            guard let info = windowInfo else {
+            guard let windowInfo = windowOptions.selectWindow(from: windows) else {
                 throw NotFoundError.window(app: appIdentifier)
             }
 
-            let windowID = CGWindowID(info.windowID)
-
+            let windowID = CGWindowID(windowInfo.windowID)
             let spaceService = SpaceCommandEnvironment.service
 
             if self.toCurrent {
-                // Move to current Space
                 try await spaceService.moveWindowToCurrentSpace(windowID: windowID)
-
                 if self.jsonOutput {
                     let data = WindowSpaceActionResult(
                         action: "move-window",
                         success: true,
                         window_id: windowID,
-                        window_title: info.title,
+                        window_title: windowInfo.title,
                         space_id: nil,
                         space_number: nil,
                         moved_to_current: true,
@@ -414,51 +353,88 @@ struct MoveWindowSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
                     )
                     outputSuccessCodable(data: data, logger: self.logger)
                 } else {
-                    print("✓ Moved window '\(info.title)' to current Space")
+                    print("✓ Moved window '\(windowInfo.title)' to current Space")
                 }
-
-            } else if let spaceNum = self.to {
-                // Move to specific Space
-                let spaces = await spaceService.getAllSpaces()
-
-                guard spaceNum > 0 && spaceNum <= spaces.count else {
-                    throw ValidationError("Invalid Space number. Available: 1-\(spaces.count)")
-                }
-
-                let targetSpace = spaces[spaceNum - 1]
-                try await spaceService.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
-
-                if self.follow {
-                    try await spaceService.switchToSpace(targetSpace.id)
-                }
-
-                if self.jsonOutput {
-                    let data = WindowSpaceActionResult(
-                        action: "move-window",
-                        success: true,
-                        window_id: windowID,
-                        window_title: info.title,
-                        space_id: targetSpace.id,
-                        space_number: spaceNum,
-                        moved_to_current: false,
-                        followed: self.follow
-                    )
-                    outputSuccessCodable(data: data, logger: self.logger)
-                } else {
-                    var message = "✓ Moved window '\(info.title)' to Space \(spaceNum)"
-                    if self.follow {
-                        message += " (and switched to it)"
-                    }
-                    print(message)
-                }
+                return
             }
 
+            guard let spaceNum = self.to else {
+                preconditionFailure("Expected either --to or --to-current validation")
+            }
+
+            let spaces = await spaceService.getAllSpaces()
+            guard spaceNum > 0 && spaceNum <= spaces.count else {
+                throw ValidationError("Invalid Space number. Available: 1-\(spaces.count)")
+            }
+
+            let targetSpace = spaces[spaceNum - 1]
+            try await spaceService.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
+            if self.follow {
+                try await spaceService.switchToSpace(targetSpace.id)
+            }
+
+            if self.jsonOutput {
+                let data = WindowSpaceActionResult(
+                    action: "move-window",
+                    success: true,
+                    window_id: windowID,
+                    window_title: windowInfo.title,
+                    space_id: targetSpace.id,
+                    space_number: spaceNum,
+                    moved_to_current: false,
+                    followed: self.follow
+                )
+                outputSuccessCodable(data: data, logger: self.logger)
+            } else {
+                var message = "✓ Moved window '\(windowInfo.title)' to Space \(spaceNum)"
+                if self.follow { message += " (and switched to it)" }
+                print(message)
+            }
         } catch {
             handleError(error)
             throw ExitCode(1)
         }
     }
 }
+
+extension ListSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "list",
+                abstract: "List all Spaces and their windows"
+            )
+        }
+    }
+}
+
+extension ListSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension SwitchSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "switch",
+                abstract: "Switch to a different Space"
+            )
+        }
+    }
+}
+
+extension SwitchSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension MoveWindowSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "move-window",
+                abstract: "Move a window to a different Space"
+            )
+        }
+    }
+}
+
+extension MoveWindowSubcommand: @MainActor AsyncRuntimeCommand {}
 
 // MARK: - Response Types
 

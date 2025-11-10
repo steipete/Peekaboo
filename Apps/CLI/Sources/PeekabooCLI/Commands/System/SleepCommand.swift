@@ -1,51 +1,40 @@
 @preconcurrency import ArgumentParser
 import Foundation
 
-/// Pauses execution for a specified duration.
-/// Useful for timing in automation scripts.
 @available(macOS 14.0, *)
-struct SleepCommand: AsyncParsableCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "sleep",
-        abstract: "Pause execution for a specified duration",
-        discussion: """
-            The 'sleep' command pauses execution for a specified number
-            of milliseconds. This is useful in automation scripts to wait
-            for UI animations, page loads, or other time-based events.
-
-            EXAMPLES:
-              peekaboo sleep 1000        # Sleep for 1 second
-              peekaboo sleep 500         # Sleep for 0.5 seconds
-              peekaboo sleep 3000        # Sleep for 3 seconds
-
-            The duration is specified in milliseconds.
-        """
-    )
+struct SleepCommand: OutputFormattable {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "sleep",
+                abstract: "Pause execution for a specified duration"
+            )
+        }
+    }
 
     @Argument(help: "Duration to sleep in milliseconds")
     var duration: Int
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var outputLogger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-    @MainActor
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         guard self.duration > 0 else {
             let error = ValidationError("Duration must be positive")
@@ -60,29 +49,21 @@ struct SleepCommand: AsyncParsableCommand, OutputFormattable {
 
         try await Task.sleep(nanoseconds: UInt64(self.duration) * 1_000_000)
 
-        let actualDuration = Date().timeIntervalSince(startTime) * 1000 // Convert to ms
-
-        if self.jsonOutput {
-            let output = SleepResult(
-                success: true,
-                requested_duration: duration,
-                actual_duration: Int(actualDuration)
-            )
-            outputSuccessCodable(data: output, logger: self.outputLogger)
-        } else {
+        let actualDuration = Date().timeIntervalSince(startTime) * 1000
+        let result = SleepResult(success: true, requested_duration: duration, actual_duration: Int(actualDuration))
+        output(result) {
             let seconds = Double(duration) / 1000.0
             print("✅ Paused for \(seconds)s")
         }
     }
 }
 
-@MainActor
-extension SleepCommand: AsyncRuntimeCommand {}
-
-// MARK: - JSON Output Structure
-
 struct SleepResult: Codable {
     let success: Bool
     let requested_duration: Int
     let actual_duration: Int
 }
+
+extension SleepCommand: @MainActor AsyncParsableCommand {}
+
+extension SleepCommand: @MainActor AsyncRuntimeCommand {}

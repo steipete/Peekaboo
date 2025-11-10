@@ -4,7 +4,7 @@ import PeekabooCore
 
 /// Clean up session cache and temporary files
 @available(macOS 14.0, *)
-struct CleanCommand: AsyncParsableCommand, AsyncRuntimeCommand, OutputFormattable {
+struct CleanCommand: OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "clean",
         abstract: "Clean up session cache and temporary files",
@@ -41,24 +41,20 @@ struct CleanCommand: AsyncParsableCommand, AsyncRuntimeCommand, OutputFormattabl
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
+    private var configuration: CommandRuntime.Configuration { self.resolvedRuntime.configuration }
+    var jsonOutput: Bool { self.configuration.jsonOutput }
 
-    private var configuration: CommandRuntime.Configuration? {
-        self.runtime?.configuration
-    }
-
-    var jsonOutput: Bool {
-        self.configuration?.jsonOutput ?? self.runtimeOptions.jsonOutput
-    }
-
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
@@ -178,3 +174,7 @@ private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool,
         print("❌ \(error.localizedDescription)", to: &localStandardErrorStream)
     }
 }
+
+extension CleanCommand: @MainActor AsyncParsableCommand {}
+
+extension CleanCommand: @MainActor AsyncRuntimeCommand {}

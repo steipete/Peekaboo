@@ -5,8 +5,10 @@ import PeekabooCore
 import PeekabooFoundation
 
 /// Command for interacting with macOS menu bar items (status items).
-struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
+struct MenuBarCommand: ParsableCommand, OutputFormattable {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
         commandName: "menubar",
         abstract: "Interact with macOS menu bar items (status items)",
         discussion: """
@@ -36,7 +38,9 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
         NOTE: Menu bar items are different from regular application menus. For application
         menus (File, Edit, etc.), use the 'menu' command instead.
         """
-    )
+            )
+        }
+    }
 
     @Argument(help: "Action to perform (list or click)")
     var action: String
@@ -51,28 +55,23 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
 
-    private var configuration: CommandRuntime.Configuration? {
-        self.runtime?.configuration
-    }
+    private var configuration: CommandRuntime.Configuration { self.resolvedRuntime.configuration }
 
-    var jsonOutput: Bool {
-        self.configuration?.jsonOutput ?? self.runtimeOptions.jsonOutput
-    }
+    var jsonOutput: Bool { self.configuration.jsonOutput }
+    private var isVerbose: Bool { self.configuration.verbose }
 
-    private var isVerbose: Bool {
-        self.configuration?.verbose ?? self.runtimeOptions.verbose
-    }
-
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         switch self.action.lowercased() {
@@ -85,11 +84,12 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
         }
     }
 
+    @MainActor
     private func listMenuBarItems() async throws {
         let startTime = Date()
 
         do {
-            let menuBarItems = try await self.services.menu.listMenuBarItems()
+            let menuBarItems = try await MenuServiceBridge.listMenuBarItems(services: self.services)
 
             if self.jsonOutput {
                 let output = ListJSONOutput(
@@ -137,15 +137,16 @@ struct MenuBarCommand: @MainActor MainActorAsyncParsableCommand, OutputFormattab
         }
     }
 
+    @MainActor
     private func clickMenuBarItem() async throws {
         let startTime = Date()
 
         do {
             let result: PeekabooCore.ClickResult
             if let idx = self.index {
-                result = try await self.services.menu.clickMenuBarItem(at: idx)
+                result = try await MenuServiceBridge.clickMenuBarItem(at: idx, services: self.services)
             } else if let name = self.itemName {
-                result = try await self.services.menu.clickMenuBarItem(named: name)
+                result = try await MenuServiceBridge.clickMenuBarItem(named: name, services: self.services)
             } else {
                 throw PeekabooError.invalidInput("Please provide either a menu bar item name or use --index")
             }
@@ -214,5 +215,6 @@ private struct JSONErrorOutput: Codable {
     let executionTime: TimeInterval
 }
 
-@MainActor
-extension MenuBarCommand: AsyncRuntimeCommand {}
+extension MenuBarCommand: @MainActor AsyncParsableCommand {}
+
+extension MenuBarCommand: @MainActor AsyncRuntimeCommand {}

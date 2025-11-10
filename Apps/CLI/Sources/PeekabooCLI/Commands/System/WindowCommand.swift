@@ -153,74 +153,31 @@ private func createWindowActionResult(
     )
 }
 
-private enum WindowServiceBridge {
-    static func closeWindow(services: PeekabooServices, target: WindowTarget) async throws {
-        try await services.windows.closeWindow(target: target)
-    }
-
-    static func minimizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
-        try await services.windows.minimizeWindow(target: target)
-    }
-
-    static func maximizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
-        try await services.windows.maximizeWindow(target: target)
-    }
-
-    static func moveWindow(services: PeekabooServices, target: WindowTarget, to origin: CGPoint) async throws {
-        try await services.windows.moveWindow(target: target, to: origin)
-    }
-
-    static func resizeWindow(services: PeekabooServices, target: WindowTarget, to size: CGSize) async throws {
-        try await services.windows.resizeWindow(target: target, to: size)
-    }
-
-    static func setWindowBounds(services: PeekabooServices, target: WindowTarget, bounds: CGRect) async throws {
-        try await services.windows.setWindowBounds(target: target, bounds: bounds)
-    }
-
-    static func focusWindow(services: PeekabooServices, target: WindowTarget) async throws {
-        try await services.windows.focusWindow(target: target)
-    }
-
-    static func listWindows(services: PeekabooServices, target: WindowTarget) async throws -> [ServiceWindowInfo] {
-        try await services.windows.listWindows(target: target)
-    }
-}
-
 // MARK: - Subcommands
 
-struct CloseSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "close",
-        abstract: "Close a window"
-    )
+extension WindowCommand {
 
+@MainActor
+struct CloseSubcommand: ErrorHandlingCommand, OutputFormattable {
     @OptionGroup var windowOptions: WindowIdentificationOptions
-
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Resolve the target window, close it, and surface the outcome in JSON or text form.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -255,39 +212,28 @@ struct CloseSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandling
     }
 }
 
-struct MinimizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "minimize",
-        abstract: "Minimize a window to the Dock"
-    )
-
+@MainActor
+struct MinimizeSubcommand: ErrorHandlingCommand, OutputFormattable {
     @OptionGroup var windowOptions: WindowIdentificationOptions
-
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Resolve the target window, minimize it to the Dock, and report the action.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -321,39 +267,28 @@ struct MinimizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandl
     }
 }
 
-struct MaximizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "maximize",
-        abstract: "Maximize a window (full screen)"
-    )
-
+@MainActor
+struct MaximizeSubcommand: ErrorHandlingCommand, OutputFormattable {
     @OptionGroup var windowOptions: WindowIdentificationOptions
-
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Expand the resolved window to fill the available screen real estate and share the updated frame.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -387,25 +322,8 @@ struct MaximizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandl
     }
 }
 
-struct FocusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "focus",
-        abstract: "Bring a window to the foreground",
-        discussion: """
-        Focus brings a window to the foreground and activates its application.
-
-        Space Support:
-        By default, if the window is on a different Space (virtual desktop),
-        the focus command will switch to that Space. You can control this
-        behavior with the --space-switch and --move-here options.
-
-        Examples:
-        peekaboo window focus --app Safari
-        peekaboo window focus --app "Visual Studio Code" --window-title "main.swift"
-        peekaboo window focus --app Terminal --no-space-switch
-        peekaboo window focus --app Finder --move-here
-        """
-    )
+@MainActor
+struct FocusSubcommand: ErrorHandlingCommand, OutputFormattable {
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
     @OptionGroup var focusOptions: FocusCommandOptions
@@ -414,27 +332,21 @@ struct FocusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandling
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Focus the targeted window, handling Space switches or relocation according to the provided options.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.debug("FocusSubcommand.run() called")
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -495,12 +407,8 @@ struct FocusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandling
 
 // MARK: - Move Command
 
-struct MoveSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "move",
-        abstract: "Move a window to a new position"
-    )
-
+@MainActor
+struct MoveSubcommand: ErrorHandlingCommand, OutputFormattable {
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -512,27 +420,21 @@ struct MoveSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingC
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Move the window to the absolute screen coordinates provided by the user.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -583,12 +485,8 @@ struct MoveSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingC
 
 // MARK: - Resize Command
 
-struct ResizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "resize",
-        abstract: "Resize a window"
-    )
-
+@MainActor
+struct ResizeSubcommand: ErrorHandlingCommand, OutputFormattable {
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -600,27 +498,21 @@ struct ResizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlin
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Resize the window to the supplied dimensions, preserving its origin.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -661,12 +553,8 @@ struct ResizeSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlin
 
 // MARK: - Set Bounds Command
 
-struct SetBoundsSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "set-bounds",
-        abstract: "Set window position and size in one operation"
-    )
-
+@MainActor
+struct SetBoundsSubcommand: ErrorHandlingCommand, OutputFormattable {
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -684,27 +572,21 @@ struct SetBoundsSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHand
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Set both position and size for the window in a single operation, then confirm the new bounds.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -746,12 +628,8 @@ struct SetBoundsSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHand
 
 // MARK: - List Command
 
-struct WindowListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
-    static let configuration = CommandConfiguration(
-        commandName: "list",
-        abstract: "List windows for an application"
-    )
-
+@MainActor
+struct WindowListSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
 
@@ -762,30 +640,24 @@ struct WindowListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-
-    var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     @Flag(name: .long, help: "Group windows by Space (virtual desktop)")
     var groupBySpace = false
 
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
-
     /// List windows for the target application and optionally organize them by Space.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -885,6 +757,8 @@ struct WindowListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHan
     }
 }
 
+}
+
 // MARK: - Response Types
 
 struct WindowActionResult: Codable {
@@ -897,3 +771,102 @@ struct WindowActionResult: Codable {
 
 
 // Using PeekabooCore.WindowListData for consistency
+
+// MARK: - Subcommand Conformances
+
+extension WindowCommand.MoveSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(commandName: "move", abstract: "Move a window to a new position")
+        }
+    }
+}
+
+extension WindowCommand.MoveSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension WindowCommand.ResizeSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(commandName: "resize", abstract: "Resize a window")
+        }
+    }
+}
+
+extension WindowCommand.ResizeSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension WindowCommand.SetBoundsSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(commandName: "set-bounds", abstract: "Set window position and size in one operation")
+        }
+    }
+}
+
+extension WindowCommand.SetBoundsSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension WindowCommand.WindowListSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(commandName: "list", abstract: "List windows for an application")
+        }
+    }
+}
+
+extension WindowCommand.WindowListSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension WindowCommand.CloseSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(commandName: "close", abstract: "Close a window")
+        }
+    }
+}
+
+extension WindowCommand.CloseSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension WindowCommand.MinimizeSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(commandName: "minimize", abstract: "Minimize a window to the Dock")
+        }
+    }
+}
+
+extension WindowCommand.MinimizeSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension WindowCommand.MaximizeSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(commandName: "maximize", abstract: "Maximize a window (full screen)")
+        }
+    }
+}
+
+extension WindowCommand.MaximizeSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension WindowCommand.FocusSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "focus",
+                abstract: "Bring a window to the foreground",
+                discussion: """
+        Focus brings a window to the foreground and activates its application.
+
+        Space Support:
+        By default, if the window is on a different Space (virtual desktop),
+        the focus command will switch to that Space. You can control this
+        behavior with the --space-switch and --move-here options.
+
+        Examples:
+        peekaboo window focus --app Safari
+        peekaboo window focus --app "Visual Studio Code" --window-title "main.swift"
+        peekaboo window focus --app Terminal --no-space-switch
+        peekaboo window focus --app Finder --move-here
+        """
+            )
+        }
+    }
+}
+
+extension WindowCommand.FocusSubcommand: @MainActor AsyncRuntimeCommand {}

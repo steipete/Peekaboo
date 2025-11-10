@@ -46,7 +46,7 @@ struct AppCommand: ParsableCommand {
 
     // MARK: - Launch Application
 
-    struct LaunchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+    struct LaunchSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "launch",
             abstract: "Launch an application"
@@ -66,31 +66,23 @@ struct AppCommand: ParsableCommand {
 
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var logger: Logger {
+        @MainActor private var logger: Logger {
             self.runtime?.logger ?? Logger.shared
         }
 
-        private var services: PeekabooServices {
+        @MainActor private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
         }
 
         var outputLogger: Logger { self.logger }
 
-        private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
-        }
-
         var jsonOutput: Bool {
             self.runtimeOptions.jsonOutput
         }
 
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
         /// Resolve the requested app target, launch it, optionally wait until ready, and emit output.
-        mutating func run(using runtime: CommandRuntime) async throws {
+        @MainActor
+mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             let logger = self.logger
             logger.verbose("Launching application: \(self.app)")
@@ -196,8 +188,7 @@ struct AppCommand: ParsableCommand {
 
     // MARK: - Quit Application
 
-    struct QuitSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
-    ApplicationResolver {
+    struct QuitSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "quit",
             abstract: "Quit one or more applications"
@@ -227,19 +218,19 @@ struct AppCommand: ParsableCommand {
             self.runtime?.logger ?? Logger.shared
         }
 
+        @MainActor private var services: PeekabooServices {
+            self.runtime?.services ?? PeekabooServices.shared
+        }
+
         var outputLogger: Logger { self.logger }
 
         var jsonOutput: Bool {
             self.runtimeOptions.jsonOutput
         }
 
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
         /// Resolve the targeted applications, issue quit or force-quit requests, and report results per app.
-        mutating func run(using runtime: CommandRuntime) async throws {
+        @MainActor
+mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             let logger = self.logger
 
@@ -343,10 +334,10 @@ struct AppCommand: ParsableCommand {
         }
     }
 
+
     // MARK: - Hide Application
 
-    struct HideSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
-    ApplicationResolvablePositional, ApplicationResolver {
+    struct HideSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "hide",
             abstract: "Hide an application"
@@ -369,7 +360,7 @@ struct AppCommand: ParsableCommand {
 
         var outputLogger: Logger { self.logger }
 
-        private var services: PeekabooServices {
+        @MainActor private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
         }
 
@@ -377,12 +368,9 @@ struct AppCommand: ParsableCommand {
             self.runtimeOptions.jsonOutput
         }
 
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
         /// Hide the specified application and emit confirmation in either text or JSON form.
+        @MainActor
+
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
 
@@ -412,10 +400,10 @@ struct AppCommand: ParsableCommand {
         }
     }
 
+
     // MARK: - Unhide Application
 
-    struct UnhideSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
-    ApplicationResolvablePositional, ApplicationResolver {
+    struct UnhideSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "unhide",
             abstract: "Show a hidden application"
@@ -441,7 +429,7 @@ struct AppCommand: ParsableCommand {
 
         var outputLogger: Logger { self.logger }
 
-        private var services: PeekabooServices {
+        @MainActor private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
         }
 
@@ -449,12 +437,9 @@ struct AppCommand: ParsableCommand {
             self.runtimeOptions.jsonOutput
         }
 
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
         /// Unhide the target application and optionally re-activate its main window.
+        @MainActor
+
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
 
@@ -501,9 +486,10 @@ struct AppCommand: ParsableCommand {
         }
     }
 
+
     // MARK: - Switch Application
 
-    struct SwitchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {
+    struct SwitchSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "switch",
             abstract: "Switch to another application"
@@ -526,7 +512,7 @@ struct AppCommand: ParsableCommand {
 
         var outputLogger: Logger { self.logger }
 
-        private var services: PeekabooServices {
+        @MainActor private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
         }
 
@@ -534,10 +520,7 @@ struct AppCommand: ParsableCommand {
             self.runtimeOptions.jsonOutput
         }
 
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
+        @MainActor
 
         /// Switch focus either by cycling (Cmd+Tab) or by activating a specific application.
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -606,9 +589,10 @@ struct AppCommand: ParsableCommand {
         }
     }
 
+
     // MARK: - List Applications
 
-    struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
+    struct ListSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List running applications"
@@ -629,7 +613,7 @@ struct AppCommand: ParsableCommand {
             self.runtime?.logger ?? Logger.shared
         }
 
-        private var services: PeekabooServices {
+        @MainActor private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
         }
 
@@ -639,13 +623,9 @@ struct AppCommand: ParsableCommand {
             self.runtimeOptions.jsonOutput
         }
 
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
         /// Enumerate running applications, apply filtering flags, and emit the chosen output representation.
-        mutating func run(using runtime: CommandRuntime) async throws {
+        @MainActor
+mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
 
             do {
@@ -701,10 +681,10 @@ struct AppCommand: ParsableCommand {
         }
     }
 
+
     // MARK: - Relaunch Application
 
-    struct RelaunchSubcommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
-    ApplicationResolvablePositional, ApplicationResolver {
+    struct RelaunchSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "relaunch",
             abstract: "Quit and relaunch an application"
@@ -734,7 +714,7 @@ struct AppCommand: ParsableCommand {
             self.runtime?.logger ?? Logger.shared
         }
 
-        private var services: PeekabooServices {
+        @MainActor private var services: PeekabooServices {
             self.runtime?.services ?? PeekabooServices.shared
         }
 
@@ -744,12 +724,9 @@ struct AppCommand: ParsableCommand {
             self.runtimeOptions.jsonOutput
         }
 
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
         /// Quit the target app, wait if requested, relaunch it, and report success metrics.
+        @MainActor
+
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
 
@@ -860,4 +837,23 @@ struct AppCommand: ParsableCommand {
             }
         }
     }
+
 }
+
+extension AppCommand.LaunchSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {}
+
+extension AppCommand.QuitSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
+ApplicationResolver {}
+
+extension AppCommand.HideSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
+ApplicationResolvablePositional, ApplicationResolver {}
+
+extension AppCommand.UnhideSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
+ApplicationResolvablePositional, ApplicationResolver {}
+
+extension AppCommand.SwitchSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {}
+
+extension AppCommand.ListSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {}
+
+extension AppCommand.RelaunchSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
+ApplicationResolvablePositional, ApplicationResolver {}

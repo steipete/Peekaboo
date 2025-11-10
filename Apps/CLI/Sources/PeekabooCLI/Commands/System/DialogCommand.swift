@@ -38,41 +38,30 @@ struct DialogCommand: ParsableCommand {
 
     // MARK: - Click Dialog Button
 
-    struct ClickSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
-        static let configuration = CommandConfiguration(
-            commandName: "click",
-            abstract: "Click a button in a dialog using DialogService"
-        )
+    struct ClickSubcommand {
 
         @Option(help: "Button text to click (e.g., 'OK', 'Cancel', 'Save')")
         var button: String
 
-    @Option(help: "Specific window/sheet title to target")
-    var window: String?
+        @Option(help: "Specific window/sheet title to target")
+        var window: String?
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
         }
 
-        private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
-        }
-
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
+        @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -114,7 +103,8 @@ struct DialogCommand: ParsableCommand {
 
     // MARK: - Input Text in Dialog
 
-    struct InputSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    @MainActor
+    struct InputSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "input",
             abstract: "Enter text in a dialog field using DialogService"
@@ -133,28 +123,21 @@ struct DialogCommand: ParsableCommand {
         var clear = false
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
         }
 
-        private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
-        }
-
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
+        @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -203,7 +186,8 @@ struct DialogCommand: ParsableCommand {
 
     // MARK: - Handle File Dialog
 
-    struct FileSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    @MainActor
+    struct FileSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "file",
             abstract: "Handle file save/open dialogs using DialogService"
@@ -219,28 +203,21 @@ struct DialogCommand: ParsableCommand {
         var select: String = "Save"
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
         }
 
-        private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
-        }
-
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
+        @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -288,7 +265,8 @@ struct DialogCommand: ParsableCommand {
 
     // MARK: - Dismiss Dialog
 
-    struct DismissSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    @MainActor
+    struct DismissSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "dismiss",
             abstract: "Dismiss a dialog using DialogService"
@@ -301,28 +279,21 @@ struct DialogCommand: ParsableCommand {
         var window: String?
 
         @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
         }
 
-        private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
-        }
-
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
+        @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -370,7 +341,8 @@ struct DialogCommand: ParsableCommand {
 
     // MARK: - List Dialog Elements
 
-    struct ListSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
+@MainActor
+struct ListSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List elements in current dialog using DialogService"
@@ -380,26 +352,20 @@ struct DialogCommand: ParsableCommand {
 
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
         }
 
-        private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
-        }
-
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
-
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         /// Describe the active dialog by enumerating buttons, text fields, and static text.
+        @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -473,6 +439,35 @@ struct DialogListResult: Codable {
         }
     }
 }
+
+extension DialogCommand.InputSubcommand: @MainActor AsyncParsableCommand {}
+
+extension DialogCommand.InputSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension DialogCommand.FileSubcommand: @MainActor AsyncParsableCommand {}
+
+extension DialogCommand.FileSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension DialogCommand.DismissSubcommand: @MainActor AsyncParsableCommand {}
+
+extension DialogCommand.DismissSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension DialogCommand.ListSubcommand: @MainActor AsyncParsableCommand {}
+
+extension DialogCommand.ListSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension DialogCommand.ClickSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "click",
+                abstract: "Click a button in a dialog using DialogService"
+            )
+        }
+    }
+}
+
+extension DialogCommand.ClickSubcommand: @MainActor AsyncRuntimeCommand {}
 
 // MARK: - Error Handling
 
