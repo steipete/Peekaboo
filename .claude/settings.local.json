@@ -1,3 +1,11 @@
 {
-  "enableAllProjectMcpServers": false
+  "enableAllProjectMcpServers": false,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "tool": "Bash",
+        "command": ["python3", ".claude/hooks/pre_bash.py"]
+      }
+    ]
+  }
 }

@@ -53,6 +53,8 @@ If you need to introduce a breaking change, add the `!`. Always make sure the ty
 
 **No "Modern" or Version Suffixes**: When refactoring, never use names like "Modern", "New", "V2", etc. Simply refactor the existing things in place. If we are doing a refactor, we want to replace the old implementation completely, not create parallel versions. Use the idiomatic name that the API should have.
 
+**Bigger Refactors Win**: If unsure, always opt for the larger refactor that unlocks cleaner code instead of chasing incremental tweaks.
+
 **Strong Typing Over Type Erasure**: We strongly prefer type-safe code over type-erased patterns. Avoid using `AnyCodable`, `[String: Any]`, `AnyObject`, or similar type-erased containers. Instead:
 - Use enums with associated values for heterogeneous types
 - Create specific types for data structures
@@ -66,11 +68,13 @@ If you need to introduce a breaking change, add the `!`. Always make sure the ty
 - Embrace SwiftUI's declarative nature, don't fight the framework
 - See `/Users/steipete/Projects/vibetunnel/apple/docs/modern-swift.md` for details
 
-**Swift 6.2 Approachable Concurrency**: Every package shares the same SwiftPM settings (`StrictConcurrency`, `ExistentialAny`, `NonisolatedNonsendingByDefault`, and `.defaultIsolation(MainActor.self)`) across all targets including the CLI. The custom fork of ArgumentParser (steipete/swift-argument-parser, branch: `approachable-concurrency`) supports `.defaultIsolation`, enabling full approachable concurrency throughout the codebase. If you add new modules, keep the default isolation enabled to maintain consistent concurrency guarantees.
+**Swift 6.2 Approachable Concurrency**: CLI/app targets run with `.defaultIsolation(MainActor.self)`—keep their logic `@MainActor` by default and opt into parallelism via `@concurrent`. Core libraries (`PeekabooCore`, `Tachikoma`, reusable packages) stay **nonisolated** unless a specific API must be serialized. `docs/concurrency.md` is **mandatory reading** before you touch CLI runtime, the vendored ArgumentParser, or any concurrency-sensitive code; skim it at the start of every session.
 
 **Minimum macOS Version**: This project targets macOS 14.0 (Sonoma) and later. Do not add availability checks for macOS versions below 14.0.
 
 **Direct API Over Subprocess**: Always prefer using PeekabooCore services directly instead of spawning CLI subprocesses. The migration to direct API calls improves performance by ~10x and provides better type safety.
+**Main-thread-first CLI work**: Treat CLI commands and helpers as `@MainActor` unless there’s a very specific, documented reason not to. Only hop off the main thread for truly long-running background work, and return to the main actor before touching PeekabooCore/AppKit.
+**Concurrency doctrine**: Before touching any concurrency-sensitive code, read `docs/concurrency.md`. It explains the required Swift 6.2 settings (`.defaultIsolation`, `@concurrent`, strict checks) and we expect every change to follow it.
 
 **Ollama Timeout Requirements**: When testing Ollama integration, use longer timeouts (300000ms or 5+ minutes) for Bash tool commands, as Ollama can be slow to load models and process requests, especially on first use.
 

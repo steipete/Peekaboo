@@ -102,7 +102,7 @@ If step 2 succeeds but step 4 shows nothing, reinstall the logging profile or re
 
 ## Failure Modes Checklist
 
-- **Peekaboo.app not running** – CLI logs `Peekaboo.app is not running, visual feedback unavailable` and keeps retrying. Launch the app or its login item.
+- **Peekaboo.app not running** – CLI now logs `Peekaboo.app is not running; visual feedback unavailable until it launches` once and quietly retries every few seconds. Launch the app (or its login item) and the client reconnects automatically.
 - **Bridge missing or corrupted** – Logs show `Failed to connect to endpoint broker`. Reinstall or rebuild the app so `PeekabooVisualizerBridge.xpc` is placed inside `Contents/XPCServices`.
 - **Connection interrupted** – Expect `XPC connection interrupted/invalidated`; the client tears down the proxy and retries (2 s, 4 s, 6 s). If retries never succeed, inspect the bridge logs via `scripts/visualizer-logs.sh --stream`.
 - **Slow `isVisualFeedbackEnabled`** – `VisualizationClient` drops the connection if the initial RPC takes longer than 2 s. Watch for `Connection test failed` and inspect the app logs for deadlocks.
