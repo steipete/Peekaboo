@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import AsyncXPCConnection
 import CoreGraphics
 import Foundation
 import os
@@ -214,45 +215,22 @@ public final class VisualizationClient: @unchecked Sendable {
 
     @MainActor
     private func fetchVisualizerEndpoint() async throws -> NSXPCListenerEndpoint {
-        let resumeState = OSAllocatedUnfairLock(initialState: false)
+        let connection = self.makeBrokerConnection()
+        let service = RemoteXPCService<VisualizerEndpointBrokerProtocol>(
+            connection: connection,
+            remoteInterface: VisualizerEndpointBrokerProtocol.self)
 
-        return try await withCheckedThrowingContinuation { continuation in
-            let connection = self.makeBrokerConnection()
-            connection.remoteObjectInterface = NSXPCInterface(with: (any VisualizerEndpointBrokerProtocol).self)
+        connection.resume()
+        defer { service.invalidate() }
 
-            let finish: (Result<NSXPCListenerEndpoint, any Error>) -> Void = { result in
-                let shouldResume = resumeState.withLock { resumed in
-                    if resumed {
-                        return false
-                    }
-                    resumed = true
-                    return true
-                }
-
-                if shouldResume {
-                    connection.invalidate()
-                    continuation.resume(with: result)
-                }
-            }
-
-            connection.invalidationHandler = {
-                finish(.failure(VisualizationClientError.brokerUnavailable))
-            }
-
-            connection.resume()
-
-            guard let broker = connection.remoteObjectProxyWithErrorHandler({ error in
-                finish(.failure(error))
-            }) as? (any VisualizerEndpointBrokerProtocol) else {
-                finish(.failure(VisualizationClientError.brokerUnavailable))
-                return
-            }
-
+        // AsyncXPCConnection lifts the broker callback into Swift concurrency,
+        // ensuring we never resume the continuation from the raw XPC queue.
+        return try await service.withContinuation { broker, continuation in
             broker.fetchVisualizerEndpoint { endpoint in
                 if let endpoint {
-                    finish(.success(endpoint))
+                    continuation.resume(returning: endpoint)
                 } else {
-                    finish(.failure(VisualizationClientError.noEndpointAvailable))
+                    continuation.resume(throwing: VisualizationClientError.noEndpointAvailable)
                 }
             }
         }

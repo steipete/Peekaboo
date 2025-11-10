@@ -5,6 +5,7 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
+import AsyncXPCConnection
 import CoreGraphics
 import Foundation
 import os
@@ -330,6 +331,7 @@ extension VisualizerXPCService: @preconcurrency VisualizerXPCProtocol {
 // MARK: - Endpoint Broker
 
 extension VisualizerXPCService {
+    @MainActor
     private func registerEndpointWithBroker(delay: TimeInterval) {
         self.brokerRetryTask?.cancel()
         self.brokerRetryTask = Task { [weak self] in
@@ -341,38 +343,26 @@ extension VisualizerXPCService {
     }
 
     @MainActor
-    private func sendEndpointToBroker() {
-        let connection = NSXPCConnection(serviceName: VisualizerEndpointBrokerServiceName)
-        connection.remoteObjectInterface = NSXPCInterface(with: VisualizerEndpointBrokerProtocol.self)
-        connection.resume()
-
-        guard let broker = connection.remoteObjectProxyWithErrorHandler({ [weak self] error in
-            connection.invalidate()
-            Task { @MainActor [weak self] in
-                self?.logger.error(
-                    "🎨 XPC Service: Broker connection failed: \(error.localizedDescription, privacy: .public)")
-                self?.registerEndpointWithBroker(delay: 1)
-            }
-        }) as? VisualizerEndpointBrokerProtocol else {
-            connection.invalidate()
-            self.logger.error("🎨 XPC Service: Failed to create broker proxy")
-            self.registerEndpointWithBroker(delay: 1)
-            return
+    private func sendEndpointToBroker() async {
+        do {
+            try await VisualizerBrokerRegistration.register(endpoint: self.listener.endpoint)
+            self.handleBrokerRegistrationSuccess()
+        } catch {
+            self.handleBrokerFailure(error)
         }
+    }
 
-        broker.registerVisualizerEndpoint(self.listener.endpoint) { [weak self] success in
-            Task { @MainActor [weak self] in
-                connection.invalidate()
-                guard let self else { return }
-                if success {
-                    self.logger.info("🎨 XPC Service: Registered endpoint with broker")
-                    self.brokerRetryTask = nil
-                } else {
-                    self.logger.error("🎨 XPC Service: Broker rejected endpoint registration")
-                    self.registerEndpointWithBroker(delay: 1)
-                }
-            }
-        }
+    @MainActor
+    private func handleBrokerFailure(_ error: any Error) {
+        self.logger.error(
+            "🎨 XPC Service: Broker connection failed: \(error.localizedDescription, privacy: .public)")
+        self.registerEndpointWithBroker(delay: 1)
+    }
+
+    @MainActor
+    private func handleBrokerRegistrationSuccess() {
+        self.logger.info("🎨 XPC Service: Registered endpoint with broker")
+        self.brokerRetryTask = nil
     }
 }
 
@@ -395,4 +385,34 @@ private enum VisualizerSettings {
     static let dialogFeedbackKey = "dialogFeedbackEnabled"
     static let spaceAnimationKey = "spaceAnimationEnabled"
     static let elementOverlaysKey = "elementOverlaysEnabled"
+}
+
+// MARK: - Broker registration helper
+
+private enum VisualizerBrokerRegistration {
+    static func register(endpoint: NSXPCListenerEndpoint) async throws {
+        let connection = NSXPCConnection(serviceName: VisualizerEndpointBrokerServiceName)
+        let service = RemoteXPCService<VisualizerEndpointBrokerProtocol>(
+            connection: connection,
+            remoteInterface: VisualizerEndpointBrokerProtocol.self)
+
+        connection.resume()
+        defer { service.invalidate() }
+
+        // AsyncXPCConnection hops the XPC reply queue back into Swift concurrency,
+        // so the enclosing @MainActor caller never trips dispatch assertions again.
+        try await service.withContinuation { broker, continuation in
+            broker.registerVisualizerEndpoint(endpoint) { success in
+                if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: BrokerRegistrationError.registrationRejected)
+                }
+            }
+        }
+    }
+}
+
+private enum BrokerRegistrationError: Error {
+    case registrationRejected
 }
