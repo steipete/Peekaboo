@@ -3,6 +3,7 @@
 //  PeekabooCore
 //
 
+import AppKit
 import CoreGraphics
 import Foundation
 import os
@@ -14,6 +15,8 @@ import _Concurrency
 public final class VisualizationClient: @unchecked Sendable {
     private enum VisualizationClientError: Error {
         case connectionTimedOut
+        case noEndpointAvailable
+        case brokerUnavailable
     }
 
     private enum LogLevel {
@@ -41,8 +44,9 @@ public final class VisualizationClient: @unchecked Sendable {
     public private(set) var isConnected: Bool = false
     private var isEnabled: Bool = true
 
-    private let maxRetryAttempts = 3
     private var retryAttempt = 0
+    private let maxRetryDelay: TimeInterval = 30
+    private var hasLoggedMissingApp = false
 
     private let consoleLogHandler: (String) -> Void
     private let shouldMirrorToConsole: Bool
@@ -87,6 +91,17 @@ public final class VisualizationClient: @unchecked Sendable {
             return
         }
 
+        if !self.isRunningInsideMacApp && !Self.isVisualizerAppRunning() {
+            if !self.hasLoggedMissingApp {
+                self.log(.info, "🔌 Client: Peekaboo.app is not running; visual feedback unavailable until it launches")
+                self.hasLoggedMissingApp = true
+            }
+            self.scheduleConnectionRetry(minDelay: 5)
+            return
+        }
+
+        self.hasLoggedMissingApp = false
+
         self.connectionTask = Task { @MainActor [weak self] in
             await self?.establishConnection()
         }
@@ -116,10 +131,22 @@ public final class VisualizationClient: @unchecked Sendable {
         }
 
         self.invalidateConnection()
-        let options: NSXPCConnection.Options = self.isRunningInsideMacApp ? [] : [.privileged]
-        let newConnection = NSXPCConnection(
-            machServiceName: VisualizerXPCServiceName,
-            options: options)
+
+        do {
+            let endpoint = try await self.fetchVisualizerEndpoint()
+            try await self.openConnection(using: endpoint)
+        } catch VisualizationClientError.noEndpointAvailable {
+            self.log(.warning, "🔌 Client: Visualizer endpoint unavailable; will retry")
+            self.scheduleConnectionRetry(minDelay: 5)
+        } catch {
+            self.log(.error, "🔌 Client: Failed to connect to visualizer service: \(String(describing: error))")
+            self.scheduleConnectionRetry()
+        }
+    }
+
+    @MainActor
+    private func openConnection(using endpoint: NSXPCListenerEndpoint) async throws {
+        let newConnection = NSXPCConnection(listenerEndpoint: endpoint)
         newConnection.remoteObjectInterface = NSXPCInterface(with: (any VisualizerXPCProtocol).self)
 
         newConnection.interruptionHandler = { [weak self] in
@@ -174,6 +201,61 @@ public final class VisualizationClient: @unchecked Sendable {
                 self.remoteProxy = nil
             }
         } as? (any VisualizerXPCProtocol)
+    }
+
+    @MainActor
+    private func makeBrokerConnection() -> NSXPCConnection {
+        if self.isRunningInsideMacApp {
+            return NSXPCConnection(serviceName: VisualizerEndpointBrokerServiceName)
+        } else {
+            return NSXPCConnection(machServiceName: VisualizerEndpointBrokerServiceName, options: [.privileged])
+        }
+    }
+
+    @MainActor
+    private func fetchVisualizerEndpoint() async throws -> NSXPCListenerEndpoint {
+        let resumeState = OSAllocatedUnfairLock(initialState: false)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let connection = self.makeBrokerConnection()
+            connection.remoteObjectInterface = NSXPCInterface(with: (any VisualizerEndpointBrokerProtocol).self)
+
+            let finish: (Result<NSXPCListenerEndpoint, any Error>) -> Void = { result in
+                let shouldResume = resumeState.withLock { resumed in
+                    if resumed {
+                        return false
+                    }
+                    resumed = true
+                    return true
+                }
+
+                if shouldResume {
+                    connection.invalidate()
+                    continuation.resume(with: result)
+                }
+            }
+
+            connection.invalidationHandler = {
+                finish(.failure(VisualizationClientError.brokerUnavailable))
+            }
+
+            connection.resume()
+
+            guard let broker = connection.remoteObjectProxyWithErrorHandler({ error in
+                finish(.failure(error))
+            }) as? (any VisualizerEndpointBrokerProtocol) else {
+                finish(.failure(VisualizationClientError.brokerUnavailable))
+                return
+            }
+
+            broker.fetchVisualizerEndpoint { endpoint in
+                if let endpoint {
+                    finish(.success(endpoint))
+                } else {
+                    finish(.failure(VisualizationClientError.noEndpointAvailable))
+                }
+            }
+        }
     }
 
     @MainActor
@@ -232,6 +314,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
         guard self.isConnected else {
             self.log(.warning, "📸 Client: Not connected to visualizer service")
+            self.connect()
             return false
         }
 
@@ -260,6 +343,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
         guard self.isConnected else {
             self.log(.warning, "[tap]️ Client: Not connected to visualizer service")
+            self.connect()
             return false
         }
 
@@ -279,7 +363,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showTypingFeedback(keys: [String], duration: TimeInterval = 2.0) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showTypingFeedback(keys: keys, duration: duration) { success in
@@ -289,7 +378,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showScrollFeedback(at point: CGPoint, direction: ScrollDirection, amount: Int) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showScrollFeedback(at: point, direction: direction.rawValue, amount: amount) { success in
@@ -299,7 +393,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showMouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showMouseMovement(from: from, to: to, duration: duration) { success in
@@ -309,7 +408,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showSwipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showSwipeGesture(from: from, to: to, duration: duration) { success in
@@ -319,7 +423,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showHotkeyDisplay(keys: [String], duration: TimeInterval = 1.0) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showHotkeyDisplay(keys: keys, duration: duration) { success in
@@ -329,7 +438,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showAppLaunch(appName: String, iconPath: String? = nil) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showAppLaunch(appName: appName, iconPath: iconPath) { success in
@@ -339,7 +453,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showAppQuit(appName: String, iconPath: String? = nil) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showAppQuit(appName: appName, iconPath: iconPath) { success in
@@ -353,7 +472,12 @@ public final class VisualizationClient: @unchecked Sendable {
         windowRect: CGRect,
         duration: TimeInterval = 0.5) async -> Bool
     {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showWindowOperation(
@@ -366,7 +490,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showMenuNavigation(menuPath: [String]) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showMenuNavigation(menuPath: menuPath) { success in
@@ -376,7 +505,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showDialogInteraction(element: String, elementRect: CGRect, action: String) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showDialogInteraction(elementType: element, elementRect: elementRect, action: action) { success in
@@ -386,7 +520,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showSpaceSwitch(from: Int, to: Int, direction: SpaceDirection) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showSpaceSwitch(from: from, to: to, direction: direction.rawValue) { success in
@@ -396,7 +535,12 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     public func showElementDetection(elements: [String: CGRect], duration: TimeInterval = 2.0) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        guard self.isConnected, self.isEnabled else {
+            if self.isEnabled {
+                self.connect()
+            }
+            return false
+        }
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showElementDetection(elements: elements, duration: duration) { success in
@@ -415,6 +559,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
         guard self.isConnected else {
             self.log(.warning, "[focus] Client: Not connected to visualizer service")
+            self.connect()
             return false
         }
 
@@ -524,14 +669,15 @@ public final class VisualizationClient: @unchecked Sendable {
         self.scheduleConnectionRetry()
     }
 
-    private func scheduleConnectionRetry() {
-        guard self.retryAttempt < self.maxRetryAttempts else {
-            self.log(.error, "Max retry attempts reached, giving up")
-            return
+    private func scheduleConnectionRetry(minDelay: TimeInterval? = nil) {
+        if self.retryAttempt == 0 {
+            self.retryAttempt = 1
+        } else {
+            self.retryAttempt = min(self.retryAttempt + 1, 15)
         }
 
-        self.retryAttempt += 1
-        let delay = TimeInterval(self.retryAttempt * 2)
+        let calculatedDelay = TimeInterval(self.retryAttempt * 2)
+        let delay = minDelay ?? min(calculatedDelay, self.maxRetryDelay)
 
         self.log(.info, "Scheduling connection retry #\(self.retryAttempt) in \(delay) seconds")
 
@@ -539,20 +685,19 @@ public final class VisualizationClient: @unchecked Sendable {
 
         let delayNanoseconds = UInt64(delay * 1_000_000_000)
         self.retryTask = Task { [weak self] in
-            guard delayNanoseconds > 0 else {
-                await MainActor.run {
-                    self?.connect()
-                }
-                return
+            if delayNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: delayNanoseconds)
             }
-
-            try? await Task.sleep(nanoseconds: delayNanoseconds)
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
                 self?.connect()
             }
         }
+    }
+
+    private static func isVisualizerAppRunning() -> Bool {
+        !NSRunningApplication.runningApplications(withBundleIdentifier: Self.macAppBundlePrefix).isEmpty
     }
 }
 

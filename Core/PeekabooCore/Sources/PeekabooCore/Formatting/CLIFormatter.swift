@@ -3,7 +3,7 @@ import Foundation
 /// Formatter for presenting UnifiedToolOutput in CLI contexts
 public enum CLIFormatter {
     /// Format any UnifiedToolOutput for CLI display
-    public static func format(_ output: UnifiedToolOutput<some Any>) -> String {
+    public static func format<T>(_ output: UnifiedToolOutput<T>) -> String {
         // Format any UnifiedToolOutput for CLI display
         var result = output.summary.brief
 
@@ -52,7 +52,7 @@ public enum CLIFormatter {
     }
 
     /// Format specific data types
-    private static func formatSpecificData(_ data: some Any) -> String {
+    private static func formatSpecificData(_ data: Any) -> String {
         // Format specific data types
         var result = ""
 
