@@ -237,7 +237,7 @@ var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
             autoReconnect: true,
             description: "Browser automation via BrowserMCP"
         )
-        await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+        TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
 
         // Initialize MCP from profile
         await TachikomaMCPClientManager.shared.initializeFromProfile()
@@ -706,12 +706,12 @@ var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
             )
 
             // Update token count in delegate if available
-            try await MainActor.run {
+            await MainActor.run {
                 if let usage = result.usage {
                     (eventDelegate as? AgentOutputDelegate)?.updateTokenCount(usage.totalTokens)
                 }
             }
-            try await self.displayResult(result)
+            self.displayResult(result)
 
             // Show final summary if not already shown
             if !self.jsonOutput && self.outputMode != .quiet && self.outputMode != .minimal {

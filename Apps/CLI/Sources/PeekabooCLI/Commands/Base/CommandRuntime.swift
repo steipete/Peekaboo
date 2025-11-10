@@ -70,11 +70,11 @@ struct RuntimeStorage<Value> where Value: ExpressibleByNilLiteral {
 }
 
 extension RuntimeStorage: Codable where Value: ExpressibleByNilLiteral {
-    init(from _: Decoder) throws {
+    init(from _: any Decoder) throws {
         self.storage = nil
     }
 
-    func encode(to _: Encoder) throws {}
+    func encode(to _: any Encoder) throws {}
 }
 
 extension RuntimeStorage: Sendable where Value: Sendable {}

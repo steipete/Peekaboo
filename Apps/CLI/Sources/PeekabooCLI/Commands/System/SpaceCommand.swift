@@ -35,19 +35,27 @@ enum SpaceCommandEnvironment {
         private init() {}
 
         func getAllSpaces() async -> [SpaceInfo] {
-            await Self.actor.getAllSpaces()
+            await MainActor.run {
+                Self.actor.getAllSpaces()
+            }
         }
 
         func getSpacesForWindow(windowID: CGWindowID) async -> [SpaceInfo] {
-            await Self.actor.getSpacesForWindow(windowID: windowID)
+            await MainActor.run {
+                Self.actor.getSpacesForWindow(windowID: windowID)
+            }
         }
 
         func moveWindowToCurrentSpace(windowID: CGWindowID) async throws {
-            try await Self.actor.moveWindowToCurrentSpace(windowID: windowID)
+            try await MainActor.run {
+                try Self.actor.moveWindowToCurrentSpace(windowID: windowID)
+            }
         }
 
         func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) async throws {
-            try await Self.actor.moveWindowToSpace(windowID: windowID, spaceID: spaceID)
+            try await MainActor.run {
+                try Self.actor.moveWindowToSpace(windowID: windowID, spaceID: spaceID)
+            }
         }
 
         func switchToSpace(_ spaceID: CGSSpaceID) async throws {

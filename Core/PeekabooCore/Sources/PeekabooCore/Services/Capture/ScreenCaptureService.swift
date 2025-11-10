@@ -971,33 +971,37 @@ private final class CaptureOutput: NSObject, @unchecked Sendable {
     nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .screen else { return }
 
-        let buffer = sampleBuffer
-
-        Task { @MainActor [buffer] in
-            // Cancel timeout task since we received a frame
-            self.timeoutTask?.cancel()
-            self.timeoutTask = nil
-
-            guard let imageBuffer = buffer.imageBuffer else {
+        guard let imageBuffer = sampleBuffer.imageBuffer else {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
                 if let cont = self.continuation {
                     cont.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
                     self.continuation = nil
                 }
-                return
             }
+            return
+        }
 
-            let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-            let context = CIContext()
-
-            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+        let ciImage = CIImage(cvPixelBuffer: imageBuffer)
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
                 if let cont = self.continuation {
                     cont.resume(
                         throwing: OperationError.captureFailed(
                             reason: "Failed to create CGImage from buffer"))
                     self.continuation = nil
                 }
-                return
             }
+            return
+        }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            // Cancel timeout task since we received a frame
+            self.timeoutTask?.cancel()
+            self.timeoutTask = nil
 
             if let cont = self.continuation {
                 cont.resume(returning: cgImage)
