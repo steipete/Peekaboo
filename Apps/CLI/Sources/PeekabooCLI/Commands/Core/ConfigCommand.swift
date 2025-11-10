@@ -46,7 +46,7 @@ struct ConfigCommand: ParsableCommand {
     )
 
     /// Subcommand to create a default configuration file
-    struct InitCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct InitCommand {
         static let configuration = CommandConfiguration(
             commandName: "init",
             abstract: "Create a default configuration file"
@@ -66,10 +66,16 @@ struct ConfigCommand: ParsableCommand {
 
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -129,7 +135,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to display current configuration
-    struct ShowCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct ShowCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
             abstract: "Display current configuration"
@@ -149,10 +155,16 @@ struct ConfigCommand: ParsableCommand {
 
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -273,7 +285,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to open configuration in an editor
-    struct EditCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct EditCommand {
         static let configuration = CommandConfiguration(
             commandName: "edit",
             abstract: "Open configuration file in your default editor"
@@ -293,10 +305,16 @@ struct ConfigCommand: ParsableCommand {
 
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -384,7 +402,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to validate configuration syntax
-    struct ValidateCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct ValidateCommand {
         static let configuration = CommandConfiguration(
             commandName: "validate",
             abstract: "Validate configuration file syntax"
@@ -401,10 +419,16 @@ struct ConfigCommand: ParsableCommand {
 
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -474,7 +498,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to set credentials securely
-    struct SetCredentialCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct SetCredentialCommand {
         static let configuration = CommandConfiguration(
             commandName: "set-credential",
             abstract: "Set an API key or credential securely"
@@ -497,10 +521,16 @@ struct ConfigCommand: ParsableCommand {
 
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -541,7 +571,7 @@ struct ConfigCommand: ParsableCommand {
     // MARK: - Custom Provider Management Commands
 
     /// Subcommand to add a custom AI provider
-    struct AddProviderCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct AddProviderCommand {
         static let configuration = CommandConfiguration(
             commandName: "add-provider",
             abstract: "Add a custom AI provider",
@@ -611,6 +641,9 @@ struct ConfigCommand: ParsableCommand {
 
         @Flag(name: .long, help: "Overwrite existing provider with same ID")
         var force: Bool = false
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -744,7 +777,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to list custom AI providers
-    struct ListProvidersCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct ListProvidersCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-providers",
             abstract: "List configured custom AI providers",
@@ -767,10 +800,16 @@ struct ConfigCommand: ParsableCommand {
 
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -826,7 +865,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to test a custom AI provider connection
-    struct TestProviderCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct TestProviderCommand {
         static let configuration = CommandConfiguration(
             commandName: "test-provider",
             abstract: "Test connection to a custom AI provider",
@@ -857,10 +896,16 @@ struct ConfigCommand: ParsableCommand {
 
         var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -903,7 +948,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to remove a custom AI provider
-    struct RemoveProviderCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct RemoveProviderCommand {
         static let configuration = CommandConfiguration(
             commandName: "remove-provider",
             abstract: "Remove a custom AI provider",
@@ -932,10 +977,16 @@ struct ConfigCommand: ParsableCommand {
         @Flag(name: .long, help: "Skip confirmation prompt")
         var force: Bool = false
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -1005,7 +1056,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to discover models from a custom AI provider
-    struct ModelsProviderCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+    struct ModelsProviderCommand {
         static let configuration = CommandConfiguration(
             commandName: "models-provider",
             abstract: "List available models from a custom AI provider",
@@ -1035,10 +1086,16 @@ struct ConfigCommand: ParsableCommand {
         @Flag(name: .long, help: "Discover models from API (for OpenAI-compatible providers)")
         var discover: Bool = false
 
+        @MainActor
+
+
         mutating func run() async throws {
             let runtime = CommandRuntime(options: self.runtimeOptions)
             try await self.run(using: runtime)
         }
+
+        @MainActor
+
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -1182,3 +1239,14 @@ private func outputJSON(_ value: some Encodable, logger: Logger) {
         print("{\n  \"success\": false,\n  \"error\": {\n    \"message\": \"Failed to encode JSON response\"\n  }\n}")
     }
 }
+
+extension ConfigCommand.InitCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.ShowCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.EditCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.ValidateCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.SetCredentialCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.AddProviderCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.ListProvidersCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.TestProviderCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.RemoveProviderCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.ModelsProviderCommand: @MainActor AsyncRuntimeCommand {}

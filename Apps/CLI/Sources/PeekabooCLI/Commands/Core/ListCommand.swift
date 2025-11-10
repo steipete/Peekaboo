@@ -6,8 +6,7 @@ import PeekabooCore
 private typealias ScreenOutput = UnifiedToolOutput<ScreenListData>
 
 /// List running applications, windows, or check system permissions.
-@MainActor
-struct ListCommand: @MainActor MainActorAsyncParsableCommand {
+struct ListCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List running applications, windows, or check permissions",
@@ -44,554 +43,408 @@ struct ListCommand: @MainActor MainActorAsyncParsableCommand {
             WindowsSubcommand.self,
             PermissionsSubcommand.self,
             MenuBarSubcommand.self,
-            ScreensSubcommand.self
+            ScreensSubcommand.self,
         ],
         defaultSubcommand: AppsSubcommand.self
     )
 
     func run() async throws {
-        // Root command doesn't do anything, subcommands handle everything
+        // Root command doesn’t do anything; subcommands handle the work.
     }
 }
 
-/// Subcommand for listing all running applications using PeekabooServices.shared.
-@MainActor
-struct AppsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "apps",
-        abstract: "List all running applications with details",
-        discussion: """
-        Lists all running applications using the ApplicationService from PeekabooCore.
-        Applications are sorted by name and include process IDs, bundle identifiers,
-        and activation status.
-        """
-    )
+extension ListCommand {
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
+    // MARK: - Apps
 
-    @RuntimeStorage private var runtime: CommandRuntime?
+    struct AppsSubcommand: ErrorHandlingCommand, OutputFormattable {
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
+        @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
-    }
-
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    var outputLogger: Logger { self.logger }
-
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    var outputLogger: Logger { self.logger }
-
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    var outputLogger: Logger { self.logger }
-
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    var outputLogger: Logger { self.logger }
-
-    mutating func run(using runtime: CommandRuntime) async throws {
-        self.runtime = runtime
-
-        do {
-            // Check permissions using the service
-            try await requireScreenRecordingPermission(services: self.services)
-
-            // Get applications from the service
-            let output = try await self.services.applications.listApplications()
-
-            if self.jsonOutput {
-                // Output full UnifiedToolOutput as JSON
-                try print(output.toJSON())
-            } else {
-                // Use CLIFormatter for human-readable output
-                print(CLIFormatter.format(output))
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
             }
-
-        } catch {
-            self.handleError(error)
-            throw ExitCode(1)
-        }
-    }
-
-    // Error handling is provided by ErrorHandlingCommand protocol
-}
-
-/// Subcommand for listing windows of a specific application using PeekabooServices.shared.
-@MainActor
-struct WindowsSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
-ApplicationResolvablePositional {
-    static let configuration = CommandConfiguration(
-        commandName: "windows",
-        abstract: "List all windows for a specific application",
-        discussion: """
-        Lists all windows for the specified application using PeekabooCore PeekabooServices.shared.
-        Windows are listed in z-order (frontmost first) with optional details.
-        """
-    )
-
-    @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
-    var app: String
-
-    @Option(name: .long, help: "Target application by process ID")
-    var pid: Int32?
-
-    @Option(name: .long, help: "Additional details (comma-separated: off_screen,bounds,ids)")
-    var includeDetails: String?
-
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
-    @RuntimeStorage private var runtime: CommandRuntime?
-
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
-    }
-
-    /// Resolve the target application, retrieve its windows, and emit the requested output format.
-    mutating func run(using runtime: CommandRuntime) async throws {
-        self.runtime = runtime
-
-        do {
-            // Check permissions
-            try await requireScreenRecordingPermission(services: self.services)
-
-            // Resolve application identifier
-            let appIdentifier = try self.resolveApplicationIdentifier()
-
-            // Find the target application using the service
-            // Get windows for the app using the service
-            let output = try await self.services.applications.listWindows(for: appIdentifier, timeout: nil)
-
-            if self.jsonOutput {
-                let detailOptions = self.parseIncludeDetails()
-                let payload = try self.renderJSON(from: output, detailOptions: detailOptions)
-                print(payload)
-            } else {
-                // Use CLIFormatter for human-readable output
-                print(CLIFormatter.format(output))
-            }
-
-        } catch {
-            self.handleError(error)
-            throw ExitCode(1)
-        }
-    }
-
-    // Error handling is provided by ErrorHandlingCommand protocol
-
-    /// Parse the `--include-details` flag into a normalized option set.
-    private func parseIncludeDetails() -> Set<WindowDetailOption> {
-        guard let detailsString = includeDetails else {
-            return []
+            return runtime
         }
 
-        let components = detailsString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        var options: Set<WindowDetailOption> = []
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
+        var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-        for component in components {
-            if let option = WindowDetailOption(rawValue: component) {
-                options.insert(option)
-            }
-        }
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
-        return options
-    }
+            do {
+                try await requireScreenRecordingPermission(services: self.services)
+                let output = try await self.services.applications.listApplications()
 
-    /// Produce the JSON payload, redacting heavy fields unless explicitly requested.
-    private func renderJSON(
-        from output: UnifiedToolOutput<ServiceWindowListData>,
-        detailOptions: Set<WindowDetailOption>
-    ) throws -> String {
-        guard !detailOptions.isEmpty else {
-            return try output.toJSON()
-        }
-
-        struct FilteredWindowListData: Codable {
-            struct Window: Codable {
-                let index: Int
-                let title: String
-                let isMinimized: Bool
-                let isMainWindow: Bool
-                let windowID: Int?
-                let bounds: CGRect?
-                let offScreen: Bool?
-                let spaceID: UInt64?
-                let spaceName: String?
-            }
-
-            let windows: [Window]
-            let targetApplication: ServiceApplicationInfo?
-        }
-
-        struct FilteredOutput: Codable {
-            let data: FilteredWindowListData
-            let summary: UnifiedToolOutput<ServiceWindowListData>.Summary
-            let metadata: UnifiedToolOutput<ServiceWindowListData>.Metadata
-        }
-
-        let windows = output.data.windows.map { window in
-            FilteredWindowListData.Window(
-                index: window.index,
-                title: window.title,
-                isMinimized: window.isMinimized,
-                isMainWindow: window.isMainWindow,
-                windowID: detailOptions.contains(.ids) ? window.windowID : nil,
-                bounds: detailOptions.contains(.bounds) ? window.bounds : nil,
-                offScreen: detailOptions.contains(.off_screen) ? window.isOffScreen : nil,
-                spaceID: window.spaceID,
-                spaceName: window.spaceName
-            )
-        }
-
-        let filteredOutput = FilteredOutput(
-            data: FilteredWindowListData(
-                windows: windows,
-                targetApplication: output.data.targetApplication),
-            summary: output.summary,
-            metadata: output.metadata)
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let jsonData = try encoder.encode(filteredOutput)
-        return String(data: jsonData, encoding: .utf8) ?? "{}"
-    }
-}
-
-/// Subcommand for checking system permissions using PeekabooServices.shared.
-@MainActor
-struct PermissionsSubcommand: @MainActor MainActorAsyncParsableCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "permissions",
-        abstract: "Check system permissions required for Peekaboo",
-        discussion: """
-        Checks system permissions using PeekabooCore PeekabooServices.shared.
-
-        Permissions checked:
-        - Screen Recording: Required for capturing screen content and optimal window listing
-        - Accessibility: Required for UI automation (clicking, typing, etc.)
-
-        Note: Screen Recording permission also improves performance for window operations
-        by allowing use of faster CGWindowList API with full window information.
-        """
-    )
-
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
-    @RuntimeStorage private var runtime: CommandRuntime?
-
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    var outputLogger: Logger { self.logger }
-
-    /// Summarize the current permission state and present detailed guidance when anything is missing.
-    mutating func run(using runtime: CommandRuntime) async throws {
-        self.runtime = runtime
-
-        // Get permissions using shared helper
-        let permissionInfos = await PermissionHelpers.getCurrentPermissions()
-
-        // Extract status for JSON output
-        let screenRecording = permissionInfos.first { $0.name == "Screen Recording" }?.isGranted ?? false
-        let accessibility = permissionInfos.first { $0.name == "Accessibility" }?.isGranted ?? false
-
-        // Additional check for screen recording using CGWindowList heuristic
-        let cgWindowListCheck = self.checkScreenRecordingViaWindowList()
-
-        // Create permission status for JSON
-        let permissions = PermissionStatus(
-            screenRecording: screenRecording,
-            accessibility: accessibility
-        )
-
-        let data = PermissionStatusData(permissions: permissions)
-
-        output(data) {
-            print("Peekaboo Permissions Status:")
-
-            for permission in permissionInfos {
-                print("  \(PermissionHelpers.formatPermissionStatus(permission))")
-
-                // Only show grant instructions if permission is not granted
-                if !permission.isGranted {
-                    print("    Grant via: \(permission.grantInstructions)")
-                }
-            }
-
-            // Show additional performance info for screen recording
-            if screenRecording {
-                if cgWindowListCheck {
-                    print("\n  ✅ Optimal performance mode enabled (CGWindowList access confirmed)")
+                if self.jsonOutput {
+                    try print(output.toJSON())
                 } else {
-                    print("\n  ⚠️  Limited CGWindowList access - window names may not be visible")
+                    print(CLIFormatter.format(output))
                 }
-                print("     → Screen recording improves window listing performance")
+            } catch {
+                self.handleError(error)
+                throw ExitCode(1)
             }
         }
     }
 
-    /// Check screen recording permission using CGWindowList heuristic
-    private func checkScreenRecordingViaWindowList() -> Bool {
-        // Check screen recording permission using CGWindowList heuristic
-        guard let windowList = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else {
-            return false
-        }
+    // MARK: - Windows
 
-        let ourPID = ProcessInfo.processInfo.processIdentifier
+    struct WindowsSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
+        @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
+        var app: String
 
-        // Check if we can see window names from other processes
-        for window in windowList {
-            guard let ownerPID = window[kCGWindowOwnerPID as String] as? Int32,
-                  ownerPID != ourPID,
-                  let _ = window[kCGWindowName as String] as? String else {
-                continue
+        @Option(name: .long, help: "Target application by process ID")
+        var pid: Int32?
+
+        @Option(name: .long, help: "Additional details (comma-separated: off_screen,bounds,ids)")
+        var includeDetails: String?
+
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
             }
-            // Found a window name from another process - we have permission
-            return true
+            return runtime
         }
 
-        return false
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
+        var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+        enum WindowDetailOption: String, ExpressibleByArgument {
+            case ids
+            case bounds
+            case off_screen
+        }
+
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            do {
+                try await requireScreenRecordingPermission(services: self.services)
+                let appIdentifier = try self.resolveApplicationIdentifier()
+                let output = try await self.services.applications.listWindows(for: appIdentifier, timeout: nil)
+
+                if self.jsonOutput {
+                    let detailOptions = self.parseIncludeDetails()
+                    let payload = try self.renderJSON(from: output, detailOptions: detailOptions)
+                    print(payload)
+                } else {
+                    print(CLIFormatter.format(output))
+                }
+            } catch {
+                self.handleError(error)
+                throw ExitCode(1)
+            }
+        }
+
+        private func parseIncludeDetails() -> Set<WindowDetailOption> {
+            guard let detailsString = includeDetails else { return [] }
+            let normalizedTokens = detailsString
+                .split(separator: ",")
+                .map { token -> String in
+                    token
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .replacingOccurrences(of: "-", with: "_")
+                        .lowercased()
+                }
+
+            let options = normalizedTokens.compactMap { token -> WindowDetailOption? in
+                switch token {
+                case "offscreen", "off_screen":
+                    return .off_screen
+                case "bounds":
+                    return .bounds
+                case "ids":
+                    return .ids
+                default:
+                    return nil
+                }
+            }
+
+            return Set(options)
+        }
+
+        @MainActor
+        private func renderJSON(
+            from output: UnifiedToolOutput<ServiceWindowListData>,
+            detailOptions: Set<WindowDetailOption>
+        ) throws -> String {
+            guard !detailOptions.isEmpty else {
+                return try output.toJSON()
+            }
+
+            struct FilteredWindowListData: Codable {
+                struct Window: Codable {
+                    let index: Int
+                    let title: String
+                    let isMinimized: Bool
+                    let isMainWindow: Bool
+                    let windowID: Int?
+                    let bounds: CGRect?
+                    let offScreen: Bool?
+                    let spaceID: UInt64?
+                    let spaceName: String?
+                }
+
+                let windows: [Window]
+                let targetApplication: ServiceApplicationInfo?
+            }
+
+            struct FilteredOutput: Codable {
+                let data: FilteredWindowListData
+                let summary: UnifiedToolOutput<ServiceWindowListData>.Summary
+                let metadata: UnifiedToolOutput<ServiceWindowListData>.Metadata
+            }
+
+            let windows = output.data.windows.map { window in
+                FilteredWindowListData.Window(
+                    index: window.index,
+                    title: window.title,
+                    isMinimized: window.isMinimized,
+                    isMainWindow: window.isMainWindow,
+                    windowID: detailOptions.contains(.ids) ? window.windowID : nil,
+                    bounds: detailOptions.contains(.bounds) ? window.bounds : nil,
+                    offScreen: detailOptions.contains(.off_screen) ? window.isOffScreen : nil,
+                    spaceID: window.spaceID,
+                    spaceName: window.spaceName
+                )
+            }
+
+            let filteredOutput = FilteredOutput(
+                data: FilteredWindowListData(
+                    windows: windows,
+                    targetApplication: output.data.targetApplication),
+                summary: output.summary,
+                metadata: output.metadata)
+
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let jsonData = try encoder.encode(filteredOutput)
+            return String(data: jsonData, encoding: .utf8) ?? "{}"
+        }
     }
-}
 
-// MARK: - Helper Functions (error mapping removed - now in CommandUtilities)
+// MARK: - Permissions
 
-/// Subcommand for listing menu bar items
-@MainActor
-struct MenuBarSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "menubar",
-        abstract: "List all menu bar items (status icons)",
-        discussion: """
-        Lists all menu bar items (status icons) currently visible in the macOS menu bar.
-        This includes system items like Wi-Fi, Battery, Time Machine, and third-party
-        application status items.
-        """
-    )
+    struct PermissionsSubcommand: OutputFormattable {
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
+        @RuntimeStorage private var runtime: CommandRuntime?
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
 
-    @RuntimeStorage private var runtime: CommandRuntime?
+        private var logger: Logger { self.resolvedRuntime.logger }
+        var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
-    }
+            let permissions = await PermissionHelpers.getCurrentPermissions()
 
-    /// Collect menu bar extras and print either a JSON payload or detailed textual breakdown.
-    mutating func run(using runtime: CommandRuntime) async throws {
-        self.runtime = runtime
+            if self.jsonOutput {
+                struct Payload: Codable {
+                    let permissions: [PermissionHelpers.PermissionInfo]
+                }
 
-        do {
-            // Use the enhanced menu service to get menu bar items
-            let menuExtras = try await self.services.menu.listMenuExtras()
-
-            struct MenuBarListResult: Codable {
-                let count: Int
-                let items: [MenuBarItem]
-
-                struct MenuBarItem: Codable {
-                    let name: String
-                    let appName: String
-                    let position: Position
-                    let visible: Bool
-
-                    struct Position: Codable {
-                        let x: Int
-                        let y: Int
+                let payload = Payload(permissions: permissions)
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let data = try encoder.encode(payload)
+                if let json = String(data: data, encoding: .utf8) {
+                    print(json)
+                }
+            } else {
+                print("Peekaboo Permissions:")
+                print("---------------------")
+                for permission in permissions {
+                    print("• \(PermissionHelpers.formatPermissionStatus(permission))")
+                    if !permission.isGranted {
+                        print("    Grant via: \(permission.grantInstructions)")
                     }
                 }
             }
+        }
+    }
 
-            let items = menuExtras.map { extra in
-                MenuBarListResult.MenuBarItem(
-                    name: extra.title,
-                    appName: extra.title,
-                    position: MenuBarListResult.MenuBarItem.Position(
-                        x: Int(extra.position.x),
-                        y: Int(extra.position.y)
+    // MARK: - Menu Bar
+
+    struct MenuBarSubcommand: ErrorHandlingCommand, OutputFormattable {
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
+        var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            do {
+                let items = try await MenuServiceBridge.listMenuBarItems(services: self.services)
+                if self.jsonOutput {
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                    let data = try encoder.encode(items)
+                    if let json = String(data: data, encoding: .utf8) {
+                        print(json)
+                    }
+                } else {
+                    self.printMenuBarItems(items)
+                }
+            } catch {
+                self.handleError(error)
+                throw ExitCode(1)
+            }
+        }
+
+        @MainActor
+        private func printMenuBarItems(_ items: [MenuBarItemInfo]) {
+            if items.isEmpty {
+                print("No menu bar items detected.")
+                return
+            }
+
+            print("Menu Bar Items (\(items.count)):")
+            for (index, item) in items.enumerated() {
+                let title = item.title ?? "<untitled>"
+                print("  [\(index + 1)] \(title)")
+                if let description = item.description, !description.isEmpty {
+                    print("       Description: \(description)")
+                }
+                if let frame = item.frame {
+                    print("       Frame: \(Int(frame.origin.x)),\(Int(frame.origin.y)) \(Int(frame.width))×\(Int(frame.height))")
+                }
+            }
+        }
+    }
+
+    // MARK: - Screens
+
+    struct ScreensSubcommand: ErrorHandlingCommand, OutputFormattable {
+        @OptionGroup var runtimeOptions: CommandRuntimeOptions
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
+        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var logger: Logger { self.resolvedRuntime.logger }
+        var outputLogger: Logger { self.logger }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            do {
+                let screens = self.services.screens.listScreens()
+                let primaryIndex = screens.firstIndex { $0.isPrimary }
+
+                let screenListData = ScreenListData(
+                    screens: screens.map { screen in
+                        ScreenListData.ScreenDetails(
+                            index: screen.index,
+                            name: screen.name,
+                            resolution: ScreenListData.Resolution(
+                                width: Int(screen.frame.width),
+                                height: Int(screen.frame.height)
+                            ),
+                            position: ScreenListData.Position(
+                                x: Int(screen.frame.origin.x),
+                                y: Int(screen.frame.origin.y)
+                            ),
+                            visibleArea: ScreenListData.Resolution(
+                                width: Int(screen.visibleFrame.width),
+                                height: Int(screen.visibleFrame.height)
+                            ),
+                            isPrimary: screen.isPrimary,
+                            scaleFactor: screen.scaleFactor,
+                            displayID: Int(screen.displayID)
+                        )
+                    },
+                    primaryIndex: primaryIndex
+                )
+
+                let output = UnifiedToolOutput(
+                    data: screenListData,
+                    summary: ScreenOutput.Summary(
+                        brief: "Found \(screens.count) screen\(screens.count == 1 ? "" : "s")",
+                        detail: nil,
+                        status: ScreenOutput.Summary.Status.success,
+                        counts: ["screens": screens.count],
+                        highlights: screens.enumerated().compactMap { index, screen in
+                            screen.isPrimary ? ScreenOutput.Summary.Highlight(
+                                label: "Primary",
+                                value: "\(screen.name) (Index \(index))",
+                                kind: ScreenOutput.Summary.Highlight.HighlightKind.primary
+                            ) : nil
+                        }
                     ),
-                    visible: extra.isVisible
-                )
-            }
-
-            let outputData = MenuBarListResult(count: menuExtras.count, items: items)
-
-            output(outputData) {
-                if menuExtras.isEmpty {
-                    print("No menu bar items found.")
-                    print("Note: Ensure Screen Recording permission is granted.")
-                } else {
-                    print("Menu Bar Items (\(menuExtras.count) total):")
-                    print(String(repeating: "=", count: 50))
-
-                    for (index, extra) in menuExtras.enumerated() {
-                        print("\n\(index + 1). \(extra.title)")
-                        print("   Position: x=\(Int(extra.position.x)), y=\(Int(extra.position.y))")
-                        print("   Visible: \(extra.isVisible ? "Yes" : "No")")
-                    }
-                }
-            }
-        } catch {
-            self.handleError(error)
-            throw ExitCode(1)
-        }
-    }
-
-    // Error handling is provided by ErrorHandlingCommand protocol
-}
-
-/// Subcommand for listing all available screens/displays
-@MainActor
-struct ScreensSubcommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "screens",
-        abstract: "List all available displays/monitors with details",
-        discussion: """
-        Lists all connected displays including their resolution, position, and other properties.
-        Useful for discovering screen indices for the 'see --screen-index' command and
-        debugging multi-monitor setups.
-
-        The screen index shown can be used with commands like:
-          peekaboo see --screen-index 0    # Capture primary screen
-          peekaboo see --screen-index 1    # Capture secondary screen
-        """
-    )
-
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
-    @RuntimeStorage private var runtime: CommandRuntime?
-
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
-    }
-
-    @MainActor
-    /// Enumerate the connected displays and present a normalized data set (plus highlights for the primary screen).
-    mutating func run(using runtime: CommandRuntime) async throws {
-        self.runtime = runtime
-
-        do {
-            // Get screens from the service
-            let screens = self.services.screens.listScreens()
-            let primaryIndex = screens.firstIndex { $0.isPrimary }
-
-            // Create output data
-            let screenListData = ScreenListData(
-                screens: screens.map { screen in
-                    ScreenListData.ScreenDetails(
-                        index: screen.index,
-                        name: screen.name,
-                        resolution: ScreenListData.Resolution(
-                            width: Int(screen.frame.width),
-                            height: Int(screen.frame.height)
-                        ),
-                        position: ScreenListData.Position(
-                            x: Int(screen.frame.origin.x),
-                            y: Int(screen.frame.origin.y)
-                        ),
-                        visibleArea: ScreenListData.Resolution(
-                            width: Int(screen.visibleFrame.width),
-                            height: Int(screen.visibleFrame.height)
-                        ),
-                        isPrimary: screen.isPrimary,
-                        scaleFactor: screen.scaleFactor,
-                        displayID: Int(screen.displayID)
+                    metadata: ScreenOutput.Metadata(
+                        duration: 0.0,
+                        warnings: [],
+                        hints: ["Use 'peekaboo see --screen-index N' to capture a specific screen"]
                     )
-                },
-                primaryIndex: primaryIndex
-            )
-
-            let output = UnifiedToolOutput(
-                data: screenListData,
-                summary: ScreenOutput.Summary(
-                    brief: "Found \(screens.count) screen\(screens.count == 1 ? "" : "s")",
-                    detail: nil,
-                    status: ScreenOutput.Summary.Status.success,
-                    counts: ["screens": screens.count],
-                    highlights: screens.enumerated().compactMap { index, screen in
-                        screen.isPrimary ? ScreenOutput.Summary.Highlight(
-                            label: "Primary",
-                            value: "\(screen.name) (Index \(index))",
-                            kind: ScreenOutput.Summary.Highlight.HighlightKind.primary
-                        ) : nil
-                    }
-                ),
-                metadata: ScreenOutput.Metadata(
-                    duration: 0.0,
-                    warnings: [],
-                    hints: ["Use 'peekaboo see --screen-index N' to capture a specific screen"]
                 )
-            )
 
-            if self.jsonOutput {
-                try print(output.toJSON())
-            } else {
-                // Human-readable output
-                print("Screens (\(screens.count) total):")
-
-                for screen in screens {
-                    print("\n\(screen.index). \(screen.name)\(screen.isPrimary ? " (Primary)" : "")")
-                    print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
-                    print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
-                    print("   Scale: \(screen.scaleFactor)x\(screen.scaleFactor > 1 ? " (Retina)" : "")")
-
-                    // Show visible area if different from full resolution
-                    if screen.visibleFrame.size != screen.frame.size {
-                        print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
+                if self.jsonOutput {
+                    try print(output.toJSON())
+                } else {
+                    print("Screens (\(screens.count) total):")
+                    for screen in screens {
+                        print("\n\(screen.index). \(screen.name)\(screen.isPrimary ? " (Primary)" : "")")
+                        print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
+                        print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
+                        print("   Scale: \(screen.scaleFactor)x\(screen.scaleFactor > 1 ? " (Retina)" : "")")
+                        if screen.visibleFrame.size != screen.frame.size {
+                            print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
+                        }
                     }
+                    print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
                 }
-
-                print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
+            } catch {
+                self.handleError(error)
+                throw ExitCode(1)
             }
-        } catch {
-            self.handleError(error)
-            throw ExitCode(1)
         }
     }
+
 }
-
-@MainActor
-extension ListCommand.AppsSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ListCommand.WindowsSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ListCommand.PermissionsSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ListCommand.MenuBarSubcommand: AsyncRuntimeCommand {}
-
-@MainActor
-extension ListCommand.ScreensSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Screen List Data Model
 
@@ -625,3 +478,79 @@ nonisolated extension ScreenListData: Sendable, Codable {}
 nonisolated extension ScreenListData.ScreenDetails: Sendable, Codable {}
 nonisolated extension ScreenListData.Resolution: Sendable, Codable {}
 nonisolated extension ScreenListData.Position: Sendable, Codable {}
+
+// MARK: - Subcommand Conformances
+
+extension ListCommand.AppsSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "apps",
+                abstract: "List all running applications with details",
+                discussion: """
+        Lists all running applications using the ApplicationService from PeekabooCore.
+        Applications are sorted by name and include process IDs, bundle identifiers,
+        and activation status.
+        """
+            )
+        }
+    }
+}
+
+extension ListCommand.AppsSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension ListCommand.WindowsSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "windows",
+                abstract: "List all windows for a specific application",
+                discussion: """
+        Lists all windows for the specified application using PeekabooServices.
+        Windows are listed in z-order (frontmost first) with optional details.
+        """
+            )
+        }
+    }
+}
+
+extension ListCommand.WindowsSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension ListCommand.PermissionsSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "permissions",
+                abstract: "Check permissions required for Peekaboo"
+            )
+        }
+    }
+}
+
+extension ListCommand.PermissionsSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension ListCommand.MenuBarSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "menubar",
+                abstract: "List all menu bar items (status icons)"
+            )
+        }
+    }
+}
+
+extension ListCommand.MenuBarSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension ListCommand.ScreensSubcommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "screens",
+                abstract: "List all displays/monitors"
+            )
+        }
+    }
+}
+
+extension ListCommand.ScreensSubcommand: @MainActor AsyncRuntimeCommand {}

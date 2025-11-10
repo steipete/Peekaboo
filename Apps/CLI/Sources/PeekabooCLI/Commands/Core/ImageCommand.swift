@@ -6,167 +6,91 @@ import PeekabooCore
 import PeekabooFoundation
 import UniformTypeIdentifiers
 
-// Helper function for async operations with timeout (uses withTimeout from CommandUtilities)
-func withTimeoutOrNil<T: Sendable>(seconds: TimeInterval, operation: @escaping @Sendable () async -> T) async -> T? {
-    do {
-        return try await withTimeout(seconds: seconds) {
-            await operation()
-        }
-    } catch {
-        return nil
-    }
-}
-
-// Structure for image analysis results
 struct ImageAnalysisData: Codable {
     let provider: String
     let model: String
     let text: String
 }
 
-@MainActor
-struct ImageCommand: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
-ApplicationResolvable {
-    static let configuration = CommandConfiguration(
-        commandName: "image",
-        abstract: "Capture screenshots",
-        discussion: """
-        Captures screenshots of applications, windows, or the entire screen.
+struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable {
 
-        SPECIAL APP VALUES:
-          • menubar   - Capture just the menu bar area (24px height)
-          • frontmost - Capture the currently active window
-
-        EXAMPLES:
-          peekaboo image --app Safari                    # Capture Safari window
-          peekaboo image --app menubar                   # Capture menu bar only
-          peekaboo image --app frontmost                 # Capture active window
-          peekaboo image --pid 12345                     # Capture by process ID
-          peekaboo image --mode screen                   # Capture entire screen
-          peekaboo image --app Finder --window-index 0   # Capture specific window
-          peekaboo image --app Safari --analyze "What is shown?"  # Capture and analyze with AI
-
-        OUTPUT:
-          Screenshots are saved to ~/Desktop by default, or use --path to specify location.
-          Use --format jpg for smaller file sizes.
-        """
-    )
-
-    @Option(
-        name: .long,
-        help: "Target application name, bundle ID, 'PID:12345' for process ID, or special values: 'menubar', 'frontmost'"
-    )
+    @Option(name: .long, help: "Target application name, bundle ID, 'PID:12345', 'menubar', or 'frontmost'")
     var app: String?
 
     @Option(name: .long, help: "Target application by process ID")
     var pid: Int32?
 
-    @Option(name: .long, help: "Output path for saved image (e.g., ~/Desktop/screenshot.png)")
+    @Option(name: .long, help: "Output path for saved image")
     var path: String?
 
     @Option(name: .long, help: ArgumentHelp("Capture mode", valueName: "mode"))
     var mode: CaptureMode?
 
-    @Option(name: .long, help: "Capture window with specific title (use with --app)")
+    @Option(name: .long, help: "Capture window with specific title")
     var windowTitle: String?
 
-    @Option(name: .long, help: "Window index to capture (0=frontmost, use with --app)")
+    @Option(name: .long, help: "Window index to capture")
     var windowIndex: Int?
 
-    @Option(name: .long, help: "Screen index to capture (0-based, use with --mode screen)")
+    @Option(name: .long, help: "Screen index for screen captures")
     var screenIndex: Int?
 
     @Option(name: .long, help: ArgumentHelp("Image format: png or jpg", valueName: "format"))
     var format: ImageFormat = .png
 
-    @Option(
-        name: .long,
-        help: ArgumentHelp("Window focus behavior: auto, foreground, or background", valueName: "focus")
-    )
+    @Option(name: .long, help: ArgumentHelp("Window focus behavior", valueName: "focus"))
     var captureFocus: CaptureFocus = .auto
 
-    @Option(name: .long, help: "Analyze the captured image with AI (provide a question/prompt)")
+    @Option(name: .long, help: "Analyze the captured image with AI")
     var analyze: String?
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
-    }
-
+    private var logger: Logger { self.resolvedRuntime.logger }
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
     var outputLogger: Logger { self.logger }
 
-    /// Validate permissions, capture the requested imagery, optionally run AI analysis, then render output.
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
-        let logger = self.logger
-
-        logger.operationStart("image_command", metadata: [
+        self.logger.setJsonOutputMode(self.jsonOutput)
+        let startMetadata: [String: Any] = [
             "mode": self.mode?.rawValue ?? "auto",
             "app": self.app ?? "none",
             "pid": self.pid ?? 0,
-            "annotate": false,
             "hasAnalyzePrompt": self.analyze != nil
-        ])
+        ]
+        self.logger.operationStart("image_command", metadata: startMetadata)
 
         do {
-            // Check permissions
-            logger.debug("Checking screen recording permission...")
             try await requireScreenRecordingPermission(services: self.services)
-            logger.debug("Screen recording permission granted")
+            let savedFiles = try await self.performCapture()
 
-            // Perform capture
-            logger.startTimer("image_capture")
-            let savedFiles = try await performCapture()
-            logger.stopTimer("image_capture")
-
-            // Analyze if requested
-            if let analyzePrompt = analyze, let firstFile = savedFiles.first {
-                let fileSize = (try? FileManager.default.attributesOfItem(atPath: firstFile.path)[.size] as? Int) ?? 0
-                logger.verbose(
-                    "Starting AI analysis",
-                    category: "AI",
-                    metadata: [
-                        "imagePath": firstFile.path,
-                        "imageSizeBytes": fileSize,
-                        "promptLength": analyzePrompt.count
-                    ]
-                )
-                logger.operationStart(
-                    "ai_analysis",
-                    metadata: ["promptPreview": String(analyzePrompt.prefix(80))]
-                )
-                logger.startTimer("ai_generate")
-                let analysisResult = try await analyzeImage(at: firstFile.path, with: analyzePrompt)
-                logger.stopTimer("ai_generate")
-                logger.operationComplete("ai_analysis", success: true, metadata: [
-                    "provider": analysisResult.provider,
-                    "model": analysisResult.model
-                ])
-                self.outputResultsWithAnalysis(savedFiles, analysis: analysisResult)
+            if let prompt = self.analyze, let firstFile = savedFiles.first {
+                let analysis = try await self.analyzeImage(at: firstFile.path, with: prompt)
+                self.outputResultsWithAnalysis(savedFiles, analysis: analysis)
             } else {
                 self.outputResults(savedFiles)
             }
+
+            self.logger.operationComplete("image_command", success: true)
         } catch {
             self.handleError(error)
-            logger.operationComplete("image_command", success: false, metadata: [
-                "error": error.localizedDescription
-            ])
+            self.logger.operationComplete("image_command", success: false, metadata: ["error": error.localizedDescription])
             throw ExitCode(1)
         }
     }
 
     private func performCapture() async throws -> [SavedFile] {
-        // Handle special app cases
         if let appName = self.app?.lowercased() {
             switch appName {
             case "menubar":
@@ -179,260 +103,306 @@ ApplicationResolvable {
         }
 
         let captureMode = self.determineMode()
-        self.logger.verbose("Starting capture with mode: \(captureMode)")
-
         var results: [SavedFile] = []
 
         switch captureMode {
         case .screen:
             results = try await self.captureScreens()
         case .window:
-            let appIdentifier = try self.resolveApplicationIdentifier()
-            results = try await self.captureApplicationWindow(appIdentifier)
+            let identifier = try self.resolveApplicationIdentifier()
+            results = try await self.captureApplicationWindow(identifier)
         case .multi:
             if self.app != nil || self.pid != nil {
-                let appIdentifier = try self.resolveApplicationIdentifier()
-                results = try await self.captureAllApplicationWindows(appIdentifier)
+                let identifier = try self.resolveApplicationIdentifier()
+                results = try await self.captureAllApplicationWindows(identifier)
             } else {
                 results = try await self.captureScreens()
             }
         case .frontmost:
             results = try await self.captureFrontmost()
         case .area:
-            // Area mode is not yet supported in the service layer
-            throw CaptureError.captureFailed("Area capture mode is not yet implemented")
+            throw ValidationError("Area capture mode is not implemented. Use --mode screen or --mode window instead.")
         }
 
         return results
     }
 
+    private func outputResults(_ files: [SavedFile]) {
+        let output = ImageCaptureResult(files: files)
+        if self.jsonOutput {
+            outputSuccessCodable(data: output, logger: self.outputLogger)
+        } else {
+            files.forEach { print("📸 \(self.describeSavedFile($0))") }
+        }
+    }
+
+    private func outputResultsWithAnalysis(_ files: [SavedFile], analysis: ImageAnalysisData) {
+        let output = ImageAnalyzeResult(files: files, analysis: analysis)
+        if self.jsonOutput {
+            outputSuccessCodable(data: output, logger: self.outputLogger)
+        } else {
+            files.forEach { print("📸 \(self.describeSavedFile($0))") }
+            print("\n🤖 Analysis (\(analysis.provider)) - \(analysis.model):")
+            print(analysis.text)
+        }
+    }
+}
+
+// MARK: - Supporting Types & Helpers
+
+struct ImageCaptureResult: Codable {
+    let files: [SavedFile]
+}
+
+struct ImageAnalyzeResult: Codable {
+    let files: [SavedFile]
+    let analysis: ImageAnalysisData
+}
+
+// MARK: - Capture Helpers
+
+extension ImageCommand {
+    private func determineMode() -> CaptureMode {
+        if let mode {
+            return mode
+        }
+
+        if self.app != nil || self.pid != nil || self.windowTitle != nil {
+            return .window
+        }
+
+        return .frontmost
+    }
+
     private func captureScreens() async throws -> [SavedFile] {
-        self.logger.verbose("Capturing screen(s)")
-
-        let result = try await self.services.screenCapture.captureScreen(displayIndex: self.screenIndex)
-        let savedPath = try saveImage(result.imageData, name: "screen")
-
-        return [SavedFile(
-            path: savedPath,
-            item_label: "Screen \(self.screenIndex ?? 0)",
-            window_title: nil,
-            window_id: nil,
-            window_index: nil,
-            mime_type: self.format.mimeType
-        )]
-    }
-
-    private func captureApplicationWindow(_ appIdentifier: String) async throws -> [SavedFile] {
-        self.logger.verbose("Capturing window for app: \(appIdentifier)")
-        let startTime = Date()
-
-        // Handle focus if needed
-        if self.captureFocus == .foreground {
-            self.logger.debug("Activating application...")
-            try await self.services.applications.activateApplication(identifier: appIdentifier)
-            try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
-            self.logger.debug("Application activated (took \(Date().timeIntervalSince(startTime))s)")
+        if let index = self.screenIndex {
+            let result = try await ImageCaptureBridge.captureScreen(services: self.services, displayIndex: index)
+            let saved = try self.saveCaptureResult(result, preferredName: "screen\(index)", index: nil)
+            return [saved]
         }
 
-        self.logger.debug("Starting window capture...")
-        let captureStart = Date()
+        let screens = self.services.screens.listScreens()
+        let indexes = screens.isEmpty ? [0] : Array(screens.indices)
 
-        // Add timeout to window capture
-        let captureTask = Task {
-            try await self.services.screenCapture.captureWindow(
-                appIdentifier: appIdentifier,
-                windowIndex: self.windowIndex
-            )
-        }
-
-        let timeoutTask = Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
-            captureTask.cancel()
-        }
-
-        do {
-            let result = try await captureTask.value
-            timeoutTask.cancel()
-            self.logger.debug("Window capture completed (took \(Date().timeIntervalSince(captureStart))s)")
-            return try await self.processCapture(result, appIdentifier: appIdentifier)
-        } catch {
-            timeoutTask.cancel()
-            if captureTask.isCancelled {
-                self.logger.error("Window capture timed out after 5 seconds")
-                throw OperationError.timeout(operation: "Window capture", duration: 5.0)
-            }
-            throw error
-        }
-    }
-
-    private func processCapture(_ result: CaptureResult, appIdentifier: String) async throws -> [SavedFile] {
-        let savedPath = try saveImage(result.imageData, name: appIdentifier)
-
-        return [SavedFile(
-            path: savedPath,
-            item_label: result.metadata.applicationInfo?.name,
-            window_title: result.metadata.windowInfo?.title,
-            window_id: UInt32(result.metadata.windowInfo?.windowID ?? 0),
-            window_index: self.windowIndex,
-            mime_type: self.format.mimeType
-        )]
-    }
-
-    private func captureAllApplicationWindows(_ appIdentifier: String) async throws -> [SavedFile] {
-        self.logger.verbose("Capturing all windows for app: \(appIdentifier)")
-
-        // Get window count
-        let windowsOutput = try await self.services.applications.listWindows(for: appIdentifier, timeout: nil)
         var savedFiles: [SavedFile] = []
+        for (ordinal, displayIndex) in indexes.enumerated() {
+            let result = try await ImageCaptureBridge.captureScreen(services: self.services, displayIndex: displayIndex)
+            let saved = try self.saveCaptureResult(result, preferredName: "screen\(displayIndex)", index: ordinal)
+            savedFiles.append(saved)
+        }
 
-        for (index, window) in windowsOutput.data.windows.enumerated() {
-            self.logger.verbose("Capturing window \(index): \(window.title)")
+        return savedFiles
+    }
 
-            let result = try await self.services.screenCapture.captureWindow(
-                appIdentifier: appIdentifier,
-                windowIndex: index
-            )
+    private func captureApplicationWindow(_ identifier: String) async throws -> [SavedFile] {
+        try await self.focusIfNeeded(appIdentifier: identifier)
+        let result = try await ImageCaptureBridge.captureWindow(
+            services: self.services,
+            appIdentifier: identifier,
+            windowIndex: self.windowIndex)
 
-            let savedPath = try saveImage(result.imageData, name: "\(appIdentifier)_\(index)")
+        let saved = try self.saveCaptureResult(
+            result,
+            preferredName: self.windowTitle ?? identifier,
+            index: nil,
+            windowIndex: self.windowIndex)
 
-            savedFiles.append(SavedFile(
-                path: savedPath,
-                item_label: result.metadata.applicationInfo?.name,
-                window_title: window.title,
-                window_id: UInt32(window.windowID),
-                window_index: index,
-                mime_type: self.format.mimeType
-            ))
+        return [saved]
+    }
+
+    private func captureAllApplicationWindows(_ identifier: String) async throws -> [SavedFile] {
+        try await self.focusIfNeeded(appIdentifier: identifier)
+
+        let windows = try await WindowServiceBridge.listWindows(
+            services: self.services,
+            target: .application(identifier))
+
+        guard !windows.isEmpty else {
+            throw NotFoundError.window(app: identifier)
+        }
+
+        var savedFiles: [SavedFile] = []
+        for (ordinal, window) in windows.enumerated() {
+            let result = try await ImageCaptureBridge.captureWindow(
+                services: self.services,
+                appIdentifier: identifier,
+                windowIndex: window.index)
+
+            let saved = try self.saveCaptureResult(
+                result,
+                preferredName: window.title,
+                index: ordinal,
+                windowIndex: window.index)
+            savedFiles.append(saved)
         }
 
         return savedFiles
     }
 
     private func captureFrontmost() async throws -> [SavedFile] {
-        self.logger.verbose("Capturing frontmost window")
-
-        let result = try await self.services.screenCapture.captureFrontmost()
-        let savedPath = try saveImage(result.imageData, name: "frontmost")
-
-        return [SavedFile(
-            path: savedPath,
-            item_label: result.metadata.applicationInfo?.name,
-            window_title: result.metadata.windowInfo?.title,
-            window_id: UInt32(result.metadata.windowInfo?.windowID ?? 0),
-            window_index: 0,
-            mime_type: self.format.mimeType
-        )]
-    }
-
-    private func saveImage(_ data: Data, name: String) throws -> String {
-        let outputPath: String
-
-        if let providedPath = path {
-            outputPath = NSString(string: providedPath).expandingTildeInPath
-        } else {
-            let timestamp = ISO8601DateFormatter().string(from: Date())
-                .replacingOccurrences(of: ":", with: "-")
-            let filename = "peekaboo_\(name)_\(timestamp).\(format.rawValue)"
-            // Use temporary directory instead of current directory to avoid polluting workspaces
-            let tempDir = NSTemporaryDirectory()
-            outputPath = tempDir + filename
-        }
-
-        // Create directory if needed
-        let directory = (outputPath as NSString).deletingLastPathComponent
-        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
-
-        // Save the image
-        try data.write(to: URL(fileURLWithPath: outputPath))
-        self.logger.verbose("Saved image to: \(outputPath)")
-
-        return outputPath
-    }
-
-    private func determineMode() -> CaptureMode {
-        if let mode = self.mode {
-            mode
-        } else if self.app != nil || self.pid != nil {
-            .window
-        } else {
-            .screen
-        }
+        let result = try await ImageCaptureBridge.captureFrontmost(services: self.services)
+        let saved = try self.saveCaptureResult(result, preferredName: "frontmost", index: nil)
+        return [saved]
     }
 
     private func captureMenuBar() async throws -> [SavedFile] {
-        self.logger.verbose("Capturing menu bar area")
-
-        // Get the main screen bounds
-        guard let mainScreen = NSScreen.main else {
-            throw PeekabooError.captureFailed("No main screen found")
+        guard let screen = self.services.screens.primaryScreen else {
+            throw CaptureError.captureFailure("Unable to determine main screen for menu bar capture")
         }
 
-        // Menu bar is at the top of the screen
-        let menuBarHeight: CGFloat = 24.0 // Standard macOS menu bar height
-        let menuBarRect = CGRect(
-            x: mainScreen.frame.origin.x,
-            y: mainScreen.frame.origin.y + mainScreen.frame.height - menuBarHeight,
-            width: mainScreen.frame.width,
-            height: menuBarHeight
-        )
+        let menuBarHeight: CGFloat = 24
+        let originY = screen.frame.origin.y + screen.frame.size.height - menuBarHeight
+        let rect = CGRect(x: screen.frame.origin.x, y: originY, width: screen.frame.width, height: menuBarHeight)
 
-        // Capture the menu bar area
-        let result = try await self.services.screenCapture.captureArea(menuBarRect)
-
-        let savedPath = try saveImage(result.imageData, name: "menubar")
-
-        return [SavedFile(
-            path: savedPath,
-            item_label: "Menu Bar",
-            window_title: nil,
-            window_id: nil,
-            window_index: nil,
-            mime_type: self.format.mimeType
-        )]
+        let result = try await ImageCaptureBridge.captureArea(services: self.services, rect: rect)
+        let saved = try self.saveCaptureResult(result, preferredName: "menubar", index: nil)
+        return [saved]
     }
 
     private func analyzeImage(at path: String, with prompt: String) async throws -> ImageAnalysisData {
-        let ai = PeekabooAIService()
-        let result = try await ai.analyzeImageFileDetailed(at: path, question: prompt, model: nil)
-        return ImageAnalysisData(provider: result.provider, model: result.model, text: result.text)
+        let aiService = PeekabooAIService()
+        let response = try await aiService.analyzeImageFileDetailed(at: path, question: prompt, model: nil)
+        return ImageAnalysisData(provider: response.provider, model: response.model, text: response.text)
     }
 
-    // MARK: - Output Methods
+    private func saveCaptureResult(
+        _ result: CaptureResult,
+        preferredName: String?,
+        index: Int?,
+        windowIndex: Int? = nil) throws -> SavedFile
+    {
+        let url = self.makeOutputURL(preferredName: preferredName, index: index)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
 
-    private func outputResults(_ savedFiles: [SavedFile]) {
-        output(ImageCaptureData(saved_files: savedFiles)) {
-            for file in savedFiles {
-                print(file.path)
+        let data = try self.encodeImageData(result.imageData)
+        try data.write(to: url, options: .atomic)
+
+        let windowInfo = result.metadata.windowInfo
+
+        return SavedFile(
+            path: url.path,
+            item_label: preferredName ?? windowInfo?.title,
+            window_title: windowInfo?.title,
+            window_id: windowInfo.map { UInt32($0.windowID) },
+            window_index: windowIndex ?? windowInfo?.index,
+            mime_type: self.format.mimeType)
+    }
+
+    private func makeOutputURL(preferredName: String?, index: Int?) -> URL {
+        if let explicit = self.path {
+            let expanded = (explicit as NSString).expandingTildeInPath
+            var url = URL(fileURLWithPath: expanded)
+            let directory = url.deletingLastPathComponent()
+            var stem = url.deletingPathExtension().lastPathComponent
+            var ext = url.pathExtension
+
+            if ext.isEmpty {
+                ext = self.format.fileExtension
             }
+
+            if let index, index > 0 {
+                stem += "_\(index)"
+            }
+
+            url = directory.appendingPathComponent(stem).appendingPathExtension(ext)
+            return url
+        }
+
+        let timestamp = Self.filenameDateFormatter.string(from: Date())
+        var components: [String] = []
+        if let preferred = preferredName {
+            components.append(self.sanitizeFilenameComponent(preferred))
+        } else if let appName = self.app {
+            components.append(self.sanitizeFilenameComponent(appName))
+        } else if let mode = self.mode {
+            components.append(mode.rawValue)
+        } else {
+            components.append("capture")
+        }
+        components.append(timestamp)
+        if let index, index > 0 {
+            components.append(String(index))
+        }
+
+        let filename = components.joined(separator: "_") + ".\(self.format.fileExtension)"
+        let base = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        return base.appendingPathComponent(filename)
+    }
+
+    private func encodeImageData(_ data: Data) throws -> Data {
+        switch self.format {
+        case .png:
+            return data
+        case .jpg:
+            guard let image = NSImage(data: data),
+                let tiff = image.tiffRepresentation,
+                let bitmap = NSBitmapImageRep(data: tiff),
+                let jpeg = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.92])
+            else {
+                throw CaptureError.captureFailure("Failed to convert screenshot to JPEG")
+            }
+            return jpeg
         }
     }
 
-    private func outputResultsWithAnalysis(_ savedFiles: [SavedFile], analysis: ImageAnalysisData) {
-        let data = ImageCaptureWithAnalysisData(
-            saved_files: savedFiles,
-            analysis: analysis
-        )
-        output(data) {
-            for file in savedFiles {
-                print(file.path)
-            }
-            print("\nAnalysis (\(analysis.provider)/\(analysis.model)):")
-            print(analysis.text)
+    private func describeSavedFile(_ file: SavedFile) -> String {
+        var segments: [String] = []
+        if let label = file.item_label ?? file.window_title {
+            segments.append(label)
+        } else if let index = file.window_index {
+            segments.append("window \(index)")
+        }
+        segments.append("→ \(file.path)")
+        return segments.joined(separator: " ")
+    }
+
+    private func sanitizeFilenameComponent(_ value: String) -> String {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        return value
+            .components(separatedBy: allowed.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: "-")
+    }
+
+    private func focusIfNeeded(appIdentifier: String) async throws {
+        switch self.captureFocus {
+        case .background:
+            return
+        case .auto:
+            let options = FocusOptions(autoFocus: true, spaceSwitch: false, bringToCurrentSpace: false)
+            try await ensureFocused(
+                applicationName: appIdentifier,
+                windowTitle: self.windowTitle,
+                options: options,
+                services: self.services)
+        case .foreground:
+            let options = FocusOptions(autoFocus: true, spaceSwitch: true, bringToCurrentSpace: true)
+            try await ensureFocused(
+                applicationName: appIdentifier,
+                windowTitle: self.windowTitle,
+                options: options,
+                services: self.services)
         }
     }
 
-    // Error handling is provided by ErrorHandlingCommand protocol
+    private static let filenameDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
 }
 
-// MARK: - Helper Types
+// MARK: - Format Helpers
 
-private struct ImageCaptureWithAnalysisData: Codable {
-    let saved_files: [SavedFile]
-    let analysis: ImageAnalysisData
-}
+private extension ImageFormat {
+    var fileExtension: String {
+        switch self {
+        case .png: "png"
+        case .jpg: "jpg"
+        }
+    }
 
-extension ImageFormat {
-    fileprivate var mimeType: String {
+    var mimeType: String {
         switch self {
         case .png: "image/png"
         case .jpg: "image/jpeg"
@@ -440,5 +410,61 @@ extension ImageFormat {
     }
 }
 
+// MARK: - Capture Bridge
+
+private enum ImageCaptureBridge {
+    static func captureScreen(services: PeekabooServices, displayIndex: Int?) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureScreen(displayIndex: displayIndex)
+        }.value
+    }
+
+    static func captureWindow(
+        services: PeekabooServices,
+        appIdentifier: String,
+        windowIndex: Int?) async throws -> CaptureResult
+    {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureWindow(appIdentifier: appIdentifier, windowIndex: windowIndex)
+        }.value
+    }
+
+    static func captureFrontmost(services: PeekabooServices) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureFrontmost()
+        }.value
+    }
+
+    static func captureArea(services: PeekabooServices, rect: CGRect) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureArea(rect)
+        }.value
+    }
+}
+
 @MainActor
-extension ImageCommand: AsyncRuntimeCommand {}
+
+extension ImageCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "image",
+                abstract: "Capture screenshots",
+                discussion: """
+        Captures screenshots of applications, windows, or the entire screen.
+
+        SPECIAL APP VALUES:
+          • menubar   - Capture just the menu bar area (24px height)
+          • frontmost - Capture the currently active window
+
+        EXAMPLES:
+          peekaboo image --app Safari
+          peekaboo image --mode screen
+          peekaboo image --app Finder --analyze "What is shown?"
+        """
+            )
+        }
+    }
+}
+
+extension ImageCommand: @MainActor AsyncRuntimeCommand {}
