@@ -7,31 +7,7 @@ import PeekabooFoundation
 
 /// Moves the mouse cursor to specific coordinates or UI elements.
 @available(macOS 14.0, *)
-@MainActor
-struct MoveCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "move",
-        abstract: "Move the mouse cursor to coordinates or UI elements",
-        discussion: """
-            The 'move' command positions the mouse cursor at specific locations or
-            on UI elements detected by 'see'. Supports instant and smooth movement.
-
-            EXAMPLES:
-              peekaboo move 100,200                 # Move to coordinates
-              peekaboo move --to "Submit Button"    # Move to element by text
-              peekaboo move --id B3                 # Move to element by ID
-              peekaboo move 500,300 --smooth        # Smooth movement
-              peekaboo move --center                # Move to screen center
-
-            MOVEMENT MODES:
-              - Instant (default): Immediate cursor positioning
-              - Smooth: Animated movement with configurable duration
-
-            ELEMENT TARGETING:
-              When targeting elements, the cursor moves to the element's center.
-              Use element IDs from 'see' output for precise targeting.
-        """
-    )
+struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
     @Argument(help: "Coordinates as x,y (e.g., 100,200)")
     var coordinates: String?
@@ -59,6 +35,20 @@ struct MoveCommand {
 
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
 
+    @RuntimeStorage private var runtime: CommandRuntime?
+
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
+    }
+
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
     mutating func validate() throws {
         // Ensure at least one target is specified
         guard self.center || self.coordinates != nil || self.to != nil || self.id != nil else {
@@ -77,16 +67,11 @@ struct MoveCommand {
         }
     }
 
-    @RuntimeStorage private var runtime: CommandRuntime?
-
-    var outputLogger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
-        let services = runtime.services
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Determine target location
@@ -115,13 +100,13 @@ struct MoveCommand {
                 let sessionId: String? = if let providedSession = session {
                     providedSession
                 } else {
-                    await services.sessions.getMostRecentSession()
+                    await self.services.sessions.getMostRecentSession()
                 }
                 guard let activeSessionId = sessionId else {
                     throw PeekabooError.sessionNotFound("No session found")
                 }
 
-                guard let detectionResult = try? await services.sessions
+                guard let detectionResult = try? await self.services.sessions
                     .getDetectionResult(sessionId: activeSessionId),
                     let element = detectionResult.elements.findById(elementId)
                 else {
@@ -136,14 +121,15 @@ struct MoveCommand {
                 let sessionId: String? = if let providedSession = session {
                     providedSession
                 } else {
-                    await services.sessions.getMostRecentSession()
+                    await self.services.sessions.getMostRecentSession()
                 }
                 guard let activeSessionId = sessionId else {
                     throw PeekabooError.sessionNotFound("No session found")
                 }
 
                 // Wait for element to be available
-                let waitResult = try await services.automation.waitForElement(
+                let waitResult = try await AutomationServiceBridge.waitForElement(
+                    services: self.services,
                     target: .query(query),
                     timeout: 5.0,
                     sessionId: activeSessionId
@@ -177,26 +163,25 @@ struct MoveCommand {
             )
 
             // Perform the movement
-            try await services.automation.moveMouse(
+            try await AutomationServiceBridge.moveMouse(
+                services: self.services,
                 to: targetLocation,
                 duration: moveDuration,
                 steps: self.smooth ? self.steps : 1
             )
 
             // Output results
-            if self.jsonOutput {
-                let result = MoveResult(
-                    success: true,
-                    targetLocation: targetLocation,
-                    targetDescription: targetDescription,
-                    fromLocation: currentLocation,
-                    distance: distance,
-                    duration: moveDuration,
-                    smooth: smooth,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
-                outputSuccessCodable(data: result, logger: self.outputLogger)
-            } else {
+            let result = MoveResult(
+                success: true,
+                targetLocation: targetLocation,
+                targetDescription: targetDescription,
+                fromLocation: currentLocation,
+                distance: distance,
+                duration: moveDuration,
+                smooth: smooth,
+                executionTime: Date().timeIntervalSince(startTime)
+            )
+            output(result) {
                 print("✅ Mouse moved successfully")
                 print("🎯 Target: \(targetDescription)")
                 print("📍 Location: (\(Int(targetLocation.x)), \(Int(targetLocation.y)))")
@@ -213,50 +198,10 @@ struct MoveCommand {
         }
     }
 
-    @MainActor
     private func formatElementInfo(_ element: DetectedElement) -> String {
         let roleDescription = element.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
         let label = element.label ?? element.value ?? element.id
         return "\(roleDescription): \(label)"
-    }
-
-    @MainActor
-    private func handleError(_ error: any Error) {
-        if self.jsonOutput {
-            let errorCode: ErrorCode = if error is PeekabooError {
-                switch error as? PeekabooError {
-                case .sessionNotFound:
-                    .SESSION_NOT_FOUND
-                case .elementNotFound:
-                    .ELEMENT_NOT_FOUND
-                case .clickFailed, .typeFailed:
-                    .INTERACTION_FAILED
-                default:
-                    .INTERNAL_SWIFT_ERROR
-                }
-            } else if error is ArgumentParser.ValidationError {
-                .INVALID_INPUT
-            } else if let standardError = error as? any StandardizedError {
-                switch standardError.code {
-                case .interactionFailed:
-                    .INTERACTION_FAILED
-                case .invalidCoordinates:
-                    .INVALID_COORDINATES
-                default:
-                    .INTERNAL_SWIFT_ERROR
-                }
-            } else {
-                .INTERNAL_SWIFT_ERROR
-            }
-
-            outputError(
-                message: error.localizedDescription,
-                code: errorCode
-            )
-        } else {
-            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-            print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
-        }
     }
 }
 
@@ -293,5 +238,36 @@ struct MoveResult: Codable {
     }
 }
 
-@MainActor
-extension MoveCommand: AsyncRuntimeCommand {}
+// MARK: - Conformances
+
+extension MoveCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "move",
+                abstract: "Move the mouse cursor to coordinates or UI elements",
+                discussion: """
+            The 'move' command positions the mouse cursor at specific locations or
+            on UI elements detected by 'see'. Supports instant and smooth movement.
+
+            EXAMPLES:
+              peekaboo move 100,200                 # Move to coordinates
+              peekaboo move --to "Submit Button"    # Move to element by text
+              peekaboo move --id B3                 # Move to element by ID
+              peekaboo move 500,300 --smooth        # Smooth movement
+              peekaboo move --center                # Move to screen center
+
+            MOVEMENT MODES:
+              - Instant (default): Immediate cursor positioning
+              - Smooth: Animated movement with configurable duration
+
+            ELEMENT TARGETING:
+              When targeting elements, the cursor moves to the element's center.
+              Use element IDs from 'see' output for precise targeting.
+        """
+            )
+        }
+    }
+}
+
+extension MoveCommand: @MainActor AsyncRuntimeCommand {}

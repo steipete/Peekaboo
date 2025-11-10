@@ -7,31 +7,7 @@ import PeekabooFoundation
 /// Scrolls the mouse wheel in a specified direction.
 /// Supports scrolling on specific elements or at the current mouse position.
 @available(macOS 14.0, *)
-@MainActor
 struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
-    static let mainActorConfiguration = CommandConfiguration(
-        commandName: "scroll",
-        abstract: "Scroll the mouse wheel in any direction",
-        discussion: """
-            The 'scroll' command simulates mouse wheel scrolling events.
-            It can scroll up, down, left, or right by a specified amount.
-
-            EXAMPLES:
-              peekaboo scroll --direction down --amount 5
-              peekaboo scroll --direction up --amount 10 --on element_42
-              peekaboo scroll --direction right --amount 3 --smooth
-
-            DIRECTION:
-              up    - Scroll content up (wheel down)
-              down  - Scroll content down (wheel up)
-              left  - Scroll content left
-              right - Scroll content right
-
-            AMOUNT:
-              The number of scroll "lines" or "ticks" to perform.
-              Each tick is equivalent to one notch on a physical mouse wheel.
-        """
-    )
 
     @Option(help: "Scroll direction: up, down, left, or right")
     var direction: String
@@ -60,14 +36,23 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var outputLogger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
-        let services = runtime.services
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Parse direction
@@ -80,22 +65,23 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
                 if let providedSession = session {
                     providedSession
                 } else {
-                    await services.sessions.getMostRecentSession()
+                    await self.services.sessions.getMostRecentSession()
                 }
             } else {
                 nil
             }
 
             // Ensure window is focused before scrolling
-                try await ensureFocused(
-            sessionId: sessionId,
-            applicationName: self.app,
-            options: self.focusOptions,
-            services: services
-        )
+            try await ensureFocused(
+                sessionId: sessionId,
+                applicationName: self.app,
+                options: self.focusOptions,
+                services: self.services
+            )
 
             // Perform scroll using the service
-            try await services.automation.scroll(
+            try await AutomationServiceBridge.scroll(
+                services: self.services,
                 direction: scrollDirection,
                 amount: self.amount,
                 target: self.on,
@@ -111,7 +97,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
             let scrollLocation: CGPoint = if let elementId = on {
                 // Try to get element location from session
                 if let activeSessionId = sessionId,
-                   let detectionResult = try? await services.sessions
+                   let detectionResult = try? await self.services.sessions
                        .getDetectionResult(sessionId: activeSessionId),
                        let element = detectionResult.elements.findById(elementId) {
                     CGPoint(
@@ -128,17 +114,15 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
             }
 
             // Output results
-            if self.jsonOutput {
-                let output = ScrollResult(
-                    success: true,
-                    direction: direction,
-                    amount: amount,
-                    location: ["x": scrollLocation.x, "y": scrollLocation.y],
-                    totalTicks: totalTicks,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
-                outputSuccessCodable(data: output, logger: self.outputLogger)
-            } else {
+            let outputPayload = ScrollResult(
+                success: true,
+                direction: direction,
+                amount: amount,
+                location: ["x": scrollLocation.x, "y": scrollLocation.y],
+                totalTicks: totalTicks,
+                executionTime: Date().timeIntervalSince(startTime)
+            )
+            output(outputPayload) {
                 print("✅ Scroll completed")
                 print("🎯 Direction: \(self.direction)")
                 print("📊 Amount: \(self.amount) ticks")
@@ -168,5 +152,36 @@ struct ScrollResult: Codable {
     let executionTime: TimeInterval
 }
 
-@MainActor
-extension ScrollCommand: AsyncRuntimeCommand {}
+// MARK: - Conformances
+
+extension ScrollCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "scroll",
+                abstract: "Scroll the mouse wheel in any direction",
+                discussion: """
+            The 'scroll' command simulates mouse wheel scrolling events.
+            It can scroll up, down, left, or right by a specified amount.
+
+            EXAMPLES:
+              peekaboo scroll --direction down --amount 5
+              peekaboo scroll --direction up --amount 10 --on element_42
+              peekaboo scroll --direction right --amount 3 --smooth
+
+            DIRECTION:
+              up    - Scroll content up (wheel down)
+              down  - Scroll content down (wheel up)
+              left  - Scroll content left
+              right - Scroll content right
+
+            AMOUNT:
+              The number of scroll "lines" or "ticks" to perform.
+              Each tick is equivalent to one notch on a physical mouse wheel.
+        """
+            )
+        }
+    }
+}
+
+extension ScrollCommand: @MainActor AsyncRuntimeCommand {}

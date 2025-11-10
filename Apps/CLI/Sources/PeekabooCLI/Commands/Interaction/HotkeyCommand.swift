@@ -4,33 +4,7 @@ import PeekabooCore
 
 /// Presses key combinations like Cmd+C, Ctrl+A, etc. using the UIAutomationService.
 @available(macOS 14.0, *)
-@MainActor
 struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
-    static let mainActorConfiguration = CommandConfiguration(
-        commandName: "hotkey",
-        abstract: "Press keyboard shortcuts and key combinations",
-        discussion: """
-            The 'hotkey' command simulates keyboard shortcuts by pressing
-            multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
-
-            EXAMPLES:
-              peekaboo hotkey --keys "cmd,c"          # Copy (comma-separated)
-              peekaboo hotkey --keys "cmd c"          # Copy (space-separated)
-              peekaboo hotkey --keys "cmd,v"          # Paste
-              peekaboo hotkey --keys "cmd a"          # Select all
-              peekaboo hotkey --keys "cmd,shift,t"    # Reopen closed tab
-              peekaboo hotkey --keys "cmd space"      # Spotlight
-
-            KEY NAMES:
-              Modifiers: cmd, shift, alt/option, ctrl, fn
-              Letters: a-z
-              Numbers: 0-9
-              Special: space, return, tab, escape, delete, arrow_up, arrow_down, arrow_left, arrow_right
-              Function: f1-f12
-
-            The keys are pressed in the order given and released in reverse order.
-        """
-    )
 
     @Option(help: "Keys to press (comma-separated or space-separated)")
     var keys: String
@@ -47,14 +21,23 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var outputLogger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
-        let services = runtime.services
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Parse key names - support both comma-separated and space-separated
@@ -77,7 +60,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await services.sessions.getMostRecentSession()
+                await self.services.sessions.getMostRecentSession()
             }
 
             // Ensure window is focused before pressing hotkey (if we have a session and auto-focus is enabled)
@@ -85,12 +68,13 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
                 try await ensureFocused(
                     sessionId: sessionId,
                     options: self.focusOptions,
-                    services: services
+                    services: self.services
                 )
             }
 
             // Perform hotkey using the automation service
-            try await services.automation.hotkey(
+            try await AutomationServiceBridge.hotkey(
+                services: self.services,
                 keys: keysString,
                 holdDuration: self.holdDuration
             )
@@ -127,5 +111,38 @@ struct HotkeyResult: Codable {
     let executionTime: TimeInterval
 }
 
-@MainActor
-extension HotkeyCommand: AsyncRuntimeCommand {}
+// MARK: - Conformances
+
+extension HotkeyCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "hotkey",
+                abstract: "Press keyboard shortcuts and key combinations",
+                discussion: """
+            The 'hotkey' command simulates keyboard shortcuts by pressing
+            multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
+
+            EXAMPLES:
+              peekaboo hotkey --keys "cmd,c"          # Copy (comma-separated)
+              peekaboo hotkey --keys "cmd c"          # Copy (space-separated)
+              peekaboo hotkey --keys "cmd,v"          # Paste
+              peekaboo hotkey --keys "cmd a"          # Select all
+              peekaboo hotkey --keys "cmd,shift,t"    # Reopen closed tab
+              peekaboo hotkey --keys "cmd space"      # Spotlight
+
+            KEY NAMES:
+              Modifiers: cmd, shift, alt/option, ctrl, fn
+              Letters: a-z
+              Numbers: 0-9
+              Special: space, return, tab, escape, delete, arrow_up, arrow_down, arrow_left, arrow_right
+              Function: f1-f12
+
+            The keys are pressed in the order given and released in reverse order.
+        """
+            )
+        }
+    }
+}
+
+extension HotkeyCommand: @MainActor AsyncRuntimeCommand {}

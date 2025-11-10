@@ -7,10 +7,7 @@ import PeekabooFoundation
 
 /// Click on UI elements identified in the current session using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
-struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {
-    static var configuration: CommandConfiguration {
-        UIAutomationToolDefinitions.click.commandConfiguration
-    }
+struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
     @Argument(help: "Element text or query to click")
     var query: String?
@@ -69,19 +66,23 @@ struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCom
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var outputLogger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
         let startTime = Date()
-        let services = runtime.services
 
         do {
             // Determine click target first to check if we need a session
@@ -112,7 +113,7 @@ struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCom
                 // If app is specified, focus it first
                 if let appName = app {
                     // Focus the specified app
-                    try await services.windows.focusWindow(target: .application(appName))
+                    try await WindowServiceBridge.focusWindow(services: self.services, target: .application(appName))
                     // Brief delay to ensure focus is complete
                     try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                 }
@@ -122,7 +123,7 @@ struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCom
                     sessionId: activeSessionId,
                     applicationName: self.app,
                     options: self.focusOptions,
-                    services: services
+                    services: self.services
                 )
 
                 // Use whichever element ID parameter was provided
@@ -131,7 +132,8 @@ struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCom
                 if let elementId {
                     // Click by element ID with auto-wait
                     clickTarget = .elementId(elementId)
-                    waitResult = try await services.automation.waitForElement(
+                    waitResult = try await AutomationServiceBridge.waitForElement(
+                        services: self.services,
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
                         sessionId: activeSessionId.isEmpty ? nil : activeSessionId
@@ -149,7 +151,8 @@ struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCom
                 } else if let searchQuery = query {
                     // Find element by query with auto-wait
                     clickTarget = .query(searchQuery)
-                    waitResult = try await services.automation.waitForElement(
+                    waitResult = try await AutomationServiceBridge.waitForElement(
+                        services: self.services,
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
                         sessionId: activeSessionId.isEmpty ? nil : activeSessionId
@@ -178,14 +181,16 @@ struct ClickCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCom
             // Perform the click
             if case .coordinates = clickTarget {
                 // For coordinate clicks, pass nil session ID
-                try await services.automation.click(
+                try await AutomationServiceBridge.click(
+                    services: self.services,
                     target: clickTarget,
                     clickType: clickType,
                     sessionId: nil
                 )
             } else {
                 // For element-based clicks, pass the session ID
-                try await services.automation.click(
+                try await AutomationServiceBridge.click(
+                    services: self.services,
                     target: clickTarget,
                     clickType: clickType,
                     sessionId: activeSessionId.isEmpty ? nil : activeSessionId
@@ -323,3 +328,11 @@ extension ClickCommand {
         }
     }
 }
+
+extension ClickCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        UIAutomationToolDefinitions.click.commandConfiguration
+    }
+}
+
+extension ClickCommand: @MainActor AsyncRuntimeCommand {}

@@ -8,32 +8,7 @@ import PeekabooFoundation
 
 /// Perform drag and drop operations using intelligent element finding
 @available(macOS 14.0, *)
-@MainActor
 struct DragCommand: ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "drag",
-        abstract: "Perform drag and drop operations",
-        discussion: """
-        Execute click-and-drag operations for moving elements, selecting text, or dragging files.
-
-        EXAMPLES:
-          # Drag between UI elements
-          peekaboo drag --from B1 --to T2
-
-          # Drag with coordinates
-          peekaboo drag --from-coords "100,200" --to-coords "400,300"
-
-          # Drag to an application
-          peekaboo drag --from B1 --to-app Trash
-
-          # Slow drag for precise operations
-          peekaboo drag --from S1 --to-coords "500,250" --duration 2000
-
-          # Multi-select with modifier keys
-          peekaboo drag --from T1 --to T5 --modifiers shift
-        """,
-        version: "2.0.0"
-    )
 
     @Option(help: "Starting element ID from session")
     var from: String?
@@ -63,65 +38,60 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
     var modifiers: String?
 
     @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @OptionGroup var focusOptions: FocusCommandOptions
 
+    @RuntimeStorage private var runtime: CommandRuntime?
+
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
+    }
+
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
         let startTime = Date()
-        let services = runtime.services
 
         do {
-            // Validate inputs
-            guard self.from != nil || self.fromCoords != nil else {
-                throw ArgumentParser.ValidationError("Must specify either --from or --from-coords")
-            }
+            try self.validateInputs()
 
-            guard self.to != nil || self.toCoords != nil || self.toApp != nil else {
-                throw ArgumentParser.ValidationError("Must specify either --to, --to-coords, or --to-app")
-            }
-
-            // Determine session ID - use provided or get most recent
-            let sessionId: String? = if let providedSession = session {
-                providedSession
-            } else {
-                await services.sessions.getMostRecentSession()
-            }
-
-            // Ensure window is focused before dragging (if we have a session and auto-focus is enabled)
+            let sessionId = try await self.resolveSession()
             if let sessionId {
                 try await ensureFocused(
                     sessionId: sessionId,
-                    options: self.focusOptions
+                    options: self.focusOptions,
+                    services: self.services
                 )
             }
 
-            // Resolve starting point
-            let startPoint = try await resolvePoint(
-                elementId: from,
-                coords: fromCoords,
+            let startPoint = try await self.resolvePoint(
+                elementId: self.from,
+                coords: self.fromCoords,
                 sessionId: sessionId,
-                description: "from",
-                waitTimeout: 5.0,
-                services: services
+                description: "from"
             )
 
-            // Resolve ending point
             let endPoint: CGPoint = if let targetApp = toApp {
-                // Find application window or dock item
-                try await self.findApplicationPoint(targetApp, services: services)
+                try await self.findApplicationPoint(targetApp)
             } else {
                 try await self.resolvePoint(
                     elementId: self.to,
                     coords: self.toCoords,
                     sessionId: sessionId,
-                    description: "to",
-                    waitTimeout: 5.0,
-                    services: services
+                    description: "to"
                 )
             }
 
-            // Perform the drag using UIAutomationService
-            try await services.automation.drag(
+            try await AutomationServiceBridge.drag(
+                services: self.services,
                 from: startPoint,
                 to: endPoint,
                 duration: self.duration,
@@ -129,10 +99,8 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 modifiers: self.modifiers
             )
 
-            // Small delay to ensure drag is processed
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            try await Task.sleep(nanoseconds: 100_000_000)
 
-            // Output results
             let result = DragResult(
                 success: true,
                 from: ["x": Int(startPoint.x), "y": Int(startPoint.y)],
@@ -153,142 +121,138 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
-
         } catch {
             self.handleError(error)
             throw ExitCode.failure
         }
     }
 
-    @MainActor
+    // Validate user input combinations
+    private func validateInputs() throws {
+        guard self.from != nil || self.fromCoords != nil else {
+            throw ArgumentParser.ValidationError("Must specify either --from or --from-coords")
+        }
+
+        guard self.to != nil || self.toCoords != nil || self.toApp != nil else {
+            throw ArgumentParser.ValidationError("Must specify either --to, --to-coords, or --to-app")
+        }
+
+        if self.to != nil || self.toCoords != nil {
+            guard (self.to != nil) != (self.toCoords != nil) else {
+                throw ArgumentParser.ValidationError("Specify only one of --to or --to-coords")
+            }
+        }
+
+        if self.from != nil && self.fromCoords != nil {
+            throw ArgumentParser.ValidationError("Specify only one of --from or --from-coords")
+        }
+    }
+
+    private func resolveSession() async throws -> String? {
+        if let provided = self.session {
+            return provided
+        }
+        return await self.services.sessions.getMostRecentSession()
+    }
+
     private func resolvePoint(
         elementId: String?,
         coords: String?,
         sessionId: String?,
-        description: String,
-        waitTimeout: TimeInterval,
-        services: PeekabooServices
+        description: String
     ) async throws -> CGPoint {
-        if let coordString = coords {
-            // Parse coordinates
-            let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-            guard parts.count == 2,
-                  let x = Double(parts[0]),
-                  let y = Double(parts[1])
+        if let coordinateString = coords {
+            let components = coordinateString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard components.count == 2,
+                  let x = Double(components[0]),
+                  let y = Double(components[1])
             else {
-                throw ArgumentParser.ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
+                throw ArgumentParser.ValidationError("Invalid coordinates format: '\(coordinateString)'. Expected 'x,y'")
             }
             return CGPoint(x: x, y: y)
-        } else if let element = elementId, let activeSessionId = sessionId {
-            // Resolve from session using waitForElement
-            let target = ClickTarget.elementId(element)
-            let waitResult = try await services.automation.waitForElement(
-                target: target,
-                timeout: waitTimeout,
-                sessionId: activeSessionId
-            )
+        }
 
-            if !waitResult.found {
-                throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
-            }
-
-            guard let foundElement = waitResult.element else {
-                throw PeekabooError.clickFailed("Element '\(element)' found but has no bounds")
-            }
-
-            // Return center of element
-            return CGPoint(
-                x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
-                y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
-            )
-        } else if elementId != nil {
-            throw ArgumentParser.ValidationError("Session ID required when using element IDs")
-        } else {
+        guard let element = elementId else {
             throw ArgumentParser.ValidationError("No \(description) point specified")
         }
+
+        guard let sessionId else {
+            throw ArgumentParser.ValidationError("Session ID required when using element IDs")
+        }
+
+        let target = ClickTarget.elementId(element)
+        let waitResult = try await AutomationServiceBridge.waitForElement(
+            services: self.services,
+            target: target,
+            timeout: 5.0,
+            sessionId: sessionId
+        )
+
+        guard waitResult.found, let foundElement = waitResult.element else {
+            throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
+        }
+
+        return CGPoint(
+            x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
+            y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
+        )
     }
 
-    @MainActor
-    private func findApplicationPoint(_ appName: String, services: PeekabooServices) async throws -> CGPoint {
-        // Special handling for Trash
+    private func findApplicationPoint(_ appName: String) async throws -> CGPoint {
         if appName.lowercased() == "trash" {
-            // Find Dock and locate Trash
-            if let dock = findDockApplication() {
-                if let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) {
-                    let items = dockList.children() ?? []
-
-                    // Trash is typically the last item
-                    if let trash = items.last {
-                        if let position = trash.position(),
-                           let size = trash.size() {
-                            return CGPoint(
-                                x: position.x + size.width / 2,
-                                y: position.y + size.height / 2
-                            )
-                        }
-                    }
-                }
-            }
-            throw PeekabooError.appNotFound("Trash")
+            return try await self.findTrashPoint()
         }
 
-        // Try to find application window using ApplicationService
-        do {
-            _ = try await services.applications.findApplication(identifier: appName)
-            let windowsOutput = try await services.applications.listWindows(for: appName, timeout: nil)
-
-            if let firstWindow = windowsOutput.data.windows.first {
-                // Return center of window
-                return CGPoint(
-                    x: firstWindow.bounds.origin.x + firstWindow.bounds.width / 2,
-                    y: firstWindow.bounds.origin.y + firstWindow.bounds.height / 2
-                )
+        return try await Task { @MainActor
+in
+            guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: appName).first else {
+                throw PeekabooError.appNotFound(appName)
             }
 
-            throw PeekabooError.windowNotFound(criteria: "No window found for application '\(appName)'")
-        } catch {
-            // If not found as running app, try dock
-            if let dock = findDockApplication() {
-                if let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) {
-                    let items = dockList.children() ?? []
-
-                    if let appItem = items.first(where: { item in
-                        item.title() == appName ||
-                            item.title()?.contains(appName) == true
-                    }) {
-                        if let position = appItem.position(),
-                           let size = appItem.size() {
-                            return CGPoint(
-                                x: position.x + size.width / 2,
-                                y: position.y + size.height / 2
-                            )
-                        }
-                    }
-                }
+            let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
+            guard let windowElement = appElement.focusedWindow() else {
+                throw PeekabooError.windowNotFound(criteria: "No focused window for \(app.localizedName ?? appName)")
             }
 
-            throw PeekabooError.appNotFound(appName)
-        }
+            guard let frame = windowElement.frame() else {
+                throw PeekabooError.windowNotFound(criteria: "Window bounds unavailable for \(app.localizedName ?? appName)")
+            }
+
+            return CGPoint(x: frame.midX, y: frame.midY)
+        }.value
     }
 
-    @MainActor
-    private func findDockApplication() -> Element? {
-        let workspace = NSWorkspace.shared
-        guard let dockApp = workspace.runningApplications.first(where: {
-            $0.bundleIdentifier == "com.apple.dock"
-        }) else {
-            return nil
+    private func findTrashPoint() async throws -> CGPoint {
+        guard let dock = await self.findDockApplication(),
+              let list = dock.children()?.first(where: { $0.role() == "AXList" })
+        else {
+            throw PeekabooError.elementNotFound("Dock not found")
         }
 
-        return Element(AXUIElementCreateApplication(dockApp.processIdentifier))
+        let items = list.children() ?? []
+        if let trash = items.first(where: { $0.label()?.lowercased() == "trash" }) {
+            if let position = trash.position(), let size = trash.size() {
+                return CGPoint(x: position.x + size.width / 2, y: position.y + size.height / 2)
+            }
+        }
+
+        throw PeekabooError.elementNotFound("Trash not found in Dock")
     }
 
-    // Error handling is provided by ErrorHandlingCommand protocol
+    private func findDockApplication() async -> Element? {
+        await MainActor.run {
+            let apps = NSWorkspace.shared.runningApplications
+            guard let dockApp = apps.first(where: { $0.bundleIdentifier == "com.apple.dock" }) else {
+                return nil
+            }
+            return Element(AXUIElementCreateApplication(dockApp.processIdentifier))
+        }
+    }
 }
 
-// MARK: - JSON Output Structure
+// MARK: - Output Types
 
-struct DragResult: Codable {
+private struct DragResult: Codable {
     let success: Bool
     let from: [String: Int]
     let to: [String: Int]
@@ -298,5 +262,28 @@ struct DragResult: Codable {
     let executionTime: TimeInterval
 }
 
-@MainActor
-extension DragCommand: AsyncRuntimeCommand {}
+// MARK: - Conformances
+
+extension DragCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "drag",
+                abstract: "Perform drag and drop operations",
+                discussion: """
+        Execute click-and-drag operations for moving elements, selecting text, or dragging files.
+
+        EXAMPLES:
+          peekaboo drag --from B1 --to T2
+          peekaboo drag --from-coords "100,200" --to-coords "400,300"
+          peekaboo drag --from B1 --to-app Trash
+          peekaboo drag --from S1 --to-coords "500,250" --duration 2000
+          peekaboo drag --from T1 --to T5 --modifiers shift
+        """,
+                version: "2.0.0"
+            )
+        }
+    }
+}
+
+extension DragCommand: @MainActor AsyncRuntimeCommand {}

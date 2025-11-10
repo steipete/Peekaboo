@@ -5,48 +5,7 @@ import PeekabooFoundation
 
 /// Types text into focused elements or sends keyboard input using the UIAutomationService.
 @available(macOS 14.0, *)
-@MainActor
 struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
-    static let mainActorConfiguration = CommandConfiguration(
-        commandName: "type",
-        abstract: "Type text or send keyboard input",
-        discussion: """
-            The 'type' command sends keyboard input to the focused element.
-            It can type regular text or send special key combinations.
-
-            EXAMPLES:
-              peekaboo type "Hello World"           # Type text (default: 5ms delay)
-              peekaboo type "user@example.com"      # Type email
-              peekaboo type "text" --delay 0        # Type at maximum speed
-              peekaboo type "text" --delay 50       # Type slower (50ms between keys)
-              peekaboo type "password" --return     # Type and press return
-              peekaboo type --tab 3                 # Press tab 3 times
-              peekaboo type "text" --clear          # Clear field first
-              peekaboo type "Line 1\\nLine 2"        # Type with newline
-              peekaboo type "Name:\\tJohn"           # Type with tab
-              peekaboo type "Path: C:\\\\data"       # Type literal backslash
-
-            SPECIAL KEYS:
-              Use flags for special keys:
-              --return    Press return/enter
-              --tab       Press tab (with optional count)
-              --escape    Press escape
-              --delete    Press delete
-              --clear     Clear current field (Cmd+A, Delete)
-
-            ESCAPE SEQUENCES:
-              Supported escape sequences in text:
-              \\n  - Newline/return
-              \\t  - Tab
-              \\b  - Backspace/delete
-              \\e  - Escape
-              \\\\  - Literal backslash
-
-            FOCUS MANAGEMENT:
-              The command assumes an element is already focused.
-              Use 'click' to focus an input field first.
-        """
-    )
 
     @Argument(help: "Text to type")
     var text: String?
@@ -81,14 +40,23 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var outputLogger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
-        let services = runtime.services
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             var actions: [TypeAction] = []
@@ -131,20 +99,21 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await services.sessions.getMostRecentSession()
+                await self.services.sessions.getMostRecentSession()
             }
 
             // Ensure window is focused before typing
-        try await ensureFocused(
-            sessionId: sessionId,
-            applicationName: self.app,
-            options: self.focusOptions,
-            services: services
-        )
+            try await ensureFocused(
+                sessionId: sessionId,
+                applicationName: self.app,
+                options: self.focusOptions,
+                services: self.services
+            )
 
             // Execute type actions using the service
-            let typeResult = try await services.automation.typeActions(
-                actions,
+            let typeResult = try await AutomationServiceBridge.typeActions(
+                services: self.services,
+                actions: actions,
                 typingDelay: self.delay,
                 sessionId: sessionId
             )
@@ -262,6 +231,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
     }
 }
 
+
 // MARK: - JSON Output Structure
 
 struct TypeCommandResult: Codable {
@@ -272,5 +242,53 @@ struct TypeCommandResult: Codable {
     let executionTime: TimeInterval
 }
 
-@MainActor
-extension TypeCommand: AsyncRuntimeCommand {}
+// MARK: - Conformances
+
+extension TypeCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "type",
+                abstract: "Type text or send keyboard input",
+                discussion: """
+            The 'type' command sends keyboard input to the focused element.
+            It can type regular text or send special key combinations.
+
+            EXAMPLES:
+              peekaboo type "Hello World"           # Type text (default: 5ms delay)
+              peekaboo type "user@example.com"      # Type email
+              peekaboo type "text" --delay 0        # Type at maximum speed
+              peekaboo type "text" --delay 50       # Type slower (50ms between keys)
+              peekaboo type "password" --return     # Type and press return
+              peekaboo type --tab 3                 # Press tab 3 times
+              peekaboo type "text" --clear          # Clear field first
+              peekaboo type "Line 1\nLine 2"        # Type with newline
+              peekaboo type "Name:\tJohn"           # Type with tab
+              peekaboo type "Path: C:\\data"       # Type literal backslash
+
+            SPECIAL KEYS:
+              Use flags for special keys:
+              --return    Press return/enter
+              --tab       Press tab (with optional count)
+              --escape    Press escape
+              --delete    Press delete
+              --clear     Clear current field (Cmd+A, Delete)
+
+            ESCAPE SEQUENCES:
+              Supported escape sequences in text:
+              \\n  - Newline/return
+              \\t  - Tab
+              \\b  - Backspace/delete
+              \\e  - Escape
+              \\\\  - Literal backslash
+
+            FOCUS MANAGEMENT:
+              The command assumes an element is already focused.
+              Use 'click' to focus an input field first.
+        """
+            )
+        }
+    }
+}
+
+extension TypeCommand: @MainActor AsyncRuntimeCommand {}

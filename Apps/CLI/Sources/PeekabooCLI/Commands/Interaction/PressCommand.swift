@@ -5,43 +5,7 @@ import PeekabooFoundation
 
 /// Press individual keys or key sequences
 @available(macOS 14.0, *)
-@MainActor
 struct PressCommand: ErrorHandlingCommand, OutputFormattable {
-    static let mainActorConfiguration = CommandConfiguration(
-        commandName: "press",
-        abstract: "Press individual keys or key sequences",
-        discussion: """
-            The 'press' command sends individual key presses or sequences.
-            It's designed for special keys and navigation, not for typing text.
-
-            EXAMPLES:
-              peekaboo press return                # Press Enter/Return
-              peekaboo press tab --count 3         # Press Tab 3 times
-              peekaboo press escape                # Press Escape
-              peekaboo press delete                # Press Backspace/Delete
-              peekaboo press forward_delete        # Press Forward Delete (fn+delete)
-              peekaboo press up down left right    # Arrow key sequence
-              peekaboo press f1                    # Press F1 function key
-              peekaboo press space                 # Press spacebar
-              peekaboo press enter                 # Numeric keypad Enter
-
-            AVAILABLE KEYS:
-              Navigation: up, down, left, right, home, end, pageup, pagedown
-              Editing: delete (backspace), forward_delete, clear
-              Control: return, enter, tab, escape, space
-              Function: f1-f12
-              Special: caps_lock, help
-
-            KEY SEQUENCES:
-              Multiple keys can be pressed in sequence with optional delay:
-              peekaboo press tab tab return        # Tab twice then Enter
-              peekaboo press down down return      # Navigate down and select
-
-            TIMING:
-              Use --delay to control timing between key presses (default: 100ms)
-              Use --hold to control how long each key is held (default: 50ms)
-        """
-    )
 
     @Argument(help: "Key(s) to press")
     var keys: [String]
@@ -64,21 +28,30 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var outputLogger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
-        let services = runtime.services
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Get session if available
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await services.sessions.getMostRecentSession()
+                await self.services.sessions.getMostRecentSession()
             }
 
             // Ensure window is focused before pressing keys
@@ -86,7 +59,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
                 try await ensureFocused(
                     sessionId: sessionId,
                     options: self.focusOptions,
-                    services: services
+                    services: self.services
                 )
             }
 
@@ -108,8 +81,9 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
             }
 
             // Execute key presses
-            let result = try await services.automation.typeActions(
-                actions,
+            let result = try await AutomationServiceBridge.typeActions(
+                services: self.services,
+                actions: actions,
                 typingDelay: self.delay,
                 sessionId: sessionId
             )
@@ -151,9 +125,6 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
     }
 }
 
-@MainActor
-extension PressCommand: AsyncRuntimeCommand {}
-
 // MARK: - JSON Output Structure
 
 struct PressResult: Codable {
@@ -163,3 +134,49 @@ struct PressResult: Codable {
     let count: Int
     let executionTime: TimeInterval
 }
+
+// MARK: - Conformances
+
+extension PressCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "press",
+                abstract: "Press individual keys or key sequences",
+                discussion: """
+            The 'press' command sends individual key presses or sequences.
+            It's designed for special keys and navigation, not for typing text.
+
+            EXAMPLES:
+              peekaboo press return                # Press Enter/Return
+              peekaboo press tab --count 3         # Press Tab 3 times
+              peekaboo press escape                # Press Escape
+              peekaboo press delete                # Press Backspace/Delete
+              peekaboo press forward_delete        # Press Forward Delete (fn+delete)
+              peekaboo press up down left right    # Arrow key sequence
+              peekaboo press f1                    # Press F1 function key
+              peekaboo press space                 # Press spacebar
+              peekaboo press enter                 # Numeric keypad Enter
+
+            AVAILABLE KEYS:
+              Navigation: up, down, left, right, home, end, pageup, pagedown
+              Editing: delete (backspace), forward_delete, clear
+              Control: return, enter, tab, escape, space
+              Function: f1-f12
+              Special: caps_lock, help
+
+            KEY SEQUENCES:
+              Multiple keys can be pressed in sequence with optional delay:
+              peekaboo press tab tab return        # Tab twice then Enter
+              peekaboo press down down return      # Navigate down and select
+
+            TIMING:
+              Use --delay to control timing between key presses (default: 100ms)
+              Use --hold to control how long each key is held (default: 50ms)
+        """
+            )
+        }
+    }
+}
+
+extension PressCommand: @MainActor AsyncRuntimeCommand {}

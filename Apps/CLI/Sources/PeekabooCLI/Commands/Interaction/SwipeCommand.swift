@@ -8,39 +8,7 @@ import PeekabooFoundation
 
 /// Performs swipe gestures using intelligent element finding and service-based architecture.
 @available(macOS 14.0, *)
-@MainActor
-struct SwipeCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "swipe",
-        abstract: "Perform swipe gestures",
-        discussion: """
-        Performs a drag/swipe gesture between two points or elements.
-        Useful for drag-and-drop operations and gesture-based interactions.
-
-        EXAMPLES:
-          # Swipe between UI elements
-          peekaboo swipe --from B1 --to B5 --session-id 12345
-
-          # Swipe with coordinates
-          peekaboo swipe --from-coords 100,200 --to-coords 300,400
-
-          # Mixed mode: element to coordinates
-          peekaboo swipe --from T1 --to-coords 500,300 --duration 1000
-
-          # Slow swipe for precise gesture
-          peekaboo swipe --from-coords 50,50 --to-coords 400,400 --duration 2000
-
-        USAGE:
-          You can specify source and destination using either:
-          - Element IDs from a previous 'see' command
-          - Direct coordinates
-          - A mix of both
-
-          The swipe includes a configurable duration to control the
-          speed of the drag gesture.
-        """,
-        version: "2.0.0"
-    )
+struct SwipeCommand: ErrorHandlingCommand, OutputFormattable {
 
     @Option(help: "Source element ID")
     var from: String?
@@ -70,14 +38,23 @@ struct SwipeCommand {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var outputLogger: Logger {
-        self.runtime?.logger ?? Logger.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
-        let services = runtime.services
+        self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Validate inputs
@@ -100,7 +77,7 @@ struct SwipeCommand {
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
-                await services.sessions.getMostRecentSession()
+                await self.services.sessions.getMostRecentSession()
             }
 
             // Get source and destination points
@@ -109,8 +86,7 @@ struct SwipeCommand {
                 coords: fromCoords,
                 sessionId: sessionId,
                 description: "from",
-                waitTimeout: 5.0,
-                services: services
+                waitTimeout: 5.0
             )
 
             let destPoint = try await resolvePoint(
@@ -118,12 +94,12 @@ struct SwipeCommand {
                 coords: toCoords,
                 sessionId: sessionId,
                 description: "to",
-                waitTimeout: 5.0,
-                services: services
+                waitTimeout: 5.0
             )
 
             // Perform swipe using UIAutomationService
-            try await services.automation.swipe(
+            try await AutomationServiceBridge.swipe(
+                services: self.services,
                 from: sourcePoint,
                 to: destPoint,
                 duration: self.duration,
@@ -136,18 +112,15 @@ struct SwipeCommand {
             // Small delay to ensure swipe is processed
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
-            // Output results
-            if self.jsonOutput {
-                let output = SwipeResult(
-                    success: true,
-                    fromLocation: ["x": sourcePoint.x, "y": sourcePoint.y],
-                    toLocation: ["x": destPoint.x, "y": destPoint.y],
-                    distance: distance,
-                    duration: self.duration,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
-                outputSuccessCodable(data: output, logger: self.outputLogger)
-            } else {
+            let outputPayload = SwipeResult(
+                success: true,
+                fromLocation: ["x": sourcePoint.x, "y": sourcePoint.y],
+                toLocation: ["x": destPoint.x, "y": destPoint.y],
+                distance: distance,
+                duration: self.duration,
+                executionTime: Date().timeIntervalSince(startTime)
+            )
+            output(outputPayload) {
                 print("✅ Swipe completed")
                 print("📍 From: (\(Int(sourcePoint.x)), \(Int(sourcePoint.y)))")
                 print("📍 To: (\(Int(destPoint.x)), \(Int(destPoint.y)))")
@@ -167,8 +140,7 @@ struct SwipeCommand {
         coords: String?,
         sessionId: String?,
         description: String,
-        waitTimeout: TimeInterval,
-        services: PeekabooServices
+        waitTimeout: TimeInterval
     ) async throws -> CGPoint {
         if let coordString = coords {
             // Parse coordinates
@@ -183,7 +155,8 @@ struct SwipeCommand {
         } else if let element = elementId, let activeSessionId = sessionId {
             // Resolve from session using waitForElement
             let target = ClickTarget.elementId(element)
-            let waitResult = try await services.automation.waitForElement(
+            let waitResult = try await AutomationServiceBridge.waitForElement(
+                services: self.services,
                 target: target,
                 timeout: waitTimeout,
                 sessionId: activeSessionId
@@ -208,44 +181,6 @@ struct SwipeCommand {
             throw ValidationError("No \(description) point specified")
         }
     }
-
-    private func handleError(_ error: any Error) {
-        if self.jsonOutput {
-            let errorCode: ErrorCode
-            let message: String
-
-            if let peekabooError = error as? PeekabooError {
-                switch peekabooError {
-                case .sessionNotFound:
-                    errorCode = .SESSION_NOT_FOUND
-                    message = "Session not found"
-                case .elementNotFound:
-                    errorCode = .ELEMENT_NOT_FOUND
-                    message = "Element not found"
-                case let .clickFailed(msg):
-                    errorCode = .INTERACTION_FAILED
-                    message = msg
-                case let .typeFailed(msg):
-                    errorCode = .INTERACTION_FAILED
-                    message = msg
-                default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
-                    message = error.localizedDescription
-                }
-            } else if error is ArgumentParser.ValidationError {
-                errorCode = .INVALID_INPUT
-                message = error.localizedDescription
-            } else {
-                errorCode = .INTERNAL_SWIFT_ERROR
-                message = error.localizedDescription
-            }
-
-            outputError(message: message, code: errorCode)
-        } else {
-            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-            print("❌ Error: \(error.localizedDescription)", to: &localStandardErrorStream)
-        }
-    }
 }
 
 // MARK: - JSON Output Structure
@@ -259,5 +194,44 @@ struct SwipeResult: Codable {
     let executionTime: TimeInterval
 }
 
-@MainActor
-extension SwipeCommand: AsyncRuntimeCommand {}
+// MARK: - Conformances
+
+extension SwipeCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "swipe",
+                abstract: "Perform swipe gestures",
+                discussion: """
+        Performs a drag/swipe gesture between two points or elements.
+        Useful for drag-and-drop operations and gesture-based interactions.
+
+        EXAMPLES:
+          # Swipe between UI elements
+          peekaboo swipe --from B1 --to B5 --session-id 12345
+
+          # Swipe with coordinates
+          peekaboo swipe --from-coords 100,200 --to-coords 300,400
+
+          # Mixed mode: element to coordinates
+          peekaboo swipe --from T1 --to-coords 500,300 --duration 1000
+
+          # Slow swipe for precise gesture
+          peekaboo swipe --from-coords 50,50 --to-coords 400,400 --duration 2000
+
+        USAGE:
+          You can specify source and destination using either:
+          - Element IDs from a previous 'see' command
+          - Direct coordinates
+          - A mix of both
+
+          The swipe includes a configurable duration to control the
+          speed of the drag gesture.
+        """,
+                version: "2.0.0"
+            )
+        }
+    }
+}
+
+extension SwipeCommand: @MainActor AsyncRuntimeCommand {}
