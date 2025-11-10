@@ -83,7 +83,7 @@ func iconForTool(_ toolName: String) -> String {
 
 /// AI Agent command that uses new Chat Completions API architecture
 @available(macOS 14.0, *)
-struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
+struct AgentCommand {
     static let configuration = CommandConfiguration(
         commandName: "agent",
         abstract: "Execute complex automation tasks using AI agent"
@@ -159,6 +159,7 @@ struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
+    @MainActor
     private var services: PeekabooServices {
         self.runtime?.services ?? PeekabooServices.shared
     }
@@ -167,13 +168,15 @@ struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         self.runtime?.logger ?? Logger.shared
     }
 
-    private var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
 
+    @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         // Show terminal detection debug if requested
@@ -199,6 +202,7 @@ struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         }
     }
 
+    @MainActor
     mutating func runInternal(runtime: CommandRuntime) async throws {
         // Initialize MCP clients first so agent has access to external tools
         // Only show MCP initialization in verbose mode
@@ -233,7 +237,7 @@ struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
             autoReconnect: true,
             description: "Browser automation via BrowserMCP"
         )
-        TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+        await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
 
         // Initialize MCP from profile
         await TachikomaMCPClientManager.shared.initializeFromProfile()
@@ -702,14 +706,12 @@ struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
             )
 
             // Update token count in delegate if available
-            if let usage = result.usage {
-                await MainActor.run {
+            try await MainActor.run {
+                if let usage = result.usage {
                     (eventDelegate as? AgentOutputDelegate)?.updateTokenCount(usage.totalTokens)
                 }
             }
-
-            // Handle result display
-            self.displayResult(result)
+            try await self.displayResult(result)
 
             // Show final summary if not already shown
             if !self.jsonOutput && self.outputMode != .quiet && self.outputMode != .minimal {
@@ -766,6 +768,7 @@ struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
     }
 
     /// Render the agent execution result using either JSON output or a rich CLI transcript.
+    @MainActor
     func displayResult(_ result: AgentExecutionResult) {
         if self.jsonOutput {
             let response = [
@@ -813,6 +816,7 @@ struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
 
     // MARK: - Session Management
 
+    @MainActor
     func showSessions(_ agentService: any AgentServiceProtocol) async throws {
         // Cast to PeekabooAgentService - this should always succeed
         guard let peekabooService = agentService as? PeekabooAgentService else {
@@ -996,3 +1000,7 @@ struct AgentCommand: AsyncParsableCommand, AsyncRuntimeCommand {
         print(String(repeating: "=", count: 60) + "\n")
     }
 }
+
+extension AgentCommand: @MainActor AsyncParsableCommand {}
+
+extension AgentCommand: @MainActor AsyncRuntimeCommand {}

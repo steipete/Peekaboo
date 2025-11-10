@@ -7,11 +7,42 @@ import PeekabooCore
 import PeekabooFoundation
 import ScreenCaptureKit
 
+private enum ScreenCaptureBridge {
+    static func captureFrontmost(services: PeekabooServices) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureFrontmost()
+        }.value
+    }
+
+    static func captureWindow(
+        services: PeekabooServices,
+        appIdentifier: String,
+        windowIndex: Int?
+    ) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureWindow(appIdentifier: appIdentifier, windowIndex: windowIndex)
+        }.value
+    }
+
+    static func captureArea(services: PeekabooServices, rect: CGRect) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureArea(rect)
+        }.value
+    }
+
+    static func captureScreen(services: PeekabooServices, displayIndex: Int?) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureScreen(displayIndex: displayIndex)
+        }.value
+    }
+}
+
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
-struct SeeCommand: AsyncParsableCommand, AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
-ApplicationResolvable {
-    static let configuration = VisionToolDefinitions.see.commandConfiguration
+struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe { VisionToolDefinitions.see.commandConfiguration }
+    }
 
     @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
@@ -45,17 +76,11 @@ ApplicationResolvable {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
-    var verbose: Bool { self.runtimeOptions.verbose }
+    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
-    }
-
+    private var logger: Logger { self.runtime?.logger ?? Logger.shared }
+    private var services: PeekabooServices { self.runtime?.services ?? PeekabooServices.shared }
     var outputLogger: Logger { self.logger }
 
     enum CaptureMode: String, ExpressibleByArgument {
@@ -64,11 +89,7 @@ ApplicationResolvable {
         case frontmost
     }
 
-    mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
-
+    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
@@ -194,7 +215,7 @@ ApplicationResolvable {
                 captureResult = try await self.captureMenuBar()
             case "frontmost":
                 self.logger.verbose("Capturing frontmost window (via --app frontmost)", category: "Capture")
-                captureResult = try await self.services.screenCapture.captureFrontmost()
+                captureResult = try await ScreenCaptureBridge.captureFrontmost(services: self.services)
             default:
                 // Use normal capture logic
                 captureResult = try await self.performStandardCapture()
@@ -218,8 +239,9 @@ ApplicationResolvable {
 
         // Detect UI elements with window context
         self.logger.operationStart("element_detection")
-        let detectionResult = try await self.services.automation.detectElements(
-            in: captureResult.imageData,
+        let detectionResult = try await AutomationServiceBridge.detectElements(
+            services: self.services,
+            imageData: captureResult.imageData,
             sessionId: nil,
             windowContext: windowContext
         )
@@ -303,7 +325,8 @@ ApplicationResolvable {
                             metadata: ["index": windowIndex]
                         )
                         self.logger.startTimer("window_capture")
-                        let result = try await self.services.screenCapture.captureWindow(
+                        let result = try await ScreenCaptureBridge.captureWindow(
+                            services: self.services,
                             appIdentifier: appIdentifier,
                             windowIndex: windowIndex
                         )
@@ -319,7 +342,8 @@ ApplicationResolvable {
                         throw CaptureError.windowNotFound
                     }
                 } else {
-                    let result = try await self.services.screenCapture.captureWindow(
+                    let result = try await ScreenCaptureBridge.captureWindow(
+                        services: self.services,
                         appIdentifier: appIdentifier,
                         windowIndex: nil
                     )
@@ -332,7 +356,7 @@ ApplicationResolvable {
 
         case .frontmost:
             self.logger.verbose("Capturing frontmost window")
-            let result = try await self.services.screenCapture.captureFrontmost()
+            let result = try await ScreenCaptureBridge.captureFrontmost(services: self.services)
             self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
             return result
         }
@@ -354,7 +378,7 @@ ApplicationResolvable {
         )
 
         // Capture the menu bar area
-        return try await self.services.screenCapture.captureArea(menuBarRect)
+        return try await ScreenCaptureBridge.captureArea(services: self.services, rect: menuBarRect)
     }
 
     private func saveScreenshot(_ imageData: Data) throws -> String {
@@ -865,7 +889,7 @@ extension SeeCommand {
         if let index = self.screenIndex ?? (self.analyze != nil ? 0 : nil) {
             // Capture specific screen
             self.logger.verbose("Capturing specific screen", category: "Capture", metadata: ["screenIndex": index])
-            let result = try await self.services.screenCapture.captureScreen(displayIndex: index)
+            let result = try await ScreenCaptureBridge.captureScreen(services: self.services, displayIndex: index)
 
             // Add display info to output
             if let displayInfo = result.metadata.displayInfo {
@@ -964,7 +988,7 @@ extension SeeCommand {
             ])
 
             do {
-                let result = try await self.services.screenCapture.captureScreen(displayIndex: index)
+                let result = try await ScreenCaptureBridge.captureScreen(services: self.services, displayIndex: index)
 
                 // Update path to include screen index if capturing multiple screens
                 if displays.count > 1 {
@@ -1003,3 +1027,6 @@ extension SeeCommand {
         return formatter.string(fromByteCount: bytes)
     }
 }
+
+@MainActor
+extension SeeCommand: @MainActor AsyncRuntimeCommand {}

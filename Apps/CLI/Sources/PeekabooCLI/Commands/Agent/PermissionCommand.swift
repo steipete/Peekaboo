@@ -32,43 +32,43 @@ struct PermissionCommand: ParsableCommand {
     )
 }
 
+extension PermissionCommand {
+
 // MARK: - Status Subcommand
 
-struct StatusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "status",
-        abstract: "Check current permission status"
-    )
+struct StatusSubcommand: OutputFormattable {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "status",
+                abstract: "Check current permission status"
+            )
+        }
+    }
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    private var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-        mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Summarize the current permission state for the agent-centric workflow.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         let screenRecording = await self.services.screenCapture.hasScreenRecordingPermission()
-        let accessibility = await self.services.automation.hasAccessibilityPermission()
+        let accessibility = await AutomationServiceBridge.hasAccessibilityPermission(services: self.services)
 
         let payload = AgentPermissionStatusPayload(
             screen_recording: screenRecording,
@@ -100,36 +100,34 @@ struct StatusSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
 
 // MARK: - Request Screen Recording Subcommand
 
-struct RequestScreenRecordingSubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "request-screen-recording",
-        abstract: "Trigger screen recording permission prompt"
-    )
+struct RequestScreenRecordingSubcommand: OutputFormattable {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "request-screen-recording",
+                abstract: "Trigger screen recording permission prompt"
+            )
+        }
+    }
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    private var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-        mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Trigger the screen recording permission prompt using the best available mechanism.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -219,40 +217,38 @@ struct RequestScreenRecordingSubcommand: AsyncParsableCommand, AsyncRuntimeComma
 
 // MARK: - Request Accessibility Subcommand
 
-struct RequestAccessibilitySubcommand: AsyncParsableCommand, AsyncRuntimeCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "request-accessibility",
-        abstract: "Request accessibility permission"
-    )
+struct RequestAccessibilitySubcommand: OutputFormattable {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe {
+            CommandConfiguration(
+                commandName: "request-accessibility",
+                abstract: "Request accessibility permission"
+            )
+        }
+    }
 
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
+    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
 
-    private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
-    }
-
-    private var jsonOutput: Bool {
-        self.runtimeOptions.jsonOutput
-    }
-
-        mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
-        try await self.run(using: runtime)
-    }
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var logger: Logger { self.resolvedRuntime.logger }
+    var outputLogger: Logger { self.logger }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     /// Prompt the user to grant accessibility permission and open the relevant System Settings pane.
-        mutating func run(using runtime: CommandRuntime) async throws {
+    @MainActor
+    mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
-        let hasPermission = await self.services.automation.hasAccessibilityPermission()
+        let hasPermission = await AutomationServiceBridge.hasAccessibilityPermission(services: self.services)
 
         if hasPermission {
             if self.jsonOutput {
@@ -309,6 +305,8 @@ struct RequestAccessibilitySubcommand: AsyncParsableCommand, AsyncRuntimeCommand
     }
 }
 
+}
+
 // MARK: - Response Types
 
 private struct AgentPermissionStatusPayload: Codable {
@@ -322,3 +320,15 @@ private struct AgentPermissionActionResult: Codable {
     let prompt_triggered: Bool
     let granted: Bool?
 }
+
+extension PermissionCommand.StatusSubcommand: @MainActor AsyncParsableCommand {}
+
+extension PermissionCommand.StatusSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension PermissionCommand.RequestScreenRecordingSubcommand: @MainActor AsyncParsableCommand {}
+
+extension PermissionCommand.RequestScreenRecordingSubcommand: @MainActor AsyncRuntimeCommand {}
+
+extension PermissionCommand.RequestAccessibilitySubcommand: @MainActor AsyncParsableCommand {}
+
+extension PermissionCommand.RequestAccessibilitySubcommand: @MainActor AsyncRuntimeCommand {}

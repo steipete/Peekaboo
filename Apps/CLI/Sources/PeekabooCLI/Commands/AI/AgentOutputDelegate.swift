@@ -10,7 +10,6 @@ import Tachikoma
 
 /// Handles agent output formatting and display for different output modes
 @available(macOS 14.0, *)
-@MainActor
 final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
     // MARK: - Properties
 
@@ -496,6 +495,10 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
 private class UnknownToolFormatter: BaseToolFormatter {
     private let toolName: String
 
+    nonisolated override init(toolType: ToolType) {
+        fatalError("Use init(toolName:)")
+    }
+
     init(toolName: String) {
         self.toolName = toolName
         // Create a synthetic ToolType for unknown tools
@@ -503,27 +506,27 @@ private class UnknownToolFormatter: BaseToolFormatter {
         super.init(toolType: .wait)
     }
 
-    override func formatStarting(arguments: [String: Any]) -> String {
+    nonisolated override func formatStarting(arguments: [String: Any]) -> String {
         "\(self.toolName.replacingOccurrences(of: "_", with: " ").capitalized)"
     }
 
-    override func formatCompleted(result: [String: Any], duration: TimeInterval) -> String {
+    nonisolated override func formatCompleted(result: [String: Any], duration: TimeInterval) -> String {
         "→ completed"
     }
 
-    override func formatError(error: String, result: [String: Any]) -> String {
+    nonisolated override func formatError(error: String, result: [String: Any]) -> String {
         "\(AgentDisplayTokens.Status.failure) \(error)"
     }
 
-    override func formatCompactSummary(arguments: [String: Any]) -> String {
+    nonisolated override func formatCompactSummary(arguments: [String: Any]) -> String {
         ""
     }
 
-    override func formatResultSummary(result: [String: Any]) -> String {
+    nonisolated override func formatResultSummary(result: [String: Any]) -> String {
         ""
     }
 
-    override func formatForTitle(arguments: [String: Any]) -> String {
+    nonisolated override func formatForTitle(arguments: [String: Any]) -> String {
         self.toolName
     }
 }
