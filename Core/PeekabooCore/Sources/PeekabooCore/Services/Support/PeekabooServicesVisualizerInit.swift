@@ -8,6 +8,7 @@ import Foundation
 extension PeekabooServices {
     /// Ensures the visualizer client is connected if running from CLI
     /// This should be called early in CLI initialization
+    @MainActor
     public func ensureVisualizerConnection() {
         // Check if we're running as CLI (not Mac app)
         let isMacApp = Bundle.main.bundleIdentifier?.hasPrefix("boo.peekaboo.mac") == true

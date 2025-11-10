@@ -216,7 +216,9 @@ private final class MockModernCaptureOperator: ModernScreenCaptureOperating, Leg
     func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
         let width = max(1, Int(rect.width.rounded()))
         let height = max(1, Int(rect.height.rounded()))
-        let imageData = ScreenCaptureService.TestFixtures.makeImage(width: width, height: height, color: .systemGray)
+        let imageData = await MainActor.run {
+            ScreenCaptureService.TestFixtures.makeImage(width: width, height: height, color: .systemGray)
+        }
         let metadata = CaptureMetadata(
             size: CGSize(width: rect.width, height: rect.height),
             mode: .area,

@@ -584,7 +584,8 @@ public final class MenuService: MenuServiceProtocol {
                 title: extra.title,
                 index: index,
                 isVisible: extra.isVisible,
-                description: extra.title)
+                description: extra.title,
+                frame: CGRect(origin: extra.position, size: .zero))
         }
     }
 

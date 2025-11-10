@@ -21,7 +21,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -33,7 +33,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -47,7 +47,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -59,7 +59,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -71,7 +71,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -83,7 +83,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -95,7 +95,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -107,7 +107,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -121,7 +121,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -135,7 +135,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -151,7 +151,7 @@ extension PeekabooAgentService {
                 properties: [:],
                 required: []),
             execute: { _ in
-                let args = await makeToolArguments(fromDict: ["item_type": "screens"])
+                let args = makeToolArguments(fromDict: ["item_type": "screens"])
                 let response = try await tool.execute(arguments: args)
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
@@ -168,7 +168,7 @@ extension PeekabooAgentService {
                 properties: [:],
                 required: []),
             execute: { _ in
-                let args = await makeToolArguments(fromDict: ["item_type": "running_applications"])
+                let args = makeToolArguments(fromDict: ["item_type": "running_applications"])
                 let response = try await tool.execute(arguments: args)
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
@@ -188,10 +188,10 @@ extension PeekabooAgentService {
                 ],
                 required: ["name"]),
             execute: { arguments in
-                var argsDict = await dictionaryFromArguments(arguments)
+                var argsDict = dictionaryFromArguments(arguments)
                 argsDict["action"] = AnyAgentToolValue(string: "launch")
                 let newArgs = AgentToolArguments(argsDict)
-                let response = try await tool.execute(arguments: await makeToolArguments(from: newArgs))
+                let response = try await tool.execute(arguments: makeToolArguments(from: newArgs))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -205,7 +205,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -219,7 +219,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -233,7 +233,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -247,7 +247,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -261,7 +261,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -275,7 +275,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -289,7 +289,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -303,7 +303,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -317,7 +317,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -331,7 +331,7 @@ extension PeekabooAgentService {
             description: tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
-                let response = try await tool.execute(arguments: await makeToolArguments(from: arguments))
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
                 return await convertToolResponseToAgentToolResultAsync(response)
             })
     }
@@ -550,26 +550,20 @@ func convertToolResponseToAgentToolResultAsync(_ response: ToolResponse) async -
     convertToolResponseToAgentToolResult(response)
 }
 
-private func makeToolArguments(from arguments: AgentToolArguments) async -> ToolArguments {
-    await MainActor.run {
-        ToolArguments(from: arguments)
-    }
+private func makeToolArguments(from arguments: AgentToolArguments) -> ToolArguments {
+    ToolArguments(from: arguments)
 }
 
-private func makeToolArguments(fromDict dict: [String: Any]) async -> ToolArguments {
-    await MainActor.run {
-        ToolArguments(from: dict)
-    }
+private func makeToolArguments(fromDict dict: [String: Any]) -> ToolArguments {
+    ToolArguments(from: dict)
 }
 
-private func dictionaryFromArguments(_ arguments: AgentToolArguments) async -> [String: AnyAgentToolValue] {
-    await MainActor.run {
-        var dict: [String: AnyAgentToolValue] = [:]
-        for key in arguments.keys {
-            if let value = arguments[key] {
-                dict[key] = value
-            }
+private func dictionaryFromArguments(_ arguments: AgentToolArguments) -> [String: AnyAgentToolValue] {
+    var dict: [String: AnyAgentToolValue] = [:]
+    for key in arguments.keys {
+        if let value = arguments[key] {
+            dict[key] = value
         }
-        return dict
     }
+    return dict
 }

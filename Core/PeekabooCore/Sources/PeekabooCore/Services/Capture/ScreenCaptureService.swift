@@ -69,6 +69,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             self.makeLegacyOperator = makeLegacyOperator
         }
 
+        @MainActor
         static func live(environment: [String: String] = ProcessInfo.processInfo.environment) -> Dependencies {
             Dependencies(
                 visualizerClient: VisualizationClient.shared,
@@ -412,6 +413,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             windowCount: 0)
     }
 
+    @MainActor
     private final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
         private let logger: CategoryLogger
         private let visualizerClient: any VisualizationClientProtocol
@@ -788,6 +790,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             }
 
             let screenBounds = targetScreen.frame
+            let scaleFactor = targetScreen.backingScaleFactor
             let image = try await self.captureDisplayWithScreenshotManager(
                 screen: targetScreen,
                 displayIndex: displayIndex ?? 0,
@@ -815,7 +818,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     index: displayIndex ?? 0,
                     name: "Display \(displayIndex ?? 0)",
                     bounds: screenBounds,
-                    scaleFactor: targetScreen.backingScaleFactor))
+                    scaleFactor: scaleFactor))
 
             return CaptureResult(
                 imageData: imageData,
@@ -927,7 +930,7 @@ private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Senda
 // MARK: - Capture Output Handler
 
 @MainActor
-private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable {
+private final class CaptureOutput: NSObject, @unchecked Sendable {
     private var continuation: CheckedContinuation<CGImage, any Error>?
     private var timeoutTask: Task<Void, Never>?
     deinit {
@@ -965,15 +968,17 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
     }
 
     /// Feed new screen samples into the pending continuation, delivering captured frames.
-    func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
+    nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .screen else { return }
 
-        Task { @MainActor in
+        let buffer = sampleBuffer
+
+        Task { @MainActor [buffer] in
             // Cancel timeout task since we received a frame
             self.timeoutTask?.cancel()
             self.timeoutTask = nil
 
-            guard let imageBuffer = sampleBuffer.imageBuffer else {
+            guard let imageBuffer = buffer.imageBuffer else {
                 if let cont = self.continuation {
                     cont.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
                     self.continuation = nil
@@ -1001,6 +1006,8 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         }
     }
 }
+
+extension CaptureOutput: SCStreamOutput {}
 
 // MARK: - Extensions
 

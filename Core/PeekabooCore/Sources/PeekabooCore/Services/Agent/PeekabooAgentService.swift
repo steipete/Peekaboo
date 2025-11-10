@@ -179,8 +179,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             let selectedModel = self.defaultLanguageModel
 
             // Create event delegate wrapper for streaming
-            let streamingDelegate = StreamingEventDelegate { chunk in
-                await eventHandler.send(.assistantMessage(content: chunk))
+            let streamingDelegate = await MainActor.run {
+                StreamingEventDelegate { chunk in
+                    await eventHandler.send(.assistantMessage(content: chunk))
+                }
             }
 
             let result = try await self.executeWithStreaming(
@@ -261,8 +263,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             let selectedModel = self.defaultLanguageModel
 
             // Create event delegate wrapper for streaming
-            let streamingDelegate = StreamingEventDelegate { chunk in
-                await eventHandler.send(.assistantMessage(content: chunk))
+            let streamingDelegate = await MainActor.run {
+                StreamingEventDelegate { chunk in
+                    await eventHandler.send(.assistantMessage(content: chunk))
+                }
             }
 
             let result = try await self.executeWithStreaming(
@@ -288,11 +292,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     /// Clean up any cached sessions or resources
     public func cleanup() async {
-        // Clean up old sessions (older than 7 days)
-        // Clean old sessions manually
-        let oldSessionDate = Date().addingTimeInterval(-7 * 24 * 60 * 60)
+        let cutoff = Date().addingTimeInterval(-7 * 24 * 60 * 60)
         let sessions = self.sessionManager.listSessions()
-        for session in sessions where session.lastAccessedAt < oldSessionDate {
+
+        for session in sessions where session.lastAccessedAt < cutoff {
             try? await self.sessionManager.deleteSession(id: session.id)
         }
     }
