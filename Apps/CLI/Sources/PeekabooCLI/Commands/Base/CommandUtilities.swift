@@ -424,13 +424,13 @@ enum MenuServiceBridge {
     }
 
     static func clickMenuBarItem(named name: String, services: PeekabooServices) async throws -> PeekabooCore.ClickResult {
-        try await Task<PeekabooCore.ClickResult, Error> { @MainActor in
+        try await Task<PeekabooCore.ClickResult, any Error> { @MainActor in
             try await services.menu.clickMenuBarItem(named: name)
         }.value
     }
 
     static func clickMenuBarItem(at index: Int, services: PeekabooServices) async throws -> PeekabooCore.ClickResult {
-        try await Task<PeekabooCore.ClickResult, Error> { @MainActor in
+        try await Task<PeekabooCore.ClickResult, any Error> { @MainActor in
             try await services.menu.clickMenuBarItem(at: index)
         }.value
     }

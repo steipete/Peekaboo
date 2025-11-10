@@ -5,9 +5,12 @@ import TachikomaMCP
 
 @MainActor
 struct ToolsCommand: OutputFormattable {
+    private static let abstractText = "List available tools with filtering and display options"
+    private static let descriptionText = "Tools command for listing and filtering available tools"
+
     static let configuration = CommandConfiguration(
         commandName: "tools",
-        abstract: "List available tools with filtering and display options",
+        abstract: Self.abstractText,
         discussion: """
         Display all available Peekaboo tools, including both native tools and external MCP server tools.
 
@@ -52,8 +55,24 @@ struct ToolsCommand: OutputFormattable {
     private var services: PeekabooServices { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
-    private var showDetailedInfo: Bool { self.resolvedRuntime.configuration.verbose }
+
+    var description: String { Self.descriptionText }
+
+    var verbose: Bool {
+        if let runtime {
+            return runtime.configuration.verbose
+        }
+        return self.runtimeOptions.verbose
+    }
+
+    var jsonOutput: Bool {
+        if let runtime {
+            return runtime.configuration.jsonOutput
+        }
+        return self.runtimeOptions.jsonOutput
+    }
+
+    private var showDetailedInfo: Bool { self.verbose }
 
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime

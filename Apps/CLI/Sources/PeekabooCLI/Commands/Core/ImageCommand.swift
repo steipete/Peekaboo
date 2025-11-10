@@ -56,7 +56,12 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
 
     private var logger: Logger { self.resolvedRuntime.logger }
     private var services: PeekabooServices { self.resolvedRuntime.services }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var jsonOutput: Bool {
+        if let runtime {
+            return runtime.configuration.jsonOutput
+        }
+        return self.runtimeOptions.jsonOutput
+    }
     var outputLogger: Logger { self.logger }
 
     @MainActor

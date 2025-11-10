@@ -92,9 +92,6 @@ struct AgentCommand {
     @Argument(help: "Natural language description of the task to perform (optional when using --resume)")
     var task: String?
 
-    @Flag(name: .shortAndLong, help: "Enable verbose output with full JSON debug information")
-    var verbose = false
-
     @Flag(name: .customLong("debug-terminal"), help: "Show detailed terminal detection info")
     var debugTerminal = false
 
@@ -168,7 +165,19 @@ struct AgentCommand {
         self.runtime?.logger ?? Logger.shared
     }
 
-var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+    var jsonOutput: Bool {
+        if let runtime {
+            return runtime.configuration.jsonOutput
+        }
+        return self.runtimeOptions.jsonOutput
+    }
+
+    var verbose: Bool {
+        if let runtime {
+            return runtime.configuration.verbose
+        }
+        return self.runtimeOptions.verbose
+    }
 
     @MainActor
     mutating func run() async throws {
