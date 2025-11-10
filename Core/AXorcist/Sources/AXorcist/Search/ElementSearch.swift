@@ -187,7 +187,7 @@ public enum TreeVisitorResult {
 @MainActor
 public func traverseAndSearch(
     element: Element,
-    visitor: ElementVisitor,
+    visitor: any ElementVisitor,
     currentDepth: Int,
     maxDepth: Int
 ) {

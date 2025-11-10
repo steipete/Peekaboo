@@ -16,7 +16,7 @@ public struct JSONPathHintComponent: Codable, Sendable {
 
     // If you need custom Codable implementation because of the new optional field
     // and want to maintain existing JSON compatibility (if matchType is often absent):
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         attribute = try container.decode(String.self, forKey: .attribute)
         value = try container.decode(String.self, forKey: .value)
@@ -77,7 +77,7 @@ public struct JSONPathHintComponent: Codable, Sendable {
         return [resolvedAttributeName: value]
     }
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(attribute, forKey: .attribute)
         try container.encode(value, forKey: .value)

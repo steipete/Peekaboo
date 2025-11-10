@@ -77,7 +77,7 @@ public struct AXTimeoutWrapper {
     /// Execute an AX operation with timeout protection and retry logic
     @MainActor
     public func execute<T>(_ operation: () throws -> T?) async throws -> T? {
-        var lastError: Error?
+        var lastError: (any Error)?
 
         for attempt in 0..<self.maxRetries {
             do {

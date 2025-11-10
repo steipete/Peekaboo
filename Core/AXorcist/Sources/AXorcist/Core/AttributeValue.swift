@@ -27,7 +27,7 @@ public enum AttributeValue: Codable, Sendable, Equatable {
 
     // MARK: - Coding
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
 
         if container.decodeNil() {
@@ -52,7 +52,7 @@ public enum AttributeValue: Codable, Sendable, Equatable {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
 
         switch self {

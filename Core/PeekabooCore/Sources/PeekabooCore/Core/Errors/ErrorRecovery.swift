@@ -51,7 +51,7 @@ public enum RetryHandler {
         operation: @Sendable () async throws -> T) async throws -> T
     {
         // Execute an operation with retry logic
-        var lastError: Error?
+        var lastError: (any Error)?
         var delay = policy.initialDelay
 
         for attempt in 1...policy.maxAttempts {
@@ -88,7 +88,7 @@ public enum RetryHandler {
         operation: @Sendable () async throws -> T) async throws -> T
     {
         // Execute an operation with custom retry logic
-        var lastError: Error?
+        var lastError: (any Error)?
 
         for attempt in 1...maxAttempts {
             do {

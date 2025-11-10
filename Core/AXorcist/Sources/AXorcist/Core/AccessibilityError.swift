@@ -42,8 +42,8 @@ public enum AccessibilityError: Error, CustomStringConvertible {
 
     // Generic & System Errors
     case unknownAXError(AXError) // An unknown or unexpected AXError occurred.
-    case jsonEncodingFailed(Error?) // Failed to encode response to JSON.
-    case jsonDecodingFailed(Error?) // Failed to decode request from JSON.
+    case jsonEncodingFailed((any Error)?) // Failed to encode response to JSON.
+    case jsonDecodingFailed((any Error)?) // Failed to decode request from JSON.
     case genericError(String) // A generic error with a custom message.
 
     // MARK: Public

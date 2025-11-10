@@ -12,7 +12,7 @@ public struct Criterion: Codable, Sendable {
         self.matchType = matchType
     }
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         attribute = try container.decode(String.self, forKey: .attribute)
         value = try container.decode(String.self, forKey: .value)
@@ -25,7 +25,7 @@ public struct Criterion: Codable, Sendable {
     public let value: String
     public let matchType: JSONPathHintComponent.MatchType?
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(attribute, forKey: .attribute)
         try container.encode(value, forKey: .value)

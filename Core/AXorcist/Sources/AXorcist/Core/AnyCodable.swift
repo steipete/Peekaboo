@@ -20,7 +20,7 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         self.value = value ?? ()
     }
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
             self.value = ()
@@ -48,7 +48,7 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
 
     public let value: Any
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         if value is () { // Our nil marker for explicit nil
             try container.encodeNil()
@@ -68,7 +68,7 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         case let dictionary as [String: Any]:
             try container.encode(dictionary.mapValues { AnyCodable($0) })
         default:
-            if let codableValue = value as? Encodable {
+            if let codableValue = value as? any Encodable {
                 // If the value conforms to Encodable, let it encode itself using the provided encoder.
                 // This is the most flexible approach as the Encodable type can use any container type it needs.
                 try codableValue.encode(to: encoder)
@@ -142,7 +142,7 @@ struct AnyCodablePośrednik<T: Encodable>: Encodable {
 
     let value: T
 
-    func encode(to encoder: Encoder) throws {
+    func encode(to encoder: any Encoder) throws {
         try value.encode(to: encoder)
     }
 }

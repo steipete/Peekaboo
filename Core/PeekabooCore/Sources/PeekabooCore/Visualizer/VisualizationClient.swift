@@ -209,16 +209,18 @@ public final class VisualizationClient: @unchecked Sendable {
         if self.isRunningInsideMacApp {
             return NSXPCConnection(serviceName: VisualizerEndpointBrokerServiceName)
         } else {
-            return NSXPCConnection(machServiceName: VisualizerEndpointBrokerServiceName, options: [.privileged])
+            // CLI and other external clients talk to the same user-domain mach service;
+            // using the privileged option tries (and fails) to find a system daemon.
+            return NSXPCConnection(machServiceName: VisualizerEndpointBrokerServiceName)
         }
     }
 
     @MainActor
     private func fetchVisualizerEndpoint() async throws -> NSXPCListenerEndpoint {
         let connection = self.makeBrokerConnection()
-        let service = RemoteXPCService<VisualizerEndpointBrokerProtocol>(
+        let service = RemoteXPCService<any VisualizerEndpointBrokerProtocol>(
             connection: connection,
-            remoteInterface: VisualizerEndpointBrokerProtocol.self)
+            remoteInterface: (any VisualizerEndpointBrokerProtocol).self)
 
         connection.resume()
         defer { service.invalidate() }

@@ -99,7 +99,7 @@ public struct CommandEnvelope: Codable {
         self.includeIgnoredElements = includeIgnoredElements
     }
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         commandId = try container.decode(String.self, forKey: .commandId)
         command = try container.decode(CommandType.self, forKey: .command)
