@@ -167,7 +167,7 @@ public struct KeyboardShortcut: Sendable {
 }
 
 /// Information about a menu bar item (status bar item)
-public struct MenuBarItemInfo: Sendable {
+public struct MenuBarItemInfo: Sendable, Codable {
     /// Title of the menu bar item
     public let title: String?
 
@@ -180,11 +180,23 @@ public struct MenuBarItemInfo: Sendable {
     /// Optional description
     public let description: String?
 
+    /// Bounding rectangle in screen coordinates, if available
+    public let frame: CGRect?
+
     public init(title: String?, index: Int, isVisible: Bool = true, description: String? = nil) {
         self.title = title
         self.index = index
         self.isVisible = isVisible
         self.description = description
+        self.frame = nil
+    }
+
+    public init(title: String?, index: Int, isVisible: Bool = true, description: String? = nil, frame: CGRect?) {
+        self.title = title
+        self.index = index
+        self.isVisible = isVisible
+        self.description = description
+        self.frame = frame
     }
 }
 

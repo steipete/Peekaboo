@@ -3,6 +3,7 @@ import Tachikoma
 
 /// Protocol defining the agent service interface
 @available(macOS 14.0, *)
+@MainActor
 public protocol AgentServiceProtocol: Sendable {
     /// Execute a task using the AI agent
     /// - Parameters:

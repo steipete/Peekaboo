@@ -2,6 +2,7 @@ import Foundation
 
 /// Service for executing Peekaboo automation scripts
 @available(macOS 14.0, *)
+@MainActor
 public protocol ProcessServiceProtocol: Sendable {
     /// Load and validate a Peekaboo script from file
     /// - Parameter path: Path to the script file (.peekaboo.json)
