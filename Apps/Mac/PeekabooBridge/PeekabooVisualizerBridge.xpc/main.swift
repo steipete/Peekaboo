@@ -13,7 +13,12 @@ final class PeekabooVisualizerBridgeService: NSObject, NSXPCListenerDelegate {
 }
 
 let serviceDelegate = PeekabooVisualizerBridgeService()
-let listener = NSXPCListener.service()
+let listener: NSXPCListener
+if ProcessInfo.processInfo.environment["PEEKABOO_BRIDGE_STANDALONE"] == "1" {
+    listener = NSXPCListener(machServiceName: VisualizerEndpointBrokerServiceName)
+} else {
+    listener = NSXPCListener.service()
+}
 listener.delegate = serviceDelegate
 listener.resume()
 RunLoop.current.run()

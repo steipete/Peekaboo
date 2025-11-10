@@ -5,7 +5,6 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import AsyncXPCConnection
 import CoreGraphics
 import Foundation
 import os
@@ -25,8 +24,6 @@ final class VisualizerXPCService: NSObject {
     /// Visualizer coordinator (manages animations)
     private let visualizerCoordinator: VisualizerCoordinator
 
-    private var brokerRetryTask: Task<Void, Never>?
-
     /// Settings (now comes from connected coordinator)
     // Removed internal settings - coordinator manages its own
 
@@ -38,7 +35,7 @@ final class VisualizerXPCService: NSObject {
         super.init()
         self.listener.delegate = self
         self.listener.resume()
-        self.registerEndpointWithBroker(delay: 0)
+        VisualizerEndpointBrokerHost.shared.publish(endpoint: self.listener.endpoint)
     }
 
 }
@@ -328,44 +325,6 @@ extension VisualizerXPCService: @preconcurrency VisualizerXPCProtocol {
     }
 }
 
-// MARK: - Endpoint Broker
-
-extension VisualizerXPCService {
-    @MainActor
-    private func registerEndpointWithBroker(delay: TimeInterval) {
-        self.brokerRetryTask?.cancel()
-        self.brokerRetryTask = Task { [weak self] in
-            if delay > 0 {
-                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            }
-            await self?.sendEndpointToBroker()
-        }
-    }
-
-    @MainActor
-    private func sendEndpointToBroker() async {
-        do {
-            try await VisualizerBrokerRegistration.register(endpoint: self.listener.endpoint)
-            self.handleBrokerRegistrationSuccess()
-        } catch {
-            self.handleBrokerFailure(error)
-        }
-    }
-
-    @MainActor
-    private func handleBrokerFailure(_ error: any Error) {
-        self.logger.error(
-            "🎨 XPC Service: Broker connection failed: \(error.localizedDescription, privacy: .public)")
-        self.registerEndpointWithBroker(delay: 1)
-    }
-
-    @MainActor
-    private func handleBrokerRegistrationSuccess() {
-        self.logger.info("🎨 XPC Service: Registered endpoint with broker")
-        self.brokerRetryTask = nil
-    }
-}
-
 // MARK: - Settings Keys (for compatibility)
 
 private enum VisualizerSettings {
@@ -385,34 +344,4 @@ private enum VisualizerSettings {
     static let dialogFeedbackKey = "dialogFeedbackEnabled"
     static let spaceAnimationKey = "spaceAnimationEnabled"
     static let elementOverlaysKey = "elementOverlaysEnabled"
-}
-
-// MARK: - Broker registration helper
-
-private enum VisualizerBrokerRegistration {
-    static func register(endpoint: NSXPCListenerEndpoint) async throws {
-        let connection = NSXPCConnection(serviceName: VisualizerEndpointBrokerServiceName)
-        let service = RemoteXPCService<VisualizerEndpointBrokerProtocol>(
-            connection: connection,
-            remoteInterface: VisualizerEndpointBrokerProtocol.self)
-
-        connection.resume()
-        defer { service.invalidate() }
-
-        // AsyncXPCConnection hops the XPC reply queue back into Swift concurrency,
-        // so the enclosing @MainActor caller never trips dispatch assertions again.
-        try await service.withContinuation { broker, continuation in
-            broker.registerVisualizerEndpoint(endpoint) { success in
-                if success {
-                    continuation.resume()
-                } else {
-                    continuation.resume(throwing: BrokerRegistrationError.registrationRejected)
-                }
-            }
-        }
-    }
-}
-
-private enum BrokerRegistrationError: Error {
-    case registrationRejected
 }

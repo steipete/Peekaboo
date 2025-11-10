@@ -193,12 +193,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Visualizer components
     var visualizerCoordinator: VisualizerCoordinator?
     private var visualizerXPCService: VisualizerXPCService?
+    private let visualizerBrokerHost = VisualizerEndpointBrokerHost.shared
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
 
         // Initialize dock icon manager (it will set the activation policy based on settings) - Test!
         // Don't set activation policy here - let DockIconManager handle it
+
+        self.visualizerBrokerHost.startIfNeeded()
 
         // Initialize visualizer components
         self.visualizerCoordinator = VisualizerCoordinator()
