@@ -697,7 +697,10 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     private static func isVisualizerAppRunning() -> Bool {
-        !NSRunningApplication.runningApplications(withBundleIdentifier: Self.macAppBundlePrefix).isEmpty
+        NSWorkspace.shared.runningApplications.contains { app in
+            guard let identifier = app.bundleIdentifier else { return false }
+            return identifier.hasPrefix(Self.macAppBundlePrefix)
+        }
     }
 }
 

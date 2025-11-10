@@ -55,6 +55,7 @@ Per-action toggles live in `PeekabooSettings` (see `VisualizerSettings` enum nea
 ## Settings & Environment Controls
 
 - **In-app settings** – `SettingsWindow` exposes `Visual Feedback Enabled`, effect intensity, animation speed, plus per-action toggles (flash, clicks, typing, scroll, mouse trail, etc.).
+- **Default pacing** – Animations now default to **1.4×** on a fresh install. If you need them slower, drag the slider above 1×; if you want the snappier feel we used to ship, pull it down closer to 1.0×.
 - **Environment variables** – `VisualizationClient` honours `PEEKABOO_VISUAL_FEEDBACK=false` (global kill switch) and `PEEKABOO_VISUAL_SCREENSHOTS=false` (skip flash only). `PEEKABOO_VISUALIZER_STDOUT=true|false` forces stderr mirroring on/off outside the macOS bundle.
 - **Defaults** – Non-app processes mirror every log line (subsystem `boo.peekaboo.core`, category `VisualizationClient`) to stderr so agents immediately see connection status.
 

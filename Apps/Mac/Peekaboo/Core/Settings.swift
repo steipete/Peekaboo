@@ -12,6 +12,7 @@ import Tachikoma
 @Observable
 @MainActor
 final class PeekabooSettings {
+    static let defaultVisualizerAnimationSpeed: Double = 1.4
     // Flag to prevent recursive saves during loading
     private var isLoading = false
     // Reference to ConfigurationManager
@@ -155,7 +156,7 @@ final class PeekabooSettings {
         }
     }
 
-    var visualizerAnimationSpeed: Double = 1.0 {
+    var visualizerAnimationSpeed: Double = PeekabooSettings.defaultVisualizerAnimationSpeed {
         didSet {
             let clamped = max(0.1, min(2.0, visualizerAnimationSpeed))
             if self.visualizerAnimationSpeed != clamped {
@@ -434,7 +435,9 @@ final class PeekabooSettings {
         }
 
         self.visualizerAnimationSpeed = self.userDefaults.double(forKey: "\(self.keyPrefix)visualizerAnimationSpeed")
-        if self.visualizerAnimationSpeed == 0 { self.visualizerAnimationSpeed = 1.0 }
+        if self.visualizerAnimationSpeed == 0 {
+            self.visualizerAnimationSpeed = PeekabooSettings.defaultVisualizerAnimationSpeed
+        }
 
         self.visualizerEffectIntensity = self.userDefaults.double(forKey: "\(self.keyPrefix)visualizerEffectIntensity")
         if self.visualizerEffectIntensity == 0 { self.visualizerEffectIntensity = 1.0 }
