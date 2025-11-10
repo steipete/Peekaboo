@@ -10,7 +10,7 @@
 //===----------------------------------------------------------------------===//
 
 /// A set of commands grouped together under a common name.
-public struct CommandGroup: Sendable {
+public struct CommandGroup: @unchecked Sendable {
   /// The name of the command group that will be displayed in help.
   public let name: String
 

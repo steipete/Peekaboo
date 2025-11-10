@@ -10,7 +10,7 @@
 //===----------------------------------------------------------------------===//
 
 /// The configuration for a command.
-public struct CommandConfiguration: Sendable {
+public struct CommandConfiguration: @unchecked Sendable {
   /// The name of the command to use on the command line.
   ///
   /// If `nil`, the command name is derived by converting the name of

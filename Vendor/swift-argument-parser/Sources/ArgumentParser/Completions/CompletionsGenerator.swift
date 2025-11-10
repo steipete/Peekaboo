@@ -125,8 +125,9 @@ struct CompletionsGenerator {
 
   /// Generates a shell completion script for this generator's shell and command.
   func generateCompletionScript() -> String {
-    CompletionShell._requesting.withLock { $0 = shell }
-    switch shell {
+    let selectedShell = self.shell
+    CompletionShell._requesting.withLock { $0 = selectedShell }
+    switch selectedShell {
     case .zsh:
       return ToolInfoV0(commandStack: [command]).zshCompletionScript
     case .bash:

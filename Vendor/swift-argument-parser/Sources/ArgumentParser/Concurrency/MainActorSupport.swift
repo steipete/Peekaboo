@@ -45,19 +45,33 @@ extension MainActorParsableCommand {
 
   /// Bridges the `MainActor`-isolated configuration back to ArgumentParser's global requirement.
   public nonisolated(unsafe) static var configuration: CommandConfiguration {
-    MainActorCommandConfiguration.resolve { self.mainActorConfiguration }
+    if Thread.isMainThread {
+      return MainActor.assumeIsolated {
+        Self.mainActorConfiguration
+      }
+    }
+
+    return DispatchQueue.main.sync {
+      MainActor.assumeIsolated {
+        Self.mainActorConfiguration
+      }
+    }
   }
 }
 
 /// Helper that executes a `CommandConfiguration` builder on the `MainActor`.
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 public enum MainActorCommandConfiguration {
-  public static func describe(_ body: @MainActor () -> CommandConfiguration) -> CommandConfiguration {
+  public static func describe(
+    _ body: @MainActor @Sendable () -> CommandConfiguration
+  ) -> CommandConfiguration {
     resolve(body)
   }
 
   @usableFromInline
-  static func resolve(_ body: @MainActor () -> CommandConfiguration) -> CommandConfiguration {
+  static func resolve(
+    _ body: @MainActor @Sendable () -> CommandConfiguration
+  ) -> CommandConfiguration {
     if Thread.isMainThread {
       return MainActor.assumeIsolated(body)
     }

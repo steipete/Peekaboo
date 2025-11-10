@@ -87,7 +87,7 @@ public struct ArgumentHelp {
   }
 }
 
-extension ArgumentHelp: Sendable {}
+extension ArgumentHelp: @unchecked Sendable {}
 
 extension ArgumentHelp: ExpressibleByStringInterpolation {
   public init(stringLiteral value: String) {

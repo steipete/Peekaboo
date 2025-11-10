@@ -206,7 +206,7 @@ extension ArgumentInfoV0.CompletionKindV0 {
     case .customAsync(_):
       self = .customAsync
     case .customDeprecated(_):
-      self = .customDeprecated
+      self = .custom
     }
   }
 }

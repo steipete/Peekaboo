@@ -135,7 +135,7 @@ enum ArgumentDiscussion {
   }
 }
 
-extension ArgumentDiscussion: Sendable {}
+extension ArgumentDiscussion: @unchecked Sendable {}
 
 extension ArgumentDiscussion: Hashable {
   static func == (lhs: ArgumentDiscussion, rhs: ArgumentDiscussion) -> Bool {

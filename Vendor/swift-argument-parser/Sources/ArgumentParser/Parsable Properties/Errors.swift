@@ -117,3 +117,5 @@ public struct CleanExit: Error, CustomStringConvertible {
     }
   }
 }
+
+extension CleanExit: @unchecked Sendable {}

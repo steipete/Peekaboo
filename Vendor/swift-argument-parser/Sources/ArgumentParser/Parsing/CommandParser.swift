@@ -19,7 +19,7 @@
 #endif
 #endif
 
-struct CommandError: Error {
+struct CommandError: Error, @unchecked Sendable {
   var commandStack: [ParsableCommand.Type]
   var parserError: ParserError
 }

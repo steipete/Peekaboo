@@ -105,7 +105,7 @@ extension Tree where Element == ParsableCommand.Type {
     }
   }
 
-  enum InitializationError: Error {
+  enum InitializationError: Error, @unchecked Sendable {
     case recursiveSubcommand(ParsableCommand.Type)
     case aliasMatchingCommand(ParsableCommand.Type)
   }

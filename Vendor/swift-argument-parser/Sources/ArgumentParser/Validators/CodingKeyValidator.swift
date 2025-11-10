@@ -78,7 +78,7 @@ struct CodingKeyValidator: ParsableArgumentsValidator {
   }
 
   struct InvalidDecoderError: ParsableArgumentsValidatorError,
-    CustomStringConvertible
+    CustomStringConvertible, @unchecked Sendable
   {
     let type: ParsableArguments.Type
 

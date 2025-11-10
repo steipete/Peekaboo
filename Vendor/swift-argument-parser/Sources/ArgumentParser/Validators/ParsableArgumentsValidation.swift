@@ -41,7 +41,7 @@ protocol ParsableArgumentsValidatorError: Error {
   var kind: ValidatorErrorKind { get }
 }
 
-struct ParsableArgumentsValidationError: Error, CustomStringConvertible {
+struct ParsableArgumentsValidationError: Error, CustomStringConvertible, @unchecked Sendable {
   let parsableArgumentsType: ParsableArguments.Type
   let underlayingErrors: [Error]
 
