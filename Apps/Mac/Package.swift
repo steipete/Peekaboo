@@ -25,6 +25,7 @@ let package = Package(
         .package(path: "../../Core/PeekabooUICore"),
         .package(path: "../../Tachikoma"),
         .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0"),
+        .package(url: "https://github.com/ChimeHQ/AsyncXPCConnection.git", from: "1.3.0"),
     ],
     targets: [
         .target(
@@ -35,6 +36,7 @@ let package = Package(
                 .product(name: "Tachikoma", package: "Tachikoma"),
                 .product(name: "TachikomaAudio", package: "Tachikoma"),
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
+                .product(name: "AsyncXPCConnection", package: "AsyncXPCConnection"),
             ],
             path: "Peekaboo",
             exclude: ["PeekabooApp.swift", "Info.plist", "Features/StatusBar/README.md"],
