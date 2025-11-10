@@ -2,7 +2,7 @@ import AppKit
 import Observation
 import PeekabooCore
 import SwiftUI
-
+            
 struct SettingsWindow: View {
     @Environment(PeekabooSettings.self) private var settings
     @Environment(Permissions.self) private var permissions
@@ -73,6 +73,8 @@ struct GeneralSettingsView: View {
 
 struct AISettingsView: View {
     @Environment(PeekabooSettings.self) private var settings
+    @State private var detectedOllamaModelOptions: [(id: String, name: String)] = []
+    @State private var hasAttemptedOllamaDetection = false
 
     private var allModels: [(provider: String, models: [(id: String, name: String)])] {
         var models: [(provider: String, models: [(id: String, name: String)])] = [
@@ -84,10 +86,7 @@ struct AISettingsView: View {
                 ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
                 ("claude-haiku-4.5", "Claude Haiku 4.5"),
             ]),
-            ("ollama", [
-                ("llava:latest", "LLaVA"),
-                ("llama3.2-vision:latest", "Llama 3.2 Vision"),
-            ]),
+            ("ollama", self.ollamaModelOptions),
         ]
 
         // Add custom providers
@@ -282,7 +281,72 @@ struct AISettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .task(id: self.settings.ollamaBaseURL) {
+            await self.refreshOllamaModels()
+        }
     }
+
+    private var ollamaModelOptions: [(id: String, name: String)] {
+        if !self.detectedOllamaModelOptions.isEmpty {
+            return self.detectedOllamaModelOptions
+        }
+        return Self.defaultOllamaModels
+    }
+
+    private static let defaultOllamaModels: [(id: String, name: String)] = [
+        ("llava:latest", "LLaVA"),
+        ("llama3.2-vision:latest", "Llama 3.2 Vision"),
+    ]
+
+    @MainActor
+    private func refreshOllamaModels() async {
+        if self.hasAttemptedOllamaDetection {
+            return
+        }
+        self.hasAttemptedOllamaDetection = true
+
+        guard let url = URL(string: "\(self.settings.ollamaBaseURL)/api/tags") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                return
+            }
+
+            let decoded = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
+            let models = decoded.models.map { model in
+                (id: model.name, name: model.displayName)
+            }
+
+            if !models.isEmpty {
+                self.detectedOllamaModelOptions = models
+            }
+        } catch {
+            // Silently ignore detection failures; defaults remain.
+        }
+    }
+}
+
+private struct OllamaTagsResponse: Decodable {
+    struct OllamaModel: Decodable {
+        struct Details: Decodable {
+            let parameter_size: String?
+        }
+
+        let name: String
+        let details: Details?
+
+        var displayName: String {
+            if let parameterSize = self.details?.parameter_size {
+                return "\(self.name) (\(parameterSize))"
+            }
+            return self.name
+        }
+    }
+
+    let models: [OllamaModel]
 }
 
 // MARK: - Visualizer Settings Tab Wrapper
