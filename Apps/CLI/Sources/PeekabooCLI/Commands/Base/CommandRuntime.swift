@@ -32,9 +32,10 @@ struct CommandRuntime {
     }
 
     let configuration: Configuration
-    let services: PeekabooServices
-    let logger: Logger
+    @MainActor let services: PeekabooServices
+    @MainActor let logger: Logger
 
+    @MainActor
     init(configuration: Configuration) {
         self.configuration = configuration
         self.services = PeekabooServices.shared
@@ -48,6 +49,7 @@ struct CommandRuntime {
         }
     }
 
+    @MainActor
     init(options: CommandRuntimeOptions) {
         self.init(configuration: options.makeConfiguration())
     }
