@@ -15,7 +15,7 @@ struct CommandRegistryEntry {
         case mcp
     }
 
-    let type: ParsableCommand.Type
+    let type: any ParsableCommand.Type
     let category: Category
 }
 
@@ -30,6 +30,7 @@ struct CommandDefinition: Codable {
 }
 
 enum CommandRegistry {
+    @MainActor
     static let entries: [CommandRegistryEntry] = [
         .init(type: ImageCommand.self, category: .core),
         .init(type: ListCommand.self, category: .core),
@@ -60,10 +61,12 @@ enum CommandRegistry {
         .init(type: MCPCommand.self, category: .mcp),
     ]
 
-    static var rootCommandTypes: [ParsableCommand.Type] {
+    @MainActor
+    static var rootCommandTypes: [any ParsableCommand.Type] {
         self.entries.map(\.type)
     }
 
+    @MainActor
     static func definitions() -> [CommandDefinition] {
         entries.map { entry in
             let configuration = entry.type.configuration
@@ -71,7 +74,7 @@ enum CommandRegistry {
                 name: configuration.commandName ?? String(describing: entry.type),
                 typeName: String(reflecting: entry.type),
                 category: entry.category,
-                abstract: configuration.abstract ?? "",
+                abstract: configuration.abstract,
                 discussion: configuration.discussion,
                 version: configuration.version,
                 subcommandCount: configuration.subcommands.count

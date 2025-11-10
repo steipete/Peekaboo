@@ -6,6 +6,7 @@ typealias Configuration = PeekabooCore.Configuration
 
 /// CLI-specific configuration manager that extends PeekabooCore's ConfigurationManager
 /// with additional CLI-specific functionality.
+@MainActor
 final class ConfigurationManager: @unchecked Sendable {
     static let shared = ConfigurationManager()
 
