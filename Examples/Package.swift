@@ -29,7 +29,7 @@ let package = Package(
         .package(path: "../Tachikoma"),
 
         // External dependencies for examples
-        .package(url: "https://github.com/steipete/swift-argument-parser.git", branch: "approachable-concurrency"),
+        .package(path: "../Vendor/swift-argument-parser"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
     ],
     targets: [

@@ -20,7 +20,7 @@ let package = Package(
         .executable(name: "axorc", targets: ["axorc"]), // Product 'axorc' comes from target 'axorc'
     ],
     dependencies: [
-        .package(url: "https://github.com/steipete/swift-argument-parser.git", branch: "approachable-concurrency"),
+        .package(path: "../../Vendor/swift-argument-parser"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
     ],
     targets: [

@@ -6,7 +6,6 @@ let approachableConcurrencySettings: [SwiftSetting] = [
     .enableExperimentalFeature("StrictConcurrency"),
     .enableUpcomingFeature("ExistentialAny"),
     .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
-    .defaultIsolation(MainActor.self),
 ]
 
 let foundationTargetSettings = approachableConcurrencySettings + [

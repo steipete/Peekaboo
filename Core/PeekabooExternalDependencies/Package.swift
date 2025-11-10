@@ -23,7 +23,7 @@ let package = Package(
         // External dependencies centralized here
         .package(path: "../AXorcist"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.4"),
-        .package(url: "https://github.com/steipete/swift-argument-parser.git", branch: "approachable-concurrency"),
+        .package(path: "../../Vendor/swift-argument-parser"),
         .package(url: "https://github.com/apple/swift-log", from: "1.6.4"),
         .package(url: "https://github.com/apple/swift-system", from: "1.6.3"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.3.0"),
