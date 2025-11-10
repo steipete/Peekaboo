@@ -1,0 +1,227 @@
+{
+  "command" : {
+    "arguments" : [
+      {
+        "allValues" : [
+          "one",
+          "two",
+          "three"
+        ],
+        "completionKind" : {
+          "list" : {
+            "values" : [
+              "one",
+              "two",
+              "three"
+            ]
+          }
+        },
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "enumerated-option"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "enumerated-option"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "enumerated-option"
+      },
+      {
+        "allValues" : [
+          "one",
+          "two",
+          "three"
+        ],
+        "completionKind" : {
+          "list" : {
+            "values" : [
+              "one",
+              "two",
+              "three"
+            ]
+          }
+        },
+        "defaultValue" : "two",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "enumerated-option-with-default-value"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "enumerated-option-with-default-value"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "enumerated-option-with-default-value"
+      },
+      {
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "no-help-option"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "no-help-option"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "no-help-option"
+      },
+      {
+        "abstract" : "int value option",
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "int-option"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "int-option"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "int-option"
+      },
+      {
+        "abstract" : "int value option with default value",
+        "defaultValue" : "0",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "int-option-with-default-value"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "int-option-with-default-value"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "int-option-with-default-value"
+      },
+      {
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "positional",
+        "parsingStrategy" : "default",
+        "shouldDisplay" : true,
+        "valueName" : "arg"
+      },
+      {
+        "abstract" : "argument with help",
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "positional",
+        "parsingStrategy" : "default",
+        "shouldDisplay" : true,
+        "valueName" : "arg-with-help"
+      },
+      {
+        "abstract" : "argument with default value",
+        "defaultValue" : "1",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "positional",
+        "parsingStrategy" : "default",
+        "shouldDisplay" : true,
+        "valueName" : "arg-with-default-value"
+      },
+      {
+        "abstract" : "Show help information.",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "flag",
+        "names" : [
+          {
+            "kind" : "short",
+            "name" : "h"
+          },
+          {
+            "kind" : "long",
+            "name" : "help"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "help"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "help"
+      }
+    ],
+    "commandName" : "a",
+    "shouldDisplay" : true,
+    "subcommands" : [
+      {
+        "abstract" : "Show subcommand help information.",
+        "arguments" : [
+          {
+            "isOptional" : true,
+            "isRepeating" : true,
+            "kind" : "positional",
+            "parsingStrategy" : "default",
+            "shouldDisplay" : true,
+            "valueName" : "subcommands"
+          },
+          {
+            "isOptional" : true,
+            "isRepeating" : false,
+            "kind" : "flag",
+            "names" : [
+              {
+                "kind" : "short",
+                "name" : "h"
+              },
+              {
+                "kind" : "long",
+                "name" : "help"
+              },
+              {
+                "kind" : "longWithSingleDash",
+                "name" : "help"
+              }
+            ],
+            "parsingStrategy" : "default",
+            "preferredName" : {
+              "kind" : "long",
+              "name" : "help"
+            },
+            "shouldDisplay" : false,
+            "valueName" : "help"
+          }
+        ],
+        "commandName" : "help",
+        "shouldDisplay" : true,
+        "superCommands" : [
+          "a"
+        ]
+      }
+    ]
+  },
+  "serializationVersion" : 0
+}

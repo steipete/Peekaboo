@@ -244,3 +244,6 @@ test-fixes-summary.md
 /debug
 # Root binary only
 /peekaboo
+
+# Vendored build caches
+Vendor/swift-argument-parser/.build/

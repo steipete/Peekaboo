@@ -1,0 +1,2 @@
+# Ignore this file which references the "master" branch of another repo
+Tools/generate-manual/MDoc/MDocMacro.swift

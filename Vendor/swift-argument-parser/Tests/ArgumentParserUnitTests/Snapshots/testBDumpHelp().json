@@ -1,0 +1,116 @@
+{
+  "command" : {
+    "arguments" : [
+      {
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "flag",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "verbose"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "verbose"
+        },
+        "sectionTitle" : "Other",
+        "shouldDisplay" : true,
+        "valueName" : "verbose"
+      },
+      {
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "name"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "name"
+        },
+        "sectionTitle" : "Other",
+        "shouldDisplay" : true,
+        "valueName" : "name"
+      },
+      {
+        "abstract" : "Show help information.",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "flag",
+        "names" : [
+          {
+            "kind" : "short",
+            "name" : "h"
+          },
+          {
+            "kind" : "long",
+            "name" : "help"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "help"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "help"
+      }
+    ],
+    "commandName" : "b",
+    "shouldDisplay" : true,
+    "subcommands" : [
+      {
+        "abstract" : "Show subcommand help information.",
+        "arguments" : [
+          {
+            "isOptional" : true,
+            "isRepeating" : true,
+            "kind" : "positional",
+            "parsingStrategy" : "default",
+            "shouldDisplay" : true,
+            "valueName" : "subcommands"
+          },
+          {
+            "isOptional" : true,
+            "isRepeating" : false,
+            "kind" : "flag",
+            "names" : [
+              {
+                "kind" : "short",
+                "name" : "h"
+              },
+              {
+                "kind" : "long",
+                "name" : "help"
+              },
+              {
+                "kind" : "longWithSingleDash",
+                "name" : "help"
+              }
+            ],
+            "parsingStrategy" : "default",
+            "preferredName" : {
+              "kind" : "long",
+              "name" : "help"
+            },
+            "shouldDisplay" : false,
+            "valueName" : "help"
+          }
+        ],
+        "commandName" : "help",
+        "shouldDisplay" : true,
+        "superCommands" : [
+          "b"
+        ]
+      }
+    ]
+  },
+  "serializationVersion" : 0
+}

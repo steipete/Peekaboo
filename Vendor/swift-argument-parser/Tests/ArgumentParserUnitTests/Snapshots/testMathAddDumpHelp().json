@@ -1,0 +1,153 @@
+{
+  "command" : {
+    "abstract" : "Print the sum of the values.",
+    "arguments" : [
+      {
+        "abstract" : "Use hexadecimal notation for the result.",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "flag",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "hex-output"
+          },
+          {
+            "kind" : "short",
+            "name" : "x"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "hex-output"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "hex-output"
+      },
+      {
+        "abstract" : "A group of integers to operate on.",
+        "isOptional" : true,
+        "isRepeating" : true,
+        "kind" : "positional",
+        "parsingStrategy" : "default",
+        "shouldDisplay" : true,
+        "valueName" : "values"
+      },
+      {
+        "abstract" : "Show the version.",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "flag",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "version"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "version"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "version"
+      },
+      {
+        "abstract" : "Show help information.",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "flag",
+        "names" : [
+          {
+            "kind" : "short",
+            "name" : "h"
+          },
+          {
+            "kind" : "long",
+            "name" : "help"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "help"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "help"
+      }
+    ],
+    "commandName" : "add",
+    "shouldDisplay" : true,
+    "subcommands" : [
+      {
+        "abstract" : "Show subcommand help information.",
+        "arguments" : [
+          {
+            "isOptional" : true,
+            "isRepeating" : true,
+            "kind" : "positional",
+            "parsingStrategy" : "default",
+            "shouldDisplay" : true,
+            "valueName" : "subcommands"
+          },
+          {
+            "isOptional" : true,
+            "isRepeating" : false,
+            "kind" : "flag",
+            "names" : [
+              {
+                "kind" : "short",
+                "name" : "h"
+              },
+              {
+                "kind" : "long",
+                "name" : "help"
+              },
+              {
+                "kind" : "longWithSingleDash",
+                "name" : "help"
+              }
+            ],
+            "parsingStrategy" : "default",
+            "preferredName" : {
+              "kind" : "long",
+              "name" : "help"
+            },
+            "shouldDisplay" : false,
+            "valueName" : "help"
+          },
+          {
+            "abstract" : "Show the version.",
+            "isOptional" : true,
+            "isRepeating" : false,
+            "kind" : "flag",
+            "names" : [
+              {
+                "kind" : "long",
+                "name" : "version"
+              }
+            ],
+            "parsingStrategy" : "default",
+            "preferredName" : {
+              "kind" : "long",
+              "name" : "version"
+            },
+            "shouldDisplay" : true,
+            "valueName" : "version"
+          }
+        ],
+        "commandName" : "help",
+        "shouldDisplay" : true,
+        "superCommands" : [
+          "math",
+          "add"
+        ]
+      }
+    ],
+    "superCommands" : [
+      "math"
+    ]
+  },
+  "serializationVersion" : 0
+}

@@ -1,0 +1,63 @@
+name: Pull request
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  validate_format_config:
+    name: Validate Format Config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install apt dependencies
+        run: sudo apt-get -qq update && sudo apt-get -qq -y install curl
+
+      - name: Compare against swift-mmio swift-format config
+        run: |
+          curl -sL https://raw.githubusercontent.com/apple/swift-mmio/refs/heads/main/.swift-format -o .swift-format-mmio
+          diff .swift-format .swift-format-mmio
+
+  tests:
+    name: Test
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
+    with:
+      windows_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}]"
+      enable_macos_checks: true
+      macos_exclude_xcode_versions: "[{\"xcode_version\": \"16.0\"}, {\"xcode_version\": \"16.1\"}, {\"xcode_version\": \"16.2\"}]"
+      enable_wasm_sdk_build: true
+      wasm_sdk_build_command: swift build --target ArgumentParser
+
+  cmake-build:
+    name: CMake Build
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.0-jammy
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Install apt dependencies
+        run: apt-get -qq update && apt-get -qq -y install curl ninja-build
+      - name: Install CMake 3.30.2
+        run: |
+          ARCH=`uname -m`
+          curl -sL https://github.com/Kitware/CMake/releases/download/v3.30.2/cmake-3.30.2-linux-$ARCH.tar.gz -O
+          tar xzf cmake-3.30.2-linux-$ARCH.tar.gz
+          export PATH="`pwd`/cmake-3.30.2-linux-$ARCH/bin:$PATH"
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          cmake --version
+      - name: Configure CMake
+        run: cmake -GNinja -S . -B .cmake-build -DBUILD_EXAMPLES=1 -DBUILD_TESTING=0
+      - name: Build
+        run: cmake --build .cmake-build
+
+  soundness:
+    name: Soundness
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
+    with:
+      shell_check_enabled: false  # bug: https://github.com/apple/swift-argument-parser/issues/703

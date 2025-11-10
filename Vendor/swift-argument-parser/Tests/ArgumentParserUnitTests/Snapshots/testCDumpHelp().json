@@ -1,0 +1,250 @@
+{
+  "command" : {
+    "arguments" : [
+      {
+        "abstract" : "A color to select.",
+        "allValueDescriptions" : {
+          "blue" : "A blue color, like the sky!",
+          "red" : "A red color, like a rose!",
+          "yellow" : "A yellow color, like the sun!"
+        },
+        "allValues" : [
+          "blue",
+          "red",
+          "yellow"
+        ],
+        "completionKind" : {
+          "list" : {
+            "values" : [
+              "blue",
+              "red",
+              "yellow"
+            ]
+          }
+        },
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "color"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "color"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "color"
+      },
+      {
+        "abstract" : "Another color to select!",
+        "allValueDescriptions" : {
+          "blue" : "A blue color, like the sky!",
+          "red" : "A red color, like a rose!",
+          "yellow" : "A yellow color, like the sun!"
+        },
+        "allValues" : [
+          "blue",
+          "red",
+          "yellow"
+        ],
+        "completionKind" : {
+          "list" : {
+            "values" : [
+              "blue",
+              "red",
+              "yellow"
+            ]
+          }
+        },
+        "defaultValue" : "red",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "default-color"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "default-color"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "default-color"
+      },
+      {
+        "abstract" : "An optional color.",
+        "allValueDescriptions" : {
+          "blue" : "A blue color, like the sky!",
+          "red" : "A red color, like a rose!",
+          "yellow" : "A yellow color, like the sun!"
+        },
+        "allValues" : [
+          "blue",
+          "red",
+          "yellow"
+        ],
+        "completionKind" : {
+          "list" : {
+            "values" : [
+              "blue",
+              "red",
+              "yellow"
+            ]
+          }
+        },
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "opt"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "opt"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "opt"
+      },
+      {
+        "allValueDescriptions" : {
+          "blue" : "A blue color, like the sky!",
+          "red" : "A red color, like a rose!",
+          "yellow" : "A yellow color, like the sun!"
+        },
+        "allValues" : [
+          "blue",
+          "red",
+          "yellow"
+        ],
+        "completionKind" : {
+          "list" : {
+            "values" : [
+              "blue",
+              "red",
+              "yellow"
+            ]
+          }
+        },
+        "discussion" : "A preamble for the list of values in the discussion section.",
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "extra"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "extra"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "extra"
+      },
+      {
+        "discussion" : "A discussion.",
+        "isOptional" : false,
+        "isRepeating" : false,
+        "kind" : "option",
+        "names" : [
+          {
+            "kind" : "long",
+            "name" : "discussion"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "discussion"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "discussion"
+      },
+      {
+        "abstract" : "Show help information.",
+        "isOptional" : true,
+        "isRepeating" : false,
+        "kind" : "flag",
+        "names" : [
+          {
+            "kind" : "short",
+            "name" : "h"
+          },
+          {
+            "kind" : "long",
+            "name" : "help"
+          }
+        ],
+        "parsingStrategy" : "default",
+        "preferredName" : {
+          "kind" : "long",
+          "name" : "help"
+        },
+        "shouldDisplay" : true,
+        "valueName" : "help"
+      }
+    ],
+    "commandName" : "c",
+    "shouldDisplay" : false,
+    "subcommands" : [
+      {
+        "abstract" : "Show subcommand help information.",
+        "arguments" : [
+          {
+            "isOptional" : true,
+            "isRepeating" : true,
+            "kind" : "positional",
+            "parsingStrategy" : "default",
+            "shouldDisplay" : true,
+            "valueName" : "subcommands"
+          },
+          {
+            "isOptional" : true,
+            "isRepeating" : false,
+            "kind" : "flag",
+            "names" : [
+              {
+                "kind" : "short",
+                "name" : "h"
+              },
+              {
+                "kind" : "long",
+                "name" : "help"
+              },
+              {
+                "kind" : "longWithSingleDash",
+                "name" : "help"
+              }
+            ],
+            "parsingStrategy" : "default",
+            "preferredName" : {
+              "kind" : "long",
+              "name" : "help"
+            },
+            "shouldDisplay" : false,
+            "valueName" : "help"
+          }
+        ],
+        "commandName" : "help",
+        "shouldDisplay" : true,
+        "superCommands" : [
+          "c"
+        ]
+      }
+    ]
+  },
+  "serializationVersion" : 0
+}

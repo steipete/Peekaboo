@@ -1,0 +1,68 @@
+{
+  "serializationVersion": 0,
+  "command": {
+    "superCommands": [
+      "parent2",
+      "parent1"
+    ],
+    "commandName": "full-example",
+    "abstract": "this command does everything",
+    "discussion": "like actually everything",
+    "defaultSubcommand": "do-thing",
+    "subcommands": [
+      {
+        "commandName": "sub"
+      }
+    ],
+    "arguments": [
+      {
+        "kind": "positional",
+        "shouldDisplay": true,
+        "isOptional": true,
+        "isRepeating": true,
+        "parsingStrategy" : "default",
+        "names": [
+          {
+            "kind": "long",
+            "name": "fruit"
+          },
+          {
+            "kind": "short",
+            "name": "f"
+          },
+          {
+            "kind": "longWithSingleDash",
+            "name": "frt"
+          },
+        ],
+        "preferredName": {
+          "kind": "long",
+          "name": "fruit"
+        },
+        "valueName": "fruit-type",
+        "defaultValue": "banana",
+        "allValues": [
+          "apple",
+          "banana",
+          "coconut"
+        ],
+        "abstract": "1234",
+        "discussion": "abcd",
+      },
+      {
+        "kind": "option",
+        "shouldDisplay": false,
+        "isOptional": false,
+        "isRepeating": false,
+        "parsingStrategy" : "default",
+      },
+      {
+        "kind": "flag",
+        "shouldDisplay": false,
+        "isOptional": false,
+        "isRepeating": false,
+        "parsingStrategy" : "default",
+      }
+    ]
+  }
+}
