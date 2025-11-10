@@ -3,7 +3,7 @@ import PeekabooCore
 
 /// Shared permission checking and formatting utilities
 enum PermissionHelpers {
-    struct PermissionInfo {
+    struct PermissionInfo: Codable {
         let name: String
         let isRequired: Bool
         let isGranted: Bool
@@ -13,8 +13,12 @@ enum PermissionHelpers {
     /// Get current permission status for all Peekaboo permissions
     static func getCurrentPermissions() async -> [PermissionInfo] {
         // Get current permission status for all Peekaboo permissions
-        let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-        let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
+        let screenRecording = await Task { @MainActor in
+            await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
+        }.value
+        let accessibility = await AutomationServiceBridge.hasAccessibilityPermission(
+            services: PeekabooServices.shared
+        )
 
         return [
             PermissionInfo(

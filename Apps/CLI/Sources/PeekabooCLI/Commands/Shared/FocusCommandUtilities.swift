@@ -8,7 +8,7 @@ func ensureFocused(
     windowID: CGWindowID? = nil,
     applicationName: String? = nil,
     windowTitle: String? = nil,
-    options: any FocusOptionsProtocol = DefaultFocusOptions(),
+    options: any FocusOptionsProtocol,
     services: PeekabooServices
 ) async throws {
     guard options.autoFocus else {
@@ -45,24 +45,17 @@ func ensureFocused(
     try await focusService.focusWindow(windowID: windowID, options: focusOptions)
 }
 
-actor FocusManagementActor {
+@MainActor
+final class FocusManagementActor {
     static let shared = FocusManagementActor()
 
-    private let inner: FocusManagementService
-
-    init() {
-        self.inner = MainActor.assumeIsolated { FocusManagementService() }
-    }
+    private let inner = FocusManagementService()
 
     func findBestWindow(applicationName: String, windowTitle: String?) async throws -> CGWindowID? {
-        try await MainActor.run {
-            try self.inner.findBestWindow(applicationName: applicationName, windowTitle: windowTitle)
-        }
+        try await self.inner.findBestWindow(applicationName: applicationName, windowTitle: windowTitle)
     }
 
     func focusWindow(windowID: CGWindowID, options: FocusManagementService.FocusOptions) async throws {
-        try await MainActor.run {
-            try self.inner.focusWindow(windowID: windowID, options: options)
-        }
+        try await self.inner.focusWindow(windowID: windowID, options: options)
     }
 }
