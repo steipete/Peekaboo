@@ -12,7 +12,7 @@ import Tachikoma
 @Observable
 @MainActor
 final class PeekabooSettings {
-    static let defaultVisualizerAnimationSpeed: Double = 1.4
+    static let defaultVisualizerAnimationSpeed: Double = 1.0
     // Flag to prevent recursive saves during loading
     private var isLoading = false
     // Reference to ConfigurationManager

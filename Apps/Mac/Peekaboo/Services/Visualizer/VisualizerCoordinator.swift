@@ -36,8 +36,26 @@ final class VisualizerCoordinator {
     /// Settings reference
     private weak var settings: PeekabooSettings?
 
-    private var animationSpeed: Double {
-        self.settings?.visualizerAnimationSpeed ?? PeekabooSettings.defaultVisualizerAnimationSpeed
+    private enum AnimationBaseline {
+        static let screenshotFlash: TimeInterval = 0.35
+        static let clickRipple: TimeInterval = 0.45
+        static let typingOverlay: TimeInterval = 1.2
+        static let scrollIndicator: TimeInterval = 0.6
+        static let mouseTrail: TimeInterval = 0.75
+        static let swipePath: TimeInterval = 0.9
+        static let hotkeyOverlay: TimeInterval = 1.2
+        static let windowOperation: TimeInterval = 0.85
+        static let appLaunch: TimeInterval = 1.8
+        static let appQuit: TimeInterval = 1.5
+        static let menuNavigation: TimeInterval = 1.0
+        static let dialogInteraction: TimeInterval = 1.0
+        static let annotatedScreenshot: TimeInterval = 1.2
+        static let elementHighlight: TimeInterval = 1.0
+        static let spaceTransition: TimeInterval = 1.0
+    }
+
+    private var animationSpeedScale: Double {
+        max(0.1, min(2.0, self.settings?.visualizerAnimationSpeed ?? PeekabooSettings.defaultVisualizerAnimationSpeed))
     }
 
     /// Screenshot counter for easter egg (persisted)
@@ -50,6 +68,16 @@ final class VisualizerCoordinator {
 
     init() {
         // Overlay manager is created internally
+    }
+
+    // MARK: - Helpers
+
+    private func scaledDuration(_ baseline: TimeInterval) -> TimeInterval {
+        baseline * self.animationSpeedScale
+    }
+
+    private func scaledDuration(for requested: TimeInterval, minimum baseline: TimeInterval) -> TimeInterval {
+        max(requested, baseline) * self.animationSpeedScale
     }
 
     // MARK: - Animation Methods
@@ -284,7 +312,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: flashView,
-            duration: 0.2 * (self.animationSpeed),
+            duration: self.scaledDuration(AnimationBaseline.screenshotFlash),
             fadeOut: false)
 
         return true
@@ -301,7 +329,7 @@ final class VisualizerCoordinator {
         // Create click animation view
         let clickView = ClickAnimationView(
             clickType: type,
-            animationSpeed: self.animationSpeed)
+            animationSpeed: self.animationSpeedScale)
 
         // Calculate window rect centered on click point
         let size: CGFloat = 200
@@ -315,7 +343,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: clickView,
-            duration: 0.5 * (self.animationSpeed),
+            duration: self.scaledDuration(AnimationBaseline.clickRipple),
             fadeOut: true)
 
         return true
@@ -333,7 +361,7 @@ final class VisualizerCoordinator {
         let typingView = TypeAnimationView(
             keys: keys,
             theme: .modern,
-            animationSpeed: self.animationSpeed)
+            animationSpeed: self.animationSpeedScale)
 
         // Position at bottom center of the screen where mouse is located
         let screen = self.getTargetScreen()
@@ -349,7 +377,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: typingView,
-            duration: duration,
+            duration: self.scaledDuration(for: duration, minimum: AnimationBaseline.typingOverlay),
             fadeOut: true)
 
         return true
@@ -371,7 +399,7 @@ final class VisualizerCoordinator {
         let scrollView = ScrollAnimationView(
             direction: direction,
             amount: amount,
-            animationSpeed: self.animationSpeed)
+            animationSpeed: self.animationSpeedScale)
 
         // Position near scroll point
         let size: CGFloat = 100
@@ -385,7 +413,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: scrollView,
-            duration: 0.8 * (self.animationSpeed),
+            duration: self.scaledDuration(AnimationBaseline.scrollIndicator),
             fadeOut: true)
 
         return true
@@ -410,10 +438,11 @@ final class VisualizerCoordinator {
         }
 
         // Create mouse trail view with window frame for coordinate translation
+        let mouseDuration = self.scaledDuration(for: duration, minimum: AnimationBaseline.mouseTrail)
         let mouseView = MouseTrailView(
             from: from,
             to: to,
-            duration: duration * (self.animationSpeed),
+            duration: mouseDuration,
             windowFrame: windowFrame)
 
         // Calculate bounding rect for the trail
@@ -432,7 +461,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: mouseView,
-            duration: duration * (self.animationSpeed) + 0.5,
+            duration: mouseDuration + 0.35,
             fadeOut: true)
 
         return true
@@ -457,10 +486,11 @@ final class VisualizerCoordinator {
         }
 
         // Create swipe path view with window frame for coordinate translation
+        let swipeDuration = self.scaledDuration(for: duration, minimum: AnimationBaseline.swipePath)
         let swipeView = SwipePathView(
             from: from,
             to: to,
-            duration: duration * (self.animationSpeed),
+            duration: swipeDuration,
             isTouch: true,
             windowFrame: windowFrame)
 
@@ -480,7 +510,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: swipeView,
-            duration: duration * (self.animationSpeed) + 0.5,
+            duration: swipeDuration + 0.35,
             fadeOut: true)
 
         return true
@@ -494,10 +524,11 @@ final class VisualizerCoordinator {
             return false
         }
 
+        let overlayDuration = self.scaledDuration(for: duration, minimum: AnimationBaseline.hotkeyOverlay)
         // Create hotkey overlay view
         let hotkeyView = HotkeyOverlayView(
             keys: keys,
-            duration: duration * (self.animationSpeed))
+            duration: overlayDuration)
 
         // Position at center of screen where mouse is located
         let screen = self.getTargetScreen()
@@ -513,7 +544,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: hotkeyView,
-            duration: duration * (self.animationSpeed),
+            duration: overlayDuration,
             fadeOut: true)
 
         return true
@@ -528,11 +559,12 @@ final class VisualizerCoordinator {
         }
 
         // Create app launch view
+        let launchDuration = self.scaledDuration(AnimationBaseline.appLaunch)
         let launchView = AppLifecycleView(
             appName: appName,
             iconPath: iconPath,
             action: .launch,
-            duration: 2.0 * (self.animationSpeed))
+            duration: launchDuration)
 
         // Position at center of screen where mouse is located
         let screen = self.getTargetScreen()
@@ -548,7 +580,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: launchView,
-            duration: 2.0 * (self.animationSpeed),
+            duration: launchDuration,
             fadeOut: true)
 
         return true
@@ -563,11 +595,12 @@ final class VisualizerCoordinator {
         }
 
         // Create app quit view
+        let quitDuration = self.scaledDuration(AnimationBaseline.appQuit)
         let quitView = AppLifecycleView(
             appName: appName,
             iconPath: iconPath,
             action: .quit,
-            duration: 1.5 * (self.animationSpeed))
+            duration: quitDuration)
 
         // Position at center of screen where mouse is located
         let screen = self.getTargetScreen()
@@ -583,7 +616,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: quitView,
-            duration: 1.5 * (self.animationSpeed),
+            duration: quitDuration,
             fadeOut: true)
 
         return true
@@ -602,16 +635,17 @@ final class VisualizerCoordinator {
         }
 
         // Create window operation view
+        let windowDuration = self.scaledDuration(for: duration, minimum: AnimationBaseline.windowOperation)
         let windowView = WindowOperationView(
             operation: operation,
             windowRect: windowRect,
-            duration: duration * (self.animationSpeed))
+            duration: windowDuration)
 
         // Display at window location
         _ = self.overlayManager.showAnimation(
             at: windowRect,
             content: windowView,
-            duration: duration * (self.animationSpeed),
+            duration: windowDuration,
             fadeOut: true)
 
         return true
@@ -626,9 +660,10 @@ final class VisualizerCoordinator {
         }
 
         // Create menu navigation view
+        let menuDuration = self.scaledDuration(AnimationBaseline.menuNavigation)
         let menuView = MenuNavigationView(
             menuPath: menuPath,
-            duration: 1.5 * (self.animationSpeed))
+            duration: menuDuration)
 
         // Position at top of screen where mouse is located
         let screen = self.getTargetScreen()
@@ -644,7 +679,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: menuView,
-            duration: 1.5 * (self.animationSpeed),
+            duration: menuDuration,
             fadeOut: true)
 
         return true
@@ -663,17 +698,18 @@ final class VisualizerCoordinator {
         }
 
         // Create dialog interaction view
+        let dialogDuration = self.scaledDuration(AnimationBaseline.dialogInteraction)
         let dialogView = DialogInteractionView(
             element: element,
             elementRect: elementRect,
             action: action,
-            duration: 1.0 * (self.animationSpeed))
+            duration: dialogDuration)
 
         // Display at element location
         _ = self.overlayManager.showAnimation(
             at: elementRect,
             content: dialogView,
-            duration: 1.0 * (self.animationSpeed),
+            duration: dialogDuration,
             fadeOut: true)
 
         return true
@@ -688,11 +724,12 @@ final class VisualizerCoordinator {
         }
 
         // Create space transition view
+        let spaceDuration = self.scaledDuration(AnimationBaseline.spaceTransition)
         let spaceView = SpaceTransitionView(
             from: from,
             to: to,
             direction: direction,
-            duration: 1.0 * (self.animationSpeed))
+            duration: spaceDuration)
 
         // Display full screen where mouse is located
         let screen = self.getTargetScreen()
@@ -701,7 +738,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: screen.frame,
             content: spaceView,
-            duration: 1.0 * (self.animationSpeed),
+            duration: spaceDuration,
             fadeOut: true)
 
         return true
@@ -734,7 +771,7 @@ final class VisualizerCoordinator {
             _ = self.overlayManager.showAnimation(
                 at: rect,
                 content: highlightView,
-                duration: duration * (self.animationSpeed),
+                duration: self.scaledDuration(for: duration, minimum: AnimationBaseline.elementHighlight),
                 fadeOut: true)
         }
 
@@ -774,7 +811,7 @@ final class VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: windowBounds,
             content: annotatedView,
-            duration: duration * (self.animationSpeed),
+            duration: self.scaledDuration(for: duration, minimum: AnimationBaseline.annotatedScreenshot),
             fadeOut: true)
 
         return true
