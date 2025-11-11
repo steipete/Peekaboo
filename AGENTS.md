@@ -4,7 +4,7 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 
 ## Project Status (November 5, 2025)
 
-- **Dependency refresh**: `swift-argument-parser 1.6.2`, `swift-async-algorithms 1.0.4`, `swift-collections 1.3.0`, `swift-crypto 3.15.1`, `swift-system 1.6.3`, plus `swift-sdk 0.10.2` (official MCP release) across PeekabooCore/Tachikoma/Apps.
+- **Dependency refresh**: local `Commander` package (replaces swift-argument-parser), `swift-async-algorithms 1.0.4`, `swift-collections 1.3.0`, `swift-crypto 3.15.1`, `swift-system 1.6.3`, plus `swift-sdk 0.10.2` (official MCP release) across PeekabooCore/Tachikoma/Apps.
 - **Code updates**: centralized `LanguageModel.parse` in Tachikoma, replaced ad-hoc agent glyphs with `AgentDisplayTokens`, removed TermKit TUI hooks from CLI, default agent model now `gpt-5-mini`, emojis toned down in agent output, and Mac icon assets/resources registered for SwiftPM.
 - **Verification**: `swift build` clean for Tachikoma, PeekabooCore, peekaboo CLI, and macOS app; `swift test --filter TypeCommandTests` currently hits a Swift frontend signal 5 (compiler bug) even outside tmux—log captured for follow-up. Other large suites remain gated by `RUN_LOCAL_TESTS=true`.
 - **Next steps**: file Swift compiler crash with stack dump, add test subsets so automation suites compile in smaller batches, and revisit `tmux`-logged test strategy once the compiler issue is resolved.
@@ -21,7 +21,7 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **Committer script**: All commits must go through `./scripts/committer "type(scope): subject" "path/to/file1" "path/to/file2"`. Pass the commit message as the first quoted argument, list every file path after it (also quoted), and let the helper manage staging—never run `git add` manually. The script validates paths, clears the index, re-stages only the listed files, and then creates the commit so you can land exactly what you expect.
 - **Version control hygiene**: Never revert or overwrite files you did not edit. Other agents and humans may be working in parallel, so avoid destructive operations (including `git checkout`, `git reset`, or similar) unless explicitly instructed.
 - **Git via runner**: The only git commands you may run are `status`, `diff`, `log`, and (when explicitly requested) `push`, and every one of them must go through the wrapper (`./runner git status -sb`, etc.). If the user types a guarded subcommand like “rebase,” include `RUNNER_THE_USER_GAVE_ME_CONSENT=1` in the same command before invoking `./runner git rebase …`. Destructive git operations remain forbidden without written approval in this thread.
-- **Custom dependency forks**: When touching `swift-argument-parser`, always use Peter’s fork (see “Custom Forks” below). Swapping to upstream removes the approachable-concurrency fixes we rely on.
+- **Custom dependency forks**: Commander now lives in `/Commander` and is shared across every package. Don’t reintroduce swift-argument-parser—the old fork is gone.
 - **Submodule safety**: Peter edits `Tachikoma/` directly. Never run destructive git commands (`git checkout -- .`, `git reset --hard`, etc.) inside Tachikoma without his explicit approval.
 - **Runner awareness**: Any task that regularly runs longer than ~1 minute (heavy builds, lint, long tests) must use the extended runner window—update the runner keyword list whenever a new long job appears so CI doesn’t evict your work.
 - **Runner wrapper**: Run every build, test, package script, tmux-managed command, and git invocation through `./runner <command>` so the guardrails enforce timeouts and git policies. Only lightweight read-only utilities (`rg`, `sed`, `ls`, `cat`, etc.) may bypass it. Pass script flags after `--` (e.g., `./runner pnpm test -- --run`) and pay attention when the wrapper asks you to move multi-minute work into tmux.
@@ -34,7 +34,7 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 
 ## Custom Forks / Dependencies
 
-- **Swift Argument Parser**: use Peter's fork (https://github.com/steipete/swift-argument-parser.git) on branch `approachable-concurrency`. This carries the approachable-concurrency annotations; do not swap back to upstream Apple.
+- **Commander module**: use the in-repo `Commander` package (path dependency). It already carries the approachable-concurrency annotations we need; do not reintroduce swift-argument-parser.
 
 ### Commit Messages
 
