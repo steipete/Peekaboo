@@ -52,6 +52,24 @@ public struct CommandSignature: Sendable {
     }
 }
 
+extension CommandSignature {
+    func withStandardRuntimeFlags() -> CommandSignature {
+        var copy = self
+        let verboseFlag = FlagDefinition(
+            label: "verbose",
+            names: [.short("v"), .long("verbose")],
+            help: "Enable verbose logging"
+        )
+        let jsonFlag = FlagDefinition(
+            label: "jsonOutput",
+            names: [.long("json-output"), .long("jsonOutput")],
+            help: "Emit machine-readable JSON output"
+        )
+        copy.flags.append(contentsOf: [verboseFlag, jsonFlag])
+        return copy
+    }
+}
+
 public enum CommandComponent: Sendable {
     case argument(ArgumentDefinition)
     case option(OptionDefinition)
