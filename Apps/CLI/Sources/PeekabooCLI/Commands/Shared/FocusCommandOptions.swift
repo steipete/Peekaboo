@@ -1,4 +1,4 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 
@@ -19,6 +19,8 @@ struct FocusCommandOptions: ParsableArguments, FocusOptionsProtocol {
     @Flag(name: .long, help: "Bring window to current Space instead of switching")
     var bringToCurrentSpace = false
 
+    init() {}
+
     // MARK: FocusOptionsProtocol
 
     var autoFocus: Bool { !self.noAutoFocus }
@@ -34,6 +36,7 @@ struct FocusCommandOptions: ParsableArguments, FocusOptionsProtocol {
             focusTimeout: self.focusTimeout,
             focusRetryCount: self.focusRetryCount,
             spaceSwitch: self.spaceSwitch,
-            bringToCurrentSpace: self.bringToCurrentSpace)
+            bringToCurrentSpace: self.bringToCurrentSpace
+        )
     }
 }

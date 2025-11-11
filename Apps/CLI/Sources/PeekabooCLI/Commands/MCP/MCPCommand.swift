@@ -1,4 +1,4 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import Logging
 import MCP
@@ -6,6 +6,7 @@ import PeekabooCore
 import TachikomaMCP
 
 /// Command for Model Context Protocol server operations
+@MainActor
 struct MCPCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mcp",
@@ -62,8 +63,6 @@ extension MCPCommand {
 
         @Option(help: "Port for HTTP/SSE transport")
         var port: Int = 8080
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -119,8 +118,6 @@ extension MCPCommand {
 
         @Option(help: "Tool arguments as JSON")
         var args: String = "{}"
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var logger: Logger { self.resolvedRuntime.logger }
@@ -144,10 +141,6 @@ extension MCPCommand {
     struct List {
         @Flag(name: .long, help: "Skip health checks (faster)")
         var skipHealthCheck = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -396,14 +389,13 @@ extension MCPCommand {
 
     /// Add a new MCP server
     struct Add {
-
         @Argument(help: "Name for the MCP server")
         var name: String
 
         @Option(name: .shortAndLong, help: "Environment variables (key=value)")
         var env: [String] = []
 
-        @Option(name: .long, parsing: .upToNextOption, help: "HTTP headers for HTTP/SSE (Key=Value)")
+        @Option(name: .long, help: "HTTP headers for HTTP/SSE (Key=Value)", parsing: .upToNextOption)
         var header: [String] = []
 
         @Option(help: "Connection timeout in seconds")
@@ -418,12 +410,8 @@ extension MCPCommand {
         @Flag(help: "Disable the server after adding")
         var disabled = false
 
-        @Argument(parsing: .remaining, help: "Command and arguments to run the MCP server")
+        @Argument(help: "Command and arguments to run the MCP server")
         var command: [String] = []
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -535,8 +523,6 @@ extension MCPCommand {
 
         @Flag(help: "Skip confirmation prompt")
         var force = false
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -599,8 +585,6 @@ extension MCPCommand {
 
         @Flag(help: "Show available tools")
         var showTools = false
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         @MainActor
@@ -638,8 +622,6 @@ extension MCPCommand {
 
         @Argument(help: "Name of the MCP server")
         var name: String
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -724,8 +706,6 @@ extension MCPCommand {
 
         @Argument(help: "Name of the MCP server to enable")
         var name: String
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -767,8 +747,6 @@ extension MCPCommand {
 
         @Argument(help: "Name of the MCP server to disable")
         var name: String
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -804,10 +782,8 @@ extension MCPCommand {
             discussion: "Provides debugging information for MCP connections."
         )
 
-        @Argument(help: "Server to inspect", completion: .default)
+        @Argument(help: "Server to inspect")
         var server: String?
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var logger: Logger { self.resolvedRuntime.logger }
@@ -828,6 +804,7 @@ extension MCPCommand {
     }
 }
 
+@MainActor
 extension MCPCommand.List: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -835,15 +812,15 @@ extension MCPCommand.List: ParsableCommand {
                 commandName: "list",
                 abstract: "List configured MCP servers with health status",
                 discussion: """
-            Shows all configured external MCP servers along with their current health status.
-            Health checking verifies connectivity and counts available tools.
+                Shows all configured external MCP servers along with their current health status.
+                Health checking verifies connectivity and counts available tools.
 
-            EXAMPLE OUTPUT:
-              Checking MCP server health...
-              
-              github: npx -y @modelcontextprotocol/server-github - ✓ Connected (12 tools)
-              files: npx -y @modelcontextprotocol/server-filesystem - ✗ Failed to connect
-            """
+                EXAMPLE OUTPUT:
+                  Checking MCP server health...
+                  
+                  github: npx -y @modelcontextprotocol/server-github - ✓ Connected (12 tools)
+                  files: npx -y @modelcontextprotocol/server-filesystem - ✗ Failed to connect
+                """
             )
         }
     }
@@ -851,6 +828,7 @@ extension MCPCommand.List: ParsableCommand {
 
 extension MCPCommand.List: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Add: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -858,18 +836,18 @@ extension MCPCommand.Add: ParsableCommand {
                 commandName: "add",
                 abstract: "Add a new external MCP server",
                 discussion: """
-            Add a new external MCP server that Peekaboo can connect to and use tools from.
+                Add a new external MCP server that Peekaboo can connect to and use tools from.
 
-            EXAMPLES:
-              # Stdio servers (most common):
-              peekaboo mcp add github -- npx -y @modelcontextprotocol/server-github
-              peekaboo mcp add files -- npx -y @modelcontextprotocol/server-filesystem /Users/me/docs
-              peekaboo mcp add weather -e API_KEY=xyz123 -- /usr/local/bin/weather-server
-              
-              # HTTP/SSE servers (remote):
-              peekaboo mcp add context7 --transport sse -- https://mcp.context7.com/mcp
-              peekaboo mcp add myserver --transport http -- https://api.example.com/mcp
-            """
+                EXAMPLES:
+                  # Stdio servers (most common):
+                  peekaboo mcp add github -- npx -y @modelcontextprotocol/server-github
+                  peekaboo mcp add files -- npx -y @modelcontextprotocol/server-filesystem /Users/me/docs
+                  peekaboo mcp add weather -e API_KEY=xyz123 -- /usr/local/bin/weather-server
+                  
+                  # HTTP/SSE servers (remote):
+                  peekaboo mcp add context7 --transport sse -- https://mcp.context7.com/mcp
+                  peekaboo mcp add myserver --transport http -- https://api.example.com/mcp
+                """
             )
         }
     }
@@ -877,34 +855,34 @@ extension MCPCommand.Add: ParsableCommand {
 
 extension MCPCommand.Add: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Remove: ParsableCommand {}
-
 extension MCPCommand.Remove: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Test: ParsableCommand {}
-
 extension MCPCommand.Test: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Info: ParsableCommand {}
-
 extension MCPCommand.Info: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Enable: ParsableCommand {}
-
 extension MCPCommand.Enable: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Disable: ParsableCommand {}
-
 extension MCPCommand.Disable: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Inspect: ParsableCommand {}
-
 extension MCPCommand.Inspect: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Serve: ParsableCommand {}
-
 extension MCPCommand.Serve: AsyncRuntimeCommand {}
 
+@MainActor
 extension MCPCommand.Call: ParsableCommand {}
-
 extension MCPCommand.Call: AsyncRuntimeCommand {}
