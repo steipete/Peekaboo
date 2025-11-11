@@ -160,8 +160,9 @@ public func runPeekabooCLI() async {
     // Initialize visualizer event dispatch for CLI usage
     PeekabooServices.shared.ensureVisualizerConnection()
 
-    // Experimental Commander preview – logs which command/flags were parsed.
-    CommanderPreview.attempt(arguments: CommandLine.arguments)
+    if await CommanderPilot.tryRun(arguments: CommandLine.arguments) {
+        return
+    }
 
     // Run the command normally - ArgumentParser will handle unknown commands
     await Peekaboo.main()

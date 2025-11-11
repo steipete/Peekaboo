@@ -87,10 +87,10 @@ With this plan, we fully control CLI parsing, remove the Swift 6 actor headaches
    - ✅ *Status (Nov 11, 2025): target, property wrappers, and initial signature tests are in place; Commander builds independently.*
 
 2. **Dual-Wire PeekabooCLI**
-   - Introduce an adapter layer that lets existing commands register with Commander (via `CommandRegistry`) while still compiling against ArgumentParser property wrappers.
-   - Update the CLI entry point (`runPeekabooCLI`) to invoke Commander first; if parsing succeeds, run the command via CommandRuntime; otherwise temporarily fall back to ArgumentParser for unported commands.
-   - Build the first concrete subcommand (e.g., `RunCommand`) purely on Commander to validate the flow end-to-end.
-   - 🔄 *In progress: `CommanderRegistryBuilder` now exports descriptors/signatures, Commander’s `Program.resolve(argv:)` can parse argv, `CommanderRuntimeRouter` maps back to Swift command types, `CommanderBinder` stubs out future hydration, and `LearnCommand` surfaces a Commander summary so agents can see positional/options metadata before execution.*
+- Introduce an adapter layer that lets existing commands register with Commander (via `CommandRegistry`) while still compiling against ArgumentParser property wrappers.
+- Update the CLI entry point (`runPeekabooCLI`) to invoke Commander first; if parsing succeeds, run the command via CommandRuntime; otherwise temporarily fall back to ArgumentParser for unported commands.
+- Build the first concrete subcommand (e.g., `RunCommand`) purely on Commander to validate the flow end-to-end.
+   - 🔄 *In progress: `CommanderRegistryBuilder` now exports descriptors/signatures, Commander’s `Program.resolve(argv:)` can parse argv, `CommanderRuntimeRouter` maps back to Swift command types, `CommanderBinder`/`CommanderPilot` can run the `learn` command when `PEEKABOO_USE_COMMANDER=1`, and `LearnCommand` surfaces a Commander summary so agents can see positional/options metadata before execution.*
 
 3. **Full Command Migration**
    - Convert every command in `Apps/CLI` to use Commander wrappers exclusively; remove the fallback path once parity is confirmed.
