@@ -3,10 +3,22 @@ import Foundation
 // MARK: - Command Signature & Definitions
 
 public struct CommandSignature: Sendable {
-    public private(set) var arguments: [ArgumentDefinition] = []
-    public private(set) var options: [OptionDefinition] = []
-    public private(set) var flags: [FlagDefinition] = []
-    public private(set) var optionGroups: [CommandSignature] = []
+    public private(set) var arguments: [ArgumentDefinition]
+    public private(set) var options: [OptionDefinition]
+    public private(set) var flags: [FlagDefinition]
+    public private(set) var optionGroups: [CommandSignature]
+
+    public init(
+        arguments: [ArgumentDefinition] = [],
+        options: [OptionDefinition] = [],
+        flags: [FlagDefinition] = [],
+        optionGroups: [CommandSignature] = [])
+    {
+        self.arguments = arguments
+        self.options = options
+        self.flags = flags
+        self.optionGroups = optionGroups
+    }
 
     mutating func append(_ component: CommandComponent) {
         switch component {

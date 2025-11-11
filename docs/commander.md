@@ -84,6 +84,7 @@ With this plan, we fully control CLI parsing, remove the Swift 6 actor headaches
    - Create `Sources/Commander` target with the foundational types: tokeniser, command descriptors, property wrappers, minimal dispatcher, and `ExpressibleFromArgument`.
    - Wire Commander into `Package.swift` files (PeekabooCLI, AXorcist, Tachikoma) alongside existing dependencies while still leaving ArgumentParser in place so the old commands keep compiling.
    - Add placeholder unit tests (`CommanderTests`) that exercise the tokenizer and descriptor builder.
+   - ✅ *Status (Nov 11, 2025): target, property wrappers, and initial signature tests are in place; Commander builds independently.*
 
 2. **Dual-Wire PeekabooCLI**
    - Introduce an adapter layer that lets existing commands register with Commander (via `CommandRegistry`) while still compiling against ArgumentParser property wrappers.
