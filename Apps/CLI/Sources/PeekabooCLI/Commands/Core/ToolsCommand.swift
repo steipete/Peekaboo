@@ -1,4 +1,4 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 import TachikomaMCP
@@ -41,8 +41,6 @@ struct ToolsCommand: OutputFormattable {
 
     @Flag(name: .long, help: "Group external tools by server")
     var groupByServer = false
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -58,19 +56,9 @@ struct ToolsCommand: OutputFormattable {
 
     var description: String { Self.descriptionText }
 
-    var verbose: Bool {
-        if let runtime {
-            return runtime.configuration.verbose
-        }
-        return self.runtimeOptions.verbose
-    }
+    var verbose: Bool { self.resolvedRuntime.configuration.verbose }
 
-    var jsonOutput: Bool {
-        if let runtime {
-            return runtime.configuration.jsonOutput
-        }
-        return self.runtimeOptions.jsonOutput
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
     private var showDetailedInfo: Bool { self.verbose }
 
@@ -155,7 +143,7 @@ struct ToolsCommand: OutputFormattable {
             let totalCount: Int
         }
 
-struct Payload: Encodable {
+        struct Payload: Encodable {
             let native: [ToolInfo]
             let external: [ExternalTools]
             let summary: Summary
@@ -229,7 +217,9 @@ struct Payload: Encodable {
             print()
             for (server, serverTools) in tools.external {
                 let serverHeader = options.useServerPrefixes ? "[server] " : ""
-                print("\(serverHeader)Server: \(server) — \(serverTools.count) tool\(serverTools.count == 1 ? "" : "s")")
+                print(
+                    "\(serverHeader)Server: \(server) — \(serverTools.count) tool\(serverTools.count == 1 ? "" : "s")"
+                )
 
                 for tool in serverTools {
                     print("  • \(tool.name)")
@@ -252,6 +242,18 @@ struct Payload: Encodable {
     }
 }
 
+@MainActor
 extension ToolsCommand: ParsableCommand {}
-
 extension ToolsCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ToolsCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.nativeOnly = values.flag("nativeOnly")
+        self.mcpOnly = values.flag("mcpOnly")
+        self.mcp = values.singleOption("mcp")
+        self.includeDisabled = values.flag("includeDisabled")
+        self.noSort = values.flag("noSort")
+        self.groupByServer = values.flag("groupByServer")
+    }
+}

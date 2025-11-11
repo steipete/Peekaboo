@@ -1,11 +1,12 @@
 import AppKit
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 
 private typealias ScreenOutput = UnifiedToolOutput<ScreenListData>
 
 /// List running applications, windows, or check system permissions.
+@MainActor
 struct ListCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
@@ -54,11 +55,11 @@ struct ListCommand: ParsableCommand {
 }
 
 extension ListCommand {
-
     // MARK: - Apps
 
+    @MainActor
+
     struct AppsSubcommand: ErrorHandlingCommand, OutputFormattable {
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -96,6 +97,8 @@ extension ListCommand {
 
     // MARK: - Windows
 
+    @MainActor
+
     struct WindowsSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
         @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
         var app: String
@@ -105,8 +108,6 @@ extension ListCommand {
 
         @Option(name: .long, help: "Additional details (comma-separated: off_screen,bounds,ids)")
         var includeDetails: String?
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -121,10 +122,14 @@ extension ListCommand {
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-        enum WindowDetailOption: String, ExpressibleByArgument {
+        enum WindowDetailOption: String, ExpressibleFromArgument {
             case ids
             case bounds
             case off_screen
+
+            init?(argument: String) {
+                self.init(rawValue: argument.lowercased())
+            }
         }
 
         @MainActor
@@ -226,9 +231,11 @@ extension ListCommand {
             let filteredOutput = FilteredOutput(
                 data: FilteredWindowListData(
                     windows: windows,
-                    targetApplication: output.data.targetApplication),
+                    targetApplication: output.data.targetApplication
+                ),
                 summary: output.summary,
-                metadata: output.metadata)
+                metadata: output.metadata
+            )
 
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -237,10 +244,11 @@ extension ListCommand {
         }
     }
 
-// MARK: - Permissions
+    // MARK: - Permissions
+
+    @MainActor
 
     struct PermissionsSubcommand: OutputFormattable {
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -288,8 +296,9 @@ extension ListCommand {
 
     // MARK: - Menu Bar
 
+    @MainActor
+
     struct MenuBarSubcommand: ErrorHandlingCommand, OutputFormattable {
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -342,7 +351,9 @@ extension ListCommand {
                     print("       Description: \(description)")
                 }
                 if let frame = item.frame {
-                    print("       Frame: \(Int(frame.origin.x)),\(Int(frame.origin.y)) \(Int(frame.width))×\(Int(frame.height))")
+                    print(
+                        "       Frame: \(Int(frame.origin.x)),\(Int(frame.origin.y)) \(Int(frame.width))×\(Int(frame.height))"
+                    )
                 }
             }
         }
@@ -350,8 +361,9 @@ extension ListCommand {
 
     // MARK: - Screens
 
+    @MainActor
+
     struct ScreensSubcommand: ErrorHandlingCommand, OutputFormattable {
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -432,7 +444,9 @@ extension ListCommand {
                         print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
                         print("   Scale: \(screen.scaleFactor)x\(screen.scaleFactor > 1 ? " (Retina)" : "")")
                         if screen.visibleFrame.size != screen.frame.size {
-                            print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
+                            print(
+                                "   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))"
+                            )
                         }
                     }
                     print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
@@ -443,7 +457,6 @@ extension ListCommand {
             }
         }
     }
-
 }
 
 // MARK: - Screen List Data Model
@@ -481,6 +494,7 @@ nonisolated extension ScreenListData.Position: Sendable, Codable {}
 
 // MARK: - Subcommand Conformances
 
+@MainActor
 extension ListCommand.AppsSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -488,10 +502,10 @@ extension ListCommand.AppsSubcommand: ParsableCommand {
                 commandName: "apps",
                 abstract: "List all running applications with details",
                 discussion: """
-        Lists all running applications using the ApplicationService from PeekabooCore.
-        Applications are sorted by name and include process IDs, bundle identifiers,
-        and activation status.
-        """
+                Lists all running applications using the ApplicationService from PeekabooCore.
+                Applications are sorted by name and include process IDs, bundle identifiers,
+                and activation status.
+                """
             )
         }
     }
@@ -499,6 +513,15 @@ extension ListCommand.AppsSubcommand: ParsableCommand {
 
 extension ListCommand.AppsSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension ListCommand.AppsSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        // Apps subcommand has no parameters today; binding satisfied to keep parity.
+        _ = values
+    }
+}
+
+@MainActor
 extension ListCommand.WindowsSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -506,9 +529,9 @@ extension ListCommand.WindowsSubcommand: ParsableCommand {
                 commandName: "windows",
                 abstract: "List all windows for a specific application",
                 discussion: """
-        Lists all windows for the specified application using PeekabooServices.
-        Windows are listed in z-order (frontmost first) with optional details.
-        """
+                Lists all windows for the specified application using PeekabooServices.
+                Windows are listed in z-order (frontmost first) with optional details.
+                """
             )
         }
     }
@@ -516,6 +539,19 @@ extension ListCommand.WindowsSubcommand: ParsableCommand {
 
 extension ListCommand.WindowsSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension ListCommand.WindowsSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        guard let resolvedApp = values.singleOption("app") else {
+            throw CommanderBindingError.missingArgument(label: "app")
+        }
+        self.app = resolvedApp
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.includeDetails = values.singleOption("includeDetails")
+    }
+}
+
+@MainActor
 extension ListCommand.PermissionsSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -529,6 +565,7 @@ extension ListCommand.PermissionsSubcommand: ParsableCommand {
 
 extension ListCommand.PermissionsSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
 extension ListCommand.MenuBarSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -542,6 +579,14 @@ extension ListCommand.MenuBarSubcommand: ParsableCommand {
 
 extension ListCommand.MenuBarSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension ListCommand.MenuBarSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
+@MainActor
 extension ListCommand.ScreensSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -554,3 +599,10 @@ extension ListCommand.ScreensSubcommand: ParsableCommand {
 }
 
 extension ListCommand.ScreensSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ListCommand.ScreensSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}

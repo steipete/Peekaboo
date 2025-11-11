@@ -1,5 +1,5 @@
 import AppKit
-@preconcurrency import ArgumentParser
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -12,8 +12,13 @@ struct ImageAnalysisData: Codable {
     let text: String
 }
 
-struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable {
+private typealias CaptureMode = PeekabooCore.CaptureMode
+private typealias ImageFormat = PeekabooCore.ImageFormat
+private typealias CaptureFocus = PeekabooCore.CaptureFocus
 
+@MainActor
+
+struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable {
     @Option(name: .long, help: "Target application name, bundle ID, 'PID:12345', 'menubar', or 'frontmost'")
     var app: String?
 
@@ -23,8 +28,8 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Output path for saved image")
     var path: String?
 
-    @Option(name: .long, help: ArgumentHelp("Capture mode", valueName: "mode"))
-    var mode: CaptureMode?
+    @Option(name: .long, help: "Capture mode (screen, window, frontmost)")
+    var mode: PeekabooCore.CaptureMode?
 
     @Option(name: .long, help: "Capture window with specific title")
     var windowTitle: String?
@@ -35,16 +40,14 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Screen index for screen captures")
     var screenIndex: Int?
 
-    @Option(name: .long, help: ArgumentHelp("Image format: png or jpg", valueName: "format"))
-    var format: ImageFormat = .png
+    @Option(name: .long, help: "Image format: png or jpg")
+    var format: PeekabooCore.ImageFormat = .png
 
-    @Option(name: .long, help: ArgumentHelp("Window focus behavior", valueName: "focus"))
-    var captureFocus: CaptureFocus = .auto
+    @Option(name: .long, help: "Window focus behavior")
+    var captureFocus: PeekabooCore.CaptureFocus = .auto
 
     @Option(name: .long, help: "Analyze the captured image with AI")
     var analyze: String?
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -56,12 +59,7 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
 
     private var logger: Logger { self.resolvedRuntime.logger }
     private var services: PeekabooServices { self.resolvedRuntime.services }
-    var jsonOutput: Bool {
-        if let runtime {
-            return runtime.configuration.jsonOutput
-        }
-        return self.runtimeOptions.jsonOutput
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
     var outputLogger: Logger { self.logger }
 
     @MainActor
@@ -90,7 +88,11 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             self.logger.operationComplete("image_command", success: true)
         } catch {
             self.handleError(error)
-            self.logger.operationComplete("image_command", success: false, metadata: ["error": error.localizedDescription])
+            self.logger.operationComplete(
+                "image_command",
+                success: false,
+                metadata: ["error": error.localizedDescription]
+            )
             throw ExitCode(1)
         }
     }
@@ -204,13 +206,15 @@ extension ImageCommand {
         let result = try await ImageCaptureBridge.captureWindow(
             services: self.services,
             appIdentifier: identifier,
-            windowIndex: self.windowIndex)
+            windowIndex: self.windowIndex
+        )
 
         let saved = try self.saveCaptureResult(
             result,
             preferredName: self.windowTitle ?? identifier,
             index: nil,
-            windowIndex: self.windowIndex)
+            windowIndex: self.windowIndex
+        )
 
         return [saved]
     }
@@ -220,7 +224,8 @@ extension ImageCommand {
 
         let windows = try await WindowServiceBridge.listWindows(
             services: self.services,
-            target: .application(identifier))
+            target: .application(identifier)
+        )
 
         guard !windows.isEmpty else {
             throw NotFoundError.window(app: identifier)
@@ -231,13 +236,15 @@ extension ImageCommand {
             let result = try await ImageCaptureBridge.captureWindow(
                 services: self.services,
                 appIdentifier: identifier,
-                windowIndex: window.index)
+                windowIndex: window.index
+            )
 
             let saved = try self.saveCaptureResult(
                 result,
                 preferredName: window.title,
                 index: ordinal,
-                windowIndex: window.index)
+                windowIndex: window.index
+            )
             savedFiles.append(saved)
         }
 
@@ -274,8 +281,8 @@ extension ImageCommand {
         _ result: CaptureResult,
         preferredName: String?,
         index: Int?,
-        windowIndex: Int? = nil) throws -> SavedFile
-    {
+        windowIndex: Int? = nil
+    ) throws -> SavedFile {
         let url = self.makeOutputURL(preferredName: preferredName, index: index)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
 
@@ -290,7 +297,8 @@ extension ImageCommand {
             window_title: windowInfo?.title,
             window_id: windowInfo.map { UInt32($0.windowID) },
             window_index: windowIndex ?? windowInfo?.index,
-            mime_type: self.format.mimeType)
+            mime_type: self.format.mimeType
+        )
     }
 
     private func makeOutputURL(preferredName: String?, index: Int?) -> URL {
@@ -340,9 +348,9 @@ extension ImageCommand {
             return data
         case .jpg:
             guard let image = NSImage(data: data),
-                let tiff = image.tiffRepresentation,
-                let bitmap = NSBitmapImageRep(data: tiff),
-                let jpeg = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.92])
+                  let tiff = image.tiffRepresentation,
+                  let bitmap = NSBitmapImageRep(data: tiff),
+                  let jpeg = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.92])
             else {
                 throw CaptureError.captureFailure("Failed to convert screenshot to JPEG")
             }
@@ -379,14 +387,16 @@ extension ImageCommand {
                 applicationName: appIdentifier,
                 windowTitle: self.windowTitle,
                 options: options,
-                services: self.services)
+                services: self.services
+            )
         case .foreground:
             let options = FocusOptions(autoFocus: true, spaceSwitch: true, bringToCurrentSpace: true)
             try await ensureFocused(
                 applicationName: appIdentifier,
                 windowTitle: self.windowTitle,
                 options: options,
-                services: self.services)
+                services: self.services
+            )
         }
     }
 
@@ -399,15 +409,15 @@ extension ImageCommand {
 
 // MARK: - Format Helpers
 
-private extension ImageFormat {
-    var fileExtension: String {
+extension ImageFormat {
+    fileprivate var fileExtension: String {
         switch self {
         case .png: "png"
         case .jpg: "jpg"
         }
     }
 
-    var mimeType: String {
+    fileprivate var mimeType: String {
         switch self {
         case .png: "image/png"
         case .jpg: "image/jpeg"
@@ -427,8 +437,8 @@ private enum ImageCaptureBridge {
     static func captureWindow(
         services: PeekabooServices,
         appIdentifier: String,
-        windowIndex: Int?) async throws -> CaptureResult
-    {
+        windowIndex: Int?
+    ) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureWindow(appIdentifier: appIdentifier, windowIndex: windowIndex)
         }.value
@@ -447,27 +457,39 @@ private enum ImageCaptureBridge {
     }
 }
 
+@MainActor
 extension ImageCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
                 commandName: "image",
                 abstract: "Capture screenshots",
-                discussion: """
-        Captures screenshots of applications, windows, or the entire screen.
-
-        SPECIAL APP VALUES:
-          • menubar   - Capture just the menu bar area (24px height)
-          • frontmost - Capture the currently active window
-
-        EXAMPLES:
-          peekaboo image --app Safari
-          peekaboo image --mode screen
-          peekaboo image --app Finder --analyze "What is shown?"
-        """
+                version: "1.0.0"
             )
         }
     }
 }
 
 extension ImageCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ImageCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = values.singleOption("app")
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.path = values.singleOption("path")
+        if let parsedMode: CaptureMode = try values.decodeOptionEnum("mode") {
+            self.mode = parsedMode
+        }
+        self.windowTitle = values.singleOption("windowTitle")
+        self.windowIndex = try values.decodeOption("windowIndex", as: Int.self)
+        self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
+        if let parsedFormat: ImageFormat = try values.decodeOptionEnum("format") {
+            self.format = parsedFormat
+        }
+        if let parsedFocus: CaptureFocus = try values.decodeOptionEnum("captureFocus") {
+            self.captureFocus = parsedFocus
+        }
+        self.analyze = values.singleOption("analyze")
+    }
+}

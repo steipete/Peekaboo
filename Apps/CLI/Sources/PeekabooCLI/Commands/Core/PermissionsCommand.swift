@@ -1,6 +1,8 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
+
+@MainActor
 
 struct PermissionsCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -13,8 +15,9 @@ struct PermissionsCommand: ParsableCommand {
         defaultSubcommand: StatusSubcommand.self
     )
 
+    @MainActor
+
     struct StatusSubcommand: OutputFormattable {
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -39,8 +42,9 @@ struct PermissionsCommand: ParsableCommand {
         }
     }
 
+    @MainActor
+
     struct GrantSubcommand: OutputFormattable {
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -70,6 +74,7 @@ struct PermissionsCommand: ParsableCommand {
     }
 }
 
+@MainActor
 extension PermissionsCommand.StatusSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -83,6 +88,14 @@ extension PermissionsCommand.StatusSubcommand: ParsableCommand {
 
 extension PermissionsCommand.StatusSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension PermissionsCommand.StatusSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
+@MainActor
 extension PermissionsCommand.GrantSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -95,3 +108,10 @@ extension PermissionsCommand.GrantSubcommand: ParsableCommand {
 }
 
 extension PermissionsCommand.GrantSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension PermissionsCommand.GrantSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}

@@ -1,10 +1,11 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
 /// Manage Peekaboo configuration files and settings
 @available(macOS 14.0, *)
+@MainActor
 struct ConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "config",
@@ -46,6 +47,7 @@ struct ConfigCommand: ParsableCommand {
     )
 
     /// Subcommand to create a default configuration file
+    @MainActor
     struct InitCommand {
         static let configuration = CommandConfiguration(
             commandName: "init",
@@ -54,28 +56,22 @@ struct ConfigCommand: ParsableCommand {
 
         @Flag(name: .long, help: "Force overwrite existing configuration")
         var force = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -135,6 +131,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to display current configuration
+    @MainActor
     struct ShowCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
@@ -143,29 +140,22 @@ struct ConfigCommand: ParsableCommand {
 
         @Flag(name: .long, help: "Show effective configuration (merged with environment)")
         var effective = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
-
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -285,6 +275,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to open configuration in an editor
+    @MainActor
     struct EditCommand {
         static let configuration = CommandConfiguration(
             commandName: "edit",
@@ -293,28 +284,22 @@ struct ConfigCommand: ParsableCommand {
 
         @Option(name: .long, help: "Editor to use (defaults to $EDITOR or nano)")
         var editor: String?
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -353,18 +338,18 @@ struct ConfigCommand: ParsableCommand {
 
                 if process.terminationStatus == 0 {
                     if self.jsonOutput {
-                    let data: [String: Any] = [
-                        "message": "Configuration edited successfully",
-                        "editor": editorCommand,
-                        "path": configPath,
-                    ]
-                    let successOutput = SuccessOutput(success: true, data: data)
-                    outputJSON(successOutput, logger: self.logger)
-                } else {
-                    print("✅ Configuration saved.")
+                        let data: [String: Any] = [
+                            "message": "Configuration edited successfully",
+                            "editor": editorCommand,
+                            "path": configPath,
+                        ]
+                        let successOutput = SuccessOutput(success: true, data: data)
+                        outputJSON(successOutput, logger: self.logger)
+                    } else {
+                        print("✅ Configuration saved.")
 
-                    // Validate the edited configuration
-                    if let _ = manager.loadConfiguration() {
+                        // Validate the edited configuration
+                        if let _ = manager.loadConfiguration() {
                             print("✅ Configuration is valid.")
                         } else {
                             print("⚠️  Warning: Configuration may have errors. Run 'peekaboo config validate' to check.")
@@ -372,18 +357,18 @@ struct ConfigCommand: ParsableCommand {
                     }
                 } else {
                     if self.jsonOutput {
-                    let errorOutput = ErrorOutput(
-                        error: true,
-                        code: "UNKNOWN_ERROR",
-                        message: "Editor exited with non-zero status: \(process.terminationStatus)",
-                        details: "Editor: \(editorCommand)"
-                    )
-                    outputJSON(errorOutput, logger: self.logger)
-                } else {
-                    print("Editor exited with status: \(process.terminationStatus)")
+                        let errorOutput = ErrorOutput(
+                            error: true,
+                            code: "UNKNOWN_ERROR",
+                            message: "Editor exited with non-zero status: \(process.terminationStatus)",
+                            details: "Editor: \(editorCommand)"
+                        )
+                        outputJSON(errorOutput, logger: self.logger)
+                    } else {
+                        print("Editor exited with status: \(process.terminationStatus)")
+                    }
+                    throw ExitCode.failure
                 }
-                throw ExitCode.failure
-            }
             } catch {
                 if self.jsonOutput {
                     let errorOutput = ErrorOutput(
@@ -402,33 +387,28 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to validate configuration syntax
+    @MainActor
     struct ValidateCommand {
         static let configuration = CommandConfiguration(
             commandName: "validate",
             abstract: "Validate configuration file syntax"
         )
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -498,6 +478,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to set credentials securely
+    @MainActor
     struct SetCredentialCommand {
         static let configuration = CommandConfiguration(
             commandName: "set-credential",
@@ -509,28 +490,22 @@ struct ConfigCommand: ParsableCommand {
 
         @Argument(help: "The credential value")
         var value: String
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -571,6 +546,7 @@ struct ConfigCommand: ParsableCommand {
     // MARK: - Custom Provider Management Commands
 
     /// Subcommand to add a custom AI provider
+    @MainActor
     struct AddProviderCommand {
         static let configuration = CommandConfiguration(
             commandName: "add-provider",
@@ -627,24 +603,25 @@ struct ConfigCommand: ParsableCommand {
 
         @Option(name: .long, help: "Additional HTTP headers (key:value,key:value)")
         var headers: String?
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @Flag(name: .long, help: "Overwrite existing provider with same ID")
         var force: Bool = false
 
         @MainActor
-
-
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -777,6 +754,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to list custom AI providers
+    @MainActor
     struct ListProvidersCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-providers",
@@ -788,28 +766,22 @@ struct ConfigCommand: ParsableCommand {
             not the built-in providers (openai, anthropic, ollama).
             """
         )
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -865,6 +837,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to test a custom AI provider connection
+    @MainActor
     struct TestProviderCommand {
         static let configuration = CommandConfiguration(
             commandName: "test-provider",
@@ -884,28 +857,22 @@ struct ConfigCommand: ParsableCommand {
 
         @Argument(help: "Provider ID to test")
         var providerId: String
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -948,6 +915,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to remove a custom AI provider
+    @MainActor
     struct RemoveProviderCommand {
         static let configuration = CommandConfiguration(
             commandName: "remove-provider",
@@ -962,32 +930,25 @@ struct ConfigCommand: ParsableCommand {
 
         @Argument(help: "Provider ID to remove")
         var providerId: String
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @Flag(name: .long, help: "Skip confirmation prompt")
         var force: Bool = false
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
-
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -1056,6 +1017,7 @@ struct ConfigCommand: ParsableCommand {
     }
 
     /// Subcommand to discover models from a custom AI provider
+    @MainActor
     struct ModelsProviderCommand {
         static let configuration = CommandConfiguration(
             commandName: "models-provider",
@@ -1071,32 +1033,25 @@ struct ConfigCommand: ParsableCommand {
 
         @Argument(help: "Provider ID to query")
         var providerId: String
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
         }
 
-        var jsonOutput: Bool { self.runtimeOptions.jsonOutput }
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         @Flag(name: .long, help: "Discover models from API (for OpenAI-compatible providers)")
         var discover: Bool = false
 
         @MainActor
-
-
-        mutating func run() async throws {
-            let runtime = CommandRuntime(options: self.runtimeOptions)
-            try await self.run(using: runtime)
-        }
-
-        @MainActor
-
-
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
@@ -1241,12 +1196,91 @@ private func outputJSON(_ value: some Encodable, logger: Logger) {
 }
 
 extension ConfigCommand.InitCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.InitCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.force = values.flag("force")
+    }
+}
+
 extension ConfigCommand.ShowCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.ShowCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.effective = values.flag("effective")
+    }
+}
+
 extension ConfigCommand.EditCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.EditCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.editor = values.singleOption("editor")
+    }
+}
+
 extension ConfigCommand.ValidateCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.ValidateCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
 extension ConfigCommand.SetCredentialCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.SetCredentialCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.key = try values.decodePositional(0, label: "key")
+        self.value = try values.decodePositional(1, label: "value")
+    }
+}
+
 extension ConfigCommand.AddProviderCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.AddProviderCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.providerId = try values.decodePositional(0, label: "providerId")
+        self.type = try values.requireOption("type", as: String.self)
+        self.name = try values.requireOption("name", as: String.self)
+        self.baseUrl = try values.requireOption("baseUrl", as: String.self)
+        self.apiKey = try values.requireOption("apiKey", as: String.self)
+        self.description = values.singleOption("description")
+        self.headers = values.singleOption("headers")
+        self.force = values.flag("force")
+    }
+}
+
 extension ConfigCommand.ListProvidersCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.ListProvidersCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
 extension ConfigCommand.TestProviderCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.TestProviderCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.providerId = try values.decodePositional(0, label: "providerId")
+    }
+}
+
 extension ConfigCommand.RemoveProviderCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.RemoveProviderCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.providerId = try values.decodePositional(0, label: "providerId")
+        self.force = values.flag("force")
+    }
+}
+
 extension ConfigCommand.ModelsProviderCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.ModelsProviderCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.providerId = try values.decodePositional(0, label: "providerId")
+        self.discover = values.flag("discover")
+    }
+}
