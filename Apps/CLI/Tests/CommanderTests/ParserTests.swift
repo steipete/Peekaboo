@@ -30,3 +30,20 @@ func errorsOnUnknownOption() {
         _ = try parser.parse(arguments: ["--foo"])
     }
 }
+
+@Test
+func programResolvesCommand() throws {
+    let descriptor = CommandDescriptor(name: "demo", abstract: "", discussion: nil, signature: signature)
+    let program = Program(descriptors: [descriptor])
+    let invocation = try program.resolve(argv: ["peekaboo", "demo", "Workspace"])
+    #expect(invocation.descriptor.name == "demo")
+    #expect(invocation.parsedValues.positional == ["Workspace"])
+}
+
+@Test
+func programDetectsUnknownCommand() {
+    let program = Program(descriptors: [])
+    #expect(throws: CommanderProgramError.unknownCommand("foo")) {
+        _ = try program.resolve(argv: ["foo"])
+    }
+}
