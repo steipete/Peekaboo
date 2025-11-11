@@ -197,6 +197,7 @@ Apps/CLI/Sources/peekaboo/Version.swift
 
 # Release artifacts
 /release/
+Commander/Commander.tar.gz
 
 # Test images and screenshots
 *_screenshot.png
