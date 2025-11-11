@@ -6,7 +6,7 @@ import PeekabooCore
 
 /// Manages conversation sessions with automatic persistence.
 ///
-/// Sessions are automatically saved to `~/Documents/Peekaboo/sessions.json` and loaded on initialization.
+/// Sessions are automatically saved to `~/Library/Application Support/Peekaboo/sessions.json` and loaded on initialization.
 /// This class uses the modern @Observable pattern for SwiftUI integration.
 @Observable
 @MainActor
@@ -22,12 +22,24 @@ final class SessionStore {
         if let storageURL {
             self.storageURL = storageURL
         } else {
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let peekabooPath = documentsPath.appendingPathComponent("Peekaboo")
-            try? FileManager.default.createDirectory(at: peekabooPath, withIntermediateDirectories: true)
-            self.storageURL = peekabooPath.appendingPathComponent("sessions.json")
+            self.storageURL = Self.defaultStorageURL()
         }
         self.loadSessions()
+    }
+
+    private static func defaultStorageURL() -> URL {
+        let fileManager = FileManager.default
+        let baseDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
+        let peekabooDirectory = baseDirectory.appendingPathComponent("Peekaboo", isDirectory: true)
+
+        do {
+            try fileManager.createDirectory(at: peekabooDirectory, withIntermediateDirectories: true)
+        } catch {
+            print("Failed to create application support directory: \(error)")
+        }
+
+        return peekabooDirectory.appendingPathComponent("sessions.json", isDirectory: false)
     }
 
     func createSession(title: String = "", modelName: String = "") -> ConversationSession {

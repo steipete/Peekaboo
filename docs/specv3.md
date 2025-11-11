@@ -826,7 +826,7 @@ Always-accessible menu bar presence:
 
 Comprehensive automation session tracking:
 
-*   **Persistent Storage:** Sessions saved to `~/Documents/Peekaboo/`
+*   **Persistent Storage:** Sessions saved to `~/Library/Application Support/Peekaboo/`
 *   **Message History:** Complete record of user prompts and agent responses
 *   **Metadata Tracking:** Timestamps, duration, model used, token counts
 *   **Session Replay:** Review past automation sequences
@@ -1380,4 +1380,3 @@ The native macOS application includes:
    - Automatic cleanup
 
 This implementation represents a complete macOS automation ecosystem, suitable for both human users and AI agents, with performance, reliability, and extensibility as core design principles.
-
