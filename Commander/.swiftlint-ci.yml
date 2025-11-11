@@ -1,0 +1,26 @@
+parent_config: .swiftlint.yml
+
+included:
+  - Sources/Commander
+  - Tests/CommanderTests
+
+excluded: []
+
+disabled_rules:
+  - line_length
+  - function_body_length
+  - cyclomatic_complexity
+  - file_length
+  - type_body_length
+  - function_parameter_count
+  - nesting
+  - multiline_arguments
+  - multiline_parameters
+  - multiple_closures_with_trailing_closure
+  - void_return
+  - force_cast
+  - force_try
+  - for_where
+  - superfluous_disable_command
+
+reporter: "github-actions-logging"

@@ -1,0 +1,9 @@
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/CommandSignature.swift
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Errors.swift
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ExpressibleFromArgument.swift
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/NameSpecification.swift
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ParsableCommand.swift
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/CommandParser.swift
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/Tokenizer.swift
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Program.swift
+/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/PropertyWrappers.swift

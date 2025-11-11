@@ -1,0 +1,847 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.xctest/Contents/MacOS/CommanderPackageTests",
+      "packagePath" : "/Users/steipete/Projects/Peekaboo/Commander",
+      "productName" : "CommanderPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.Commander-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/sources",
+      "importPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/CommandSignature.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Errors.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ExpressibleFromArgument.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/NameSpecification.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ParsableCommand.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/CommandParser.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/Tokenizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Program.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/PropertyWrappers.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "Commander",
+      "moduleOutputPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules/Commander.swiftmodule",
+      "objects" : [
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/CommandSignature.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Errors.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/ExpressibleFromArgument.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/NameSpecification.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/ParsableCommand.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/CommandParser.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Tokenizer.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Program.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/PropertyWrappers.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx13.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j16",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/include/Commander-Swift.h",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "commander"
+      ],
+      "outputFileMapPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/CommandSignature.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Errors.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/ExpressibleFromArgument.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/NameSpecification.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/ParsableCommand.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/CommandParser.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Tokenizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Program.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/PropertyWrappers.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules/Commander.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/CommandSignature.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Errors.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ExpressibleFromArgument.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/NameSpecification.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ParsableCommand.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/CommandParser.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/Tokenizer.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Program.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/PropertyWrappers.swift"
+      ],
+      "tempsPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CommanderPackageTests-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/sources",
+      "importPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules/CommanderTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CommanderPackageTests",
+      "moduleOutputPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules/CommanderPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx13.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j16",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/include/CommanderPackageTests-Swift.h",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "commander"
+      ],
+      "outputFileMapPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules/CommanderPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CommanderTests-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/sources",
+      "importPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/CommandDescriptionTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/CommandSignatureTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/ParserTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/TokenizerTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules/Commander.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CommanderTests",
+      "moduleOutputPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules/CommanderTests.swiftmodule",
+      "objects" : [
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/CommandDescriptionTests.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/CommandSignatureTests.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/ParserTests.swift.o",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/TokenizerTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j16",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "commander"
+      ],
+      "outputFileMapPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/CommandDescriptionTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/CommandSignatureTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/ParserTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/TokenizerTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules/CommanderTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/CommandDescriptionTests.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/CommandSignatureTests.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/ParserTests.swift",
+        "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/TokenizerTests.swift"
+      ],
+      "tempsPath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "Commander" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "Commander",
+      "-package-name",
+      "commander",
+      "-c",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/CommandSignature.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Errors.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ExpressibleFromArgument.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/NameSpecification.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ParsableCommand.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/CommandParser.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/Tokenizer.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Program.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/PropertyWrappers.swift",
+      "-I",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx13.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j16",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/include/Commander-Swift.h",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "commander",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CommanderPackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CommanderPackageTests",
+      "-package-name",
+      "commander",
+      "-c",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx13.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j16",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/include/CommanderPackageTests-Swift.h",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "commander",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CommanderTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CommanderTests",
+      "-package-name",
+      "commander",
+      "-c",
+      "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/CommandDescriptionTests.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/CommandSignatureTests.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/ParserTests.swift",
+      "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/TokenizerTests.swift",
+      "-I",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j16",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.1.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "commander",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "Commander" : [
+
+    ],
+    "CommanderPackageTests" : [
+      "CommanderTests",
+      "Commander"
+    ],
+    "CommanderTests" : [
+      "Commander"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/CommandSignature.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Errors.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ExpressibleFromArgument.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/NameSpecification.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/ParsableCommand.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/CommandParser.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Parser/Tokenizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/Program.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Sources/Commander/PropertyWrappers.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/sources"
+    },
+    "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/sources"
+    },
+    "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/CommandParser.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/CommandSignature.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Errors.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/ExpressibleFromArgument.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/NameSpecification.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/ParsableCommand.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Program.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/PropertyWrappers.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/Commander.build/Tokenizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/CommandDescriptionTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/CommandSignatureTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/ParserTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/TokenizerTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/CommandDescriptionTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/CommandSignatureTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/ParserTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/steipete/Projects/Peekaboo/Commander/Tests/CommanderTests/TokenizerTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderTests.build/sources"
+    },
+    "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

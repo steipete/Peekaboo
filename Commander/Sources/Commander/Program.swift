@@ -41,15 +41,15 @@ public enum CommanderProgramError: Error, CustomStringConvertible, Sendable, Equ
     public var description: String {
         switch self {
         case .missingCommand:
-            return "No command specified"
-        case .unknownCommand(let name):
-            return "Unknown command '\(name)'"
-        case .missingSubcommand(let command):
-            return "Command '\(command)' requires a subcommand"
-        case .unknownSubcommand(let command, let name):
-            return "Unknown subcommand '\(name)' for command '\(command)'"
-        case .parsingError(let error):
-            return error.description
+            "No command specified"
+        case let .unknownCommand(name):
+            "Unknown command '\(name)'"
+        case let .missingSubcommand(command):
+            "Command '\(command)' requires a subcommand"
+        case let .unknownSubcommand(command, name):
+            "Unknown subcommand '\(name)' for command '\(command)'"
+        case let .parsingError(error):
+            error.description
         }
     }
 }
@@ -75,7 +75,7 @@ public struct Program: Sendable {
         args.removeFirst()
         var remainingArguments = args
         var commandPath = [commandName]
-        descriptor = try resolveDescriptor(descriptor, arguments: &remainingArguments, path: &commandPath)
+        descriptor = try self.resolveDescriptor(descriptor, arguments: &remainingArguments, path: &commandPath)
         let parser = CommandParser(signature: descriptor.signature)
         do {
             let parsed = try parser.parse(arguments: remainingArguments)
@@ -88,8 +88,8 @@ public struct Program: Sendable {
     private func resolveDescriptor(
         _ descriptor: CommandDescriptor,
         arguments: inout [String],
-        path: inout [String]
-    ) throws -> CommandDescriptor {
+        path: inout [String]) throws -> CommandDescriptor
+    {
         guard !descriptor.subcommands.isEmpty else {
             return descriptor
         }
@@ -97,7 +97,7 @@ public struct Program: Sendable {
         if arguments.isEmpty {
             if let defaultChild = lookupDefaultSubcommand(for: descriptor) {
                 path.append(defaultChild.name)
-                return try resolveDescriptor(defaultChild, arguments: &arguments, path: &path)
+                return try self.resolveDescriptor(defaultChild, arguments: &arguments, path: &path)
             }
             throw CommanderProgramError.missingSubcommand(command: descriptor.name)
         }
@@ -106,7 +106,7 @@ public struct Program: Sendable {
         if nextToken.isCommanderOptionToken {
             if let defaultChild = lookupDefaultSubcommand(for: descriptor) {
                 path.append(defaultChild.name)
-                return try resolveDescriptor(defaultChild, arguments: &arguments, path: &path)
+                return try self.resolveDescriptor(defaultChild, arguments: &arguments, path: &path)
             }
             throw CommanderProgramError.missingSubcommand(command: descriptor.name)
         }
@@ -116,7 +116,7 @@ public struct Program: Sendable {
         }
         arguments.removeFirst()
         path.append(match.name)
-        return try resolveDescriptor(match, arguments: &arguments, path: &path)
+        return try self.resolveDescriptor(match, arguments: &arguments, path: &path)
     }
 
     private func lookupDefaultSubcommand(for descriptor: CommandDescriptor) -> CommandDescriptor? {
@@ -125,8 +125,8 @@ public struct Program: Sendable {
     }
 }
 
-private extension String {
-    var isCommanderOptionToken: Bool {
+extension String {
+    fileprivate var isCommanderOptionToken: Bool {
         guard let first = self.first else { return false }
         return first == "-"
     }

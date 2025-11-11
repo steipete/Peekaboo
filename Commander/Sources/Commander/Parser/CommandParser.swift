@@ -19,22 +19,23 @@ public struct CommandParser {
         self.signature = signature
     }
 
+    // swiftlint:disable cyclomatic_complexity function_body_length
     public func parse(arguments: [String]) throws -> ParsedValues {
         let tokens = CommandLineTokenizer.tokenize(arguments)
         var positional: [String] = []
         var options: [String: [String]] = [:]
         var flags = Set<String>()
 
-        let optionLookup = Self.buildOptionLookup(signature.options)
-        let flagLookup = Self.buildFlagLookup(signature.flags)
-        let remainingOption = signature.options.first(where: { $0.parsing == .remaining })
+        let optionLookup = Self.buildOptionLookup(self.signature.options)
+        let flagLookup = Self.buildFlagLookup(self.signature.flags)
+        let remainingOption = self.signature.options.first(where: { $0.parsing == .remaining })
 
         var index = 0
         while index < tokens.count {
             let token = tokens[index]
             index += 1
             switch token {
-            case .option(let name):
+            case let .option(name):
                 if let definition = optionLookup[name] {
                     var consumed: [String] = []
                     switch definition.parsing {
@@ -51,7 +52,7 @@ public struct CommandParser {
                     case .upToNextOption:
                         parsingLoop: while index < tokens.count {
                             switch tokens[index] {
-                            case .argument(let value):
+                            case let .argument(value):
                                 consumed.append(value)
                                 index += 1
                             case .terminator:
@@ -74,12 +75,12 @@ public struct CommandParser {
                 } else {
                     throw CommanderError.unknownOption("--" + name)
                 }
-            case .flag(let name):
+            case let .flag(name):
                 guard let flagLabel = flagLookup[name] else {
                     throw CommanderError.unknownOption("-" + name)
                 }
                 flags.insert(flagLabel)
-            case .argument(let value):
+            case let .argument(value):
                 positional.append(value)
             case .terminator:
                 if let remainingOption {
@@ -107,14 +108,16 @@ public struct CommandParser {
         return ParsedValues(positional: positional, options: options, flags: flags)
     }
 
+    // swiftlint:enable cyclomatic_complexity function_body_length
+
     private static func buildOptionLookup(_ definitions: [OptionDefinition]) -> [String: OptionDefinition] {
         var lookup: [String: OptionDefinition] = [:]
         for definition in definitions {
             for name in definition.names {
                 switch name {
-                case .long(let longName):
+                case let .long(longName):
                     lookup[longName] = definition
-                case .short(let shortName):
+                case let .short(shortName):
                     lookup[String(shortName)] = definition
                 }
             }
@@ -127,9 +130,9 @@ public struct CommandParser {
         for definition in definitions {
             for name in definition.names {
                 switch name {
-                case .long(let longName):
+                case let .long(longName):
                     lookup[longName] = definition.label
-                case .short(let shortName):
+                case let .short(shortName):
                     lookup[String(shortName)] = definition.label
                 }
             }

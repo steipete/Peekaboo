@@ -7,7 +7,7 @@ enum Token: Equatable, Sendable {
     case terminator
 }
 
-struct CommandLineTokenizer {
+enum CommandLineTokenizer {
     static func tokenize(_ argv: [String]) -> [Token] {
         var result: [Token] = []
         var iterator = argv.makeIterator()
@@ -19,7 +19,7 @@ struct CommandLineTokenizer {
             } else if segment.hasPrefix("--") {
                 let name = String(segment.dropFirst(2))
                 result.append(.option(name: name))
-            } else if segment.hasPrefix("-") && segment.count > 1 {
+            } else if segment.hasPrefix("-"), segment.count > 1 {
                 let body = segment.dropFirst()
                 if body.count == 1 {
                     result.append(.option(name: String(body)))

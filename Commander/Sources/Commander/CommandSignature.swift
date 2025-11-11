@@ -22,18 +22,18 @@ public struct CommandSignature: Sendable {
 
     mutating func append(_ component: CommandComponent) {
         switch component {
-        case .argument(let definition):
-            arguments.append(definition)
-        case .option(let definition):
-            options.append(definition)
-        case .flag(let definition):
-            flags.append(definition)
-        case .group(let signature):
-            optionGroups.append(signature)
+        case let .argument(definition):
+            self.arguments.append(definition)
+        case let .option(definition):
+            self.options.append(definition)
+        case let .flag(definition):
+            self.flags.append(definition)
+        case let .group(signature):
+            self.optionGroups.append(signature)
         }
     }
 
-    public static func describe<T>(_ command: T) -> CommandSignature {
+    public static func describe(_ command: some Any) -> CommandSignature {
         var signature = CommandSignature()
         Self.inspect(value: command, into: &signature)
         return signature
@@ -52,13 +52,12 @@ public struct CommandSignature: Sendable {
     }
 }
 
-public extension CommandSignature {
-    func flattened() -> CommandSignature {
+extension CommandSignature {
+    public func flattened() -> CommandSignature {
         var combined = CommandSignature(
             arguments: self.arguments,
             options: self.options,
-            flags: self.flags
-        )
+            flags: self.flags)
         for group in self.optionGroups {
             let flattenedGroup = group.flattened()
             combined.arguments.append(contentsOf: flattenedGroup.arguments)
@@ -68,18 +67,16 @@ public extension CommandSignature {
         return combined
     }
 
-    func withStandardRuntimeFlags() -> CommandSignature {
+    public func withStandardRuntimeFlags() -> CommandSignature {
         var copy = self
         let verboseFlag = FlagDefinition(
             label: "verbose",
             names: [.short("v"), .long("verbose")],
-            help: "Enable verbose logging"
-        )
+            help: "Enable verbose logging")
         let jsonFlag = FlagDefinition(
             label: "jsonOutput",
             names: [.long("json-output"), .long("jsonOutput")],
-            help: "Emit machine-readable JSON output"
-        )
+            help: "Emit machine-readable JSON output")
         copy.flags.append(contentsOf: [verboseFlag, jsonFlag])
         return copy
     }
@@ -111,33 +108,33 @@ public struct FlagDefinition: Sendable, Equatable {
     public let help: String?
 }
 
-public extension OptionDefinition {
-    static func make(
+extension OptionDefinition {
+    public static func make(
         label: String,
         names: [CommanderName],
         help: String? = nil,
-        parsing: OptionParsingStrategy = .singleValue
-    ) -> OptionDefinition {
+        parsing: OptionParsingStrategy = .singleValue) -> OptionDefinition
+    {
         OptionDefinition(label: label, names: names, help: help, parsing: parsing)
     }
 }
 
-public extension FlagDefinition {
-    static func make(
+extension FlagDefinition {
+    public static func make(
         label: String,
         names: [CommanderName],
-        help: String? = nil
-    ) -> FlagDefinition {
+        help: String? = nil) -> FlagDefinition
+    {
         FlagDefinition(label: label, names: names, help: help)
     }
 }
 
-public extension ArgumentDefinition {
-    static func make(
+extension ArgumentDefinition {
+    public static func make(
         label: String,
         help: String? = nil,
-        isOptional: Bool = false
-    ) -> ArgumentDefinition {
+        isOptional: Bool = false) -> ArgumentDefinition
+    {
         ArgumentDefinition(label: label, help: help, isOptional: isOptional)
     }
 }

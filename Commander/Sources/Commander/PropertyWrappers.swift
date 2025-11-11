@@ -13,12 +13,13 @@ public struct Option<Value: ExpressibleFromArgument>: CommanderMetadata {
                 return storage
             }
             if Value.self is OptionalProtocol.Type {
-                return (Optional<Any>.none as! Value)
+                // swiftlint:disable:next force_cast
+                return (Any?.none as! Value)
             }
             fatalError("Commander option '\(Value.self)' accessed before being bound")
         }
         set {
-            storage = newValue
+            self.storage = newValue
         }
     }
 
@@ -58,13 +59,12 @@ public struct Option<Value: ExpressibleFromArgument>: CommanderMetadata {
 
     public func register(label: String, signature: inout CommandSignature) {
         let resolvedLabel = Self.sanitize(label)
-        let resolvedNames = nameSpecifications.flatMap { $0.resolve(defaultLabel: resolvedLabel) }
+        let resolvedNames = self.nameSpecifications.flatMap { $0.resolve(defaultLabel: resolvedLabel) }
         let definition = OptionDefinition(
             label: resolvedLabel,
             names: resolvedNames,
             help: help,
-            parsing: parsing
-        )
+            parsing: parsing)
         signature.append(.option(definition))
     }
 
@@ -88,7 +88,7 @@ public struct Argument<Value: ExpressibleFromArgument>: CommanderMetadata {
             return storage
         }
         set {
-            storage = newValue
+            self.storage = newValue
         }
     }
 
@@ -111,8 +111,7 @@ public struct Argument<Value: ExpressibleFromArgument>: CommanderMetadata {
         let definition = ArgumentDefinition(
             label: resolvedLabel,
             help: help,
-            isOptional: Value.self is OptionalProtocol.Type
-        )
+            isOptional: Value.self is OptionalProtocol.Type)
         signature.append(.argument(definition))
     }
 
@@ -146,8 +145,7 @@ public struct Flag: CommanderMetadata, Sendable {
         let definition = FlagDefinition(
             label: resolvedLabel,
             names: nameSpecifications.flatMap { $0.resolve(defaultLabel: resolvedLabel) },
-            help: help
-        )
+            help: self.help)
         signature.append(.flag(definition))
     }
 
@@ -169,7 +167,7 @@ public struct OptionGroup<Group: CommanderParsable>: CommanderOptionGroup {
     }
 
     public func register(label: String, signature: inout CommandSignature) {
-        let groupSignature = CommandSignature.describe(wrappedValue)
+        let groupSignature = CommandSignature.describe(self.wrappedValue)
         signature.append(.group(groupSignature))
     }
 }

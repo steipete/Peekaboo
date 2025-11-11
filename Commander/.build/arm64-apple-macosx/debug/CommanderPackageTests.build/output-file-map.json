@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/master.swiftdeps"
+  },
+  "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.derived/runner.swift": {
+    "dependencies": "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/runner.d",
+    "object": "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Users/steipete/Projects/Peekaboo/Commander/.build/arm64-apple-macosx/debug/CommanderPackageTests.build/runner.dia"
+  }
+}

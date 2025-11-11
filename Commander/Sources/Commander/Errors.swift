@@ -8,14 +8,14 @@ public enum CommanderError: Error, CustomStringConvertible, Sendable, Equatable 
 
     public var description: String {
         switch self {
-        case .unknownOption(let name):
-            return "Unknown option \(name)"
-        case .missingValue(let option):
-            return "Missing value for option \(option)"
-        case .unexpectedArgument(let value):
-            return "Unexpected argument: \(value)"
-        case .invalidValue(let option, let value):
-            return "Invalid value '\(value)' for option \(option)"
+        case let .unknownOption(name):
+            "Unknown option \(name)"
+        case let .missingValue(option):
+            "Missing value for option \(option)"
+        case let .unexpectedArgument(value):
+            "Unexpected argument: \(value)"
+        case let .invalidValue(option, value):
+            "Invalid value '\(value)' for option \(option)"
         }
     }
 }

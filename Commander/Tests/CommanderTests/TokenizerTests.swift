@@ -1,5 +1,5 @@
-@testable import Commander
 import Testing
+@testable import Commander
 
 @Test
 func tokenizerParsesSingleShortOption() {

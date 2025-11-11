@@ -1,20 +1,30 @@
-@testable import Commander
 import Testing
+@testable import Commander
 
 private let signature = CommandSignature(
     arguments: [ArgumentDefinition(label: "path", help: nil, isOptional: false)],
     options: [
         OptionDefinition(label: "app", names: [.long("app")], help: nil, parsing: .singleValue),
         OptionDefinition(label: "includes", names: [.long("include")], help: nil, parsing: .upToNextOption),
-        OptionDefinition(label: "rest", names: [.long("rest")], help: nil, parsing: .remaining)
+        OptionDefinition(label: "rest", names: [.long("rest")], help: nil, parsing: .remaining),
     ],
-    flags: [FlagDefinition(label: "dryRun", names: [.long("dry-run")], help: nil)]
-)
+    flags: [FlagDefinition(label: "dryRun", names: [.long("dry-run")], help: nil)])
 
 @Test
 func parsesOptionsFlagsAndArguments() throws {
     let parser = CommandParser(signature: signature)
-    let values = try parser.parse(arguments: ["Project", "--app", "Safari", "--dry-run", "--include", "a", "b", "--", "tail1", "tail2"])
+    let values = try parser.parse(arguments: [
+        "Project",
+        "--app",
+        "Safari",
+        "--dry-run",
+        "--include",
+        "a",
+        "b",
+        "--",
+        "tail1",
+        "tail2",
+    ])
 
     #expect(values.options["app"] == ["Safari"])
     #expect(values.flags.contains("dryRun"))
@@ -57,8 +67,7 @@ func programResolvesNestedSubcommand() throws {
         abstract: "",
         discussion: nil,
         signature: CommandSignature(),
-        subcommands: [child]
-    )
+        subcommands: [child])
     let program = Program(descriptors: [parent])
     let invocation = try program.resolve(argv: ["peekaboo", "list", "windows", "Workspace"])
     #expect(invocation.descriptor.name == "windows")
@@ -73,16 +82,14 @@ func programUsesDefaultSubcommandWhenMissing() throws {
         name: "apps",
         abstract: "",
         discussion: nil,
-        signature: runtimeSignature
-    )
+        signature: runtimeSignature)
     let parent = CommandDescriptor(
         name: "list",
         abstract: "",
         discussion: nil,
         signature: CommandSignature(),
         subcommands: [apps],
-        defaultSubcommandName: "apps"
-    )
+        defaultSubcommandName: "apps")
     let program = Program(descriptors: [parent])
     let invocation = try program.resolve(argv: ["peekaboo", "list", "--json-output"])
     #expect(invocation.descriptor.name == "apps")
@@ -98,8 +105,7 @@ func programErrorsWhenSubcommandMissing() {
         abstract: "",
         discussion: nil,
         signature: CommandSignature(),
-        subcommands: [child]
-    )
+        subcommands: [child])
     let program = Program(descriptors: [parent])
     #expect(throws: CommanderProgramError.missingSubcommand(command: "list")) {
         _ = try program.resolve(argv: ["peekaboo", "list"])
@@ -114,8 +120,7 @@ func programErrorsOnUnknownSubcommand() {
         abstract: "",
         discussion: nil,
         signature: CommandSignature(),
-        subcommands: [child]
-    )
+        subcommands: [child])
     let program = Program(descriptors: [parent])
     #expect(throws: CommanderProgramError.unknownSubcommand(command: "list", name: "apps")) {
         _ = try program.resolve(argv: ["peekaboo", "list", "apps"])
