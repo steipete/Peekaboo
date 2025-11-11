@@ -1,10 +1,2 @@
-{"timestamp":"2025-08-09T14:03:10.009Z","level":"info","message":"[peekaboo] Building with 0 changed file(s)"}
-{"timestamp":"2025-08-09T14:03:10.010Z","level":"info","message":"[peekaboo] Build already in progress, skipping"}
-{"timestamp":"2025-08-09T14:04:43.562Z","level":"info","message":"[peekaboo] Building with 0 changed file(s)"}
-{"timestamp":"2025-08-09T14:04:43.563Z","level":"info","message":"[peekaboo] Build already in progress, skipping"}
-{"timestamp":"2025-08-09T14:07:54.747Z","level":"info","message":"[peekaboo] Building with 0 changed file(s)"}
-{"timestamp":"2025-08-09T14:07:54.747Z","level":"info","message":"[peekaboo] Build already in progress, skipping"}
-{"timestamp":"2025-08-09T14:08:24.930Z","level":"info","message":"[peekaboo] Building with 0 changed file(s)"}
-{"timestamp":"2025-08-09T14:08:24.931Z","level":"info","message":"[peekaboo] Build already in progress, skipping"}
-{"timestamp":"2025-08-09T14:16:17.034Z","level":"info","message":"[peekaboo] [peekaboo] Building with 0 changed file(s)"}
-{"timestamp":"2025-08-09T14:16:17.034Z","level":"info","message":"[peekaboo] [peekaboo] Build already in progress, skipping"}
+2025-11-10T22:54:51.709Z INFO : [peekaboo] [peekaboo] Building with 0 changed file(s)
+2025-11-10T22:54:51.714Z WARN : [peekaboo] [peekaboo] Build already in progress, skipping
