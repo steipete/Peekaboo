@@ -25,7 +25,7 @@
       "buildCommand": "./scripts/build-mac-debug.sh",
       "bundleId": "boo.peekaboo.mac.debug",
       "autoRelaunch": true,
-      "settlingDelay": 1000,
+      "settlingDelay": 4000,
       "debounceInterval": 5000,
       "icon": "./assets/icon_512x512@2x.png",
       "watchPaths": [
@@ -78,6 +78,15 @@
     "metrics": {
       "enabled": true,
       "reportInterval": 300
+    }
+  },
+  "buildScheduling": {
+    "parallelization": 1,
+    "prioritization": {
+      "enabled": true,
+      "focusDetectionWindow": 300000,
+      "priorityDecayTime": 1800000,
+      "buildTimeoutMultiplier": 2
     }
   },
   "notifications": {
