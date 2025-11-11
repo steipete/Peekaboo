@@ -33,16 +33,16 @@ public enum LogLevel: Int, Comparable, Sendable {
 /// and buffered collection (for JSON output mode) to avoid interfering with structured output.
 final class Logger: @unchecked Sendable {
     static let shared = Logger()
-    nonisolated(unsafe) private var debugLogs: [String] = []
-    nonisolated(unsafe) private var isJsonOutputMode = false
-    nonisolated(unsafe) private var verboseMode = false
+    private nonisolated(unsafe) var debugLogs: [String] = []
+    private nonisolated(unsafe) var isJsonOutputMode = false
+    private nonisolated(unsafe) var verboseMode = false
     private let defaultMinimumLogLevel: LogLevel
-    nonisolated(unsafe) private var minimumLogLevel: LogLevel
+    private nonisolated(unsafe) var minimumLogLevel: LogLevel
     private let queue = DispatchQueue(label: "logger.queue", attributes: .concurrent)
     private let iso8601Formatter: ISO8601DateFormatter
 
     // Performance tracking
-    nonisolated(unsafe) private var performanceTimers: [String: Date] = [:]
+    private nonisolated(unsafe) var performanceTimers: [String: Date] = [:]
 
     private init() {
         self.iso8601Formatter = ISO8601DateFormatter()
@@ -130,7 +130,6 @@ final class Logger: @unchecked Sendable {
                 fputs("\(formattedMessage)\n", stderr)
             }
         }
-
     }
 
     func verbose(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {

@@ -3,7 +3,7 @@
 //  PeekabooCLI
 //
 
-@preconcurrency import ArgumentParser
+import Commander
 
 struct CommandRegistryEntry {
     enum Category: String, Codable, CaseIterable {
@@ -68,7 +68,7 @@ enum CommandRegistry {
 
     @MainActor
     static func definitions() -> [CommandDefinition] {
-        entries.map { entry in
+        self.entries.map { entry in
             let configuration = entry.type.configuration
             return CommandDefinition(
                 name: configuration.commandName ?? String(describing: entry.type),

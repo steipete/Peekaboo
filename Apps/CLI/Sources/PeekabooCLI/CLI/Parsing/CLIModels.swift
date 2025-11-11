@@ -1,4 +1,4 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -9,14 +9,24 @@ import PeekabooFoundation
 typealias SavedFile = PeekabooCore.SavedFile
 typealias ImageCaptureData = PeekabooCore.ImageCaptureData
 
-// Extend PeekabooCore.CaptureMode to conform to ExpressibleByArgument for CLI usage
-extension PeekabooCore.CaptureMode: @retroactive ExpressibleByArgument {}
+// Extend PeekabooCore types to conform to Commander argument parsing for CLI usage
+extension PeekabooCore.CaptureMode: ExpressibleFromArgument {
+    public init?(argument: String) {
+        self.init(rawValue: argument.lowercased())
+    }
+}
 
-// Extend PeekabooCore.ImageFormat to conform to ExpressibleByArgument for CLI usage
-extension PeekabooCore.ImageFormat: @retroactive ExpressibleByArgument {}
+extension PeekabooCore.ImageFormat: ExpressibleFromArgument {
+    public init?(argument: String) {
+        self.init(rawValue: argument.lowercased())
+    }
+}
 
-// Extend PeekabooCore.CaptureFocus to conform to ExpressibleByArgument for CLI usage
-extension PeekabooCore.CaptureFocus: @retroactive ExpressibleByArgument {}
+extension PeekabooCore.CaptureFocus: ExpressibleFromArgument {
+    public init?(argument: String) {
+        self.init(rawValue: argument.lowercased())
+    }
+}
 
 // MARK: - Application & Window Models
 
