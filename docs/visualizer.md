@@ -20,6 +20,19 @@ The Peekaboo Visual Feedback System provides delightful, informative visual indi
 - **Fallback**: CLI/MCP work normally without visual feedback if the app isn't running (events are simply dropped)
 - **Performance**: GPU-accelerated SwiftUI animations with minimal overhead
 
+### Communication Internals
+1. **Event creation (CLI/MCP side)**  
+   - `VisualizationClient` builds a strongly typed `VisualizerEvent.Payload` (e.g., screenshot flash, click ripple).  
+   - The payload is persisted via `VisualizerEventStore.persist(_:)`, which writes `<uuid>.json` to the shared VisualizerEvents directory and logs the exact path (look for `[VisualizerEventStore][VisualizerSmoke] persisted event …` in CLI output when debugging).  
+   - Immediately afterwards the client posts `DistributedNotificationCenter.default().post(name: .visualizerEventDispatched, object: "<uuid>|<kind>")`. No `userInfo` data is used so the bridge remains sandbox friendly.
+2. **Notification delivery**  
+   - Any listener (Peekaboo.app, smoke harnesses, or debugging scripts) can subscribe to `boo.peekaboo.visualizer.event`.  
+   - If Peekaboo.app isn’t running, the distributed notification goes nowhere and the JSON simply ages out (cleanup removes stale files after ~10 minutes).
+3. **Mac app reception**  
+   - `VisualizerEventReceiver` runs inside Peekaboo.app. It logs registration at launch (`Visualizer event receiver registered …`), listens for the distributed notification, parses the `<uuid>|<kind>` descriptor, and loads the referenced JSON via `VisualizerEventStore.loadEvent(id:)`.  
+   - After successfully handing the payload off to `VisualizerCoordinator`, the receiver deletes the JSON (failed deletes are surfaced as `VisualizerEventReceiver: failed to delete event …` in the logs).  
+   - Cleanup safeguards: the CLI schedules periodic `VisualizerEventStore.cleanup(olderThan:)` calls so abandoned files disappear. For debugging you can set `PEEKABOO_VISUALIZER_DISABLE_CLEANUP=true` to keep files on disk until the mac app consumes them.
+
 ### Communication Flow
 ```
 MCP Server → peekaboo CLI → VisualizerEventStore → Distributed Notification → Peekaboo.app → Visual Feedback
@@ -163,7 +176,20 @@ PEEKABOO_VISUAL_SCREENSHOTS=false         # Disable just screenshot flash
 PEEKABOO_VISUALIZER_STDOUT=true           # Force VisualizationClient logs to stderr/stdout
 PEEKABOO_VISUALIZER_STORAGE=/tmp/events   # Override the shared events directory
 PEEKABOO_VISUALIZER_APP_GROUP=group.boo   # Resolve storage inside an App Group container
+PEEKABOO_VISUALIZER_DISABLE_CLEANUP=true  # Keep JSON envelopes for forensic debugging (off by default)
+PEEKABOO_VISUALIZER_FORCE_APP=true        # Pretend the CLI is running inside the mac app bundle (forces in-app behavior)
 ```
+
+### Debugging Tips
+- **Verify storage alignment**: the CLI and Peekaboo.app must point to the same `VisualizerEvents` directory. When testing, set `PEEKABOO_VISUALIZER_STORAGE=/tmp/visevents` for *both* processes so the mac app can load the JSON the CLI just wrote.
+- **Disable cleanup temporarily**: `PEEKABOO_VISUALIZER_DISABLE_CLEANUP=true` keeps envelopes on disk until you inspect or replay them. Handy when the UI isn’t consuming events yet.
+- **Listen to notifications**: A tiny Swift script that subscribes to `boo.peekaboo.visualizer.event` prints descriptors (`<uuid>|<kind>`) and proves the distributed notification is firing.
+- **Inspect payloads**: Every persisted file logs its path (`[VisualizerEventStore][process] persisted event …`). Use `cat`/`jq` to view the JSON and even re-post it via `DistributedNotificationCenter`.
+- **Mac-side breadcrumbs**: `VisualizerEventReceiver` logs when it registers, receives a descriptor, executes, and deletes the event. Tail with  
+  `log stream --style compact --predicate 'process == "Peekaboo" && (composedMessage CONTAINS "Visualizer" || subsystem == "boo.peekaboo.mac")'`.
+- **Replay events**: If a notification failed, re-trigger it with  
+  `swift -e 'DistributedNotificationCenter.default().post(name: Notification.Name("boo.peekaboo.visualizer.event"), object: "UUID|screenshotFlash")'`.
+- **Watch cleanup**: `VisualizerEventStore.cleanup` deletes envelopes older than ~10 minutes. Disable it (env var above) or inspect files quickly before they disappear.
 
 ### User Preferences (in Peekaboo.app)
 - Toggle visual feedback on/off

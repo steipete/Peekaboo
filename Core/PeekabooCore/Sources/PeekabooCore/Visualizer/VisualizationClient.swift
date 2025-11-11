@@ -30,6 +30,7 @@ public final class VisualizationClient: @unchecked Sendable {
     private let consoleLogHandler: (String) -> Void
     private let shouldMirrorToConsole: Bool
     private let isRunningInsideMacApp: Bool
+    private let cleanupDisabled: Bool  // Allows disabling automatic cleanup when deep-debugging transport issues
 
     private var isEnabled: Bool = true
     private var hasLoggedMissingApp = false
@@ -44,6 +45,7 @@ public final class VisualizationClient: @unchecked Sendable {
         let forcedAppContext = environment["PEEKABOO_VISUALIZER_FORCE_APP"] == "true"
         let isAppBundle = VisualizationClient.isPeekabooMacBundle(identifier: bundleIdentifier)
         self.isRunningInsideMacApp = forcedAppContext || isAppBundle
+        self.cleanupDisabled = environment["PEEKABOO_VISUALIZER_DISABLE_CLEANUP"] == "true"
 
         if forcedAppContext && !isAppBundle {
             VisualizationClient.defaultConsoleLogHandler(
@@ -59,6 +61,10 @@ public final class VisualizationClient: @unchecked Sendable {
         if environment["PEEKABOO_VISUAL_FEEDBACK"] == "false" {
             self.isEnabled = false
             self.log(.info, "Visual feedback disabled via environment variable")
+        }
+
+        if self.cleanupDisabled {
+            self.log(.info, "Visualizer cleanup disabled via PEEKABOO_VISUALIZER_DISABLE_CLEANUP")
         }
     }
 
@@ -202,6 +208,7 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     private func scheduleCleanupIfNeeded() {
+        guard !self.cleanupDisabled else { return }
         let now = Date()
         guard now.timeIntervalSince(self.lastCleanupDate) >= self.cleanupInterval else { return }
         self.lastCleanupDate = now

@@ -5,6 +5,17 @@
 
 import CoreGraphics
 import Foundation
+import os
+
+#if VISUALIZER_VERBOSE_LOGS
+@inline(__always)
+private func visualizerDebugLog(_ message: @autoclosure () -> String) {
+    NSLog("%@", message())
+}
+#else
+@inline(__always)
+private func visualizerDebugLog(_ message: @autoclosure () -> String) {}
+#endif
 import PeekabooFoundation
 
 public enum VisualizerEventKind: String, Codable, Sendable {
@@ -97,6 +108,8 @@ public struct VisualizerEvent: Codable, Sendable {
 public enum VisualizerEventStore {
     public static let notificationName = Notification.Name("boo.peekaboo.visualizer.event")
 
+    private static let logger = Logger(subsystem: "boo.peekaboo.core", category: "VisualizerEventStore")
+
     private static let storageEnvKey = "PEEKABOO_VISUALIZER_STORAGE"
     private static let appGroupEnvKey = "PEEKABOO_VISUALIZER_APP_GROUP"
     private static let storageRootName = "PeekabooShared"
@@ -121,13 +134,25 @@ public enum VisualizerEventStore {
     public static func persist(_ event: VisualizerEvent) throws -> URL {
         let directory = try eventsDirectory()
         let url = directory.appendingPathComponent("\(event.id.uuidString).json", isDirectory: false)
+        // Shared JSON is the handoff contract between CLI/MCP processes and Peekaboo.app
         let data = try self.encoder.encode(event)
         try data.write(to: url, options: [.atomic])
+        #if DEBUG
+        let proc = ProcessInfo.processInfo.processName
+        visualizerDebugLog("[VisualizerEventStore][\(proc)] persisted event \(event.id) at \(url.path)")
+        #endif
         return url
     }
 
     public static func loadEvent(id: UUID) throws -> VisualizerEvent {
         let url = try eventURL(for: id)
+        #if DEBUG
+        if !FileManager.default.fileExists(atPath: url.path) {
+            self.logger.error("Visualizer event file missing at \(url.path, privacy: .public)")
+            let proc = ProcessInfo.processInfo.processName
+            visualizerDebugLog("[VisualizerEventStore][\(proc)] missing event file: \(url.path)")
+        }
+        #endif
         let data = try Data(contentsOf: url)
         return try self.decoder.decode(VisualizerEvent.self, from: data)
     }
@@ -148,9 +173,13 @@ public enum VisualizerEventStore {
         let cutoff = Date().addingTimeInterval(-age)
         for file in files where file.pathExtension == "json" {
             let values = try file.resourceValues(forKeys: Set(resources))
-            let modified = values.contentModificationDate ?? Date.distantPast
+            let modified = values.contentModificationDate ?? Date()
             if modified < cutoff {
                 try? FileManager.default.removeItem(at: file)
+                #if DEBUG
+                let proc = ProcessInfo.processInfo.processName
+                visualizerDebugLog("[VisualizerEventStore][\(proc)] cleanup removed \(file.path) (modified \(modified))")
+                #endif
             }
         }
     }
@@ -160,6 +189,11 @@ public enum VisualizerEventStore {
     private static func eventsDirectory() throws -> URL {
         let directory = baseDirectory().appendingPathComponent(eventsFolderName, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        self.logger.debug("Visualizer events directory: \(directory.path)")
+        #if DEBUG
+        let proc = ProcessInfo.processInfo.processName
+        visualizerDebugLog("[VisualizerEventStore][\(proc)] events directory: \(directory.path)")
+        #endif
         return directory
     }
 
@@ -171,19 +205,37 @@ public enum VisualizerEventStore {
         let environment = ProcessInfo.processInfo.environment
 
         if let override = environment[storageEnvKey], !override.isEmpty {
-            return URL(fileURLWithPath: override, isDirectory: true)
+            let url = URL(fileURLWithPath: override, isDirectory: true)
+            self.logger.debug("Visualizer storage override via \(storageEnvKey): \(url.path, privacy: .public)")
+            #if DEBUG
+            let proc = ProcessInfo.processInfo.processName
+            visualizerDebugLog("[VisualizerEventStore][\(proc)] storage override: \(url.path)")
+            #endif
+            return url
         }
 
         if let appGroup = environment[appGroupEnvKey],
            !appGroup.isEmpty,
            let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
         {
+            self.logger.debug("Visualizer storage using app group \(appGroup, privacy: .public): \(container.path, privacy: .public)")
+            #if DEBUG
+            let proc = ProcessInfo.processInfo.processName
+            visualizerDebugLog("[VisualizerEventStore][\(proc)] storage app group (\(appGroup)): \(container.path)")
+            #endif
             return container
         }
 
-        return FileManager.default.homeDirectoryForCurrentUser
+        let url = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support", isDirectory: true)
             .appendingPathComponent(storageRootName, isDirectory: true)
+        // Default to ~/Library/... so both CLI and app can share without extra env setup
+        self.logger.debug("Visualizer storage default path: \(url.path, privacy: .public)")
+        #if DEBUG
+        let proc = ProcessInfo.processInfo.processName
+        visualizerDebugLog("[VisualizerEventStore][\(proc)] storage default: \(url.path)")
+        #endif
+        return url
     }
 }
 
