@@ -1,6 +1,6 @@
 // AXORCMain.swift - Main entry point for AXORC CLI
 
-@preconcurrency import ArgumentParser
+@preconcurrency import Commander
 import AXorcist // For AXorcist instance
 import CoreFoundation
 import Foundation

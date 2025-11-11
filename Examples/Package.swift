@@ -29,7 +29,7 @@ let package = Package(
         .package(path: "../Tachikoma"),
 
         // External dependencies for examples
-        .package(path: "../Vendor/swift-argument-parser"),
+        .package(path: "../Commander"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
     ],
     targets: [
@@ -38,7 +38,7 @@ let package = Package(
             name: "SharedExampleUtils",
             dependencies: [
                 .product(name: "Tachikoma", package: "Tachikoma"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "Commander", package: "Commander"),
                 .product(name: "Yams", package: "Yams"),
             ],
             swiftSettings: approachableConcurrencySettings),
@@ -49,7 +49,7 @@ let package = Package(
             dependencies: [
                 "SharedExampleUtils",
                 .product(name: "Tachikoma", package: "Tachikoma"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "Commander", package: "Commander"),
             ],
             swiftSettings: approachableConcurrencySettings),
 
@@ -59,7 +59,7 @@ let package = Package(
             dependencies: [
                 "SharedExampleUtils",
                 .product(name: "Tachikoma", package: "Tachikoma"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "Commander", package: "Commander"),
             ],
             swiftSettings: approachableConcurrencySettings),
 
@@ -69,7 +69,7 @@ let package = Package(
             dependencies: [
                 "SharedExampleUtils",
                 .product(name: "Tachikoma", package: "Tachikoma"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "Commander", package: "Commander"),
             ],
             swiftSettings: approachableConcurrencySettings),
 
@@ -79,7 +79,7 @@ let package = Package(
             dependencies: [
                 "SharedExampleUtils",
                 .product(name: "Tachikoma", package: "Tachikoma"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "Commander", package: "Commander"),
             ],
             swiftSettings: approachableConcurrencySettings),
 
@@ -89,7 +89,7 @@ let package = Package(
             dependencies: [
                 "SharedExampleUtils",
                 .product(name: "Tachikoma", package: "Tachikoma"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "Commander", package: "Commander"),
             ],
             swiftSettings: approachableConcurrencySettings),
     ])

@@ -6,7 +6,7 @@
 // Re-export all external dependencies for easy access
 // This centralizes version management and provides a single import point
 
-@_exported import ArgumentParser
+@_exported import Commander
 @_exported import AsyncAlgorithms
 @_exported import AXorcist
 @_exported import Logging
@@ -18,7 +18,7 @@
 public enum DependencyInfo {
     public static let axorcistVersion = "main"
     public static let asyncAlgorithmsVersion = "1.0.4"
-    public static let argumentParserVersion = "1.6.2"
+    public static let commanderVersion = "local"
     public static let swiftLogVersion = "1.5.3"
     public static let swiftSystemVersion = "1.6.3"
     public static let orderedCollectionsVersion = "1.3.0"
@@ -27,7 +27,7 @@ public enum DependencyInfo {
         [
             "AXorcist": axorcistVersion,
             "AsyncAlgorithms": asyncAlgorithmsVersion,
-            "ArgumentParser": argumentParserVersion,
+            "Commander": commanderVersion,
             "SwiftLog": swiftLogVersion,
             "SwiftSystem": swiftSystemVersion,
             "OrderedCollections": orderedCollectionsVersion,

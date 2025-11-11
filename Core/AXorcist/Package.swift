@@ -20,7 +20,7 @@ let package = Package(
         .executable(name: "axorc", targets: ["axorc"]), // Product 'axorc' comes from target 'axorc'
     ],
     dependencies: [
-        .package(path: "../../Vendor/swift-argument-parser"),
+        .package(path: "../../Commander"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
     ],
     targets: [
@@ -38,7 +38,7 @@ let package = Package(
             name: "axorc", // Executable target name
             dependencies: [
                 "AXorcist", // Dependency restored to AXorcist
-                .product(name: "ArgumentParser", package: "swift-argument-parser"), // Added dependency product
+                .product(name: "Commander", package: "Commander"),
             ],
             path: "Sources/axorc", // Explicit path
             swiftSettings: approachableConcurrencySettings
