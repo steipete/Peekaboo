@@ -1,6 +1,17 @@
-import ArgumentParser
 import Foundation
 import Tachikoma
+
+public struct PeekabooToolCommandConfiguration: Sendable {
+    public let commandName: String
+    public let abstract: String
+    public let discussion: String
+
+    public init(commandName: String, abstract: String, discussion: String) {
+        self.commandName = commandName
+        self.abstract = abstract
+        self.discussion = discussion
+    }
+}
 
 /// Represents a tool's complete definition used across CLI, agent, and documentation
 @available(macOS 14.0, *)
@@ -35,8 +46,8 @@ public struct PeekabooToolDefinition: Sendable {
     }
 
     /// Generate CLI CommandConfiguration
-    public var commandConfiguration: CommandConfiguration {
-        CommandConfiguration(
+    public var commandConfiguration: PeekabooToolCommandConfiguration {
+        PeekabooToolCommandConfiguration(
             commandName: self.commandName ?? self.name,
             abstract: self.abstract,
             discussion: self.discussion)
