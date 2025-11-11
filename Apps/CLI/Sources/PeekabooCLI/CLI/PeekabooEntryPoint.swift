@@ -130,6 +130,8 @@ public struct Peekaboo: ParsableCommand {
             AgentCommand.self,
             // MCP commands
             MCPCommand.self,
+            // Diagnostics / experimental
+            CommanderCommand.self,
         ]
 
         return CommandConfiguration(
