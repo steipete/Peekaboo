@@ -43,7 +43,7 @@ extension Tag {
 @preconcurrency
 enum CLITestEnvironment {
     @inline(__always)
-    nonisolated private static func flag(_ key: String) -> Bool {
+    private nonisolated static func flag(_ key: String) -> Bool {
         ProcessInfo.processInfo.environment[key]?.lowercased() == "true"
     }
 

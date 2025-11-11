@@ -103,7 +103,7 @@ struct AnnotationCoordinateTests {
         let allElements = [enabledButton, disabledButton, enabledTextField, disabledLink]
 
         // Filter as done in annotation code
-        let annotatedElements = allElements.filter { $0.isEnabled }
+        let annotatedElements = allElements.filter(\.isEnabled)
 
         // Only enabled elements should be annotated
         #expect(annotatedElements.count == 2)
