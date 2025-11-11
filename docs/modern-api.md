@@ -462,7 +462,7 @@ public class PeekabooAgentService {
 #### 3.2 CLI Application Refactor
 
 ```swift
-import ArgumentParser
+import Commander
 import TachikomaCore
 import PeekabooCore
 

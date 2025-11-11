@@ -63,7 +63,7 @@
     *   The CLI must show no analyzer issues.
 8.  **JSON Communication:** The native binary part of the tool must have a mode to communicate in JSON back to the TypeScript server for easier parsing. JSON responses should include debug logs if requested (e.g., by passing a log level).
 9.  **CLI Help Command:** The binary must respond to `--help` with a helpful command explaining its use and all options.
-10. **Argument Parsing Framework:** The binary must use a robust argument parser framework (e.g., `swift-argument-parser` for Swift).
+10. **Argument Parsing Framework:** The binary must use a robust argument parser framework (e.g., our in-repo `Commander` module for Swift).
 11. **Single File Distribution:** For native CLIs, consider options for distributing as a single, statically linked binary if feasible and beneficial for simpler installation by end-users who might use the CLI directly.
 
 **VI. Rules to Check Before a Release (`scripts/prepare-release.js`)**

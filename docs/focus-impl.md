@@ -483,7 +483,7 @@ public struct WindowReference: Sendable {
 // Location: Core/PeekabooCore/Sources/PeekabooCore/Utilities/FocusUtilities.swift
 
 import Foundation
-import ArgumentParser
+import Commander
 import AXorcist
 
 // MARK: - Focus Extension for Commands
@@ -1160,7 +1160,7 @@ struct ClickCommand: AsyncParsableCommand {
 ```swift
 // New file: Apps/CLI/Sources/peekaboo/Commands/System/SpaceCommand.swift
 
-import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 

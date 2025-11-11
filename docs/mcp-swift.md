@@ -75,7 +75,7 @@ targets: [
 #### 1.2 Create MCP Command Structure
 ```swift
 // Apps/CLI/Sources/peekaboo/Commands/MCPCommand.swift
-import ArgumentParser
+import Commander
 import MCPServer
 
 struct MCPCommand: AsyncParsableCommand {

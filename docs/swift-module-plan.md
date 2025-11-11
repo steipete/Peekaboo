@@ -114,7 +114,7 @@ graph TB
 // Re-exported dependencies
 @_exported import AXorcist
 @_exported import AsyncAlgorithms
-@_exported import ArgumentParser
+@_exported import Commander
 // Configure and re-export other third-party libs
 ```
 
