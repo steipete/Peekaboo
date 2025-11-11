@@ -6,6 +6,7 @@ let concurrencyBaseSettings: [SwiftSetting] = [
     .enableExperimentalFeature("StrictConcurrency"),
     .enableUpcomingFeature("ExistentialAny"),
     .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .enableExperimentalFeature("RetroactiveConformances"),
 ]
 
 let cliConcurrencySettings = concurrencyBaseSettings + [
@@ -20,15 +21,9 @@ let includeAutomationTests = ProcessInfo.processInfo.environment["PEEKABOO_INCLU
 
 var targets: [Target] = [
     .target(
-        name: "Commander",
-        dependencies: [],
-        path: "Sources/Commander"
-    ),
-    .target(
         name: "PeekabooCLI",
         dependencies: [
-            "Commander",
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            .product(name: "Commander", package: "Commander"),
             .product(name: "MCP", package: "swift-sdk"),
             .product(name: "Spinner", package: "Spinner"),
             .product(name: "PeekabooCore", package: "PeekabooCore"),
@@ -62,6 +57,15 @@ var targets: [Target] = [
         ],
         path: "Tests/CoreCLITests",
         swiftSettings: swiftTestingSettings),
+    .testTarget(
+        name: "CLIRuntimeTests",
+        dependencies: [
+            "PeekabooCLI",
+            .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
+            .product(name: "Subprocess", package: "swift-subprocess"),
+        ],
+        path: "Tests/CLIRuntimeTests",
+        swiftSettings: swiftTestingSettings),
 ]
 
 if includeAutomationTests {
@@ -78,13 +82,7 @@ if includeAutomationTests {
     )
 }
 
-targets.append(
-    .testTarget(
-        name: "CommanderTests",
-        dependencies: ["Commander"],
-        path: "Tests/CommanderTests",
-        swiftSettings: swiftTestingSettings)
-)
+
 
 let package = Package(
     name: "peekaboo",
@@ -97,7 +95,7 @@ let package = Package(
             targets: ["peekaboo"]),
     ],
     dependencies: [
-        .package(path: "../../Vendor/swift-argument-parser"),
+        .package(path: "../../Commander"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.10.2"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "0.2.1"),
