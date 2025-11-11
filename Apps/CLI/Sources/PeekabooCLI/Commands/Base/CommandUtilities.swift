@@ -1,5 +1,5 @@
 import AppKit
-@preconcurrency import ArgumentParser
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -19,11 +19,10 @@ extension ErrorHandlingCommand {
         // Handle errors with appropriate output format
         if jsonOutput {
             let errorCode = customCode ?? self.mapErrorToCode(error)
-            let logger: Logger
-            if let formattable = self as? any OutputFormattable {
-                logger = formattable.outputLogger
+            let logger: Logger = if let formattable = self as? any OutputFormattable {
+                formattable.outputLogger
             } else {
-                logger = Logger.shared
+                Logger.shared
             }
             outputError(message: error.localizedDescription, code: errorCode, logger: logger)
         } else {
@@ -56,8 +55,8 @@ extension ErrorHandlingCommand {
         case let captureError as CaptureError:
             self.mapCaptureErrorToCode(captureError)
 
-        // ArgumentParser ValidationError
-        case is ArgumentParser.ValidationError:
+        // Commander ValidationError
+        case is Commander.ValidationError:
             .VALIDATION_ERROR
 
         // Default
@@ -168,7 +167,7 @@ protocol OutputFormattable {
 
 extension OutputFormattable {
     /// Output data in appropriate format
-    func output(_ data: some Codable, humanReadable: () -> Void) {
+    func output(_ data: some Codable, humanReadable: () -> ()) {
         // Output data in appropriate format
         if jsonOutput {
             outputSuccessCodable(data: data, logger: self.outputLogger)
@@ -297,7 +296,13 @@ enum AutomationServiceBridge {
         modifiers: String?
     ) async throws {
         try await Task { @MainActor in
-            try await services.automation.drag(from: from, to: to, duration: duration, steps: steps, modifiers: modifiers)
+            try await services.automation.drag(
+                from: from,
+                to: to,
+                duration: duration,
+                steps: steps,
+                modifiers: modifiers
+            )
         }.value
     }
 
@@ -319,7 +324,11 @@ enum AutomationServiceBridge {
         windowContext: WindowContext?
     ) async throws -> ElementDetectionResult {
         try await Task { @MainActor in
-            try await services.automation.detectElements(in: imageData, sessionId: sessionId, windowContext: windowContext)
+            try await services.automation.detectElements(
+                in: imageData,
+                sessionId: sessionId,
+                windowContext: windowContext
+            )
         }.value
     }
 
@@ -423,7 +432,8 @@ enum MenuServiceBridge {
         }.value
     }
 
-    static func clickMenuBarItem(named name: String, services: PeekabooServices) async throws -> PeekabooCore.ClickResult {
+    static func clickMenuBarItem(named name: String, services: PeekabooServices) async throws -> PeekabooCore
+    .ClickResult {
         try await Task<PeekabooCore.ClickResult, any Error> { @MainActor in
             try await services.menu.clickMenuBarItem(named: name)
         }.value
@@ -473,6 +483,7 @@ enum DockServiceBridge {
         }.value
     }
 }
+
 // MARK: - Timeout Utilities
 
 /// Execute an async operation with a timeout
@@ -538,32 +549,32 @@ extension WindowIdentificationOptions {
 // MARK: - Common Command Base Classes
 
 // Note: WindowCommandBase is currently unused and has been commented out
-// to avoid compilation issues with ArgumentParser Option types.
+// to avoid compilation issues with overlapping Commander option metadata.
 /*
- /// Base struct for commands that work with windows
- struct WindowCommandBase: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
- @Option(name: .shortAndLong, help: "Target application name or bundle ID")
- var app: String?
+  /// Base struct for commands that work with windows
+  struct WindowCommandBase: @MainActor MainActorAsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+  @Option(name: .shortAndLong, help: "Target application name or bundle ID")
+  var app: String?
 
- @Option(name: .short, help: "Window index (0-based)")
+ @Option(name: .customShort("i", allowingJoined: false), help: "Window index (0-based)")
  var windowIndex: Int?
 
- @Option(name: .long, help: "Window title (partial match)")
- var windowTitle: String?
+  @Option(name: .long, help: "Window title (partial match)")
+  var windowTitle: String?
 
- @Flag(name: .long, help: "Output in JSON format")
- var jsonOutput = false
+  @Flag(name: .long, help: "Output in JSON format")
+  var jsonOutput = false
 
- /// Get window identification options
- var windowOptions: WindowIdentificationOptions {
- WindowIdentificationOptions(
- app: app,
- windowTitle: windowTitle,
- windowIndex: windowIndex
- )
- }
- }
- */
+  /// Get window identification options
+  var windowOptions: WindowIdentificationOptions {
+  WindowIdentificationOptions(
+  app: app,
+  windowTitle: windowTitle,
+  windowIndex: windowIndex
+  )
+  }
+  }
+  */
 
 // MARK: - Application Resolution
 

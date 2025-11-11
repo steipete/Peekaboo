@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
-@preconcurrency import ArgumentParser
 import AXorcist
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
