@@ -1,0 +1,50 @@
+import Commander
+
+extension ScrollCommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption(
+                    "direction",
+                    help: "Scroll direction: up, down, left, or right",
+                    long: "direction"
+                ),
+                .commandOption(
+                    "amount",
+                    help: "Number of scroll ticks",
+                    long: "amount"
+                ),
+                .commandOption(
+                    "on",
+                    help: "Element ID to scroll on (from 'see' command)",
+                    long: "on"
+                ),
+                .commandOption(
+                    "session",
+                    help: "Session ID (uses latest if not specified)",
+                    long: "session"
+                ),
+                .commandOption(
+                    "delay",
+                    help: "Delay between scroll ticks in milliseconds",
+                    long: "delay"
+                ),
+                .commandOption(
+                    "app",
+                    help: "Target application to focus before scrolling",
+                    long: "app"
+                ),
+            ],
+            flags: [
+                .commandFlag(
+                    "smooth",
+                    help: "Use smooth scrolling with smaller increments",
+                    long: "smooth"
+                ),
+            ],
+            optionGroups: [
+                FocusCommandOptions.commanderSignature(),
+            ]
+        )
+    }
+}

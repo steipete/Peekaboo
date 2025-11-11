@@ -1,0 +1,188 @@
+import Commander
+
+extension AppCommand.LaunchSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            arguments: [
+                .make(
+                    label: "app",
+                    help: "Application name or path",
+                    isOptional: false
+                ),
+            ],
+            options: [
+                .commandOption(
+                    "bundleId",
+                    help: "Launch by bundle identifier instead of name",
+                    long: "bundle-id"
+                ),
+            ],
+            flags: [
+                .commandFlag(
+                    "waitUntilReady",
+                    help: "Wait for the application to be ready",
+                    long: "wait-until-ready"
+                ),
+            ]
+        )
+    }
+}
+
+extension AppCommand.QuitSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption(
+                    "app",
+                    help: "Application to quit",
+                    long: "app"
+                ),
+                .commandOption(
+                    "pid",
+                    help: "Target application by process ID",
+                    long: "pid"
+                ),
+                .commandOption(
+                    "except",
+                    help: "Comma-separated list of apps to exclude when using --all",
+                    long: "except"
+                ),
+            ],
+            flags: [
+                .commandFlag(
+                    "all",
+                    help: "Quit all applications",
+                    long: "all"
+                ),
+                .commandFlag(
+                    "force",
+                    help: "Force quit (doesn't save changes)",
+                    long: "force"
+                ),
+            ]
+        )
+    }
+}
+
+extension AppCommand.HideSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption(
+                    "app",
+                    help: "Application to hide",
+                    long: "app"
+                ),
+                .commandOption(
+                    "pid",
+                    help: "Target application by process ID",
+                    long: "pid"
+                ),
+            ]
+        )
+    }
+}
+
+extension AppCommand.UnhideSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption(
+                    "app",
+                    help: "Application to unhide",
+                    long: "app"
+                ),
+                .commandOption(
+                    "pid",
+                    help: "Target application by process ID",
+                    long: "pid"
+                ),
+            ],
+            flags: [
+                .commandFlag(
+                    "activate",
+                    help: "Bring to front after unhiding",
+                    long: "activate"
+                ),
+            ]
+        )
+    }
+}
+
+extension AppCommand.SwitchSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption(
+                    "to",
+                    help: "Switch to this application",
+                    long: "to"
+                ),
+            ],
+            flags: [
+                .commandFlag(
+                    "cycle",
+                    help: "Cycle to next app (Cmd+Tab)",
+                    long: "cycle"
+                ),
+            ]
+        )
+    }
+}
+
+extension AppCommand.ListSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            flags: [
+                .commandFlag(
+                    "includeHidden",
+                    help: "Include hidden apps",
+                    long: "include-hidden"
+                ),
+                .commandFlag(
+                    "includeBackground",
+                    help: "Include background apps",
+                    long: "include-background"
+                ),
+            ]
+        )
+    }
+}
+
+extension AppCommand.RelaunchSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            arguments: [
+                .make(
+                    label: "app",
+                    help: "Application name, bundle ID, or 'PID:12345'",
+                    isOptional: false
+                ),
+            ],
+            options: [
+                .commandOption(
+                    "pid",
+                    help: "Target application by process ID",
+                    long: "pid"
+                ),
+                .commandOption(
+                    "wait",
+                    help: "Wait time in seconds between quit and launch",
+                    long: "wait"
+                ),
+            ],
+            flags: [
+                .commandFlag(
+                    "force",
+                    help: "Force quit (doesn't save changes)",
+                    long: "force"
+                ),
+                .commandFlag(
+                    "waitUntilReady",
+                    help: "Wait until the app is ready after launch",
+                    long: "wait-until-ready"
+                ),
+            ]
+        )
+    }
+}

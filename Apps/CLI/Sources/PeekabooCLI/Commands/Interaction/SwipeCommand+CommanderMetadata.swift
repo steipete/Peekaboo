@@ -1,0 +1,52 @@
+import Commander
+
+extension SwipeCommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption(
+                    "from",
+                    help: "Source element ID",
+                    long: "from"
+                ),
+                .commandOption(
+                    "fromCoords",
+                    help: "Source coordinates (x,y)",
+                    long: "from-coords"
+                ),
+                .commandOption(
+                    "to",
+                    help: "Destination element ID",
+                    long: "to"
+                ),
+                .commandOption(
+                    "toCoords",
+                    help: "Destination coordinates (x,y)",
+                    long: "to-coords"
+                ),
+                .commandOption(
+                    "session",
+                    help: "Session ID (uses latest if not specified)",
+                    long: "session"
+                ),
+                .commandOption(
+                    "duration",
+                    help: "Duration of the swipe in milliseconds",
+                    long: "duration"
+                ),
+                .commandOption(
+                    "steps",
+                    help: "Number of intermediate points for smooth movement",
+                    long: "steps"
+                ),
+            ],
+            flags: [
+                .commandFlag(
+                    "rightButton",
+                    help: "Use right mouse button for drag",
+                    long: "right-button"
+                ),
+            ]
+        )
+    }
+}

@@ -1,0 +1,79 @@
+import Commander
+
+private enum WindowCommandSignatures {
+    static let windowOptions = WindowIdentificationOptions.commanderSignature()
+    static let focusOptions = FocusCommandOptions.commanderSignature()
+}
+
+extension WindowCommand.CloseSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(optionGroups: [WindowCommandSignatures.windowOptions])
+    }
+}
+
+extension WindowCommand.MinimizeSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(optionGroups: [WindowCommandSignatures.windowOptions])
+    }
+}
+
+extension WindowCommand.MaximizeSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(optionGroups: [WindowCommandSignatures.windowOptions])
+    }
+}
+
+extension WindowCommand.MoveSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption("x", help: "New X coordinate", long: "x", short: "x"),
+                .commandOption("y", help: "New Y coordinate", long: "y", short: "y"),
+            ],
+            optionGroups: [WindowCommandSignatures.windowOptions]
+        )
+    }
+}
+
+extension WindowCommand.ResizeSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption("width", help: "New width", long: "width"),
+                .commandOption("height", help: "New height", long: "height"),
+            ],
+            optionGroups: [WindowCommandSignatures.windowOptions]
+        )
+    }
+}
+
+extension WindowCommand.SetBoundsSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption("x", help: "New X coordinate", long: "x", short: "x"),
+                .commandOption("y", help: "New Y coordinate", long: "y", short: "y"),
+                .commandOption("width", help: "New width", long: "width"),
+                .commandOption("height", help: "New height", long: "height"),
+            ],
+            optionGroups: [WindowCommandSignatures.windowOptions]
+        )
+    }
+}
+
+extension WindowCommand.FocusSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(optionGroups: [WindowCommandSignatures.windowOptions, WindowCommandSignatures.focusOptions])
+    }
+}
+
+extension WindowCommand.WindowListSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature(
+            options: [
+                .commandOption("app", help: "Target application", long: "app"),
+                .commandOption("pid", help: "Target application by process ID", long: "pid"),
+            ]
+        )
+    }
+}
