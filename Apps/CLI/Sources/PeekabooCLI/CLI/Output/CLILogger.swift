@@ -49,7 +49,7 @@ final class Logger: @unchecked Sendable {
         self.iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         // Check environment for log level
-        var configuredLevel: LogLevel = .info
+        var configuredLevel: LogLevel = .warning
         if let envLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
             switch envLevel {
             case "trace": configuredLevel = .trace
