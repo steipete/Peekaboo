@@ -111,7 +111,7 @@ struct LearnCommand {
     }
 }
 
-extension LearnCommand: @MainActor AsyncParsableCommand {
+extension LearnCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -126,4 +126,4 @@ extension LearnCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension LearnCommand: @MainActor AsyncRuntimeCommand {}
+extension LearnCommand: AsyncRuntimeCommand {}

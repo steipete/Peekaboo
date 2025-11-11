@@ -481,7 +481,7 @@ nonisolated extension ScreenListData.Position: Sendable, Codable {}
 
 // MARK: - Subcommand Conformances
 
-extension ListCommand.AppsSubcommand: @MainActor AsyncParsableCommand {
+extension ListCommand.AppsSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -497,9 +497,9 @@ extension ListCommand.AppsSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension ListCommand.AppsSubcommand: @MainActor AsyncRuntimeCommand {}
+extension ListCommand.AppsSubcommand: AsyncRuntimeCommand {}
 
-extension ListCommand.WindowsSubcommand: @MainActor AsyncParsableCommand {
+extension ListCommand.WindowsSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -514,9 +514,9 @@ extension ListCommand.WindowsSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension ListCommand.WindowsSubcommand: @MainActor AsyncRuntimeCommand {}
+extension ListCommand.WindowsSubcommand: AsyncRuntimeCommand {}
 
-extension ListCommand.PermissionsSubcommand: @MainActor AsyncParsableCommand {
+extension ListCommand.PermissionsSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -527,9 +527,9 @@ extension ListCommand.PermissionsSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension ListCommand.PermissionsSubcommand: @MainActor AsyncRuntimeCommand {}
+extension ListCommand.PermissionsSubcommand: AsyncRuntimeCommand {}
 
-extension ListCommand.MenuBarSubcommand: @MainActor AsyncParsableCommand {
+extension ListCommand.MenuBarSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -540,9 +540,9 @@ extension ListCommand.MenuBarSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension ListCommand.MenuBarSubcommand: @MainActor AsyncRuntimeCommand {}
+extension ListCommand.MenuBarSubcommand: AsyncRuntimeCommand {}
 
-extension ListCommand.ScreensSubcommand: @MainActor AsyncParsableCommand {
+extension ListCommand.ScreensSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -553,4 +553,4 @@ extension ListCommand.ScreensSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension ListCommand.ScreensSubcommand: @MainActor AsyncRuntimeCommand {}
+extension ListCommand.ScreensSubcommand: AsyncRuntimeCommand {}

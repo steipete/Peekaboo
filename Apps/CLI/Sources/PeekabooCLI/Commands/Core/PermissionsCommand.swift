@@ -70,7 +70,7 @@ struct PermissionsCommand: ParsableCommand {
     }
 }
 
-extension PermissionsCommand.StatusSubcommand: @MainActor AsyncParsableCommand {
+extension PermissionsCommand.StatusSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -81,9 +81,9 @@ extension PermissionsCommand.StatusSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension PermissionsCommand.StatusSubcommand: @MainActor AsyncRuntimeCommand {}
+extension PermissionsCommand.StatusSubcommand: AsyncRuntimeCommand {}
 
-extension PermissionsCommand.GrantSubcommand: @MainActor AsyncParsableCommand {
+extension PermissionsCommand.GrantSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -94,4 +94,4 @@ extension PermissionsCommand.GrantSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension PermissionsCommand.GrantSubcommand: @MainActor AsyncRuntimeCommand {}
+extension PermissionsCommand.GrantSubcommand: AsyncRuntimeCommand {}

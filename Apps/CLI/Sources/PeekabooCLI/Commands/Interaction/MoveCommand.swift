@@ -240,7 +240,7 @@ struct MoveResult: Codable {
 
 // MARK: - Conformances
 
-extension MoveCommand: @MainActor AsyncParsableCommand {
+extension MoveCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -270,4 +270,4 @@ extension MoveCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension MoveCommand: @MainActor AsyncRuntimeCommand {}
+extension MoveCommand: AsyncRuntimeCommand {}

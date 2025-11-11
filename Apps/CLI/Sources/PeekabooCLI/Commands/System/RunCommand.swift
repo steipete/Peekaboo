@@ -143,6 +143,6 @@ private enum ProcessServiceBridge {
     }
 }
 
-extension RunCommand: @MainActor AsyncParsableCommand {}
+extension RunCommand: ParsableCommand {}
 
-extension RunCommand: @MainActor AsyncRuntimeCommand {}
+extension RunCommand: AsyncRuntimeCommand {}

@@ -447,9 +447,7 @@ private enum ImageCaptureBridge {
     }
 }
 
-@MainActor
-
-extension ImageCommand: @MainActor AsyncParsableCommand {
+extension ImageCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -472,4 +470,4 @@ extension ImageCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension ImageCommand: @MainActor AsyncRuntimeCommand {}
+extension ImageCommand: AsyncRuntimeCommand {}

@@ -1010,6 +1010,6 @@ struct AgentCommand {
     }
 }
 
-extension AgentCommand: @MainActor AsyncParsableCommand {}
+extension AgentCommand: ParsableCommand {}
 
-extension AgentCommand: @MainActor AsyncRuntimeCommand {}
+extension AgentCommand: AsyncRuntimeCommand {}

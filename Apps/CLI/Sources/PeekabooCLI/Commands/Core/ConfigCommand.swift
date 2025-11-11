@@ -1240,13 +1240,13 @@ private func outputJSON(_ value: some Encodable, logger: Logger) {
     }
 }
 
-extension ConfigCommand.InitCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.ShowCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.EditCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.ValidateCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.SetCredentialCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.AddProviderCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.ListProvidersCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.TestProviderCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.RemoveProviderCommand: @MainActor AsyncRuntimeCommand {}
-extension ConfigCommand.ModelsProviderCommand: @MainActor AsyncRuntimeCommand {}
+extension ConfigCommand.InitCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.ShowCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.EditCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.ValidateCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.SetCredentialCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.AddProviderCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.ListProvidersCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.TestProviderCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.RemoveProviderCommand: AsyncRuntimeCommand {}
+extension ConfigCommand.ModelsProviderCommand: AsyncRuntimeCommand {}

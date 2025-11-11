@@ -215,6 +215,6 @@ private struct JSONErrorOutput: Codable {
     let executionTime: TimeInterval
 }
 
-extension MenuBarCommand: @MainActor AsyncParsableCommand {}
+extension MenuBarCommand: ParsableCommand {}
 
-extension MenuBarCommand: @MainActor AsyncRuntimeCommand {}
+extension MenuBarCommand: AsyncRuntimeCommand {}

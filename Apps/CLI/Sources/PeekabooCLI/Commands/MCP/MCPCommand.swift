@@ -828,7 +828,7 @@ extension MCPCommand {
     }
 }
 
-extension MCPCommand.List: @MainActor AsyncParsableCommand {
+extension MCPCommand.List: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -849,9 +849,9 @@ extension MCPCommand.List: @MainActor AsyncParsableCommand {
     }
 }
 
-extension MCPCommand.List: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.List: AsyncRuntimeCommand {}
 
-extension MCPCommand.Add: @MainActor AsyncParsableCommand {
+extension MCPCommand.Add: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -875,36 +875,36 @@ extension MCPCommand.Add: @MainActor AsyncParsableCommand {
     }
 }
 
-extension MCPCommand.Add: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Add: AsyncRuntimeCommand {}
 
-extension MCPCommand.Remove: @MainActor AsyncParsableCommand {}
+extension MCPCommand.Remove: ParsableCommand {}
 
-extension MCPCommand.Remove: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Remove: AsyncRuntimeCommand {}
 
-extension MCPCommand.Test: @MainActor AsyncParsableCommand {}
+extension MCPCommand.Test: ParsableCommand {}
 
-extension MCPCommand.Test: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Test: AsyncRuntimeCommand {}
 
-extension MCPCommand.Info: @MainActor AsyncParsableCommand {}
+extension MCPCommand.Info: ParsableCommand {}
 
-extension MCPCommand.Info: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Info: AsyncRuntimeCommand {}
 
-extension MCPCommand.Enable: @MainActor AsyncParsableCommand {}
+extension MCPCommand.Enable: ParsableCommand {}
 
-extension MCPCommand.Enable: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Enable: AsyncRuntimeCommand {}
 
-extension MCPCommand.Disable: @MainActor AsyncParsableCommand {}
+extension MCPCommand.Disable: ParsableCommand {}
 
-extension MCPCommand.Disable: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Disable: AsyncRuntimeCommand {}
 
-extension MCPCommand.Inspect: @MainActor AsyncParsableCommand {}
+extension MCPCommand.Inspect: ParsableCommand {}
 
-extension MCPCommand.Inspect: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Inspect: AsyncRuntimeCommand {}
 
-extension MCPCommand.Serve: @MainActor AsyncParsableCommand {}
+extension MCPCommand.Serve: ParsableCommand {}
 
-extension MCPCommand.Serve: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Serve: AsyncRuntimeCommand {}
 
-extension MCPCommand.Call: @MainActor AsyncParsableCommand {}
+extension MCPCommand.Call: ParsableCommand {}
 
-extension MCPCommand.Call: @MainActor AsyncRuntimeCommand {}
+extension MCPCommand.Call: AsyncRuntimeCommand {}

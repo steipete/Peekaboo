@@ -154,7 +154,7 @@ struct ScrollResult: Codable {
 
 // MARK: - Conformances
 
-extension ScrollCommand: @MainActor AsyncParsableCommand {
+extension ScrollCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -184,4 +184,4 @@ extension ScrollCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension ScrollCommand: @MainActor AsyncRuntimeCommand {}
+extension ScrollCommand: AsyncRuntimeCommand {}

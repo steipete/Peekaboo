@@ -252,6 +252,6 @@ struct Payload: Encodable {
     }
 }
 
-extension ToolsCommand: @MainActor AsyncParsableCommand {}
+extension ToolsCommand: ParsableCommand {}
 
-extension ToolsCommand: @MainActor AsyncRuntimeCommand {}
+extension ToolsCommand: AsyncRuntimeCommand {}

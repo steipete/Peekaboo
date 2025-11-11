@@ -196,7 +196,7 @@ struct SwipeResult: Codable {
 
 // MARK: - Conformances
 
-extension SwipeCommand: @MainActor AsyncParsableCommand {
+extension SwipeCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -234,4 +234,4 @@ extension SwipeCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension SwipeCommand: @MainActor AsyncRuntimeCommand {}
+extension SwipeCommand: AsyncRuntimeCommand {}

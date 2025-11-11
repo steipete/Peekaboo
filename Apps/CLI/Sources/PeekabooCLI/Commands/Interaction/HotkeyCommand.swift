@@ -113,7 +113,7 @@ struct HotkeyResult: Codable {
 
 // MARK: - Conformances
 
-extension HotkeyCommand: @MainActor AsyncParsableCommand {
+extension HotkeyCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -145,4 +145,4 @@ extension HotkeyCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension HotkeyCommand: @MainActor AsyncRuntimeCommand {}
+extension HotkeyCommand: AsyncRuntimeCommand {}

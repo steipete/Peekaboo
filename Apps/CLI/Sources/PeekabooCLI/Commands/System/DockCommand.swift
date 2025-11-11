@@ -315,7 +315,7 @@ extension DockCommand {
 
 // MARK: - Subcommand Conformances
 
-extension DockCommand.LaunchSubcommand: @MainActor AsyncParsableCommand {
+extension DockCommand.LaunchSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "launch", abstract: "Launch an application from the Dock")
@@ -323,9 +323,9 @@ extension DockCommand.LaunchSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension DockCommand.LaunchSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DockCommand.LaunchSubcommand: AsyncRuntimeCommand {}
 
-extension DockCommand.RightClickSubcommand: @MainActor AsyncParsableCommand {
+extension DockCommand.RightClickSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "right-click", abstract: "Right-click a Dock item and optionally select from menu")
@@ -333,9 +333,9 @@ extension DockCommand.RightClickSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension DockCommand.RightClickSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DockCommand.RightClickSubcommand: AsyncRuntimeCommand {}
 
-extension DockCommand.HideSubcommand: @MainActor AsyncParsableCommand {
+extension DockCommand.HideSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "hide", abstract: "Hide the Dock")
@@ -343,9 +343,9 @@ extension DockCommand.HideSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension DockCommand.HideSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DockCommand.HideSubcommand: AsyncRuntimeCommand {}
 
-extension DockCommand.ShowSubcommand: @MainActor AsyncParsableCommand {
+extension DockCommand.ShowSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "show", abstract: "Show the Dock")
@@ -353,9 +353,9 @@ extension DockCommand.ShowSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension DockCommand.ShowSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DockCommand.ShowSubcommand: AsyncRuntimeCommand {}
 
-extension DockCommand.ListSubcommand: @MainActor AsyncParsableCommand {
+extension DockCommand.ListSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "list", abstract: "List all Dock items")
@@ -363,7 +363,7 @@ extension DockCommand.ListSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension DockCommand.ListSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DockCommand.ListSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Error Handling
 

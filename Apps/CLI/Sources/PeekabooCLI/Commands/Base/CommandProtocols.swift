@@ -1,4 +1,5 @@
 @preconcurrency import ArgumentParser
+import Dispatch
 import Foundation
 
 // MARK: - Runtime Command Protocol
@@ -6,38 +7,39 @@ import Foundation
 /// Protocol for commands that accept runtime context injection.
 /// Commands conforming to this protocol receive a `CommandRuntime` instance
 /// containing logger, services, and configuration instead of accessing singletons.
-protocol AsyncRuntimeCommand: AsyncParsableCommand {
+@MainActor
+protocol AsyncRuntimeCommand: ParsableCommand {
     /// Run the command with injected runtime context.
-    @MainActor
     mutating func run(using runtime: CommandRuntime) async throws
 }
 
 extension AsyncRuntimeCommand {
-    /// Default run() implementation that creates a CommandRuntime from options.
-    /// Commands must define `runtimeOptions: CommandRuntimeOptions` to use this.
-    @MainActor
-    mutating func run() async throws {
-        // Access runtimeOptions via reflection to create runtime
+    /// Default synchronous run() implementation that builds the runtime context
+    /// and executes the async implementation on the main actor.
+    mutating func run() throws {
         let mirror = Mirror(reflecting: self)
         guard let options = mirror.children.first(where: { $0.label == "runtimeOptions" })?.value as? CommandRuntimeOptions else {
             fatalError("AsyncRuntimeCommand requires @OptionGroup var runtimeOptions: CommandRuntimeOptions")
         }
-
         let runtime = CommandRuntime(options: options)
-        try await self.run(using: runtime)
-    }
-}
 
-/// Main-actor-only commands that still use the shared runtime plumbing.
-@MainActor
-protocol MainActorRuntimeCommand: AsyncRuntimeCommand {
-    @MainActor
-    mutating func runMainActor(using runtime: CommandRuntime) async throws
-}
+        var commandCopy = self
+        let semaphore = DispatchSemaphore(value: 0)
+        var thrownError: Error?
 
-extension MainActorRuntimeCommand {
-    @MainActor
-    mutating func run(using runtime: CommandRuntime) async throws {
-        try await self.runMainActor(using: runtime)
+        Task { @MainActor in
+            do {
+                try await commandCopy.run(using: runtime)
+            } catch {
+                thrownError = error
+            }
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        self = commandCopy
+        if let error = thrownError {
+            throw error
+        }
     }
 }

@@ -840,20 +840,20 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
 }
 
-extension AppCommand.LaunchSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {}
+extension AppCommand.LaunchSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {}
 
-extension AppCommand.QuitSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
+extension AppCommand.QuitSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
 ApplicationResolver {}
 
-extension AppCommand.HideSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
+extension AppCommand.HideSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvablePositional, ApplicationResolver {}
 
-extension AppCommand.UnhideSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
+extension AppCommand.UnhideSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvablePositional, ApplicationResolver {}
 
-extension AppCommand.SwitchSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {}
+extension AppCommand.SwitchSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {}
 
-extension AppCommand.ListSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {}
+extension AppCommand.ListSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {}
 
-extension AppCommand.RelaunchSubcommand: @MainActor AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
+extension AppCommand.RelaunchSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvablePositional, ApplicationResolver {}

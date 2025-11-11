@@ -321,14 +321,14 @@ private struct AgentPermissionActionResult: Codable {
     let granted: Bool?
 }
 
-extension PermissionCommand.StatusSubcommand: @MainActor AsyncParsableCommand {}
+extension PermissionCommand.StatusSubcommand: ParsableCommand {}
 
-extension PermissionCommand.StatusSubcommand: @MainActor AsyncRuntimeCommand {}
+extension PermissionCommand.StatusSubcommand: AsyncRuntimeCommand {}
 
-extension PermissionCommand.RequestScreenRecordingSubcommand: @MainActor AsyncParsableCommand {}
+extension PermissionCommand.RequestScreenRecordingSubcommand: ParsableCommand {}
 
-extension PermissionCommand.RequestScreenRecordingSubcommand: @MainActor AsyncRuntimeCommand {}
+extension PermissionCommand.RequestScreenRecordingSubcommand: AsyncRuntimeCommand {}
 
-extension PermissionCommand.RequestAccessibilitySubcommand: @MainActor AsyncParsableCommand {}
+extension PermissionCommand.RequestAccessibilitySubcommand: ParsableCommand {}
 
-extension PermissionCommand.RequestAccessibilitySubcommand: @MainActor AsyncRuntimeCommand {}
+extension PermissionCommand.RequestAccessibilitySubcommand: AsyncRuntimeCommand {}

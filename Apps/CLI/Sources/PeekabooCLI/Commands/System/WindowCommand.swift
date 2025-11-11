@@ -774,7 +774,7 @@ struct WindowActionResult: Codable {
 
 // MARK: - Subcommand Conformances
 
-extension WindowCommand.MoveSubcommand: @MainActor AsyncParsableCommand {
+extension WindowCommand.MoveSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "move", abstract: "Move a window to a new position")
@@ -782,9 +782,9 @@ extension WindowCommand.MoveSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension WindowCommand.MoveSubcommand: @MainActor AsyncRuntimeCommand {}
+extension WindowCommand.MoveSubcommand: AsyncRuntimeCommand {}
 
-extension WindowCommand.ResizeSubcommand: @MainActor AsyncParsableCommand {
+extension WindowCommand.ResizeSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "resize", abstract: "Resize a window")
@@ -792,9 +792,9 @@ extension WindowCommand.ResizeSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension WindowCommand.ResizeSubcommand: @MainActor AsyncRuntimeCommand {}
+extension WindowCommand.ResizeSubcommand: AsyncRuntimeCommand {}
 
-extension WindowCommand.SetBoundsSubcommand: @MainActor AsyncParsableCommand {
+extension WindowCommand.SetBoundsSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "set-bounds", abstract: "Set window position and size in one operation")
@@ -802,9 +802,9 @@ extension WindowCommand.SetBoundsSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension WindowCommand.SetBoundsSubcommand: @MainActor AsyncRuntimeCommand {}
+extension WindowCommand.SetBoundsSubcommand: AsyncRuntimeCommand {}
 
-extension WindowCommand.WindowListSubcommand: @MainActor AsyncParsableCommand {
+extension WindowCommand.WindowListSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "list", abstract: "List windows for an application")
@@ -812,9 +812,9 @@ extension WindowCommand.WindowListSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension WindowCommand.WindowListSubcommand: @MainActor AsyncRuntimeCommand {}
+extension WindowCommand.WindowListSubcommand: AsyncRuntimeCommand {}
 
-extension WindowCommand.CloseSubcommand: @MainActor AsyncParsableCommand {
+extension WindowCommand.CloseSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "close", abstract: "Close a window")
@@ -822,9 +822,9 @@ extension WindowCommand.CloseSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension WindowCommand.CloseSubcommand: @MainActor AsyncRuntimeCommand {}
+extension WindowCommand.CloseSubcommand: AsyncRuntimeCommand {}
 
-extension WindowCommand.MinimizeSubcommand: @MainActor AsyncParsableCommand {
+extension WindowCommand.MinimizeSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "minimize", abstract: "Minimize a window to the Dock")
@@ -832,9 +832,9 @@ extension WindowCommand.MinimizeSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension WindowCommand.MinimizeSubcommand: @MainActor AsyncRuntimeCommand {}
+extension WindowCommand.MinimizeSubcommand: AsyncRuntimeCommand {}
 
-extension WindowCommand.MaximizeSubcommand: @MainActor AsyncParsableCommand {
+extension WindowCommand.MaximizeSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(commandName: "maximize", abstract: "Maximize a window (full screen)")
@@ -842,9 +842,9 @@ extension WindowCommand.MaximizeSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension WindowCommand.MaximizeSubcommand: @MainActor AsyncRuntimeCommand {}
+extension WindowCommand.MaximizeSubcommand: AsyncRuntimeCommand {}
 
-extension WindowCommand.FocusSubcommand: @MainActor AsyncParsableCommand {
+extension WindowCommand.FocusSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -869,4 +869,4 @@ extension WindowCommand.FocusSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension WindowCommand.FocusSubcommand: @MainActor AsyncRuntimeCommand {}
+extension WindowCommand.FocusSubcommand: AsyncRuntimeCommand {}

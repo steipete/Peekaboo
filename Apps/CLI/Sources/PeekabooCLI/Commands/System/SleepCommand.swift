@@ -64,6 +64,6 @@ struct SleepResult: Codable {
     let actual_duration: Int
 }
 
-extension SleepCommand: @MainActor AsyncParsableCommand {}
+extension SleepCommand: ParsableCommand {}
 
-extension SleepCommand: @MainActor AsyncRuntimeCommand {}
+extension SleepCommand: AsyncRuntimeCommand {}

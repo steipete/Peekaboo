@@ -137,7 +137,7 @@ struct PressResult: Codable {
 
 // MARK: - Conformances
 
-extension PressCommand: @MainActor AsyncParsableCommand {
+extension PressCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -179,4 +179,4 @@ extension PressCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension PressCommand: @MainActor AsyncRuntimeCommand {}
+extension PressCommand: AsyncRuntimeCommand {}

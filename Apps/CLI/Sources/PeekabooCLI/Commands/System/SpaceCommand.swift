@@ -405,7 +405,7 @@ struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, Output
     }
 }
 
-extension ListSubcommand: @MainActor AsyncParsableCommand {
+extension ListSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -416,9 +416,9 @@ extension ListSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension ListSubcommand: @MainActor AsyncRuntimeCommand {}
+extension ListSubcommand: AsyncRuntimeCommand {}
 
-extension SwitchSubcommand: @MainActor AsyncParsableCommand {
+extension SwitchSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -429,9 +429,9 @@ extension SwitchSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension SwitchSubcommand: @MainActor AsyncRuntimeCommand {}
+extension SwitchSubcommand: AsyncRuntimeCommand {}
 
-extension MoveWindowSubcommand: @MainActor AsyncParsableCommand {
+extension MoveWindowSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -442,7 +442,7 @@ extension MoveWindowSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension MoveWindowSubcommand: @MainActor AsyncRuntimeCommand {}
+extension MoveWindowSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Response Types
 

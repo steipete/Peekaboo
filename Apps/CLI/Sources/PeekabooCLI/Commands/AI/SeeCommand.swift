@@ -1025,10 +1025,10 @@ extension SeeCommand {
     }
 }
 
-extension SeeCommand: @MainActor AsyncParsableCommand {
+extension SeeCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe { VisionToolDefinitions.see.commandConfiguration }
     }
 }
 
-extension SeeCommand: @MainActor AsyncRuntimeCommand {}
+extension SeeCommand: AsyncRuntimeCommand {}

@@ -329,10 +329,10 @@ extension ClickCommand {
     }
 }
 
-extension ClickCommand: @MainActor AsyncParsableCommand {
+extension ClickCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         UIAutomationToolDefinitions.click.commandConfiguration
     }
 }
 
-extension ClickCommand: @MainActor AsyncRuntimeCommand {}
+extension ClickCommand: AsyncRuntimeCommand {}

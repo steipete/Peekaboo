@@ -440,23 +440,23 @@ struct DialogListResult: Codable {
     }
 }
 
-extension DialogCommand.InputSubcommand: @MainActor AsyncParsableCommand {}
+extension DialogCommand.InputSubcommand: ParsableCommand {}
 
-extension DialogCommand.InputSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DialogCommand.InputSubcommand: AsyncRuntimeCommand {}
 
-extension DialogCommand.FileSubcommand: @MainActor AsyncParsableCommand {}
+extension DialogCommand.FileSubcommand: ParsableCommand {}
 
-extension DialogCommand.FileSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DialogCommand.FileSubcommand: AsyncRuntimeCommand {}
 
-extension DialogCommand.DismissSubcommand: @MainActor AsyncParsableCommand {}
+extension DialogCommand.DismissSubcommand: ParsableCommand {}
 
-extension DialogCommand.DismissSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DialogCommand.DismissSubcommand: AsyncRuntimeCommand {}
 
-extension DialogCommand.ListSubcommand: @MainActor AsyncParsableCommand {}
+extension DialogCommand.ListSubcommand: ParsableCommand {}
 
-extension DialogCommand.ListSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 
-extension DialogCommand.ClickSubcommand: @MainActor AsyncParsableCommand {
+extension DialogCommand.ClickSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -467,7 +467,7 @@ extension DialogCommand.ClickSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension DialogCommand.ClickSubcommand: @MainActor AsyncRuntimeCommand {}
+extension DialogCommand.ClickSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Error Handling
 

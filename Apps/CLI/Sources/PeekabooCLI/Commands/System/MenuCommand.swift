@@ -732,7 +732,7 @@ extension MenuCommand {
 
 // MARK: - Subcommand Conformances
 
-extension MenuCommand.ClickSubcommand: @MainActor AsyncParsableCommand {
+extension MenuCommand.ClickSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -743,9 +743,9 @@ extension MenuCommand.ClickSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension MenuCommand.ClickSubcommand: @MainActor AsyncRuntimeCommand {}
+extension MenuCommand.ClickSubcommand: AsyncRuntimeCommand {}
 
-extension MenuCommand.ClickExtraSubcommand: @MainActor AsyncParsableCommand {
+extension MenuCommand.ClickExtraSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -756,9 +756,9 @@ extension MenuCommand.ClickExtraSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension MenuCommand.ClickExtraSubcommand: @MainActor AsyncRuntimeCommand {}
+extension MenuCommand.ClickExtraSubcommand: AsyncRuntimeCommand {}
 
-extension MenuCommand.ListSubcommand: @MainActor AsyncParsableCommand {
+extension MenuCommand.ListSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -769,9 +769,9 @@ extension MenuCommand.ListSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension MenuCommand.ListSubcommand: @MainActor AsyncRuntimeCommand {}
+extension MenuCommand.ListSubcommand: AsyncRuntimeCommand {}
 
-extension MenuCommand.ListAllSubcommand: @MainActor AsyncParsableCommand {
+extension MenuCommand.ListAllSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -782,7 +782,7 @@ extension MenuCommand.ListAllSubcommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension MenuCommand.ListAllSubcommand: @MainActor AsyncRuntimeCommand {}
+extension MenuCommand.ListAllSubcommand: AsyncRuntimeCommand {}
 
 // MARK: - Data Structures
 

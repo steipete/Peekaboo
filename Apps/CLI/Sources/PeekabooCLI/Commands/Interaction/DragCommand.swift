@@ -264,7 +264,7 @@ private struct DragResult: Codable {
 
 // MARK: - Conformances
 
-extension DragCommand: @MainActor AsyncParsableCommand {
+extension DragCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -286,4 +286,4 @@ extension DragCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension DragCommand: @MainActor AsyncRuntimeCommand {}
+extension DragCommand: AsyncRuntimeCommand {}

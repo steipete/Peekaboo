@@ -244,7 +244,7 @@ struct TypeCommandResult: Codable {
 
 // MARK: - Conformances
 
-extension TypeCommand: @MainActor AsyncParsableCommand {
+extension TypeCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
@@ -291,4 +291,4 @@ extension TypeCommand: @MainActor AsyncParsableCommand {
     }
 }
 
-extension TypeCommand: @MainActor AsyncRuntimeCommand {}
+extension TypeCommand: AsyncRuntimeCommand {}

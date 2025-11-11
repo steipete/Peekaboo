@@ -175,6 +175,6 @@ private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool,
     }
 }
 
-extension CleanCommand: @MainActor AsyncParsableCommand {}
+extension CleanCommand: ParsableCommand {}
 
-extension CleanCommand: @MainActor AsyncRuntimeCommand {}
+extension CleanCommand: AsyncRuntimeCommand {}
