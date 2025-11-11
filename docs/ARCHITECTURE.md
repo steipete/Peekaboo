@@ -130,6 +130,8 @@ let visualizerClient = VisualizationClient.shared
 _ = await visualizerClient.showClickFeedback(at: clickPoint, type: clickType)
 ```
 
+Behind the scenes the client serializes a `VisualizerEvent` into `~/Library/Application Support/PeekabooShared/VisualizerEvents/<uuid>.json` and posts `boo.peekaboo.visualizer.event` via `NSDistributedNotificationCenter`. When Peekaboo.app is alive its `VisualizerEventReceiver` loads the payload and hands it to `VisualizerCoordinator`; otherwise the event is silently dropped and execution continues.
+
 ## Data Flow Architecture
 
 ### Automation Workflow

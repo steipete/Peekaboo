@@ -6,23 +6,21 @@
 import Foundation
 
 extension PeekabooServices {
-    /// Ensures the visualizer client is connected if running from CLI
-    /// This should be called early in CLI initialization
+    /// Prepares the visualizer event bridge when running from the CLI.
+    /// Call this early during startup so the shared storage exists before commands emit events.
     @MainActor
     public func ensureVisualizerConnection() {
-        // Check if we're running as CLI (not Mac app)
         let isMacApp = Bundle.main.bundleIdentifier?.hasPrefix("boo.peekaboo.mac") == true
 
-        if !isMacApp {
-            // Force connection by accessing the visualization client
-            VisualizationClient.shared.connect()
+        guard !isMacApp else { return }
 
-            // Also trigger service initialization to ensure connections are made
-            _ = self.screenCapture
-            _ = self.automation
-            _ = self.windows
-            _ = self.menu
-            _ = self.dialogs
-        }
+        VisualizationClient.shared.connect()
+
+        // Touch frequently used services so they are ready once commands execute.
+        _ = self.screenCapture
+        _ = self.automation
+        _ = self.windows
+        _ = self.menu
+        _ = self.dialogs
     }
 }

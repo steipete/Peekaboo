@@ -1,31 +1,6 @@
-//
-//  DialogInteractionView.swift
-//  Peekaboo
-//
-//  Created by Peekaboo on 2025-01-30.
-//
-
 import PeekabooCore
+import PeekabooFoundation
 import SwiftUI
-
-/// Local dialog element type for visualization
-enum DialogElementType: String, CaseIterable {
-    case button
-    case textField
-    case checkbox
-    case radioButton
-    case dropdown
-}
-
-/// Dialog action type for visualization
-enum DialogActionType: String, CaseIterable {
-    case clickButton
-    case enterText
-    case toggle
-    case select
-    case handleFileDialog
-    case dismiss
-}
 
 /// Animated dialog interaction visualization (button clicks, text input, etc.)
 struct DialogInteractionView: View {
@@ -204,6 +179,8 @@ extension DialogElementType {
             .orange
         case .dropdown:
             .cyan
+        case .alert, .other:
+            .pink
         }
     }
 
@@ -217,6 +194,8 @@ extension DialogElementType {
             4
         case .dropdown:
             6
+        case .alert, .other:
+            10
         }
     }
 }

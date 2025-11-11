@@ -192,21 +192,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Visualizer components
     var visualizerCoordinator: VisualizerCoordinator?
-    private var visualizerXPCService: VisualizerXPCService?
-    private let visualizerBrokerHost = VisualizerEndpointBrokerHost.shared
+    private var visualizerEventReceiver: VisualizerEventReceiver?
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
+        NSLog("PeekabooApp: applicationDidFinishLaunching")
 
         // Initialize dock icon manager (it will set the activation policy based on settings) - Test!
         // Don't set activation policy here - let DockIconManager handle it
 
-        self.visualizerBrokerHost.startIfNeeded()
-
         // Initialize visualizer components
         self.visualizerCoordinator = VisualizerCoordinator()
         if let coordinator = self.visualizerCoordinator {
-            self.visualizerXPCService = VisualizerXPCService(visualizerCoordinator: coordinator)
+            self.visualizerEventReceiver = VisualizerEventReceiver(visualizerCoordinator: coordinator)
         }
 
         // Status bar will be created after state is connected
@@ -258,6 +256,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_: NSApplication) -> Bool {
         false // Menu bar app stays running
+    }
+
+    func applicationWillTerminate(_: Notification) {
     }
 
     // MARK: - Window Management

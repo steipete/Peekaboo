@@ -45,23 +45,6 @@ public struct ToolOutput: Sendable {
     }
 }
 
-// MARK: - Visualization Protocols
-
-/// Protocol for visualizer XPC service
-public protocol VisualizerXPCProtocol {
-    func showScreenshotFlash(in rect: CGRect, showGhost: Bool, reply: @escaping (Bool) -> Void)
-    func showClickFeedback(at point: CGPoint, type: String, reply: @escaping (Bool) -> Void)
-    func showTypingFeedback(keys: [String], duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    func showScrollFeedback(at point: CGPoint, direction: String, amount: Int, reply: @escaping (Bool) -> Void)
-    func showMouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    func showSwipePath(from: CGPoint, to: CGPoint, duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    func showHotkeyPress(keys: [String], duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    func showMenuNavigation(menuPath: [String], duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    func showDialogInteraction(action: String, duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    func showAnnotations(elements: [[String: String]], duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    func hideAllAnimations(reply: @escaping (Bool) -> Void)
-}
-
 // MARK: - Configuration Protocols
 
 /// Protocol for configuration providers

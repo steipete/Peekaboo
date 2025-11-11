@@ -99,9 +99,9 @@ public final class DialogService: DialogServiceProtocol {
         // Show dialog interaction visual feedback
         if buttonBounds != .zero {
             _ = await self.visualizerClient.showDialogInteraction(
-                element: "button",
+                element: .button,
                 elementRect: buttonBounds,
-                action: "click")
+                action: .clickButton)
         }
 
         // Click the button
@@ -182,9 +182,9 @@ public final class DialogService: DialogServiceProtocol {
         // Show dialog interaction visual feedback for text field
         if fieldBounds != .zero {
             _ = await self.visualizerClient.showDialogInteraction(
-                element: "textField",
+                element: .textField,
                 elementRect: fieldBounds,
-                action: "typeText")
+                action: .enterText)
         }
 
         // Focus the field

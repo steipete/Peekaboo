@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 
 /// Protocol defining dialog and alert management operations
 @MainActor
@@ -99,14 +100,6 @@ public struct DialogActionResult: Sendable {
         self.action = action
         self.details = details
     }
-}
-
-/// Type of dialog action performed
-public enum DialogActionType: String, Sendable {
-    case clickButton = "click_button"
-    case enterText = "enter_text"
-    case handleFileDialog = "handle_file_dialog"
-    case dismiss
 }
 
 /// Information about dialog elements

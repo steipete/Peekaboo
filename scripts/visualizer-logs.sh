@@ -11,7 +11,7 @@ Options:
   --predicate <expr>     Override the default unified logging predicate.
   -h, --help             Display this help message.
 
-The default predicate captures all VisualizationClient/VisualizerXPC traffic
+The default predicate captures all VisualizationClient/VisualizerEventReceiver traffic
 on the `boo.peekaboo.core` and `boo.peekaboo.mac` subsystems.
 USAGE
 }

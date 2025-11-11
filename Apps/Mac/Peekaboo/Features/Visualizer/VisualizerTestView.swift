@@ -237,9 +237,9 @@ struct VisualizerTestView: View {
     func testDialogInteraction() async {
         let rect = CGRect(x: 350, y: 250, width: 120, height: 40)
         _ = await self.coordinator.showDialogInteraction(
-            element: DialogElementType.button,
+            element: .button,
             elementRect: rect,
-            action: DialogActionType.clickButton)
+            action: .clickButton)
     }
 
     func testSpaceSwitch() async {

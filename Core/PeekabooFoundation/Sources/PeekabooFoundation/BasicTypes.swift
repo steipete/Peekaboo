@@ -28,7 +28,7 @@ public enum ElementType: String, Sendable, Codable {
 // MARK: - Click Types
 
 /// Type of click operation
-public enum ClickType: String, Sendable {
+public enum ClickType: String, Sendable, Codable {
     case single
     case right
     case double
@@ -37,7 +37,7 @@ public enum ClickType: String, Sendable {
 // MARK: - Scroll & Swipe
 
 /// Direction for scroll operations
-public enum ScrollDirection: String, Sendable {
+public enum ScrollDirection: String, Sendable, Codable {
     case up
     case down
     case left
@@ -50,6 +50,29 @@ public enum SwipeDirection: String, Sendable {
     case down
     case left
     case right
+}
+
+// MARK: - Dialog Interactions
+
+/// Elements that appear in dialog interactions
+public enum DialogElementType: String, Sendable, Codable {
+    case button
+    case textField
+    case checkbox
+    case radioButton
+    case dropdown
+    case alert
+    case other
+}
+
+/// Actions performed during dialog interactions
+public enum DialogActionType: String, Sendable, Codable {
+    case clickButton = "click_button"
+    case enterText = "enter_text"
+    case handleFileDialog = "handle_file_dialog"
+    case dismiss
+    case toggle
+    case select
 }
 
 // MARK: - Keyboard

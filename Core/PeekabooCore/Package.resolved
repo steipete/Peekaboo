@@ -1,15 +1,6 @@
 {
-  "originHash" : "bca5325cd495eef1dc528cde00e04451bcf2b22596c4f7d635d5787812d412d4",
+  "originHash" : "ad204ac5c5ec914fe141b4086bab6d535dddef43e56ea814cd74352ca5d6310b",
   "pins" : [
-    {
-      "identity" : "asyncxpcconnection",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ChimeHQ/AsyncXPCConnection.git",
-      "state" : {
-        "revision" : "da31dbcaa1b57949e46dcc19360b17d1a8de06bd",
-        "version" : "1.3.0"
-      }
-    },
     {
       "identity" : "eventsource",
       "kind" : "remoteSourceControl",

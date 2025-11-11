@@ -1,3 +1,10 @@
+---
+summary: 'Peekaboo visual feedback architecture and animation catalog'
+read_when:
+  - Designing or debugging visualizer animations
+  - Touching visual feedback settings or transport code
+---
+
 # Peekaboo Visual Feedback System
 
 ## Overview
@@ -8,17 +15,18 @@ The Peekaboo Visual Feedback System provides delightful, informative visual indi
 
 ### Core Design
 - **Integration**: Built directly into Peekaboo.app
-- **Communication**: XPC service (`boo.peekaboo.visualizer`) for CLI → App communication
-- **Fallback**: CLI/MCP work normally without visual feedback if app isn't running
+- **Communication**: Distributed notifications (`boo.peekaboo.visualizer.event`) + shared JSON envelopes written by `VisualizationClient`
+- **Storage**: Events live in `~/Library/Application Support/PeekabooShared/VisualizerEvents` (override with `PEEKABOO_VISUALIZER_STORAGE`)
+- **Fallback**: CLI/MCP work normally without visual feedback if the app isn't running (events are simply dropped)
 - **Performance**: GPU-accelerated SwiftUI animations with minimal overhead
 
 ### Communication Flow
 ```
-MCP Server → peekaboo CLI → XPC → Peekaboo.app → Visual Feedback
-                    ↓
-            (no app running)
-                    ↓
-            Text-only output
+MCP Server → peekaboo CLI → VisualizerEventStore → Distributed Notification → Peekaboo.app → Visual Feedback
+                                ↓
+                        (no app running)
+                                ↓
+                        Event file cleaned, CLI logs warning
 ```
 
 ## Visual Feedback Designs
@@ -113,23 +121,20 @@ MCP Server → peekaboo CLI → XPC → Peekaboo.app → Visual Feedback
 
 ## Implementation Details
 
-### XPC Service
+### Notification Bridge
 
-```swift
-// In Peekaboo.app
-@objc protocol VisualizerXPCProtocol {
-    func showScreenshotFlash(in rect: CGRect, reply: @escaping (Bool) -> Void)
-    func showClickFeedback(at point: CGPoint, type: String, reply: @escaping (Bool) -> Void)
-    func showTypingFeedback(keys: [String], reply: @escaping (Bool) -> Void)
-    func showScrollFeedback(at point: CGPoint, direction: String, amount: Int, reply: @escaping (Bool) -> Void)
-    // ... other feedback methods
-}
-```
+- `VisualizationClient` encodes strongly typed `VisualizerEvent.Payload` values (screenshot flash, click feedback, annotated screenshot, etc.) and writes each event to `<UUID>.json` inside the shared VisualizerEvents directory.
+- After persisting the payload, the client posts `DistributedNotificationCenter.default().post(name: .visualizerEventDispatched, object: "<uuid>|<kind>")`. No `userInfo` is attached so the API remains sandbox-safe.
+- `VisualizerEventReceiver` (in Peekaboo.app) listens for that notification name, loads the referenced JSON via `VisualizerEventStore.loadEvent(id:)`, calls the appropriate method on `VisualizerCoordinator`, and then deletes the file. If the app isn’t running, nothing consumes the event—exactly the desired “best effort” semantics.
+- Both sides periodically call `VisualizerEventStore.cleanup(olderThan:)` so abandoned files (e.g., when the app never launched) are removed automatically.
 
-### Mach Service Name
-- **Service ID**: `boo.peekaboo.visualizer`
-- **Registered in**: Peekaboo.app's Info.plist
-- **Connection from**: CLI via PeekabooCore
+### Storage Layout
+
+- **Directory**: `~/Library/Application Support/PeekabooShared/VisualizerEvents`
+- **Overrides**:
+  - `PEEKABOO_VISUALIZER_STORAGE=/custom/path` – force a different directory (great for tests)
+  - `PEEKABOO_VISUALIZER_APP_GROUP=com.example.group` – resolve the store inside an App Group container
+- **Format**: JSON with ISO8601 timestamps, base64 `Data` blobs, and strongly typed enums (`ClickType`, `ScrollDirection`, `WindowOperation`, etc.)
 
 ### SwiftUI Animation Components
 
@@ -153,8 +158,11 @@ Located in `/Apps/Mac/Peekaboo/Features/Visualizer/`:
 
 ### Environment Variables
 ```bash
-PEEKABOO_VISUAL_FEEDBACK=false  # Disable all visual feedback
-PEEKABOO_VISUAL_SCREENSHOTS=false  # Disable just screenshot flash
+PEEKABOO_VISUAL_FEEDBACK=false            # Disable all visual feedback
+PEEKABOO_VISUAL_SCREENSHOTS=false         # Disable just screenshot flash
+PEEKABOO_VISUALIZER_STDOUT=true           # Force VisualizationClient logs to stderr/stdout
+PEEKABOO_VISUALIZER_STORAGE=/tmp/events   # Override the shared events directory
+PEEKABOO_VISUALIZER_APP_GROUP=group.boo   # Resolve storage inside an App Group container
 ```
 
 ### User Preferences (in Peekaboo.app)
@@ -218,23 +226,22 @@ Most importantly, it's completely optional - the CLI and MCP continue to work pe
 
 ## Implementation Checklist
 
-### Phase 1: Foundation (XPC & Infrastructure)
+### Phase 1: Foundation (Notification Bridge)
 
-#### XPC Service Setup
-- [ ] Create `VisualizerXPCProtocol.swift` in PeekabooCore
-  - [ ] Define protocol with all feedback methods
-  - [ ] Add proper NSSecureCoding support
-  - [ ] Include error handling callbacks
-- [ ] Add XPC service to Peekaboo.app
-  - [ ] Update Info.plist with `boo.peekaboo.visualizer` service
-  - [ ] Create `VisualizerXPCService.swift` implementation
-  - [ ] Add XPC listener in AppDelegate
-  - [ ] Test connection from CLI
-- [ ] Create `VisualizationClient.swift` in PeekabooCore
-  - [ ] Auto-detect if Peekaboo.app is running
-  - [ ] Establish XPC connection
-  - [ ] Implement fallback behavior
-  - [ ] Add connection retry logic
+#### Event Store & Transport
+- [x] Create `VisualizerEventStore.swift` in PeekabooCore
+- [x] Persist events as JSON (with base64 `Data`) inside `~/Library/Application Support/PeekabooShared/VisualizerEvents`
+- [x] Provide cleanup helpers and environment overrides (`PEEKABOO_VISUALIZER_STORAGE`, `PEEKABOO_VISUALIZER_APP_GROUP`)
+
+#### Client Dispatch
+- [x] Update `VisualizationClient` to emit `VisualizerEvent.Payload` values instead of XPC RPCs
+- [x] Post distributed notifications (`boo.peekaboo.visualizer.event`) containing `<uuid>|<kind>`
+- [x] Respect `PEEKABOO_VISUAL_FEEDBACK`, `PEEKABOO_VISUAL_SCREENSHOTS`, and `PEEKABOO_VISUALIZER_STDOUT`
+
+#### App Receiver
+- [x] Add `VisualizerEventReceiver` inside Peekaboo.app
+- [x] Load events via `VisualizerEventStore`, forward to `VisualizerCoordinator`, then delete consumed files
+- [x] Periodically clean stale events so the shared directory stays small
 
 #### Overlay Window Enhancement
 - [ ] Extend `OverlayManager.swift`
@@ -375,8 +382,11 @@ Most importantly, it's completely optional - the CLI and MCP continue to work pe
 
 #### Configuration System
 - [ ] Add environment variable support
-  - [ ] `PEEKABOO_VISUAL_FEEDBACK`
-  - [ ] `PEEKABOO_VISUAL_SCREENSHOTS`
+  - [x] `PEEKABOO_VISUAL_FEEDBACK`
+  - [x] `PEEKABOO_VISUAL_SCREENSHOTS`
+  - [x] `PEEKABOO_VISUALIZER_STDOUT`
+  - [x] `PEEKABOO_VISUALIZER_STORAGE`
+  - [x] `PEEKABOO_VISUALIZER_APP_GROUP`
   - [ ] Per-action toggles
 - [ ] Add app preferences UI
   - [ ] Master on/off toggle
@@ -396,14 +406,14 @@ Most importantly, it's completely optional - the CLI and MCP continue to work pe
 - [ ] Respect "Reduce Motion" setting
 
 #### Testing
-- [ ] Unit tests for XPC communication
+- [ ] Integration tests for the distributed event bridge
 - [ ] Animation timing tests
 - [ ] Multi-screen testing
 - [ ] Performance benchmarks
 - [ ] Accessibility testing
 
 #### Documentation
-- [ ] API documentation for visualizer protocol
+- [ ] API documentation for `VisualizerEvent` schema
 - [ ] Animation customization guide
 - [ ] Troubleshooting guide
 - [ ] Video demos of all animations

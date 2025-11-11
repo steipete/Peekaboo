@@ -1,0 +1,192 @@
+//
+//  VisualizerEventStore.swift
+//  PeekabooCore
+//
+
+import CoreGraphics
+import Foundation
+import PeekabooFoundation
+
+public enum VisualizerEventKind: String, Codable, Sendable {
+    case screenshotFlash
+    case clickFeedback
+    case typingFeedback
+    case scrollFeedback
+    case mouseMovement
+    case swipeGesture
+    case hotkeyDisplay
+    case appLaunch
+    case appQuit
+    case windowOperation
+    case menuNavigation
+    case dialogInteraction
+    case spaceSwitch
+    case elementDetection
+    case annotatedScreenshot
+}
+
+public struct VisualizerEvent: Codable, Sendable {
+    public let id: UUID
+    public let createdAt: Date
+    public let payload: Payload
+
+    public init(id: UUID = UUID(), createdAt: Date = Date(), payload: Payload) {
+        self.id = id
+        self.createdAt = createdAt
+        self.payload = payload
+    }
+
+    public var kind: VisualizerEventKind {
+        switch self.payload {
+        case .screenshotFlash:
+            return .screenshotFlash
+        case .clickFeedback:
+            return .clickFeedback
+        case .typingFeedback:
+            return .typingFeedback
+        case .scrollFeedback:
+            return .scrollFeedback
+        case .mouseMovement:
+            return .mouseMovement
+        case .swipeGesture:
+            return .swipeGesture
+        case .hotkeyDisplay:
+            return .hotkeyDisplay
+        case .appLaunch:
+            return .appLaunch
+        case .appQuit:
+            return .appQuit
+        case .windowOperation:
+            return .windowOperation
+        case .menuNavigation:
+            return .menuNavigation
+        case .dialogInteraction:
+            return .dialogInteraction
+        case .spaceSwitch:
+            return .spaceSwitch
+        case .elementDetection:
+            return .elementDetection
+        case .annotatedScreenshot:
+            return .annotatedScreenshot
+        }
+    }
+
+    public enum Payload: Codable, Sendable {
+        case screenshotFlash(rect: CGRect)
+        case clickFeedback(point: CGPoint, type: ClickType)
+        case typingFeedback(keys: [String], duration: TimeInterval)
+        case scrollFeedback(point: CGPoint, direction: ScrollDirection, amount: Int)
+        case mouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval)
+        case swipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval)
+        case hotkeyDisplay(keys: [String], duration: TimeInterval)
+        case appLaunch(name: String, iconPath: String?)
+        case appQuit(name: String, iconPath: String?)
+        case windowOperation(operation: WindowOperation, rect: CGRect, duration: TimeInterval)
+        case menuNavigation(path: [String])
+        case dialogInteraction(elementType: DialogElementType, rect: CGRect, action: DialogActionType)
+        case spaceSwitch(from: Int, to: Int, direction: SpaceDirection)
+        case elementDetection(elements: [String: CGRect], duration: TimeInterval)
+        case annotatedScreenshot(
+            imageData: Data,
+            elements: [DetectedElement],
+            windowBounds: CGRect,
+            duration: TimeInterval)
+    }
+}
+
+public enum VisualizerEventStore {
+    public static let notificationName = Notification.Name("boo.peekaboo.visualizer.event")
+
+    private static let storageEnvKey = "PEEKABOO_VISUALIZER_STORAGE"
+    private static let appGroupEnvKey = "PEEKABOO_VISUALIZER_APP_GROUP"
+    private static let storageRootName = "PeekabooShared"
+    private static let eventsFolderName = "VisualizerEvents"
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+
+    @discardableResult
+    public static func prepareStorage() throws -> URL {
+        try eventsDirectory()
+    }
+
+    @discardableResult
+    public static func persist(_ event: VisualizerEvent) throws -> URL {
+        let directory = try eventsDirectory()
+        let url = directory.appendingPathComponent("\(event.id.uuidString).json", isDirectory: false)
+        let data = try self.encoder.encode(event)
+        try data.write(to: url, options: [.atomic])
+        return url
+    }
+
+    public static func loadEvent(id: UUID) throws -> VisualizerEvent {
+        let url = try eventURL(for: id)
+        let data = try Data(contentsOf: url)
+        return try self.decoder.decode(VisualizerEvent.self, from: data)
+    }
+
+    public static func removeEvent(id: UUID) throws {
+        let url = try eventURL(for: id)
+        try FileManager.default.removeItem(at: url)
+    }
+
+    public static func cleanup(olderThan age: TimeInterval) throws {
+        let directory = try eventsDirectory()
+        let resources: [URLResourceKey] = [.contentModificationDateKey]
+        let files = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: resources,
+            options: [.skipsHiddenFiles])
+
+        let cutoff = Date().addingTimeInterval(-age)
+        for file in files where file.pathExtension == "json" {
+            let values = try file.resourceValues(forKeys: Set(resources))
+            let modified = values.contentModificationDate ?? Date.distantPast
+            if modified < cutoff {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private static func eventsDirectory() throws -> URL {
+        let directory = baseDirectory().appendingPathComponent(eventsFolderName, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    private static func eventURL(for id: UUID) throws -> URL {
+        try eventsDirectory().appendingPathComponent("\(id.uuidString).json", isDirectory: false)
+    }
+
+    private static func baseDirectory() -> URL {
+        let environment = ProcessInfo.processInfo.environment
+
+        if let override = environment[storageEnvKey], !override.isEmpty {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
+
+        if let appGroup = environment[appGroupEnvKey],
+           !appGroup.isEmpty,
+           let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
+        {
+            return container
+        }
+
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support", isDirectory: true)
+            .appendingPathComponent(storageRootName, isDirectory: true)
+    }
+}
+
+public extension Notification.Name {
+    static let visualizerEventDispatched = VisualizerEventStore.notificationName
+}

@@ -8,10 +8,8 @@
 import PeekabooCore
 import SwiftUI
 
-/// Space transition direction
-enum SpaceDirection: String, CaseIterable {
-    case left, right, up, down
-}
+/// Use the shared PeekabooCore definition so payloads match the CLI.
+typealias SpaceDirection = PeekabooCore.SpaceDirection
 
 /// Animated space (virtual desktop) transition visualization
 struct SpaceTransitionView: View {

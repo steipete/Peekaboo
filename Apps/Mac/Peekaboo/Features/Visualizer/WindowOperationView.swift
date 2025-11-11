@@ -8,10 +8,8 @@
 import PeekabooCore
 import SwiftUI
 
-/// Window operation type for animation
-enum WindowOperation: String, CaseIterable {
-    case close, minimize, maximize, move, resize, setBounds, focus
-}
+/// Reuse PeekabooCore’s definition so animation payloads match the CLI.
+typealias WindowOperation = PeekabooCore.WindowOperation
 
 /// Animated window operation visualization (close, minimize, maximize, move, resize)
 struct WindowOperationView: View {

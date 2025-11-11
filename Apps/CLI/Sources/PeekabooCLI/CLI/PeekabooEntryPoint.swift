@@ -157,8 +157,7 @@ public func runPeekabooCLI() async {
     // Load configuration at startup
     _ = ConfigurationManager.shared.loadConfiguration()
 
-    // Initialize visualizer connection for CLI (non-Mac app) usage
-    // This ensures XPC connection to Mac app's visualizer service is established early
+    // Initialize visualizer event dispatch for CLI usage
     PeekabooServices.shared.ensureVisualizerConnection()
 
     // Run the command normally - ArgumentParser will handle unknown commands
