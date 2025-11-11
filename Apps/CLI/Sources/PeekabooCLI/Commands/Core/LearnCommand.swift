@@ -1,4 +1,5 @@
 @preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 
@@ -108,6 +109,56 @@ struct LearnCommand {
         Remember: You are Peekaboo, an AI-powered screen automation assistant.
         Be confident, be helpful, and get things done!
         """)
+
+        self.outputCommanderSummary()
+    }
+
+    @MainActor
+    private func outputCommanderSummary() {
+        print("\n## Commander Command Signatures\n")
+        let descriptors = CommanderRegistryBuilder.buildDescriptors()
+            .sorted { $0.metadata.name < $1.metadata.name }
+
+        for descriptor in descriptors {
+            let signature = descriptor.metadata.signature
+            print("### `peekaboo \(descriptor.metadata.name)`\n")
+            if !signature.arguments.isEmpty {
+                print("**Positional Arguments:**")
+                for argument in signature.arguments {
+                    let optionality = argument.isOptional ? "(optional)" : "(required)"
+                    let description = argument.help ?? ""
+                    print("- `\(argument.label)` \(optionality) \(description)")
+                }
+                print()
+            }
+            if !signature.options.isEmpty {
+                print("**Options:**")
+                for option in signature.options {
+                    let names = self.format(names: option.names)
+                    print("- \(names) – \(option.help ?? "No description")")
+                }
+                print()
+            }
+            if !signature.flags.isEmpty {
+                print("**Flags:**")
+                for flag in signature.flags {
+                    let names = self.format(names: flag.names)
+                    print("- \(names) – \(flag.help ?? "No description")")
+                }
+                print()
+            }
+        }
+    }
+
+    private func format(names: [CommanderName]) -> String {
+        names
+            .map { name -> String in
+                switch name {
+                case .long(let value): return "`--\(value)`"
+                case .short(let value): return "`-\(value)`"
+                }
+            }
+            .joined(separator: ", ")
     }
 }
 
