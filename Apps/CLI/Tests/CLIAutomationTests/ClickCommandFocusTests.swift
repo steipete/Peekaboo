@@ -3,7 +3,12 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Click Command Focus Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
+@Suite(
+    "Click Command Focus Tests",
+    .serialized,
+    .tags(.automation),
+    .enabled(if: CLITestEnvironment.runAutomationActions)
+)
 struct ClickCommandFocusTests {
     // Helper function to run peekaboo commands
     private func runPeekabooCommand(
@@ -37,7 +42,7 @@ struct ClickCommandFocusTests {
             if arg == "--focus-timeout" { return ["--focus-timeout", "3.0"] }
             if arg == "--focus-retry-count" { return ["--focus-retry-count", "5"] }
             return [arg]
-        }.flatMap { $0 })
+        }.flatMap(\.self))
 
         let output = try await runPeekabooCommand(args)
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)

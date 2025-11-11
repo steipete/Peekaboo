@@ -1,4 +1,3 @@
-import ArgumentParser
 import Foundation
 import PeekabooCore
 import Testing
@@ -15,7 +14,7 @@ struct MCPCommandTests {
         #expect(command.configuration.commandName == "mcp")
         #expect(command.configuration.subcommands.count == 10)
 
-        let subcommandNames = command.configuration.subcommands.map { $0.configuration.commandName }
+        let subcommandNames = command.configuration.subcommands.map(\.configuration.commandName)
         #expect(subcommandNames.contains("serve"))
         #expect(subcommandNames.contains("call"))
         #expect(subcommandNames.contains("list"))

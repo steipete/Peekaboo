@@ -181,7 +181,10 @@ struct DragCommandTests {
 
     @Test("Drag to application scenario")
     func dragToApplicationScenario() async throws {
-        let (applicationService, windowService) = await MainActor.run { () -> (StubApplicationService, StubWindowService) in
+        let (applicationService, windowService) = await MainActor.run { () -> (
+            StubApplicationService,
+            StubWindowService
+        ) in
             let finderInfo = ServiceApplicationInfo(
                 processIdentifier: 101,
                 bundleIdentifier: "com.apple.finder",
@@ -234,20 +237,20 @@ struct DragCommandTests {
     }
 }
 
-private extension DragCommandTests {
-    func runDragCommand(
+extension DragCommandTests {
+    fileprivate func runDragCommand(
         _ args: [String],
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSessionManager) -> ())? = nil
     ) async throws -> CommandRunResult {
         let (result, _) = try await self.runDragCommandWithContext(args, configure: configure)
         return result
     }
 
-    func runDragCommandWithContext(
+    fileprivate func runDragCommandWithContext(
         _ args: [String],
         applications: ApplicationServiceProtocol? = nil,
         windows: WindowManagementServiceProtocol? = nil,
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSessionManager) -> ())? = nil
     ) async throws -> (CommandRunResult, TestServicesFactory.AutomationTestContext) {
         let context = await self.makeAutomationContext(applications: applications, windows: windows)
         if let configure {
@@ -259,7 +262,7 @@ private extension DragCommandTests {
         return (result, context)
     }
 
-    func makeAutomationContext(
+    fileprivate func makeAutomationContext(
         applications: ApplicationServiceProtocol? = nil,
         windows: WindowManagementServiceProtocol? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
@@ -271,7 +274,7 @@ private extension DragCommandTests {
         }
     }
 
-    func automationState<T: Sendable>(
+    fileprivate func automationState<T: Sendable>(
         _ context: TestServicesFactory.AutomationTestContext,
         _ operation: @MainActor (StubAutomationService) -> T
     ) async -> T {
@@ -280,7 +283,7 @@ private extension DragCommandTests {
         }
     }
 
-    func output(from result: CommandRunResult) -> String {
+    fileprivate func output(from result: CommandRunResult) -> String {
         result.stdout.isEmpty ? result.stderr : result.stdout
     }
 }

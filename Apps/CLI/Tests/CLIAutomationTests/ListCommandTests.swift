@@ -1,5 +1,4 @@
 // swiftlint:disable file_length
-import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -17,8 +16,20 @@ struct ListCommandCLIHarnessTests {
     @Test("list apps outputs stub data in JSON mode")
     func listAppsJSON() async throws {
         let applications = [
-            ServiceApplicationInfo(processIdentifier: 101, bundleIdentifier: "com.example.alpha", name: "AlphaApp", isActive: true, windowCount: 2),
-            ServiceApplicationInfo(processIdentifier: 202, bundleIdentifier: "com.example.beta", name: "BetaApp", isActive: false, windowCount: 1),
+            ServiceApplicationInfo(
+                processIdentifier: 101,
+                bundleIdentifier: "com.example.alpha",
+                name: "AlphaApp",
+                isActive: true,
+                windowCount: 2
+            ),
+            ServiceApplicationInfo(
+                processIdentifier: 202,
+                bundleIdentifier: "com.example.beta",
+                name: "BetaApp",
+                isActive: false,
+                windowCount: 1
+            ),
         ]
         let context = await self.makeContext(applications: applications)
 
@@ -34,7 +45,13 @@ struct ListCommandCLIHarnessTests {
     @Test("list apps renders human-readable output")
     func listAppsHumanReadable() async throws {
         let applications = [
-            ServiceApplicationInfo(processIdentifier: 333, bundleIdentifier: "com.example.viewer", name: "Viewer", isActive: true, windowCount: 4),
+            ServiceApplicationInfo(
+                processIdentifier: 333,
+                bundleIdentifier: "com.example.viewer",
+                name: "Viewer",
+                isActive: true,
+                windowCount: 4
+            ),
         ]
         let context = await self.makeContext(applications: applications)
 
@@ -49,7 +66,13 @@ struct ListCommandCLIHarnessTests {
     func listWindowsWithDetails() async throws {
         let appName = "Finder"
         let applications = [
-            ServiceApplicationInfo(processIdentifier: 404, bundleIdentifier: "com.apple.finder", name: appName, isActive: true, windowCount: 1),
+            ServiceApplicationInfo(
+                processIdentifier: 404,
+                bundleIdentifier: "com.apple.finder",
+                name: appName,
+                isActive: true,
+                windowCount: 1
+            ),
         ]
         let windows = [
             ServiceWindowInfo(
@@ -88,7 +111,13 @@ struct ListCommandCLIHarnessTests {
     @Test("list apps fails when screen recording permission missing")
     func listAppsPermissionDenied() async throws {
         let applications = [
-            ServiceApplicationInfo(processIdentifier: 101, bundleIdentifier: "com.example.alpha", name: "AlphaApp", isActive: true, windowCount: 2),
+            ServiceApplicationInfo(
+                processIdentifier: 101,
+                bundleIdentifier: "com.example.alpha",
+                name: "AlphaApp",
+                isActive: true,
+                windowCount: 2
+            ),
         ]
         let screenCapture = await MainActor.run {
             StubScreenCaptureService(permissionGranted: false)

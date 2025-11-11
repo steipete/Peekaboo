@@ -4,7 +4,12 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 
-@Suite("Agent Integration Tests", .serialized, .tags(.integration, .automation), .enabled(if: CLITestEnvironment.runAutomationActions))
+@Suite(
+    "Agent Integration Tests",
+    .serialized,
+    .tags(.integration, .automation),
+    .enabled(if: CLITestEnvironment.runAutomationActions)
+)
 struct AgentIntegrationTests {
     // Only run these tests if explicitly enabled
     let runIntegrationTests = ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"
@@ -35,7 +40,7 @@ struct AgentIntegrationTests {
         #expect(output.data?.steps.count ?? 0 > 0)
 
         // Check that TextEdit commands were used
-        let stepCommands = output.data?.steps.map { $0.command } ?? []
+        let stepCommands = output.data?.steps.map(\.command) ?? []
         #expect(stepCommands.contains("peekaboo_app") || stepCommands.contains("peekaboo_see"))
         #expect(stepCommands.contains("peekaboo_type"))
 
@@ -67,11 +72,10 @@ struct AgentIntegrationTests {
             #expect(output.success == true)
 
             // Verify window commands were used
-            let stepCommands = output.data?.steps.map { $0.command } ?? []
+            let stepCommands = output.data?.steps.map(\.command) ?? []
             #expect(stepCommands.contains("peekaboo_app") || stepCommands.contains("peekaboo_window"))
             #expect(stepCommands.contains("peekaboo_sleep"))
         }
-
     }
 
     @Test("Agent dry run mode", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
@@ -97,7 +101,6 @@ struct AgentIntegrationTests {
         for step in output.data?.steps ?? [] {
             #expect(step.output == nil || step.output?.contains("dry run") == true)
         }
-
     }
 
     @Test("Direct Peekaboo invocation", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
@@ -121,7 +124,6 @@ struct AgentIntegrationTests {
             step.command == "peekaboo_image" || step.command == "peekaboo_see"
         } ?? false
         #expect(hasImageOrSeeCommand == true)
-
     }
 
     @Test("Agent respects max steps", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
@@ -143,7 +145,6 @@ struct AgentIntegrationTests {
 
         // Should stop at 3 steps
         #expect((output.data?.steps.count ?? 0) <= 3)
-
     }
 
     private func runAgentCommand(

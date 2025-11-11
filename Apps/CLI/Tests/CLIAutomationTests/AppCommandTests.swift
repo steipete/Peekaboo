@@ -1,7 +1,7 @@
 import Foundation
-@testable import PeekabooCore
 import Testing
 @testable import PeekabooCLI
+@testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("App Command Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
@@ -18,7 +18,7 @@ struct AppCommandTests {
         let subcommands = AppCommand.configuration.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map { $0.configuration.commandName }
+        let subcommandNames = subcommands.map(\.configuration.commandName)
         #expect(subcommandNames.contains("launch"))
         #expect(subcommandNames.contains("quit"))
         #expect(subcommandNames.contains("hide"))
@@ -90,7 +90,6 @@ struct AppCommandTests {
         #expect(showCmd.count > 3)
         #expect(quitCmd.count > 3)
     }
-
 }
 
 // MARK: - App Command Integration Tests
@@ -228,7 +227,6 @@ struct AppCommandIntegrationTests {
         let hideOtherCalls = await appServiceState(appService) { $0.hideOtherCalls }
         #expect(hideOtherCalls.contains("Finder"))
     }
-
 }
 
 // MARK: - Shared Helpers
@@ -240,7 +238,7 @@ private struct CommandFailure: Error {
 
 private func runAppCommand(
     _ args: [String],
-    configure: (@MainActor (StubApplicationService) -> Void)? = nil
+    configure: (@MainActor (StubApplicationService) -> ())? = nil
 ) async throws -> String {
     let (output, _) = try await runAppCommandWithService(args, configure: configure)
     return output
@@ -248,7 +246,7 @@ private func runAppCommand(
 
 private func runAppCommandWithService(
     _ args: [String],
-    configure: (@MainActor (StubApplicationService) -> Void)? = nil
+    configure: (@MainActor (StubApplicationService) -> ())? = nil
 ) async throws -> (String, StubApplicationService) {
     let context = await makeAppCommandContext()
     if let configure {
@@ -291,7 +289,8 @@ private struct AppCommandContext {
 }
 
 @MainActor
-private func defaultAppCommandData() -> (applications: [ServiceApplicationInfo], windowsByApp: [String: [ServiceWindowInfo]]) {
+private func defaultAppCommandData()
+-> (applications: [ServiceApplicationInfo], windowsByApp: [String: [ServiceWindowInfo]]) {
     let applications: [ServiceApplicationInfo] = [
         ServiceApplicationInfo(
             processIdentifier: 101,

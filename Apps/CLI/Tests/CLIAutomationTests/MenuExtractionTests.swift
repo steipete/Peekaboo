@@ -66,7 +66,7 @@ struct AnyCodable: Codable {
         } else if let string = try? container.decode(String.self) {
             self.value = string
         } else if let array = try? container.decode([AnyCodable].self) {
-            self.value = array.map { $0.value }
+            self.value = array.map(\.value)
         } else if let dict = try? container.decode([String: AnyCodable].self) {
             self.value = dict.mapValues { $0.value }
         } else {

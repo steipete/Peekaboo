@@ -24,7 +24,7 @@ struct DialogCommandTests {
         let subcommands = DialogCommand.configuration.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map { $0.configuration.commandName }
+        let subcommandNames = subcommands.map(\.configuration.commandName)
         #expect(subcommandNames.contains("click"))
         #expect(subcommandNames.contains("input"))
         #expect(subcommandNames.contains("file"))

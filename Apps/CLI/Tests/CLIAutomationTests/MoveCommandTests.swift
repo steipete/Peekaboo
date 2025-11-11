@@ -25,7 +25,10 @@ struct MoveCommandTests {
     @Test("Coordinate moves call automation service")
     func coordinateMove() async throws {
         let context = await self.makeContext()
-        let result = try await self.runMove(arguments: ["100,200", "--duration", "750", "--steps", "10"], context: context)
+        let result = try await self.runMove(
+            arguments: ["100,200", "--duration", "750", "--steps", "10"],
+            context: context
+        )
 
         #expect(result.exitStatus == 0)
         let moveCalls = await self.automationState(context) { $0.moveMouseCalls }
@@ -62,7 +65,10 @@ struct MoveCommandTests {
         )
         try await context.sessions.storeDetectionResult(sessionId: "session-id", result: detection)
 
-        let result = try await self.runMove(arguments: ["--id", "B1", "--session", "session-id", "--json-output"], context: context)
+        let result = try await self.runMove(
+            arguments: ["--id", "B1", "--session", "session-id", "--json-output"],
+            context: context
+        )
 
         #expect(result.exitStatus == 0)
         let moveCalls = await self.automationState(context) { $0.moveMouseCalls }
@@ -125,7 +131,7 @@ struct MoveCommandTests {
     }
 
     private func makeContext(
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSessionManager) -> ())? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()

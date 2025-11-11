@@ -40,7 +40,7 @@ struct MenuCommandTests {
         let subcommands = MenuCommand.configuration.subcommands
         #expect(subcommands.count == 3)
 
-        let subcommandNames = subcommands.map { $0.configuration.commandName }
+        let subcommandNames = subcommands.map(\.configuration.commandName)
         #expect(subcommandNames.contains("click"))
         #expect(subcommandNames.contains("click-system"))
         #expect(subcommandNames.contains("list"))
@@ -141,7 +141,7 @@ struct MenuCommandTests {
 
     private func runMenuCommand(
         _ args: [String],
-        configure: (@MainActor (StubMenuService, StubApplicationService) -> Void)? = nil
+        configure: (@MainActor (StubMenuService, StubApplicationService) -> ())? = nil
     ) async throws -> CommandRunResult {
         let (result, _) = try await self.runMenuCommandWithContext(args, configure: configure)
         return result
@@ -149,7 +149,7 @@ struct MenuCommandTests {
 
     private func runMenuCommandWithContext(
         _ args: [String],
-        configure: (@MainActor (StubMenuService, StubApplicationService) -> Void)? = nil
+        configure: (@MainActor (StubMenuService, StubApplicationService) -> ())? = nil
     ) async throws -> (CommandRunResult, MenuHarnessContext) {
         let context = await self.makeMenuContext()
         if let configure {
@@ -187,7 +187,8 @@ struct MenuCommandTests {
     }
 
     @MainActor
-    private static func defaultMenuData() -> (appInfo: ServiceApplicationInfo, menusByApp: [String: MenuStructure], extras: [MenuExtraInfo]) {
+    private static func defaultMenuData()
+    -> (appInfo: ServiceApplicationInfo, menusByApp: [String: MenuStructure], extras: [MenuExtraInfo]) {
         let appInfo = ServiceApplicationInfo(
             processIdentifier: 101,
             bundleIdentifier: "com.apple.finder",
@@ -230,4 +231,5 @@ struct MenuCommandTests {
 }
 
 // MARK: - Menu Command Integration Tests (removed real CLI coverage)
+
 #endif

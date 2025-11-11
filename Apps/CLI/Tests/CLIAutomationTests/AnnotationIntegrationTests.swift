@@ -4,7 +4,12 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Annotation Drawing Integration Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
+@Suite(
+    "Annotation Drawing Integration Tests",
+    .serialized,
+    .tags(.automation),
+    .enabled(if: CLITestEnvironment.runAutomationActions)
+)
 struct AnnotationIntegrationTests {
     // These tests require actual window capture capabilities
     // Run with: RUN_LOCAL_TESTS=true swift test

@@ -3,6 +3,7 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
+
 // MARK: - Test Helpers
 
 private func runCommand(
@@ -13,7 +14,12 @@ private func runCommand(
     return result.combinedOutput
 }
 
-@Suite("Agent Menu Integration Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
+@Suite(
+    "Agent Menu Integration Tests",
+    .serialized,
+    .tags(.automation),
+    .enabled(if: CLITestEnvironment.runAutomationActions)
+)
 struct AgentMenuTests {
     @Test("Agent can discover menus using list subcommand")
     func agentMenuDiscovery() async throws {

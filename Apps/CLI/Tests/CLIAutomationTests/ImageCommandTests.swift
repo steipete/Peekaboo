@@ -1,5 +1,4 @@
 // swiftlint:disable file_length
-import ArgumentParser
 import Foundation
 import PeekabooCore
 import Testing

@@ -1,8 +1,8 @@
 import CoreGraphics
 import Foundation
-@testable import PeekabooCore
 import Testing
 @testable import PeekabooCLI
+@testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("DockCommand", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
