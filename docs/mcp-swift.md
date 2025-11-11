@@ -79,7 +79,7 @@ import Commander
 import MCPServer
 
 struct MCPCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let configuration = CommandDescription(
         commandName: "mcp",
         abstract: "Model Context Protocol server and client operations",
         subcommands: [Serve.self, Call.self, List.self, Inspect.self]

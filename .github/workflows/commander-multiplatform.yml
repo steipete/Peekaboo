@@ -1,0 +1,97 @@
+name: Commander Multiplatform
+
+on:
+  push:
+    paths:
+      - 'Commander/**'
+      - '.github/workflows/commander-multiplatform.yml'
+  pull_request:
+    paths:
+      - 'Commander/**'
+      - '.github/workflows/commander-multiplatform.yml'
+  workflow_dispatch:
+
+jobs:
+  macos-host:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: Commander
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Test (macOS)
+        run: swift test
+
+  apple-simulators:
+    runs-on: macos-15
+    needs: macos-host
+    strategy:
+      matrix:
+        include:
+          - platform: iOS
+            sdk: iphonesimulator
+            triple: arm64-apple-ios17.0-simulator
+          - platform: tvOS
+            sdk: appletvsimulator
+            triple: arm64-apple-tvos17.0-simulator
+          - platform: watchOS
+            sdk: watchsimulator
+            triple: arm64-apple-watchos10.0-simulator
+    defaults:
+      run:
+        working-directory: Commander
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          SDK_PATH=$(xcrun --sdk ${{ matrix.sdk }} --show-sdk-path)
+          swift build --build-tests \
+            -Xswiftc "-sdk" -Xswiftc "$SDK_PATH" \
+            -Xswiftc "-target" -Xswiftc "${{ matrix.triple }}"
+
+  linux:
+    runs-on: ubuntu-24.04
+    needs: macos-host
+    defaults:
+      run:
+        working-directory: Commander
+    steps:
+      - uses: actions/checkout@v4
+      - uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: '6.0.2'
+      - name: Test (Linux)
+        run: swift test
+
+  windows:
+    runs-on: windows-2025
+    needs: macos-host
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: Commander
+    steps:
+      - uses: actions/checkout@v4
+      - uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: '6.0.2'
+      - name: Test (Windows)
+        run: swift test
+
+  android:
+    runs-on: ubuntu-24.04
+    needs: macos-host
+    steps:
+      - uses: actions/checkout@v4
+      - name: Android build + test
+        uses: skiptools/swift-android-action@v2
+        with:
+          swift-version: '6.0.2'
+          swift-branch: 'release/6.0'
+          package-path: 'Commander'
+          swift-configuration: 'debug'
+          android-api-level: 34
+          android-emulator-options: '-no-window -noaudio -no-boot-anim'

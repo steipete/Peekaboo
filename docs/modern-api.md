@@ -468,7 +468,7 @@ import PeekabooCore
 
 @main
 struct PeekabooCLI: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let configuration = CommandDescription(
         commandName: "peekaboo",
         subcommands: [Agent.self, Screenshot.self, Analyze.self]
     )

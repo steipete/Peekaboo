@@ -27,7 +27,7 @@ any tests execute, so the `--skip .automation` flag alone is not sufficient.
   opt back in when we want full coverage locally.
 
 ### Source Adjustments
-- Replaced key-path shorthand closures like `map(\.configuration.commandName)`
+- Replaced key-path shorthand closures like `map(\.commandDescription.commandName)`
   in automation tests with explicit closures to avoid the Swift 6.2
   `emitKeyPathComponentForDecl` crash when `ParsableCommand` generic metadata is
   involved.

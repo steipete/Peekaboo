@@ -491,14 +491,14 @@ import AXorcist
 public extension AsyncParsableCommand {
     
     /// Focus behavior options
-    enum FocusMode: String, CaseIterable, ExpressibleByArgument {
+    enum FocusMode: String, CaseIterable, ExpressibleFromArgument {
         case auto = "auto"      // Smart behavior (default)
         case always = "always"  // Force focus
         case never = "never"    // Skip focus
     }
     
     /// Space switching behavior
-    enum SpaceSwitchMode: String, CaseIterable, ExpressibleByArgument {
+    enum SpaceSwitchMode: String, CaseIterable, ExpressibleFromArgument {
         case auto = "auto"          // Switch if needed (default)
         case always = "always"      // Always switch
         case never = "never"        // Never switch
@@ -954,7 +954,7 @@ public struct UIAutomationSession: Codable, Sendable {
 // Update: Apps/CLI/Sources/peekaboo/Commands/System/WindowCommand.swift
 
 struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
+    static let configuration = CommandDescription(
         commandName: "focus",
         abstract: "Bring a window to the foreground, switching Spaces if needed",
         discussion: """
@@ -1165,7 +1165,7 @@ import Foundation
 import PeekabooCore
 
 struct SpaceCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let configuration = CommandDescription(
         commandName: "space",
         abstract: "Manage macOS Spaces (virtual desktops)",
         discussion: """
@@ -1195,7 +1195,7 @@ struct SpaceCommand: AsyncParsableCommand {
     // MARK: - List Spaces
     
     struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-        static let configuration = CommandConfiguration(
+        static let configuration = CommandDescription(
             commandName: "list",
             abstract: "List all Spaces")
         
@@ -1242,7 +1242,7 @@ struct SpaceCommand: AsyncParsableCommand {
     // MARK: - Current Space
     
     struct CurrentSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-        static let configuration = CommandConfiguration(
+        static let configuration = CommandDescription(
             commandName: "current",
             abstract: "Show current Space information")
         
@@ -1282,7 +1282,7 @@ struct SpaceCommand: AsyncParsableCommand {
     // MARK: - Switch Space
     
     struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-        static let configuration = CommandConfiguration(
+        static let configuration = CommandDescription(
             commandName: "switch",
             abstract: "Switch to a different Space")
         
@@ -1336,7 +1336,7 @@ struct SpaceCommand: AsyncParsableCommand {
     // MARK: - Move Window
     
     struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-        static let configuration = CommandConfiguration(
+        static let configuration = CommandDescription(
             commandName: "move-window",
             abstract: "Move a window to a different Space")
         
@@ -1412,7 +1412,7 @@ struct SpaceCommand: AsyncParsableCommand {
     // MARK: - Where Is Window
     
     struct WhereIsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-        static let configuration = CommandConfiguration(
+        static let configuration = CommandDescription(
             commandName: "where-is",
             abstract: "Find which Space contains a window")
         
@@ -1540,7 +1540,7 @@ Add SpaceCommand to the subcommands list:
 ```swift
 // In Apps/CLI/Sources/peekaboo/main.swift
 
-static let configuration = CommandConfiguration(
+static let configuration = CommandDescription(
     // ... existing config ...
     subcommands: [
         // ... existing commands ...

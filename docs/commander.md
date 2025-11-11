@@ -22,7 +22,7 @@ read_when:
 2. **Runtime integration**:
    - Each command continues to conform to `AsyncRuntimeCommand`; the router constructs the command, injects parsed values, creates `CommandRuntime`, and calls `run(using:)` on the main actor.
    - Errors flow through existing `outputError` helpers; Commander emits `CommanderError` cases (missing argument, unknown flag, etc.) that we map to `PeekabooError` IDs for consistent JSON output.
-   - Help text uses the existing `CommandConfiguration` builders already embedded in every command file, plus metadata from `CommandSignature` to display options/flags in Commander’s help output.
+   - Help text uses the existing `CommandDescription` builders already embedded in every command file, plus metadata from `CommandSignature` to display options/flags in Commander’s help output.
 3. **Shared metadata**:
    - `CommandRegistry` (already in `CLI/Configuration`) feeds Commander so subcommand lists stay synchronized between CLI, docs, and agents.
    - Commander exposes a `describe()` API so `peekaboo tools`/`peekaboo learn` and MCP metadata reuse the same structured definitions.
@@ -45,10 +45,10 @@ read_when:
 1. **Bootstrap Commander module**
    - Create `Sources/Commander` with descriptors, parser, tokenizer, and property wrappers.
    - Provide adapters for `@Option`, `@Flag`, `@Argument`, `@OptionGroup`, `@OptionGroup(title:)`, and `@OptionGroup(help:)`.
-   - Port the small helper protocols/types we rely on (`ExpressibleByArgument`, `MainActorCommandConfiguration`) into Commander.
+   - Port the small helper protocols/types we rely on (`ExpressibleFromArgument`, `MainActorCommandDescription`) directly into Commander and delete the last traces of the ArgumentParser compatibility shim.
 2. **Wire PeekabooCLI**
    - Swap `import ArgumentParser` -> `import Commander` across CLI sources.
-   - Update `Peekaboo` root command to register subcommands via CommandRegistry instead of Apple’s `CommandConfiguration` array.
+   - Update `Peekaboo` root command to register subcommands via CommandRegistry instead of Apple’s `CommandDescription` array.
    - Replace uses of `ArgumentParser.ValidationError`/`CleanExit` with Commander equivalents.
    - Remove Apple-specific extensions such as `MainActorParsableCommand` since Commander handles main-actor dispatch natively.
 3. **Update other packages**
@@ -118,7 +118,7 @@ With this plan, we fully control CLI parsing, remove the Swift 6 actor headaches
 ### Progress 2025-11-11 – Build Stabilization & Tests
 
 - Dropped the `Sendable` constraint from Commander’s property wrappers and `CommanderParsable` so `@MainActor` CLI helper structs (e.g., `WindowIdentificationOptions`, `FocusCommandOptions`) can register metadata without tripping `#ConformanceIsolation`. Conditional `Sendable` extensions keep the wrappers sendable when possible.
-- Exposed `CommandParser` publicly and pointed `ParsableCommand.parse(_:)` at Commander so legacy unit tests keep working without reviving ArgumentParser. This also unlocked `ToolsCommandTests`, which now read `CommandConfiguration` directly instead of calling the deleted `helpMessage()` helpers.
+- Exposed `CommandParser` publicly and pointed `ParsableCommand.parse(_:)` at Commander so legacy unit tests keep working without reviving ArgumentParser. This also unlocked `ToolsCommandTests`, which now read `CommandDescription` directly instead of calling the deleted `helpMessage()` helpers.
 - Fixed `SeeCommand`’s capture switch to cover the `.multi` and `.area` cases Commander now parses, preventing fatal fallthroughs, and aligned `WindowIdentificationOptions` bindings with the shared metadata helpers.
 - `./runner swift build --package-path Apps/CLI` now succeeds from a clean tree, and `./runner swift test --package-path Apps/CLI --filter CommanderBinderTests` passes (see session log timestamp 20:34 local); CommanderBinder continues to verify ~70 binding scenarios after the refactor.
 - Added `executePeekabooCLI(arguments:)` so in-process automation tests can exercise the Commander runtime without resurrecting `parseAsRoot`. `InProcessCommandRunner` now routes through that helper, and the same error-printing path as the shipping CLI is reused for test assertions.
@@ -129,7 +129,7 @@ With this plan, we fully control CLI parsing, remove the Swift 6 actor headaches
 - With those suites green again, MCP/agent coverage now spans: (1) binder-level resolution tests for `serve/add/list/call` plus Commander metadata snapshots via `peekabooTests`, and (2) CLI automation helpers hitting `executePeekabooCLI`. Once we confirm no other modules import ArgumentParser, we can delete `Vendor/swift-argument-parser` and scrub the dependency graph.
 - `CLIRuntimeSmokeTests` now shell out via swift-subprocess for `peekaboo list apps --json-output`, `peekaboo list windows --json-output` (error path), `peekaboo sleep`, and `peekaboo mcp` (missing subcommand). That gives us fast end-to-end coverage that Commander is powering both success and failure flows for MCP commands without needing to ping live MCP servers.
 - Commander is now a standalone Swift package under `/Commander`. Apps/CLI, AXorcist, Tachikoma (including Examples and Agent CLI), and PeekabooExternalDependencies all depend on it instead of the vendored swift-argument-parser tree. The vendor folder has been deleted.
-- New Commander unit tests (`TokenizerTests`) cover single-letter options, combined flags, and the `--` terminator.
+- New Commander unit tests (`TokenizerTests`, `CommandDescriptionTests`) cover single-letter options, combined flags, the `--` terminator, and regression coverage for the metadata builders.
 - `CLIRuntimeSmokeTests` gained MCP add (ensuring `--` command requirement) and agent dry-run scenarios so we exercise Commander on those code paths without real credentials.
 
 **Next up (owner: whoever picks up the baton):**
