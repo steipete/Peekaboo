@@ -13,7 +13,7 @@ on:
 
 jobs:
   macos-host:
-    runs-on: macos-15
+    runs-on: macos-latest
     defaults:
       run:
         working-directory: Commander
@@ -25,7 +25,7 @@ jobs:
         run: swift test
 
   apple-simulators:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: macos-host
     strategy:
       matrix:
@@ -51,9 +51,10 @@ jobs:
         run: |
           set -euo pipefail
           SDK_PATH=$(xcrun --sdk ${{ matrix.sdk }} --show-sdk-path)
-          swift build --build-tests \
-            -Xswiftc "-sdk" -Xswiftc "$SDK_PATH" \
-            -Xswiftc "-target" -Xswiftc "${{ matrix.triple }}"
+          xcrun --sdk ${{ matrix.sdk }} swift build \
+            --build-tests \
+            --triple "${{ matrix.triple }}" \
+            --sdk "$SDK_PATH"
 
   linux:
     runs-on: ubuntu-24.04
@@ -65,12 +66,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: SwiftyLab/setup-swift@v1
         with:
-          swift-version: '6.0.2'
+          swift-version: '6.2'
       - name: Test (Linux)
         run: swift test
 
   windows:
-    runs-on: windows-2025
+    runs-on: windows-latest
     needs: macos-host
     defaults:
       run:
@@ -78,22 +79,23 @@ jobs:
         working-directory: Commander
     steps:
       - uses: actions/checkout@v4
-      - uses: SwiftyLab/setup-swift@v1
+      - uses: compnerd/gha-setup-swift@v0.4.0
         with:
-          swift-version: '6.0.2'
+          swift-version: swift-6.2-release
+          swift-build: 6.2-RELEASE
       - name: Test (Windows)
         run: swift test
 
   android:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs: macos-host
     steps:
       - uses: actions/checkout@v4
       - name: Android build + test
         uses: skiptools/swift-android-action@v2
         with:
-          swift-version: '6.0.2'
-          swift-branch: 'release/6.0'
+          swift-version: '6.2'
+          swift-branch: 'release/6.2'
           package-path: 'Commander'
           swift-configuration: 'debug'
           android-api-level: 34

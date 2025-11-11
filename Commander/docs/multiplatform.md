@@ -25,10 +25,10 @@ read_when:
 | Standalone Commander workflow | ✅ | `.github/workflows/commander-multiplatform.yml` fan-out matrix covers macOS, Apple simulators, Linux, Windows, and Android
 
 ## CI Design Highlights
-- **macOS host tests:** Run `swift test` directly on `macos-15` (new GitHub Actions image announced [here](https://github.blog/changelog/2025-04-10-github-actions-macos-15-and-windows-2025-images-are-now-generally-available/)).
-- **Apple simulator builds:** Each matrix entry resolves the proper SDK via `xcrun --sdk <name> --show-sdk-path` and forwards both `-sdk` and `-target` flags to invoke the right triple, mirroring the Swift Forum guidance linked above.
-- **Linux & Windows:** Use [`SwiftyLab/setup-swift`](https://github.com/SwiftyLab/setup-swift) to install Swift 6+ toolchains on `ubuntu-24.04` and `windows-2025`, then execute `swift test --package-path Commander`.
-- **Android:** `swift sdk install` preps the nightly Android SDKs and `skiptools/swift-android-action@v2` orchestrates the build/test run under QEMU, matching the Skip tooling docs.
+- **macOS host tests:** Run `swift test` directly on `macos-latest` (currently the macOS 15 Sonoma image announced [here](https://github.blog/changelog/2025-04-10-github-actions-macos-15-and-windows-2025-images-are-now-generally-available/)).
+- **Apple simulator builds:** Each matrix entry resolves the proper SDK via `xcrun --sdk <name> --show-sdk-path` and then runs `xcrun --sdk <name> swift build --build-tests --triple <target> --sdk <path>` so both Swift and Clang honor the simulator sysroot.
+- **Linux & Windows:** Linux stays on `SwiftyLab/setup-swift@v1` with Ubuntu 24.04 targeting Swift 6.2, while Windows switches to [`compnerd/gha-setup-swift`](https://github.com/compnerd/gha-setup-swift) to install the signed `swift-6.2-RELEASE` toolchain without the missing-signature failure SwiftyLab hit on Windows hosts.
+- **Android:** The job now runs on `ubuntu-22.04` (matching the published Swift 6.2 tarball) and still uses `skiptools/swift-android-action@v2`, which installs the host Swift toolchain plus the Android SDK before executing `swift test` inside the emulator.
 
 ## Follow-Ups
 1. Expand visionOS coverage beyond compiler smoke tests once Peekaboo formally adopts it in app targets.
