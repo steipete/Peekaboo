@@ -77,7 +77,14 @@ extension CommandSignature {
             label: "jsonOutput",
             names: [.long("json-output"), .long("jsonOutput")],
             help: "Emit machine-readable JSON output")
+        let logLevelOption = OptionDefinition(
+            label: "logLevel",
+            names: [.long("log-level"), .long("logLevel")],
+            help: "Set log level (trace|verbose|debug|info|warning|error|critical)",
+            parsing: .singleValue
+        )
         copy.flags.append(contentsOf: [verboseFlag, jsonFlag])
+        copy.options.append(logLevelOption)
         return copy
     }
 }

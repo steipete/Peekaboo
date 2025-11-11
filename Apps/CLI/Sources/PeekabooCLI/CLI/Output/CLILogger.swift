@@ -1,3 +1,4 @@
+import Commander
 import Foundation
 
 /// Log level enumeration for structured logging
@@ -50,17 +51,9 @@ final class Logger: @unchecked Sendable {
 
         // Check environment for log level
         var configuredLevel: LogLevel = .warning
-        if let envLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
-            switch envLevel {
-            case "trace": configuredLevel = .trace
-            case "verbose": configuredLevel = .verbose
-            case "debug": configuredLevel = .debug
-            case "info": configuredLevel = .info
-            case "warning", "warn": configuredLevel = .warning
-            case "error": configuredLevel = .error
-            case "critical": configuredLevel = .critical
-            default: break
-            }
+        if let envValue = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"],
+           let envLevel = LogLevel.parse(raw: envValue) {
+            configuredLevel = envLevel
         }
         self.defaultMinimumLogLevel = configuredLevel
         self.minimumLogLevel = configuredLevel
@@ -298,5 +291,29 @@ public enum CLIInstrumentation {
         public static func resetMinimumLogLevel() {
             Logger.shared.resetMinimumLogLevel()
         }
+    }
+}
+
+extension LogLevel {
+    static func parse(raw: String) -> LogLevel? {
+        switch raw.lowercased() {
+        case "trace": return .trace
+        case "verbose": return .verbose
+        case "debug": return .debug
+        case "info": return .info
+        case "warning", "warn": return .warning
+        case "error": return .error
+        case "critical": return .critical
+        default: return nil
+        }
+    }
+}
+
+extension LogLevel: ExpressibleFromArgument {
+    public init?(argument: String) {
+        guard let level = LogLevel.parse(raw: argument) else {
+            return nil
+        }
+        self = level
     }
 }

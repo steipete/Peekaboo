@@ -9,7 +9,7 @@ enum CommanderCLIBinder {
         parsedValues: ParsedValues
     ) throws -> any ParsableCommand {
         var command = type.init()
-        let runtimeOptions = self.makeRuntimeOptions(from: parsedValues)
+        let runtimeOptions = try self.makeRuntimeOptions(from: parsedValues)
         if var bindable = command as? any CommanderBindableCommand {
             try bindable.applyCommanderValues(.init(parsedValues: parsedValues))
             guard let rebound = bindable as? any ParsableCommand else {
@@ -37,10 +37,14 @@ enum CommanderCLIBinder {
         return command
     }
 
-    static func makeRuntimeOptions(from parsedValues: ParsedValues) -> CommandRuntimeOptions {
+    static func makeRuntimeOptions(from parsedValues: ParsedValues) throws -> CommandRuntimeOptions {
         var options = CommandRuntimeOptions()
         options.verbose = parsedValues.flags.contains("verbose")
         options.jsonOutput = parsedValues.flags.contains("jsonOutput")
+        let values = CommanderBindableValues(parsedValues: parsedValues)
+        if let level: LogLevel = try values.decodeOption("logLevel", as: LogLevel.self) {
+            options.logLevel = level
+        }
         return options
     }
 }

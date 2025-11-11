@@ -11,11 +11,13 @@ import PeekabooFoundation
 struct CommandRuntimeOptions: Sendable {
     var verbose = false
     var jsonOutput = false
+    var logLevel: LogLevel? = nil
 
     func makeConfiguration() -> CommandRuntime.Configuration {
         CommandRuntime.Configuration(
             verbose: self.verbose,
-            jsonOutput: self.jsonOutput
+            jsonOutput: self.jsonOutput,
+            logLevel: self.logLevel
         )
     }
 }
@@ -25,6 +27,7 @@ struct CommandRuntime {
     struct Configuration {
         var verbose: Bool
         var jsonOutput: Bool
+        var logLevel: LogLevel?
     }
 
     let configuration: Configuration
@@ -38,10 +41,23 @@ struct CommandRuntime {
         self.logger = Logger.shared
 
         self.logger.setJsonOutputMode(configuration.jsonOutput)
-        if configuration.jsonOutput && !configuration.verbose {
-            self.logger.setVerboseMode(true)
+        let explicitLevel = configuration.logLevel
+        var shouldEnableVerbose = configuration.verbose
+        if configuration.jsonOutput && explicitLevel == nil {
+            shouldEnableVerbose = true
+        }
+        if let explicitLevel, explicitLevel <= .verbose {
+            shouldEnableVerbose = true
+        }
+
+        self.logger.setVerboseMode(shouldEnableVerbose)
+
+        if let explicitLevel {
+            self.logger.setMinimumLogLevel(explicitLevel)
+        } else if shouldEnableVerbose {
+            self.logger.setMinimumLogLevel(.verbose)
         } else {
-            self.logger.setVerboseMode(configuration.verbose)
+            self.logger.resetMinimumLogLevel()
         }
     }
 

@@ -33,6 +33,7 @@ read_when:
 - **Option groups**: Commander honors nested `@OptionGroup` declarations, merging grouped options into help output exactly like Commander.js’ `.addOption(new Command())` pattern.
 - **Validation**: property wrappers can throw `CommanderValidationError(message:)` from their `load` hooks; router surfaces that as a user-facing error (with JSON code `INVALID_INPUT`).
 - **Custom parsing**: `@Argument(transform:)` keeps working by invoking the supplied closure once Commander has the raw string.
+- **Standard runtime options**: `CommandSignature.withStandardRuntimeFlags()` injects `-v/--verbose`, `--json-output`, and `--log-level <trace|verbose|debug|info|warning|error|critical>` for every command so tooling can toggle logging consistently.
 
 ## 4. Execution Flow
 1. `runPeekabooCLI()` builds the root `Commander.Program` using `CommandRegistry.entries` and hands it `CommandRuntime.Factory` for runtime injection.
