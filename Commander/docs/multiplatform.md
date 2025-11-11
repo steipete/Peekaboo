@@ -8,7 +8,7 @@ read_when:
 # Commander Multiplatform Tracking
 
 ## Current Status (November 11, 2025)
-- **Supported platforms:** macOS 14+, iOS 17+, tvOS 17+, watchOS 10+ via `Package.swift` declarations; Linux, Android, and Windows remain unrestricted because SwiftPM only constrains Apple-family targets explicitly and treats everything else as implicitly supported.¹
+- **Supported platforms:** macOS 14+, iOS 17+, tvOS 17+, watchOS 10+, visionOS 1.0+ via `Package.swift` declarations; Linux, Android, and Windows remain unrestricted because SwiftPM only constrains Apple-family targets explicitly and treats everything else as implicitly supported.¹
 - **Portability audit:** Commander exclusively depends on `Foundation` and concurrency features already available in Swift 6, so no conditional compilation was required.
 - **Testing coverage:** `CommanderTests` run natively on macOS, Linux, and Windows. Apple simulator builds validate the iOS/tvOS/watchOS triples. Android builds rely on `swift sdk install` with Skip's `swift-android-action` wrapper.
 
@@ -18,7 +18,7 @@ read_when:
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Declare Apple platform minimums in `Package.swift` | ✅ | Uses `.macOS(.v14)`, `.iOS(.v17)`, `.tvOS(.v17)`, `.watchOS(.v10)`
+| Declare Apple platform minimums in `Package.swift` | ✅ | Uses `.macOS(.v14)`, `.iOS(.v17)`, `.tvOS(.v17)`, `.watchOS(.v10)`, `.visionOS(.v1)`
 | Verify Linux/Windows portability of sources/tests | ✅ | Host-only APIs avoided; runs via `swift test --package-path Commander` on those OSes
 | Validate Apple simulator builds | ✅ | `swift build --build-tests` with `-Xswiftc -sdk …`/`-Xswiftc -target …` for iOS/tvOS/watchOS as described [on Swift Forums](https://forums.swift.org/t/how-to-build-ios-apps-on-linux-with-swift-package/66601/3)
 | Add Android cross-compilation step | ✅ | Uses `swift sdk install` (per [Swift.org SDK announcement](https://www.swift.org/blog/nightly-swift-sdk-for-android/)) together with [`skiptools/swift-android-action`](https://github.com/skiptools/swift-android-action)
@@ -31,6 +31,6 @@ read_when:
 - **Android:** `swift sdk install` preps the nightly Android SDKs and `skiptools/swift-android-action@v2` orchestrates the build/test run under QEMU, matching the Skip tooling docs.
 
 ## Follow-Ups
-1. Add smoke targets for visionOS once Peekaboo formally adopts it.
+1. Expand visionOS coverage beyond compiler smoke tests once Peekaboo formally adopts it in app targets.
 2. Expand the test suite with parser edge cases so non-macOS runs provide more value.
 3. Publish a reusable GitHub Actions composite to share these steps with Tachikoma/PeekabooCore once Commander graduates to its own repository.
