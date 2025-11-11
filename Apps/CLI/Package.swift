@@ -20,8 +20,14 @@ let includeAutomationTests = ProcessInfo.processInfo.environment["PEEKABOO_INCLU
 
 var targets: [Target] = [
     .target(
+        name: "Commander",
+        dependencies: [],
+        path: "Sources/Commander"
+    ),
+    .target(
         name: "PeekabooCLI",
         dependencies: [
+            "Commander",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
             .product(name: "MCP", package: "swift-sdk"),
             .product(name: "Spinner", package: "Spinner"),
@@ -71,6 +77,14 @@ if includeAutomationTests {
             swiftSettings: swiftTestingSettings)
     )
 }
+
+targets.append(
+    .testTarget(
+        name: "CommanderTests",
+        dependencies: ["Commander"],
+        path: "Tests/CommanderTests",
+        swiftSettings: swiftTestingSettings)
+)
 
 let package = Package(
     name: "peekaboo",
