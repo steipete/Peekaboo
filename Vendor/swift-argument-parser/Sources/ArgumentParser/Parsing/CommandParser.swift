@@ -216,8 +216,7 @@ extension CommandParser {
       }
     decodedArguments.append(contentsOf: newDecodedValues)
     decodedArguments.append(
-      DecodedArguments(type: currentNode.element, value: decodedResult))
-
+      DecodedArguments(type: currentNode.element, value: decodedResult, command: decodedResult))
     return decodedResult
   }
 
@@ -232,6 +231,7 @@ extension CommandParser {
         try parsedCommand.validate()
         var lastArgument = decodedArguments.removeLast()
         lastArgument.value = parsedCommand
+        lastArgument.cachedCommand = parsedCommand
         decodedArguments.append(lastArgument)
       } catch {
         try checkForBuiltInFlags(split)

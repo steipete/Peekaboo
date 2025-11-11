@@ -17,13 +17,24 @@
 struct DecodedArguments {
   var type: ParsableArguments.Type
   var value: ParsableArguments
+  var cachedCommand: ParsableCommand?
+
+  init(
+    type: ParsableArguments.Type,
+    value: ParsableArguments,
+    command: ParsableCommand? = nil
+  ) {
+    self.type = type
+    self.value = value
+    self.cachedCommand = command
+  }
 
   var commandType: ParsableCommand.Type? {
     type as? ParsableCommand.Type
   }
 
   var command: ParsableCommand? {
-    value as? ParsableCommand
+    cachedCommand ?? (value as? ParsableCommand)
   }
 }
 
@@ -218,7 +229,7 @@ struct SingleValueDecoder: Decoder {
 
   func saveValue<T: ParsableArguments>(_ value: T, type: T.Type = T.self) {
     underlying.previouslyDecoded.append(
-      DecodedArguments(type: type, value: value))
+      DecodedArguments(type: type, value: value, command: value as? ParsableCommand))
   }
 
   struct SingleValueContainer: SingleValueDecodingContainer {

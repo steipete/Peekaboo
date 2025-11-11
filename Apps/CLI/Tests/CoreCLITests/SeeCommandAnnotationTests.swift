@@ -7,6 +7,18 @@ import Testing
 
 @Suite("SeeCommand Annotation Tests", .serialized, .tags(.safe))
 struct SeeCommandAnnotationTests {
+    @Test("SeeCommand parses basic options standalone")
+    func parsesModeOption() throws {
+        let command = try SeeCommand.parse(["--mode", "screen"])
+        #expect(command.mode == .screen)
+    }
+
+    @Test("Peekaboo root parses see subcommand")
+    func parsesSeeFromRoot() throws {
+        let command = try Peekaboo.parseAsRoot(["see", "--app", "TextEdit", "--mode", "screen"])
+        #expect(command is SeeCommand)
+    }
+
     @Test("Annotation creates annotated file with correct naming")
     func annotationFileNaming() {
         // Given an original path

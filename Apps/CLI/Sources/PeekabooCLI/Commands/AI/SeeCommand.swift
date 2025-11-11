@@ -40,9 +40,6 @@ private enum ScreenCaptureBridge {
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
 struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe { VisionToolDefinitions.see.commandConfiguration }
-    }
 
     @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
@@ -1028,5 +1025,10 @@ extension SeeCommand {
     }
 }
 
-@MainActor
+extension SeeCommand: @MainActor AsyncParsableCommand {
+    nonisolated(unsafe) static var configuration: CommandConfiguration {
+        MainActorCommandConfiguration.describe { VisionToolDefinitions.see.commandConfiguration }
+    }
+}
+
 extension SeeCommand: @MainActor AsyncRuntimeCommand {}
