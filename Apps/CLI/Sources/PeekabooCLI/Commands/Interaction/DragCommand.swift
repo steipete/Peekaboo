@@ -264,9 +264,9 @@ private struct DragResult: Codable {
 
 @MainActor
 extension DragCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "drag",
                 abstract: "Perform drag and drop operations",
                 discussion: """

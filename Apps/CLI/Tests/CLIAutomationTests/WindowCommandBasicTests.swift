@@ -7,14 +7,14 @@ struct WindowCommandBasicTests {
     @Test("Window command exists")
     func windowCommandExists() {
         // Verify WindowCommand type exists and has proper configuration
-        let config = WindowCommand.configuration
+        let config = WindowCommand.commandDescription
         #expect(config.commandName == "window")
         #expect(config.abstract.contains("Manipulate application windows"))
     }
 
     @Test("Window command has expected subcommands")
     func windowSubcommands() {
-        let subcommands = WindowCommand.configuration.subcommands
+        let subcommands = WindowCommand.commandDescription.subcommands
 
         // We expect 8 subcommands
         #expect(subcommands.count == 8)
@@ -24,7 +24,7 @@ struct WindowCommandBasicTests {
 
         // Each subcommand should have one of these names
         for subcommand in subcommands {
-            let config = subcommand.configuration
+            let config = subcommand.commandDescription
             #expect(
                 subcommandNames.contains(config.commandName ?? ""),
                 "Unexpected subcommand: \(config.commandName ?? "")"

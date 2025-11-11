@@ -6,7 +6,7 @@ import Tachikoma
 /// The killer demo: Compare AI providers side-by-side using Tachikoma
 @main
 struct TachikomaComparison: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "tachikoma-comparison",
         abstract: "🚀 Compare AI provider responses side-by-side using Tachikoma",
         discussion: """

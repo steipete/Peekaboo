@@ -11,10 +11,10 @@ struct MCPCommandTests {
     func mCPCommandSubcommands() throws {
         let command = MCPCommand.self
 
-        #expect(command.configuration.commandName == "mcp")
-        #expect(command.configuration.subcommands.count == 10)
+        #expect(command.commandDescription.commandName == "mcp")
+        #expect(command.commandDescription.subcommands.count == 10)
 
-        let subcommandNames = command.configuration.subcommands.map(\.configuration.commandName)
+        let subcommandNames = command.commandDescription.subcommands.map(\.commandDescription.commandName)
         #expect(subcommandNames.contains("serve"))
         #expect(subcommandNames.contains("call"))
         #expect(subcommandNames.contains("list"))

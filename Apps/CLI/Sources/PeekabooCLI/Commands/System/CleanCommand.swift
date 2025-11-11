@@ -6,7 +6,7 @@ import PeekabooCore
 @available(macOS 14.0, *)
 @MainActor
 struct CleanCommand: OutputFormattable {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "clean",
         abstract: "Clean up session cache and temporary files",
         discussion: """

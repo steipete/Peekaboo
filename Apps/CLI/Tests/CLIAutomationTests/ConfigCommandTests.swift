@@ -10,11 +10,11 @@ struct ConfigCommandTests {
         let command = ConfigCommand.self
 
         // Check command configuration
-        #expect(command.configuration.commandName == "config")
-        #expect(command.configuration.abstract == "Manage Peekaboo configuration")
+        #expect(command.commandDescription.commandName == "config")
+        #expect(command.commandDescription.abstract == "Manage Peekaboo configuration")
 
         // Check subcommands
-        let subcommands = command.configuration.subcommands
+        let subcommands = command.commandDescription.subcommands
         #expect(subcommands.count == 10)
         let hasInit = subcommands.contains { $0 == ConfigCommand.InitCommand.self }
         #expect(hasInit)
@@ -41,35 +41,35 @@ struct ConfigCommandTests {
     @Test("InitCommand has correct configuration")
     func initCommand() {
         let command = ConfigCommand.InitCommand.self
-        #expect(command.configuration.commandName == "init")
-        #expect(command.configuration.abstract == "Create a default configuration file")
+        #expect(command.commandDescription.commandName == "init")
+        #expect(command.commandDescription.abstract == "Create a default configuration file")
     }
 
     @Test("ShowCommand has correct configuration")
     func showCommand() {
         let command = ConfigCommand.ShowCommand.self
-        #expect(command.configuration.commandName == "show")
-        #expect(command.configuration.abstract == "Display current configuration")
+        #expect(command.commandDescription.commandName == "show")
+        #expect(command.commandDescription.abstract == "Display current configuration")
     }
 
     @Test("EditCommand has correct configuration")
     func editCommand() {
         let command = ConfigCommand.EditCommand.self
-        #expect(command.configuration.commandName == "edit")
-        #expect(command.configuration.abstract == "Open configuration file in your default editor")
+        #expect(command.commandDescription.commandName == "edit")
+        #expect(command.commandDescription.abstract == "Open configuration file in your default editor")
     }
 
     @Test("ValidateCommand has correct configuration")
     func validateCommand() {
         let command = ConfigCommand.ValidateCommand.self
-        #expect(command.configuration.commandName == "validate")
-        #expect(command.configuration.abstract == "Validate configuration file syntax")
+        #expect(command.commandDescription.commandName == "validate")
+        #expect(command.commandDescription.abstract == "Validate configuration file syntax")
     }
 
     @Test("SetCredentialCommand has correct configuration")
     func setCredentialCommand() {
         let command = ConfigCommand.SetCredentialCommand.self
-        #expect(command.configuration.commandName == "set-credential")
-        #expect(command.configuration.abstract == "Set an API key or credential securely")
+        #expect(command.commandDescription.commandName == "set-credential")
+        #expect(command.commandDescription.abstract == "Set an API key or credential securely")
     }
 }

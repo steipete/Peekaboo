@@ -9,7 +9,7 @@ import PeekabooFoundation
 /// Control macOS applications
 @MainActor
 struct AppCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "app",
         abstract: "Control applications - launch, quit, hide, show, and switch between apps",
         discussion: """
@@ -49,7 +49,7 @@ struct AppCommand: ParsableCommand {
 
     @MainActor
     struct LaunchSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "launch",
             abstract: "Launch an application"
         )
@@ -194,7 +194,7 @@ struct AppCommand: ParsableCommand {
     @MainActor
 
     struct QuitSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "quit",
             abstract: "Quit one or more applications"
         )
@@ -345,7 +345,7 @@ struct AppCommand: ParsableCommand {
     @MainActor
 
     struct HideSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "hide",
             abstract: "Hide an application"
         )
@@ -413,7 +413,7 @@ struct AppCommand: ParsableCommand {
     @MainActor
 
     struct UnhideSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "unhide",
             abstract: "Show a hidden application"
         )
@@ -501,7 +501,7 @@ struct AppCommand: ParsableCommand {
     @MainActor
 
     struct SwitchSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "switch",
             abstract: "Switch to another application"
         )
@@ -606,7 +606,7 @@ struct AppCommand: ParsableCommand {
     @MainActor
 
     struct ListSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "list",
             abstract: "List running applications"
         )
@@ -700,7 +700,7 @@ struct AppCommand: ParsableCommand {
     @MainActor
 
     struct RelaunchSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "relaunch",
             abstract: "Quit and relaunch an application"
         )

@@ -9,9 +9,9 @@ import Testing
      @Test("PermissionsCommand configuration matches original")
      func commandConfiguration() {
          // Verify the command has the same configuration as the original
-         #expect(PermissionsCommand.configuration.commandName == "permissions")
-         #expect(PermissionsCommand.configuration.abstract == "Check system permissions required for Peekaboo")
-         #expect(!PermissionsCommand.configuration.discussion.isEmpty)
+         #expect(PermissionsCommand.commandDescription.commandName == "permissions")
+         #expect(PermissionsCommand.commandDescription.abstract == "Check system permissions required for Peekaboo")
+         #expect(!PermissionsCommand.commandDescription.discussion.isEmpty)
      }
 
      @Test("PermissionsCommand has JSON output flag")

@@ -14,17 +14,17 @@ import Testing
 struct DialogCommandTests {
     @Test("Dialog  command exists")
     func dialogCommandExists() {
-        let config = DialogCommand.configuration
+        let config = DialogCommand.commandDescription
         #expect(config.commandName == "dialog")
         #expect(config.abstract.contains("Interact with system dialogs and alerts"))
     }
 
     @Test("Dialog  command has expected subcommands")
     func dialogSubcommands() {
-        let subcommands = DialogCommand.configuration.subcommands
+        let subcommands = DialogCommand.commandDescription.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map(\.configuration.commandName)
+        let subcommandNames = subcommands.map(\.commandDescription.commandName)
         #expect(subcommandNames.contains("click"))
         #expect(subcommandNames.contains("input"))
         #expect(subcommandNames.contains("file"))

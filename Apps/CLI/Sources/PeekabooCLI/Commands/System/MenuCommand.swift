@@ -16,9 +16,9 @@ enum MenuError: Error {
 /// Interact with application menu bar items and system menu extras
 @MainActor
 struct MenuCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "menu",
                 abstract: "Interact with application menu bar",
                 discussion: """
@@ -753,9 +753,9 @@ extension MenuCommand {
 
 @MainActor
 extension MenuCommand.ClickSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "click",
                 abstract: "Click a menu item"
             )
@@ -778,9 +778,9 @@ extension MenuCommand.ClickSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension MenuCommand.ClickExtraSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "click-extra",
                 abstract: "Click a system menu extra (status bar item)"
             )
@@ -800,9 +800,9 @@ extension MenuCommand.ClickExtraSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension MenuCommand.ListSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "list",
                 abstract: "List all menu items for an application"
             )
@@ -824,9 +824,9 @@ extension MenuCommand.ListSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension MenuCommand.ListAllSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "list-all",
                 abstract: "List all menu bar items system-wide (including status items)"
             )

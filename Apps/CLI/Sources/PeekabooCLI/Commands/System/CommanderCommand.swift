@@ -11,8 +11,8 @@ struct CommanderCommand: ParsableCommand {
     @Flag(name: .long, help: "Emit machine-readable JSON output")
     var json = false
 
-    static var configuration: CommandConfiguration {
-        CommandConfiguration(
+    static var commandDescription: CommandDescription {
+        CommandDescription(
             commandName: "commander",
             abstract: "Commander diagnostics (experimental)",
             discussion: "Inspect the upcoming Commander parser state."

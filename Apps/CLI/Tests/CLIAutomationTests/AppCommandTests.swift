@@ -8,17 +8,17 @@ import Testing
 struct AppCommandTests {
     @Test("App command exists")
     func appCommandExists() {
-        let config = AppCommand.configuration
+        let config = AppCommand.commandDescription
         #expect(config.commandName == "app")
         #expect(config.abstract.contains("Control applications"))
     }
 
     @Test("App command has expected subcommands")
     func appSubcommands() {
-        let subcommands = AppCommand.configuration.subcommands
+        let subcommands = AppCommand.commandDescription.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map(\.configuration.commandName)
+        let subcommandNames = subcommands.map(\.commandDescription.commandName)
         #expect(subcommandNames.contains("launch"))
         #expect(subcommandNames.contains("quit"))
         #expect(subcommandNames.contains("hide"))

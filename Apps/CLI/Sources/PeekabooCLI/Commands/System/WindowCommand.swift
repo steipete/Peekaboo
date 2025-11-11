@@ -10,7 +10,7 @@ import PeekabooFoundation
 /// Manipulate application windows with various actions
 @MainActor
 struct WindowCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "window",
         abstract: "Manipulate application windows",
         discussion: """
@@ -72,7 +72,7 @@ struct WindowCommand: ParsableCommand {
 // MARK: - Common Options
 
 @MainActor
-struct WindowIdentificationOptions: ParsableArguments, ApplicationResolvable {
+struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
 
@@ -787,9 +787,9 @@ struct WindowActionResult: Codable {
 
 @MainActor
 extension WindowCommand.MoveSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "move", abstract: "Move a window to a new position")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "move", abstract: "Move a window to a new position")
         }
     }
 }
@@ -798,9 +798,9 @@ extension WindowCommand.MoveSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension WindowCommand.ResizeSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "resize", abstract: "Resize a window")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "resize", abstract: "Resize a window")
         }
     }
 }
@@ -809,9 +809,9 @@ extension WindowCommand.ResizeSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension WindowCommand.SetBoundsSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "set-bounds", abstract: "Set window position and size in one operation")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "set-bounds", abstract: "Set window position and size in one operation")
         }
     }
 }
@@ -820,9 +820,9 @@ extension WindowCommand.SetBoundsSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension WindowCommand.WindowListSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "list", abstract: "List windows for an application")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "list", abstract: "List windows for an application")
         }
     }
 }
@@ -831,9 +831,9 @@ extension WindowCommand.WindowListSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension WindowCommand.CloseSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "close", abstract: "Close a window")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "close", abstract: "Close a window")
         }
     }
 }
@@ -842,9 +842,9 @@ extension WindowCommand.CloseSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension WindowCommand.MinimizeSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "minimize", abstract: "Minimize a window to the Dock")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "minimize", abstract: "Minimize a window to the Dock")
         }
     }
 }
@@ -853,9 +853,9 @@ extension WindowCommand.MinimizeSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension WindowCommand.MaximizeSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "maximize", abstract: "Maximize a window (full screen)")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "maximize", abstract: "Maximize a window (full screen)")
         }
     }
 }
@@ -864,9 +864,9 @@ extension WindowCommand.MaximizeSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension WindowCommand.FocusSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "focus",
                 abstract: "Bring a window to the foreground",
                 discussion: """

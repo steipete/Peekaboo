@@ -8,7 +8,7 @@ import TachikomaMCP
 /// Command for Model Context Protocol server operations
 @MainActor
 struct MCPCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "mcp",
         abstract: "Model Context Protocol server and client operations",
         discussion: """
@@ -42,7 +42,7 @@ extension MCPCommand {
     /// Start MCP server
     @MainActor
     struct Serve {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "serve",
             abstract: "Start Peekaboo as an MCP server",
             discussion: """
@@ -98,7 +98,7 @@ extension MCPCommand {
     /// Call tool on MCP server
     @MainActor
     struct Call {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "call",
             abstract: "Call a tool on another MCP server",
             discussion: """
@@ -512,7 +512,7 @@ extension MCPCommand {
     /// Remove an MCP server
     @MainActor
     struct Remove {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "remove",
             abstract: "Remove an external MCP server",
             discussion: "Remove a configured MCP server and disconnect from it."
@@ -571,7 +571,7 @@ extension MCPCommand {
     /// Test connection to an MCP server
     @MainActor
     struct Test {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "test",
             abstract: "Test connection to an MCP server",
             discussion: "Test connectivity and list available tools from an MCP server."
@@ -614,7 +614,7 @@ extension MCPCommand {
     /// Show detailed information about an MCP server
     @MainActor
     struct Info {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "info",
             abstract: "Show detailed information about an MCP server",
             discussion: "Display comprehensive information about a configured MCP server."
@@ -698,7 +698,7 @@ extension MCPCommand {
     /// Enable an MCP server
     @MainActor
     struct Enable {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "enable",
             abstract: "Enable a disabled MCP server",
             discussion: "Enable a previously disabled MCP server and attempt to connect."
@@ -739,7 +739,7 @@ extension MCPCommand {
     /// Disable an MCP server
     @MainActor
     struct Disable {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "disable",
             abstract: "Disable an MCP server",
             discussion: "Disable an MCP server without removing its configuration."
@@ -776,7 +776,7 @@ extension MCPCommand {
     /// Inspect MCP connection
     @MainActor
     struct Inspect {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "inspect",
             abstract: "Debug MCP connections",
             discussion: "Provides debugging information for MCP connections."
@@ -806,9 +806,9 @@ extension MCPCommand {
 
 @MainActor
 extension MCPCommand.List: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "list",
                 abstract: "List configured MCP servers with health status",
                 discussion: """
@@ -830,9 +830,9 @@ extension MCPCommand.List: AsyncRuntimeCommand {}
 
 @MainActor
 extension MCPCommand.Add: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "add",
                 abstract: "Add a new external MCP server",
                 discussion: """

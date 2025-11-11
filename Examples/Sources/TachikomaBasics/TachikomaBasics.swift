@@ -6,7 +6,7 @@ import Tachikoma
 /// Simple getting started example demonstrating basic Tachikoma usage
 @main
 struct TachikomaBasics: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "tachikoma-basics",
         abstract: "🎓 Learn the basics of using Tachikoma for AI interactions",
         discussion: """

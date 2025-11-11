@@ -3,18 +3,36 @@ import Foundation
 
 @MainActor
 struct CommandHelpRenderer {
-    static func renderHelp<T: ParsableCommand>(for type: T.Type) -> String {
-        let config = T.configuration
-        let instance = type.init()
-        let signature = CommandSignature.describe(instance)
+    static func renderHelp(for type: (some ParsableCommand).Type) -> String {
+        if let descriptor = CommanderRegistryBuilder.descriptor(for: type) {
+            return self.renderHelp(
+                abstract: descriptor.abstract,
+                discussion: descriptor.discussion,
+                signature: descriptor.signature
+            )
+        }
+
+        let fallbackSignature = CommandSignature.describe(type.init())
             .flattened()
             .withStandardRuntimeFlags()
+        return self.renderHelp(
+            abstract: type.commandDescription.abstract,
+            discussion: type.commandDescription.discussion,
+            signature: fallbackSignature
+        )
+    }
 
+    private static func renderHelp(
+        abstract: String,
+        discussion: String?,
+        signature: CommandSignature
+    ) -> String {
         var sections: [String] = []
-        if !config.abstract.isEmpty {
-            sections.append(config.abstract)
+
+        if !abstract.isEmpty {
+            sections.append(abstract)
         }
-        if let discussion = config.discussion, !discussion.isEmpty {
+        if let discussion, !discussion.isEmpty {
             sections.append(discussion)
         }
 

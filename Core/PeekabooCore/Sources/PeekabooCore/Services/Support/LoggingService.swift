@@ -126,7 +126,7 @@ extension LoggingService {
         static let dialogs = "Dialogs"
         static let sessions = "Sessions"
         static let files = "Files"
-        static let configuration = "Configuration"
+        static let commandDescription = "Configuration"
         static let process = "Process"
         static let ai = "AI"
         static let performance = "Performance"

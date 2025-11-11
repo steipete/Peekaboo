@@ -6,7 +6,7 @@ import Tachikoma
 /// Demonstrate AI agent patterns with function calling using Tachikoma
 @main
 struct TachikomaAgent: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "tachikoma-agent",
         abstract: "👻 Build AI agents with custom tools and function calling",
         discussion: """

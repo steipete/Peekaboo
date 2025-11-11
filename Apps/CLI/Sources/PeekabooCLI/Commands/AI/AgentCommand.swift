@@ -83,8 +83,8 @@ func iconForTool(_ toolName: String) -> String {
 
 /// AI Agent command that uses new Chat Completions API architecture
 @available(macOS 14.0, *)
-struct AgentCommand {
-    static let configuration = CommandConfiguration(
+struct AgentCommand: RuntimeOptionsConfigurable {
+    static let commandDescription = CommandDescription(
         commandName: "agent",
         abstract: "Execute complex automation tasks using AI agent"
     )
@@ -152,6 +152,7 @@ struct AgentCommand {
     }
 
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -169,9 +170,9 @@ struct AgentCommand {
         self.resolvedRuntime.logger
     }
 
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
-    var verbose: Bool { self.resolvedRuntime.configuration.verbose }
+    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
 
     @MainActor
     mutating func run() async throws {
@@ -182,6 +183,7 @@ struct AgentCommand {
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
+
         // Show terminal detection debug if requested
         if self.debugTerminal {
             let capabilities = TerminalDetector.detectCapabilities()
@@ -207,6 +209,12 @@ struct AgentCommand {
 
     @MainActor
     mutating func runInternal(runtime: CommandRuntime) async throws {
+        if ProcessInfo.processInfo.environment["PEEKABOO_DISABLE_AGENT"] == "1" ||
+            ProcessInfo.processInfo.environment["PEEKABOO_DISABLE_AGENT"]?.lowercased() == "true" {
+            self.emitAgentUnavailableMessage()
+            return
+        }
+
         // Initialize MCP clients first so agent has access to external tools
         // Only show MCP initialization in verbose mode
         let shouldSuppressMCPLogs = !self.verbose && !self.debugTerminal
@@ -246,23 +254,25 @@ struct AgentCommand {
         await TachikomaMCPClientManager.shared.initializeFromProfile()
 
         // Initialize services
+        // Check if agent service is available
         let services = runtime.services
 
-        // Check if agent service is available
-        guard let agentService = services.agent else {
-            if self.jsonOutput {
-                let error = [
-                    "success": false,
-                    "error": "Agent service not available. Please set OPENAI_API_KEY environment variable."
-                ] as [String: Any]
-                let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
-                print(String(data: jsonData, encoding: .utf8) ?? "{}")
-            } else {
-                print(
-                    "\(TerminalColor.red)Error: Agent service not available. Please set OPENAI_API_KEY environment variable.\(TerminalColor.reset)"
-                )
-            }
+        if !self.hasConfiguredAIProvider(configuration: services.configuration) {
+            self.emitAgentUnavailableMessage()
             return
+        }
+
+        guard let agentService = services.agent else {
+            self.emitAgentUnavailableMessage()
+            return
+        }
+
+        if let peekabooAgent = agentService as? PeekabooAgentService {
+            let hasCredential = await peekabooAgent.maskedApiKey != nil
+            if !hasCredential {
+                self.emitAgentUnavailableMessage()
+                return
+            }
         }
 
         // Handle list sessions
@@ -1004,6 +1014,31 @@ struct AgentCommand {
         }
 
         print(String(repeating: "=", count: 60) + "\n")
+    }
+
+    private func hasConfiguredAIProvider(configuration: PeekabooCore.ConfigurationManager) -> Bool {
+        let hasOpenAI = configuration.getOpenAIAPIKey()?.isEmpty == false
+        let hasAnthropic = configuration.getAnthropicAPIKey()?.isEmpty == false
+        return hasOpenAI || hasAnthropic
+    }
+
+    private func emitAgentUnavailableMessage() {
+        if self.jsonOutput {
+            let error = [
+                "success": false,
+                "error": "Agent service not available. Please set OPENAI_API_KEY environment variable."
+            ] as [String: Any]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                print(jsonString)
+            } else {
+                print("{\"success\":false,\"error\":\"Agent service not available\"}")
+            }
+        } else {
+            print(
+                "\(TerminalColor.red)Error: Agent service not available. Please set OPENAI_API_KEY environment variable.\(TerminalColor.reset)"
+            )
+        }
     }
 }
 

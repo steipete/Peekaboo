@@ -10,9 +10,9 @@ import Foundation
 
 @main
 struct AXORCCommand: ParsableCommand {
-    @preconcurrency nonisolated static var configuration: CommandConfiguration {
+    @preconcurrency nonisolated static var commandDescription: CommandDescription {
         let version = MainActor.assumeIsolated { axorcVersion }
-        return CommandConfiguration(
+        return CommandDescription(
             commandName: "axorc",
             // Use axorcVersion from AXORCModels.swift or a shared constant place
             abstract: "AXORC CLI - Handles JSON commands via various input methods. Version \(version)"

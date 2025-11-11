@@ -92,7 +92,7 @@ enum SpaceCommandEnvironment {
 /// Manage macOS Spaces (virtual desktops)
 @MainActor
 struct SpaceCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "space",
         abstract: "Manage macOS Spaces (virtual desktops)",
         discussion: """
@@ -408,9 +408,9 @@ struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, Output
 
 @MainActor
 extension ListSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "list",
                 abstract: "List all Spaces and their windows"
             )
@@ -428,9 +428,9 @@ extension ListSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension SwitchSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "switch",
                 abstract: "Switch to a different Space"
             )
@@ -448,9 +448,9 @@ extension SwitchSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension MoveWindowSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "move-window",
                 abstract: "Move a window to a different Space"
             )

@@ -69,15 +69,15 @@ enum CommandRegistry {
     @MainActor
     static func definitions() -> [CommandDefinition] {
         self.entries.map { entry in
-            let configuration = entry.type.configuration
+            let description = entry.type.commandDescription
             return CommandDefinition(
-                name: configuration.commandName ?? String(describing: entry.type),
+                name: description.commandName ?? String(describing: entry.type),
                 typeName: String(reflecting: entry.type),
                 category: entry.category,
-                abstract: configuration.abstract,
-                discussion: configuration.discussion,
-                version: configuration.version,
-                subcommandCount: configuration.subcommands.count
+                abstract: description.abstract,
+                discussion: description.discussion,
+                version: description.version,
+                subcommandCount: description.subcommands.count
             )
         }
     }

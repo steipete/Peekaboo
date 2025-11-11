@@ -7,9 +7,9 @@ import PeekabooFoundation
 /// Command for interacting with macOS menu bar items (status items).
 @MainActor
 struct MenuBarCommand: ParsableCommand, OutputFormattable {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "menubar",
                 abstract: "Interact with macOS menu bar items (status items)",
                 discussion: """

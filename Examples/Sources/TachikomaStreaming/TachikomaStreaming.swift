@@ -6,7 +6,7 @@ import Tachikoma
 /// Demonstrate real-time streaming responses from AI providers
 @main
 struct TachikomaStreaming: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "tachikoma-streaming",
         abstract: "⚡ Experience real-time streaming responses from AI providers",
         discussion: """

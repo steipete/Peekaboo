@@ -346,9 +346,9 @@ extension ClickCommand {
 
 @MainActor
 extension ClickCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
         let definition = UIAutomationToolDefinitions.click.commandConfiguration
-        return CommandConfiguration(
+        return CommandDescription(
             commandName: definition.commandName,
             abstract: definition.abstract,
             discussion: definition.discussion

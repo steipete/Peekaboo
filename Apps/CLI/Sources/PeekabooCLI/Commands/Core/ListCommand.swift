@@ -8,7 +8,7 @@ private typealias ScreenOutput = UnifiedToolOutput<ScreenListData>
 /// List running applications, windows, or check system permissions.
 @MainActor
 struct ListCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "list",
         abstract: "List running applications, windows, or check permissions",
         discussion: """
@@ -496,9 +496,9 @@ nonisolated extension ScreenListData.Position: Sendable, Codable {}
 
 @MainActor
 extension ListCommand.AppsSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "apps",
                 abstract: "List all running applications with details",
                 discussion: """
@@ -523,9 +523,9 @@ extension ListCommand.AppsSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension ListCommand.WindowsSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "windows",
                 abstract: "List all windows for a specific application",
                 discussion: """
@@ -553,9 +553,9 @@ extension ListCommand.WindowsSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension ListCommand.PermissionsSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "permissions",
                 abstract: "Check permissions required for Peekaboo"
             )
@@ -567,9 +567,9 @@ extension ListCommand.PermissionsSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension ListCommand.MenuBarSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "menubar",
                 abstract: "List all menu bar items (status icons)"
             )
@@ -588,9 +588,9 @@ extension ListCommand.MenuBarSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension ListCommand.ScreensSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "screens",
                 abstract: "List all displays/monitors"
             )

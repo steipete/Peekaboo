@@ -9,7 +9,7 @@ import Testing
 struct DragCommandTests {
     @Test("Drag command exists")
     func dragCommandExists() {
-        let config = DragCommand.configuration
+        let config = DragCommand.commandDescription
         #expect(config.commandName == "drag")
         #expect(config.abstract.contains("drag and drop"))
     }

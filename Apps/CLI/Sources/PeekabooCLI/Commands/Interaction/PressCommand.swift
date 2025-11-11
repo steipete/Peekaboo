@@ -135,9 +135,9 @@ struct PressResult: Codable {
 
 @MainActor
 extension PressCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "press",
                 abstract: "Press individual keys or key sequences",
                 discussion: """

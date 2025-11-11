@@ -6,7 +6,7 @@ import PeekabooFoundation
 /// Types text into focused elements or sends keyboard input using the UIAutomationService.
 @available(macOS 14.0, *)
 @MainActor
-struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
+struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
     @Argument(help: "Text to type")
     var text: String?
 
@@ -36,6 +36,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
 
     @OptionGroup var focusOptions: FocusCommandOptions
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -47,7 +48,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
     private var services: PeekabooServices { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -260,9 +261,9 @@ struct TypeCommandResult: Codable {
 
 @MainActor
 extension TypeCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "type",
                 abstract: "Type text or send keyboard input",
                 discussion: """

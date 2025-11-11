@@ -9,7 +9,7 @@ import PeekabooFoundation
 /// Performs swipe gestures using intelligent element finding and service-based architecture.
 @available(macOS 14.0, *)
 @MainActor
-struct SwipeCommand: ErrorHandlingCommand, OutputFormattable {
+struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
     @Option(help: "Source element ID")
     var from: String?
 
@@ -34,6 +34,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable {
     @Flag(help: "Use right mouse button for drag")
     var rightButton = false
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -45,7 +46,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable {
     private var services: PeekabooServices { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -194,9 +195,9 @@ struct SwipeResult: Codable {
 
 @MainActor
 extension SwipeCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "swipe",
                 abstract: "Perform swipe gestures",
                 discussion: """

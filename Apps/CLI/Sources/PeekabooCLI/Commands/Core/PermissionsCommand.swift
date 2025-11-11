@@ -5,7 +5,7 @@ import PeekabooCore
 @MainActor
 
 struct PermissionsCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "permissions",
         abstract: "Check Peekaboo permissions",
         subcommands: [
@@ -17,8 +17,9 @@ struct PermissionsCommand: ParsableCommand {
 
     @MainActor
 
-    struct StatusSubcommand: OutputFormattable {
+    struct StatusSubcommand: OutputFormattable, RuntimeOptionsConfigurable {
         @RuntimeStorage private var runtime: CommandRuntime?
+        var runtimeOptions = CommandRuntimeOptions()
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -28,7 +29,7 @@ struct PermissionsCommand: ParsableCommand {
         }
 
         var outputLogger: Logger { self.resolvedRuntime.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -44,8 +45,9 @@ struct PermissionsCommand: ParsableCommand {
 
     @MainActor
 
-    struct GrantSubcommand: OutputFormattable {
+    struct GrantSubcommand: OutputFormattable, RuntimeOptionsConfigurable {
         @RuntimeStorage private var runtime: CommandRuntime?
+        var runtimeOptions = CommandRuntimeOptions()
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -55,7 +57,7 @@ struct PermissionsCommand: ParsableCommand {
         }
 
         var outputLogger: Logger { self.resolvedRuntime.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -76,9 +78,9 @@ struct PermissionsCommand: ParsableCommand {
 
 @MainActor
 extension PermissionsCommand.StatusSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "status",
                 abstract: "Show current permissions"
             )
@@ -97,9 +99,9 @@ extension PermissionsCommand.StatusSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension PermissionsCommand.GrantSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "grant",
                 abstract: "Show grant instructions"
             )

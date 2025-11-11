@@ -43,22 +43,45 @@ enum CommanderRegistryBuilder {
         CommandRegistry.entries.map { self.buildDescriptor(for: $0.type) }
     }
 
+    private static var descriptorLookup: [ObjectIdentifier: CommandDescriptor]?
+
+    static func descriptor(for type: any ParsableCommand.Type) -> CommandDescriptor? {
+        if let cached = self.descriptorLookup {
+            return cached[ObjectIdentifier(type)]
+        }
+        let lookup = self.buildDescriptorLookup()
+        self.descriptorLookup = lookup
+        return lookup[ObjectIdentifier(type)]
+    }
+
     static func buildCommandSummaries() -> [CommanderCommandSummary] {
         self.buildDescriptors().map { CommanderCommandSummary(descriptor: $0) }
     }
 
+    private static func buildDescriptorLookup() -> [ObjectIdentifier: CommandDescriptor] {
+        var lookup: [ObjectIdentifier: CommandDescriptor] = [:]
+
+        func register(_ descriptor: CommanderCommandDescriptor) {
+            lookup[ObjectIdentifier(descriptor.type)] = descriptor.metadata
+            descriptor.subcommands.forEach(register)
+        }
+
+        self.buildDescriptors().forEach(register)
+        return lookup
+    }
+
     private static func buildDescriptor(for type: any ParsableCommand.Type) -> CommanderCommandDescriptor {
-        let configuration = type.configuration
+        let description = type.commandDescription
         let commandInstance = type.init()
         let signature = self.resolveSignature(for: type, instance: commandInstance)
             .flattened()
             .withStandardRuntimeFlags()
-        let childDescriptors = configuration.subcommands.map { self.buildDescriptor(for: $0) }
-        let defaultName = configuration.defaultSubcommand.map { self.commandName(for: $0) }
+        let childDescriptors = description.subcommands.map { self.buildDescriptor(for: $0) }
+        let defaultName = description.defaultSubcommand.map { self.commandName(for: $0) }
         let metadata = CommandDescriptor(
             name: commandName(for: type),
-            abstract: configuration.abstract,
-            discussion: configuration.discussion,
+            abstract: description.abstract,
+            discussion: description.discussion,
             signature: signature,
             subcommands: childDescriptors.map(\.metadata),
             defaultSubcommandName: defaultName
@@ -67,7 +90,7 @@ enum CommanderRegistryBuilder {
     }
 
     private static func commandName(for type: any ParsableCommand.Type) -> String {
-        if let explicit = type.configuration.commandName {
+        if let explicit = type.commandDescription.commandName {
             return explicit
         }
         return String(describing: type)

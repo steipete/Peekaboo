@@ -1,7 +1,7 @@
 # SwiftFormat configuration for Peekaboo CLI
 
 # Swift version
---swiftversion 6.0
+--swiftversion 6.2
 
 # Format options
 --indent 4

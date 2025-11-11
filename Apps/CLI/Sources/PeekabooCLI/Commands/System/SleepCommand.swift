@@ -4,9 +4,9 @@ import Foundation
 @available(macOS 14.0, *)
 @MainActor
 struct SleepCommand: OutputFormattable {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "sleep",
                 abstract: "Pause execution for a specified duration"
             )

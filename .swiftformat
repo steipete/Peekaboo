@@ -39,7 +39,7 @@
 --enumthreshold 0
 
 # Swift 6 specific
---swiftversion 6.0
+--swiftversion 6.2
 
 # Other
 --stripunusedargs closure-only

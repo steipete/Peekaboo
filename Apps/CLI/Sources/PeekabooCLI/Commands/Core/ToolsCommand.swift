@@ -4,11 +4,11 @@ import PeekabooCore
 import TachikomaMCP
 
 @MainActor
-struct ToolsCommand: OutputFormattable {
+struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
     private static let abstractText = "List available tools with filtering and display options"
     private static let descriptionText = "Tools command for listing and filtering available tools"
 
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "tools",
         abstract: Self.abstractText,
         discussion: """
@@ -24,23 +24,25 @@ struct ToolsCommand: OutputFormattable {
         """
     )
 
-    @Flag(name: .long, help: "Show only native Peekaboo tools")
+    @Flag(name: .customLong("native-only"), help: "Show only native Peekaboo tools")
     var nativeOnly = false
 
-    @Flag(name: .long, help: "Show only external MCP tools")
+    @Flag(name: .customLong("mcp-only"), help: "Show only external MCP tools")
     var mcpOnly = false
 
     @Option(name: .long, help: "Show tools from specific MCP server")
     var mcp: String?
 
-    @Flag(name: .long, help: "Include disabled servers in output")
+    @Flag(name: .customLong("include-disabled"), help: "Include disabled servers in output")
     var includeDisabled = false
 
     @Flag(name: .customLong("no-sort"), help: "Disable alphabetical sorting")
     var noSort = false
 
-    @Flag(name: .long, help: "Group external tools by server")
+    @Flag(name: .customLong("group-by-server"), help: "Group external tools by server")
     var groupByServer = false
+
+    var runtimeOptions = CommandRuntimeOptions()
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -56,9 +58,9 @@ struct ToolsCommand: OutputFormattable {
 
     var description: String { Self.descriptionText }
 
-    var verbose: Bool { self.resolvedRuntime.configuration.verbose }
+    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
 
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
     private var showDetailedInfo: Bool { self.verbose }
 

@@ -153,9 +153,9 @@ struct LearnCommand {
 
 @MainActor
 extension LearnCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "learn",
                 abstract: "Display comprehensive usage guide for AI agents",
                 discussion: """

@@ -40,7 +40,7 @@ private enum ScreenCaptureBridge {
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
 @MainActor
-struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
+struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsConfigurable {
     @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
 
@@ -68,6 +68,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
     @Option(help: "Analyze captured content with AI")
     var analyze: String?
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -76,8 +77,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
         return runtime
     }
 
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
-    var verbose: Bool { self.resolvedRuntime.configuration.verbose }
+    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
 
     private var logger: Logger { self.resolvedRuntime.logger }
     private var services: PeekabooServices { self.resolvedRuntime.services }
@@ -1033,10 +1034,10 @@ extension SeeCommand {
 
 @MainActor
 extension SeeCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
             let definition = VisionToolDefinitions.see.commandConfiguration
-            return CommandConfiguration(
+            return CommandDescription(
                 commandName: definition.commandName,
                 abstract: definition.abstract,
                 discussion: definition.discussion

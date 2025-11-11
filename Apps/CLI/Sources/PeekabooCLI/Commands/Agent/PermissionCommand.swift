@@ -7,7 +7,7 @@ import PeekabooFoundation
 
 /// Manage and request system permissions
 struct PermissionCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "permission",
         abstract: "Manage system permissions for Peekaboo",
         discussion: """
@@ -36,9 +36,9 @@ extension PermissionCommand {
     // MARK: - Status Subcommand
 
     struct StatusSubcommand: OutputFormattable {
-        nonisolated(unsafe) static var configuration: CommandConfiguration {
-            MainActorCommandConfiguration.describe {
-                CommandConfiguration(
+        nonisolated(unsafe) static var commandDescription: CommandDescription {
+            MainActorCommandDescription.describe {
+                CommandDescription(
                     commandName: "status",
                     abstract: "Check current permission status"
                 )
@@ -99,9 +99,9 @@ extension PermissionCommand {
     // MARK: - Request Screen Recording Subcommand
 
     struct RequestScreenRecordingSubcommand: OutputFormattable {
-        nonisolated(unsafe) static var configuration: CommandConfiguration {
-            MainActorCommandConfiguration.describe {
-                CommandConfiguration(
+        nonisolated(unsafe) static var commandDescription: CommandDescription {
+            MainActorCommandDescription.describe {
+                CommandDescription(
                     commandName: "request-screen-recording",
                     abstract: "Trigger screen recording permission prompt"
                 )
@@ -215,9 +215,9 @@ extension PermissionCommand {
     // MARK: - Request Accessibility Subcommand
 
     struct RequestAccessibilitySubcommand: OutputFormattable {
-        nonisolated(unsafe) static var configuration: CommandConfiguration {
-            MainActorCommandConfiguration.describe {
-                CommandConfiguration(
+        nonisolated(unsafe) static var commandDescription: CommandDescription {
+            MainActorCommandDescription.describe {
+                CommandDescription(
                     commandName: "request-accessibility",
                     abstract: "Request accessibility permission"
                 )

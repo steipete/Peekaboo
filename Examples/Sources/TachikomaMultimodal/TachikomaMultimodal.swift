@@ -6,7 +6,7 @@ import Tachikoma
 /// Demonstrate multimodal AI capabilities (vision + text) using Tachikoma
 @main
 struct TachikomaMultimodal: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "tachikoma-multimodal",
         abstract: "👁️ Explore multimodal AI with vision and text processing",
         discussion: """

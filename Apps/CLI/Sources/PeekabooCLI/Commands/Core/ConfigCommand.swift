@@ -7,7 +7,7 @@ import PeekabooFoundation
 @available(macOS 14.0, *)
 @MainActor
 struct ConfigCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "config",
         abstract: "Manage Peekaboo configuration",
         discussion: """
@@ -49,7 +49,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to create a default configuration file
     @MainActor
     struct InitCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "init",
             abstract: "Create a default configuration file"
         )
@@ -133,7 +133,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to display current configuration
     @MainActor
     struct ShowCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "show",
             abstract: "Display current configuration"
         )
@@ -277,7 +277,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to open configuration in an editor
     @MainActor
     struct EditCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "edit",
             abstract: "Open configuration file in your default editor"
         )
@@ -389,7 +389,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to validate configuration syntax
     @MainActor
     struct ValidateCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "validate",
             abstract: "Validate configuration file syntax"
         )
@@ -480,7 +480,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to set credentials securely
     @MainActor
     struct SetCredentialCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "set-credential",
             abstract: "Set an API key or credential securely"
         )
@@ -548,7 +548,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to add a custom AI provider
     @MainActor
     struct AddProviderCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "add-provider",
             abstract: "Add a custom AI provider",
             discussion: """
@@ -756,7 +756,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to list custom AI providers
     @MainActor
     struct ListProvidersCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "list-providers",
             abstract: "List configured custom AI providers",
             discussion: """
@@ -839,7 +839,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to test a custom AI provider connection
     @MainActor
     struct TestProviderCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "test-provider",
             abstract: "Test connection to a custom AI provider",
             discussion: """
@@ -917,7 +917,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to remove a custom AI provider
     @MainActor
     struct RemoveProviderCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "remove-provider",
             abstract: "Remove a custom AI provider",
             discussion: """
@@ -1019,7 +1019,7 @@ struct ConfigCommand: ParsableCommand {
     /// Subcommand to discover models from a custom AI provider
     @MainActor
     struct ModelsProviderCommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "models-provider",
             abstract: "List available models from a custom AI provider",
             discussion: """

@@ -112,9 +112,9 @@ struct HotkeyResult: Codable {
 
 @MainActor
 extension HotkeyCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "hotkey",
                 abstract: "Press keyboard shortcuts and key combinations",
                 discussion: """

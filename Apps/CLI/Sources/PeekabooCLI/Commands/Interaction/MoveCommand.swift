@@ -239,9 +239,9 @@ struct MoveResult: Codable {
 
 @MainActor
 extension MoveCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "move",
                 abstract: "Move the mouse cursor to coordinates or UI elements",
                 discussion: """

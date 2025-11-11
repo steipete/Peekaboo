@@ -8,9 +8,9 @@ import PeekabooCore
 /// Interact with the macOS Dock
 @MainActor
 struct DockCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "dock",
                 abstract: "Interact with the macOS Dock",
                 discussion: """
@@ -326,9 +326,9 @@ extension DockCommand {
 
 @MainActor
 extension DockCommand.LaunchSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "launch", abstract: "Launch an application from the Dock")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "launch", abstract: "Launch an application from the Dock")
         }
     }
 }
@@ -344,9 +344,9 @@ extension DockCommand.LaunchSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension DockCommand.RightClickSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "right-click",
                 abstract: "Right-click a Dock item and optionally select from menu"
             )
@@ -366,9 +366,9 @@ extension DockCommand.RightClickSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension DockCommand.HideSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "hide", abstract: "Hide the Dock")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "hide", abstract: "Hide the Dock")
         }
     }
 }
@@ -384,9 +384,9 @@ extension DockCommand.HideSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension DockCommand.ShowSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "show", abstract: "Show the Dock")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "show", abstract: "Show the Dock")
         }
     }
 }
@@ -402,9 +402,9 @@ extension DockCommand.ShowSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension DockCommand.ListSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "list", abstract: "List all Dock items")
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(commandName: "list", abstract: "List all Dock items")
         }
     }
 }

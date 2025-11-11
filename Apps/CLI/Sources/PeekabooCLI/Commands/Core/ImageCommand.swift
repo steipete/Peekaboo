@@ -18,7 +18,7 @@ private typealias CaptureFocus = PeekabooCore.CaptureFocus
 
 @MainActor
 
-struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable {
+struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
     @Option(name: .long, help: "Target application name, bundle ID, 'PID:12345', 'menubar', or 'frontmost'")
     var app: String?
 
@@ -49,6 +49,7 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Analyze the captured image with AI")
     var analyze: String?
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -59,7 +60,7 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
 
     private var logger: Logger { self.resolvedRuntime.logger }
     private var services: PeekabooServices { self.resolvedRuntime.services }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
     var outputLogger: Logger { self.logger }
 
     @MainActor
@@ -459,9 +460,9 @@ private enum ImageCaptureBridge {
 
 @MainActor
 extension ImageCommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "image",
                 abstract: "Capture screenshots",
                 version: "1.0.0"

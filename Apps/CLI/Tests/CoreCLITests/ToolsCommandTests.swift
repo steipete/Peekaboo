@@ -6,8 +6,8 @@ import Testing
 @Suite("Tools Command Tests", .tags(.safe))
 struct ToolsCommandTests {
     @Test("ToolsCommand configuration")
-    func toolsCommandConfiguration() {
-        let config = ToolsCommand.configuration
+    func toolsCommandDescription() {
+        let config = ToolsCommand.commandDescription
 
         #expect(config.commandName == "tools")
         #expect(config.abstract == "List available tools with filtering and display options")
@@ -171,7 +171,7 @@ struct ToolsCommandStructureTests {
 
     @Test("Command configuration is properly set")
     func commandConfigurationProperties() {
-        let config = ToolsCommand.configuration
+        let config = ToolsCommand.commandDescription
 
         // Verify all required configuration properties
         #expect(config.commandName == "tools")

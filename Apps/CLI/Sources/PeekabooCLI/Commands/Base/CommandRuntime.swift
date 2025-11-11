@@ -51,6 +51,18 @@ struct CommandRuntime {
     }
 }
 
+/// Commands that need access to verbose/json flags even before a runtime is injected
+/// (e.g., during unit tests) can conform to this protocol and store the parsed options.
+protocol RuntimeOptionsConfigurable {
+    var runtimeOptions: CommandRuntimeOptions { get set }
+}
+
+extension RuntimeOptionsConfigurable {
+    mutating func setRuntimeOptions(_ options: CommandRuntimeOptions) {
+        self.runtimeOptions = options
+    }
+}
+
 @propertyWrapper
 struct RuntimeStorage<Value> where Value: ExpressibleByNilLiteral {
     private var storage: Value

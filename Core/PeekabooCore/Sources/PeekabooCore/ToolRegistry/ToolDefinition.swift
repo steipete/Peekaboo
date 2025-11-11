@@ -1,7 +1,7 @@
 import Foundation
 import Tachikoma
 
-public struct PeekabooToolCommandConfiguration: Sendable {
+public struct PeekabooToolCommandDescription: Sendable {
     public let commandName: String
     public let abstract: String
     public let discussion: String
@@ -45,9 +45,9 @@ public struct PeekabooToolDefinition: Sendable {
         self.agentGuidance = agentGuidance
     }
 
-    /// Generate CLI CommandConfiguration
-    public var commandConfiguration: PeekabooToolCommandConfiguration {
-        PeekabooToolCommandConfiguration(
+    /// Generate CLI CommandDescription
+    public var commandConfiguration: PeekabooToolCommandDescription {
+        PeekabooToolCommandDescription(
             commandName: self.commandName ?? self.name,
             abstract: self.abstract,
             discussion: self.discussion)

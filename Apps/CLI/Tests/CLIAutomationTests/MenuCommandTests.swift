@@ -30,17 +30,17 @@ private struct MenuItemData: Codable {
 struct MenuCommandTests {
     @Test("Menu command exists")
     func menuCommandExists() {
-        let config = MenuCommand.configuration
+        let config = MenuCommand.commandDescription
         #expect(config.commandName == "menu")
         #expect(config.abstract.contains("menu bar"))
     }
 
     @Test("Menu command has expected subcommands")
     func menuSubcommands() {
-        let subcommands = MenuCommand.configuration.subcommands
+        let subcommands = MenuCommand.commandDescription.subcommands
         #expect(subcommands.count == 3)
 
-        let subcommandNames = subcommands.map(\.configuration.commandName)
+        let subcommandNames = subcommands.map(\.commandDescription.commandName)
         #expect(subcommandNames.contains("click"))
         #expect(subcommandNames.contains("click-system"))
         #expect(subcommandNames.contains("list"))

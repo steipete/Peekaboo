@@ -6,8 +6,8 @@ import Testing
 @Suite("MCP Client Command Tests")
 struct MCPClientCommandTests {
     @Test("MCPCommand configuration includes all subcommands")
-    func mCPCommandConfiguration() {
-        let config = MCPCommand.configuration
+    func mCPCommandDescription() {
+        let config = MCPCommand.commandDescription
 
         #expect(config.commandName == "mcp")
         #expect(config.abstract == "Model Context Protocol server and client operations")
@@ -16,7 +16,7 @@ struct MCPClientCommandTests {
         // Verify all subcommands are present
         #expect(config.subcommands.count == 10) // Serve, List, Add, Remove, Test, Info, Enable, Disable, Call, Inspect
 
-        let subcommandNames = config.subcommands.map { $0.configuration.commandName ?? String(describing: $0) }
+        let subcommandNames = config.subcommands.map { $0.commandDescription.commandName ?? String(describing: $0) }
         #expect(subcommandNames.contains("serve"))
         #expect(subcommandNames.contains("list"))
         #expect(subcommandNames.contains("add"))
@@ -34,8 +34,8 @@ struct MCPClientCommandTests {
 @Suite("MCP List Command Tests")
 struct MCPListCommandTests {
     @Test("List command configuration")
-    func listCommandConfiguration() {
-        let config = MCPCommand.List.configuration
+    func listCommandDescription() {
+        let config = MCPCommand.List.commandDescription
 
         #expect(config.abstract == "List configured MCP servers with health status")
         #expect(config.discussion.contains("EXAMPLE OUTPUT:"))
@@ -76,8 +76,8 @@ struct MCPListCommandTests {
 @Suite("MCP Add Command Tests")
 struct MCPAddCommandTests {
     @Test("Add command configuration")
-    func addCommandConfiguration() {
-        let config = MCPCommand.Add.configuration
+    func addCommandDescription() {
+        let config = MCPCommand.Add.commandDescription
 
         #expect(config.commandName == "add")
         #expect(config.abstract == "Add a new external MCP server")
@@ -118,8 +118,8 @@ struct MCPAddCommandTests {
 @Suite("MCP Remove Command Tests")
 struct MCPRemoveCommandTests {
     @Test("Remove command configuration")
-    func removeCommandConfiguration() {
-        let config = MCPCommand.Remove.configuration
+    func removeCommandDescription() {
+        let config = MCPCommand.Remove.commandDescription
 
         #expect(config.commandName == "remove")
         #expect(config.abstract == "Remove an external MCP server")
@@ -150,7 +150,7 @@ struct MCPRemoveCommandTests {
 struct MCPTestCommandTests {
     @Test("Test command configuration")
     func commandConfiguration() {
-        let config = MCPCommand.Test.configuration
+        let config = MCPCommand.Test.commandDescription
 
         #expect(config.commandName == "test")
         #expect(config.abstract == "Test connection to an MCP server")
@@ -182,8 +182,8 @@ struct MCPTestCommandTests {
 @Suite("MCP Info Command Tests")
 struct MCPInfoCommandTests {
     @Test("Info command configuration")
-    func infoCommandConfiguration() {
-        let config = MCPCommand.Info.configuration
+    func infoCommandDescription() {
+        let config = MCPCommand.Info.commandDescription
 
         #expect(config.commandName == "info")
         #expect(config.abstract == "Show detailed information about an MCP server")
@@ -213,8 +213,8 @@ struct MCPInfoCommandTests {
 @Suite("MCP Enable Command Tests")
 struct MCPEnableCommandTests {
     @Test("Enable command configuration")
-    func enableCommandConfiguration() {
-        let config = MCPCommand.Enable.configuration
+    func enableCommandDescription() {
+        let config = MCPCommand.Enable.commandDescription
 
         #expect(config.commandName == "enable")
         #expect(config.abstract == "Enable a disabled MCP server")
@@ -243,8 +243,8 @@ struct MCPEnableCommandTests {
 @Suite("MCP Disable Command Tests")
 struct MCPDisableCommandTests {
     @Test("Disable command configuration")
-    func disableCommandConfiguration() {
-        let config = MCPCommand.Disable.configuration
+    func disableCommandDescription() {
+        let config = MCPCommand.Disable.commandDescription
 
         #expect(config.commandName == "disable")
         #expect(config.abstract == "Disable an MCP server")
@@ -355,15 +355,15 @@ struct MCPCommandStructureTests {
     @Test("Subcommand configurations are properly set")
     func subcommandConfigurations() {
         // Test that each subcommand has proper configuration
-        #expect(MCPCommand.Serve.configuration.abstract.contains("MCP server"))
-        #expect(MCPCommand.List.configuration.abstract.contains("List configured"))
-        #expect(MCPCommand.Add.configuration.abstract.contains("Add a new"))
-        #expect(MCPCommand.Remove.configuration.abstract.contains("Remove an"))
-        #expect(MCPCommand.Test.configuration.abstract.contains("Test connection"))
-        #expect(MCPCommand.Info.configuration.abstract.contains("Show detailed"))
-        #expect(MCPCommand.Enable.configuration.abstract.contains("Enable a disabled"))
-        #expect(MCPCommand.Disable.configuration.abstract.contains("Disable an"))
-        #expect(MCPCommand.Call.configuration.abstract.contains("Call a tool"))
-        #expect(MCPCommand.Inspect.configuration.abstract.contains("Debug MCP"))
+        #expect(MCPCommand.Serve.commandDescription.abstract.contains("MCP server"))
+        #expect(MCPCommand.List.commandDescription.abstract.contains("List configured"))
+        #expect(MCPCommand.Add.commandDescription.abstract.contains("Add a new"))
+        #expect(MCPCommand.Remove.commandDescription.abstract.contains("Remove an"))
+        #expect(MCPCommand.Test.commandDescription.abstract.contains("Test connection"))
+        #expect(MCPCommand.Info.commandDescription.abstract.contains("Show detailed"))
+        #expect(MCPCommand.Enable.commandDescription.abstract.contains("Enable a disabled"))
+        #expect(MCPCommand.Disable.commandDescription.abstract.contains("Disable an"))
+        #expect(MCPCommand.Call.commandDescription.abstract.contains("Call a tool"))
+        #expect(MCPCommand.Inspect.commandDescription.abstract.contains("Debug MCP"))
     }
 }

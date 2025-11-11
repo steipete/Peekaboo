@@ -177,8 +177,8 @@ struct ListCommandTests {
     @Test("ListCommand has correct subcommands", .tags(.fast))
     func listCommandSubcommands() throws {
         // Test that ListCommand has the expected subcommands
-        #expect(ListCommand.configuration.subcommands.count == 5)
-        let subcommandTypes = ListCommand.configuration.subcommands
+        #expect(ListCommand.commandDescription.subcommands.count == 5)
+        let subcommandTypes = ListCommand.commandDescription.subcommands
         #expect(subcommandTypes.contains { $0 == AppsSubcommand.self })
         #expect(subcommandTypes.contains { $0 == WindowsSubcommand.self })
         #expect(subcommandTypes.contains { $0 == PermissionsSubcommand.self })

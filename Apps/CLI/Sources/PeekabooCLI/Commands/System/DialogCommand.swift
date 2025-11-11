@@ -7,7 +7,7 @@ import PeekabooCore
 /// Interact with system dialogs and alerts
 @MainActor
 struct DialogCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
+    static let commandDescription = CommandDescription(
         commandName: "dialog",
         abstract: "Interact with system dialogs and alerts",
         discussion: """
@@ -105,7 +105,7 @@ struct DialogCommand: ParsableCommand {
 
     @MainActor
     struct InputSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "input",
             abstract: "Enter text in a dialog field using DialogService"
         )
@@ -186,7 +186,7 @@ struct DialogCommand: ParsableCommand {
 
     @MainActor
     struct FileSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "file",
             abstract: "Handle file save/open dialogs using DialogService"
         )
@@ -263,7 +263,7 @@ struct DialogCommand: ParsableCommand {
 
     @MainActor
     struct DismissSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "dismiss",
             abstract: "Dismiss a dialog using DialogService"
         )
@@ -337,7 +337,7 @@ struct DialogCommand: ParsableCommand {
 
     @MainActor
     struct ListSubcommand {
-        static let configuration = CommandConfiguration(
+        static let commandDescription = CommandDescription(
             commandName: "list",
             abstract: "List elements in current dialog using DialogService"
         )
@@ -485,9 +485,9 @@ extension DialogCommand.ListSubcommand: CommanderBindableCommand {
 
 @MainActor
 extension DialogCommand.ClickSubcommand: ParsableCommand {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "click",
                 abstract: "Click a button in a dialog using DialogService"
             )

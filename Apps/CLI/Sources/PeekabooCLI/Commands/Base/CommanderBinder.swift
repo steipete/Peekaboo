@@ -9,10 +9,18 @@ enum CommanderCLIBinder {
         parsedValues: ParsedValues
     ) throws -> any ParsableCommand {
         var command = type.init()
+        let runtimeOptions = self.makeRuntimeOptions(from: parsedValues)
         if var bindable = command as? any CommanderBindableCommand {
             try bindable.applyCommanderValues(.init(parsedValues: parsedValues))
             guard let rebound = bindable as? any ParsableCommand else {
                 preconditionFailure("CommanderBindableCommand cast should always round-trip to original type \(type)")
+            }
+            command = rebound
+        }
+        if var configurable = command as? any RuntimeOptionsConfigurable {
+            configurable.setRuntimeOptions(runtimeOptions)
+            guard let rebound = configurable as? any ParsableCommand else {
+                preconditionFailure("RuntimeOptionsConfigurable cast should always round-trip to original type \(type)")
             }
             command = rebound
         }

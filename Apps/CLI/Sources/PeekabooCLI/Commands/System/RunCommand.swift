@@ -5,9 +5,9 @@ import PeekabooCore
 @available(macOS 14.0, *)
 @MainActor
 struct RunCommand: OutputFormattable {
-    nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe {
-            CommandConfiguration(
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
                 commandName: "run",
                 abstract: "Execute a Peekaboo automation script"
             )
