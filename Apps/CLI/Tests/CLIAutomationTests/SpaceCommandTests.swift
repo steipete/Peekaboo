@@ -1,10 +1,11 @@
 import CoreGraphics
 import Foundation
-@testable import PeekabooCore
 import Testing
 @testable import PeekabooCLI
+@testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
+
 // MARK: - Read-only scenarios
 
 @Suite(
@@ -209,7 +210,6 @@ struct SpaceCommandReadTests {
 
         return (services, spaceService)
     }
-
 }
 
 // MARK: - Actions that mutate Spaces
@@ -230,7 +230,10 @@ struct SpaceCommandActionTests {
             "--json-output",
         ], context: context)
         #expect(result.exitStatus == 0)
-        let response = try JSONDecoder().decode(SpaceActionResponse.self, from: self.output(from: result).data(using: .utf8)!)
+        let response = try JSONDecoder().decode(
+            SpaceActionResponse.self,
+            from: self.output(from: result).data(using: .utf8)!
+        )
         #expect(response.success)
         let switchCalls = await self.spaceState(context) { $0.switchCalls }
         #expect(switchCalls.contains(1))
@@ -246,7 +249,10 @@ struct SpaceCommandActionTests {
             "--json-output",
         ], context: context)
         #expect(result.exitStatus == 0)
-        let response = try JSONDecoder().decode(WindowSpaceActionResponse.self, from: self.output(from: result).data(using: .utf8)!)
+        let response = try JSONDecoder().decode(
+            WindowSpaceActionResponse.self,
+            from: self.output(from: result).data(using: .utf8)!
+        )
         #expect(response.success)
         let moveCalls = await self.spaceState(context) { $0.moveToCurrentCalls }
         #expect(!moveCalls.isEmpty)
@@ -263,7 +269,10 @@ struct SpaceCommandActionTests {
             "--json-output",
         ], context: context)
         #expect(result.exitStatus == 0)
-        let response = try JSONDecoder().decode(WindowSpaceActionResponse.self, from: self.output(from: result).data(using: .utf8)!)
+        let response = try JSONDecoder().decode(
+            WindowSpaceActionResponse.self,
+            from: self.output(from: result).data(using: .utf8)!
+        )
         #expect(response.success)
         let moveCalls = await self.spaceState(context) { $0.moveWindowCalls }
         #expect(moveCalls.contains { $0.spaceID == 1 })
@@ -274,7 +283,11 @@ struct SpaceCommandActionTests {
         context: SpaceHarnessContext
     ) async throws -> CommandRunResult {
         try await SpaceCommandEnvironment.withSpaceService(context.spaceService) {
-            try await InProcessCommandRunner.run(arguments, services: context.services, spaceService: context.spaceService)
+            try await InProcessCommandRunner.run(
+                arguments,
+                services: context.services,
+                spaceService: context.spaceService
+            )
         }
     }
 

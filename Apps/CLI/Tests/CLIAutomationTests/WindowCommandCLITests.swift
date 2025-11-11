@@ -1,7 +1,7 @@
 import Foundation
-@testable import PeekabooCore
 import Testing
 @testable import PeekabooCLI
+@testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("Window Command CLI Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))

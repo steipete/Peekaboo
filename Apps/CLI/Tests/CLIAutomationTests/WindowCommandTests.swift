@@ -139,7 +139,12 @@ struct WindowCommandTests {
 
 // MARK: - Local Integration Tests
 
-@Suite("Window Command Local Integration Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
+@Suite(
+    "Window Command Local Integration Tests",
+    .serialized,
+    .tags(.automation),
+    .enabled(if: CLITestEnvironment.runAutomationActions)
+)
 struct WindowCommandLocalIntegrationTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
     func windowMinimizeTextEdit() async throws {

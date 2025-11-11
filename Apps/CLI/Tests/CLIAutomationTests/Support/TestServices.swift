@@ -1,9 +1,9 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 @testable import PeekabooCLI
 @testable import PeekabooCore
-import PeekabooFoundation
 
 enum TestStubError: Error {
     case unimplemented(String)
@@ -195,7 +195,8 @@ final class StubAutomationService: UIAutomationServiceProtocol {
                 target: target,
                 clearExisting: clearExisting,
                 typingDelay: typingDelay,
-                sessionId: sessionId))
+                sessionId: sessionId
+            ))
     }
 
     func typeActions(
@@ -244,7 +245,8 @@ final class StubAutomationService: UIAutomationServiceProtocol {
                 target: target,
                 smooth: smooth,
                 delay: delay,
-                sessionId: sessionId)
+                sessionId: sessionId
+            )
         )
     }
 
@@ -356,7 +358,10 @@ final class StubApplicationService: ApplicationServiceProtocol {
         throw PeekabooError.appNotFound(identifier)
     }
 
-    func listWindows(for appIdentifier: String, timeout: Float?) async throws -> UnifiedToolOutput<ServiceWindowListData> {
+    func listWindows(
+        for appIdentifier: String,
+        timeout: Float?
+    ) async throws -> UnifiedToolOutput<ServiceWindowListData> {
         let windows = self.windowsByApp[appIdentifier] ?? []
         let targetApp = self.applications.first(where: { $0.name == appIdentifier })
         let data = ServiceWindowListData(windows: windows, targetApplication: targetApp)
@@ -388,13 +393,15 @@ final class StubApplicationService: ApplicationServiceProtocol {
         if let result = self.launchResults[identifier] {
             return result
         }
-        if let existing = self.applications.first(where: { $0.name == identifier || $0.bundleIdentifier == identifier }) {
+        if let existing = self.applications
+            .first(where: { $0.name == identifier || $0.bundleIdentifier == identifier }) {
             return existing
         }
         return ServiceApplicationInfo(
             processIdentifier: Int32.random(in: 1000...2000),
             bundleIdentifier: "launched.\(identifier)",
-            name: identifier)
+            name: identifier
+        )
     }
 
     func activateApplication(identifier: String) async throws {
@@ -434,6 +441,7 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
         let windowTitle: String?
         let windowBounds: CGRect?
     }
+
     private(set) var storedScreenshots: [String: [ScreenshotRecord]] = [:]
 
     func createSession() async throws -> String {
@@ -515,7 +523,7 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
         let threshold = Date().addingTimeInterval(TimeInterval(-days * 24 * 60 * 60))
         let ids = self.sessionInfos.values
             .filter { $0.lastAccessedAt < threshold }
-            .map { $0.id }
+            .map(\.id)
         for id in ids {
             try await self.cleanSession(sessionId: id)
         }
@@ -930,9 +938,9 @@ final class StubWindowService: WindowManagementServiceProtocol {
         case .frontmost:
             return self.windowsByApp.values.first ?? []
         case let .windowId(id):
-            return self.windowsByApp.values.flatMap { $0 }.filter { $0.windowID == id }
+            return self.windowsByApp.values.flatMap(\.self).filter { $0.windowID == id }
         case let .title(title):
-            return self.windowsByApp.values.flatMap { $0 }.filter { $0.title.contains(title) }
+            return self.windowsByApp.values.flatMap(\.self).filter { $0.title.contains(title) }
         case let .index(app, index):
             guard let windows = self.windowsByApp[app], index < windows.count else { return [] }
             return [windows[index]]
@@ -1011,7 +1019,8 @@ enum TestServicesFactory {
             audioInput: AudioInputService(aiService: PeekabooAIService()),
             agent: nil,
             configuration: ConfigurationManager.shared,
-            screens: screenService)
+            screens: screenService
+        )
 
         return services
     }

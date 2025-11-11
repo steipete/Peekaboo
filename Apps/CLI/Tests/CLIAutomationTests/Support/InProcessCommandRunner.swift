@@ -1,7 +1,6 @@
-import ArgumentParser
 import Foundation
-@testable import PeekabooCLI
 import PeekabooCore
+@testable import PeekabooCLI
 
 struct CommandRunResult {
     let stdout: String
@@ -44,11 +43,11 @@ enum InProcessCommandRunner {
     ) async throws -> CommandRunResult {
         try await PeekabooServices.withTestServices(services) {
             if let spaceService {
-                return try await SpaceCommandEnvironment.withSpaceService(spaceService) {
+                try await SpaceCommandEnvironment.withSpaceService(spaceService) {
                     try await self.execute(arguments: arguments)
                 }
             } else {
-                return try await self.execute(arguments: arguments)
+                try await self.execute(arguments: arguments)
             }
         }
     }
@@ -75,13 +74,7 @@ enum InProcessCommandRunner {
             var stderrData = Data()
 
             let result: (Int32, Data, Data) = try await self.redirectOutput {
-                do {
-                    var command = try Peekaboo.parseAsRoot(arguments)
-                    try await command.run()
-                    return 0
-                } catch let exit as ExitCode {
-                    return exit.rawValue
-                }
+                await executePeekabooCLI(arguments: ["peekaboo"] + arguments)
             }
 
             exitStatus = result.0
