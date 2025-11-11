@@ -245,6 +245,46 @@ extension View {
             self
         }
     }
+
+    /// Renders a glass-style surface that automatically falls back to native materials
+    /// on platforms that do not support Liquid Glass yet.
+    func glassSurface(
+        style: ModernEffectStyle = .content,
+        cornerRadius: CGFloat = 16) -> some View
+    {
+        modifier(GlassSurfaceModifier(style: style, cornerRadius: cornerRadius))
+    }
+}
+
+// MARK: - Shared Glass Surface Modifier
+
+private struct GlassSurfaceModifier: ViewModifier {
+    let style: ModernEffectStyle
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content
+                .glassBackground(
+                    cornerRadius: self.cornerRadius,
+                    tintColor: NSColor(calibratedWhite: 0.08, alpha: 0.55))
+                .overlay {
+                    RoundedRectangle(cornerRadius: self.cornerRadius, style: .continuous)
+                        .stroke(
+                            Color.white.opacity(0.12),
+                            lineWidth: 0.5)
+                        .blendMode(.plusLighter)
+                }
+        } else {
+            content
+                .modernBackground(style: self.style, cornerRadius: self.cornerRadius)
+                .overlay {
+                    RoundedRectangle(cornerRadius: self.cornerRadius, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                        .blendMode(.plusLighter)
+                }
+        }
+    }
 }
 
 // MARK: - Modern Button Style

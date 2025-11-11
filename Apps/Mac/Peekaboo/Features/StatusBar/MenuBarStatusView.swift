@@ -18,49 +18,26 @@ struct MenuBarStatusView: View {
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with current status
-            StatusBarHeaderView(isVoiceMode: self.$isVoiceMode)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .modernBackground(style: .toolbar)
-
-            Divider()
-
-            // Main content area - unified experience
-            StatusBarContentView()
-                .frame(maxHeight: 500)
-
-            Divider()
-
-            // Always show input area and action buttons for consistent experience
-            VStack(spacing: 0) {
-                // Input area (always visible)
-                if self.isVoiceMode {
-                    VoiceInputView(onToggleRecording: self.toggleVoiceRecording)
-                        .padding(10)
-                        .modernBackground(style: .content)
-                } else {
-                    StatusBarInputView(
-                        inputText: self.$inputText,
-                        isVoiceMode: self.$isVoiceMode,
-                        isInputFocused: self.$isInputFocused,
-                        isProcessing: self.agent.isProcessing,
-                        onSubmit: self.submitInput)
-                        .padding(10)
-                        .modernBackground(style: .content)
+        Group {
+            if #available(macOS 26.0, *) {
+                GlassEffectContainer {
+                    self.contentStack
                 }
-
-                Divider()
-
-                // Action buttons (always visible)
-                ActionButtonsView()
-                    .padding()
-                    .modernBackground(style: .toolbar)
+                .padding(18)
+                .glassBackground(
+                    cornerRadius: 28,
+                    tintColor: NSColor(calibratedWhite: 0.04, alpha: 0.75))
+                .overlay(StatusBarChromeOverlay(cornerRadius: 28))
+            } else {
+                self.contentStack
+                    .padding(18)
+                    .modernBackground(style: .popover, cornerRadius: 28)
+                    .overlay(StatusBarChromeOverlay(cornerRadius: 28))
             }
         }
-        .frame(width: 380)
-        .modernBackground(style: .popover)
+        .frame(width: 420)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 8)
         .onAppear {
             self.setupViewOnAppear()
         }
@@ -151,5 +128,89 @@ struct MenuBarStatusView: View {
                 self.logger.error("Failed to execute task: \(error)")
             }
         }
+    }
+}
+
+// MARK: - Layout Helpers
+
+extension MenuBarStatusView {
+    private var contentStack: some View {
+        VStack(spacing: 14) {
+            self.headerSection
+            self.timelineSection
+            self.inputSection
+            self.actionsSection
+        }
+    }
+
+    private var headerSection: some View {
+        StatusBarHeaderView(isVoiceMode: self.$isVoiceMode)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .glassSurface(style: .toolbar, cornerRadius: 22)
+    }
+
+    private var timelineSection: some View {
+        StatusBarContentView()
+            .frame(maxHeight: 440)
+            .glassSurface(style: .content, cornerRadius: 24)
+    }
+
+    @ViewBuilder
+    private var inputSection: some View {
+        Group {
+            if self.isVoiceMode {
+                VoiceInputView(onToggleRecording: self.toggleVoiceRecording)
+            } else {
+                StatusBarInputView(
+                    inputText: self.$inputText,
+                    isVoiceMode: self.$isVoiceMode,
+                    isInputFocused: self.$isInputFocused,
+                    isProcessing: self.agent.isProcessing,
+                    onSubmit: self.submitInput)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .glassSurface(style: .content, cornerRadius: 20)
+    }
+
+    private var actionsSection: some View {
+        ActionButtonsView()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .glassSurface(style: .toolbar, cornerRadius: 18)
+    }
+}
+
+// MARK: - Chrome Overlay
+
+private struct StatusBarChromeOverlay: View {
+    let cornerRadius: CGFloat
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: self.cornerRadius, style: .continuous)
+            .strokeBorder(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.35),
+                        Color.white.opacity(0.05),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing),
+                lineWidth: 0.8)
+            .overlay {
+                RoundedRectangle(cornerRadius: self.cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.08),
+                                Color.black.opacity(0.2),
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom))
+                    .blendMode(.softLight)
+            }
+            .allowsHitTesting(false)
     }
 }

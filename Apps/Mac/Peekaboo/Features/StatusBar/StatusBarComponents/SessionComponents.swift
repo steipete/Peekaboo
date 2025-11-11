@@ -43,10 +43,9 @@ struct SessionRowCompact: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.regularMaterial)
-        .cornerRadius(6)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .glassSurface(style: .content, cornerRadius: 14)
         .padding(.horizontal)
         .onHover { hovering in
             self.isHovering = hovering
