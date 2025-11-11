@@ -46,3 +46,12 @@ read_when:
 2. **Batch edits** so Poltergeist rebuilds once instead of after each micro-change.
 3. **Run Peekaboo.app in tmux** rather than rebuilding it just to relaunch.
 4. **Profile watch paths** before expanding them—every new glob increases rebuild frequency.
+
+## Potential Improvements (Open Questions)
+- **Target presets:** add `poltergeist haunt --preset cli|mac|full` (or `POLTERGEIST_TARGET_PRESET`) that toggles groups of targets without editing JSON. Internally this just flips `enabled` flags before `getTargetsToWatch` runs, making context switches a one-liner.
+- **Configurable backoff:** expose optional `cooldownSeconds` / `idleMultiplier` per target so the build queue can slow rebuild cadence automatically for rarely used targets instead of relying on one-off `settlingDelay` tweaks.
+- **Module-aware watch rules:** replace blanket `Core/**/*.swift` globs with a small `file → target` map (or `includeModules`) so CLI-only touches don’t wake the mac builder. `PriorityEngine.getAffectedTargets` already centralizes this logic.
+- **No-op watcher mode:** a `poltergeist haunt --noop-builds` flag could keep Watchman + state tracking alive while skipping actual rebuilds, letting `polter peekaboo …` continue freshness checks during logging-only debug sessions.
+- **Preflight builds:** teach the mac builder to run a fast `swift build --target PeekabooCore` (or similar) before firing the full Xcode pipeline; if nothing in shared libs changed, skip the expensive app build entirely.
+- **Prompt-friendly status:** emit a terse status summary (e.g., `Peekaboo-queue.status`) whenever `StateManager.updateBuildStatus` runs so shells/Starship can show “CLI ✅ · mac 💤” directly in PS1.
+- **Auto-disable idle targets:** track each target’s last launch/build timestamp; if a target sits idle for N hours, disable it and log a hint. The next `polter <target>` call would re-enable it. Keeps the daemon lean during CLI-only days.
