@@ -151,7 +151,7 @@ struct ImageCaptureLogicTests {
             #expect(command.screenIndex == index)
             // Validation happens during execution, not parsing
         } catch {
-            // ArgumentParser may reject certain values
+            // Commander may reject certain values
             if index < 0 {
                 // Expected for negative values
                 return
@@ -348,7 +348,7 @@ struct ImageCaptureLogicTests {
             Issue.record("Should parse successfully")
         }
 
-        // Invalid screen index (ArgumentParser may reject negative values)
+        // Invalid screen index (Commander may reject negative values)
         #expect(throws: (any Error).self) {
             _ = try ImageCommand.parse(["--screen-index", "-1"])
         }
@@ -467,7 +467,7 @@ struct AdvancedImageCaptureLogicTests {
             ["--mode", "multi", "--app", String(repeating: "LongAppName", count: 100)],
             ["--window-title", String(repeating: "VeryLongTitle", count: 200)],
             ["--path", String(repeating: "/very/long/path", count: 50)],
-            Array(repeating: ["--mode", "screen"], count: 100).flatMap { $0 },
+            Array(repeating: ["--mode", "screen"], count: 100).flatMap(\.self),
         ]
 
         for config in complexConfigs {

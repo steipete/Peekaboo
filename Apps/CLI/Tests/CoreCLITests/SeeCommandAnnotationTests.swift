@@ -13,12 +13,6 @@ struct SeeCommandAnnotationTests {
         #expect(command.mode == .screen)
     }
 
-    @Test("Peekaboo root parses see subcommand")
-    func parsesSeeFromRoot() throws {
-        let command = try Peekaboo.parseAsRoot(["see", "--app", "TextEdit", "--mode", "screen"])
-        #expect(command is SeeCommand)
-    }
-
     @Test("Annotation creates annotated file with correct naming")
     func annotationFileNaming() {
         // Given an original path
@@ -284,7 +278,7 @@ struct SeeCommandAnnotationTests {
         )
 
         // When filtering for annotation (as done in generateAnnotatedScreenshot)
-        let annotatedElements = elements.all.filter { $0.isEnabled }
+        let annotatedElements = elements.all.filter(\.isEnabled)
 
         // Then only enabled elements should be included
         #expect(annotatedElements.count == 1)

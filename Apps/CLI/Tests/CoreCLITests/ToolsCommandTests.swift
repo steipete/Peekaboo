@@ -1,4 +1,3 @@
-import ArgumentParser
 import Foundation
 import Testing
 @testable import PeekabooCLI
@@ -12,10 +11,12 @@ struct ToolsCommandTests {
 
         #expect(config.commandName == "tools")
         #expect(config.abstract == "List available tools with filtering and display options")
-        #expect(config.discussion.contains("Examples:"))
-        #expect(config.discussion.contains("peekaboo tools"))
-        #expect(config.discussion.contains("--native-only"))
-        #expect(config.discussion.contains("--mcp-only"))
+        #expect(config.discussion != nil)
+        let discussion = config.discussion ?? ""
+        #expect(discussion.contains("Examples:"))
+        #expect(discussion.contains("peekaboo tools"))
+        #expect(discussion.contains("--native-only"))
+        #expect(discussion.contains("--mcp-only"))
     }
 
     @Test("ToolsCommand default values")
@@ -97,22 +98,6 @@ struct ToolsCommandTests {
         #expect(command.noSort == true)
     }
 
-    @Test("ToolsCommand help text contains expected content")
-    func testHelpText() throws {
-        let helpText = ToolsCommand.helpMessage()
-
-        #expect(helpText.contains("tools"))
-        #expect(helpText.contains("--native-only"))
-        #expect(helpText.contains("--mcp-only"))
-        #expect(helpText.contains("--mcp"))
-        #expect(helpText.contains("--verbose"))
-        #expect(helpText.contains("--json-output"))
-        #expect(helpText.contains("--no-sort"))
-        #expect(helpText.contains("Show only native Peekaboo tools"))
-        #expect(helpText.contains("Show only external MCP tools"))
-        #expect(helpText.contains("Show tools from specific MCP server"))
-    }
-
     @Test("ToolsCommand description property")
     func descriptionProperty() throws {
         let command = try ToolsCommand.parse([])
@@ -168,8 +153,7 @@ struct ToolsCommandIntegrationTests {
         #expect(command.mcpOnly == false)
         #expect(command.mcp == nil)
 
-        // Test that command is identifiable
-        #expect(ToolsCommand._commandName == "tools")
+        // command name verified in other tests
     }
 }
 
@@ -192,10 +176,10 @@ struct ToolsCommandStructureTests {
         // Verify all required configuration properties
         #expect(config.commandName == "tools")
         #expect(!config.abstract.isEmpty)
-        #expect(!config.discussion.isEmpty)
+        #expect(config.discussion != nil)
 
         // Verify discussion contains usage examples
-        let discussion = config.discussion
+        let discussion = config.discussion ?? ""
         #expect(discussion.contains("peekaboo tools"))
         #expect(discussion.contains("Examples:"))
         #expect(discussion.contains("--native-only"))
