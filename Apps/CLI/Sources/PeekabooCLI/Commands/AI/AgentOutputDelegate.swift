@@ -495,7 +495,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
 private class UnknownToolFormatter: BaseToolFormatter {
     private let toolName: String
 
-    nonisolated override init(toolType: ToolType) {
+    override nonisolated init(toolType: ToolType) {
         fatalError("Use init(toolName:)")
     }
 
@@ -506,27 +506,27 @@ private class UnknownToolFormatter: BaseToolFormatter {
         super.init(toolType: .wait)
     }
 
-    nonisolated override func formatStarting(arguments: [String: Any]) -> String {
+    override nonisolated func formatStarting(arguments: [String: Any]) -> String {
         "\(self.toolName.replacingOccurrences(of: "_", with: " ").capitalized)"
     }
 
-    nonisolated override func formatCompleted(result: [String: Any], duration: TimeInterval) -> String {
+    override nonisolated func formatCompleted(result: [String: Any], duration: TimeInterval) -> String {
         "→ completed"
     }
 
-    nonisolated override func formatError(error: String, result: [String: Any]) -> String {
+    override nonisolated func formatError(error: String, result: [String: Any]) -> String {
         "\(AgentDisplayTokens.Status.failure) \(error)"
     }
 
-    nonisolated override func formatCompactSummary(arguments: [String: Any]) -> String {
+    override nonisolated func formatCompactSummary(arguments: [String: Any]) -> String {
         ""
     }
 
-    nonisolated override func formatResultSummary(result: [String: Any]) -> String {
+    override nonisolated func formatResultSummary(result: [String: Any]) -> String {
         ""
     }
 
-    nonisolated override func formatForTitle(arguments: [String: Any]) -> String {
+    override nonisolated func formatForTitle(arguments: [String: Any]) -> String {
         self.toolName
     }
 }

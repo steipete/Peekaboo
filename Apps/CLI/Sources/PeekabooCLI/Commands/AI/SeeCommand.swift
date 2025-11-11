@@ -1,6 +1,6 @@
 import AppKit
-@preconcurrency import ArgumentParser
 import AXorcist
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -39,8 +39,8 @@ private enum ScreenCaptureBridge {
 
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
+@MainActor
 struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
-
     @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
 
@@ -51,7 +51,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
     var windowTitle: String?
 
     @Option(help: "Capture mode (screen, window, frontmost)")
-    var mode: CaptureMode?
+    var mode: PeekabooCore.CaptureMode?
 
     @Option(help: "Output path for screenshot")
     var path: String?
@@ -67,24 +67,21 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
 
     @Option(help: "Analyze captured content with AI")
     var analyze: String?
-
-    @OptionGroup
-    var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
-    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
-    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
-
-    private var logger: Logger { self.runtime?.logger ?? Logger.shared }
-    private var services: PeekabooServices { self.runtime?.services ?? PeekabooServices.shared }
-    var outputLogger: Logger { self.logger }
-
-    enum CaptureMode: String, ExpressibleByArgument {
-        case screen
-        case window
-        case frontmost
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
     }
+
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var verbose: Bool { self.resolvedRuntime.configuration.verbose }
+
+    private var logger: Logger { self.resolvedRuntime.logger }
+    private var services: PeekabooServices { self.resolvedRuntime.services }
+    var outputLogger: Logger { self.logger }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -290,6 +287,12 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
             self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
             return result
 
+        case .multi:
+            // Commander currently treats multi captures as multi-display screen grabs
+            let result = try await self.performScreenCapture()
+            self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+            return result
+
         case .window:
             if self.app != nil || self.pid != nil {
                 let appIdentifier = try self.resolveApplicationIdentifier()
@@ -356,6 +359,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand {
             let result = try await ScreenCaptureBridge.captureFrontmost(services: self.services)
             self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
             return result
+
+        case .area:
+            throw ValidationError("Area capture mode is not supported for 'see' yet. Use --mode screen or window")
         }
     }
 
@@ -707,7 +713,7 @@ extension SeeCommand {
         return SeeAnalysisData(provider: res.provider, model: res.model, text: res.text)
     }
 
-    private func determineMode() -> CaptureMode {
+    private func determineMode() -> PeekabooCore.CaptureMode {
         if let mode = self.mode {
             mode
         } else if self.app != nil || self.windowTitle != nil {
@@ -772,7 +778,7 @@ extension SeeCommand {
         outputSuccessCodable(data: output, logger: self.outputLogger)
     }
 
-        private func getMenuBarItemsSummary() async -> MenuBarSummary {
+    private func getMenuBarItemsSummary() async -> MenuBarSummary {
         // Get menu bar items from service
         var menuExtras: [MenuExtraInfo] = []
 
@@ -803,7 +809,7 @@ extension SeeCommand {
         return MenuBarSummary(menus: menus)
     }
 
-        private func outputTextResults(
+    private func outputTextResults(
         sessionId: String,
         screenshotPath: String,
         annotatedPath: String?,
@@ -1025,10 +1031,34 @@ extension SeeCommand {
     }
 }
 
+@MainActor
 extension SeeCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
-        MainActorCommandConfiguration.describe { VisionToolDefinitions.see.commandConfiguration }
+        MainActorCommandConfiguration.describe {
+            let definition = VisionToolDefinitions.see.commandConfiguration
+            return CommandConfiguration(
+                commandName: definition.commandName,
+                abstract: definition.abstract,
+                discussion: definition.discussion
+            )
+        }
     }
 }
 
 extension SeeCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension SeeCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = values.singleOption("app")
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.windowTitle = values.singleOption("windowTitle")
+        if let parsedMode: PeekabooCore.CaptureMode = try values.decodeOptionEnum("mode", caseInsensitive: false) {
+            self.mode = parsedMode
+        }
+        self.path = values.singleOption("path")
+        self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
+        self.annotate = values.flag("annotate")
+        self.analyze = values.singleOption("analyze")
+    }
+}

@@ -1,4 +1,4 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Darwin
 import Dispatch
 import Foundation
@@ -95,7 +95,7 @@ struct AgentCommand {
     @Flag(name: .customLong("debug-terminal"), help: "Show detailed terminal detection info")
     var debugTerminal = false
 
-    @Flag(name: [.short, .long], help: "Quiet mode - only show final result")
+    @Flag(names: [.short("q"), .long], help: "Quiet mode - only show final result")
     var quiet = false
 
     @Flag(name: .long, help: "Dry run - show planned steps without executing")
@@ -106,9 +106,6 @@ struct AgentCommand {
 
     @Option(name: .long, help: "AI model to use (allowed: gpt-5 or claude-sonnet-4.5)")
     var model: String?
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @Flag(name: .long, help: "Resume the most recent session (use with task argument)")
     var resume = false
 
@@ -156,32 +153,29 @@ struct AgentCommand {
 
     @RuntimeStorage private var runtime: CommandRuntime?
 
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
+    }
+
     @MainActor
     private var services: PeekabooServices {
-        self.runtime?.services ?? PeekabooServices.shared
+        self.resolvedRuntime.services
     }
 
     private var logger: Logger {
-        self.runtime?.logger ?? Logger.shared
+        self.resolvedRuntime.logger
     }
 
-    var jsonOutput: Bool {
-        if let runtime {
-            return runtime.configuration.jsonOutput
-        }
-        return self.runtimeOptions.jsonOutput
-    }
+    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
-    var verbose: Bool {
-        if let runtime {
-            return runtime.configuration.verbose
-        }
-        return self.runtimeOptions.verbose
-    }
+    var verbose: Bool { self.resolvedRuntime.configuration.verbose }
 
     @MainActor
     mutating func run() async throws {
-        let runtime = CommandRuntime(options: self.runtimeOptions)
+        let runtime = CommandRuntime(options: CommandRuntimeOptions())
         try await self.run(using: runtime)
     }
 
@@ -574,11 +568,11 @@ struct AgentCommand {
     private func restrictedPeekabooModel(for model: LanguageModel) -> LanguageModel? {
         switch model {
         case .openai:
-            return .openai(.gpt5)
+            .openai(.gpt5)
         case .anthropic:
-            return .anthropic(.sonnet45)
+            .anthropic(.sonnet45)
         default:
-            return nil
+            nil
         }
     }
 
@@ -702,7 +696,10 @@ struct AgentCommand {
             }
 
             if let requestedModel = self.model, languageModel == nil {
-                fputs("⚠️  Unsupported model '\(requestedModel)'. Peekaboo only supports gpt-5 and claude-sonnet-4.5.\n", stderr)
+                fputs(
+                    "⚠️  Unsupported model '\(requestedModel)'. Peekaboo only supports gpt-5 and claude-sonnet-4.5.\n",
+                    stderr
+                )
             }
 
             let result = try await peekabooAgent.executeTask(
