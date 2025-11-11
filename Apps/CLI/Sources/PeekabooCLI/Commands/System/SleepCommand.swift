@@ -1,7 +1,8 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 
 @available(macOS 14.0, *)
+@MainActor
 struct SleepCommand: OutputFormattable {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -14,8 +15,6 @@ struct SleepCommand: OutputFormattable {
 
     @Argument(help: "Duration to sleep in milliseconds")
     var duration: Int
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -28,7 +27,6 @@ struct SleepCommand: OutputFormattable {
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
-
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -64,6 +62,13 @@ struct SleepResult: Codable {
     let actual_duration: Int
 }
 
+@MainActor
 extension SleepCommand: ParsableCommand {}
-
 extension SleepCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension SleepCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.duration = try values.decodePositional(0, label: "duration", as: Int.self)
+    }
+}

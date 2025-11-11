@@ -1,43 +1,44 @@
-@preconcurrency import ArgumentParser
 import AXorcist
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
 /// Command for interacting with macOS menu bar items (status items).
+@MainActor
 struct MenuBarCommand: ParsableCommand, OutputFormattable {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
             CommandConfiguration(
-        commandName: "menubar",
-        abstract: "Interact with macOS menu bar items (status items)",
-        discussion: """
-        The menubar command provides specialized support for interacting with menu bar items
-        (also known as status items) on macOS. These are the icons that appear on the right
-        side of the menu bar.
+                commandName: "menubar",
+                abstract: "Interact with macOS menu bar items (status items)",
+                discussion: """
+                The menubar command provides specialized support for interacting with menu bar items
+                (also known as status items) on macOS. These are the icons that appear on the right
+                side of the menu bar.
 
-        FEATURES:
-          • Fuzzy matching - Partial text and case-insensitive search
-          • Index-based clicking - Use item number from list output
-          • Smart error messages - Shows available items when not found
-          • JSON output support - For scripting and automation
+                FEATURES:
+                  • Fuzzy matching - Partial text and case-insensitive search
+                  • Index-based clicking - Use item number from list output
+                  • Smart error messages - Shows available items when not found
+                  • JSON output support - For scripting and automation
 
-        EXAMPLES:
-          # List all menu bar items with indices
-          peekaboo menubar list
-          peekaboo menubar list --json-output      # JSON format
+                EXAMPLES:
+                  # List all menu bar items with indices
+                  peekaboo menubar list
+                  peekaboo menubar list --json-output      # JSON format
 
-          # Click by exact or partial name (case-insensitive)
-          peekaboo menubar click "Wi-Fi"           # Exact match
-          peekaboo menubar click "wi"              # Partial match
-          peekaboo menubar click "Bluetooth"       # Click Bluetooth icon
+                  # Click by exact or partial name (case-insensitive)
+                  peekaboo menubar click "Wi-Fi"           # Exact match
+                  peekaboo menubar click "wi"              # Partial match
+                  peekaboo menubar click "Bluetooth"       # Click Bluetooth icon
 
-          # Click by index from the list
-          peekaboo menubar click --index 3         # Click the 3rd item
+                  # Click by index from the list
+                  peekaboo menubar click --index 3         # Click the 3rd item
 
-        NOTE: Menu bar items are different from regular application menus. For application
-        menus (File, Edit, etc.), use the 'menu' command instead.
-        """
+                NOTE: Menu bar items are different from regular application menus. For application
+                menus (File, Edit, etc.), use the 'menu' command instead.
+                """
             )
         }
     }
@@ -50,9 +51,6 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
     @Option(help: "Index of the menu bar item (0-based)")
     var index: Int?
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -215,6 +213,13 @@ private struct JSONErrorOutput: Codable {
     let executionTime: TimeInterval
 }
 
-extension MenuBarCommand: ParsableCommand {}
-
 extension MenuBarCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MenuBarCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.action = try values.decodePositional(0, label: "action")
+        self.itemName = try values.decodeOptionalPositional(1, label: "itemName")
+        self.index = try values.decodeOption("index", as: Int.self)
+    }
+}

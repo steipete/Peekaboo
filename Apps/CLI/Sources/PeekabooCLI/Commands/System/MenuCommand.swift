@@ -1,5 +1,5 @@
 import AppKit
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -14,6 +14,7 @@ enum MenuError: Error {
 }
 
 /// Interact with application menu bar items and system menu extras
+@MainActor
 struct MenuCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -21,21 +22,21 @@ struct MenuCommand: ParsableCommand {
                 commandName: "menu",
                 abstract: "Interact with application menu bar",
                 discussion: """
-        Provides access to application menu bar items and system menu extras.
+                Provides access to application menu bar items and system menu extras.
 
-        EXAMPLES:
-          # Click a simple menu item
-          peekaboo menu click --app Safari --item "New Window"
+                EXAMPLES:
+                  # Click a simple menu item
+                  peekaboo menu click --app Safari --item "New Window"
 
-          # Navigate nested menus with path
-          peekaboo menu click --app TextEdit --path "Format > Font > Show Fonts"
+                  # Navigate nested menus with path
+                  peekaboo menu click --app TextEdit --path "Format > Font > Show Fonts"
 
-          # Click system menu extras (WiFi, Bluetooth, etc.)
-          peekaboo menu click-extra --title "WiFi"
+                  # Click system menu extras (WiFi, Bluetooth, etc.)
+                  peekaboo menu click-extra --title "WiFi"
 
-          # List all menu items for an app
-          peekaboo menu list --app Finder
-        """,
+                  # List all menu items for an app
+                  peekaboo menu list --app Finder
+                """,
                 subcommands: [
                     ClickSubcommand.self,
                     ClickExtraSubcommand.self,
@@ -48,8 +49,9 @@ struct MenuCommand: ParsableCommand {
 }
 
 extension MenuCommand {
-
     // MARK: - Click Menu Item
+
+    @MainActor
 
     struct ClickSubcommand: OutputFormattable, ApplicationResolvablePositional {
         @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
@@ -65,8 +67,6 @@ extension MenuCommand {
         var path: String?
 
         @OptionGroup var focusOptions: FocusCommandOptions
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -96,12 +96,24 @@ extension MenuCommand {
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                try await ensureFocused(applicationName: appIdentifier, options: self.focusOptions, services: self.services)
+                try await ensureFocused(
+                    applicationName: appIdentifier,
+                    options: self.focusOptions,
+                    services: self.services
+                )
 
                 if let itemName = self.item {
-                    try await MenuServiceBridge.clickMenuItemByName(services: self.services, appIdentifier: appIdentifier, itemName: itemName)
+                    try await MenuServiceBridge.clickMenuItemByName(
+                        services: self.services,
+                        appIdentifier: appIdentifier,
+                        itemName: itemName
+                    )
                 } else if let path {
-                    try await MenuServiceBridge.clickMenuItem(services: self.services, appIdentifier: appIdentifier, itemPath: path)
+                    try await MenuServiceBridge.clickMenuItem(
+                        services: self.services,
+                        appIdentifier: appIdentifier,
+                        itemPath: path
+                    )
                 }
 
                 let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
@@ -186,15 +198,14 @@ extension MenuCommand {
 
     // MARK: - Click System Menu Extra
 
+    @MainActor
+
     struct ClickExtraSubcommand: OutputFormattable {
         @Option(help: "Title of the menu extra (e.g., 'WiFi', 'Bluetooth')")
         var title: String
 
         @Option(help: "Menu item to click after opening the extra")
         var item: String?
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -286,6 +297,8 @@ extension MenuCommand {
 
     // MARK: - List Menu Items
 
+    @MainActor
+
     struct ListSubcommand: OutputFormattable, ApplicationResolvablePositional {
         @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
         var app: String
@@ -297,8 +310,6 @@ extension MenuCommand {
         var includeDisabled = false
 
         @OptionGroup var focusOptions: FocusCommandOptions
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -320,10 +331,18 @@ extension MenuCommand {
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                try await ensureFocused(applicationName: appIdentifier, options: self.focusOptions, services: self.services)
+                try await ensureFocused(
+                    applicationName: appIdentifier,
+                    options: self.focusOptions,
+                    services: self.services
+                )
 
-                let menuStructure = try await MenuServiceBridge.listMenus(services: self.services, appIdentifier: appIdentifier)
-                let filteredMenus = self.includeDisabled ? menuStructure.menus : self.filterDisabledMenus(menuStructure.menus)
+                let menuStructure = try await MenuServiceBridge.listMenus(
+                    services: self.services,
+                    appIdentifier: appIdentifier
+                )
+                let filteredMenus = self.includeDisabled ? menuStructure.menus : self
+                    .filterDisabledMenus(menuStructure.menus)
 
                 if self.jsonOutput {
                     let data = MenuListData(
@@ -492,15 +511,14 @@ extension MenuCommand {
 
     // MARK: - List All Menu Bar Items
 
+    @MainActor
+
     struct ListAllSubcommand: OutputFormattable {
         @Flag(help: "Include disabled menu items")
         var includeDisabled = false
 
         @Flag(help: "Include item frames (pixel positions)")
         var includeFrames = false
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -524,7 +542,8 @@ extension MenuCommand {
                 let frontmostMenus = try await MenuServiceBridge.listFrontmostMenus(services: self.services)
                 let menuExtras = try await MenuServiceBridge.listMenuExtras(services: self.services)
 
-                let filteredMenus = self.includeDisabled ? frontmostMenus.menus : self.filterDisabledMenus(frontmostMenus.menus)
+                let filteredMenus = self.includeDisabled ? frontmostMenus.menus : self
+                    .filterDisabledMenus(frontmostMenus.menus)
 
                 if self.jsonOutput {
                     struct MenuAllResult: Codable {
@@ -732,6 +751,7 @@ extension MenuCommand {
 
 // MARK: - Subcommand Conformances
 
+@MainActor
 extension MenuCommand.ClickSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -745,6 +765,18 @@ extension MenuCommand.ClickSubcommand: ParsableCommand {
 
 extension MenuCommand.ClickSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension MenuCommand.ClickSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = try values.requireOption("app", as: String.self)
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.item = values.singleOption("item")
+        self.path = values.singleOption("path")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}
+
+@MainActor
 extension MenuCommand.ClickExtraSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -758,6 +790,15 @@ extension MenuCommand.ClickExtraSubcommand: ParsableCommand {
 
 extension MenuCommand.ClickExtraSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension MenuCommand.ClickExtraSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.title = try values.requireOption("title", as: String.self)
+        self.item = values.singleOption("item")
+    }
+}
+
+@MainActor
 extension MenuCommand.ListSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -771,6 +812,17 @@ extension MenuCommand.ListSubcommand: ParsableCommand {
 
 extension MenuCommand.ListSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension MenuCommand.ListSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = try values.requireOption("app", as: String.self)
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.includeDisabled = values.flag("includeDisabled")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}
+
+@MainActor
 extension MenuCommand.ListAllSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -783,6 +835,14 @@ extension MenuCommand.ListAllSubcommand: ParsableCommand {
 }
 
 extension MenuCommand.ListAllSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MenuCommand.ListAllSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.includeDisabled = values.flag("includeDisabled")
+        self.includeFrames = values.flag("includeFrames")
+    }
+}
 
 // MARK: - Data Structures
 

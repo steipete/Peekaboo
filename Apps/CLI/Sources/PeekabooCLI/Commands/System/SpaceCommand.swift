@@ -1,5 +1,5 @@
 import AppKit
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 
@@ -23,7 +23,7 @@ enum SpaceCommandEnvironment {
         _ service: any SpaceCommandSpaceService,
         perform operation: () async throws -> T
     ) async rethrows -> T {
-        try await $override.withValue(service) {
+        try await self.$override.withValue(service) {
             try await operation()
         }
     }
@@ -90,6 +90,7 @@ enum SpaceCommandEnvironment {
 }
 
 /// Manage macOS Spaces (virtual desktops)
+@MainActor
 struct SpaceCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "space",
@@ -134,11 +135,11 @@ struct SpaceCommand: ParsableCommand {
 
 // MARK: - List Spaces
 
+@MainActor
+
 struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
     @Flag(name: .long, help: "Include detailed window information")
     var detailed = false
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -224,11 +225,11 @@ struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
 
 // MARK: - Switch Space
 
+@MainActor
+
 struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
     @Option(name: .long, help: "Space number to switch to (1-based)")
     var to: Int
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -280,6 +281,8 @@ struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
 
 // MARK: - Move Window to Space
 
+@MainActor
+
 struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
@@ -301,8 +304,6 @@ struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, Output
 
     @Flag(name: .long, help: "Switch to the target Space after moving")
     var follow = false
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -405,6 +406,7 @@ struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, Output
     }
 }
 
+@MainActor
 extension ListSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -417,7 +419,14 @@ extension ListSubcommand: ParsableCommand {
 }
 
 extension ListSubcommand: AsyncRuntimeCommand {}
+@MainActor
+extension ListSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.detailed = values.flag("detailed")
+    }
+}
 
+@MainActor
 extension SwitchSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -430,7 +439,14 @@ extension SwitchSubcommand: ParsableCommand {
 }
 
 extension SwitchSubcommand: AsyncRuntimeCommand {}
+@MainActor
+extension SwitchSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.to = try values.requireOption("to", as: Int.self)
+    }
+}
 
+@MainActor
 extension MoveWindowSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -443,6 +459,18 @@ extension MoveWindowSubcommand: ParsableCommand {
 }
 
 extension MoveWindowSubcommand: AsyncRuntimeCommand {}
+@MainActor
+extension MoveWindowSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = values.singleOption("app")
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.windowTitle = values.singleOption("windowTitle")
+        self.windowIndex = try values.decodeOption("windowIndex", as: Int.self)
+        self.to = try values.decodeOption("to", as: Int.self)
+        self.toCurrent = values.flag("toCurrent")
+        self.follow = values.flag("follow")
+    }
+}
 
 // MARK: - Response Types
 

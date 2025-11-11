@@ -1,10 +1,11 @@
 import ApplicationServices
-@preconcurrency import ArgumentParser
 import AXorcist
+import Commander
 import Foundation
 import PeekabooCore
 
 /// Interact with system dialogs and alerts
+@MainActor
 struct DialogCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dialog",
@@ -38,15 +39,14 @@ struct DialogCommand: ParsableCommand {
 
     // MARK: - Click Dialog Button
 
-    struct ClickSubcommand {
+    @MainActor
 
+    struct ClickSubcommand {
         @Option(help: "Button text to click (e.g., 'OK', 'Cancel', 'Save')")
         var button: String
 
         @Option(help: "Specific window/sheet title to target")
         var window: String?
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -121,8 +121,6 @@ struct DialogCommand: ParsableCommand {
 
         @Flag(help: "Clear existing text first")
         var clear = false
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -201,8 +199,6 @@ struct DialogCommand: ParsableCommand {
 
         @Option(help: "Button to click after entering path/name")
         var select: String = "Save"
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -277,8 +273,6 @@ struct DialogCommand: ParsableCommand {
 
         @Option(help: "Specific window/sheet title to target")
         var window: String?
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -341,15 +335,12 @@ struct DialogCommand: ParsableCommand {
 
     // MARK: - List Dialog Elements
 
-@MainActor
-struct ListSubcommand {
+    @MainActor
+    struct ListSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List elements in current dialog using DialogService"
         )
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -376,7 +367,7 @@ struct ListSubcommand {
 
                 // Output result
                 if self.jsonOutput {
-struct DialogListResult: Codable {
+                    struct DialogListResult: Codable {
                         let title: String
                         let role: String
                         let buttons: [String]
@@ -440,22 +431,59 @@ struct DialogListResult: Codable {
     }
 }
 
+@MainActor
 extension DialogCommand.InputSubcommand: ParsableCommand {}
-
 extension DialogCommand.InputSubcommand: AsyncRuntimeCommand {}
 
-extension DialogCommand.FileSubcommand: ParsableCommand {}
+@MainActor
+extension DialogCommand.InputSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.text = try values.requireOption("text", as: String.self)
+        self.field = values.singleOption("field")
+        self.index = try values.decodeOption("index", as: Int.self)
+        self.clear = values.flag("clear")
+    }
+}
 
+@MainActor
+extension DialogCommand.FileSubcommand: ParsableCommand {}
 extension DialogCommand.FileSubcommand: AsyncRuntimeCommand {}
 
-extension DialogCommand.DismissSubcommand: ParsableCommand {}
+@MainActor
+extension DialogCommand.FileSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.path = values.singleOption("path")
+        self.name = values.singleOption("name")
+        if let select = values.singleOption("select") {
+            self.select = select
+        }
+    }
+}
 
+@MainActor
+extension DialogCommand.DismissSubcommand: ParsableCommand {}
 extension DialogCommand.DismissSubcommand: AsyncRuntimeCommand {}
 
-extension DialogCommand.ListSubcommand: ParsableCommand {}
+@MainActor
+extension DialogCommand.DismissSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.force = values.flag("force")
+        self.window = values.singleOption("window")
+    }
+}
 
+@MainActor
+extension DialogCommand.ListSubcommand: ParsableCommand {}
 extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension DialogCommand.ListSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
+@MainActor
 extension DialogCommand.ClickSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -468,6 +496,14 @@ extension DialogCommand.ClickSubcommand: ParsableCommand {
 }
 
 extension DialogCommand.ClickSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension DialogCommand.ClickSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.button = try values.requireOption("button", as: String.self)
+        self.window = values.singleOption("window")
+    }
+}
 
 // MARK: - Error Handling
 

@@ -1,9 +1,10 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 
 /// Clean up session cache and temporary files
 @available(macOS 14.0, *)
+@MainActor
 struct CleanCommand: OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "clean",
@@ -36,9 +37,6 @@ struct CleanCommand: OutputFormattable {
 
     @Flag(help: "Show what would be deleted without actually deleting")
     var dryRun = false
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -175,6 +173,14 @@ private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool,
     }
 }
 
-extension CleanCommand: ParsableCommand {}
-
 extension CleanCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension CleanCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.allSessions = values.flag("allSessions")
+        self.dryRun = values.flag("dryRun")
+        self.olderThan = try values.decodeOption("olderThan", as: Int.self)
+        self.session = values.singleOption("session")
+    }
+}

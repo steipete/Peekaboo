@@ -1,11 +1,12 @@
 import AppKit
 import ApplicationServices
-@preconcurrency import ArgumentParser
 import AXorcist
+import Commander
 import Foundation
 import PeekabooCore
 
 /// Interact with the macOS Dock
+@MainActor
 struct DockCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -14,20 +15,20 @@ struct DockCommand: ParsableCommand {
                 abstract: "Interact with the macOS Dock",
                 discussion: """
 
-        EXAMPLES:
-          # Launch an app from the Dock
-          peekaboo dock launch Safari
+                EXAMPLES:
+                  # Launch an app from the Dock
+                  peekaboo dock launch Safari
 
-          # Right-click a Dock item
-          peekaboo dock right-click --app Finder --select "New Window"
+                  # Right-click a Dock item
+                  peekaboo dock right-click --app Finder --select "New Window"
 
-          # Show/hide the Dock
-          peekaboo dock hide
-          peekaboo dock show
+                  # Show/hide the Dock
+                  peekaboo dock hide
+                  peekaboo dock show
 
-          # List all Dock items
-          peekaboo dock list
-        """,
+                  # List all Dock items
+                  peekaboo dock list
+                """,
                 subcommands: [
                     LaunchSubcommand.self,
                     RightClickSubcommand.self,
@@ -41,14 +42,13 @@ struct DockCommand: ParsableCommand {
 }
 
 extension DockCommand {
-
     // MARK: - Launch from Dock
+
+    @MainActor
 
     struct LaunchSubcommand: OutputFormattable {
         @Argument(help: "Application name in the Dock")
         var app: String
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -95,14 +95,14 @@ extension DockCommand {
 
     // MARK: - Right-Click Dock Item
 
+    @MainActor
+
     struct RightClickSubcommand: OutputFormattable {
         @Option(help: "Application name in the Dock")
         var app: String
 
         @Option(help: "Menu item to select after right-clicking")
         var select: String?
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -124,7 +124,11 @@ extension DockCommand {
 
             do {
                 let dockItem = try await DockServiceBridge.findDockItem(services: self.services, name: self.app)
-                try await DockServiceBridge.rightClickDockItem(services: self.services, appName: self.app, menuItem: self.select)
+                try await DockServiceBridge.rightClickDockItem(
+                    services: self.services,
+                    appName: self.app,
+                    menuItem: self.select
+                )
 
                 if self.jsonOutput {
                     struct DockRightClickResult: Codable {
@@ -156,8 +160,9 @@ extension DockCommand {
 
     // MARK: - Hide Dock
 
+    @MainActor
+
     struct HideSubcommand: ErrorHandlingCommand, OutputFormattable {
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -198,8 +203,9 @@ extension DockCommand {
 
     // MARK: - Show Dock
 
+    @MainActor
+
     struct ShowSubcommand: ErrorHandlingCommand, OutputFormattable {
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -240,11 +246,11 @@ extension DockCommand {
 
     // MARK: - List Dock Items
 
+    @MainActor
+
     struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
         @Flag(help: "Include separators and spacers")
         var includeAll = false
-
-        @OptionGroup var runtimeOptions: CommandRuntimeOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -265,7 +271,10 @@ extension DockCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let dockItems = try await DockServiceBridge.listDockItems(services: self.services, includeAll: self.includeAll)
+                let dockItems = try await DockServiceBridge.listDockItems(
+                    services: self.services,
+                    includeAll: self.includeAll
+                )
 
                 if self.jsonOutput {
                     struct DockListResult: Codable {
@@ -315,6 +324,7 @@ extension DockCommand {
 
 // MARK: - Subcommand Conformances
 
+@MainActor
 extension DockCommand.LaunchSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -325,16 +335,36 @@ extension DockCommand.LaunchSubcommand: ParsableCommand {
 
 extension DockCommand.LaunchSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension DockCommand.LaunchSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = try values.decodePositional(0, label: "app")
+    }
+}
+
+@MainActor
 extension DockCommand.RightClickSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
-            CommandConfiguration(commandName: "right-click", abstract: "Right-click a Dock item and optionally select from menu")
+            CommandConfiguration(
+                commandName: "right-click",
+                abstract: "Right-click a Dock item and optionally select from menu"
+            )
         }
     }
 }
 
 extension DockCommand.RightClickSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension DockCommand.RightClickSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = try values.requireOption("app", as: String.self)
+        self.select = values.singleOption("select")
+    }
+}
+
+@MainActor
 extension DockCommand.HideSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -345,6 +375,14 @@ extension DockCommand.HideSubcommand: ParsableCommand {
 
 extension DockCommand.HideSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension DockCommand.HideSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
+@MainActor
 extension DockCommand.ShowSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -355,6 +393,14 @@ extension DockCommand.ShowSubcommand: ParsableCommand {
 
 extension DockCommand.ShowSubcommand: AsyncRuntimeCommand {}
 
+@MainActor
+extension DockCommand.ShowSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
+@MainActor
 extension DockCommand.ListSubcommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -364,6 +410,13 @@ extension DockCommand.ListSubcommand: ParsableCommand {
 }
 
 extension DockCommand.ListSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension DockCommand.ListSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.includeAll = values.flag("includeAll")
+    }
+}
 
 // MARK: - Error Handling
 

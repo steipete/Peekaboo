@@ -1,12 +1,13 @@
 import AppKit
 import ApplicationServices
-@preconcurrency import ArgumentParser
 import AXorcist
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
 /// Control macOS applications
+@MainActor
 struct AppCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "app",
@@ -46,6 +47,7 @@ struct AppCommand: ParsableCommand {
 
     // MARK: - Launch Application
 
+    @MainActor
     struct LaunchSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "launch",
@@ -60,29 +62,30 @@ struct AppCommand: ParsableCommand {
 
         @Flag(help: "Wait for the application to be ready")
         var waitUntilReady = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         @MainActor private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
         @MainActor private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+            self.resolvedRuntime.services
         }
 
         var outputLogger: Logger { self.logger }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         /// Resolve the requested app target, launch it, optionally wait until ready, and emit output.
         @MainActor
-mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             let logger = self.logger
             logger.verbose("Launching application: \(self.app)")
@@ -188,6 +191,8 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
     // MARK: - Quit Application
 
+    @MainActor
+
     struct QuitSubcommand {
         static let configuration = CommandConfiguration(
             commandName: "quit",
@@ -208,29 +213,30 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
         @Flag(help: "Force quit (doesn't save changes)")
         var force = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
         @MainActor private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+            self.resolvedRuntime.services
         }
 
         var outputLogger: Logger { self.logger }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         /// Resolve the targeted applications, issue quit or force-quit requests, and report results per app.
         @MainActor
-mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             let logger = self.logger
 
@@ -334,8 +340,9 @@ mutating func run(using runtime: CommandRuntime) async throws {
         }
     }
 
-
     // MARK: - Hide Application
+
+    @MainActor
 
     struct HideSubcommand {
         static let configuration = CommandConfiguration(
@@ -348,25 +355,26 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
         var outputLogger: Logger { self.logger }
 
         @MainActor private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+            self.resolvedRuntime.services
         }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         /// Hide the specified application and emit confirmation in either text or JSON form.
         @MainActor
@@ -376,7 +384,7 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                    let appInfo = try await resolveApplication(appIdentifier, services: self.services)
+                let appInfo = try await resolveApplication(appIdentifier, services: self.services)
 
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
@@ -400,8 +408,9 @@ mutating func run(using runtime: CommandRuntime) async throws {
         }
     }
 
-
     // MARK: - Unhide Application
+
+    @MainActor
 
     struct UnhideSubcommand {
         static let configuration = CommandConfiguration(
@@ -417,25 +426,26 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
         @Flag(help: "Bring to front after unhiding")
         var activate = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
         var outputLogger: Logger { self.logger }
 
         @MainActor private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+            self.resolvedRuntime.services
         }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         /// Unhide the target application and optionally re-activate its main window.
         @MainActor
@@ -486,8 +496,9 @@ mutating func run(using runtime: CommandRuntime) async throws {
         }
     }
 
-
     // MARK: - Switch Application
+
+    @MainActor
 
     struct SwitchSubcommand {
         static let configuration = CommandConfiguration(
@@ -500,29 +511,30 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
         @Flag(help: "Cycle to next app (Cmd+Tab)")
         var cycle = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
         var outputLogger: Logger { self.logger }
 
         @MainActor private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+            self.resolvedRuntime.services
         }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
-
-        @MainActor
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         /// Switch focus either by cycling (Cmd+Tab) or by activating a specific application.
+        @MainActor
+
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
 
@@ -589,8 +601,9 @@ mutating func run(using runtime: CommandRuntime) async throws {
         }
     }
 
-
     // MARK: - List Applications
+
+    @MainActor
 
     struct ListSubcommand {
         static let configuration = CommandConfiguration(
@@ -603,29 +616,30 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
         @Flag(help: "Include background apps")
         var includeBackground = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
         @MainActor private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+            self.resolvedRuntime.services
         }
 
         var outputLogger: Logger { self.logger }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         /// Enumerate running applications, apply filtering flags, and emit the chosen output representation.
         @MainActor
-mutating func run(using runtime: CommandRuntime) async throws {
+        mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
 
             do {
@@ -681,8 +695,9 @@ mutating func run(using runtime: CommandRuntime) async throws {
         }
     }
 
-
     // MARK: - Relaunch Application
+
+    @MainActor
 
     struct RelaunchSubcommand {
         static let configuration = CommandConfiguration(
@@ -704,25 +719,26 @@ mutating func run(using runtime: CommandRuntime) async throws {
 
         @Flag(help: "Wait until the app is ready after launch")
         var waitUntilReady = false
-
-        @OptionGroup
-        var runtimeOptions: CommandRuntimeOptions
-
         @RuntimeStorage private var runtime: CommandRuntime?
 
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
         private var logger: Logger {
-            self.runtime?.logger ?? Logger.shared
+            self.resolvedRuntime.logger
         }
 
         @MainActor private var services: PeekabooServices {
-            self.runtime?.services ?? PeekabooServices.shared
+            self.resolvedRuntime.services
         }
 
         var outputLogger: Logger { self.logger }
 
-        var jsonOutput: Bool {
-            self.runtimeOptions.jsonOutput
-        }
+        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
         /// Quit the target app, wait if requested, relaunch it, and report success metrics.
         @MainActor
@@ -837,23 +853,83 @@ mutating func run(using runtime: CommandRuntime) async throws {
             }
         }
     }
-
 }
 
 extension AppCommand.LaunchSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {}
+@MainActor
+extension AppCommand.LaunchSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = try values.decodePositional(0, label: "app")
+        self.bundleId = values.singleOption("bundleId")
+        self.waitUntilReady = values.flag("waitUntilReady")
+    }
+}
 
-extension AppCommand.QuitSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
-ApplicationResolver {}
+extension AppCommand.QuitSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
+    ApplicationResolvable,
+    ApplicationResolver {}
+@MainActor
+extension AppCommand.QuitSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = values.singleOption("app")
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.all = values.flag("all")
+        self.except = values.singleOption("except")
+        self.force = values.flag("force")
+    }
+}
 
 extension AppCommand.HideSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvablePositional, ApplicationResolver {}
+@MainActor
+extension AppCommand.HideSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = try values.requireOption("app", as: String.self)
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+    }
+}
 
 extension AppCommand.UnhideSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvablePositional, ApplicationResolver {}
+@MainActor
+extension AppCommand.UnhideSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = try values.requireOption("app", as: String.self)
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.activate = values.flag("activate")
+    }
+}
 
-extension AppCommand.SwitchSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {}
+extension AppCommand.SwitchSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
+ApplicationResolver {}
+@MainActor
+extension AppCommand.SwitchSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.to = values.singleOption("to")
+        self.cycle = values.flag("cycle")
+    }
+}
 
 extension AppCommand.ListSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable {}
+@MainActor
+extension AppCommand.ListSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.includeHidden = values.flag("includeHidden")
+        self.includeBackground = values.flag("includeBackground")
+    }
+}
 
 extension AppCommand.RelaunchSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvablePositional, ApplicationResolver {}
+@MainActor
+extension AppCommand.RelaunchSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.app = try values.decodePositional(0, label: "app")
+        self.pid = try values.decodeOption("pid", as: Int32.self)
+        if let wait: TimeInterval = try values.decodeOption("wait", as: TimeInterval.self) {
+            self.wait = wait
+        }
+        self.force = values.flag("force")
+        self.waitUntilReady = values.flag("waitUntilReady")
+    }
+}

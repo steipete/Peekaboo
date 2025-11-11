@@ -1,8 +1,9 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 
 @available(macOS 14.0, *)
+@MainActor
 struct RunCommand: OutputFormattable {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -21,8 +22,6 @@ struct RunCommand: OutputFormattable {
 
     @Flag(help: "Continue execution even if a step fails")
     var noFailFast = false
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -143,6 +142,15 @@ private enum ProcessServiceBridge {
     }
 }
 
+@MainActor
 extension RunCommand: ParsableCommand {}
-
 extension RunCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension RunCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.scriptPath = try values.decodePositional(0, label: "scriptPath")
+        self.output = try values.decodeOption("output", as: String.self)
+        self.noFailFast = values.flag("noFailFast")
+    }
+}
