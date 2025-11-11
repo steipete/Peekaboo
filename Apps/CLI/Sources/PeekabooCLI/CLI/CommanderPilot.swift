@@ -24,12 +24,13 @@ enum CommanderPilot {
         guard resolved.metadata.name == "learn" else { return false }
         guard resolved.parsedValues.positional.isEmpty,
               resolved.parsedValues.options.isEmpty,
-              resolved.parsedValues.flags.isEmpty else {
-            Logger.shared.debug("Commander pilot: learn currently supports no arguments", category: "Commander")
+              resolved.parsedValues.flags.subtracting(["verbose", "jsonOutput"]).isEmpty else {
+            Logger.shared.debug("Commander pilot: learn currently supports no positional or custom options", category: "Commander")
             return false
         }
         var command = CommanderBinder.instantiateCommand(ofType: LearnCommand.self, parsedValues: resolved.parsedValues)
-        let runtime = CommandRuntime(options: CommandRuntimeOptions())
+        let runtimeOptions = CommanderBinder.makeRuntimeOptions(from: resolved.parsedValues)
+        let runtime = CommandRuntime(options: runtimeOptions)
         try await command.run(using: runtime)
         return true
     }
