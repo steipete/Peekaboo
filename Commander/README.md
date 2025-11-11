@@ -18,6 +18,7 @@ Commander is Peekaboo's Swift-native command-line framework. It combines declara
 - **Property-wrapper ergonomics** – `@Option`, `@Argument`, `@Flag`, and `@OptionGroup` mirror the Swift Argument Parser API but simply register metadata. You keep writing declarative commands while Commander handles parsing and validation centrally.
 - **Command signatures everywhere** – `CommandSignature` reflects every option/flag/argument so docs, help output, agent metadata, and tests all rely on the exact same definitions.
 - **Source-of-truth metadata** – `CommandDescription` replaces the old ArgumentParser `CommandConfiguration`, giving us Commander-native builders for abstracts, discussions, versions, and subcommand trees.
+- **Standard runtime options** – Every command gets `-v/--verbose`, `--json-output`, and `--log-level <trace|verbose|debug|info|warning|error|critical>` automatically so you can control logging without touching each command file.
 - **Program router** – `Program.resolve(argv:)` walks the descriptor tree (root command → subcommand → default subcommand) and produces a `CommandInvocation` with parsed values and the fully-qualified path.
 - **Binder APIs** – `CommanderCLIBinder` (living in PeekabooCLI) shows how to hydrate existing command structs by conforming them to `CommanderBindableCommand`. This keeps runtime logic untouched while swapping in Commander incrementally.
 - **Approachable concurrency ready** – the package enables `StrictConcurrency`, `ExistentialAny`, and `NonisolatedNonsendingByDefault` so anything that depends on Commander inherits Peekaboo's concurrency guarantees.
@@ -73,6 +74,8 @@ $ swift run capture --display 1 --json /tmp/screen.png
 Commander handles `--help`, flag parsing, and error messages based on the metadata in your struct.
 
 If you need more control over how parsed values reach your command type, conform to `CommanderBindableCommand` and use the helper APIs (`decodeOption`, `makeFocusOptions`, etc.). PeekabooCLI's window/agent commands are good examples.
+
+By default the runtime injects the standard logging flags mentioned above; you can flip verbosity with `-v` or set an explicit level via `--log-level warning` (overrides environment variables like `PEEKABOO_LOG_LEVEL`).
 
 ### Command Metadata
 
