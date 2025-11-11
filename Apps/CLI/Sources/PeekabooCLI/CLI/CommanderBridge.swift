@@ -1,25 +1,188 @@
 import Commander
-@preconcurrency import ArgumentParser
+
+protocol CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature
+}
 
 struct CommanderCommandDescriptor {
     let metadata: CommandDescriptor
     let type: any ParsableCommand.Type
+    let subcommands: [CommanderCommandDescriptor]
+}
+
+struct CommanderCommandSummary: Codable, Sendable {
+    struct Argument: Codable, Sendable {
+        let label: String
+        let help: String?
+        let isOptional: Bool
+    }
+
+    struct Option: Codable, Sendable {
+        let names: [String]
+        let help: String?
+        let parsing: String
+    }
+
+    struct Flag: Codable, Sendable {
+        let names: [String]
+        let help: String?
+    }
+
+    let name: String
+    let abstract: String
+    let discussion: String?
+    let arguments: [Argument]
+    let options: [Option]
+    let flags: [Flag]
+    let subcommands: [CommanderCommandSummary]
 }
 
 @MainActor
 enum CommanderRegistryBuilder {
     static func buildDescriptors() -> [CommanderCommandDescriptor] {
-        CommandRegistry.entries.map { entry in
-            let configuration = entry.type.configuration
-            let commandInstance = entry.type.init()
-            let signature = CommandSignature.describe(commandInstance).withStandardRuntimeFlags()
-            let metadata = CommandDescriptor(
-                name: configuration.commandName ?? String(describing: entry.type),
-                abstract: configuration.abstract,
-                discussion: configuration.discussion,
-                signature: signature
+        CommandRegistry.entries.map { self.buildDescriptor(for: $0.type) }
+    }
+
+    static func buildCommandSummaries() -> [CommanderCommandSummary] {
+        self.buildDescriptors().map { CommanderCommandSummary(descriptor: $0) }
+    }
+
+    private static func buildDescriptor(for type: any ParsableCommand.Type) -> CommanderCommandDescriptor {
+        let configuration = type.configuration
+        let commandInstance = type.init()
+        let signature = self.resolveSignature(for: type, instance: commandInstance)
+            .flattened()
+            .withStandardRuntimeFlags()
+        let childDescriptors = configuration.subcommands.map { self.buildDescriptor(for: $0) }
+        let defaultName = configuration.defaultSubcommand.map { self.commandName(for: $0) }
+        let metadata = CommandDescriptor(
+            name: commandName(for: type),
+            abstract: configuration.abstract,
+            discussion: configuration.discussion,
+            signature: signature,
+            subcommands: childDescriptors.map(\.metadata),
+            defaultSubcommandName: defaultName
+        )
+        return CommanderCommandDescriptor(metadata: metadata, type: type, subcommands: childDescriptors)
+    }
+
+    private static func commandName(for type: any ParsableCommand.Type) -> String {
+        if let explicit = type.configuration.commandName {
+            return explicit
+        }
+        return String(describing: type)
+    }
+
+    private static func resolveSignature(
+        for type: any ParsableCommand.Type,
+        instance: any ParsableCommand
+    ) -> CommandSignature {
+        if let provider = type as? any CommanderSignatureProviding.Type {
+            return provider.commanderSignature()
+        }
+        return CommandSignature.describe(instance)
+    }
+}
+
+extension CommanderCommandSummary {
+    fileprivate init(descriptor: CommanderCommandDescriptor) {
+        let signature = descriptor.metadata.signature
+        self.name = descriptor.metadata.name
+        self.abstract = descriptor.metadata.abstract
+        self.discussion = descriptor.metadata.discussion
+        self.arguments = signature.arguments.map { argument in
+            Argument(
+                label: argument.label,
+                help: argument.help,
+                isOptional: argument.isOptional
             )
-            return CommanderCommandDescriptor(metadata: metadata, type: entry.type)
+        }
+        self.options = signature.options.map { option in
+            Option(
+                names: option.names.map(\.cliSpelling),
+                help: option.help,
+                parsing: option.parsing.displayName
+            )
+        }
+        self.flags = signature.flags.map { flag in
+            Flag(
+                names: flag.names.map(\.cliSpelling),
+                help: flag.help
+            )
+        }
+        self.subcommands = descriptor.subcommands.map { CommanderCommandSummary(descriptor: $0) }
+    }
+}
+
+extension OptionDefinition {
+    nonisolated static func commandOption(
+        _ label: String,
+        help: String? = nil,
+        long: String? = nil,
+        short: Character? = nil,
+        parsing: OptionParsingStrategy = .singleValue
+    ) -> OptionDefinition {
+        var names: [CommanderName] = []
+        if let short {
+            names.append(.short(short))
+        }
+        names.append(.long(long ?? label.commanderized()))
+        return OptionDefinition.make(label: label, names: names, help: help, parsing: parsing)
+    }
+}
+
+extension FlagDefinition {
+    nonisolated static func commandFlag(
+        _ label: String,
+        help: String? = nil,
+        long: String? = nil,
+        short: Character? = nil
+    ) -> FlagDefinition {
+        var names: [CommanderName] = []
+        if let short {
+            names.append(.short(short))
+        }
+        names.append(.long(long ?? label.commanderized()))
+        return FlagDefinition.make(label: label, names: names, help: help)
+    }
+}
+
+extension String {
+    fileprivate nonisolated func commanderized() -> String {
+        guard !isEmpty else { return self }
+        var scalars: [Character] = []
+        for character in self {
+            if character.isUppercase {
+                scalars.append("-")
+                scalars.append(Character(character.lowercased()))
+            } else {
+                scalars.append(character)
+            }
+        }
+        return String(scalars)
+    }
+}
+
+extension CommanderName {
+    fileprivate var cliSpelling: String {
+        switch self {
+        case let .short(value):
+            "-\(value)"
+        case let .long(value):
+            "--\(value)"
+        }
+    }
+}
+
+extension OptionParsingStrategy {
+    fileprivate var displayName: String {
+        switch self {
+        case .singleValue:
+            "singleValue"
+        case .upToNextOption:
+            "upToNextOption"
+        case .remaining:
+            "remaining"
         }
     }
 }
