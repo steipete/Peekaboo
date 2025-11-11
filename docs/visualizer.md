@@ -1,8 +1,9 @@
 ---
-summary: 'Peekaboo visual feedback architecture and animation catalog'
+summary: 'Peekaboo visual feedback architecture, animation catalog, and diagnostics'
 read_when:
   - Designing or debugging visualizer animations
   - Touching visual feedback settings or transport code
+  - Investigating CLI → app visual feedback issues
 ---
 
 # Peekaboo Visual Feedback System
@@ -41,6 +42,61 @@ MCP Server → peekaboo CLI → VisualizerEventStore → Distributed Notificatio
                                 ↓
                         Event file cleaned, CLI logs warning
 ```
+
+## Components & Responsibilities
+
+| Component | Location | Role |
+| --- | --- | --- |
+| `VisualizationClient` | `Core/PeekabooCore/Sources/PeekabooCore/Visualizer/VisualizationClient.swift` | Runs inside CLI/MCP processes, serializes payloads, persists them, and posts distributed notifications containing the event descriptor. |
+| `VisualizerEventStore` | `Core/PeekabooCore/Sources/PeekabooCore/Visualizer/VisualizerEventStore.swift` | Owns the shared storage directory, defines the `VisualizerEvent` schema, and exposes helpers to persist, load, and clean up JSON envelopes. |
+| `VisualizerEventReceiver` | `Apps/Mac/Peekaboo/Services/Visualizer/VisualizerEventReceiver.swift` | Lives in Peekaboo.app, listens for `boo.peekaboo.visualizer.event`, loads the referenced JSON, and forwards it to `VisualizerCoordinator`. |
+| `VisualizerCoordinator` | `Apps/Mac/Peekaboo/Services/Visualizer/VisualizerCoordinator.swift` | Renders SwiftUI overlays (flashes, ripples, annotations, etc.) and honors user settings such as Reduce Motion. |
+
+## Transport Storage & Format
+
+- **Directory**: `~/Library/Application Support/PeekabooShared/VisualizerEvents`. Override with `PEEKABOO_VISUALIZER_STORAGE=/custom/path`. When sandboxing the app, set `PEEKABOO_VISUALIZER_APP_GROUP=com.example.group` so the store lives inside the App Group container.
+- **File name**: `<UUID>.json`. Each payload is written atomically so the receiver never reads partial data.
+- **Schema**: `VisualizerEvent` encodes `{ id, createdAt, payload }`. Payload is a `Codable` enum covering every animation type; any `Data` (screenshots, thumbnails) is base64-encoded by `JSONEncoder`.
+- **Lifetime**: Clients schedule `VisualizerEventStore.cleanup(olderThan:)` sweeps so abandoned files disappear after roughly 10 minutes. For deep debugging, `PEEKABOO_VISUALIZER_DISABLE_CLEANUP=true` keeps envelopes on disk until manually removed.
+
+### Environment Flags
+
+- `PEEKABOO_VISUAL_FEEDBACK=false` – disable the client entirely (no files, no notifications).
+- `PEEKABOO_VISUAL_SCREENSHOTS=false` – skip screenshot flash events but allow the rest.
+- `PEEKABOO_VISUALIZER_STDOUT=true|false` – force VisualizationClient logs to stderr regardless of bundle context.
+- `PEEKABOO_VISUALIZER_STORAGE=/path` – override the shared directory.
+- `PEEKABOO_VISUALIZER_APP_GROUP=<group>` – resolve storage inside an App Group container.
+- `PEEKABOO_VISUALIZER_FORCE_APP=true` – force “mac-app context” so headless harnesses (e.g., VisualizerSmoke) can emit events without launching Peekaboo.app.
+- `PEEKABOO_VISUALIZER_DISABLE_CLEANUP=true` – keep envelopes on disk for forensic analysis.
+
+Peekaboo.app still respects user-facing toggles via `PeekabooSettings`; the coordinator checks those before animating.
+
+## Logging & Diagnostics
+
+- **CLI / services**: `VisualizationClient` logs to the `boo.peekaboo.core` subsystem. Tail with `./scripts/visualizer-logs.sh --stream` (run inside tmux per AGENTS.md) to watch dispatch attempts and cleanup activity.
+- **Mac app**: `VisualizerEventReceiver` and `VisualizerCoordinator` log under `boo.peekaboo.mac`. Look for “Visualizer event receiver registered…” followed by “Processing visualizer event …”.
+- **File inspection**: `ls ~/Library/Application\\ Support/PeekabooShared/VisualizerEvents` shows outstanding events. A growing list means the mac app hasn’t consumed them (maybe it isn’t running or failed to decode the JSON).
+- **Manual cleanup**: When you need a clean slate, run `rm ~/Library/Application\\ Support/PeekabooShared/VisualizerEvents/*.json`; both sides recreate the folder automatically.
+- **Smoke harness**: The `VisualizerSmoke` helper (used in CI) forces `PEEKABOO_VISUALIZER_FORCE_APP=true`, emits known payloads, and asserts that the JSON lands in the shared directory—handy when debugging the transport without the full CLI.
+
+## Failure Modes & Fixes
+
+| Symptom | Likely Cause | How to Fix |
+| --- | --- | --- |
+| CLI logs “Peekaboo.app is not running…” and visuals stop | UI isn’t launched (intended best-effort behavior) | Start Peekaboo.app or its login item; visuals resume automatically. |
+| JSON files accumulate but the app never animates | App missing permissions or `VisualizerEventReceiver` never started | Relaunch the app, grant Screen Recording/Accessibility, and confirm logs show receiver registration. |
+| `VisualizerEventStore` throws file I/O errors | Shared directory missing or unwritable | Make sure the parent path exists and is writable, or set `PEEKABOO_VISUALIZER_STORAGE` to a directory with proper permissions. |
+| Annotated screenshot payload fails to decode | File deleted before the app could read it (cleanup ran too soon) | Disable cleanup temporarily with `PEEKABOO_VISUALIZER_DISABLE_CLEANUP=true` or increase the cleanup interval while debugging. |
+| CLI debug logs mention `DistributedNotificationCenter` sandbox issues | Sender is sandboxed and tried to include `userInfo` | Keep using the `<uuid>|<kind>` object format and load payloads from disk; never rely on `userInfo`. |
+
+## Smoke Test Checklist
+
+1. **Launch the UI** – Ensure Peekaboo.app is running (Poltergeist rebuilds it automatically). Confirm the log line `Visualizer event receiver registered`.
+2. **Trigger an event** – Run a CLI command that emits visuals, e.g. `polter peekaboo see --mode screen --annotate --path /tmp/peekaboo-see.png`.
+3. **Watch logs** – In tmux, run `./scripts/visualizer-logs.sh --last 30s --follow` to confirm both the client and receiver log the same event ID.
+4. **Inspect storage** – Check the shared directory; files should appear momentarily and disappear after the mac app consumes them. A lingering file means the receiver failed to delete it (inspect logs for the error).
+5. **Negative test** – Quit Peekaboo.app and rerun the CLI command. The client should log a single “Peekaboo.app is not running” warning and skip event creation until the UI returns.
+6. **Optional overrides** – Set `PEEKABOO_VISUALIZER_FORCE_APP=true` and re-run inside a headless harness to confirm the transport still works without the UI present (the files remain until you delete them).
 
 ## Visual Feedback Designs
 
