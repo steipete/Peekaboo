@@ -13,7 +13,7 @@ let approachableConcurrencySettings: [SwiftSetting] = [
 let package = Package(
     name: "axPackage", // Renamed package slightly to avoid any confusion with executable name
     platforms: [
-        .macOS(.v13), // macOS 13.0 or later
+        .macOS(.v14),
     ],
     products: [
         .library(name: "AXorcist", targets: ["AXorcist"]), // Product 'AXorcist' now comes from target 'AXorcist'
