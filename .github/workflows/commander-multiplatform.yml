@@ -39,6 +39,9 @@ jobs:
           - platform: watchOS
             sdk: watchsimulator
             triple: arm64-apple-watchos10.0-simulator
+          - platform: visionOS
+            sdk: xrsimulator
+            triple: arm64-apple-xros1.0-simulator
     defaults:
       run:
         working-directory: Commander
