@@ -1,5 +1,5 @@
 import AppKit
-@preconcurrency import ArgumentParser
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -7,8 +7,8 @@ import PeekabooFoundation
 
 /// Moves the mouse cursor to specific coordinates or UI elements.
 @available(macOS 14.0, *)
+@MainActor
 struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
-
     @Argument(help: "Coordinates as x,y (e.g., 100,200)")
     var coordinates: String?
 
@@ -32,9 +32,6 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
     @Option(help: "Session ID for element resolution")
     var session: String?
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -81,7 +78,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
             if self.center {
                 // Move to screen center
                 guard let mainScreen = NSScreen.main else {
-                    throw ArgumentParser.ValidationError("No main screen found")
+                    throw ValidationError("No main screen found")
                 }
                 let screenFrame = mainScreen.frame
                 targetLocation = CGPoint(x: screenFrame.midX, y: screenFrame.midY)
@@ -145,7 +142,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 targetDescription = self.formatElementInfo(element)
 
             } else {
-                throw ArgumentParser.ValidationError("Specify coordinates, --to, --id, or --center")
+                throw ValidationError("Specify coordinates, --to, --id, or --center")
             }
 
             // Determine movement duration
@@ -240,6 +237,7 @@ struct MoveResult: Codable {
 
 // MARK: - Conformances
 
+@MainActor
 extension MoveCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -247,27 +245,45 @@ extension MoveCommand: ParsableCommand {
                 commandName: "move",
                 abstract: "Move the mouse cursor to coordinates or UI elements",
                 discussion: """
-            The 'move' command positions the mouse cursor at specific locations or
-            on UI elements detected by 'see'. Supports instant and smooth movement.
+                    The 'move' command positions the mouse cursor at specific locations or
+                    on UI elements detected by 'see'. Supports instant and smooth movement.
 
-            EXAMPLES:
-              peekaboo move 100,200                 # Move to coordinates
-              peekaboo move --to "Submit Button"    # Move to element by text
-              peekaboo move --id B3                 # Move to element by ID
-              peekaboo move 500,300 --smooth        # Smooth movement
-              peekaboo move --center                # Move to screen center
+                    EXAMPLES:
+                      peekaboo move 100,200                 # Move to coordinates
+                      peekaboo move --to "Submit Button"    # Move to element by text
+                      peekaboo move --id B3                 # Move to element by ID
+                      peekaboo move 500,300 --smooth        # Smooth movement
+                      peekaboo move --center                # Move to screen center
 
-            MOVEMENT MODES:
-              - Instant (default): Immediate cursor positioning
-              - Smooth: Animated movement with configurable duration
+                    MOVEMENT MODES:
+                      - Instant (default): Immediate cursor positioning
+                      - Smooth: Animated movement with configurable duration
 
-            ELEMENT TARGETING:
-              When targeting elements, the cursor moves to the element's center.
-              Use element IDs from 'see' output for precise targeting.
-        """
+                    ELEMENT TARGETING:
+                      When targeting elements, the cursor moves to the element's center.
+                      Use element IDs from 'see' output for precise targeting.
+                """
             )
         }
     }
 }
 
 extension MoveCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MoveCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.coordinates = try values.decodeOptionalPositional(0, label: "coordinates")
+        self.to = values.singleOption("to")
+        self.id = values.singleOption("id")
+        self.center = values.flag("center")
+        self.smooth = values.flag("smooth")
+        if let duration: Int = try values.decodeOption("duration", as: Int.self) {
+            self.duration = duration
+        }
+        if let steps: Int = try values.decodeOption("steps", as: Int.self) {
+            self.steps = steps
+        }
+        self.session = values.singleOption("session")
+    }
+}

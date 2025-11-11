@@ -1,6 +1,6 @@
 import AppKit
-@preconcurrency import ArgumentParser
 import AXorcist
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -8,8 +8,8 @@ import PeekabooFoundation
 
 /// Performs swipe gestures using intelligent element finding and service-based architecture.
 @available(macOS 14.0, *)
+@MainActor
 struct SwipeCommand: ErrorHandlingCommand, OutputFormattable {
-
     @Option(help: "Source element ID")
     var from: String?
 
@@ -33,9 +33,6 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable {
 
     @Flag(help: "Use right mouse button for drag")
     var rightButton = false
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -59,18 +56,17 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable {
         do {
             // Validate inputs
             guard self.from != nil || self.fromCoords != nil, self.to != nil || self.toCoords != nil else {
-                throw ArgumentParser.ValidationError(
+                throw ValidationError(
                     "Must specify both source (--from or --from-coords) and destination (--to or --to-coords)"
                 )
             }
 
             // Note: Right-button swipe is not supported in the current implementation
             if self.rightButton {
-                throw ArgumentParser
-                    .ValidationError(
-                        "Right-button swipe is not currently supported. " +
-                            "Please use the standard swipe command for right-button gestures."
-                    )
+                throw ValidationError(
+                    "Right-button swipe is not currently supported. " +
+                        "Please use the standard swipe command for right-button gestures."
+                )
             }
 
             // Determine session ID - use provided or get most recent
@@ -149,7 +145,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable {
                   let x = Double(parts[0]),
                   let y = Double(parts[1])
             else {
-                throw ArgumentParser.ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
+                throw ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
             }
             return CGPoint(x: x, y: y)
         } else if let element = elementId, let activeSessionId = sessionId {
@@ -196,6 +192,7 @@ struct SwipeResult: Codable {
 
 // MARK: - Conformances
 
+@MainActor
 extension SwipeCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -203,31 +200,31 @@ extension SwipeCommand: ParsableCommand {
                 commandName: "swipe",
                 abstract: "Perform swipe gestures",
                 discussion: """
-        Performs a drag/swipe gesture between two points or elements.
-        Useful for drag-and-drop operations and gesture-based interactions.
+                Performs a drag/swipe gesture between two points or elements.
+                Useful for drag-and-drop operations and gesture-based interactions.
 
-        EXAMPLES:
-          # Swipe between UI elements
-          peekaboo swipe --from B1 --to B5 --session-id 12345
+                EXAMPLES:
+                  # Swipe between UI elements
+                  peekaboo swipe --from B1 --to B5 --session-id 12345
 
-          # Swipe with coordinates
-          peekaboo swipe --from-coords 100,200 --to-coords 300,400
+                  # Swipe with coordinates
+                  peekaboo swipe --from-coords 100,200 --to-coords 300,400
 
-          # Mixed mode: element to coordinates
-          peekaboo swipe --from T1 --to-coords 500,300 --duration 1000
+                  # Mixed mode: element to coordinates
+                  peekaboo swipe --from T1 --to-coords 500,300 --duration 1000
 
-          # Slow swipe for precise gesture
-          peekaboo swipe --from-coords 50,50 --to-coords 400,400 --duration 2000
+                  # Slow swipe for precise gesture
+                  peekaboo swipe --from-coords 50,50 --to-coords 400,400 --duration 2000
 
-        USAGE:
-          You can specify source and destination using either:
-          - Element IDs from a previous 'see' command
-          - Direct coordinates
-          - A mix of both
+                USAGE:
+                  You can specify source and destination using either:
+                  - Element IDs from a previous 'see' command
+                  - Direct coordinates
+                  - A mix of both
 
-          The swipe includes a configurable duration to control the
-          speed of the drag gesture.
-        """,
+                  The swipe includes a configurable duration to control the
+                  speed of the drag gesture.
+                """,
                 version: "2.0.0"
             )
         }
@@ -235,3 +232,21 @@ extension SwipeCommand: ParsableCommand {
 }
 
 extension SwipeCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension SwipeCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.from = values.singleOption("from")
+        self.fromCoords = values.singleOption("fromCoords")
+        self.to = values.singleOption("to")
+        self.toCoords = values.singleOption("toCoords")
+        self.session = values.singleOption("session")
+        if let duration: Int = try values.decodeOption("duration", as: Int.self) {
+            self.duration = duration
+        }
+        if let steps: Int = try values.decodeOption("steps", as: Int.self) {
+            self.steps = steps
+        }
+        self.rightButton = values.flag("rightButton")
+    }
+}

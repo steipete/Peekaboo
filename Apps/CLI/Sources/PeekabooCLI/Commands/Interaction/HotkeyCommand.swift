@@ -1,11 +1,11 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 
 /// Presses key combinations like Cmd+C, Ctrl+A, etc. using the UIAutomationService.
 @available(macOS 14.0, *)
+@MainActor
 struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
-
     @Option(help: "Keys to press (comma-separated or space-separated)")
     var keys: String
 
@@ -16,9 +16,6 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     var session: String?
 
     @OptionGroup var focusOptions: FocusCommandOptions
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -50,7 +47,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             }
 
             guard !keyNames.isEmpty else {
-                throw ArgumentParser.ValidationError("No keys specified")
+                throw ValidationError("No keys specified")
             }
 
             // Convert key names to comma-separated format for the service
@@ -113,6 +110,7 @@ struct HotkeyResult: Codable {
 
 // MARK: - Conformances
 
+@MainActor
 extension HotkeyCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -120,29 +118,41 @@ extension HotkeyCommand: ParsableCommand {
                 commandName: "hotkey",
                 abstract: "Press keyboard shortcuts and key combinations",
                 discussion: """
-            The 'hotkey' command simulates keyboard shortcuts by pressing
-            multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
+                    The 'hotkey' command simulates keyboard shortcuts by pressing
+                    multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
 
-            EXAMPLES:
-              peekaboo hotkey --keys "cmd,c"          # Copy (comma-separated)
-              peekaboo hotkey --keys "cmd c"          # Copy (space-separated)
-              peekaboo hotkey --keys "cmd,v"          # Paste
-              peekaboo hotkey --keys "cmd a"          # Select all
-              peekaboo hotkey --keys "cmd,shift,t"    # Reopen closed tab
-              peekaboo hotkey --keys "cmd space"      # Spotlight
+                    EXAMPLES:
+                      peekaboo hotkey --keys "cmd,c"          # Copy (comma-separated)
+                      peekaboo hotkey --keys "cmd c"          # Copy (space-separated)
+                      peekaboo hotkey --keys "cmd,v"          # Paste
+                      peekaboo hotkey --keys "cmd a"          # Select all
+                      peekaboo hotkey --keys "cmd,shift,t"    # Reopen closed tab
+                      peekaboo hotkey --keys "cmd space"      # Spotlight
 
-            KEY NAMES:
-              Modifiers: cmd, shift, alt/option, ctrl, fn
-              Letters: a-z
-              Numbers: 0-9
-              Special: space, return, tab, escape, delete, arrow_up, arrow_down, arrow_left, arrow_right
-              Function: f1-f12
+                    KEY NAMES:
+                      Modifiers: cmd, shift, alt/option, ctrl, fn
+                      Letters: a-z
+                      Numbers: 0-9
+                      Special: space, return, tab, escape, delete, arrow_up, arrow_down, arrow_left, arrow_right
+                      Function: f1-f12
 
-            The keys are pressed in the order given and released in reverse order.
-        """
+                    The keys are pressed in the order given and released in reverse order.
+                """
             )
         }
     }
 }
 
 extension HotkeyCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension HotkeyCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.keys = try values.requireOption("keys", as: String.self)
+        if let hold: Int = try values.decodeOption("holdDuration", as: Int.self) {
+            self.holdDuration = hold
+        }
+        self.session = values.singleOption("session")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}

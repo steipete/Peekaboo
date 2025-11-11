@@ -1,4 +1,4 @@
-@preconcurrency import ArgumentParser
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -7,8 +7,8 @@ import PeekabooFoundation
 /// Scrolls the mouse wheel in a specified direction.
 /// Supports scrolling on specific elements or at the current mouse position.
 @available(macOS 14.0, *)
+@MainActor
 struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
-
     @Option(help: "Scroll direction: up, down, left, or right")
     var direction: String
 
@@ -31,9 +31,6 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
     var app: String?
 
     @OptionGroup var focusOptions: FocusCommandOptions
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -57,7 +54,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable {
         do {
             // Parse direction
             guard let scrollDirection = ScrollDirection(rawValue: direction.lowercased()) else {
-                throw ArgumentParser.ValidationError("Invalid direction. Use: up, down, left, or right")
+                throw ValidationError("Invalid direction. Use: up, down, left, or right")
             }
 
             // Determine session ID if element target is specified
@@ -154,6 +151,7 @@ struct ScrollResult: Codable {
 
 // MARK: - Conformances
 
+@MainActor
 extension ScrollCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -161,27 +159,45 @@ extension ScrollCommand: ParsableCommand {
                 commandName: "scroll",
                 abstract: "Scroll the mouse wheel in any direction",
                 discussion: """
-            The 'scroll' command simulates mouse wheel scrolling events.
-            It can scroll up, down, left, or right by a specified amount.
+                    The 'scroll' command simulates mouse wheel scrolling events.
+                    It can scroll up, down, left, or right by a specified amount.
 
-            EXAMPLES:
-              peekaboo scroll --direction down --amount 5
-              peekaboo scroll --direction up --amount 10 --on element_42
-              peekaboo scroll --direction right --amount 3 --smooth
+                    EXAMPLES:
+                      peekaboo scroll --direction down --amount 5
+                      peekaboo scroll --direction up --amount 10 --on element_42
+                      peekaboo scroll --direction right --amount 3 --smooth
 
-            DIRECTION:
-              up    - Scroll content up (wheel down)
-              down  - Scroll content down (wheel up)
-              left  - Scroll content left
-              right - Scroll content right
+                    DIRECTION:
+                      up    - Scroll content up (wheel down)
+                      down  - Scroll content down (wheel up)
+                      left  - Scroll content left
+                      right - Scroll content right
 
-            AMOUNT:
-              The number of scroll "lines" or "ticks" to perform.
-              Each tick is equivalent to one notch on a physical mouse wheel.
-        """
+                    AMOUNT:
+                      The number of scroll "lines" or "ticks" to perform.
+                      Each tick is equivalent to one notch on a physical mouse wheel.
+                """
             )
         }
     }
 }
 
 extension ScrollCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ScrollCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.direction = try values.requireOption("direction", as: String.self)
+        if let amount: Int = try values.decodeOption("amount", as: Int.self) {
+            self.amount = amount
+        }
+        self.on = values.singleOption("on")
+        self.session = values.singleOption("session")
+        if let delay: Int = try values.decodeOption("delay", as: Int.self) {
+            self.delay = delay
+        }
+        self.smooth = values.flag("smooth")
+        self.app = values.singleOption("app")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}

@@ -1,12 +1,12 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
 /// Press individual keys or key sequences
 @available(macOS 14.0, *)
+@MainActor
 struct PressCommand: ErrorHandlingCommand, OutputFormattable {
-
     @Argument(help: "Key(s) to press")
     var keys: [String]
 
@@ -23,9 +23,6 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
     var session: String?
 
     @OptionGroup var focusOptions: FocusCommandOptions
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -118,8 +115,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
     mutating func validate() throws {
         for key in self.keys {
             guard SpecialKey(rawValue: key.lowercased()) != nil else {
-                throw ArgumentParser
-                    .ValidationError("Unknown key: '\(key)'. Run 'peekaboo press --help' for available keys.")
+                throw ValidationError("Unknown key: '\(key)'. Run 'peekaboo press --help' for available keys.")
             }
         }
     }
@@ -137,6 +133,7 @@ struct PressResult: Codable {
 
 // MARK: - Conformances
 
+@MainActor
 extension PressCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -144,39 +141,60 @@ extension PressCommand: ParsableCommand {
                 commandName: "press",
                 abstract: "Press individual keys or key sequences",
                 discussion: """
-            The 'press' command sends individual key presses or sequences.
-            It's designed for special keys and navigation, not for typing text.
+                    The 'press' command sends individual key presses or sequences.
+                    It's designed for special keys and navigation, not for typing text.
 
-            EXAMPLES:
-              peekaboo press return                # Press Enter/Return
-              peekaboo press tab --count 3         # Press Tab 3 times
-              peekaboo press escape                # Press Escape
-              peekaboo press delete                # Press Backspace/Delete
-              peekaboo press forward_delete        # Press Forward Delete (fn+delete)
-              peekaboo press up down left right    # Arrow key sequence
-              peekaboo press f1                    # Press F1 function key
-              peekaboo press space                 # Press spacebar
-              peekaboo press enter                 # Numeric keypad Enter
+                    EXAMPLES:
+                      peekaboo press return                # Press Enter/Return
+                      peekaboo press tab --count 3         # Press Tab 3 times
+                      peekaboo press escape                # Press Escape
+                      peekaboo press delete                # Press Backspace/Delete
+                      peekaboo press forward_delete        # Press Forward Delete (fn+delete)
+                      peekaboo press up down left right    # Arrow key sequence
+                      peekaboo press f1                    # Press F1 function key
+                      peekaboo press space                 # Press spacebar
+                      peekaboo press enter                 # Numeric keypad Enter
 
-            AVAILABLE KEYS:
-              Navigation: up, down, left, right, home, end, pageup, pagedown
-              Editing: delete (backspace), forward_delete, clear
-              Control: return, enter, tab, escape, space
-              Function: f1-f12
-              Special: caps_lock, help
+                    AVAILABLE KEYS:
+                      Navigation: up, down, left, right, home, end, pageup, pagedown
+                      Editing: delete (backspace), forward_delete, clear
+                      Control: return, enter, tab, escape, space
+                      Function: f1-f12
+                      Special: caps_lock, help
 
-            KEY SEQUENCES:
-              Multiple keys can be pressed in sequence with optional delay:
-              peekaboo press tab tab return        # Tab twice then Enter
-              peekaboo press down down return      # Navigate down and select
+                    KEY SEQUENCES:
+                      Multiple keys can be pressed in sequence with optional delay:
+                      peekaboo press tab tab return        # Tab twice then Enter
+                      peekaboo press down down return      # Navigate down and select
 
-            TIMING:
-              Use --delay to control timing between key presses (default: 100ms)
-              Use --hold to control how long each key is held (default: 50ms)
-        """
+                    TIMING:
+                      Use --delay to control timing between key presses (default: 100ms)
+                      Use --hold to control how long each key is held (default: 50ms)
+                """
             )
         }
     }
 }
 
 extension PressCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension PressCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        guard !values.positional.isEmpty else {
+            throw CommanderBindingError.missingArgument(label: "keys")
+        }
+        self.keys = values.positional
+        if let count: Int = try values.decodeOption("count", as: Int.self) {
+            self.count = count
+        }
+        if let delay: Int = try values.decodeOption("delay", as: Int.self) {
+            self.delay = delay
+        }
+        if let hold: Int = try values.decodeOption("hold", as: Int.self) {
+            self.hold = hold
+        }
+        self.session = values.singleOption("session")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}

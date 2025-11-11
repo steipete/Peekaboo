@@ -1,6 +1,6 @@
 import AppKit
-@preconcurrency import ArgumentParser
 import AXorcist
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -8,8 +8,8 @@ import PeekabooFoundation
 
 /// Perform drag and drop operations using intelligent element finding
 @available(macOS 14.0, *)
+@MainActor
 struct DragCommand: ErrorHandlingCommand, OutputFormattable {
-
     @Option(help: "Starting element ID from session")
     var from: String?
 
@@ -36,10 +36,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
 
     @Option(help: "Modifier keys to hold during drag (comma-separated: cmd,shift,option,ctrl)")
     var modifiers: String?
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
     @OptionGroup var focusOptions: FocusCommandOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -130,21 +127,21 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
     // Validate user input combinations
     private func validateInputs() throws {
         guard self.from != nil || self.fromCoords != nil else {
-            throw ArgumentParser.ValidationError("Must specify either --from or --from-coords")
+            throw ValidationError("Must specify either --from or --from-coords")
         }
 
         guard self.to != nil || self.toCoords != nil || self.toApp != nil else {
-            throw ArgumentParser.ValidationError("Must specify either --to, --to-coords, or --to-app")
+            throw ValidationError("Must specify either --to, --to-coords, or --to-app")
         }
 
         if self.to != nil || self.toCoords != nil {
             guard (self.to != nil) != (self.toCoords != nil) else {
-                throw ArgumentParser.ValidationError("Specify only one of --to or --to-coords")
+                throw ValidationError("Specify only one of --to or --to-coords")
             }
         }
 
         if self.from != nil && self.fromCoords != nil {
-            throw ArgumentParser.ValidationError("Specify only one of --from or --from-coords")
+            throw ValidationError("Specify only one of --from or --from-coords")
         }
     }
 
@@ -167,17 +164,17 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                   let x = Double(components[0]),
                   let y = Double(components[1])
             else {
-                throw ArgumentParser.ValidationError("Invalid coordinates format: '\(coordinateString)'. Expected 'x,y'")
+                throw ValidationError("Invalid coordinates format: '\(coordinateString)'. Expected 'x,y'")
             }
             return CGPoint(x: x, y: y)
         }
 
         guard let element = elementId else {
-            throw ArgumentParser.ValidationError("No \(description) point specified")
+            throw ValidationError("No \(description) point specified")
         }
 
         guard let sessionId else {
-            throw ArgumentParser.ValidationError("Session ID required when using element IDs")
+            throw ValidationError("Session ID required when using element IDs")
         }
 
         let target = ClickTarget.elementId(element)
@@ -204,7 +201,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         }
 
         return try await Task { @MainActor
-in
+            in
             guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: appName).first else {
                 throw PeekabooError.appNotFound(appName)
             }
@@ -215,7 +212,8 @@ in
             }
 
             guard let frame = windowElement.frame() else {
-                throw PeekabooError.windowNotFound(criteria: "Window bounds unavailable for \(app.localizedName ?? appName)")
+                throw PeekabooError
+                    .windowNotFound(criteria: "Window bounds unavailable for \(app.localizedName ?? appName)")
             }
 
             return CGPoint(x: frame.midX, y: frame.midY)
@@ -264,6 +262,7 @@ private struct DragResult: Codable {
 
 // MARK: - Conformances
 
+@MainActor
 extension DragCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -271,15 +270,15 @@ extension DragCommand: ParsableCommand {
                 commandName: "drag",
                 abstract: "Perform drag and drop operations",
                 discussion: """
-        Execute click-and-drag operations for moving elements, selecting text, or dragging files.
+                Execute click-and-drag operations for moving elements, selecting text, or dragging files.
 
-        EXAMPLES:
-          peekaboo drag --from B1 --to T2
-          peekaboo drag --from-coords "100,200" --to-coords "400,300"
-          peekaboo drag --from B1 --to-app Trash
-          peekaboo drag --from S1 --to-coords "500,250" --duration 2000
-          peekaboo drag --from T1 --to T5 --modifiers shift
-        """,
+                EXAMPLES:
+                  peekaboo drag --from B1 --to T2
+                  peekaboo drag --from-coords "100,200" --to-coords "400,300"
+                  peekaboo drag --from B1 --to-app Trash
+                  peekaboo drag --from S1 --to-coords "500,250" --duration 2000
+                  peekaboo drag --from T1 --to T5 --modifiers shift
+                """,
                 version: "2.0.0"
             )
         }
@@ -287,3 +286,23 @@ extension DragCommand: ParsableCommand {
 }
 
 extension DragCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension DragCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.from = values.singleOption("from")
+        self.fromCoords = values.singleOption("fromCoords")
+        self.to = values.singleOption("to")
+        self.toCoords = values.singleOption("toCoords")
+        self.toApp = values.singleOption("toApp")
+        self.session = values.singleOption("session")
+        if let duration: Int = try values.decodeOption("duration", as: Int.self) {
+            self.duration = duration
+        }
+        if let steps: Int = try values.decodeOption("steps", as: Int.self) {
+            self.steps = steps
+        }
+        self.modifiers = values.singleOption("modifiers")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}

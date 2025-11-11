@@ -1,5 +1,5 @@
 import AppKit
-@preconcurrency import ArgumentParser
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -7,8 +7,8 @@ import PeekabooFoundation
 
 /// Click on UI elements identified in the current session using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
+@MainActor
 struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
-
     @Argument(help: "Element text or query to click")
     var query: String?
 
@@ -37,9 +37,6 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
     var right = false
 
     @OptionGroup var focusOptions: FocusCommandOptions
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     mutating func validate() throws {
         guard self.query != nil || self.on != nil || self.id != nil || self.coords != nil else {
             throw ValidationError("Specify an element query, --on/--id, or --coords.")
@@ -105,7 +102,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 let sessionId: String? = if let providedSession = session {
                     providedSession
                 } else {
-                    await services.sessions.getMostRecentSession()
+                    await self.services.sessions.getMostRecentSession()
                 }
                 // Use session if available, otherwise use empty string to indicate no session
                 activeSessionId = sessionId ?? ""
@@ -272,6 +269,24 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
     // Error handling is provided by ErrorHandlingCommand protocol
 }
 
+@MainActor
+extension ClickCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.query = try values.decodeOptionalPositional(0, label: "query")
+        self.session = values.singleOption("session")
+        self.on = values.singleOption("on")
+        self.id = values.singleOption("id")
+        self.app = values.singleOption("app")
+        self.coords = values.singleOption("coords")
+        if let wait: Int = try values.decodeOption("waitFor", as: Int.self) {
+            self.waitFor = wait
+        }
+        self.double = values.flag("double")
+        self.right = values.flag("right")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}
+
 // MARK: - JSON Output Structure
 
 struct ClickResult: Codable {
@@ -329,9 +344,15 @@ extension ClickCommand {
     }
 }
 
+@MainActor
 extension ClickCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
-        UIAutomationToolDefinitions.click.commandConfiguration
+        let definition = UIAutomationToolDefinitions.click.commandConfiguration
+        return CommandConfiguration(
+            commandName: definition.commandName,
+            abstract: definition.abstract,
+            discussion: definition.discussion
+        )
     }
 }
 

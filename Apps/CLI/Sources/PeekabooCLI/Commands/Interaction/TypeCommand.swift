@@ -1,12 +1,12 @@
-@preconcurrency import ArgumentParser
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
 /// Types text into focused elements or sends keyboard input using the UIAutomationService.
 @available(macOS 14.0, *)
+@MainActor
 struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
-
     @Argument(help: "Text to type")
     var text: String?
 
@@ -16,7 +16,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(help: "Delay between keystrokes in milliseconds")
     var delay: Int = 2
 
-    @Flag(name: [.customLong("return"), .long], help: "Press return/enter after typing")
+    @Flag(names: [.customLong("return"), .long], help: "Press return/enter after typing")
     var pressReturn = false
 
     @Option(help: "Press tab N times")
@@ -35,9 +35,6 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
     var app: String?
 
     @OptionGroup var focusOptions: FocusCommandOptions
-
-    @OptionGroup var runtimeOptions: CommandRuntimeOptions
-
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -92,7 +89,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
 
             // Validate we have something to do
             guard !actions.isEmpty else {
-                throw ArgumentParser.ValidationError("No input specified. Provide text or key flags.")
+                throw ValidationError("No input specified. Provide text or key flags.")
             }
 
             // Get session if available
@@ -231,6 +228,23 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable {
     }
 }
 
+@MainActor
+extension TypeCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.text = try values.decodeOptionalPositional(0, label: "text")
+        self.session = values.singleOption("session")
+        if let delay: Int = try values.decodeOption("delay", as: Int.self) {
+            self.delay = delay
+        }
+        self.tab = try values.decodeOption("tab", as: Int.self)
+        self.pressReturn = values.flag("pressReturn")
+        self.escape = values.flag("escape")
+        self.delete = values.flag("delete")
+        self.clear = values.flag("clear")
+        self.app = values.singleOption("app")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}
 
 // MARK: - JSON Output Structure
 
@@ -244,6 +258,7 @@ struct TypeCommandResult: Codable {
 
 // MARK: - Conformances
 
+@MainActor
 extension TypeCommand: ParsableCommand {
     nonisolated(unsafe) static var configuration: CommandConfiguration {
         MainActorCommandConfiguration.describe {
@@ -251,41 +266,41 @@ extension TypeCommand: ParsableCommand {
                 commandName: "type",
                 abstract: "Type text or send keyboard input",
                 discussion: """
-            The 'type' command sends keyboard input to the focused element.
-            It can type regular text or send special key combinations.
+                    The 'type' command sends keyboard input to the focused element.
+                    It can type regular text or send special key combinations.
 
-            EXAMPLES:
-              peekaboo type "Hello World"           # Type text (default: 5ms delay)
-              peekaboo type "user@example.com"      # Type email
-              peekaboo type "text" --delay 0        # Type at maximum speed
-              peekaboo type "text" --delay 50       # Type slower (50ms between keys)
-              peekaboo type "password" --return     # Type and press return
-              peekaboo type --tab 3                 # Press tab 3 times
-              peekaboo type "text" --clear          # Clear field first
-              peekaboo type "Line 1\nLine 2"        # Type with newline
-              peekaboo type "Name:\tJohn"           # Type with tab
-              peekaboo type "Path: C:\\data"       # Type literal backslash
+                    EXAMPLES:
+                      peekaboo type "Hello World"           # Type text (default: 5ms delay)
+                      peekaboo type "user@example.com"      # Type email
+                      peekaboo type "text" --delay 0        # Type at maximum speed
+                      peekaboo type "text" --delay 50       # Type slower (50ms between keys)
+                      peekaboo type "password" --return     # Type and press return
+                      peekaboo type --tab 3                 # Press tab 3 times
+                      peekaboo type "text" --clear          # Clear field first
+                      peekaboo type "Line 1\nLine 2"        # Type with newline
+                      peekaboo type "Name:\tJohn"           # Type with tab
+                      peekaboo type "Path: C:\\data"       # Type literal backslash
 
-            SPECIAL KEYS:
-              Use flags for special keys:
-              --return    Press return/enter
-              --tab       Press tab (with optional count)
-              --escape    Press escape
-              --delete    Press delete
-              --clear     Clear current field (Cmd+A, Delete)
+                    SPECIAL KEYS:
+                      Use flags for special keys:
+                      --return    Press return/enter
+                      --tab       Press tab (with optional count)
+                      --escape    Press escape
+                      --delete    Press delete
+                      --clear     Clear current field (Cmd+A, Delete)
 
-            ESCAPE SEQUENCES:
-              Supported escape sequences in text:
-              \\n  - Newline/return
-              \\t  - Tab
-              \\b  - Backspace/delete
-              \\e  - Escape
-              \\\\  - Literal backslash
+                    ESCAPE SEQUENCES:
+                      Supported escape sequences in text:
+                      \\n  - Newline/return
+                      \\t  - Tab
+                      \\b  - Backspace/delete
+                      \\e  - Escape
+                      \\\\  - Literal backslash
 
-            FOCUS MANAGEMENT:
-              The command assumes an element is already focused.
-              Use 'click' to focus an input field first.
-        """
+                    FOCUS MANAGEMENT:
+                      The command assumes an element is already focused.
+                      Use 'click' to focus an input field first.
+                """
             )
         }
     }
