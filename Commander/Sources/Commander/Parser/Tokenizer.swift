@@ -1,5 +1,6 @@
 import Foundation
 
+/// Lexical token produced from command-line segments.
 enum Token: Equatable, Sendable {
     case option(name: String)
     case flag(name: String)
@@ -7,6 +8,8 @@ enum Token: Equatable, Sendable {
     case terminator
 }
 
+/// Splits `argv` segments into Commander tokens, honoring `--` terminators and
+/// short-flag packs (e.g. `-vvv`).
 enum CommandLineTokenizer {
     static func tokenize(_ argv: [String]) -> [Token] {
         var result: [Token] = []

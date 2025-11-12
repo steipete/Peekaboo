@@ -1,5 +1,6 @@
 import Foundation
 
+/// Declares a named option (short/long) that can parse arbitrary value types.
 @propertyWrapper
 public struct Option<Value: ExpressibleFromArgument>: CommanderMetadata {
     private var storage: Value?
@@ -7,6 +8,8 @@ public struct Option<Value: ExpressibleFromArgument>: CommanderMetadata {
     private let help: String?
     private let parsing: OptionParsingStrategy
 
+    /// Accesses the parsed value, trapping when the option was never bound and
+    /// does not default to an optional type.
     public var wrappedValue: Value {
         get {
             if let storage {
@@ -75,11 +78,14 @@ public struct Option<Value: ExpressibleFromArgument>: CommanderMetadata {
 
 extension Option: Sendable where Value: Sendable {}
 
+/// Declares a positional argument, optionally optional.
 @propertyWrapper
 public struct Argument<Value: ExpressibleFromArgument>: CommanderMetadata {
     private var storage: Value?
     private let help: String?
 
+    /// Accesses the parsed value, trapping when the argument is mandatory and
+    /// was never bound.
     public var wrappedValue: Value {
         get {
             guard let storage else {
@@ -122,6 +128,8 @@ public struct Argument<Value: ExpressibleFromArgument>: CommanderMetadata {
 
 extension Argument: Sendable where Value: Sendable {}
 
+/// Declares a boolean flag that defaults to `false` and toggles to `true` when
+/// present in `argv`.
 @propertyWrapper
 public struct Flag: CommanderMetadata, Sendable {
     public var wrappedValue: Bool
@@ -154,6 +162,8 @@ public struct Flag: CommanderMetadata, Sendable {
     }
 }
 
+/// Provides nested Commander metadata so you can keep related parameters
+/// together while still registering them with the parent command.
 @propertyWrapper
 public struct OptionGroup<Group: CommanderParsable>: CommanderOptionGroup {
     public var wrappedValue: Group

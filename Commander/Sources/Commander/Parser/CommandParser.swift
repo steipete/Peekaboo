@@ -1,5 +1,6 @@
 import Foundation
 
+/// Parsed representation of `argv` after running ``CommandParser``.
 public struct ParsedValues: Sendable, Equatable {
     public var positional: [String]
     public var options: [String: [String]]
@@ -12,6 +13,7 @@ public struct ParsedValues: Sendable, Equatable {
     }
 }
 
+/// Consumes tokenized arguments using a ``CommandSignature``.
 public struct CommandParser {
     let signature: CommandSignature
 
@@ -20,6 +22,15 @@ public struct CommandParser {
     }
 
     // swiftlint:disable cyclomatic_complexity function_body_length
+    /// Tokenizes the supplied arguments and groups them into positional
+    /// values, options, and flags.
+    ///
+    /// - Parameter arguments: Raw tokens (the `argv` tail after the command
+    ///   path has been resolved).
+    /// - Returns: A ``ParsedValues`` payload suitable for dependency injection
+    ///   or validation.
+    /// - Throws: ``CommanderError`` when the arguments do not satisfy the
+    ///   signature (unknown option, missing value, etc.).
     public func parse(arguments: [String]) throws -> ParsedValues {
         let tokens = CommandLineTokenizer.tokenize(arguments)
         var positional: [String] = []

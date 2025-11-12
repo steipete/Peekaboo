@@ -1,5 +1,6 @@
 import Foundation
 
+/// Declarative metadata describing a command built with ``ParsableCommand``.
 public struct CommandDescription: Sendable {
     public var commandName: String?
     public var abstract: String
@@ -26,6 +27,8 @@ public struct CommandDescription: Sendable {
 }
 
 @MainActor
+/// Helper for building ``CommandDescription`` values while staying on the main
+/// actor (useful when you need to query `@MainActor` state).
 public enum MainActorCommandDescription {
     public nonisolated static func describe(_ build: () -> CommandDescription) -> CommandDescription {
         build()
@@ -33,6 +36,9 @@ public enum MainActorCommandDescription {
 }
 
 @MainActor
+/// Protocol every Commander command adopts. Provide metadata via
+/// ``commandDescription`` and implement ``run()`` to perform the command's
+/// work.
 public protocol ParsableCommand: Sendable {
     init()
     static var commandDescription: CommandDescription { get }
@@ -47,6 +53,7 @@ public extension ParsableCommand {
     mutating func run() async throws {}
 }
 
+/// Thrown from ``ParsableCommand/run()`` when user input fails validation.
 public struct ValidationError: Error, LocalizedError, CustomStringConvertible, Sendable {
     private let message: String
 
@@ -58,6 +65,7 @@ public struct ValidationError: Error, LocalizedError, CustomStringConvertible, S
     public var description: String { self.message }
 }
 
+/// Exit sentinel understood by Peekaboo's CLI harness.
 public struct ExitCode: Error, Equatable, CustomStringConvertible, Sendable {
     public let rawValue: Int32
 

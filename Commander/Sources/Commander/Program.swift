@@ -1,11 +1,20 @@
 import Foundation
 
+/// Describes a `ParsableCommand` so the lightweight ``Program`` router can
+/// resolve `argv` without instantiating the command immediately.
 public struct CommandDescriptor: Sendable {
+    /// The token users type to invoke the command (e.g. `agent`).
     public let name: String
+    /// One-line summary suitable for `--help` output.
     public let abstract: String
+    /// Optional longer discussion block rendered after the abstract.
     public let discussion: String?
+    /// All arguments, flags, and options accepted by the command.
     public let signature: CommandSignature
+    /// Child commands that may follow the current token.
     public let subcommands: [CommandDescriptor]
+    /// Name of the default child that should be used when a subcommand is
+    /// required but omitted.
     public let defaultSubcommandName: String?
 
     public init(
@@ -25,12 +34,14 @@ public struct CommandDescriptor: Sendable {
     }
 }
 
+/// The fully resolved command plus the parsed values for the original `argv`.
 public struct CommandInvocation: Sendable {
     public let descriptor: CommandDescriptor
     public let parsedValues: ParsedValues
     public let path: [String]
 }
 
+/// Errors surfaced while resolving a command path prior to running user code.
 public enum CommanderProgramError: Error, CustomStringConvertible, Sendable, Equatable {
     case missingCommand
     case unknownCommand(String)
@@ -54,13 +65,21 @@ public enum CommanderProgramError: Error, CustomStringConvertible, Sendable, Equ
     }
 }
 
+/// Resolves `CommandLine.arguments` into concrete commands using descriptors.
 public struct Program: Sendable {
     private let descriptorLookup: [String: CommandDescriptor]
 
+    /// Creates a router for the provided command descriptors.
     public init(descriptors: [CommandDescriptor]) {
         self.descriptorLookup = Dictionary(uniqueKeysWithValues: descriptors.map { ($0.name, $0) })
     }
 
+    /// Walks the command tree, parses any remaining arguments, and returns a
+    /// ``CommandInvocation`` ready to `run()`.
+    ///
+    /// - Parameter argv: Tokens supplied on the command line.
+    /// - Throws: ``CommanderProgramError`` when the path or arguments are
+    ///   invalid.
     public func resolve(argv: [String]) throws -> CommandInvocation {
         var args = argv
         if !args.isEmpty, args[0].hasSuffix("peekaboo") {

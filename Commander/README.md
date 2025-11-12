@@ -99,6 +99,21 @@ struct AgentCommand: ParsableCommand {
 
 Commander caches these descriptions and feeds them to the router, `peekaboo learn`, and the documentation/export tooling, so the CLI, agents, and MCP metadata all stay in sync without an ArgumentParser compatibility shim.
 
+## Documentation
+
+Commander ships with a DocC catalog at `Sources/Commander/Commander.docc`. Generate the developer documentation (including the new articles) with:
+
+```bash
+swift package --disable-sandbox generate-documentation \
+  --package-path Commander \
+  --target Commander \
+  --output-path .build/Commander.doccarchive \
+  --transform-for-static-hosting \
+  --hosting-base-path commander-docs
+```
+
+The resulting archive can be previewed locally in Xcode or hosted via GitHub Pages and Peekaboo's internal doc ingesters.
+
 ## Repository Layout
 
 - `Sources/Commander` – Core types (property wrappers, tokenizer, parser, program descriptors, metadata helpers).

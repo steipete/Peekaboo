@@ -2,6 +2,8 @@ import Foundation
 
 // MARK: - Command Signature & Definitions
 
+/// Declarative description of all options, flags, and positional arguments
+/// associated with a command or reusable option group.
 public struct CommandSignature: Sendable {
     public private(set) var arguments: [ArgumentDefinition]
     public private(set) var options: [OptionDefinition]
@@ -33,6 +35,8 @@ public struct CommandSignature: Sendable {
         }
     }
 
+    /// Uses reflection to discover Commander property wrappers and build a
+    /// signature without manually enumerating each argument.
     public static func describe(_ command: some Any) -> CommandSignature {
         var signature = CommandSignature()
         Self.inspect(value: command, into: &signature)
@@ -53,6 +57,8 @@ public struct CommandSignature: Sendable {
 }
 
 extension CommandSignature {
+    /// Returns a copy where nested option groups are merged into a single
+    /// signature. Useful when building help output or agent metadata.
     public func flattened() -> CommandSignature {
         var combined = CommandSignature(
             arguments: self.arguments,
@@ -67,6 +73,8 @@ extension CommandSignature {
         return combined
     }
 
+    /// Appends the flags/options Commander expects across every Peekaboo CLI
+    /// (verbose logging, JSON output, and explicit log level).
     public func withStandardRuntimeFlags() -> CommandSignature {
         var copy = self
         let verboseFlag = FlagDefinition(
@@ -89,6 +97,8 @@ extension CommandSignature {
     }
 }
 
+/// Internal helper used by property wrappers when registering themselves with a
+/// ``CommandSignature``.
 public enum CommandComponent: Sendable {
     case argument(ArgumentDefinition)
     case option(OptionDefinition)
@@ -96,6 +106,7 @@ public enum CommandComponent: Sendable {
     case group(CommandSignature)
 }
 
+/// Canonical description of an option gathered from Commander property wrappers.
 public struct OptionDefinition: Sendable, Equatable {
     public let label: String
     public let names: [CommanderName]
@@ -103,12 +114,14 @@ public struct OptionDefinition: Sendable, Equatable {
     public let parsing: OptionParsingStrategy
 }
 
+/// Canonical description of a positional argument.
 public struct ArgumentDefinition: Sendable, Equatable {
     public let label: String
     public let help: String?
     public let isOptional: Bool
 }
 
+/// Canonical description of a boolean flag.
 public struct FlagDefinition: Sendable, Equatable {
     public let label: String
     public let names: [CommanderName]
@@ -146,6 +159,7 @@ extension ArgumentDefinition {
     }
 }
 
+/// Describes how the parser should consume tokens for an option.
 public enum OptionParsingStrategy: Sendable, Equatable {
     case singleValue
     case upToNextOption
