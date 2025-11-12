@@ -130,30 +130,25 @@ public final class WindowIdentityService {
 
     /// Find AXUIElement window by CGWindowID across all applications
     public func findWindow(byID windowID: CGWindowID) -> (window: Element, app: NSRunningApplication)? {
-        // First, use CGWindowListCopyWindowInfo to find which app owns this window
+        // Try CoreGraphics lookup first for fast owner resolution
         let options: CGWindowListOption = [.optionIncludingWindow]
-        guard let windowInfoList = CGWindowListCopyWindowInfo(options, windowID) as? [[String: Any]],
-              let windowInfo = windowInfoList.first,
-              let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t
-        else {
-            // Window not found in window list
-            return nil
+        if let windowInfoList = CGWindowListCopyWindowInfo(options, windowID) as? [[String: Any]],
+           let windowInfo = windowInfoList.first,
+           let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
+           let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == ownerPID }),
+           let window = findWindow(byID: windowID, in: app)
+        {
+            return (window, app)
         }
 
-        // Find the running application
-        let runningApps = NSWorkspace.shared.runningApplications
-        guard let app = runningApps.first(where: { $0.processIdentifier == ownerPID }) else {
-            // Application not found for window
-            return nil
+        // Fallback: enumerate all running applications via AX (works without Screen Recording permission)
+        for app in NSWorkspace.shared.runningApplications {
+            if let window = findWindow(byID: windowID, in: app) {
+                return (window, app)
+            }
         }
 
-        // Find the window element
-        guard let window = findWindow(byID: windowID, in: app) else {
-            // AXUIElement not found for window
-            return nil
-        }
-
-        return (window, app)
+        return nil
     }
 
     // MARK: - Window Information
@@ -219,18 +214,8 @@ public final class WindowIdentityService {
             return true
         }
 
-        // Fallback: search all windows
-        let allWindowsOptions: CGWindowListOption = [.optionAll]
-        guard let allWindows = CGWindowListCopyWindowInfo(allWindowsOptions, kCGNullWindowID) as? [[String: Any]] else {
-            return false
-        }
-
-        return allWindows.contains { windowInfo in
-            if let id = windowInfo[kCGWindowNumber as String] as? Int {
-                return CGWindowID(id) == windowID
-            }
-            return false
-        }
+        // Fallback: attempt AX-based lookup when CG data isn't available (e.g., missing Screen Recording)
+        return findWindow(byID: windowID) != nil
     }
 
     /// Check if a window is on screen (not minimized)
@@ -287,5 +272,24 @@ public struct WindowIdentityInfo: Sendable {
     public var isDialog: Bool {
         // Dialogs are often on higher layers
         windowLayer > 0 && windowLayer < 1000
+    }
+
+    /// Heuristic indicating whether the window is actually visible/contentful.
+    public var isRenderable: Bool {
+        // Ignore utility strips such as toolbars or palette windows
+        if bounds.width < 50 || bounds.height < 50 {
+            return false
+        }
+
+        if alpha <= 0 {
+            return false
+        }
+
+        // Layer 0 windows are normal document windows; higher layers are usually HUD/utility.
+        if windowLayer != 0 {
+            return false
+        }
+
+        return true
     }
 }

@@ -142,18 +142,20 @@ public final class FocusManagementService {
             throw FocusError.noWindowsFound(applicationName)
         }
 
+        let prioritizedWindows = self.prioritizeWindows(windows)
+
         // If window title specified, try to find a match
         if let title = windowTitle {
-            if let matchingWindow = windows.first(where: {
-                $0.title?.localizedCaseInsensitiveContains(title) == true
-            }) {
+            if let matchingWindow = prioritizedWindows.first(where: { self.matchesWindow($0, title: title) })
+                ?? windows.first(where: { self.matchesWindow($0, title: title) })
+            {
                 return matchingWindow.windowID
             }
             // If no match found, fall through to get frontmost
         }
 
         // Return the frontmost window (first in list)
-        return windows.first?.windowID
+        return prioritizedWindows.first?.windowID ?? windows.first?.windowID
     }
 
     // MARK: - Focus Operations
@@ -268,6 +270,19 @@ public final class FocusManagementService {
         }
 
         throw FocusError.focusVerificationTimeout(windowID)
+    }
+
+    private func prioritizeWindows(_ windows: [WindowIdentityInfo]) -> [WindowIdentityInfo] {
+        let renderable = windows.filter(\.isRenderable)
+        if !renderable.isEmpty {
+            return renderable
+        }
+        return windows
+    }
+
+    private func matchesWindow(_ window: WindowIdentityInfo, title: String) -> Bool {
+        guard let windowTitle = window.title, !windowTitle.isEmpty else { return false }
+        return windowTitle.localizedCaseInsensitiveContains(title)
     }
 
     private func waitForCondition(

@@ -133,6 +133,48 @@ struct FocusUtilitiesTests {
         }
     }
 
+    @Test("WindowIdentityInfo renderable heuristic")
+    func windowRenderableHeuristic() {
+        let renderable = WindowIdentityInfo(
+            windowID: 42,
+            title: "Document",
+            bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
+            ownerPID: 1,
+            applicationName: "TestApp",
+            bundleIdentifier: "com.example.test",
+            windowLayer: 0,
+            alpha: 1.0,
+            axIdentifier: nil)
+
+        #expect(renderable.isRenderable)
+
+        let tinyBounds = WindowIdentityInfo(
+            windowID: 43,
+            title: "Helper",
+            bounds: CGRect(x: 0, y: 0, width: 5, height: 5),
+            ownerPID: 1,
+            applicationName: "TestApp",
+            bundleIdentifier: "com.example.test",
+            windowLayer: 0,
+            alpha: 1.0,
+            axIdentifier: nil)
+
+        #expect(tinyBounds.isRenderable == false)
+
+        let overlayWindow = WindowIdentityInfo(
+            windowID: 44,
+            title: "Overlay",
+            bounds: CGRect(x: 0, y: 0, width: 400, height: 200),
+            ownerPID: 1,
+            applicationName: "TestApp",
+            bundleIdentifier: "com.example.test",
+            windowLayer: 5,
+            alpha: 0.5,
+            axIdentifier: nil)
+
+        #expect(overlayWindow.isRenderable == false)
+    }
+
     // MARK: - FocusError Tests
 
     @Test("FocusError descriptions")
