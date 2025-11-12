@@ -42,6 +42,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
     private var isEnabled: Bool = true
     private var hasLoggedMissingApp = false
+    private var hasPreparedEventStore = false
     private var lastCleanupDate = Date.distantPast
     private let cleanupInterval: TimeInterval = 60
 
@@ -86,7 +87,10 @@ public final class VisualizationClient: @unchecked Sendable {
         guard self.isEnabled else { return }
         do {
             try VisualizerEventStore.prepareStorage()
-            self.log(.debug, "Visualizer event store prepared")
+            if !self.hasPreparedEventStore {
+                self.hasPreparedEventStore = true
+                self.log(.debug, "Visualizer event store prepared")
+            }
         } catch {
             self.log(.error, "Failed to prepare visualizer storage: \(error.localizedDescription)")
         }
