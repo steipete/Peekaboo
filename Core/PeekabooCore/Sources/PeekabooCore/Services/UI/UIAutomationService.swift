@@ -406,13 +406,7 @@ extension UIAutomationService {
      */
     public func scroll(_ request: ScrollRequest) async throws {
         self.logger.debug("Delegating scroll to ScrollService")
-        try await self.scrollService.scroll(
-            direction: request.direction,
-            amount: request.amount,
-            target: request.target,
-            smooth: request.smooth,
-            delay: request.delay,
-            sessionId: request.sessionId)
+        try await self.scrollService.scroll(request)
 
         // Show visual feedback if available
         // Get current mouse location for scroll indicator
@@ -564,7 +558,7 @@ extension UIAutomationService {
         // Get the system-wide focused element
         let systemWide = AXUIElementCreateSystemWide()
 
-        var focusedElement: AnyObject?
+        var focusedElement: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(
             systemWide,
             kAXFocusedUIElementAttribute as CFString,
@@ -577,10 +571,7 @@ extension UIAutomationService {
             return nil
         }
 
-        guard let axElement = element as? AXUIElement else {
-            self.logger.error("Focused element is not an AXUIElement instance")
-            return nil
-        }
+        let axElement = unsafeBitCast(element, to: AXUIElement.self)
         let wrappedElement = Element(axElement)
 
         // Get element properties

@@ -585,12 +585,15 @@ extension PeekabooServices {
         var executedActions: [ExecutedAction] = []
 
         for (index, action) in actions.enumerated() {
-            logger.info("Executing action \(index + 1)/\(actions.count): \(String(describing: action))")
+            logger.info("Executing action \(index + 1)/\(actions.count): \(String(describing: action), privacy: .public)")
             let startTime = Date()
             do {
                 try await performAutomationAction(action, sessionId: sessionId)
                 let duration = Date().timeIntervalSince(startTime)
-                logger.debug("\(AgentDisplayTokens.Status.success) Action completed in \(self.formatDuration(duration))s")
+                let successMessage =
+                    "\(AgentDisplayTokens.Status.success) Action completed in " +
+                    "\(self.formatDuration(duration))s"
+                logger.debug("\(successMessage, privacy: .public)")
 
                 executedActions.append(ExecutedAction(
                     action: action,
@@ -603,7 +606,7 @@ extension PeekabooServices {
                 let peekabooError = error.asPeekabooError(context: "Action execution failed")
                 let failureMessage = "\(AgentDisplayTokens.Status.failure) Action failed after "
                     + "\(self.formatDuration(duration))s"
-                logger.error("\(failureMessage): \(peekabooError.localizedDescription)")
+                logger.error("\(failureMessage, privacy: .public): \(peekabooError.localizedDescription, privacy: .public)")
 
                 executedActions.append(ExecutedAction(
                     action: action,

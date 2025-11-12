@@ -223,10 +223,10 @@ public enum VisualizerEventStore {
            let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
         {
             let appGroupLog = """
-            Visualizer storage using app group \(appGroup, privacy: .public):
-            \(container.path, privacy: .public)
+            Visualizer storage using app group \(appGroup):
+            \(container.path)
             """
-            self.logger.debug(appGroupLog)
+            self.logger.debug("\(appGroupLog)")
             #if DEBUG
             let proc = ProcessInfo.processInfo.processName
             let debugMessage = """
@@ -242,7 +242,7 @@ public enum VisualizerEventStore {
             .appendingPathComponent("Library/Application Support", isDirectory: true)
             .appendingPathComponent(storageRootName, isDirectory: true)
         // Default to ~/Library/... so both CLI and app can share without extra env setup
-        self.logger.debug("Visualizer storage default path: \(url.path, privacy: .public)")
+        self.logger.debug("Visualizer storage default path: \(url.path)")
         #if DEBUG
         let proc = ProcessInfo.processInfo.processName
         visualizerDebugLog("[VisualizerEventStore][\(proc)] storage default: \(url.path)")

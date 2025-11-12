@@ -21,10 +21,10 @@ public final class ScrollService {
     /// Perform scroll operation
     @MainActor
     public func scroll(_ request: ScrollRequest) async throws {
-        self.logger.debug(
-            "Scroll requested - direction: \(request.direction), " +
-            "amount: \(request.amount), smooth: \(request.smooth)"
-        )
+        let description =
+            "Scroll requested - direction: \(request.direction), amount: \(request.amount), " +
+            "smooth: \(request.smooth)"
+        self.logger.debug("\(description, privacy: .public)")
 
         let scrollPoint = try await self.resolveScrollPoint(request)
         let (deltaX, deltaY) = self.getScrollDeltas(for: request.direction)
@@ -43,7 +43,7 @@ public final class ScrollService {
     private func resolveScrollPoint(_ request: ScrollRequest) async throws -> CGPoint {
         guard let target = request.target else {
             let location = self.getCurrentMouseLocation()
-            self.logger.debug("Scrolling at current location: (\(location.x), \(location.y))")
+            self.logger.debug("Scrolling at current location: (\(location.x, privacy: .public), \(location.y, privacy: .public))")
             return location
         }
 
@@ -58,7 +58,7 @@ public final class ScrollService {
 
         let point = CGPoint(x: frame.midX, y: frame.midY)
         try await self.moveMouseToPoint(point)
-        self.logger.debug("Scrolling on element at (\(point.x), \(point.y))")
+        self.logger.debug("Scrolling on element at (\(point.x, privacy: .public), \(point.y, privacy: .public))")
         return point
     }
 
@@ -76,10 +76,10 @@ public final class ScrollService {
     private func performScroll(_ context: ScrollExecutionContext) async throws {
         let absoluteAmount = abs(context.amount)
         let (tickCount, tickSize) = self.tickConfiguration(amount: absoluteAmount, smooth: context.smooth)
-        self.logger.debug("Scrolling \(tickCount) ticks of size \(tickSize)")
+        self.logger.debug("Scrolling \(tickCount, privacy: .public) ticks of size \(tickSize, privacy: .public)")
 
         for tick in 0..<tickCount {
-            try await self.postScrollTick(context: context, tickSize: tickSize)
+            try self.postScrollTick(context: context, tickSize: tickSize)
             try await self.sleepBetweenTicks(context: context)
             if tick % 10 == 0 {
                 self.logger.debug("Scroll progress: \(tick)/\(tickCount)")
