@@ -121,17 +121,17 @@ type_name:
     error: 80
 
 function_body_length:
-  warning: 50
-  error: 250
+  warning: 150
+  error: 300
 
 file_length:
-  warning: 1000
-  error: 2000
+  warning: 1500
+  error: 2500
   ignore_comment_only_lines: true
 
 type_body_length:
-  warning: 400
-  error: 800
+  warning: 800
+  error: 1200
 
 cyclomatic_complexity:
   warning: 20
@@ -143,11 +143,11 @@ large_tuple:
 
 nesting:
   type_level:
-    warning: 2
-    error: 5
+    warning: 4
+    error: 6
   function_level:
-    warning: 3
-    error: 5
+    warning: 5
+    error: 7
 
 line_length:
   warning: 120

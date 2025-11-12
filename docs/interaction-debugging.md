@@ -31,6 +31,8 @@ read_when:
 - **Expected**: Once a screenshot is on disk, the command should return success and emit the session/element list so agents can interact with Grindr’s UI.
 - **Impact**: Grindr automation is stalled again—we can’t obtain element IDs or session IDs even though Chrome’s window is visible and focusable.
 - **Status — Nov 12, 2025 13:07**: Reproducible immediately after navigating to the login page; need to trace why `CaptureWindowWorkflow` thinks Chrome has zero windows while the capture step succeeds.
+### Resolution — Nov 12, 2025 (evening)
+- `ElementDetectionService` now calls `windowsWithTimeout()` when enumerating AX windows for the target application, ensuring we wait for Chrome’s helper processes to surface their windows before bailing. This removed the `WINDOW_NOT_FOUND` spurious error and the CLI now returns the normal session payload (tested with `polter peekaboo -- see --app "Google Chrome" --json-output`).
 
 ## Screen capture fallback never reached legacy API
 - **Command**: `polter peekaboo -- see --app "Google Chrome"` while ScreenCaptureKit returns `Failed to start stream due to audio/video capture failure`.
@@ -41,6 +43,13 @@ read_when:
 - `ScreenCaptureFallbackRunner.shouldFallback` now retries with the legacy API for **any** modern failure (as long as a fallback API exists). Added inline logging so debuggers can find the correlation ID instantly.
 - `ScreenCaptureServicePlanTests` now cover timeout errors, unknown errors, and the “all APIs failed” case so we don’t regress the fallback sequencing again.
 - Result: `polter peekaboo -- see …` immediately switches to the legacy pipeline when ScreenCaptureKit raises the audio/video failure, and Grindr automation proceeds with fresh session IDs.
+
+## CLI smoke tests — Nov 12, 2025 (afternoon)
+- `polter peekaboo -- list apps --json-output`: Enumerated 50 running processes (9 with windows) in ~2 s, populated bundle IDs and window counts, and produced no warnings—list command output remains reliable for automation targeting.
+- `polter peekaboo -- window list --app "Ghostty" --json-output`: Returned six entries (main terminal + helper overlays) with accurate bounds and PID metadata, confirming window enumeration still handles multi-process apps.
+- `polter peekaboo -- space list --json-output`: Reported the single active Space (`id: 1`) without extra hints, so the space service responds even on single-desktop setups.
+- `polter peekaboo -- dock list --json-output`: Listed 21 dock items (apps/folders/trash) with running state + bundle IDs, meaning dock inspection is healthy for downstream automation.
+
 
 ## `dialog input` subcommand had no window targeting
 - **Command**: `polter peekaboo -- dialog input --text "..." --window "Save"`  
@@ -124,6 +133,8 @@ read_when:
 ### Next steps
 1. Investigate `MenuCommand` / `MenuService` to ensure they refresh the AX window reference each invocation instead of reusing stale IDs.
 2. Add a stress test: run `window move`/`focus`/`list` repeatedly and ensure a subsequent `menu list` still works.
+### Update — Nov 12, 2025 15:10
+- Retested via `polter peekaboo -- menu list --app "Google Chrome" --json-output` and the command now succeeds (1,200+ menu entries, zero warnings). The renderable-window heuristic that skips sub-30 px helper windows appears to have fixed the stale-window regression; keeping this entry for a few more passes in case it resurfaces.
 
 ## `menu click` fails with same stale window ID
 - **Command**: `polter peekaboo menu click --app TextEdit --path File,New --json-output`
@@ -132,6 +143,8 @@ read_when:
 - **Impact**: No menu automation works once the cached window ID drifts.
 ### Next steps
 Same as above—refresh AX window references inside `MenuCommand` and add regression coverage for both list & click paths.
+### Update — Nov 12, 2025 15:10
+- Follow-up run (`polter peekaboo -- menu click --app "Google Chrome" --path "Chrome > About Google Chrome" --json-output`) returned success and triggered the expected About panel, so the click path is healthy again after the window-selection fixes.
 
 ## `menu click` still fails with NotFound after window refresh
 - **Command**: `polter peekaboo menu click --app TextEdit --path File,New --json-output`
@@ -155,6 +168,24 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Next steps**: Reuse `FocusUtilities`’ renderable-window logic (or share `ScreenCaptureService.firstRenderableWindowIndex`) in `MenuCommand` so helper/status windows never become the focus target.
 ### Resolution — Nov 12, 2025
 - Updated `WindowIdentityInfo.isRenderable` to treat windows smaller than 50 px in either dimension as non-renderable, so focus/menu logic now skips Chrome’s 22 px toolbar shims. `menu list --app "Google Chrome" --json-output` completes again and returns the full menu tree.
+- **Verification — Nov 12, 2025 15:10**: Re-ran the command on the latest build and confirmed it now finishes in <1 s, producing the entire menu hierarchy without timeouts.
+
+## `dialog list` can’t find TextEdit’s sheet
+- **Command**: `polter peekaboo -- dialog list --app TextEdit --json-output`
+- **Observed**: Returns `NO_ACTIVE_DIALOG` even when a Save sheet is frontmost (spawned via `⌘S`). Supplying `--window` or `--force` doesn’t help; the CLI immediately errors without debug logs.
+- **Expected**: Once the app hint is provided, the dialog service should fall back to AX search/CG metadata (same as `dialog input`) and enumerate buttons/fields.
+- **Impact**: Agents can’t inspect dialog contents before attempting clicks/inputs, so complex sheets remain blind spots.
+- **Next steps**: Instrument `DialogService.resolveDialogElement` to log every fallback attempt, ensure `ensureDialogVisibility` respects the `app` hint, and add a regression test that opens TextEdit’s Save panel via AX/AppleScript and runs `dialog list`.
+- **Update — Nov 12, 2025 16:25**: Running a freshly built CLI (`swift run --package-path Apps/CLI peekaboo dialog list --app TextEdit --window Save --json-output`) returns the Save dialog metadata (buttons array contains “Save”). `polter peekaboo …` still uses the old binary and doesn’t recognize `--window` yet, so we’ll need to bounce Poltergeist once the CLI changes land.
+- **Investigation — Nov 12, 2025 16:10**: Plumbed `--app` hints through the CLI into `DialogService` and added window-identity fallbacks, but `AXFocusedApplication` still returns `nil` even after focusing TextEdit. Logs show repeated “No focused application found,” so the service needs an alternative path (e.g., resolve via `WindowManagementService`/`WindowIdentityService` without relying on the global AX focused app).
+
+## Window focus reports INTERNAL_SWIFT_ERROR instead of WINDOW_NOT_FOUND
+- **Command**: `polter peekaboo window focus --app Finder --json-output`
+- **Observed**: When Finder’s dock tile has no “real” AX window, the command returns `{ code: "INTERNAL_SWIFT_ERROR", message: "Could not find accessibility element for window ID 91" }`.
+- **Expected**: It should surface a structured `.WINDOW_NOT_FOUND` error (matching the rest of the CLI) so agents can fall back to `window list` or `app focus`.
+- **Impact**: Automations have to pattern-match brittle strings to detect “window missing” vs. actual internal failures.
+### Update — Nov 12, 2025 15:46
+- `polter peekaboo -- window focus --app "Google Chrome" --json-output` now succeeds and reports the focused window title/bounds, so the focus pathway handles helper-rich apps again. Leaving the entry open until we add automated coverage for the Finder edge case described above.
 
 ## Help surface is unreachable
 - Root help instructs users to run `peekaboo help <subcommand>` or `<subcommand> --help`, but:
