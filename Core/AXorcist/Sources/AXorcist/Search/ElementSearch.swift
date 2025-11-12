@@ -396,7 +396,7 @@ private func logTraversalEvent(
     if let extra {
         messageParts.append(extra)
     }
-    logger.debug(logSegmentsFromArray(messageParts))
+    logger.debug(logSegments(messageParts))
 }
 
 // MARK: - Search Visitor Implementation

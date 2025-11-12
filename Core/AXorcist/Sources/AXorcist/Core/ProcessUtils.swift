@@ -3,6 +3,10 @@
 import AppKit // For NSRunningApplication, NSWorkspace
 import Foundation
 
+private func logSegments(_ parts: String...) -> String {
+    parts.joined(separator: " | ")
+}
+
 // GlobalAXLogger is assumed to be available
 
 public func pid(forAppIdentifier ident: String) -> pid_t? {
@@ -51,7 +55,10 @@ private func pidForFocusedApp(_ ident: String) -> pid_t? {
     guard ident == "focused" else { return nil }
 
     axDebugLog(
-        "ProcessUtils: Identifier is 'focused'. Checking frontmost application.",
+        logSegments(
+            "ProcessUtils: Identifier is 'focused'.",
+            "Checking frontmost application."
+        ),
         file: #file,
         function: #function,
         line: #line
@@ -59,9 +66,12 @@ private func pidForFocusedApp(_ ident: String) -> pid_t? {
 
     if let frontmostApp = NSWorkspace.shared.frontmostApplication {
         axDebugLog(
-            "ProcessUtils: Frontmost app is '\(frontmostApp.localizedName ?? "nil")' " +
-                "(PID: \(frontmostApp.processIdentifier), BundleID: \(frontmostApp.bundleIdentifier ?? "nil"), " +
-                "Terminated: \(frontmostApp.isTerminated))",
+            logSegments(
+                "ProcessUtils: Frontmost app is '\(frontmostApp.localizedName ?? "nil")'",
+                "PID: \(frontmostApp.processIdentifier)",
+                "BundleID: \(frontmostApp.bundleIdentifier ?? "nil")",
+                "Terminated: \(frontmostApp.isTerminated)"
+            ),
             file: #file,
             function: #function,
             line: #line
@@ -80,7 +90,9 @@ private func pidForFocusedApp(_ ident: String) -> pid_t? {
 
 private func pidByBundleIdentifier(_ ident: String) -> pid_t? {
     axDebugLog(
-        "ProcessUtils: Trying by bundle identifier '\(ident)'.",
+        logSegments(
+            "ProcessUtils: Trying by bundle identifier '\(ident)'."
+        ),
         file: #file,
         function: #function,
         line: #line
@@ -89,7 +101,9 @@ private func pidByBundleIdentifier(_ ident: String) -> pid_t? {
     let appsByBundleID = NSRunningApplication.runningApplications(withBundleIdentifier: ident)
     guard !appsByBundleID.isEmpty else {
         axDebugLog(
-            "ProcessUtils: No applications found for bundle identifier '\(ident)'.",
+            logSegments(
+                "ProcessUtils: No applications found for bundle identifier '\(ident)'."
+            ),
             file: #file,
             function: #function,
             line: #line
@@ -97,12 +111,14 @@ private func pidByBundleIdentifier(_ ident: String) -> pid_t? {
         return nil
     }
 
-    axDebugLog(
-        "ProcessUtils: Found \(appsByBundleID.count) app(s) by bundle ID '\(ident)'.",
-        file: #file,
-        function: #function,
-        line: #line
-    )
+        axDebugLog(
+            logSegments(
+                "ProcessUtils: Found \(appsByBundleID.count) app(s) by bundle ID '\(ident)'."
+            ),
+            file: #file,
+            function: #function,
+            line: #line
+        )
 
     logRunningApplications(appsByBundleID)
 
