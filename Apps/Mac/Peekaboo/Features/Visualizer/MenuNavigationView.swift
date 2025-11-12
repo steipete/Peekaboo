@@ -86,7 +86,7 @@ struct MenuNavigationView: View {
         }
 
         // Sequential menu item animations
-        for (index, _) in self.menuPath.enumerated() {
+        for index in self.menuPath.indices {
             let delay = Double(index) * 0.2
 
             // Menu item scale

@@ -91,7 +91,7 @@ struct HotkeyOverlayView: View {
         }
 
         // Sequential key animations
-        for (index, _) in self.keys.enumerated() {
+        for index in self.keys.indices {
             let delay = Double(index) * 0.1
 
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6).delay(delay)) {

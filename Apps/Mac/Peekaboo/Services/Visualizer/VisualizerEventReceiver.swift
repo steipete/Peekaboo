@@ -18,11 +18,6 @@ private func visualizerDebugLog(_ message: @autoclosure () -> String) {
 private func visualizerDebugLog(_ message: @autoclosure () -> String) {}
 #endif
 
-@inline(__always)
-private func visualizerLogMessage(_ parts: String...) -> String {
-    parts.joined(separator: " ")
-}
-
 @MainActor
 final class VisualizerEventReceiver {
     private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "VisualizerEventReceiver")
@@ -66,23 +61,17 @@ final class VisualizerEventReceiver {
     private func handle(descriptor: String) async {
         visualizerDebugLog("VisualizerEventReceiver: received descriptor \(descriptor)")
         guard let eventID = Self.parseEventID(from: descriptor) else {
-            let message = visualizerLogMessage(
-                "Visualizer notification contained invalid identifier:",
-                "\(descriptor, privacy: .public)"
-            )
-            self.logger.error(message)
+            self.logger.error("Visualizer notification contained invalid identifier: \(descriptor, privacy: .public)")
             return
         }
 
-        // Reload the JSON the CLI dropped – failure here usually means paths/env mismatch
         let event: VisualizerEvent
         do {
             event = try VisualizerEventStore.loadEvent(id: eventID)
         } catch {
-            let message = visualizerLogMessage(
-                "Failed to load visualizer event \(eventID.uuidString, privacy: .public):",
+            let message =
+                "Failed to load visualizer event \(eventID.uuidString, privacy: .public): " +
                 "\(error.localizedDescription, privacy: .public)"
-            )
             self.logger.error(message)
             visualizerDebugLog(
                 "VisualizerEventReceiver: failed to load event \(eventID.uuidString) - \(error.localizedDescription)"
@@ -98,10 +87,9 @@ final class VisualizerEventReceiver {
             try VisualizerEventStore.removeEvent(id: eventID)
             visualizerDebugLog("VisualizerEventReceiver: deleted event \(eventID.uuidString)")
         } catch {
-            let message = visualizerLogMessage(
-                "Failed to delete visualizer event \(eventID.uuidString, privacy: .public):",
+            let message =
+                "Failed to delete visualizer event \(eventID.uuidString, privacy: .public): " +
                 "\(error.localizedDescription, privacy: .public)"
-            )
             self.logger.error(message)
             visualizerDebugLog(
                 "VisualizerEventReceiver: failed to delete event \(eventID.uuidString) - \(error.localizedDescription)"
@@ -155,11 +143,7 @@ final class VisualizerEventReceiver {
         }
 
         if !success {
-            let message = visualizerLogMessage(
-                "Visualizer event \(event.kind.rawValue, privacy: .public)",
-                "reported failure"
-            )
-            self.logger.warning(message)
+            self.logger.warning("Visualizer event \(event.kind.rawValue, privacy: .public) reported failure")
         }
     }
 
