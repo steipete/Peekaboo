@@ -7,6 +7,12 @@ read_when:
 
 # Interaction Debugging Notes
 
+> **Mission Reminder (Nov 12, 2025):** The mandate for this doc is to *continuously* exercise every Peekaboo CLI feature until automation covers everything a human can do on macOS. That means:
+> - Systematically try every command/subcommand/flag combination (see/see, menu, dialog, window, list, type, drag, press, etc.) and capture regressions here.
+> - Treat each bug as blocking mission readiness—fix it or write down why it’s pending.
+> - Assume future user prompts can request any macOS action; keep tightening Peekaboo until every tool path (focus, screenshot, menu, dialog, shell, automation) is battle‑tested.
+> - When in doubt, reopen TextEdit or another stock app, try to automate the workflow end-to-end via Peekaboo, and log the outcome below.
+
 ## `see` command can’t finalize captures
 - **Command**: `polter peekaboo -- see --app TextEdit --path /tmp/textedit-see.png --annotate --json-output`
 - **Observed**: Logger reports a successful capture, saves `/tmp/textedit-see.png`, then throws `INTERNAL_SWIFT_ERROR` with message `The file “textedit-see.png” doesn’t exist.` The file *does* exist immediately after the failure (checked via `ls -l /tmp/textedit-see.png`).
@@ -47,6 +53,48 @@ read_when:
 - `CLIFormatter.formatWindowList` explicitly returned `""` whenever the windows array was empty, wiping both the one-line summary and any hints/warnings, so the CLI rendered nothing.
 ### Resolution — Nov 12, 2025
 - `CLIFormatter` now emits `⚠️ No windows found for <app>` when the window array is empty and adds a generic “No output available” fallback if every section is blank. The JSON path was already correct, so no change needed there.
+
+## Window geometry commands report stale dimensions
+- **Commands**:
+  - `polter peekaboo window set-bounds --app TextEdit --window-title "Untitled 5.rtf" --x 100 --y 100 --width 600 --height 500 --json-output`
+  - `polter peekaboo window resize --app TextEdit --window-title "Untitled 5.rtf" --width 700 --height 550 --json-output`
+- **Observed**: Each command visibly moves/resizes the window, but the JSON payload’s `new_bounds` echoes the *previous* invocation. Example: after `set-bounds` to `(100,100,600,500)`, running again with `--x 400 --y 400 --width 800 --height 600` still reports `{x:100,y:100,width:600,height:500}` even though the window now sits at `(400,400,800,600)`. Likewise, `window resize` reported the rectangle applied by the prior `set-bounds` call instead of the requested 700×550 region.
+- **Expected**: `new_bounds` should match the rectangle we just applied for both commands.
+- **Impact**: Automation scripts can’t trust the CLI output to confirm state; retries or verification steps will mis-report success.
+### Next steps
+1. Inspect `WindowCommand.SetBoundsSubcommand` and `WindowCommand.ResizeSubcommand` (or the shared window service) so success responses include the freshly applied bounds instead of cached state.
+2. Add CLI regression tests asserting `new_bounds` equals the requested rectangle for both `set-bounds` and `resize`.
+
+## `menu list` fails with "Could not find accessibility element for window ID"
+- **Command**: `polter peekaboo menu list --app TextEdit --json-output`
+- **Observed**: After exercising other window commands (focus/move/set-bounds), `menu list` now crashes with `UNKNOWN_ERROR` and `Could not find accessibility element for window ID 798`. Re-focusing the TextEdit window doesn’t help; every `menu list` attempt errors with the same stale window ID even though the app is frontmost.
+- **Expected**: Menu enumeration should succeed once the window (or app) is focused.
+- **Impact**: Menu automation is unusable in long sessions—agents can’t inspect menus after other window operations because the CLI clings to a dead AX window reference.
+### Next steps
+1. Investigate `MenuCommand` / `MenuService` to ensure they refresh the AX window reference each invocation instead of reusing stale IDs.
+2. Add a stress test: run `window move`/`focus`/`list` repeatedly and ensure a subsequent `menu list` still works.
+
+## `menu click` fails with same stale window ID
+- **Command**: `polter peekaboo menu click --app TextEdit --path File,New --json-output`
+- **Observed**: Immediately after the `menu list` failure above, `menu click` also returns `UNKNOWN_ERROR` with `Could not find accessibility element for window ID 798`. Opening a new TextEdit document (to spawn a fresh window ID) simply changes the failing ID to `838`, confirming the CLI is caching dead AX handles between calls.
+- **Expected**: `menu click` should re-resolve the window each time.
+- **Impact**: No menu automation works once the cached window ID drifts.
+### Next steps
+Same as above—refresh AX window references inside `MenuCommand` and add regression coverage for both list & click paths.
+
+## `menu click` still fails with NotFound after window refresh
+- **Command**: `polter peekaboo menu click --app TextEdit --path File,New --json-output`
+- **Observed**: After restarting TextEdit and getting `menu list` working again, `menu click` now fails with `PeekabooCore.NotFoundError` (no stale window ID, but menu path resolution still breaks). Even `TextEdit,Preferences` fails with the same code.
+- **Expected**: Menu paths should resolve when `menu list` succeeds.
+- **Impact**: Click automation can’t drive menus even when enumeration works.
+### Next steps
+Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both stack traces share the same AX lookup logic.
+
+## `menu click` fails in Calculator too
+- **Command**: `polter peekaboo menu click --app Calculator --path View,Scientific --json-output`
+- **Observed**: Even after a fresh `menu list` succeeds, clicking `View > Scientific` fails with `PeekabooCore.NotFoundError error 1.` The issue isn’t TextEdit-specific—Calculator shows the same behavior.
+- **Impact**: Menu automation is effectively unusable across apps.
+- **Next steps**: Once the stale-window-id issue is fixed, verify the click path is resolving menu nodes correctly (and add integration coverage for at least one stock app such as Calculator).
 
 ## Help surface is unreachable
 - Root help instructs users to run `peekaboo help <subcommand>` or `<subcommand> --help`, but:
