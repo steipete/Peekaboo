@@ -3,9 +3,11 @@
 import ApplicationServices
 import Foundation
 import Logging
-// GlobalAXLogger, AXMiscConstants, JSONPathHintComponent are assumed available.
 
-// Added logger definition
+// Import shared logging helpers
+@_exported import func AXorcist.logSegments
+@_exported import func AXorcist.describePid
+
 private let logger = Logger(label: "AXorcist.ElementSearch")
 
 // MARK: - Main Element Finding Orchestration
@@ -57,16 +59,14 @@ public func findTargetElement(
     maxDepthForSearch: Int
 ) -> (element: Element?, error: String?) {
 
-    let pathHintDebugString = locator.rootElementPathHint?.map { $0.descriptionForLog() }.joined(separator: "\n    -> ") ?? "nil"
-    let criteriaDebugString = locator.criteria.map { criterion in "[\(criterion.attribute):\(criterion.value), match:\(criterion.matchType?.rawValue ?? "exact")]" }.joined(separator: ", ")
-
-    // Use criteriaDebugString in the log message
-    logger.info("FTE: App='\(appIdentifier)' D=\(maxDepthForSearch) C=\(criteriaDebugString.isEmpty ? "none" : criteriaDebugString) PH=\(locator.rootElementPathHint?.count ?? 0)")
-
-    // Reset per-search globals.
-    traversalNodeCounter = 0
-    // Start the global traversal timeout early, so it also covers any path navigation steps.
-    traversalDeadline = Date().addingTimeInterval(axorcTraversalTimeout)
+    let locatorDebug = logFindTargetSetup(
+        appIdentifier: appIdentifier,
+        locator: locator,
+        maxDepth: maxDepthForSearch
+    )
+    let pathHintDebugString = locatorDebug.pathHint
+    let criteriaDebugString = locatorDebug.criteria
+    resetTraversalState()
     defer { traversalDeadline = nil }
 
     guard let appElement = getApplicationElement(for: appIdentifier) else {
@@ -77,55 +77,128 @@ public func findTargetElement(
     var currentSearchElement = appElement
     var searchStartingPointDescription = "application root \(appElement.briefDescription(option: .smart))"
 
-    // 1. Navigate by pathHint if provided
-    if let jsonPathComponents = locator.rootElementPathHint, !jsonPathComponents.isEmpty {
-        logger.debug("FTE: PH=\(jsonPathComponents.count) from \(searchStartingPointDescription)")
+    let pathResult = performPathNavigation(
+        currentElement: currentSearchElement,
+        locator: locator,
+        maxDepthForSearch: maxDepthForSearch,
+        pathHintDebugString: pathHintDebugString,
+        searchStartingPointDescription: searchStartingPointDescription
+    )
 
-        // Convert [JSONPathHintComponent] to [PathStep]
-        let pathSteps: [PathStep] = jsonPathComponents.map { component in
-            let attributeName = component.axAttributeName ?? component.attribute // Map aliases like ROLE/DOM to real AX attribute
-            let criterion = Criterion(attribute: attributeName, value: component.value, matchType: component.matchType)
-            return PathStep(criteria: [criterion], matchType: component.matchType, matchAllCriteria: true, maxDepthForStep: component.depth)
-        }
-
-        if let navigatedElement = findDescendantAtPath(
-            currentRoot: currentSearchElement,
-            pathComponents: pathSteps, // Use converted pathSteps
-            maxDepth: maxDepthForSearch, // Path navigation steps might need their own depth concept or use overall
-            debugSearch: locator.debugPathSearch ?? false
-        ) {
-            logger.info("FTE: Path nav OK -> \(navigatedElement.briefDescription(option: ValueFormatOption.smart))")
-            currentSearchElement = navigatedElement
-            searchStartingPointDescription = "navigated path element \(currentSearchElement.briefDescription(option: ValueFormatOption.smart))"
-        } else {
-            let pathFailedError = "FTE: Path nav failed at: [\(pathHintDebugString)]"
-            logger.warning("\(pathFailedError)")
-            return (nil, pathFailedError)
-        }
-    } else {
-        logger.debug("FTE: No PH, search from \(searchStartingPointDescription)")
+    if let error = pathResult.error {
+        return (nil, error)
     }
+    currentSearchElement = pathResult.element
+    searchStartingPointDescription = pathResult.description ?? searchStartingPointDescription
 
-    // 2. After path navigation (or if no path), apply final criteria from locator.criteria
-    // If locator.criteria is empty, it means the path navigation itself was meant to find the target.
     if locator.criteria.isEmpty {
         if locator.rootElementPathHint?.isEmpty ?? true {
             let noCriteriaError = "FTE: No criteria, no path hint"
             logger.error("\(noCriteriaError)")
             return (nil, noCriteriaError)
         }
-        logger.info("FTE: PH only -> \(currentSearchElement.briefDescription(option: .smart))")
+        logger.info(
+            formatLogSegments(
+                "FTE: PH only -> \(currentSearchElement.briefDescription(option: .smart))"
+            )
+        )
         return (currentSearchElement, nil)
     }
 
+    let criteriaResult = applyCriteriaSearch(
+        startElement: currentSearchElement,
+        locator: locator,
+        maxDepthForSearch: maxDepthForSearch,
+        searchStartingPointDescription: searchStartingPointDescription
+    )
+
+    if let error = criteriaResult.error {
+        return (nil, error)
+    }
+    return (criteriaResult.element, nil)
+}
+
+private func performPathNavigation(
+    currentElement: Element,
+    locator: Locator,
+    maxDepthForSearch: Int,
+    pathHintDebugString: String,
+    searchStartingPointDescription: String
+) -> (element: Element, description: String?, error: String?) {
+    var element = currentElement
+    var description = searchStartingPointDescription
+
+    guard let jsonPathComponents = locator.rootElementPathHint, !jsonPathComponents.isEmpty else {
+        logger.debug(
+            formatLogSegments(
+                "FTE: No PH",
+                "search from \(searchStartingPointDescription)"
+            )
+        )
+        return (element, description, nil)
+    }
+
+    logger.debug(
+        formatLogSegments(
+            "FTE: PH=\(jsonPathComponents.count)",
+            "from \(searchStartingPointDescription)"
+        )
+    )
+
+    let pathSteps = jsonPathComponents.map { component -> PathStep in
+        let attributeName = component.axAttributeName ?? component.attribute
+        let criterion = Criterion(attribute: attributeName, value: component.value, matchType: component.matchType)
+        return PathStep(
+            criteria: [criterion],
+            matchType: component.matchType,
+            matchAllCriteria: true,
+            maxDepthForStep: component.depth
+        )
+    }
+
+    if let navigatedElement = findDescendantAtPath(
+        currentRoot: element,
+        pathComponents: pathSteps,
+        maxDepth: maxDepthForSearch,
+        debugSearch: locator.debugPathSearch ?? false
+    ) {
+        logger.info(
+            formatLogSegments(
+                "FTE: Path nav OK -> \(navigatedElement.briefDescription(option: ValueFormatOption.smart))"
+            )
+        )
+        element = navigatedElement
+        let pathElementDescription = element.briefDescription(option: ValueFormatOption.smart)
+        description = "navigated path element \(pathElementDescription)"
+        return (element, description, nil)
+    }
+
+    let pathFailedError = formatLogSegments(
+        "FTE: Path nav failed",
+        "at: [\(pathHintDebugString)]"
+    )
+    logger.warning(pathFailedError)
+    return (element, description, pathFailedError)
+}
+
+private func applyCriteriaSearch(
+    startElement: Element,
+    locator: Locator,
+    maxDepthForSearch: Int,
+    searchStartingPointDescription: String
+) -> (element: Element?, error: String?) {
     let criteriaCount = locator.criteria.count
     let matchAll = locator.matchAll ?? true
     let matchType = locator.criteria.first?.matchType?.rawValue ?? "default/exact"
-    logger.debug("FTE: Apply C=\(criteriaCount) from \(searchStartingPointDescription) MA=\(matchAll) MT=\(matchType)")
+    logger.debug(
+        formatLogSegments(
+            "FTE: Apply C=\(criteriaCount) from \(searchStartingPointDescription)",
+            "MA=\(matchAll)",
+            "MT=\(matchType)"
+        )
+    )
 
-    // Use matchAll and matchType from the main Locator object for these final criteria, if they exist there.
-    // Otherwise, SearchVisitor will use its defaults or what's on individual Criterion objects.
-    let finalSearchMatchType = locator.criteria.first?.matchType ?? .exact // Simplified: take from first criterion or default
+    let finalSearchMatchType = locator.criteria.first?.matchType ?? .exact
     let finalSearchMatchAll = locator.matchAll ?? true
 
     let searchVisitor = SearchVisitor(
@@ -136,17 +209,57 @@ public func findTargetElement(
         maxDepth: maxDepthForSearch
     )
 
-    traverseAndSearch(element: currentSearchElement, visitor: searchVisitor, currentDepth: 0, maxDepth: maxDepthForSearch)
+    traverseAndSearch(
+        element: startElement,
+        visitor: searchVisitor,
+        currentDepth: 0,
+        maxDepth: maxDepthForSearch
+    )
 
-    if let foundMatch = searchVisitor.foundElement { // Changed from foundElements.first
-        logger.info("FindTargetEl: Found final descendant matching criteria: \(foundMatch.briefDescription(option: .smart)). Nodes visited = \(traversalNodeCounter)")
+    if let foundMatch = searchVisitor.foundElement {
+        let foundDescription = foundMatch.briefDescription(option: .smart)
+        logger.info(
+            formatLogSegments(
+                "FindTargetEl: Found final descendant matching criteria: \(foundDescription)",
+                "Nodes visited = \(traversalNodeCounter)"
+            )
+        )
         return (foundMatch, nil)
-    } else {
-        let criteriaDesc = locator.criteria.map { "\($0.attribute):\($0.value)" }.joined(separator: ", ")
-        let finalSearchError = "FTE: Not found C=[\(criteriaDesc)] from \(searchStartingPointDescription). Max depth visited = \(searchVisitor.deepestDepthReached) of \(maxDepthForSearch). Nodes visited = \(traversalNodeCounter)"
-        logger.warning("\(finalSearchError)")
-        return (nil, finalSearchError)
     }
+
+    let criteriaDesc = locator.criteria.map { "\($0.attribute):\($0.value)" }.joined(separator: ", ")
+    let finalSearchError = formatLogSegments(
+        "FTE: Not found C=[\(criteriaDesc)] from \(searchStartingPointDescription)",
+        "Max depth visited = \(searchVisitor.deepestDepthReached) of \(maxDepthForSearch)",
+        "Nodes visited = \(traversalNodeCounter)"
+    )
+    logger.warning(finalSearchError)
+    return (nil, finalSearchError)
+}
+
+private func logFindTargetSetup(
+    appIdentifier: String,
+    locator: Locator,
+    maxDepth: Int
+) -> (pathHint: String, criteria: String) {
+    let pathHint = locator.rootElementPathHint?
+        .map { $0.descriptionForLog() }
+        .joined(separator: "\n    -> ") ?? "nil"
+    let criteria = describeCriteria(locator.criteria)
+    logger.info(
+        formatLogSegments(
+            "FTE: App='\(appIdentifier)'",
+            "D=\(maxDepth)",
+            "C=\(criteria)",
+            "PH=\(locator.rootElementPathHint?.count ?? 0)"
+        )
+    )
+    return (pathHint, criteria)
+}
+
+private func resetTraversalState() {
+    traversalNodeCounter = 0
+    traversalDeadline = Date().addingTimeInterval(axorcTraversalTimeout)
 }
 
 // MARK: - Element Collection Logic
@@ -158,8 +271,18 @@ public func collectAllElements(
     maxDepth: Int = AXMiscConstants.defaultMaxDepthSearch,
     includeIgnored: Bool = false
 ) -> [Element] {
-    let criteriaDebugString = criteria?.map { "\($0.attribute):\($0.value)(\($0.matchType?.rawValue ?? "exact"))" }.joined(separator: ", ") ?? "all"
-    logger.info("CA: From [\(startElement.briefDescription(option: ValueFormatOption.smart))] C=[\(criteriaDebugString)] D=\(maxDepth) I=\(includeIgnored)")
+    let criteriaDebugString = criteria?
+        .map { "\($0.attribute):\($0.value)(\($0.matchType?.rawValue ?? "exact"))" }
+        .joined(separator: ", ")
+        ?? "all"
+    logger.info(
+        formatLogSegments(
+            "CA: From [\(startElement.briefDescription(option: ValueFormatOption.smart))]",
+            "C=[\(criteriaDebugString)]",
+            "D=\(maxDepth)",
+            "I=\(includeIgnored)"
+        )
+    )
 
     let visitor = CollectAllVisitor(criteria: criteria, includeIgnored: includeIgnored)
     traverseAndSearch(element: startElement, visitor: visitor, currentDepth: 0, maxDepth: maxDepth)
@@ -191,8 +314,10 @@ public func traverseAndSearch(
     currentDepth: Int,
     maxDepth: Int
 ) {
-    if currentDepth > maxDepth {
-        logger.debug("Traverse: Max depth \(maxDepth) reached at [\(element.briefDescription(option: ValueFormatOption.smart))]. Stopping this branch.")
+    let elementDescription = element.briefDescription(option: ValueFormatOption.smart)
+
+    guard currentDepth <= maxDepth else {
+        logTraversalDepthExceeded(maxDepth, elementDescription)
         return
     }
 
@@ -201,13 +326,18 @@ public func traverseAndSearch(
 
     switch visitResult {
     case .stop:
-        logger.debug("Traverse: Visitor requested STOP at [\(element.briefDescription(option: ValueFormatOption.smart))] depth \(currentDepth).")
+        logTraversalEvent("STOP", elementDescription: elementDescription, depth: currentDepth)
         return
     case .skipChildren:
-        logger.debug("Traverse: Visitor requested SKIP_CHILDREN at [\(element.briefDescription(option: ValueFormatOption.smart))] depth \(currentDepth).")
+        logTraversalEvent("SKIP_CHILDREN", elementDescription: elementDescription, depth: currentDepth)
         return // Do not process children
     case .continue:
-        logger.debug("Traverse: Visitor requested CONTINUE at [\(element.briefDescription(option: ValueFormatOption.smart))] depth \(currentDepth). Processing children.")
+        logTraversalEvent(
+            "CONTINUE",
+            elementDescription: elementDescription,
+            depth: currentDepth,
+            extra: "Processing children"
+        )
         // Continue to process children
     }
 
@@ -232,11 +362,41 @@ public func traverseAndSearch(
             if let searchVisitor = visitor as? SearchVisitor,
                searchVisitor.stopAtFirstMatchInternal,
                searchVisitor.foundElement != nil {
-                logger.debug("Traverse: SearchVisitor found match and stopAtFirstMatch is true. Stopping traversal early.")
+                logger.debug(
+                    formatLogSegments(
+                        "Traverse: SearchVisitor found match and stopAtFirstMatch is true",
+                        "Stopping traversal early"
+                    )
+                )
                 return // Stop traversal early
             }
         }
     }
+}
+
+private func logTraversalDepthExceeded(_ maxDepth: Int, _ elementDescription: String) {
+    logger.debug(
+        formatLogSegments(
+            "Traverse: Max depth \(maxDepth) reached at [\(elementDescription)]",
+            "Stopping this branch"
+        )
+    )
+}
+
+private func logTraversalEvent(
+    _ event: String,
+    elementDescription: String,
+    depth: Int,
+    extra: String? = nil
+) {
+    var messageParts = [
+        "Traverse: Visitor requested \(event) at [\(elementDescription)]",
+        "depth \(depth)"
+    ]
+    if let extra {
+        messageParts.append(extra)
+    }
+    logger.debug(logSegmentsFromArray(messageParts))
 }
 
 // MARK: - Search Visitor Implementation
@@ -249,8 +409,8 @@ public class SearchVisitor: ElementVisitor {
     internal let stopAtFirstMatchInternal: Bool
     private let maxDepth: Int
     private var currentMaxDepthReachedByVisitor: Int = 0
-    private let matchType: JSONPathHintComponent.MatchType // Added
-    private let matchAllCriteriaBool: Bool // Added (renamed to avoid conflict with func name)
+    private let matchType: JSONPathHintComponent.MatchType
+    private let matchAllCriteriaBool: Bool
     public var deepestDepthReached: Int { currentMaxDepthReachedByVisitor }
 
     init(
@@ -261,25 +421,38 @@ public class SearchVisitor: ElementVisitor {
         maxDepth: Int = AXMiscConstants.defaultMaxDepthSearch
     ) {
         self.criteria = criteria
-        self.matchType = matchType // Store
-        self.matchAllCriteriaBool = matchAllCriteria // Store
+        self.matchType = matchType
+        self.matchAllCriteriaBool = matchAllCriteria
         self.stopAtFirstMatchInternal = stopAtFirstMatch
         self.maxDepth = maxDepth
-        let criteriaDesc = criteria.map { "\($0.attribute):\($0.value)(\($0.matchType?.rawValue ?? "exact"))" }.joined(separator: ", ")
+
+        let criteriaDesc = describeCriteria(self.criteria)
         logger.debug(
-            "SearchVisitor Init: Criteria: \(criteriaDesc), StopAtFirst: \(stopAtFirstMatchInternal), MaxDepth: \(maxDepth), MatchType: \(matchType), MatchAll: \(matchAllCriteria)"
+            formatLogSegments(
+                "SearchVisitor Init: Criteria: \(criteriaDesc)",
+                "StopAtFirst: \(stopAtFirstMatchInternal)",
+                "MaxDepth: \(maxDepth)",
+                "MatchType: \(matchType)",
+                "MatchAll: \(matchAllCriteria)"
+            )
         )
     }
 
     @MainActor
     public func visit(element: Element, depth: Int) -> TreeVisitorResult {
+        let elementDesc = element.briefDescription(option: ValueFormatOption.smart)
         currentMaxDepthReachedByVisitor = max(currentMaxDepthReachedByVisitor, depth)
+
         if depth > maxDepth {
-            logger.debug("SearchVisitor: Max depth \(maxDepth) reached internally at [\(element.briefDescription(option: ValueFormatOption.smart))]. Skipping.")
-            return .skipChildren // Or .stop, depending on desired behavior beyond maxDepth by visitor
+            logger.debug(
+                formatLogSegments(
+                    "SearchVisitor: Max depth \(maxDepth) reached internally at [\(elementDesc)]",
+                    "Skipping"
+                )
+            )
+            return .skipChildren
         }
 
-        let elementDesc = element.briefDescription(option: ValueFormatOption.smart)
         logger.debug("SV: [\(elementDesc)] @\(depth) C:\(criteria.count)")
 
         var matches = false
@@ -329,7 +502,10 @@ public class CollectAllVisitor: ElementVisitor {
     init(criteria: [Criterion]? = nil, includeIgnored: Bool = false) {
         self.criteria = criteria
         self.includeIgnored = includeIgnored
-        let criteriaDebug = criteria?.map { "\($0.attribute):\($0.value)(\($0.matchType?.rawValue ?? "exact"))" }.joined(separator: ", ") ?? "all"
+        let criteriaDebug = criteria?
+            .map { "\($0.attribute):\($0.value)(\($0.matchType?.rawValue ?? "exact"))" }
+            .joined(separator: ", ")
+            ?? "all"
         logger.debug("CollectAllVisitor Init: Criteria: [\(criteriaDebug)], IncludeIgnored: \(includeIgnored)")
     }
 
@@ -362,7 +538,16 @@ public class CollectAllVisitor: ElementVisitor {
 // Ensure `navigateToElementByJSONPathHint` from PathNavigator is accessible and synchronous.
 // Ensure `elementMatchesAllCriteria` from SearchCriteriaUtils is accessible and synchronous.
 // Ensure `Criterion` struct and `Locator` struct are defined and accessible.
-// AXMiscConstants should be available. Example: public enum AXMiscConstants { public static let defaultMaxDepthSearch: Int = 10 }
+// AXMiscConstants should be available.
+// Example: public enum AXMiscConstants { public static let defaultMaxDepthSearch: Int = 10 }
+
+private func describeCriteria(_ criteria: [Criterion]) -> String {
+    let description = criteria.map { criterion in
+        "[\(criterion.attribute):\(criterion.value), match:\(criterion.matchType?.rawValue ?? "exact")]"
+    }.joined(separator: ", ")
+    return description.isEmpty ? "none" : description
+}
+
 
 // Container roles that can have meaningful descendants. Non-container roles are treated as leaves.
 private let containerRoles: Set<String> = [
@@ -399,3 +584,11 @@ nonisolated(unsafe) public var axorcScanAll: Bool = false
 /// Controls whether SearchVisitor should stop at the first element that satisfies the final locator criteria.
 /// CLI flag `--no-stop-first` sets this to `false`.
 nonisolated(unsafe) public var axorcStopAtFirstMatch: Bool = true
+
+private func formatLogSegmentsFromArray(_ parts: [String]) -> String {
+    parts.joined(separator: " | ")
+}
+
+private func formatLogSegments(_ parts: String...) -> String {
+    parts.joined(separator: " | ")
+}

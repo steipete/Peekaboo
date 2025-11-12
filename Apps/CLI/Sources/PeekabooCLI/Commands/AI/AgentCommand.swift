@@ -9,6 +9,11 @@ import Spinner
 import Tachikoma
 import TachikomaMCP
 
+// Import shared helpers
+@_exported import struct PeekabooCLI.TerminalColor
+@_exported import func PeekabooCLI.updateTerminalTitle
+@_exported import func PeekabooCLI.formatTimeAgo
+
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working
 struct AgentSessionInfo: Codable {
@@ -48,36 +53,8 @@ enum OutputMode {
     case verbose // Full JSON debug information
 }
 
-/// ANSI color codes for terminal output
-enum TerminalColor {
-    static let reset = "\u{001B}[0m"
-    static let bold = "\u{001B}[1m"
-    static let dim = "\u{001B}[2m"
-
-    // Colors
-    static let blue = "\u{001B}[34m"
-    static let green = "\u{001B}[32m"
-    static let yellow = "\u{001B}[33m"
-    static let red = "\u{001B}[31m"
-    static let cyan = "\u{001B}[36m"
-    static let magenta = "\u{001B}[35m"
-    static let gray = "\u{001B}[90m"
-    static let italic = "\u{001B}[3m"
-
-    // Background colors
-    static let bgBlue = "\u{001B}[44m"
-    static let bgGreen = "\u{001B}[42m"
-    static let bgYellow = "\u{001B}[43m"
-
-    // Cursor control
-    static let clearLine = "\u{001B}[2K"
-    static let moveToStart = "\r"
-    static let bgRed = "\u{001B}[41m"
-}
-
 /// Get icon for tool name in compact mode
 func iconForTool(_ toolName: String) -> String {
-    // Get icon for tool name in compact mode
     AgentDisplayTokens.icon(for: toolName)
 }
 
@@ -255,7 +232,7 @@ extension AgentCommand {
             return
         }
 
-        try await self.executeTask(agentService, task: executionTask, maxSteps: self.maxSteps ?? 20)
+        try await self.executeAgentTask(agentService, task: executionTask, maxSteps: self.maxSteps ?? 20)
     }
 
     private func isAgentDisabled() -> Bool {
@@ -634,43 +611,59 @@ extension AgentCommand {
             print(resumingLine)
         }
 
-        // Use runInternal directly since executeTask was removed
-        // The session resumption is handled inside runInternal
-    }
+        guard let peekabooService = agentService as? PeekabooAgentService else {
+            throw PeekabooError.commandFailed("Agent service not properly initialized")
+        }
 
-    func updateTerminalTitle(_ title: String) {
-        // Use VibeTunnel to update terminal title if available
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["vt", "title", title]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-
+        let delegate = self.makeEventDelegate(for: task)
         do {
-            try process.run()
-            process.waitUntilExit()
+            let result = try await peekabooService.resumeSession(sessionId: sessionId, eventDelegate: delegate)
+            self.displayResult(result)
         } catch {
-            // Silently ignore if vt is not available
+            self.printAgentExecutionError("Failed to resume session: \(error.localizedDescription)")
+            throw error
         }
     }
 
-    func formatTimeAgo(_ date: Date) -> String {
-        let now = Date()
-        let interval = now.timeIntervalSince(date)
+    private func makeEventDelegate(for task: String) -> AgentOutputDelegate? {
+        guard !self.jsonOutput, !self.quiet else { return nil }
+        return AgentOutputDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
+    }
 
-        if interval < 60 {
-            return "just now"
-        } else if interval < 3600 {
-            let minutes = Int(interval / 60)
-            return "\(minutes) minute\(minutes == 1 ? "" : "s") ago"
-        } else if interval < 86400 {
-            let hours = Int(interval / 3600)
-            return "\(hours) hour\(hours == 1 ? "" : "s") ago"
+    private func printAgentExecutionError(_ message: String) {
+        if self.jsonOutput {
+            let error: [String: Any] = ["success": false, "error": message]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                print(jsonString)
+            } else {
+                print("{\"success\":false,\"error\":\"\(message)\"}")
+            }
         } else {
-            let days = Int(interval / 86400)
-            return "\(days) day\(days == 1 ? "" : "s") ago"
+            print("\(TerminalColor.red)Error: \(message)\(TerminalColor.reset)")
         }
     }
+
+    private func executeAgentTask(
+        _ agentService: any AgentServiceProtocol,
+        task: String,
+        maxSteps: Int
+    ) async throws {
+        let delegate = self.makeEventDelegate(for: task)
+        do {
+            let result = try await agentService.executeTask(
+                task,
+                maxSteps: maxSteps,
+                dryRun: self.dryRun,
+                eventDelegate: delegate
+            )
+            self.displayResult(result)
+        } catch {
+            self.printAgentExecutionError("Agent execution failed: \(error.localizedDescription)")
+            throw error
+        }
+    }
+
 
     private func printCapabilityFlag(_ label: String, supported: Bool, detail: String? = nil) {
         let status = supported ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.failure
@@ -770,25 +763,3 @@ extension AgentCommand {
 extension AgentCommand: ParsableCommand {}
 
 extension AgentCommand: AsyncRuntimeCommand {}
-
-@available(macOS 14.0, *)
-extension AgentCommand {
-    @MainActor
-    private func executeTask(
-        _ agentService: any AgentServiceProtocol,
-        task: String,
-        maxSteps: Int
-    ) async throws {
-        let eventDelegate: AgentOutputDelegate? = self.jsonOutput
-            ? nil
-            : AgentOutputDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
-
-        let result = try await agentService.executeTask(
-            task,
-            maxSteps: maxSteps,
-            dryRun: self.dryRun,
-            eventDelegate: eventDelegate)
-
-        self.displayResult(result)
-    }
-}

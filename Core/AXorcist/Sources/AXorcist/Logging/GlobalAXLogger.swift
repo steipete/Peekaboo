@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import os // For OSLog specific configurations if ever needed directly.
 
 // Ensure AXLogEntry is Sendable - this might not be strictly necessary if logger is fully synchronous
@@ -148,6 +149,30 @@ public class GlobalAXLogger {
     private let duplicateSummaryThreshold: Int = 5
     // Maximum characters to keep in a log message before truncating (for readability)
     private let maxMessageLength: Int = 300
+}
+
+// MARK: - Logger Convenience Overloads
+
+extension Logging.Logger {
+    @inlinable
+    public func debug(_ message: @autoclosure () -> String) {
+        self.log(level: .debug, "\(message())")
+    }
+
+    @inlinable
+    public func info(_ message: @autoclosure () -> String) {
+        self.log(level: .info, "\(message())")
+    }
+
+    @inlinable
+    public func warning(_ message: @autoclosure () -> String) {
+        self.log(level: .warning, "\(message())")
+    }
+
+    @inlinable
+    public func error(_ message: @autoclosure () -> String) {
+        self.log(level: .error, "\(message())")
+    }
 }
 
 // MARK: - Global Logging Functions (Convenience Wrappers)

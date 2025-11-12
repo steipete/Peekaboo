@@ -281,15 +281,15 @@ extension ListCommand {
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                 let data = try encoder.encode(payload)
                 if let json = String(data: data, encoding: .utf8) {
-                    print(json)
+                    Swift.print(json)
                 }
             } else {
-                print("Peekaboo Permissions:")
-                print("---------------------")
+                Swift.print("Peekaboo Permissions:")
+                Swift.print("---------------------")
                 for permission in permissions {
-                    print("• \(PermissionHelpers.formatPermissionStatus(permission))")
+                    Swift.print("• \(PermissionHelpers.formatPermissionStatus(permission))")
                     if !permission.isGranted {
-                        print("    Grant via: \(permission.grantInstructions)")
+                        Swift.print("    Grant via: \(permission.grantInstructions)")
                     }
                 }
             }
@@ -327,7 +327,7 @@ extension ListCommand {
                     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                     let data = try encoder.encode(items)
                     if let json = String(data: data, encoding: .utf8) {
-                        print(json)
+                        Swift.print(json)
                     }
                 } else {
                     self.displayMenuBarItems(items)
@@ -341,11 +341,11 @@ extension ListCommand {
         @MainActor
         private func displayMenuBarItems(_ items: [MenuBarItemInfo]) {
             if items.isEmpty {
-                print("No menu bar items detected.")
+                Swift.print("No menu bar items detected.")
                 return
             }
 
-            print("Menu Bar Items (\(items.count)):")
+            Swift.print("Menu Bar Items (\(items.count)):")
             for (index, item) in items.enumerated() {
                 self.displayMenuBarItem(item, index: index)
             }
@@ -354,14 +354,14 @@ extension ListCommand {
         @MainActor
         private func displayMenuBarItem(_ item: MenuBarItemInfo, index: Int) {
             let title = item.title ?? "<untitled>"
-            print("  [\(index + 1)] \(title)")
+            Swift.print("  [\(index + 1)] \(title)")
             if let description = item.description, !description.isEmpty {
-                print("       Description: \(description)")
+                Swift.print("       Description: \(description)")
             }
             if let frame = item.frame {
                 let frameOrigin = "\(Int(frame.origin.x)),\(Int(frame.origin.y))"
                 let frameSize = "\(Int(frame.width))×\(Int(frame.height))"
-                print("       Frame: \(frameOrigin) \(frameSize)")
+                Swift.print("       Frame: \(frameOrigin) \(frameSize)")
             }
         }
     }
@@ -400,7 +400,7 @@ extension ListCommand {
                 )
 
                 if self.jsonOutput {
-                    try print(output.toJSON())
+                    try Swift.print(output.toJSON())
                 } else {
                     self.displayScreenDetails(screens, count: screens.count)
                 }
@@ -412,19 +412,19 @@ extension ListCommand {
 
         @MainActor
         private func displayScreenDetails(_ screens: [PeekabooCore.ScreenInfo], count: Int) {
-            print("Screens (\(count) total):")
+            Swift.print("Screens (\(count) total):")
             for screen in screens {
                 let primaryBadge = screen.isPrimary ? " (Primary)" : ""
-                print("\n\(screen.index). \(screen.name)\(primaryBadge)")
-                print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
-                print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
+                Swift.print("\n\(screen.index). \(screen.name)\(primaryBadge)")
+                Swift.print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
+                Swift.print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
                 let retinaBadge = screen.scaleFactor > 1 ? " (Retina)" : ""
-                print("   Scale: \(screen.scaleFactor)x\(retinaBadge)")
+                Swift.print("   Scale: \(screen.scaleFactor)x\(retinaBadge)")
                 if screen.visibleFrame.size != screen.frame.size {
-                    print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
+                    Swift.print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
                 }
             }
-            print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
+            Swift.print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
         }
 
         @MainActor

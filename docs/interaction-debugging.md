@@ -18,6 +18,17 @@ read_when:
 ### Resolution — Nov 12, 2025
 - `SessionManager.storeScreenshot` now creates the per-session directory before copying, standardizes the source URL, and reports a clearer file I/O error if the user-provided path truly disappears. `peekaboo see --path /tmp/foo.png --annotate --json-output` completes successfully and downstream element/session storage works again.
 
+## AXorcist logging broke every CLI build
+- **Command**: `polter peekaboo -- type "Hello"` (or any other subcommand)
+- **Observed**: Poltergeist failed the build instantly with `cannot convert value of type 'String' to expected argument type 'Logger.Message'` coming from `ElementSearch`/`AXObserverCenter`. Even a bare `./runner swift build --package-path Apps/CLI` tripped on the same diagnostics, so no CLI binary could launch.
+- **Expected**: Logger helper strings should compile cleanly; CLI builds should succeed without `--force`.
+- **Impact**: All automation flows regressed—`polter peekaboo …` crashed before executing, preventing us from driving TextEdit or debugging dialog flows.
+### Resolution — Nov 12, 2025
+- Added a `Logging.Logger` convenience shim in `Core/AXorcist/Sources/AXorcist/Logging/GlobalAXLogger.swift` so dynamic `String` messages are emitted as proper `Logger.Message` values.
+- Updated `ElementSearch` logging helpers (`logSegments([String])`) and the `SearchVisitor` initializer to avoid illegal variadic splats and `let` reassignments.
+- Fixed `AXObserverCenter`’s observer callback to call `center.logSegments/describePid` explicitly, preventing implicit `self` captures.
+- Verified the end-to-end fix by running `./runner swift build --package-path Apps/CLI` and `./runner polter peekaboo -- type "Hello from CLI" --app TextEdit --json-output`, both of which now succeed without `--force`.
+
 ## `list windows` silently emits nothing
 - **Command**: `polter peekaboo list windows --app TextEdit`
 - **Observed**: Exit status 0 but no stdout/stderr, regardless of `--json-output` or `--verbose`.

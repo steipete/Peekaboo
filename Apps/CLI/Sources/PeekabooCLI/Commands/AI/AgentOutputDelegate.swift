@@ -8,6 +8,14 @@ import PeekabooCore
 import Spinner
 import Tachikoma
 
+// Import shared helpers
+@_exported import struct PeekabooCLI.TerminalColor
+@_exported import func PeekabooCLI.formatDuration
+@_exported import func PeekabooCLI.formatJSON
+@_exported import func PeekabooCLI.parseArguments
+@_exported import func PeekabooCLI.parseResult
+@_exported import func PeekabooCLI.updateTerminalTitle
+
 /// Handles agent output formatting and display for different output modes
 @available(macOS 14.0, *)
 final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
@@ -268,38 +276,6 @@ extension AgentOutputDelegate {
 
     // MARK: - Helper Methods
 
-    private func parseArguments(_ arguments: String) -> [String: Any] {
-        guard let data = arguments.data(using: .utf8),
-              let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return [:]
-        }
-        return args
-    }
-
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        if seconds < 0.001 {
-            return String(format: "%.0fµs", seconds * 1_000_000)
-        } else if seconds < 1.0 {
-            return String(format: "%.0fms", seconds * 1000)
-        } else if seconds < 60.0 {
-            return String(format: "%.1fs", seconds)
-        } else {
-            let minutes = Int(seconds / 60)
-            let remainingSeconds = Int(seconds.truncatingRemainder(dividingBy: 60))
-            return String(format: "%dmin %ds", minutes, remainingSeconds)
-        }
-    }
-
-    private func formatJSON(_ json: String) -> String? {
-        guard let data = json.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data),
-              let formatted = try? JSONSerialization.data(withJSONObject: object, options: .prettyPrinted),
-              let result = String(data: formatted, encoding: .utf8) else {
-            return nil
-        }
-        return result
-    }
-
     private func shouldSkipCommunicationOutput(for toolType: ToolType?) -> Bool {
         guard let toolType else { return false }
         return [ToolType.taskCompleted, .needMoreInformation, .needInfo].contains(toolType)
@@ -405,13 +381,6 @@ extension AgentOutputDelegate {
         return ""
     }
 
-    private func parseResult(_ rawResult: String) -> [String: Any]? {
-        guard let data = rawResult.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
-        }
-        return json
-    }
 
     private func printInvalidResult(rawResult: String, durationString: String) {
         if self.outputMode == .verbose {
@@ -520,10 +489,6 @@ extension AgentOutputDelegate {
         self.displayEnhancedError(tool: tool, json: json)
     }
 
-    private func updateTerminalTitle(_ title: String) {
-        print("\u{001B}]0;\(title)\u{0007}", terminator: "")
-        fflush(stdout)
-    }
 
     private func handleCommunicationToolComplete(name: String, toolType: ToolType) {
         if self.outputMode == .verbose {
