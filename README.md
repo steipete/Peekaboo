@@ -58,6 +58,8 @@ Peekaboo uses a modern service-based architecture:
 - **MCP Server** - Model Context Protocol server for AI assistants
 - **Commander** (in-repo) - Lightweight Swift 6 parsing helpers used by the CLI runtime (swift-tools-version 6.0, no Swift 6.2+ features)
 
+  The CLI command structs remain `@MainActor` so they run on the main thread, but the static `commandDescription` can just be a normal `static let` constant—no `nonisolated(unsafe)` or extra `@MainActor` wrappers are necessary when describing the command metadata.
+
 All components share the same core services, ensuring consistent behavior and optimal performance. See [Service API Reference](docs/service-api-reference.md) for detailed documentation.
 
 ## 🚀 Quick Start: CLI Tool
