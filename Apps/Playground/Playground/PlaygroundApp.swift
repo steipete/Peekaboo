@@ -19,34 +19,38 @@ struct PlaygroundApp: App {
     private func setupGlobalMouseClickMonitor() {
         // Monitor mouse clicks globally within the app
         NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { event in
-            guard let window = event.window else {
-                return event
-            }
+            self.handleGlobalMouseClick(event)
+        }
+    }
 
-            let locationInWindow = event.locationInWindow
-            let windowFrame = window.frame
-
-            // Convert to screen coordinates (top-left origin like Peekaboo uses)
-            // macOS uses bottom-left origin, so we need to flip Y coordinate
-            let screenHeight = NSScreen.main?.frame.height ?? 0
-            let screenLocation = NSPoint(
-                x: windowFrame.origin.x + locationInWindow.x,
-                y: screenHeight - (windowFrame.origin.y + locationInWindow.y))
-
-            let clickType = event.type == .leftMouseDown ? "Left" : "Right"
-            let descriptor = self.elementDescriptor(for: window, at: locationInWindow)
-
-            let logMessage = self.formatClickLogMessage(
-                type: clickType,
-                descriptor: descriptor,
-                windowLocation: locationInWindow,
-                screenLocation: screenLocation)
-            clickLogger.info(logMessage)
-
-            // Don't duplicate log in ActionLogger - let the button handlers do their specific logging
-            // This is just for system-level logging
+    private func handleGlobalMouseClick(_ event: NSEvent) -> NSEvent {
+        guard let window = event.window else {
             return event
         }
+
+        let locationInWindow = event.locationInWindow
+        let windowFrame = window.frame
+
+        // Convert to screen coordinates (top-left origin like Peekaboo uses)
+        // macOS uses bottom-left origin, so we need to flip Y coordinate
+        let screenHeight = NSScreen.main?.frame.height ?? 0
+        let screenX = windowFrame.origin.x + locationInWindow.x
+        let screenY = screenHeight - (windowFrame.origin.y + locationInWindow.y)
+        let screenLocation = NSPoint(x: screenX, y: screenY)
+
+        let clickType = event.type == .leftMouseDown ? "Left" : "Right"
+        let descriptor = self.elementDescriptor(for: window, at: locationInWindow)
+
+        let logMessage = self.formatClickLogMessage(
+            type: clickType,
+            descriptor: descriptor,
+            windowLocation: locationInWindow,
+            screenLocation: screenLocation)
+        clickLogger.info(logMessage)
+
+        // Don't duplicate log in ActionLogger - let the button handlers do their specific logging
+        // This is just for system-level logging
+        return event
     }
 
     private func setupGlobalKeyMonitor() {
