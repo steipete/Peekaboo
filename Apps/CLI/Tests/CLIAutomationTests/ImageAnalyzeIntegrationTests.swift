@@ -134,7 +134,7 @@ struct ImageAnalyzeIntegrationTests {
     func emptyAnalyzePrompt() throws {
         // Empty prompts should be allowed at parse time
         let command = try ImageCommand.parse(["--analyze", ""])
-        #expect(command.analyze == "")
+        #expect(command.analyze.isEmpty)
     }
 
     @Test("Analyze with all capture modes", .tags(.fast))

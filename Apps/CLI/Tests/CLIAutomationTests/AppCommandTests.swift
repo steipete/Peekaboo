@@ -238,7 +238,7 @@ private struct CommandFailure: Error {
 
 private func runAppCommand(
     _ args: [String],
-    configure: (@MainActor (StubApplicationService) -> ())? = nil
+    configure: (@MainActor (StubApplicationService) -> Void)? = nil
 ) async throws -> String {
     let (output, _) = try await runAppCommandWithService(args, configure: configure)
     return output
@@ -246,7 +246,7 @@ private func runAppCommand(
 
 private func runAppCommandWithService(
     _ args: [String],
-    configure: (@MainActor (StubApplicationService) -> ())? = nil
+    configure: (@MainActor (StubApplicationService) -> Void)? = nil
 ) async throws -> (String, StubApplicationService) {
     let context = await makeAppCommandContext()
     if let configure {
@@ -291,63 +291,75 @@ private struct AppCommandContext {
 @MainActor
 private func defaultAppCommandData()
 -> (applications: [ServiceApplicationInfo], windowsByApp: [String: [ServiceWindowInfo]]) {
-    let applications: [ServiceApplicationInfo] = [
-        ServiceApplicationInfo(
-            processIdentifier: 101,
-            bundleIdentifier: "com.apple.finder",
-            name: "Finder",
-            bundlePath: "/System/Library/CoreServices/Finder.app",
-            isActive: true,
-            isHidden: false,
-            windowCount: 1
-        ),
-        ServiceApplicationInfo(
-            processIdentifier: 202,
-            bundleIdentifier: "com.apple.TextEdit",
-            name: "TextEdit",
-            bundlePath: "/System/Applications/TextEdit.app",
-            isActive: false,
-            isHidden: false,
-            windowCount: 1
-        ),
-    ]
-
-    let finderWindow = ServiceWindowInfo(
-        windowID: 1,
-        title: "Finder Window",
-        bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
-        isMinimized: false,
-        isMainWindow: true,
-        windowLevel: 0,
-        alpha: 1.0,
-        index: 0,
-        spaceID: 1,
-        spaceName: "Desktop 1",
-        screenIndex: 0,
-        screenName: "Built-in"
-    )
-
-    let textEditWindow = ServiceWindowInfo(
-        windowID: 2,
-        title: "Document",
-        bounds: CGRect(x: 100, y: 100, width: 700, height: 500),
-        isMinimized: false,
-        isMainWindow: true,
-        windowLevel: 0,
-        alpha: 1.0,
-        index: 0,
-        spaceID: 2,
-        spaceName: "Desktop 2",
-        screenIndex: 0,
-        screenName: "Built-in"
-    )
-
-    let windowsByApp: [String: [ServiceWindowInfo]] = [
-        "Finder": [finderWindow],
-        "TextEdit": [textEditWindow],
-    ]
-
+    let applications = AppCommandTests.defaultApplications()
+    let windowsByApp = AppCommandTests.defaultWindowsByApp()
     return (applications, windowsByApp)
+}
+
+private extension AppCommandTests {
+    static func defaultApplications() -> [ServiceApplicationInfo] {
+        [
+            ServiceApplicationInfo(
+                processIdentifier: 101,
+                bundleIdentifier: "com.apple.finder",
+                name: "Finder",
+                bundlePath: "/System/Library/CoreServices/Finder.app",
+                isActive: true,
+                isHidden: false,
+                windowCount: 1
+            ),
+            ServiceApplicationInfo(
+                processIdentifier: 202,
+                bundleIdentifier: "com.apple.TextEdit",
+                name: "TextEdit",
+                bundlePath: "/System/Applications/TextEdit.app",
+                isActive: false,
+                isHidden: false,
+                windowCount: 1
+            ),
+        ]
+    }
+
+    static func defaultWindowsByApp() -> [String: [ServiceWindowInfo]] {
+        [
+            "Finder": [finderWindow()],
+            "TextEdit": [textEditWindow()],
+        ]
+    }
+
+    static func finderWindow() -> ServiceWindowInfo {
+        ServiceWindowInfo(
+            windowID: 1,
+            title: "Finder Window",
+            bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0,
+            spaceID: 1,
+            spaceName: "Desktop 1",
+            screenIndex: 0,
+            screenName: "Built-in"
+        )
+    }
+
+    static func textEditWindow() -> ServiceWindowInfo {
+        ServiceWindowInfo(
+            windowID: 2,
+            title: "Document",
+            bounds: CGRect(x: 100, y: 100, width: 700, height: 500),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0,
+            spaceID: 2,
+            spaceName: "Desktop 2",
+            screenIndex: 0,
+            screenName: "Built-in"
+        )
+    }
 }
 
 #endif

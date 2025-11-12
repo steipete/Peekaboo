@@ -20,7 +20,7 @@ struct ConfigurationTests {
 
         let result = manager.stripJSONComments(from: jsonc)
         let data = Data(result.utf8)
-        let parsed = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        let parsed = try Self.decodedDictionary(from: data)
 
         #expect(parsed["key"] as? String == "value")
         #expect(parsed["number"] as? Int == 42)
@@ -42,7 +42,7 @@ struct ConfigurationTests {
 
         let result = manager.stripJSONComments(from: jsonc)
         let data = result.data(using: .utf8)!
-        let parsed = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        let parsed = try Self.decodedDictionary(from: data)
 
         #expect(parsed["key"] as? String == "value")
         #expect(parsed["number"] as? Int == 42)
@@ -62,7 +62,7 @@ struct ConfigurationTests {
 
         let result = manager.stripJSONComments(from: jsonc)
         let data = result.data(using: .utf8)!
-        let parsed = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        let parsed = try Self.decodedDictionary(from: data)
 
         #expect(parsed["url"] as? String == "http://example.com//path")
         #expect(parsed["comment"] as? String == "This // is not a comment")
@@ -278,4 +278,18 @@ struct ConfigurationTests {
         #expect(envURL == "http://custom:11434")
         unsetenv("PEEKABOO_OLLAMA_BASE_URL")
     }
+}
+
+private extension ConfigurationTests {
+    static func decodedDictionary(from data: Data) throws -> [String: Any] {
+        let json = try JSONSerialization.jsonObject(with: data)
+        guard let dictionary = json as? [String: Any] else {
+            throw ConfigurationTestsError.invalidJSON
+        }
+        return dictionary
+    }
+}
+
+private enum ConfigurationTestsError: Error {
+    case invalidJSON
 }

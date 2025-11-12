@@ -230,6 +230,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         return TypeResult(totalCharacters: totals.characters, keyPresses: totals.keyPresses)
     }
 
+    // swiftlint:disable:next function_parameter_count
     func scroll(
         direction: ScrollDirection,
         amount: Int,

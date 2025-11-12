@@ -132,16 +132,14 @@ struct AgentMenuTests {
             // Find menu discovery steps
             var foundDiscovery = false
 
-            for (_, step) in steps.enumerated() {
-                if step.tool == "menu" {
-                    if let args = step.arguments,
-                       let jsonData = try? JSONSerialization.data(withJSONObject: args),
-                       let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                        if parsed["subcommand"] as? String == "list" {
-                            foundDiscovery = true
-                        } else if parsed["subcommand"] as? String == "click", foundDiscovery {
-                            // Found the action
-                        }
+            for step in steps where step.tool == "menu" {
+                if let args = step.arguments,
+                   let jsonData = try? JSONSerialization.data(withJSONObject: args),
+                   let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                    if parsed["subcommand"] as? String == "list" {
+                        foundDiscovery = true
+                    } else if parsed["subcommand"] as? String == "click", foundDiscovery {
+                        // Found the action
                     }
                 }
             }

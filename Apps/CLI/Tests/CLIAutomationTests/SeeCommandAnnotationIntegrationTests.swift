@@ -20,23 +20,19 @@ struct SeeCommandAnnotationIntegrationTests {
             return
         }
 
-        var command = try SeeCommand.parse([])
-        command.app = "Safari"
-        command.annotate = true
-        command.path = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-safari-annotation.png")
-            .path
+        guard let path = try await Self.runSeeCommand(
+            app: "Safari",
+            annotate: true,
+            suffix: "test-safari-annotation",
+            jsonOutput: false
+        ) else {
+            return
+        }
 
-        // Execute the command
-        try await command.run()
-
-        // Verify annotated file was created
-        let annotatedPath = (command.path! as NSString).deletingPathExtension + "_annotated.png"
+        let annotatedPath = Self.annotatedPath(for: path)
         #expect(FileManager.default.fileExists(atPath: annotatedPath))
 
-        // Clean up
-        try? FileManager.default.removeItem(atPath: command.path!)
-        try? FileManager.default.removeItem(atPath: annotatedPath)
+        Self.cleanupScreenshots(path, annotatedPath)
     }
 
     @Test("Elements detected from correct window, not overlay")
@@ -46,53 +42,27 @@ struct SeeCommandAnnotationIntegrationTests {
             return
         }
 
-        // First capture without window title (might get overlay)
-        var command1 = try SeeCommand.parse([])
-        command1.app = "Safari"
-        command1.jsonOutput = true
-        command1.annotate = true
-        command1.path = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-no-window-title.png")
-            .path
+        guard
+            let path1 = try await Self.runSeeCommand(
+                app: "Safari",
+                annotate: true,
+                suffix: "test-no-window-title",
+                jsonOutput: true
+            ),
+            let path2 = try await Self.runSeeCommand(
+                app: "Safari",
+                annotate: true,
+                suffix: "test-with-window-title",
+                jsonOutput: true,
+                windowTitle: "Start Page"
+            )
+        else {
+            return
+        }
 
-        // Execute and capture stdout (would need actual implementation)
-        try await command1.run()
-
-        // For testing purposes, we'd need to read the actual JSON output
-        // This is a placeholder - real implementation would capture stdout
-        let result1 = SeeResult(
-            session_id: "test",
-            screenshot_raw: command1.path!,
-            screenshot_annotated: "",
-            ui_map: "",
-            application_name: "Safari",
-            window_title: nil,
-            is_dialog: false,
-            element_count: 0,
-            interactable_count: 0,
-            capture_mode: "window",
-            analysis: nil,
-            execution_time: 0,
-            ui_elements: [],
-            menu_bar: nil
-        )
-
-        // Now capture with specific window title
-        var command2 = try SeeCommand.parse([])
-        command2.app = "Safari"
-        command2.windowTitle = "Start Page"
-        command2.jsonOutput = true
-        command2.annotate = true
-        command2.path = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-with-window-title.png")
-            .path
-
-        try await command2.run()
-
-        // Placeholder for testing
         let result2 = SeeResult(
             session_id: "test2",
-            screenshot_raw: command2.path!,
+            screenshot_raw: path2,
             screenshot_annotated: "",
             ui_map: "",
             application_name: "Safari",
@@ -107,16 +77,14 @@ struct SeeCommandAnnotationIntegrationTests {
             menu_bar: nil
         )
 
-        // With window title, we should get consistent window detection
         #expect(result2.window_title == "Start Page")
 
-        // Clean up
-        try? FileManager.default.removeItem(atPath: command1.path!)
-        try? FileManager.default
-            .removeItem(atPath: (command1.path! as NSString).deletingPathExtension + "_annotated.png")
-        try? FileManager.default.removeItem(atPath: command2.path!)
-        try? FileManager.default
-            .removeItem(atPath: (command2.path! as NSString).deletingPathExtension + "_annotated.png")
+        Self.cleanupScreenshots(
+            path1,
+            Self.annotatedPath(for: path1),
+            path2,
+            Self.annotatedPath(for: path2)
+        )
     }
 
     @Test("Window bounds affect element coordinate transformation")
@@ -157,8 +125,95 @@ struct SeeCommandAnnotationIntegrationTests {
 
     @Test("Annotation handles multiple element types")
     func multipleElementTypes() throws {
-        // Create a variety of elements
-        let elements = DetectedElements(
+        let elements = Self.makeSampleElements()
+
+        #expect(elements.all.count == 4)
+        #expect(elements.buttons.first?.id.hasPrefix("B") == true)
+        #expect(elements.textFields.first?.id.hasPrefix("T") == true)
+        #expect(elements.links.first?.id.hasPrefix("L") == true)
+        #expect(elements.groups.first?.id.hasPrefix("G") == true)
+    }
+
+    @Test("Annotation file size is reasonable")
+    @available(*, message: "Run with RUN_LOCAL_TESTS=true")
+    func annotationFileSize() async throws {
+        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
+            return
+        }
+
+        guard
+            let unannotatedPath = try await Self.runSeeCommand(
+                app: "Safari",
+                annotate: false,
+                suffix: "test-size-unannotated",
+                jsonOutput: false
+            ),
+            let annotatedCapturePath = try await Self.runSeeCommand(
+                app: "Safari",
+                annotate: true,
+                suffix: "test-size-annotated",
+                jsonOutput: false
+            )
+        else {
+            return
+        }
+
+        guard
+            let originalSize = Self.fileSize(at: unannotatedPath),
+            let annotatedSize = Self.fileSize(at: Self.annotatedPath(for: annotatedCapturePath))
+        else {
+            return
+        }
+
+        #expect(annotatedSize > 0)
+        #expect(annotatedSize < originalSize * 2)
+
+        Self.cleanupScreenshots(
+            unannotatedPath,
+            Self.annotatedPath(for: unannotatedPath),
+            annotatedCapturePath,
+            Self.annotatedPath(for: annotatedCapturePath)
+        )
+    }
+
+    static func runSeeCommand(
+        app: String,
+        annotate: Bool,
+        suffix: String,
+        jsonOutput: Bool,
+        windowTitle: String? = nil
+    ) async throws -> String? {
+        var command = try SeeCommand.parse([])
+        command.app = app
+        command.annotate = annotate
+        command.jsonOutput = jsonOutput
+        if let windowTitle {
+            command.windowTitle = windowTitle
+        }
+        command.path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("see-\(suffix).png")
+            .path
+        try await command.run()
+        return command.path
+    }
+
+    static func annotatedPath(for path: String) -> String {
+        (path as NSString).deletingPathExtension + "_annotated.png"
+    }
+
+    static func cleanupScreenshots(_ paths: String...) {
+        for path in paths where !path.isEmpty {
+            try? FileManager.default.removeItem(atPath: path)
+        }
+    }
+
+    static func fileSize(at path: String) -> Int? {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: path)
+        return attributes?[.size] as? Int
+    }
+
+    static func makeSampleElements() -> DetectedElements {
+        DetectedElements(
             buttons: [
                 DetectedElement(
                     id: "B1",
@@ -213,54 +268,7 @@ struct SeeCommandAnnotationIntegrationTests {
             menus: [],
             other: []
         )
-
-        // Verify all elements are counted
-        #expect(elements.all.count == 4)
-
-        // Verify ID prefixes match element types
-        #expect(elements.buttons.first?.id.hasPrefix("B") == true)
-        #expect(elements.textFields.first?.id.hasPrefix("T") == true)
-        #expect(elements.links.first?.id.hasPrefix("L") == true)
-        #expect(elements.groups.first?.id.hasPrefix("G") == true)
-    }
-
-    @Test("Annotation file size is reasonable")
-    @available(*, message: "Run with RUN_LOCAL_TESTS=true")
-    func annotationFileSize() async throws {
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
-            return
-        }
-
-        var command = try SeeCommand.parse([])
-        command.app = "Safari"
-        command.path = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-size.png")
-            .path
-
-        // First capture without annotation
-        try await command.run()
-
-        let originalSize = try FileManager.default.attributesOfItem(atPath: command.path!)[.size] as! Int
-
-        // Now with annotation
-        command.annotate = true
-        command.path = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-size-annotated.png")
-            .path
-
-        try await command.run()
-
-        let annotatedPath = (command.path! as NSString).deletingPathExtension + "_annotated.png"
-        let annotatedSize = try FileManager.default.attributesOfItem(atPath: annotatedPath)[.size] as! Int
-
-        // Annotated file should exist but not be unreasonably large
-        // Annotations add overlays but shouldn't double the file size
-        #expect(annotatedSize > 0)
-        #expect(annotatedSize < originalSize * 2)
-
-        // Clean up
-        try? FileManager.default.removeItem(atPath: command.path!)
-        try? FileManager.default.removeItem(atPath: annotatedPath)
     }
 }
+
 #endif

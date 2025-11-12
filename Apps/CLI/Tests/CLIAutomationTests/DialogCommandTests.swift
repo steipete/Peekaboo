@@ -201,7 +201,10 @@ struct DialogCommandTests {
         return try await self.runCommand(args, services: services)
     }
 
-    private func runCommand(_ args: [String], services: PeekabooServices) async throws -> (output: String, status: Int32) {
+    private func runCommand(
+        _ args: [String],
+        services: PeekabooServices
+    ) async throws -> (output: String, status: Int32) {
         let result = try await InProcessCommandRunner.run(args, services: services)
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         if result.exitStatus != 0 {

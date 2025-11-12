@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -170,7 +169,6 @@ struct ListCommandCLIHarnessTests {
 #endif
 
 @Suite("ListCommand Tests", .serialized, .tags(.unit))
-// swiftlint:disable:next type_body_length
 struct ListCommandTests {
     // MARK: - Command Parsing Tests
 

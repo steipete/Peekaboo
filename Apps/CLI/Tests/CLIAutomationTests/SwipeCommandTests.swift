@@ -135,7 +135,7 @@ struct SwipeCommandTests {
     }
 
     private func makeContext(
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> ())? = nil
+        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()

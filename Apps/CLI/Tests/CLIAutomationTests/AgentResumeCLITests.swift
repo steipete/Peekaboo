@@ -218,7 +218,11 @@ struct AgentResumeCLITests {
         #expect(expectedPrompt == "Continue with the original task. The user's response: Now save the document")
 
         // Test with different continuation tasks
-        let longContinuation = "This is a very long continuation task that includes multiple instructions and complex requirements"
+        let longContinuation = [
+            "This is a very long continuation task",
+            "that includes multiple instructions",
+            "and complex requirements",
+        ].joined(separator: " ")
         let longPrompt = "Continue with the original task. The user's response: \(longContinuation)"
 
         #expect(longPrompt.contains("very long continuation task"))

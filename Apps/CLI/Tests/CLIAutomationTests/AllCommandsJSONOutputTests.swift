@@ -10,73 +10,71 @@ import Testing
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct AllCommandsJSONOutputTests {
+    private static let commandsRequiringJSONOutput: [[String]] = [
+        // Basic commands
+        ["image"],
+        ["permissions"],
+        ["see"],
+        ["click"],
+        ["type"],
+        ["scroll"],
+        ["hotkey"],
+        ["swipe"],
+        ["run"],
+        ["sleep"],
+        ["clean"],
+        ["drag"],
+        ["agent"],
+
+        // List subcommands
+        ["list", "apps"],
+        ["list", "windows"],
+        ["list", "permissions"],
+
+        // Config subcommands
+        ["config", "init"],
+        ["config", "show"],
+        ["config", "edit"],
+        ["config", "validate"],
+
+        // Window subcommands
+        ["window", "close"],
+        ["window", "minimize"],
+        ["window", "maximize"],
+        ["window", "focus"],
+        ["window", "move"],
+        ["window", "resize"],
+
+        // App subcommands
+        ["app", "launch"],
+        ["app", "quit"],
+        ["app", "hide"],
+        ["app", "unhide"],
+        ["app", "switch"],
+        ["app", "list"],
+
+        // Menu subcommands
+        ["menu", "click"],
+
+        // Dock subcommands
+        ["dock", "launch"],
+        ["dock", "right-click"],
+        ["dock", "show"],
+        ["dock", "hide"],
+        ["dock", "list"],
+
+        // Dialog subcommands
+        ["dialog", "click"],
+        ["dialog", "input"],
+        ["dialog", "file"],
+        ["dialog", "dismiss"],
+        ["dialog", "list"],
+    ]
     @Test("All commands support --json-output flag")
     func verifyAllCommandsHaveJSONOutputFlag() async throws {
         var missingJSONOutputCommands: [String] = []
 
-        // Comprehensive list of all Peekaboo commands and subcommands
-        let allCommands = [
-            // Basic commands
-            ["image"],
-            ["permissions"],
-            ["see"],
-            ["click"],
-            ["type"],
-            ["scroll"],
-            ["hotkey"],
-            ["swipe"],
-            ["run"],
-            ["sleep"],
-            ["clean"],
-            ["drag"],
-            ["agent"],
-
-            // List subcommands
-            ["list", "apps"],
-            ["list", "windows"],
-            ["list", "permissions"],
-
-            // Config subcommands
-            ["config", "init"],
-            ["config", "show"],
-            ["config", "edit"],
-            ["config", "validate"],
-
-            // Window subcommands
-            ["window", "close"],
-            ["window", "minimize"],
-            ["window", "maximize"],
-            ["window", "focus"],
-            ["window", "move"],
-            ["window", "resize"],
-
-            // App subcommands
-            ["app", "launch"],
-            ["app", "quit"],
-            ["app", "hide"],
-            ["app", "unhide"],
-            ["app", "switch"],
-            ["app", "list"],
-
-            // Menu subcommands
-            ["menu", "click"],
-
-            // Dock subcommands
-            ["dock", "launch"],
-            ["dock", "right-click"],
-            ["dock", "show"],
-            ["dock", "hide"],
-            ["dock", "list"],
-
-            // Dialog subcommands
-            ["dialog", "click"],
-            ["dialog", "input"],
-            ["dialog", "file"],
-            ["dialog", "dismiss"],
-            ["dialog", "list"],
-        ]
-
-        for commandArgs in allCommands {
+        for commandArgs in Self.commandsRequiringJSONOutput {
             let commandName = commandArgs.joined(separator: " ")
             let result = try await InProcessCommandRunner.runShared(commandArgs + ["--help"])
             let output = result.combinedOutput

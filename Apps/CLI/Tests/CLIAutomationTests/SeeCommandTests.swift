@@ -151,74 +151,14 @@ struct SeeCommandTests {
 struct SeeCommandRuntimeTests {
     @Test("See command stores screenshot metadata and prints summary")
     func seeCommandStoresScreenshot() async throws {
-        let sessionId = UUID().uuidString
-        let windowBounds = CGRect(x: 10, y: 20, width: 800, height: 600)
-        let applicationInfo = ServiceApplicationInfo(
-            processIdentifier: 4242,
-            bundleIdentifier: "com.example.app",
-            name: "ExampleApp",
-            isActive: true,
-            windowCount: 1
-        )
-        let windowInfo = ServiceWindowInfo(
-            windowID: 101,
-            title: "Main Window",
-            bounds: windowBounds,
-            isMainWindow: true
-        )
-        let captureMetadata = CaptureMetadata(
-            size: CGSize(width: 1280, height: 720),
-            mode: .window,
-            applicationInfo: applicationInfo,
-            windowInfo: windowInfo
-        )
-        let captureResult = CaptureResult(
-            imageData: Data(repeating: 0xAB, count: 1024),
-            metadata: captureMetadata
-        )
-
-        let screenCapture = StubScreenCaptureService(permissionGranted: true)
-        screenCapture.defaultCaptureResult = captureResult
-
-        let detectedElement = DetectedElement(
-            id: "B1",
-            type: .button,
-            label: "OK",
-            bounds: CGRect(x: 30, y: 40, width: 100, height: 30)
-        )
-
-        let detectionMetadata = DetectionMetadata(
-            detectionTime: 0.1,
-            elementCount: 1,
-            method: "stub",
-            windowContext: WindowContext(
-                applicationName: applicationInfo.name,
-                windowTitle: windowInfo.title,
-                windowBounds: windowBounds
-            )
-        )
-
-        let detectionResult = ElementDetectionResult(
-            sessionId: sessionId,
-            screenshotPath: "/tmp/ignored.png",
-            elements: DetectedElements(buttons: [detectedElement]),
-            metadata: detectionMetadata
-        )
-
+        let fixture = Self.makeSeeCommandRuntimeFixture()
         let automation = StubAutomationService()
-        automation.nextDetectionResult = detectionResult
+        automation.nextDetectionResult = fixture.detectionResult
 
-        let sessions = StubSessionManager()
-
-        let context = TestServicesFactory.makeAutomationTestContext(
+        let (context, outputURL) = Self.makeSeeCommandRuntimeContext(
             automation: automation,
-            sessions: sessions,
-            screenCapture: screenCapture
+            screenCapture: fixture.screenCapture
         )
-
-        let outputURL = FileManager.default
-            .temporaryDirectory
-            .appendingPathComponent("peekaboo-see-runtime.png")
         defer { try? FileManager.default.removeItem(at: outputURL) }
 
         let result = try await InProcessCommandRunner.run(
@@ -233,10 +173,128 @@ struct SeeCommandRuntimeTests {
         #expect(result.exitStatus == 0)
         #expect(result.stdout.contains("Screenshot captured successfully"))
 
-        let storedScreenshots = sessions.storedScreenshots[sessionId] ?? []
+        let storedScreenshots = context.sessions.storedScreenshots[fixture.sessionId] ?? []
         #expect(storedScreenshots.count == 1)
         #expect(storedScreenshots.first?.path == outputURL.path)
-        #expect(storedScreenshots.first?.applicationName == applicationInfo.name)
-        #expect(storedScreenshots.first?.windowTitle == windowInfo.title)
+        #expect(storedScreenshots.first?.applicationName == fixture.applicationInfo.name)
+        #expect(storedScreenshots.first?.windowTitle == fixture.windowInfo.title)
+    }
+}
+
+private extension SeeCommandRuntimeTests {
+    struct RuntimeFixture {
+        let sessionId: String
+        let applicationInfo: ServiceApplicationInfo
+        let windowInfo: ServiceWindowInfo
+        let screenCapture: StubScreenCaptureService
+        let detectionResult: ElementDetectionResult
+    }
+
+    static func makeSeeCommandRuntimeFixture() -> RuntimeFixture {
+        let sessionId = UUID().uuidString
+        let windowBounds = CGRect(x: 10, y: 20, width: 800, height: 600)
+        let applicationInfo = Self.makeSeeFixtureApplicationInfo()
+        let windowInfo = Self.makeSeeFixtureWindowInfo(windowBounds: windowBounds)
+        let captureResult = Self.makeSeeFixtureCaptureResult(
+            applicationInfo: applicationInfo,
+            windowInfo: windowInfo
+        )
+        let screenCapture = Self.makeSeeFixtureScreenCapture(captureResult: captureResult)
+        let detectionResult = Self.makeSeeFixtureDetectionResult(
+            sessionId: sessionId,
+            applicationInfo: applicationInfo,
+            windowInfo: windowInfo,
+            windowBounds: windowBounds
+        )
+
+        return RuntimeFixture(
+            sessionId: sessionId,
+            applicationInfo: applicationInfo,
+            windowInfo: windowInfo,
+            screenCapture: screenCapture,
+            detectionResult: detectionResult
+        )
+    }
+
+    static func makeSeeCommandRuntimeContext(
+        automation: StubAutomationService,
+        screenCapture: StubScreenCaptureService
+    ) -> (context: TestServicesFactory.AutomationTestContext, outputURL: URL) {
+        let context = TestServicesFactory.makeAutomationTestContext(
+            automation: automation,
+            screenCapture: screenCapture
+        )
+        let outputURL = FileManager.default
+            .temporaryDirectory
+            .appendingPathComponent("peekaboo-see-runtime.png")
+        return (context, outputURL)
+    }
+
+    static func makeSeeFixtureApplicationInfo() -> ServiceApplicationInfo {
+        ServiceApplicationInfo(
+            processIdentifier: 4242,
+            bundleIdentifier: "com.example.app",
+            name: "ExampleApp",
+            isActive: true,
+            windowCount: 1
+        )
+    }
+
+    static func makeSeeFixtureWindowInfo(windowBounds: CGRect) -> ServiceWindowInfo {
+        ServiceWindowInfo(
+            windowID: 101,
+            title: "Main Window",
+            bounds: windowBounds,
+            isMainWindow: true
+        )
+    }
+
+    static func makeSeeFixtureCaptureResult(
+        applicationInfo: ServiceApplicationInfo,
+        windowInfo: ServiceWindowInfo
+    ) -> CaptureResult {
+        let metadata = CaptureMetadata(
+            size: CGSize(width: 1280, height: 720),
+            mode: .window,
+            applicationInfo: applicationInfo,
+            windowInfo: windowInfo
+        )
+        return CaptureResult(imageData: Data(repeating: 0xAB, count: 1024), metadata: metadata)
+    }
+
+    static func makeSeeFixtureScreenCapture(captureResult: CaptureResult) -> StubScreenCaptureService {
+        let screenCapture = StubScreenCaptureService(permissionGranted: true)
+        screenCapture.defaultCaptureResult = captureResult
+        return screenCapture
+    }
+
+    static func makeSeeFixtureDetectionResult(
+        sessionId: String,
+        applicationInfo: ServiceApplicationInfo,
+        windowInfo: ServiceWindowInfo,
+        windowBounds: CGRect
+    ) -> ElementDetectionResult {
+        let detectedElement = DetectedElement(
+            id: "B1",
+            type: .button,
+            label: "OK",
+            bounds: CGRect(x: 30, y: 40, width: 100, height: 30)
+        )
+        let detectionMetadata = DetectionMetadata(
+            detectionTime: 0.1,
+            elementCount: 1,
+            method: "stub",
+            windowContext: WindowContext(
+                applicationName: applicationInfo.name,
+                windowTitle: windowInfo.title,
+                windowBounds: windowBounds
+            )
+        )
+        return ElementDetectionResult(
+            sessionId: sessionId,
+            screenshotPath: "/tmp/ignored.png",
+            elements: DetectedElements(buttons: [detectedElement]),
+            metadata: detectionMetadata
+        )
     }
 }

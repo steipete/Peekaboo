@@ -118,7 +118,28 @@ struct SpaceCommandReadTests {
 
     @MainActor
     func makeTestContext() -> (services: PeekabooServices, spaceService: SpaceCommandSpaceService) {
-        let applications: [ServiceApplicationInfo] = [
+        let applications = Self.testApplications()
+        let windowsByApp = Self.windowsByApp()
+
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: StubApplicationService(applications: applications, windowsByApp: windowsByApp),
+            windows: StubWindowService(windowsByApp: windowsByApp),
+            menu: StubMenuService(menusByApp: [:]),
+            dialogs: StubDialogService(),
+            screens: []
+        )
+
+        let spaceInfos = Self.spaceInfos()
+        let windowSpaces = Self.windowSpaces(from: spaceInfos)
+        let spaceService = StubSpaceService(spaces: spaceInfos, windowSpaces: windowSpaces)
+
+        return (services, spaceService)
+    }
+}
+
+private extension SpaceCommandReadTests {
+    static func testApplications() -> [ServiceApplicationInfo] {
+        [
             ServiceApplicationInfo(
                 processIdentifier: 101,
                 bundleIdentifier: "com.apple.finder",
@@ -138,8 +159,17 @@ struct SpaceCommandReadTests {
                 windowCount: 1
             ),
         ]
+    }
 
-        let finderWindow = ServiceWindowInfo(
+    static func windowsByApp() -> [String: [ServiceWindowInfo]] {
+        [
+            "Finder": [Self.finderWindow()],
+            "TextEdit": [Self.textEditWindow()],
+        ]
+    }
+
+    static func finderWindow() -> ServiceWindowInfo {
+        ServiceWindowInfo(
             windowID: 1,
             title: "Finder Window",
             bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
@@ -153,8 +183,10 @@ struct SpaceCommandReadTests {
             screenIndex: 0,
             screenName: "Built-in"
         )
+    }
 
-        let textEditWindow = ServiceWindowInfo(
+    static func textEditWindow() -> ServiceWindowInfo {
+        ServiceWindowInfo(
             windowID: 2,
             title: "Document",
             bounds: CGRect(x: 100, y: 100, width: 700, height: 500),
@@ -168,21 +200,10 @@ struct SpaceCommandReadTests {
             screenIndex: 0,
             screenName: "Built-in"
         )
+    }
 
-        let windowsByApp: [String: [ServiceWindowInfo]] = [
-            "Finder": [finderWindow],
-            "TextEdit": [textEditWindow],
-        ]
-
-        let services = TestServicesFactory.makePeekabooServices(
-            applications: StubApplicationService(applications: applications, windowsByApp: windowsByApp),
-            windows: StubWindowService(windowsByApp: windowsByApp),
-            menu: StubMenuService(menusByApp: [:]),
-            dialogs: StubDialogService(),
-            screens: []
-        )
-
-        let spaceInfos: [SpaceInfo] = [
+    static func spaceInfos() -> [SpaceInfo] {
+        [
             SpaceInfo(
                 id: 1,
                 type: .user,
@@ -200,15 +221,13 @@ struct SpaceCommandReadTests {
                 ownerPIDs: [202]
             ),
         ]
+    }
 
-        let windowSpaces: [Int: [SpaceInfo]] = [
-            1: [spaceInfos[0]],
-            2: [spaceInfos[1]],
+    static func windowSpaces(from infos: [SpaceInfo]) -> [Int: [SpaceInfo]] {
+        [
+            1: [infos[0]],
+            2: [infos[1]],
         ]
-
-        let spaceService = StubSpaceService(spaces: spaceInfos, windowSpaces: windowSpaces)
-
-        return (services, spaceService)
     }
 }
 
