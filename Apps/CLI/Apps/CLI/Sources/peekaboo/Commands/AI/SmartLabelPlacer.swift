@@ -224,12 +224,10 @@ final class SmartLabelPlacer {
                 }
             }
 
-            // Check overlap with existing labels
-            for (existingLabel, _) in existingLabels {
-                if candidate.rect.intersects(existingLabel) {
-                    return false
-                }
-            }
+        // Check overlap with existing labels
+        for (existingLabel, _) in existingLabels where candidate.rect.intersects(existingLabel) {
+            return false
+        }
 
             return true
         }
@@ -302,22 +300,20 @@ final class SmartLabelPlacer {
         }
 
         // Find first position that fits
-        for candidateRect in insidePositions {
-            if elementRect.contains(candidateRect) {
-                // Score this internal position
-                let imageRect = NSRect(
-                    x: candidateRect.origin.x,
-                    y: self.imageSize.height - candidateRect.origin.y - candidateRect.height,
-                    width: candidateRect.width,
-                    height: candidateRect.height
-                )
+        for candidateRect in insidePositions where elementRect.contains(candidateRect) {
+            // Score this internal position
+            let imageRect = NSRect(
+                x: candidateRect.origin.x,
+                y: self.imageSize.height - candidateRect.origin.y - candidateRect.height,
+                width: candidateRect.width,
+                height: candidateRect.height
+            )
 
-                let score = self.textDetector.scoreRegionForLabelPlacement(imageRect, in: self.image)
+            let score = self.textDetector.scoreRegionForLabelPlacement(imageRect, in: self.image)
 
-                // Only use if score is acceptable (low edge density)
-                if score > 0.5 {
-                    return (labelRect: candidateRect, connectionPoint: nil)
-                }
+            // Only use if score is acceptable (low edge density)
+            if score > 0.5 {
+                return (labelRect: candidateRect, connectionPoint: nil)
             }
         }
 

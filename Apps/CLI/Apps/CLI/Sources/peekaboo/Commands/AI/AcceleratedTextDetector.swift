@@ -314,10 +314,8 @@ final class AcceleratedTextDetector {
         let pixelCount = Int(magnitude.width * magnitude.height)
 
         var edgePixelCount = 0
-        for i in 0..<pixelCount {
-            if magnitudeData[i] > self.edgeThreshold {
-                edgePixelCount += 1
-            }
+        for i in 0..<pixelCount where magnitudeData[i] > self.edgeThreshold {
+            edgePixelCount += 1
         }
 
         // Free magnitude buffer
