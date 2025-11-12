@@ -149,3 +149,17 @@ read_when:
 - **Expected**: Dock hide/show should complete quickly without extra permissions.
 ### Resolution — Nov 12, 2025
 - DockService now toggles `com.apple.dock autohide` via `defaults` and restarts the Dock process instead of driving System Events. We also skip the write entirely if the Dock is already in the requested state, so `dock hide`/`dock show` finish in <1 s.
+
+## Dialog commands need faster feedback
+- **Command**: `polter peekaboo dialog list --json-output` (no `--app` hint)
+- **Observed**: Even with the Open panel visible, the CLI spent ~8s enumerating every running app before returning.
+- **Expected**: A user-supplied application hint should skip the global crawl and focus the dialog faster.
+### Resolution — Nov 12, 2025
+- Added `--app <Application>` to every dialog subcommand (`click/input/file/dismiss/list`). When provided, the CLI focuses that app (and optional window title) before calling DialogService, so the service immediately inspects the correct AX tree. Dialog commands still work without the hint, but now advanced users can cut the worst-case search time down to ~1s.
+
+## Regression coverage for dialog CLI
+- **Command**: `swift test --filter DialogCommandTests`
+- **Observed**: The existing dialog tests only checked help output, leaving JSON regressions undetected.
+- **Expected**: Unit tests should validate the CLI’s JSON payloads without requiring TextEdit to be open.
+### Resolution — Nov 12, 2025
+- `StubDialogService` can now return canned `DialogElements`/`DialogActionResult` and record button clicks. New harness tests exercise `dialog list --json-output` and `dialog click --json-output` against the stub so the serializer and runner stay verified without manual GUI setup.
