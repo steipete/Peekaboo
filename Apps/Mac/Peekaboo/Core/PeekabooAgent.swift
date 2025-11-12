@@ -524,9 +524,7 @@ private extension PeekabooAgent {
 
         let formattedMessage = ToolFormatterBridge.shared.formatToolCall(
             name: name,
-            arguments: arguments,
-            usage: nil,
-            status: .running)
+            arguments: arguments)
 
         self.currentToolArgs = ToolFormatterBridge.shared.formatArguments(
             name: name,

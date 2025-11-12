@@ -60,9 +60,10 @@ final class DockIconManager: NSObject {
 
         let hasVisibleWindows = !visibleWindows.isEmpty
 
-        self.logger
-            .debug(
-                "Updating dock visibility - User wants shown: \(userWantsDockShown), Visible windows: \(visibleWindows.count)")
+        let message =
+            "Updating dock visibility - User wants shown: \(userWantsDockShown), " +
+            "Visible windows: \(visibleWindows.count)"
+        self.logger.debug("\(message, privacy: .public)")
 
         // Show dock if user wants it shown OR if any windows are open
         if userWantsDockShown || hasVisibleWindows {

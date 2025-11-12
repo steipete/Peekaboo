@@ -140,13 +140,12 @@ public class AIManager: ObservableObject {
                     maxSteps: 1)
 
                 for try await delta in streamResult.stream {
-                    if !Task.isCancelled {
-                        if let content = delta.content {
-                            fullText += content
-                            await MainActor.run {
-                                self.streamingText = fullText
-                            }
-                        }
+                    guard !Task.isCancelled else { break }
+                    guard let content = delta.content else { continue }
+
+                    fullText += content
+                    await MainActor.run {
+                        self.streamingText = fullText
                     }
                 }
 

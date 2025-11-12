@@ -88,13 +88,14 @@ struct PeekabooApp: App {
                     }
 
                     // Connect app delegate to state
-                    self.appDelegate.connectToState(
+                    let context = AppStateConnectionContext(
                         settings: self.settings,
                         sessionStore: self.sessionStore,
                         permissions: self.permissions,
                         speechRecognizer: self.speechRecognizer!,
                         agent: self.agent!,
                         realtimeService: self.realtimeService)
+                    self.appDelegate.connectToState(context)
 
                     // Check permissions
                     await self.permissions.check()
@@ -113,10 +114,7 @@ struct PeekabooApp: App {
                 .environment(self.permissions)
                 .environment(self.speechRecognizer ?? SpeechRecognizer(settings: self.settings))
                 .environment(self.agent ?? PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore))
-                .environment(self.realtimeService ?? RealtimeVoiceService(
-                    agentService: try! PeekabooAgentService(services: PeekabooServices.shared),
-                    sessionStore: self.sessionStore,
-                    settings: self.settings))
+                .environment(self.realtimeService ?? self.makeRealtimeVoiceService())
                 .environmentOptional(self.realtimeService)
                 .onReceive(NotificationCenter.default.publisher(for: .openMainWindow)) { _ in
                     // Window will automatically open when this notification is received
@@ -172,9 +170,31 @@ struct PeekabooApp: App {
                 }
         }
     }
+
+    private func makeRealtimeVoiceService() -> RealtimeVoiceService {
+        do {
+            let agentService = try PeekabooAgentService(services: PeekabooServices.shared)
+            return RealtimeVoiceService(
+                agentService: agentService,
+                sessionStore: self.sessionStore,
+                settings: self.settings)
+        } catch {
+            self.logger.fault("Failed to create fallback realtime service: \(error.localizedDescription)")
+            fatalError("RealtimeVoiceService unavailable: \(error)")
+        }
+    }
 }
 
 // MARK: - App Delegate
+
+private struct AppStateConnectionContext {
+    let settings: PeekabooSettings
+    let sessionStore: SessionStore
+    let permissions: Permissions
+    let speechRecognizer: SpeechRecognizer
+    let agent: PeekabooAgent
+    let realtimeService: RealtimeVoiceService?
+}
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -210,36 +230,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Status bar will be created after state is connected
     }
 
-    func connectToState(
-        settings: PeekabooSettings,
-        sessionStore: SessionStore,
-        permissions: Permissions,
-        speechRecognizer: SpeechRecognizer,
-        agent: PeekabooAgent,
-        realtimeService: RealtimeVoiceService?)
-    {
-        self.settings = settings
-        self.sessionStore = sessionStore
-        self.permissions = permissions
-        self.speechRecognizer = speechRecognizer
-        self.agent = agent
-        self.realtimeService = realtimeService
+    func connectToState(_ context: AppStateConnectionContext) {
+        self.settings = context.settings
+        self.sessionStore = context.sessionStore
+        self.permissions = context.permissions
+        self.speechRecognizer = context.speechRecognizer
+        self.agent = context.agent
+        self.realtimeService = context.realtimeService
 
         // Now create status bar with connected state
         self.statusBarController = StatusBarController(
-            agent: agent,
-            sessionStore: sessionStore,
-            permissions: permissions,
-            speechRecognizer: speechRecognizer,
-            settings: settings,
-            realtimeService: realtimeService)
+            agent: context.agent,
+            sessionStore: context.sessionStore,
+            permissions: context.permissions,
+            speechRecognizer: context.speechRecognizer,
+            settings: context.settings,
+            realtimeService: context.realtimeService)
 
         // Connect dock icon manager to settings
-        DockIconManager.shared.connectToSettings(settings)
+        DockIconManager.shared.connectToSettings(context.settings)
 
         // Connect visualizer coordinator to settings
-        if let coordinator = visualizerCoordinator {
-            coordinator.connectSettings(settings)
+        if let coordinator = self.visualizerCoordinator {
+            coordinator.connectSettings(context.settings)
         }
 
         // Setup keyboard shortcuts

@@ -38,9 +38,10 @@ final class Permissions {
     func check() async {
         self.logger.info("Checking all permissions...")
         self.permissionsService.checkPermissions()
-        self.logger
-            .info(
-                "Permission check complete - Accessibility: \(String(describing: self.accessibilityStatus)), Screen Recording: \(String(describing: self.screenRecordingStatus))")
+        let description =
+            "Permission check complete - Accessibility: \(String(describing: self.accessibilityStatus)), " +
+            "Screen Recording: \(String(describing: self.screenRecordingStatus))"
+        self.logger.info("\(description, privacy: .public)")
     }
 
     func requestScreenRecording() {
