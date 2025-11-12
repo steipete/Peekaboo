@@ -108,24 +108,10 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         case let (lhsString as String, rhsString as String):
             return lhsString == rhsString
         case let (lhsArray as [Any], rhsArray as [Any]):
-            guard lhsArray.count == rhsArray.count else { return false }
-            for (lhsElement, rhsElement) in zip(lhsArray, rhsArray) {
-                if AnyCodable(lhsElement) != AnyCodable(rhsElement) {
-                    return false
-                }
-            }
-            return true
+            return Self.compareArrays(lhsArray, rhsArray)
         case let (lhsDict as [String: Any], rhsDict as [String: Any]):
-            guard lhsDict.count == rhsDict.count else { return false }
-            for (key, lhsValue) in lhsDict {
-                guard let rhsValue = rhsDict[key] else { return false }
-                if AnyCodable(lhsValue) != AnyCodable(rhsValue) {
-                    return false
-                }
-            }
-            return true
+            return Self.compareDictionaries(lhsDict, rhsDict)
         default:
-            // For types we don't specifically handle, try to compare as strings
             return String(describing: lhs.value) == String(describing: rhs.value)
         }
     }
@@ -155,5 +141,28 @@ private protocol OptionalProtocol {
 extension Optional: OptionalProtocol {
     static func isOptional() -> Bool {
         true
+    }
+}
+
+private extension AnyCodable {
+    static func compareArrays(_ lhs: [Any], _ rhs: [Any]) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (lhsElement, rhsElement) in zip(lhs, rhs) {
+            if AnyCodable(lhsElement) != AnyCodable(rhsElement) {
+                return false
+            }
+        }
+        return true
+    }
+
+    static func compareDictionaries(_ lhs: [String: Any], _ rhs: [String: Any]) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (key, lhsValue) in lhs {
+            guard let rhsValue = rhs[key] else { return false }
+            if AnyCodable(lhsValue) != AnyCodable(rhsValue) {
+                return false
+            }
+        }
+        return true
     }
 }

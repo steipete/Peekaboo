@@ -1,70 +1,83 @@
-import ApplicationServices // For CGPoint
+import ApplicationServices
 import Foundation
 
 @MainActor
 public extension AXorcist {
     func handleGetElementAtPoint(command: GetElementAtPointCommand) -> AXResponse {
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .info,
-            message: "HandleGetElementAtPoint: App '\(command.appIdentifier ?? "focused")', " +
-                "Point: ([\(command.point.x), \(command.point.y)]), PID: \(command.pid ?? 0)"
-        ))
+        self.logGetPointRequest(command)
 
-        // Get the application element first to ensure the coordinate system context.
-        // While elementAtPoint is system-wide, it's good practice to ensure app context if specified.
-        guard let appElement = getApplicationElement(for: command.appIdentifier ?? "focused") else {
-            let errorMessage = "HandleGetElementAtPoint: Could not get application element for " +
-                "'\(command.appIdentifier ?? "focused")'. " +
-                "This is needed for context, even if elementAtPoint is system-wide."
-            GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: errorMessage))
-            return .errorResponse(message: errorMessage,
-                                  code: .elementNotFound) // Or perhaps a different error code if app context is just
-            // preferred
+        guard let appElement = self.applicationElement(for: command) else {
+            return self.applicationContextError(command: command)
         }
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "HandleGetElementAtPoint: Context app element: \(appElement.briefDescription(option: ValueFormatOption.smart))"
-        ))
 
-        let pid: pid_t = command.pid.map { pid_t($0) } ?? appElement.pid() ?? 0
-        guard let elementAtPoint = Element.elementAtPoint(command.point, pid: pid) else {
-            let errorMessage =
-                "HandleGetElementAtPoint: No UI element found at point ([\(command.point.x), \(command.point.y)]) for app context '\(command.appIdentifier ?? "focused")'."
-            GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: errorMessage))
-            // This is not necessarily an error, could be a valid state (e.g., clicked on desktop).
-            // Return success with an empty payload or specific indication.
-            struct NoElementAtPointPayload: Codable {
-                let message: String
-                let element: AXElementData?
-                init(message: String, element: AXElementData? = nil) {
-                    self.message = message
-                    self.element = element
-                }
-            }
-            return .successResponse(
-                payload: AnyCodable(NoElementAtPointPayload(message: "No UI element found at the specified point."))
-            )
+        self.logContextElement(appElement)
+
+        let pid: pid_t = command.pid.map(pid_t.init) ?? appElement.pid() ?? 0
+        guard let element = Element.elementAtPoint(command.point, pid: pid) else {
+            return self.noElementResponse(command: command)
         }
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "HandleGetElementAtPoint: Element at point: \(elementAtPoint.briefDescription(option: ValueFormatOption.smart))"
-        ))
 
-        // Build a response with the element information
-        let briefDescription = elementAtPoint.briefDescription(option: ValueFormatOption.smart)
-        let role = elementAtPoint.role()
+        self.logLocatedElement(element)
+        return .successResponse(payload: AnyCodable(self.elementData(from: element)))
+    }
 
-        let elementData = AXElementData(
-            briefDescription: briefDescription,
-            role: role,
-            attributes: [:], // Could fetch attributes if needed
-            allPossibleAttributes: elementAtPoint.attributeNames(),
+    private func logGetPointRequest(_ command: GetElementAtPointCommand) {
+        let target = command.appIdentifier ?? "focused"
+        let point = "[\(command.point.x), \(command.point.y)]"
+        let pidDescription = command.pid.map(String.init) ?? "0"
+        let message = "HandleGetElementAtPoint: App '\(target)', Point: \(point), PID: \(pidDescription)"
+        GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: message))
+    }
+
+    private func applicationElement(for command: GetElementAtPointCommand) -> Element? {
+        getApplicationElement(for: command.appIdentifier ?? "focused")
+    }
+
+    private func applicationContextError(command: GetElementAtPointCommand) -> AXResponse {
+        let target = command.appIdentifier ?? "focused"
+        let message = """
+        HandleGetElementAtPoint: Could not get application element for '\(target)'.
+        Application context is required even though elementAtPoint is system-wide.
+        """
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: message))
+        return .errorResponse(message: message, code: .elementNotFound)
+    }
+
+    private func logContextElement(_ element: Element) {
+        let description = element.briefDescription(option: .smart)
+        GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: "Context app element: \(description)"))
+    }
+
+    private func noElementResponse(command: GetElementAtPointCommand) -> AXResponse {
+        let target = command.appIdentifier ?? "focused"
+        let point = "[\(command.point.x), \(command.point.y)]"
+        let message = "No UI element found at \(point) for app '\(target)'."
+        GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: message))
+        let payload = NoElementAtPointPayload(message: message, element: nil)
+        return .successResponse(payload: AnyCodable(payload))
+    }
+
+    private func logLocatedElement(_ element: Element) {
+        let description = element.briefDescription(option: .smart)
+        GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: "Element at point: \(description)"))
+    }
+
+    private func elementData(from element: Element) -> AXElementData {
+        AXElementData(
+            briefDescription: element.briefDescription(option: .smart),
+            role: element.role(),
+            attributes: [:],
+            allPossibleAttributes: element.attributeNames(),
             textualContent: nil,
             childrenBriefDescriptions: nil,
-            fullAXDescription: elementAtPoint.briefDescription(option: ValueFormatOption.stringified),
-            path: elementAtPoint.generatePathString().components(separatedBy: " -> ")
+            fullAXDescription: element.briefDescription(option: .stringified),
+            path: element.generatePathString().components(separatedBy: " -> ")
         )
-
-        return .successResponse(payload: AnyCodable(elementData))
     }
+}
+
+private struct NoElementAtPointPayload: Codable {
+    let message: String
+    let element: AXElementData?
 }

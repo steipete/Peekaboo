@@ -12,17 +12,10 @@ import Foundation
 @MainActor
 public extension AXorcist {
     func handleObserve(command: ObserveCommand) -> AXResponse {
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .info,
-            message: "HandleObserve: App \(command.appIdentifier ?? "focused"), " +
-                "Notifications: \(command.notificationName.rawValue), " +
-                "Details: \(command.includeElementDetails?.joined(separator: ", ") ?? "none")"
-        ))
+        logObservationStart(command)
 
         let appIdentifier = command.appIdentifier ?? "focused"
-        // Use Criterion for pid matching
-        let criteria = [Criterion(attribute: "pid", value: "self", matchType: .exact)]
-        let locator = Locator(criteria: criteria)
+        let locator = makeObservationLocator()
 
         let (targetElement, error) = findTargetElement(
             for: appIdentifier,
@@ -31,54 +24,110 @@ public extension AXorcist {
         )
 
         guard let elementToObserve = targetElement else {
-            let errorMessage = error ??
-                "HandleObserve: Element to observe not found for app '\(appIdentifier)' with locator \(String(describing: locator))."
-            GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: errorMessage))
-            return .errorResponse(message: errorMessage, code: .elementNotFound)
-        }
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "HandleObserve: Element to observe: \(elementToObserve.briefDescription(option: ValueFormatOption.smart))"
-        ))
-
-        let callback: AXObserverManager.AXNotificationCallback = { _, axUIElement, notification, userInfo in
-            let element = Element(axUIElement)
-            let userInfoDesc = userInfo != nil ? String(describing: userInfo!) : "nil"
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .info,
-                message: "AXObserver CALLBACK: Element: \(element.briefDescription(option: ValueFormatOption.smart)), " +
-                    "Notification: \(notification as String), UserInfo: \(userInfoDesc)"
-            ))
-
-            // Here, you would typically send this event data back to the client that initiated the observation.
-            // This might involve a registered callback URL, a WebSocket, or another IPC mechanism.
-            // For now, we just log it.
+            return observationNotFoundResponse(
+                appIdentifier: appIdentifier,
+                locator: locator,
+                error: error
+            )
         }
 
+        logObservationTarget(elementToObserve)
+
+        let callback = makeObservationCallback()
+        return startObservation(
+            element: elementToObserve,
+            command: command,
+            callback: callback
+        )
+    }
+
+    private func logObservationStart(_ command: ObserveCommand) {
+        let details = command.includeElementDetails?.joined(separator: ", ") ?? "none"
+        let message = [
+            "HandleObserve: App \(command.appIdentifier ?? "focused")",
+            "Notifications: \(command.notificationName.rawValue)",
+            "Details: \(details)"
+        ].joined(separator: ", ")
+        GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: message))
+    }
+
+    private func makeObservationLocator() -> Locator {
+        let criteria = [Criterion(attribute: "pid", value: "self", matchType: .exact)]
+        return Locator(criteria: criteria)
+    }
+
+    private func logObservationTarget(_ element: Element) {
+        let message = [
+            "HandleObserve: Element to observe:",
+            element.briefDescription(option: ValueFormatOption.smart)
+        ].joined(separator: " ")
+        GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: message))
+    }
+
+    private func observationNotFoundResponse(
+        appIdentifier: String,
+        locator: Locator,
+        error: String?
+    ) -> AXResponse {
+        let fallback = [
+            "HandleObserve: Element to observe not found for app '\(appIdentifier)'",
+            "locator \(String(describing: locator))"
+        ].joined(separator: ", ")
+        let errorMessage = error ?? fallback
+        GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: errorMessage))
+        return .errorResponse(message: errorMessage, code: .elementNotFound)
+    }
+
+    private func startObservation(
+        element: Element,
+        command: ObserveCommand,
+        callback: @escaping AXObserverManager.AXNotificationCallback
+    ) -> AXResponse {
         do {
             try AXObserverManager.shared.addObserver(
-                for: elementToObserve,
+                for: element,
                 notification: command.notificationName,
                 callback: callback
             )
-            let successMessage =
-                "HandleObserve: Successfully started observing '\(command.notificationName)' on \(elementToObserve.briefDescription(option: ValueFormatOption.smart))."
+            let successMessage = [
+                "HandleObserve: Successfully started observing '\(command.notificationName)' on",
+                element.briefDescription(option: ValueFormatOption.smart)
+            ].joined(separator: " ")
             GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: successMessage))
             return .successResponse(payload: AnyCodable(["message": successMessage]))
         } catch let obError as AXObserverManager.ObserverError {
-            let errorMessage = "HandleObserve: Failed to add observer. " +
-                "Error: \(obError.localizedDescription) (Code: \(obError)). " +
-                "Pid for element: \(elementToObserve.pid()?.description ?? "N/A") " +
+            let details = [
+                "HandleObserve: Failed to add observer.",
+                "Error: \(obError.localizedDescription) (Code: \(obError))",
+                "Pid: \(element.pid()?.description ?? "N/A")",
                 "Notification: \(command.notificationName)"
-            GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: errorMessage))
-            return .errorResponse(message: errorMessage, code: .observationFailed)
+            ].joined(separator: " ")
+            GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: details))
+            return .errorResponse(message: details, code: .observationFailed)
         } catch {
-            let errorMessage = "HandleObserve: Failed to add observer with unknown error: " +
-                "\(error.localizedDescription) for element " +
-                "\(elementToObserve.briefDescription(option: ValueFormatOption.smart)) " +
+            let details = [
+                "HandleObserve: Failed to add observer with unknown error:",
+                error.localizedDescription,
+                "Element:",
+                element.briefDescription(option: ValueFormatOption.smart),
                 "Notification: \(command.notificationName)"
-            GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: errorMessage))
-            return .errorResponse(message: errorMessage, code: .observationFailed)
+            ].joined(separator: " ")
+            GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: details))
+            return .errorResponse(message: details, code: .observationFailed)
+        }
+    }
+
+    private func makeObservationCallback() -> AXObserverManager.AXNotificationCallback {
+        { _, axUIElement, notification, userInfo in
+            let element = Element(axUIElement)
+            let userInfoDesc = userInfo.map(String.init(describing:)) ?? "nil"
+            let message = [
+                "AXObserver CALLBACK:",
+                "Element: \(element.briefDescription(option: ValueFormatOption.smart))",
+                "Notification: \(notification as String)",
+                "UserInfo: \(userInfoDesc)"
+            ].joined(separator: " ")
+            GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: message))
         }
     }
 }

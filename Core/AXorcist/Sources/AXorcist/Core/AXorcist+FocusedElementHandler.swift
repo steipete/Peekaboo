@@ -12,15 +12,16 @@ import Foundation
 @MainActor
 public extension AXorcist {
     func handleGetFocusedElement(command: GetFocusedElementCommand) -> AXResponse {
+        let appInfo = String(describing: command.appIdentifier)
+        let attributes = command.attributesToReturn?.joined(separator: ", ") ?? "default"
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .info,
-            message: "HandleGetFocused: App '\(String(describing: command.appIdentifier))', " +
-                "Attributes: \(command.attributesToReturn?.joined(separator: ", ") ?? "default")"
+            message: "HandleGetFocused: App '\(appInfo)', Attributes: \(attributes)"
         ))
 
         guard let appElement = getApplicationElement(for: command.appIdentifier ?? "focused") else {
-            let errorMessage =
-                "HandleGetFocused: Could not get application element for '\(String(describing: command.appIdentifier))'."
+            let target = String(describing: command.appIdentifier)
+            let errorMessage = "HandleGetFocused: Could not get application element for '\(target)'."
             GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: errorMessage))
             return .errorResponse(message: errorMessage, code: .elementNotFound)
         }
@@ -30,9 +31,9 @@ public extension AXorcist {
         ))
 
         guard let focusedElement = appElement.focusedUIElement() else {
-            let errorMessage = "HandleGetFocused: No focused element found for application " +
-                "'\(String(describing: command.appIdentifier))' " +
-                "(\(appElement.briefDescription(option: ValueFormatOption.smart))])."
+            let target = String(describing: command.appIdentifier)
+            let errorMessage = "HandleGetFocused: No focused element found for application '\(target)' " +
+                "(\(appElement.briefDescription(option: ValueFormatOption.smart)))."
             GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: errorMessage))
             // This is not necessarily an error, could be a valid state.
             // Return success with an empty payload or specific indication.
