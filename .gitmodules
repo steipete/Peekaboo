@@ -1,0 +1,9 @@
+[submodule "Core/AXorcist"]
+	path = Core/AXorcist
+	url = https://github.com/steipete/AXorcist.git
+[submodule "Tachikoma"]
+	path = Tachikoma
+	url = https://github.com/steipete/Tachikoma.git
+[submodule "Commander"]
+	path = Commander
+	url = https://github.com/steipete/Commander.git
