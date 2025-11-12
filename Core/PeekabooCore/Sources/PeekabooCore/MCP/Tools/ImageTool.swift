@@ -11,7 +11,12 @@ public struct ImageTool: MCPTool {
 
     public var description: String {
         """
-        Captures macOS screen content and optionally analyzes it. Targets can be entire screen, specific app window, or all windows of an app (via app_target). Supports foreground/background capture. Output via file path or inline Base64 data (format: "data"). If a question is provided, image is analyzed by an AI model (auto-selected from config). Window shadows/frames excluded. Uses GPT-5 by default when OpenAI is configured.
+        Captures macOS screen content and optionally analyzes it.
+        Targets include entire displays, the frontmost window, app-specific windows (`app_target`),
+        or the menu bar. Supports background or foreground capture workflows.
+        Output can be written to disk or returned inline as Base64 data (`format: "data"`).
+        When `question` is supplied the capture is analyzed with the configured AI model (GPT-5 by
+        default). Window shadows/frames are excluded automatically.
         """
     }
 
@@ -39,117 +44,148 @@ public struct ImageTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        let input = try arguments.decode(ImageInput.self)
+        let request = try ImageRequest(arguments: arguments)
+        let captureResults = try await self.captureImages(for: request)
+        let savedFiles = try self.saveCaptures(captureResults, request: request)
 
-        // Parse capture target
-        let target = try parseCaptureTarget(input.appTarget)
-
-        // Determine capture focus
-        let captureFocus = input.captureFocus ?? .auto
-
-        // Normalize format
-        let format = normalizeFormat(input.format ?? .png)
-
-        // Perform capture based on target
-        let captureResults: [CaptureResult]
-
-        switch target {
-        case let .screen(index):
-            let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
-            captureResults = [result]
-
-        case .frontmost:
-            let result = try await PeekabooServices.shared.screenCapture.captureFrontmost()
-            captureResults = [result]
-
-        case let .application(identifier, windowIndex):
-            // Handle focus if needed
-            if captureFocus == .foreground {
-                try await PeekabooServices.shared.applications.activateApplication(identifier: identifier)
-                try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
-            }
-
-            if let windowIndex {
-                let result = try await PeekabooServices.shared.screenCapture.captureWindow(
-                    appIdentifier: identifier,
-                    windowIndex: windowIndex)
-                captureResults = [result]
-            } else {
-                // Capture all windows
-                let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(identifier))
-                var results: [CaptureResult] = []
-
-                for (index, _) in windows.enumerated() {
-                    let result = try await PeekabooServices.shared.screenCapture.captureWindow(
-                        appIdentifier: identifier,
-                        windowIndex: index)
-                    results.append(result)
-                }
-
-                captureResults = results
-            }
-
-        case .menubar:
-            // Special case for menu bar
-            let result = try await captureMenuBar()
-            captureResults = [result]
+        if let question = request.question {
+            return try await self.performAnalysis(
+                question: question,
+                savedFiles: savedFiles,
+                captureResults: captureResults
+            )
         }
 
-        // Save images if path provided
+        return self.buildCaptureResponse(
+            format: request.format,
+            savedFiles: savedFiles,
+            captureResults: captureResults
+        )
+    }
+}
+
+// MARK: - Supporting Types
+
+private extension ImageTool {
+    func captureImages(for request: ImageRequest) async throws -> [CaptureResult] {
+        switch request.target {
+        case let .screen(index):
+            let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
+            return [result]
+        case .frontmost:
+            let result = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            return [result]
+        case let .application(identifier, windowIndex):
+            return try await self.captureApplication(
+                identifier: identifier,
+                windowIndex: windowIndex,
+                focus: request.captureFocus
+            )
+        case .menubar:
+            return [try await captureMenuBar()]
+        }
+    }
+
+    func captureApplication(
+        identifier: String,
+        windowIndex: Int?,
+        focus: CaptureFocus
+    ) async throws -> [CaptureResult] {
+        if focus == .foreground {
+            try await PeekabooServices.shared.applications.activateApplication(identifier: identifier)
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        if let windowIndex {
+            let result = try await PeekabooServices.shared.screenCapture.captureWindow(
+                appIdentifier: identifier,
+                windowIndex: windowIndex
+            )
+            return [result]
+        }
+
+        let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(identifier))
+        var results: [CaptureResult] = []
+
+        for index in windows.indices {
+            let result = try await PeekabooServices.shared.screenCapture.captureWindow(
+                appIdentifier: identifier,
+                windowIndex: index
+            )
+            results.append(result)
+        }
+
+        return results
+    }
+
+    func saveCaptures(_ results: [CaptureResult], request: ImageRequest) throws -> [MCPSavedFile] {
+        guard let basePath = request.path else { return [] }
         var savedFiles: [MCPSavedFile] = []
 
-        if let basePath = input.path {
-            for (index, result) in captureResults.enumerated() {
-                let fileName: String = if captureResults.count > 1 {
-                    generateFileName(
-                        basePath: basePath,
-                        index: index,
-                        metadata: result.metadata,
-                        format: format)
-                } else {
-                    ensureExtension(basePath, format: format)
-                }
+        for (index, result) in results.enumerated() {
+            let fileName = results.count > 1 ?
+                generateFileName(
+                    basePath: basePath,
+                    index: index,
+                    metadata: result.metadata,
+                    format: request.format
+                ) :
+                ensureExtension(basePath, format: request.format)
 
-                try saveImageData(result.imageData, to: fileName, format: format)
-
-                savedFiles.append(MCPSavedFile(
+            try saveImageData(result.imageData, to: fileName, format: request.format)
+            savedFiles.append(
+                MCPSavedFile(
                     path: fileName,
                     item_label: describeCapture(result.metadata),
                     window_title: result.metadata.windowInfo?.title,
                     window_id: nil,
                     window_index: index,
-                    mime_type: format.mimeType))
-            }
+                    mime_type: request.format.mimeType
+                )
+            )
         }
 
-        // Handle analysis if requested
-        if let question = input.question {
-            let imagePath = try savedFiles.first?.path ?? saveTemporaryImage(captureResults.first!.imageData)
-            let analysis = try await analyzeImage(at: imagePath, question: question)
+        return savedFiles
+    }
 
-            return ToolResponse.text(
-                analysis.text,
-                meta: .object([
-                    "model": .string(analysis.modelUsed),
-                    "savedFiles": .array(savedFiles.map { Value.string($0.path) }),
-                ]))
+    func performAnalysis(
+        question: String,
+        savedFiles: [MCPSavedFile],
+        captureResults: [CaptureResult]
+    ) async throws -> ToolResponse {
+        guard let firstCapture = captureResults.first else {
+            throw OperationError.captureFailed(reason: "No capture data available")
         }
 
-        // Return capture result
-        if format == .data, captureResults.count == 1 {
-            return ToolResponse.image(
-                data: captureResults.first!.imageData,
-                mimeType: "image/png",
-                meta: .object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })]))
+        let imagePath = try savedFiles.first?.path ?? saveTemporaryImage(firstCapture.imageData)
+        let analysis = try await analyzeImage(at: imagePath, question: question)
+
+        return ToolResponse.text(
+            analysis.text,
+            meta: .object([
+                "model": .string(analysis.modelUsed),
+                "savedFiles": .array(savedFiles.map { Value.string($0.path) }),
+            ])
+        )
+    }
+
+    func buildCaptureResponse(
+        format: ImageFormatOption,
+        savedFiles: [MCPSavedFile],
+        captureResults: [CaptureResult]
+    ) -> ToolResponse {
+        let meta = Value.object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })])
+
+        if format == .data, let capture = captureResults.first, captureResults.count == 1 {
+            return ToolResponse.image(data: capture.imageData, mimeType: "image/png", meta: meta)
         }
 
         return ToolResponse.text(
             buildImageSummary(savedFiles: savedFiles, captureCount: captureResults.count),
-            meta: .object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })]))
+            meta: meta
+        )
     }
 }
-
-// MARK: - Supporting Types
 
 // Extended format that includes "data" option
 enum ImageFormatOption: String, Codable {
@@ -169,6 +205,23 @@ struct ImageInput: Codable {
         case path, format, question
         case appTarget = "app_target"
         case captureFocus = "capture_focus"
+    }
+}
+
+private struct ImageRequest {
+    let path: String?
+    let format: ImageFormatOption
+    let target: ImageCaptureTarget
+    let question: String?
+    let captureFocus: CaptureFocus
+
+    init(arguments: ToolArguments) throws {
+        let input = try arguments.decode(ImageInput.self)
+        self.path = input.path
+        self.question = input.question
+        self.captureFocus = input.captureFocus ?? .auto
+        self.format = input.format ?? .png
+        self.target = try parseCaptureTarget(input.appTarget)
     }
 }
 
@@ -217,13 +270,6 @@ private func parseCaptureTarget(_ appTarget: String?) throws -> ImageCaptureTarg
 
         return .application(identifier: appIdentifier, windowIndex: windowIndex)
     }
-}
-
-private func normalizeFormat(_ format: ImageFormatOption?) -> ImageFormatOption {
-    guard let format else { return .png }
-
-    // The jpeg alias is handled by ImageFormat's Codable implementation
-    return format
 }
 
 private func captureMenuBar() async throws -> CaptureResult {

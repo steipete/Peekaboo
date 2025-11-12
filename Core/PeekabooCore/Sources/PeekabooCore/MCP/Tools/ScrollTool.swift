@@ -4,6 +4,8 @@ import os.log
 import PeekabooFoundation
 import TachikomaMCP
 
+private typealias ToolScrollDirection = PeekabooFoundation.ScrollDirection
+
 /// MCP tool for scrolling UI elements or at current mouse position
 public struct ScrollTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "ScrollTool")
@@ -15,7 +17,8 @@ public struct ScrollTool: MCPTool {
         Scrolls the mouse wheel in any direction.
         Can target specific elements or scroll at current mouse position.
         Supports smooth scrolling and configurable speed.
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5
+        and anthropic/claude-sonnet-4.5
         """
     }
 
@@ -46,79 +49,11 @@ public struct ScrollTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        // Parse required parameters
-        guard let directionString = arguments.getString("direction") else {
-            return ToolResponse.error("Direction is required")
-        }
-
-        guard let direction = parseScrollDirection(directionString) else {
-            return ToolResponse.error("Invalid direction. Must be one of: up, down, left, right")
-        }
-
-        // Parse optional parameters
-        let elementId = arguments.getString("on")
-        let sessionId = arguments.getString("session")
-        let amount = Int(arguments.getNumber("amount") ?? 3)
-        let delay = Int(arguments.getNumber("delay") ?? 2)
-        let smooth = arguments.getBool("smooth") ?? false
-
-        // Validate amount
-        guard amount > 0 else {
-            return ToolResponse.error("Amount must be greater than 0")
-        }
-
-        guard amount <= 50 else {
-            return ToolResponse.error("Amount must be 50 or less to prevent excessive scrolling")
-        }
-
         do {
-            let startTime = Date()
-            let automation = PeekabooServices.shared.automation
-
-            // Determine target for scrolling
-            var targetDescription = "at current mouse position"
-
-            if let elementId {
-                // Find element from session and scroll on it
-                guard let session = await getSession(id: sessionId) else {
-                    return ToolResponse.error("No active session. Run 'see' command first to capture UI state.")
-                }
-
-                guard let element = await session.getElement(byId: elementId) else {
-                    return ToolResponse
-                        .error(
-                            "Element '\(elementId)' not found in current session. Run 'see' command to update UI state.")
-                }
-
-                targetDescription = "on \(element.role): \(element.title ?? element.label ?? "untitled")"
-
-                // Use element ID as target for the scroll service
-                try await automation.scroll(
-                    direction: direction,
-                    amount: amount,
-                    target: elementId,
-                    smooth: smooth,
-                    delay: delay,
-                    sessionId: sessionId)
-            } else {
-                // Scroll at current mouse position
-                try await automation.scroll(
-                    direction: direction,
-                    amount: amount,
-                    target: nil,
-                    smooth: smooth,
-                    delay: delay,
-                    sessionId: sessionId)
-            }
-
-            let executionTime = Date().timeIntervalSince(startTime)
-
-            // Build response message
-            let scrollDescription = smooth ? "smooth scroll" : "scroll"
-            let message = "\(AgentDisplayTokens.Status.success) Performed \(scrollDescription) \(direction) (\(amount) ticks) \(targetDescription) in \(String(format: "%.2f", executionTime))s"
-
-            return ToolResponse.text(message)
-
+            let request = try self.parseRequest(arguments: arguments)
+            return try await self.performScroll(request: request)
+        } catch let error as ScrollToolValidationError {
+            return ToolResponse.error(error.message)
         } catch {
             self.logger.error("Scroll execution failed: \(error)")
             return ToolResponse.error("Failed to perform scroll: \(error.localizedDescription)")
@@ -127,18 +62,18 @@ public struct ScrollTool: MCPTool {
 
     // MARK: - Private Helpers
 
-    private func parseScrollDirection(_ direction: String) -> ScrollDirection? {
+    private func parseScrollDirection(_ direction: String) -> ToolScrollDirection? {
         switch direction.lowercased() {
         case "up":
-            .up
+            return .up
         case "down":
-            .down
+            return .down
         case "left":
-            .left
+            return .left
         case "right":
-            .right
+            return .right
         default:
-            nil
+            return nil
         }
     }
 
@@ -151,4 +86,93 @@ public struct ScrollTool: MCPTool {
         // For now, return nil - in a real implementation we'd track the most recent session
         return nil
     }
+
+    private func parseRequest(arguments: ToolArguments) throws -> ScrollToolRequest {
+        guard let directionString = arguments.getString("direction") else {
+            throw ScrollToolValidationError("Direction is required")
+        }
+
+        guard let direction = self.parseScrollDirection(directionString) else {
+            throw ScrollToolValidationError("Invalid direction. Must be one of: up, down, left, right")
+        }
+
+        let amount = Int(arguments.getNumber("amount") ?? 3)
+        guard amount > 0 else {
+            throw ScrollToolValidationError("Amount must be greater than 0")
+        }
+        guard amount <= 50 else {
+            throw ScrollToolValidationError("Amount must be 50 or less to prevent excessive scrolling")
+        }
+
+        return ScrollToolRequest(
+            direction: direction,
+            elementId: arguments.getString("on"),
+            sessionId: arguments.getString("session"),
+            amount: amount,
+            delay: Int(arguments.getNumber("delay") ?? 2),
+            smooth: arguments.getBool("smooth") ?? false)
+    }
+
+    @MainActor
+    private func performScroll(request: ScrollToolRequest) async throws -> ToolResponse {
+        let automation = PeekabooServices.shared.automation
+        let startTime = Date()
+
+        let target = try await self.resolveTargetDescription(request: request)
+        let serviceRequest = ScrollRequest(
+            direction: request.direction,
+            amount: request.amount,
+            target: target.elementId,
+            smooth: request.smooth,
+            delay: request.delay,
+            sessionId: request.sessionId)
+        try await automation.scroll(serviceRequest)
+
+        let executionTime = Date().timeIntervalSince(startTime)
+        let scrollDescription = request.smooth ? "smooth scroll" : "scroll"
+        let duration = String(format: "%.2f", executionTime) + "s"
+        let message = "\(AgentDisplayTokens.Status.success) Performed \(scrollDescription) \(request.direction) " +
+            "(\(request.amount) ticks) \(target.description) in \(duration)"
+
+        return ToolResponse.text(message)
+    }
+
+    @MainActor
+    private func resolveTargetDescription(request: ScrollToolRequest) async throws -> ScrollTargetDescription {
+        guard let elementId = request.elementId else {
+            return ScrollTargetDescription(elementId: nil, description: "at current mouse position")
+        }
+
+        guard let session = await self.getSession(id: request.sessionId) else {
+            throw ScrollToolValidationError("No active session. Run 'see' command first to capture UI state.")
+        }
+
+        guard let element = await session.getElement(byId: elementId) else {
+            throw ScrollToolValidationError(
+                "Element '\(elementId)' not found in current session. Run 'see' command to update UI state.")
+        }
+
+        let label = element.title ?? element.label ?? "untitled"
+        let description = "on \(element.role): \(label)"
+        return ScrollTargetDescription(elementId: elementId, description: description)
+    }
+}
+
+private struct ScrollToolRequest {
+    let direction: ToolScrollDirection
+    let elementId: String?
+    let sessionId: String?
+    let amount: Int
+    let delay: Int
+    let smooth: Bool
+}
+
+private struct ScrollTargetDescription {
+    let elementId: String?
+    let description: String
+}
+
+private struct ScrollToolValidationError: Error {
+    let message: String
+    init(_ message: String) { self.message = message }
 }

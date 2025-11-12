@@ -14,7 +14,8 @@ public struct TypeTool: MCPTool {
         Types text into UI elements or at current focus.
         Supports special keys ({return}, {tab}, etc.) and configurable typing speed.
         Can target specific elements or type at current keyboard focus.
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5
+        and anthropic/claude-sonnet-4.5
         """
     }
 
@@ -52,136 +53,11 @@ public struct TypeTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        let text = arguments.getString("text")
-        let elementId = arguments.getString("on")
-        let sessionId = arguments.getString("session")
-        let delay = Int(arguments.getNumber("delay") ?? 5)
-        let clear = arguments.getBool("clear") ?? false
-        let pressReturn = arguments.getBool("press_return") ?? false
-        let tabCount = arguments.getNumber("tab").map { Int($0) }
-        let escape = arguments.getBool("escape") ?? false
-        let delete = arguments.getBool("delete") ?? false
-
-        // Validate that something will be typed
-        guard text != nil || tabCount != nil || escape || delete || pressReturn else {
-            return ToolResponse.error("Must specify text to type or special key actions")
-        }
-
         do {
-            let startTime = Date()
-            let automation = PeekabooServices.shared.automation
-
-            // Focus on element if specified
-            if let elementId {
-                guard let session = await getSession(id: sessionId) else {
-                    return ToolResponse.error("No active session. Run 'see' command first to capture UI state.")
-                }
-
-                guard let element = await session.getElement(byId: elementId) else {
-                    return ToolResponse
-                        .error(
-                            "Element '\(elementId)' not found in current session. Run 'see' command to update UI state.")
-                }
-
-                // Click on the element to focus it
-                let clickLocation = CGPoint(
-                    x: element.frame.midX,
-                    y: element.frame.midY)
-                // Use proper click API with target and sessionId
-                try await automation.click(
-                    target: .coordinates(clickLocation),
-                    clickType: .single,
-                    sessionId: sessionId)
-
-                // Small delay after clicking
-                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-            }
-
-            // Clear field if requested
-            if clear {
-                // Select all (Cmd+A)
-                try await automation.hotkey(keys: "cmd,a", holdDuration: 50)
-                try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
-
-                // Delete
-                try await automation.hotkey(keys: "delete", holdDuration: 50)
-                try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
-            }
-
-            // Type the text
-            if let text {
-                try await automation.type(
-                    text: text,
-                    target: nil,
-                    clearExisting: false,
-                    typingDelay: Int(delay),
-                    sessionId: sessionId)
-            }
-
-            // Press tab if requested
-            if let tabCount {
-                for _ in 0..<tabCount {
-                    try await automation.hotkey(keys: "tab", holdDuration: 50)
-                    if tabCount > 1 {
-                        try await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000)
-                    }
-                }
-            }
-
-            // Press escape if requested
-            if escape {
-                try await automation.hotkey(keys: "escape", holdDuration: 50)
-            }
-
-            // Press delete if requested
-            if delete {
-                try await automation.hotkey(keys: "delete", holdDuration: 50)
-            }
-
-            // Press return if requested
-            if pressReturn {
-                try await automation.hotkey(keys: "return", holdDuration: 50)
-            }
-
-            let executionTime = Date().timeIntervalSince(startTime)
-
-            // Build response message
-            var actions: [String] = []
-
-            if clear {
-                actions.append("Cleared field")
-            }
-
-            if let text {
-                let displayText = text.count > 50 ? String(text.prefix(50)) + "..." : text
-                actions.append("Typed: \"\(displayText)\"")
-            }
-
-            if let tabCount {
-                actions.append("Pressed Tab \(tabCount) time\(tabCount != 1 ? "s" : "")")
-            }
-
-            if escape {
-                actions.append("Pressed Escape")
-            }
-
-            if delete {
-                actions.append("Pressed Delete")
-            }
-
-            if pressReturn {
-                actions.append("Pressed Return")
-            }
-
-            let message = "\(AgentDisplayTokens.Status.success) " + actions.joined(separator: ", ") + " in \(String(format: "%.2f", executionTime))s"
-
-            return ToolResponse(
-                content: [.text(message)],
-                meta: .object([
-                    "execution_time": .double(executionTime),
-                    "characters_typed": text != nil ? .double(Double(text!.count)) : .null,
-                ]))
-
+            let request = try self.parseRequest(arguments: arguments)
+            return try await self.performType(request: request)
+        } catch let error as TypeToolValidationError {
+            return ToolResponse.error(error.message)
         } catch {
             self.logger.error("Type execution failed: \(error)")
             return ToolResponse.error("Failed to type text: \(error.localizedDescription)")
@@ -199,4 +75,165 @@ public struct TypeTool: MCPTool {
         // For now, return nil - in a real implementation we'd track the most recent session
         return nil
     }
+
+    private func parseRequest(arguments: ToolArguments) throws -> TypeRequest {
+        let request = TypeRequest(
+            text: arguments.getString("text"),
+            elementId: arguments.getString("on"),
+            sessionId: arguments.getString("session"),
+            delay: Int(arguments.getNumber("delay") ?? 5),
+            clearField: arguments.getBool("clear") ?? false,
+            pressReturn: arguments.getBool("press_return") ?? false,
+            tabCount: arguments.getNumber("tab").map { Int($0) },
+            pressEscape: arguments.getBool("escape") ?? false,
+            pressDelete: arguments.getBool("delete") ?? false)
+
+        guard request.hasActions else {
+            throw TypeToolValidationError("Must specify text to type or special key actions")
+        }
+
+        return request
+    }
+
+    @MainActor
+    private func performType(request: TypeRequest) async throws -> ToolResponse {
+        let automation = PeekabooServices.shared.automation
+        let startTime = Date()
+
+        try await self.focusIfNeeded(request: request, automation: automation)
+        try await self.clearIfNeeded(request: request, automation: automation)
+        try await self.typeTextIfNeeded(request: request, automation: automation)
+        try await self.pressSpecialKeysIfNeeded(request: request, automation: automation)
+
+        let executionTime = Date().timeIntervalSince(startTime)
+        let message = self.buildSummary(request: request, executionTime: executionTime)
+
+        return ToolResponse(
+            content: [.text(message)],
+            meta: .object([
+                "execution_time": .double(executionTime),
+                "characters_typed": request.text != nil ? .double(Double(request.text!.count)) : .null,
+            ]))
+    }
+
+    @MainActor
+    private func focusIfNeeded(request: TypeRequest, automation: any UIAutomationServiceProtocol) async throws {
+        guard let elementId = request.elementId else { return }
+        guard let session = await self.getSession(id: request.sessionId) else {
+            throw TypeToolValidationError("No active session. Run 'see' command first to capture UI state.")
+        }
+
+        guard let element = await session.getElement(byId: elementId) else {
+            throw TypeToolValidationError(
+                "Element '\(elementId)' not found in current session. Run 'see' command to update UI state.")
+        }
+
+        let clickLocation = CGPoint(x: element.frame.midX, y: element.frame.midY)
+        try await automation.click(
+            target: .coordinates(clickLocation),
+            clickType: .single,
+            sessionId: request.sessionId)
+        try await Task.sleep(nanoseconds: 100_000_000)
+    }
+
+    @MainActor
+    private func clearIfNeeded(request: TypeRequest, automation: any UIAutomationServiceProtocol) async throws {
+        guard request.clearField else { return }
+        try await automation.hotkey(keys: "cmd,a", holdDuration: 50)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        try await automation.hotkey(keys: "delete", holdDuration: 50)
+        try await Task.sleep(nanoseconds: 50_000_000)
+    }
+
+    @MainActor
+    private func typeTextIfNeeded(request: TypeRequest, automation: any UIAutomationServiceProtocol) async throws {
+        guard let text = request.text else { return }
+        try await automation.type(
+            text: text,
+            target: nil,
+            clearExisting: false,
+            typingDelay: request.delay,
+            sessionId: request.sessionId)
+    }
+
+    @MainActor
+    private func pressSpecialKeysIfNeeded(
+        request: TypeRequest,
+        automation: any UIAutomationServiceProtocol) async throws
+    {
+        if let tabCount = request.tabCount {
+            for index in 0..<tabCount {
+                try await automation.hotkey(keys: "tab", holdDuration: 50)
+                if index < tabCount - 1 {
+                    try await Task.sleep(nanoseconds: UInt64(request.delay) * 1_000_000)
+                }
+            }
+        }
+
+        if request.pressEscape {
+            try await automation.hotkey(keys: "escape", holdDuration: 50)
+        }
+
+        if request.pressDelete {
+            try await automation.hotkey(keys: "delete", holdDuration: 50)
+        }
+
+        if request.pressReturn {
+            try await automation.hotkey(keys: "return", holdDuration: 50)
+        }
+    }
+
+    private func buildSummary(request: TypeRequest, executionTime: TimeInterval) -> String {
+        var actions: [String] = []
+
+        if request.clearField {
+            actions.append("Cleared field")
+        }
+
+        if let text = request.text {
+            let displayText = text.count > 50 ? String(text.prefix(50)) + "..." : text
+            actions.append("Typed: \"\(displayText)\"")
+        }
+
+        if let tabCount = request.tabCount {
+            actions.append("Pressed Tab \(tabCount) time\(tabCount == 1 ? "" : "s")")
+        }
+
+        if request.pressEscape {
+            actions.append("Pressed Escape")
+        }
+
+        if request.pressDelete {
+            actions.append("Pressed Delete")
+        }
+
+        if request.pressReturn {
+            actions.append("Pressed Return")
+        }
+
+        let duration = String(format: "%.2f", executionTime) + "s"
+        let summary = actions.isEmpty ? "Performed no actions" : actions.joined(separator: ", ")
+        return "\(AgentDisplayTokens.Status.success) \(summary) in \(duration)"
+    }
+}
+
+private struct TypeRequest {
+    let text: String?
+    let elementId: String?
+    let sessionId: String?
+    let delay: Int
+    let clearField: Bool
+    let pressReturn: Bool
+    let tabCount: Int?
+    let pressEscape: Bool
+    let pressDelete: Bool
+
+    var hasActions: Bool {
+        self.text != nil || self.tabCount != nil || self.pressEscape || self.pressDelete || self.pressReturn
+    }
+}
+
+private struct TypeToolValidationError: Error {
+    let message: String
+    init(_ message: String) { self.message = message }
 }

@@ -71,55 +71,11 @@ public struct SwipeTool: MCPTool {
         }
 
         do {
-            let startTime = Date()
-
-            // Parse 'from' coordinates
-            let fromPoint = try parseCoordinates(fromString, parameterName: "from")
-
-            // Parse 'to' coordinates
-            let toPoint = try parseCoordinates(toString, parameterName: "to")
-
-            // Validate that from and to are different
-            guard fromPoint != toPoint else {
-                return ToolResponse.error("'from' and 'to' coordinates must be different")
-            }
-
-            // Perform the drag/swipe gesture
-            let automation = PeekabooServices.shared.automation
-            try await automation.drag(
-                from: fromPoint,
-                to: toPoint,
+            return try await self.performSwipe(
+                fromString: fromString,
+                toString: toString,
                 duration: duration,
-                steps: steps,
-                modifiers: nil)
-
-            let executionTime = Date().timeIntervalSince(startTime)
-
-            // Calculate distance for the response
-            let deltaX = toPoint.x - fromPoint.x
-            let deltaY = toPoint.y - fromPoint.y
-            let distance = sqrt(deltaX * deltaX + deltaY * deltaY)
-
-            // Build response message
-            let message = "\(AgentDisplayTokens.Status.success) Performed swipe from (\(Int(fromPoint.x)), \(Int(fromPoint.y))) to (\(Int(toPoint.x)), \(Int(toPoint.y))) over \(duration)ms with \(steps) steps (distance: \(String(format: "%.1f", distance))px) in \(String(format: "%.2f", executionTime))s"
-
-            return ToolResponse(
-                content: [.text(message)],
-                meta: .object([
-                    "from": .object([
-                        "x": .double(Double(fromPoint.x)),
-                        "y": .double(Double(fromPoint.y)),
-                    ]),
-                    "to": .object([
-                        "x": .double(Double(toPoint.x)),
-                        "y": .double(Double(toPoint.y)),
-                    ]),
-                    "duration": .double(Double(duration)),
-                    "steps": .double(Double(steps)),
-                    "distance": .double(distance),
-                    "execution_time": .double(executionTime),
-                ]))
-
+                steps: steps)
         } catch let coordinateError as CoordinateParseError {
             return ToolResponse.error(coordinateError.message)
         } catch {
@@ -132,6 +88,71 @@ public struct SwipeTool: MCPTool {
 
     private struct CoordinateParseError: Swift.Error {
         let message: String
+    }
+
+    private func performSwipe(
+        fromString: String,
+        toString: String,
+        duration: Int,
+        steps: Int) async throws -> ToolResponse
+    {
+        let startTime = Date()
+        let fromPoint = try self.parseCoordinates(fromString, parameterName: "from")
+        let toPoint = try self.parseCoordinates(toString, parameterName: "to")
+
+        guard fromPoint != toPoint else {
+            throw CoordinateParseError(message: "'from' and 'to' coordinates must be different")
+        }
+
+        let automation = PeekabooServices.shared.automation
+        try await automation.drag(from: fromPoint, to: toPoint, duration: duration, steps: steps, modifiers: nil)
+
+        let executionTime = Date().timeIntervalSince(startTime)
+        let response = self.buildResponse(
+            from: fromPoint,
+            to: toPoint,
+            duration: duration,
+            steps: steps,
+            executionTime: executionTime)
+        return response
+    }
+
+    private func buildResponse(
+        from fromPoint: CGPoint,
+        to toPoint: CGPoint,
+        duration: Int,
+        steps: Int,
+        executionTime: TimeInterval) -> ToolResponse
+    {
+        let deltaX = toPoint.x - fromPoint.x
+        let deltaY = toPoint.y - fromPoint.y
+        let distance = sqrt(deltaX * deltaX + deltaY * deltaY)
+        let distanceText = String(format: "%.1f", distance)
+        let durationText = String(format: "%.2f", executionTime)
+
+        let message = """
+        \(AgentDisplayTokens.Status.success) Performed swipe from
+        (\(Int(fromPoint.x)), \(Int(fromPoint.y))) to
+        (\(Int(toPoint.x)), \(Int(toPoint.y))) over \(duration)ms
+        with \(steps) steps (distance: \(distanceText)px) in \(durationText)s
+        """
+
+        return ToolResponse(
+            content: [.text(message)],
+            meta: .object([
+                "from": .object([
+                    "x": .double(Double(fromPoint.x)),
+                    "y": .double(Double(fromPoint.y)),
+                ]),
+                "to": .object([
+                    "x": .double(Double(toPoint.x)),
+                    "y": .double(Double(toPoint.y)),
+                ]),
+                "duration": .double(Double(duration)),
+                "steps": .double(Double(steps)),
+                "distance": .double(distance),
+                "execution_time": .double(executionTime),
+            ]))
     }
 
     private func parseCoordinates(_ coordString: String, parameterName: String) throws -> CGPoint {
