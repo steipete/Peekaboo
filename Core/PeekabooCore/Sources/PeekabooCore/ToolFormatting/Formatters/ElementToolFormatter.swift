@@ -10,26 +10,26 @@ public class ElementToolFormatter: BaseToolFormatter {
     override public func formatCompactSummary(arguments: [String: Any]) -> String {
         switch toolType {
         case .findElement:
-            return compactSummaryForFind(arguments: arguments)
+            self.compactSummaryForFind(arguments: arguments)
         case .listElements:
-            return compactSummaryForList(arguments: arguments)
+            self.compactSummaryForList(arguments: arguments)
         case .focused:
-            return compactSummaryForFocused(arguments: arguments)
+            self.compactSummaryForFocused(arguments: arguments)
         default:
-            return super.formatCompactSummary(arguments: arguments)
+            super.formatCompactSummary(arguments: arguments)
         }
     }
 
     override public func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .findElement:
-            return self.formatFindElementResult(result)
+            self.formatFindElementResult(result)
         case .listElements:
-            return self.formatListElementsResult(result)
+            self.formatListElementsResult(result)
         case .focused:
-            return self.formatFocusedElementResult(result)
+            self.formatFocusedElementResult(result)
         default:
-            return super.formatResultSummary(result: result)
+            super.formatResultSummary(result: result)
         }
     }
 
@@ -38,19 +38,19 @@ public class ElementToolFormatter: BaseToolFormatter {
     private func formatFindElementResult(_ result: [String: Any]) -> String {
         var parts: [String] = []
         if ToolResultExtractor.bool("found", from: result) ?? false {
-            parts.append(contentsOf: foundElementSummary(result))
+            parts.append(contentsOf: self.foundElementSummary(result))
         } else {
-            parts.append(contentsOf: missingElementSummary(result))
+            parts.append(contentsOf: self.missingElementSummary(result))
         }
         return parts.joined(separator: " ")
     }
 
     private func foundElementSummary(_ result: [String: Any]) -> [String] {
-        var sections: [String] = ["→ Found"]
-        sections.append(contentsOf: elementPrimaryText(result))
-        sections.append(contentsOf: elementTypeSection(result))
-        sections.append(contentsOf: elementPositionSection(result))
-        sections.append(contentsOf: elementStateSection(result))
+        var sections = ["→ Found"]
+        sections.append(contentsOf: self.elementPrimaryText(result))
+        sections.append(contentsOf: self.elementTypeSection(result))
+        sections.append(contentsOf: self.elementPositionSection(result))
+        sections.append(contentsOf: self.elementStateSection(result))
         if let depth = ToolResultExtractor.int("depth", from: result) {
             sections.append("depth: \(depth)")
         }
@@ -67,7 +67,7 @@ public class ElementToolFormatter: BaseToolFormatter {
     }
 
     private func missingElementSummary(_ result: [String: Any]) -> [String] {
-        var sections: [String] = ["→ Not found"]
+        var sections = ["→ Not found"]
         if let query = ToolResultExtractor.string("query", from: result)
             ?? ToolResultExtractor.string("text", from: result)
         {
@@ -151,7 +151,7 @@ public class ElementToolFormatter: BaseToolFormatter {
 
     private func formatListElementsResult(_ result: [String: Any]) -> String {
         var sections: [String] = []
-        sections.append(listElementCountSection(result))
+        sections.append(self.listElementCountSection(result))
         if let breakdown = listTypeBreakdownSection(result) { sections.append(breakdown) }
         if let states = listStateBreakdownSection(result) { sections.append(states) }
         if let interactions = listInteractionSection(result) { sections.append(interactions) }
@@ -161,7 +161,6 @@ public class ElementToolFormatter: BaseToolFormatter {
         if let perf = listPerformanceSection(result) { sections.append(perf) }
         return sections.isEmpty ? "→ listed" : sections.joined(separator: " ")
     }
-
 
     // MARK: - Compact summary helpers
 
@@ -224,6 +223,7 @@ public class ElementToolFormatter: BaseToolFormatter {
             return super.formatStarting(arguments: arguments)
         }
     }
+
     // MARK: - Focused Element Formatting
 
     private func formatFocusedElementResult(_ result: [String: Any]) -> String {
@@ -238,11 +238,11 @@ public class ElementToolFormatter: BaseToolFormatter {
         }
 
         let element = ToolResultExtractor.dictionary("element", from: result) ?? result
-        var sections: [String] = ["→ Focused"]
-        sections.append(contentsOf: elementPrimaryText(element))
-        sections.append(contentsOf: elementTypeSection(element))
-        sections.append(contentsOf: elementPositionSection(element))
-        sections.append(contentsOf: elementStateSection(element))
+        var sections = ["→ Focused"]
+        sections.append(contentsOf: self.elementPrimaryText(element))
+        sections.append(contentsOf: self.elementTypeSection(element))
+        sections.append(contentsOf: self.elementPositionSection(element))
+        sections.append(contentsOf: self.elementStateSection(element))
 
         if let app = self.focusedAppName(from: result, element: element) {
             sections.append("in \(app)")
@@ -278,7 +278,7 @@ public class ElementToolFormatter: BaseToolFormatter {
     private func listElementCountSection(_ result: [String: Any]) -> String {
         let explicitCount = ToolResultExtractor.int("count", from: result)
         let derivedCount: Int? = if explicitCount == nil,
-                                   let elements: [[String: Any]] = ToolResultExtractor.array("elements", from: result)
+                                    let elements: [[String: Any]] = ToolResultExtractor.array("elements", from: result)
         {
             elements.count
         } else {
@@ -317,7 +317,7 @@ public class ElementToolFormatter: BaseToolFormatter {
         var states: [String] = []
         if enabledCount > 0 { states.append("\(enabledCount) enabled") }
         if disabledCount > 0 { states.append("\(disabledCount) disabled") }
-        if visibleCount > 0 && visibleCount != total { states.append("\(visibleCount) visible") }
+        if visibleCount > 0, visibleCount != total { states.append("\(visibleCount) visible") }
         if focusedCount > 0 { states.append("\(focusedCount) focused") }
         guard !states.isEmpty else { return nil }
         return "(\(states.joined(separator: ", ")))"

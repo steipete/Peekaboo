@@ -19,7 +19,7 @@ extension PeekabooAgentService {
         case verboseOnly
     }
 
-    internal func prepareSession(
+    func prepareSession(
         task: String,
         model: LanguageModel,
         label: String,
@@ -56,7 +56,7 @@ extension PeekabooAgentService {
         return SessionContext(id: sessionId, messages: messages, startTime: startTime)
     }
 
-    internal func saveCompletedSession(
+    func saveCompletedSession(
         context: SessionContext,
         model: LanguageModel,
         finalMessages: [ModelMessage],
@@ -77,7 +77,7 @@ extension PeekabooAgentService {
         try self.sessionManager.saveSession(updatedSession)
     }
 
-    internal func makeExecutionMetadata(
+    func makeExecutionMetadata(
         model: LanguageModel,
         executionTime: TimeInterval,
         toolCallCount: Int,
@@ -92,7 +92,7 @@ extension PeekabooAgentService {
             endTime: endTime)
     }
 
-    internal func logModelUsage(_ model: LanguageModel, prefix: String) {
+    func logModelUsage(_ model: LanguageModel, prefix: String) {
         guard self.isVerbose else { return }
         self.logger.debug("\(prefix)Using model: \(model)")
         self.logger.debug("\(prefix)Model description: \(model.description)")

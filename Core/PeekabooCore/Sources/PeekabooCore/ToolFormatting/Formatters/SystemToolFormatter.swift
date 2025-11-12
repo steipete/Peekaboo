@@ -390,8 +390,8 @@ public class SystemToolFormatter: BaseToolFormatter {
         let error = ToolResultExtractor.string("errorMessage", from: result) ?? "Command failed for an unknown reason."
         let exitCode = ToolResultExtractor.int("exitCode", from: result) ?? -1
 
-        var parts: [String] = [
-            "\(AgentDisplayTokens.Status.failure) Shell command failed (exit code \(exitCode))"
+        var parts = [
+            "\(AgentDisplayTokens.Status.failure) Shell command failed (exit code \(exitCode))",
         ]
 
         if let command = ToolResultExtractor.string("command", from: result) {
@@ -411,5 +411,4 @@ public class SystemToolFormatter: BaseToolFormatter {
 
         return parts.joined(separator: "\n")
     }
-
 }

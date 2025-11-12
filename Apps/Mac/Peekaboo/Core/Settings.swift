@@ -383,7 +383,8 @@ extension PeekabooSettings {
         self.selectedProvider = self.userDefaults.string(forKey: self.namespaced("selectedProvider")) ?? "anthropic"
         self.openAIAPIKey = self.userDefaults.string(forKey: self.namespaced("openAIAPIKey")) ?? ""
         self.anthropicAPIKey = self.userDefaults.string(forKey: self.namespaced("anthropicAPIKey")) ?? ""
-        self.ollamaBaseURL = self.userDefaults.string(forKey: self.namespaced("ollamaBaseURL")) ?? "http://localhost:11434"
+        self.ollamaBaseURL = self.userDefaults.string(forKey: self.namespaced(
+            "ollamaBaseURL")) ?? "http://localhost:11434"
 
         let defaultModel = self.defaultModel(for: self.selectedProvider)
         self.selectedModel = self.userDefaults.string(forKey: self.namespaced("selectedModel")) ?? defaultModel
@@ -391,7 +392,7 @@ extension PeekabooSettings {
         self.customVisionModel = self.userDefaults.string(forKey: self.namespaced("customVisionModel")) ?? "gpt-5"
 
         self.temperature = self.nonZeroDouble(forKey: "temperature", fallback: 0.7)
-        self.maxTokens = self.nonZeroInt(forKey: "maxTokens", fallback: 16_384)
+        self.maxTokens = self.nonZeroInt(forKey: "maxTokens", fallback: 16384)
     }
 
     private func loadUIPreferences() {
@@ -421,8 +422,7 @@ extension PeekabooSettings {
 
         self.visualizerAnimationSpeed = self.nonZeroDouble(
             forKey: "visualizerAnimationSpeed",
-            fallback: PeekabooSettings.defaultVisualizerAnimationSpeed
-        )
+            fallback: PeekabooSettings.defaultVisualizerAnimationSpeed)
         self.visualizerEffectIntensity = self.nonZeroDouble(forKey: "visualizerEffectIntensity", fallback: 1.0)
         self.visualizerSoundEnabled = self.valueOrDefault(key: "visualizerSoundEnabled", defaultValue: true)
 
@@ -760,11 +760,11 @@ extension PeekabooSettings {
     private func defaultModel(for provider: String) -> String {
         switch provider {
         case "openai":
-            return "gpt-5-mini"
+            "gpt-5-mini"
         case "anthropic":
-            return "claude-sonnet-4-5-20250929"
+            "claude-sonnet-4-5-20250929"
         default:
-            return "llava:latest"
+            "llava:latest"
         }
     }
 

@@ -1875,4 +1875,12 @@ Created by [Peter Steinberger](https://steipete.com) - [@steipete](https://githu
 - The MCP team for the Model Context Protocol
 - The Swift and TypeScript communities
 
+## 📊 Coverage
+
+| Date       | Command                                                            | Scope                                  | Line Coverage |
+| ---------- | ------------------------------------------------------------------ | -------------------------------------- | ------------- |
+| 2025-11-12 | `./runner swift test --package-path Apps/CLI --enable-code-coverage` | Entire workspace (Peekaboo + subrepos) | 8.38 %        |
+
+> Coverage generated via `xcrun llvm-cov report Apps/CLI/.build/debug/peekabooPackageTests.xctest/Contents/MacOS/peekabooPackageTests -instr-profile Apps/CLI/.build/debug/codecov/default.profdata`. Because the CLI target depends on AXorcist, Commander, and Tachikoma, the figure reflects the aggregate workspace.
+
 ---# CI Test

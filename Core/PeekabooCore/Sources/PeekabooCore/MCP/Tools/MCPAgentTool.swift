@@ -230,7 +230,6 @@ public struct MCPAgentTool: MCPTool {
 
         return .object(metadata)
     }
-
 }
 
 // MARK: - Supporting Types

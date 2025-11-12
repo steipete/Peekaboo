@@ -127,8 +127,8 @@ public struct DefaultElementStyleProvider: ElementStyleProvider {
 // Temporary typealias for legacy references during migration.
 typealias ElementStyleProviderImpl = DefaultElementStyleProvider
 
-private extension DefaultElementStyleProvider {
-    func normalStyle(baseColor: CGColor) -> ElementStyle {
+extension DefaultElementStyleProvider {
+    private func normalStyle(baseColor: CGColor) -> ElementStyle {
         ElementStyle(
             primaryColor: baseColor,
             fillOpacity: self.baseOpacity,
@@ -139,7 +139,7 @@ private extension DefaultElementStyleProvider {
             labelStyle: .default)
     }
 
-    func hoverStyle(baseColor: CGColor) -> ElementStyle {
+    private func hoverStyle(baseColor: CGColor) -> ElementStyle {
         ElementStyle(
             primaryColor: baseColor,
             fillOpacity: self.hoverOpacity,
@@ -159,7 +159,7 @@ private extension DefaultElementStyleProvider {
                 padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
     }
 
-    func selectedStyle(baseColor: CGColor) -> ElementStyle {
+    private func selectedStyle(baseColor: CGColor) -> ElementStyle {
         ElementStyle(
             primaryColor: baseColor,
             fillOpacity: 0.4,
@@ -179,7 +179,7 @@ private extension DefaultElementStyleProvider {
                 padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
     }
 
-    func disabledStyle() -> ElementStyle {
+    private func disabledStyle() -> ElementStyle {
         ElementStyle(
             primaryColor: PeekabooColorPalette.control,
             fillOpacity: 0.1,

@@ -271,8 +271,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false // Menu bar app stays running
     }
 
-    func applicationWillTerminate(_: Notification) {
-    }
+    func applicationWillTerminate(_: Notification) {}
 
     // MARK: - Window Management
 

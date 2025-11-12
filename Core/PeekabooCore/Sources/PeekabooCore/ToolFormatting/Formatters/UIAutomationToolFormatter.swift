@@ -10,22 +10,22 @@ public class UIAutomationToolFormatter: BaseToolFormatter {
     override public func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .click:
-            return self.formatClickResult(result)
+            self.formatClickResult(result)
         case .type:
-            return self.formatTypeResult(result)
+            self.formatTypeResult(result)
         case .hotkey:
-            return self.formatHotkeyResult(result)
+            self.formatHotkeyResult(result)
         case .press:
-            return self.formatPressResult(result)
+            self.formatPressResult(result)
         case .scroll:
-            return self.formatScrollResult(result)
+            self.formatScrollResult(result)
         default:
-            return super.formatResultSummary(result: result)
+            super.formatResultSummary(result: result)
         }
     }
 
     private func formatClickResult(_ result: [String: Any]) -> String {
-        var parts: [String] = ["→ Clicked"]
+        var parts = ["→ Clicked"]
 
         if let elementDescription = self.elementDescription(from: result) {
             parts.append(elementDescription)
@@ -467,7 +467,6 @@ public class UIAutomationToolFormatter: BaseToolFormatter {
         default: key
         }
     }
-
 
     // MARK: - Helpers
 

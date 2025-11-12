@@ -6,12 +6,12 @@
 // Re-export all external dependencies for easy access
 // This centralizes version management and provides a single import point
 
-@_exported import Commander
 @_exported import AsyncAlgorithms
 @_exported import AXorcist
+@_exported import Commander
 @_exported import Logging
-@_exported import SystemPackage
 @_exported import OrderedCollections
+@_exported import SystemPackage
 
 // MARK: - Dependency Version Info
 

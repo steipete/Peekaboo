@@ -36,7 +36,7 @@ final class VisualizerCoordinator {
     /// Settings reference
     private weak var settings: PeekabooSettings?
 
-private enum AnimationBaseline {
+    private enum AnimationBaseline {
         static let screenshotFlash: TimeInterval = 0.35
         static let clickRipple: TimeInterval = 0.45
         static let typingOverlay: TimeInterval = 1.2
@@ -158,11 +158,11 @@ extension VisualizerCoordinator {
     func showScrollFeedback(
         at point: CGPoint,
         direction: PeekabooFoundation.ScrollDirection,
-        amount: Int
-    ) async -> Bool {
+        amount: Int) async -> Bool
+    {
         let message = [
             "📜 Visualizer: Showing scroll feedback at \(String(describing: point))",
-            "direction: \(direction), amount: \(amount)"
+            "direction: \(direction), amount: \(amount)",
         ].joined(separator: ", ")
         self.logger.info("\(message, privacy: .public)")
 
@@ -174,7 +174,7 @@ extension VisualizerCoordinator {
     func showMouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
         let message = [
             "🐭 Visualizer: Showing mouse movement from \(String(describing: from))",
-            "to \(String(describing: to)), duration: \(duration)s"
+            "to \(String(describing: to)), duration: \(duration)s",
         ].joined(separator: " ")
         self.logger.info("\(message, privacy: .public)")
 
@@ -186,7 +186,7 @@ extension VisualizerCoordinator {
     func showSwipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
         let message = [
             "👆 Visualizer: Showing swipe gesture from \(String(describing: from))",
-            "to \(String(describing: to)), duration: \(duration)s"
+            "to \(String(describing: to)), duration: \(duration)s",
         ].joined(separator: " ")
         self.logger.info("\(message, privacy: .public)")
 
@@ -238,11 +238,11 @@ extension VisualizerCoordinator {
     func showDialogInteraction(
         element: DialogElementType,
         elementRect: CGRect,
-        action: DialogActionType
-    ) async -> Bool {
+        action: DialogActionType) async -> Bool
+    {
         let message = [
             "Showing dialog interaction: \(String(describing: element))",
-            "action: \(String(describing: action))"
+            "action: \(String(describing: action))",
         ].joined(separator: " ")
         self.logger.debug("\(message, privacy: .public)")
 
@@ -271,8 +271,8 @@ extension VisualizerCoordinator {
         imageData: Data,
         elements: [DetectedElement],
         windowBounds: CGRect,
-        duration: TimeInterval
-    ) async -> Bool {
+        duration: TimeInterval) async -> Bool
+    {
         self.logger.info("🎯 Visualizer: Showing annotated screenshot with \(elements.count) elements")
 
         return await self.animationQueue.enqueue(priority: .high) {
@@ -280,8 +280,7 @@ extension VisualizerCoordinator {
                 imageData: imageData,
                 elements: elements,
                 windowBounds: windowBounds,
-                duration: duration
-            )
+                duration: duration)
         }
     }
 }
@@ -289,8 +288,8 @@ extension VisualizerCoordinator {
 // MARK: - Private Display Methods
 
 @available(macOS 14.0, *)
-private extension VisualizerCoordinator {
-    func displayScreenshotFlash(in rect: CGRect, showGhost: Bool) async -> Bool {
+extension VisualizerCoordinator {
+    private func displayScreenshotFlash(in rect: CGRect, showGhost: Bool) async -> Bool {
         // Check if enabled
         guard self.settings?.visualizerEnabled ?? true,
               self.settings?.screenshotFlashEnabled ?? true
@@ -303,7 +302,7 @@ private extension VisualizerCoordinator {
         let message = [
             "📸 Visualizer: Creating screenshot flash view",
             "showGhost: \(showGhost)",
-            "intensity: \(intensity)"
+            "intensity: \(intensity)",
         ].joined(separator: ", ")
         self.logger.info("\(message, privacy: .public)")
 

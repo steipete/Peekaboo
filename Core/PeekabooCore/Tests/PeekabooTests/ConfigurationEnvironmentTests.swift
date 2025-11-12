@@ -12,7 +12,7 @@ struct ConfigurationManagerEnvironmentTests {
         setenv(key, "peekaboo-success", 1)
         defer { unsetenv(key) }
 
-        let expanded = manager.expandEnvironmentVariables(in: "${\(key)}")
+        let expanded = self.manager.expandEnvironmentVariables(in: "${\(key)}")
         #expect(expanded == "peekaboo-success")
     }
 
@@ -22,7 +22,7 @@ struct ConfigurationManagerEnvironmentTests {
         setenv(key, "env-choice", 1)
         defer { unsetenv(key) }
 
-        let resolved: String = manager.getValue(
+        let resolved: String = self.manager.getValue(
             cliValue: nil,
             envVar: key,
             configValue: nil,

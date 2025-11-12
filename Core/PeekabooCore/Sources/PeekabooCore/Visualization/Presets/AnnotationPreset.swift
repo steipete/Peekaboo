@@ -31,11 +31,11 @@ public struct AnnotationVisualizationPreset: ElementStyleProvider {
 
         switch state {
         case .normal, .hovered:
-            return normalStyle(color: baseColor)
+            return self.normalStyle(color: baseColor)
         case .selected:
-            return selectedStyle(color: baseColor)
+            return self.selectedStyle(color: baseColor)
         case .disabled:
-            return disabledStyle()
+            return self.disabledStyle()
         }
     }
 

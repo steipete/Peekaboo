@@ -144,6 +144,7 @@ public struct InspectorView: View {
         let suffix = count == 1 ? "" : "s"
         return "Monitoring \(count) app\(suffix)"
     }
+
     private func startPermissionMonitoring() {
         // Initial check with prompt
         self.checkPermissions(prompt: self.configuration.showPermissionAlert)

@@ -582,16 +582,15 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
 
-
-        nonisolated private static func firstRenderableWindowIndex(in windows: [SCWindow]) -> Int? {
+        private nonisolated static func firstRenderableWindowIndex(in windows: [SCWindow]) -> Int? {
             for (index, window) in windows.enumerated() {
-                guard Self.isRenderable(window) else { continue }
+                guard self.isRenderable(window) else { continue }
                 return index
             }
             return nil
         }
 
-        nonisolated private static func isRenderable(_ window: SCWindow) -> Bool {
+        private nonisolated static func isRenderable(_ window: SCWindow) -> Bool {
             if window.frame.width < 10 || window.frame.height < 10 {
                 return false
             }
@@ -698,7 +697,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return image
         }
 
-        nonisolated private static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
+        private nonisolated static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
             let lastIndex = max(totalWindows - 1, 0)
             return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
         }
@@ -987,22 +986,22 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return image
         }
 
-        nonisolated private static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
+        private nonisolated static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
             let lastIndex = max(totalWindows - 1, 0)
             return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
         }
 
-        nonisolated private static func firstRenderableWindowIndex(
+        private nonisolated static func firstRenderableWindowIndex(
             in windows: [[String: Any]]) -> Int?
         {
             for (index, window) in windows.enumerated() {
-                guard Self.isRenderable(window) else { continue }
+                guard self.isRenderable(window) else { continue }
                 return index
             }
             return nil
         }
 
-        nonisolated private static func isRenderable(_ window: [String: Any]) -> Bool {
+        private nonisolated static func isRenderable(_ window: [String: Any]) -> Bool {
             guard
                 let boundsDict = window[kCGWindowBounds as String] as? [String: Any],
                 let width = boundsDict["Width"] as? CGFloat,
@@ -1046,7 +1045,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             configuration.capturesAudio = false
             return configuration
         }
-
     }
 }
 

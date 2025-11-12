@@ -50,35 +50,35 @@ public struct VisualizerEvent: Codable, Sendable {
     public var kind: VisualizerEventKind {
         switch self.payload {
         case .screenshotFlash:
-            return .screenshotFlash
+            .screenshotFlash
         case .clickFeedback:
-            return .clickFeedback
+            .clickFeedback
         case .typingFeedback:
-            return .typingFeedback
+            .typingFeedback
         case .scrollFeedback:
-            return .scrollFeedback
+            .scrollFeedback
         case .mouseMovement:
-            return .mouseMovement
+            .mouseMovement
         case .swipeGesture:
-            return .swipeGesture
+            .swipeGesture
         case .hotkeyDisplay:
-            return .hotkeyDisplay
+            .hotkeyDisplay
         case .appLaunch:
-            return .appLaunch
+            .appLaunch
         case .appQuit:
-            return .appQuit
+            .appQuit
         case .windowOperation:
-            return .windowOperation
+            .windowOperation
         case .menuNavigation:
-            return .menuNavigation
+            .menuNavigation
         case .dialogInteraction:
-            return .dialogInteraction
+            .dialogInteraction
         case .spaceSwitch:
-            return .spaceSwitch
+            .spaceSwitch
         case .elementDetection:
-            return .elementDetection
+            .elementDetection
         case .annotatedScreenshot:
-            return .annotatedScreenshot
+            .annotatedScreenshot
         }
     }
 
@@ -119,6 +119,7 @@ public enum VisualizerEventStore {
         encoder.dateEncodingStrategy = .iso8601
         return encoder
     }()
+
     private static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -127,7 +128,7 @@ public enum VisualizerEventStore {
 
     @discardableResult
     public static func prepareStorage() throws -> URL {
-        try eventsDirectory()
+        try self.eventsDirectory()
     }
 
     @discardableResult
@@ -191,7 +192,7 @@ public enum VisualizerEventStore {
     // MARK: - Helpers
 
     private static func eventsDirectory() throws -> URL {
-        let directory = baseDirectory().appendingPathComponent(eventsFolderName, isDirectory: true)
+        let directory = self.baseDirectory().appendingPathComponent(self.eventsFolderName, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         self.logger.debug("Visualizer events directory: \(directory.path)")
         #if DEBUG
@@ -202,7 +203,7 @@ public enum VisualizerEventStore {
     }
 
     private static func eventURL(for id: UUID) throws -> URL {
-        try eventsDirectory().appendingPathComponent("\(id.uuidString).json", isDirectory: false)
+        try self.eventsDirectory().appendingPathComponent("\(id.uuidString).json", isDirectory: false)
     }
 
     private static func baseDirectory() -> URL {
@@ -210,7 +211,7 @@ public enum VisualizerEventStore {
 
         if let override = environment[storageEnvKey], !override.isEmpty {
             let url = URL(fileURLWithPath: override, isDirectory: true)
-            self.logger.debug("Visualizer storage override via \(storageEnvKey): \(url.path, privacy: .public)")
+            self.logger.debug("Visualizer storage override via \(self.storageEnvKey): \(url.path, privacy: .public)")
             #if DEBUG
             let proc = ProcessInfo.processInfo.processName
             visualizerDebugLog("[VisualizerEventStore][\(proc)] storage override: \(url.path)")
@@ -240,7 +241,7 @@ public enum VisualizerEventStore {
 
         let url = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support", isDirectory: true)
-            .appendingPathComponent(storageRootName, isDirectory: true)
+            .appendingPathComponent(self.storageRootName, isDirectory: true)
         // Default to ~/Library/... so both CLI and app can share without extra env setup
         self.logger.debug("Visualizer storage default path: \(url.path)")
         #if DEBUG
@@ -251,6 +252,6 @@ public enum VisualizerEventStore {
     }
 }
 
-public extension Notification.Name {
-    static let visualizerEventDispatched = VisualizerEventStore.notificationName
+extension Notification.Name {
+    public static let visualizerEventDispatched = VisualizerEventStore.notificationName
 }

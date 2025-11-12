@@ -224,10 +224,10 @@ final class SmartLabelPlacer {
                 }
             }
 
-        // Check overlap with existing labels
-        for (existingLabel, _) in existingLabels where candidate.rect.intersects(existingLabel) {
-            return false
-        }
+            // Check overlap with existing labels
+            for (existingLabel, _) in existingLabels where candidate.rect.intersects(existingLabel) {
+                return false
+            }
 
             return true
         }

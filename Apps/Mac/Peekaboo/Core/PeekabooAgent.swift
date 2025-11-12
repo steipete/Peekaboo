@@ -249,8 +249,7 @@ final class PeekabooAgent {
 // MARK: - Private Methods
 
 @MainActor
-private extension PeekabooAgent {
-
+extension PeekabooAgent {
     @MainActor
     private func taskDescription(for content: ModelMessage.ContentPart) -> String {
         switch content {
@@ -336,13 +335,13 @@ private extension PeekabooAgent {
     {
         switch content {
         case let .text(text):
-            return try await agent.executeTask(
+            try await agent.executeTask(
                 text,
                 sessionId: self.currentSessionId,
                 model: nil,
                 eventDelegate: eventDelegate)
         case .image, .toolCall, .toolResult:
-            return try await agent.executeTask(
+            try await agent.executeTask(
                 description,
                 sessionId: self.currentSessionId,
                 model: nil,
@@ -391,8 +390,7 @@ private extension PeekabooAgent {
         let assistantMessage = ConversationMessage(
             role: .assistant,
             content: result.content,
-            toolCalls: []
-        )
+            toolCalls: [])
         self.sessionStore.addMessage(assistantMessage, to: session)
     }
 
@@ -467,7 +465,8 @@ private extension PeekabooAgent {
         self.lastError = message
 
         if let currentTool,
-           let index = toolExecutionHistory.lastIndex(where: { $0.toolName == currentTool && $0.status == .running }) {
+           let index = toolExecutionHistory.lastIndex(where: { $0.toolName == currentTool && $0.status == .running })
+        {
             self.toolExecutionHistory[index].status = .failed
             self.toolExecutionHistory[index].result = message
         }
@@ -483,7 +482,8 @@ private extension PeekabooAgent {
 
         if let lastMessage = sessionStore.sessions[sessionIndex].messages.last,
            lastMessage.role == .assistant,
-           lastMessage.timestamp.timeIntervalSinceNow > -5.0 {
+           lastMessage.timestamp.timeIntervalSinceNow > -5.0
+        {
             let accumulatedContent = lastMessage.content + delta
             let updatedMessage = ConversationMessage(
                 id: lastMessage.id,
@@ -566,7 +566,8 @@ private extension PeekabooAgent {
         }
 
         if let toolCallIndex = sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls
-            .firstIndex(where: { $0.name == name }) {
+            .firstIndex(where: { $0.name == name })
+        {
             self.sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex]
                 .result = result
             Task { @MainActor in
@@ -591,7 +592,8 @@ private extension PeekabooAgent {
               let toolMessageIndex = sessionStore.sessions[sessionIndex].messages.lastIndex(where: { message in
                   message.role == .system &&
                       message.content.contains("\(AgentDisplayTokens.Status.running) \(name):")
-              }) else {
+              })
+        else {
             return
         }
 
@@ -607,8 +609,6 @@ private extension PeekabooAgent {
 
         self.sessionStore.sessions[sessionIndex].messages[toolMessageIndex] = updatedMessage
     }
-
-
 }
 
 // MARK: - Tool Display Helpers

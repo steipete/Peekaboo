@@ -448,21 +448,21 @@ extension PeekabooAgentService {
 
     private func itemsDefinition(
         for parameterType: AgentToolParameterProperty.ParameterType,
-        itemsValue: Value?
-    ) -> AgentToolParameterItems? {
+        itemsValue: Value?) -> AgentToolParameterItems?
+    {
         guard parameterType == .array else { return nil }
 
         guard case let .object(itemsDict) = itemsValue else {
             return AgentToolParameterItems(type: AgentToolParameterProperty.ParameterType.string.rawValue)
         }
 
-        let itemType: AgentToolParameterProperty.ParameterType
-        if case let .string(typeString) = itemsDict["type"],
-           let resolved = AgentToolParameterProperty.ParameterType(rawValue: typeString)
+        let itemType: AgentToolParameterProperty.ParameterType = if case let .string(typeString) = itemsDict["type"],
+                                                                    let resolved = AgentToolParameterProperty
+                                                                        .ParameterType(rawValue: typeString)
         {
-            itemType = resolved
+            resolved
         } else {
-            itemType = .string
+            .string
         }
 
         return AgentToolParameterItems(

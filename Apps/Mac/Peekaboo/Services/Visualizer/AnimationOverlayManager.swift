@@ -56,15 +56,15 @@ final class AnimationOverlayManager {
             if fadeOut {
                 // Fade out animation
                 await withCheckedContinuation { continuation in
-                    NSAnimationContext.runAnimationGroup({ context in
+                    NSAnimationContext.runAnimationGroup { context in
                         context.duration = 0.3
                         window.animator().alphaValue = 0
-                    }, completionHandler: {
+                    } completionHandler: {
                         Task { @MainActor in
                             self.removeWindow(window)
                             continuation.resume()
                         }
-                    })
+                    }
                 }
             } else {
                 // Remove after duration

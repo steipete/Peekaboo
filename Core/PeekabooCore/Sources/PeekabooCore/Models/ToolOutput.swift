@@ -163,7 +163,7 @@ public struct UIAnalysisData: Codable, Sendable {
         self.sessionId = detectionResult.sessionId
         self.screenshot = ScreenshotInfo(
             path: detectionResult.screenshotPath,
-            size: CGSize(width: 0, height: 0) // Size not available from ElementDetectionResult
+            size: CGSize(width: 0, height: 0), // Size not available from ElementDetectionResult
         )
 
         // Convert all elements to DetectedUIElement

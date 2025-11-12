@@ -32,7 +32,7 @@ private enum MCPAutoConnectPolicy {
     }
 
     static func setOverride(_ value: Bool?) {
-        overrideLock.withLock { $0 = value }
+        self.overrideLock.withLock { $0 = value }
     }
 }
 
@@ -240,7 +240,6 @@ public enum MCPClientError: LocalizedError {
             "Invalid response from MCP server"
         }
     }
-
 }
 
 /// Manager for MCP client connections

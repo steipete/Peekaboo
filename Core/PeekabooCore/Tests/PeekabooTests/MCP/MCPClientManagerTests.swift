@@ -118,7 +118,7 @@ struct MCPClientManagerTests {
             command: "nonexistent-command-12345",
             args: ["test"],
             enabled: true,
-            timeout: 1.0 // Short timeout for faster test
+            timeout: 1.0, // Short timeout for faster test
         )
 
         try await manager.addServer(name: serverName, config: config)
@@ -147,7 +147,7 @@ struct MCPClientManagerTests {
         let config = Configuration.MCPClientConfig(
             command: "echo",
             args: ["test"],
-            enabled: false // Disabled server
+            enabled: false, // Disabled server
         )
 
         try await manager.addServer(name: serverName, config: config)

@@ -134,7 +134,6 @@ public struct SeeTool: MCPTool {
     public let name = "see"
 
     public var description: String {
-
         """
         Captures a screenshot of the active UI and generates an element map.
 
@@ -161,19 +160,16 @@ public struct SeeTool: MCPTool {
                 "path": SchemaBuilder.string(
                     description: """
                     Optional. Path to save the screenshot. If omitted, a temporary file is used.
-                    """
-                ),
+                    """),
                 "session": SchemaBuilder.string(
                     description: """
                     Optional. Session ID for UI automation tracking. A new session is created when absent.
-                    """
-                ),
+                    """),
                 "annotate": SchemaBuilder.boolean(
                     description: """
                     Optional. Generate an annotated screenshot with interaction markers and IDs.
                     """,
-                    default: false
-                ),
+                    default: false),
             ],
             required: [])
     }
@@ -192,8 +188,7 @@ public struct SeeTool: MCPTool {
             let annotatedPath = try self.generateAnnotationIfNeeded(
                 annotate: request.annotate,
                 screenshotPath: screenshotPath,
-                elements: elements
-            )
+                elements: elements)
 
             return try await self.buildToolResponse(
                 session: session,
@@ -201,10 +196,8 @@ public struct SeeTool: MCPTool {
                 output: ScreenshotOutput(
                     screenshotPath: screenshotPath,
                     annotatedPath: annotatedPath,
-                    annotate: request.annotate
-                ),
-                target: target
-            )
+                    annotate: request.annotate),
+                target: target)
         } catch {
             self.logger.error("See tool execution failed: \(error.localizedDescription)")
             return ToolResponse.error("Failed to capture UI state: \(error.localizedDescription)")
@@ -271,8 +264,8 @@ public struct SeeTool: MCPTool {
     private func generateAnnotationIfNeeded(
         annotate: Bool,
         screenshotPath: String,
-        elements: [UIElement]
-    ) throws -> String? {
+        elements: [UIElement]) throws -> String?
+    {
         guard annotate else { return nil }
         return try self.generateAnnotatedScreenshot(originalPath: screenshotPath, elements: elements)
     }
@@ -327,8 +320,7 @@ public struct SeeTool: MCPTool {
         let detectionResult = try await PeekabooServices.shared.automation.detectElements(
             in: imageData,
             sessionId: session.id,
-            windowContext: windowContext
-        )
+            windowContext: windowContext)
 
         let detectedElements = await MainActor.run { detectionResult.elements.all }
         let elements = self.convertElements(detectedElements)
@@ -348,8 +340,7 @@ public struct SeeTool: MCPTool {
                 return WindowContext(
                     applicationName: appIdentifier,
                     windowTitle: firstWindow.title,
-                    windowBounds: firstWindow.bounds
-                )
+                    windowBounds: firstWindow.bounds)
             }
             return WindowContext(applicationName: appIdentifier, windowTitle: nil, windowBounds: nil)
         default:
@@ -374,8 +365,7 @@ public struct SeeTool: MCPTool {
                 isActionable: element.isEnabled,
                 parentId: nil,
                 children: [],
-                keyboardShortcut: nil
-            )
+                keyboardShortcut: nil)
         }
     }
 
@@ -383,8 +373,8 @@ public struct SeeTool: MCPTool {
         session: UISession,
         elements: [UIElement],
         output: ScreenshotOutput,
-        target: CaptureTarget
-    ) async throws -> ToolResponse {
+        target: CaptureTarget) async throws -> ToolResponse
+    {
         let finalScreenshot = output.annotatedPath ?? output.screenshotPath
         let summary = await buildSummary(
             session: session,
@@ -427,7 +417,7 @@ public struct SeeTool: MCPTool {
         screenshotPath: String,
         target: CaptureTarget) async -> String
     {
-        return await SeeSummaryBuilder(
+        await SeeSummaryBuilder(
             session: session,
             elements: elements,
             screenshotPath: screenshotPath)
@@ -472,7 +462,7 @@ private struct SeeSummaryBuilder {
 
     func build() async -> String {
         var lines = self.headerLines()
-        lines.append(contentsOf: await self.metadataLines())
+        await lines.append(contentsOf: self.metadataLines())
         lines.append("Screenshot: \(self.screenshotPath)")
         lines.append("Elements found: \(self.elements.count)")
         lines.append("")

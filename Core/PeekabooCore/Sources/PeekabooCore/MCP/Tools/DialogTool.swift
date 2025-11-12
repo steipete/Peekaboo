@@ -216,8 +216,7 @@ public struct DialogTool: MCPTool {
         let result = try await service.handleFileDialog(
             path: selection.directory,
             filename: selection.filename,
-            actionButton: "Save"
-        )
+            actionButton: "Save")
         let executionTime = Date().timeIntervalSince(startTime)
 
         if result.success {
@@ -288,7 +287,7 @@ private enum DialogAction: String, CaseIterable {
     var description: String { self.rawValue }
 
     static var supportedList: String {
-        Self.allCases.map(\.rawValue).joined(separator: ", ")
+        allCases.map(\.rawValue).joined(separator: ", ")
     }
 }
 
@@ -328,7 +327,7 @@ private struct DialogInputs {
     }
 
     func requireFileSelection() throws -> DialogFileSelection {
-        let target = path ?? select
+        let target = self.path ?? self.select
         guard let target else {
             throw DialogInputError.missing("File action requires either 'path' or 'select' parameter")
         }
@@ -340,11 +339,11 @@ private struct DialogInputs {
     }
 
     func makeInputRequest(with text: String) -> DialogInputRequest {
-        DialogInputRequest(text: text, field: field, clear: clear, window: window)
+        DialogInputRequest(text: text, field: self.field, clear: self.clear, window: self.window)
     }
 
     func makeDismissRequest() -> DialogDismissRequest {
-        DialogDismissRequest(force: force, window: window)
+        DialogDismissRequest(force: self.force, window: self.window)
     }
 }
 
@@ -354,7 +353,7 @@ private enum DialogInputError: Error {
     var message: String {
         switch self {
         case let .missing(details):
-            return details
+            details
         }
     }
 }
@@ -385,17 +384,17 @@ private struct DialogListFormatter {
 
     func response() -> ToolResponse {
         ToolResponse(
-            content: [.text(renderContent())],
-            meta: .object(metaDictionary()))
+            content: [.text(self.renderContent())],
+            meta: .object(self.metaDictionary()))
     }
 
     private func renderContent() -> String {
         var sections: [String] = []
-        sections.append(dialogSection())
-        if !elements.buttons.isEmpty { sections.append(buttonSection()) }
-        if !elements.textFields.isEmpty { sections.append(textFieldSection()) }
-        if !elements.staticTexts.isEmpty { sections.append(staticTextSection()) }
-        if !elements.otherElements.isEmpty { sections.append(otherElementsSection()) }
+        sections.append(self.dialogSection())
+        if !self.elements.buttons.isEmpty { sections.append(self.buttonSection()) }
+        if !self.elements.textFields.isEmpty { sections.append(self.textFieldSection()) }
+        if !self.elements.staticTexts.isEmpty { sections.append(self.staticTextSection()) }
+        if !self.elements.otherElements.isEmpty { sections.append(self.otherElementsSection()) }
         return sections.joined(separator: "\n")
     }
 
@@ -403,14 +402,14 @@ private struct DialogListFormatter {
         var lines: [String] = []
         lines.append(
             "\(AgentDisplayTokens.Status.success) Dialog Elements Found in " +
-                "\(DialogTool.formattedDuration(executionTime))s:\n")
-        lines.append("[menu] **Dialog**: \(elements.dialogInfo.title)")
-        lines.append("   Role: \(elements.dialogInfo.role)")
+                "\(DialogTool.formattedDuration(self.executionTime))s:\n")
+        lines.append("[menu] **Dialog**: \(self.elements.dialogInfo.title)")
+        lines.append("   Role: \(self.elements.dialogInfo.role)")
         if let subrole = elements.dialogInfo.subrole {
             lines.append("   Subrole: \(subrole)")
         }
-        lines.append("   File Dialog: \(elements.dialogInfo.isFileDialog ? "Yes" : "No")")
-        let bounds = elements.dialogInfo.bounds
+        lines.append("   File Dialog: \(self.elements.dialogInfo.isFileDialog ? "Yes" : "No")")
+        let bounds = self.elements.dialogInfo.bounds
         lines.append(
             "   Bounds: \(Int(bounds.origin.x)), \(Int(bounds.origin.y)), " +
                 "\(Int(bounds.size.width)) × \(Int(bounds.size.height))\n")
@@ -419,7 +418,7 @@ private struct DialogListFormatter {
 
     private func buttonSection() -> String {
         var lines = ["[tap] **Buttons** (\(elements.buttons.count)):"]
-        for button in elements.buttons {
+        for button in self.elements.buttons {
             let status = button.isEnabled ? "enabled" : "disabled"
             let defaultMark = button.isDefault ? " (default)" : ""
             lines.append("   • \(button.title) (\(status))\(defaultMark)")
@@ -429,7 +428,7 @@ private struct DialogListFormatter {
 
     private func textFieldSection() -> String {
         var lines = ["📝 **Text Fields** (\(elements.textFields.count)):"]
-        for textField in elements.textFields {
+        for textField in self.elements.textFields {
             let title = textField.title ?? "Field \(textField.index)"
             let value = textField.value ?? ""
             let placeholder = textField.placeholder.map { " (placeholder: \($0))" } ?? ""
@@ -441,13 +440,13 @@ private struct DialogListFormatter {
 
     private func staticTextSection() -> String {
         var lines = ["📄 **Static Text** (\(elements.staticTexts.count)):"]
-        elements.staticTexts.forEach { lines.append("   • \($0)") }
+        self.elements.staticTexts.forEach { lines.append("   • \($0)") }
         return lines.joined(separator: "\n") + "\n"
     }
 
     private func otherElementsSection() -> String {
         var lines = ["**Other Elements** (\(elements.otherElements.count)):"]
-        for element in elements.otherElements {
+        for element in self.elements.otherElements {
             let title = element.title ?? "Untitled"
             let value = element.value.map { " = '\($0)'" } ?? ""
             lines.append("   • \(element.role): \(title)\(value)")
@@ -457,14 +456,14 @@ private struct DialogListFormatter {
 
     private func metaDictionary() -> [String: Value] {
         [
-            "dialog_title": .string(elements.dialogInfo.title),
-            "dialog_role": .string(elements.dialogInfo.role),
-            "is_file_dialog": .bool(elements.dialogInfo.isFileDialog),
-            "button_count": .double(Double(elements.buttons.count)),
-            "text_field_count": .double(Double(elements.textFields.count)),
-            "static_text_count": .double(Double(elements.staticTexts.count)),
-            "other_element_count": .double(Double(elements.otherElements.count)),
-            "execution_time": .double(executionTime),
+            "dialog_title": .string(self.elements.dialogInfo.title),
+            "dialog_role": .string(self.elements.dialogInfo.role),
+            "is_file_dialog": .bool(self.elements.dialogInfo.isFileDialog),
+            "button_count": .double(Double(self.elements.buttons.count)),
+            "text_field_count": .double(Double(self.elements.textFields.count)),
+            "static_text_count": .double(Double(self.elements.staticTexts.count)),
+            "other_element_count": .double(Double(self.elements.otherElements.count)),
+            "execution_time": .double(self.executionTime),
         ]
     }
 }

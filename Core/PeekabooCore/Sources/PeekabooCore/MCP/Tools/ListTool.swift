@@ -216,9 +216,9 @@ private enum ListInputError: Error {
     var message: String {
         switch self {
         case .missingApp:
-            return "For 'application_windows', the 'app' parameter is required."
+            "For 'application_windows', the 'app' parameter is required."
         case let .invalidDetail(value):
-            return "Unknown value in 'include_window_details': \(value)."
+            "Unknown value in 'include_window_details': \(value)."
         }
     }
 }
@@ -263,16 +263,16 @@ private struct WindowListFormatter {
     let details: Set<WindowDetail>
 
     func response() -> ToolResponse {
-        var lines = headerLines()
+        var lines = self.headerLines()
         lines.append("")
-        lines.append(contentsOf: windowLines())
+        lines.append(contentsOf: self.windowLines())
         return ToolResponse.text(lines.joined(separator: "\n"))
     }
 
     private func headerLines() -> [String] {
         var lines: [String] = []
         let countLine =
-            "\(AgentDisplayTokens.Status.success) Found \(windows.count) window\(windows.count == 1 ? "" : "s")"
+            "\(AgentDisplayTokens.Status.success) Found \(self.windows.count) window\(self.windows.count == 1 ? "" : "s")"
         if let info = appInfo {
             var line = countLine + " for \(info.name)"
             if let bundleID = info.bundleIdentifier, !bundleID.isEmpty {
@@ -281,20 +281,20 @@ private struct WindowListFormatter {
             line += " - PID: \(info.processIdentifier)"
             lines.append(line)
         } else {
-            lines.append(countLine + " for \(identifier)")
+            lines.append(countLine + " for \(self.identifier)")
         }
         return lines
     }
 
     private func windowLines() -> [String] {
-        guard !windows.isEmpty else {
+        guard !self.windows.isEmpty else {
             return ["No windows found"]
         }
 
-        var lines: [String] = ["Windows:"]
-        for (index, window) in windows.enumerated() {
+        var lines = ["Windows:"]
+        for (index, window) in self.windows.enumerated() {
             var entry = "\(index + 1). \"\(window.title)\""
-            let detailText = detailDescription(for: window)
+            let detailText = self.detailDescription(for: window)
             if !detailText.isEmpty {
                 entry += " \(detailText)"
             }
@@ -305,13 +305,13 @@ private struct WindowListFormatter {
 
     private func detailDescription(for window: ServiceWindowInfo) -> String {
         var parts: [String] = []
-        if details.contains(.ids), window.windowID != 0 {
+        if self.details.contains(.ids), window.windowID != 0 {
             parts.append("ID: \(window.windowID)")
         }
-        if details.contains(.offScreen) {
+        if self.details.contains(.offScreen) {
             parts.append(window.isOffScreen ? "OFF-SCREEN" : "ON-SCREEN")
         }
-        if details.contains(.bounds) {
+        if self.details.contains(.bounds) {
             let bounds = window.bounds
             let text = "Bounds: \(Int(bounds.origin.x)), \(Int(bounds.origin.y)) " +
                 "\(Int(bounds.width))×\(Int(bounds.height))"

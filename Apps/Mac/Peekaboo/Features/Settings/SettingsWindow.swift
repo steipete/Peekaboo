@@ -2,7 +2,7 @@ import AppKit
 import Observation
 import PeekabooCore
 import SwiftUI
-            
+
 struct SettingsWindow: View {
     @Environment(PeekabooSettings.self) private var settings
     @Environment(Permissions.self) private var permissions
@@ -122,7 +122,8 @@ struct AISettingsView: View {
 
     private func provider(for modelId: String) -> String? {
         for (provider, models) in self.allModels
-        where models.contains(where: { $0.id == modelId }) {
+            where models.contains(where: { $0.id == modelId })
+        {
             return provider
         }
         return nil

@@ -10,8 +10,7 @@ public protocol DialogServiceProtocol: Sendable {
     /// - Returns: Information about the active dialog
     func findActiveDialog(
         windowTitle: String?,
-        appName: String?
-    ) async throws -> DialogInfo
+        appName: String?) async throws -> DialogInfo
 
     /// Click a button in the active dialog
     /// - Parameters:
@@ -21,8 +20,7 @@ public protocol DialogServiceProtocol: Sendable {
     func clickButton(
         buttonText: String,
         windowTitle: String?,
-        appName: String?
-    ) async throws -> DialogActionResult
+        appName: String?) async throws -> DialogActionResult
 
     /// Enter text in a dialog field
     /// - Parameters:
@@ -36,8 +34,7 @@ public protocol DialogServiceProtocol: Sendable {
         fieldIdentifier: String?,
         clearExisting: Bool,
         windowTitle: String?,
-        appName: String?
-    ) async throws -> DialogActionResult
+        appName: String?) async throws -> DialogActionResult
 
     /// Handle file save/open dialogs
     /// - Parameters:
@@ -49,8 +46,7 @@ public protocol DialogServiceProtocol: Sendable {
         path: String?,
         filename: String?,
         actionButton: String,
-        appName: String?
-    ) async throws -> DialogActionResult
+        appName: String?) async throws -> DialogActionResult
 
     /// Dismiss the active dialog
     /// - Parameters:
@@ -60,28 +56,26 @@ public protocol DialogServiceProtocol: Sendable {
     func dismissDialog(
         force: Bool,
         windowTitle: String?,
-        appName: String?
-    ) async throws -> DialogActionResult
+        appName: String?) async throws -> DialogActionResult
 
     /// List all elements in the active dialog
     /// - Parameter windowTitle: Optional specific window title to target
     /// - Returns: Information about all dialog elements
     func listDialogElements(
         windowTitle: String?,
-        appName: String?
-    ) async throws -> DialogElements
+        appName: String?) async throws -> DialogElements
 }
 
-public extension DialogServiceProtocol {
-    func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
+extension DialogServiceProtocol {
+    public func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
         try await self.findActiveDialog(windowTitle: windowTitle, appName: nil)
     }
 
-    func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
+    public func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
         try await self.clickButton(buttonText: buttonText, windowTitle: windowTitle, appName: nil)
     }
 
-    func enterText(
+    public func enterText(
         text: String,
         fieldIdentifier: String?,
         clearExisting: Bool,
@@ -95,15 +89,19 @@ public extension DialogServiceProtocol {
             appName: nil)
     }
 
-    func handleFileDialog(path: String?, filename: String?, actionButton: String) async throws -> DialogActionResult {
+    public func handleFileDialog(
+        path: String?,
+        filename: String?,
+        actionButton: String) async throws -> DialogActionResult
+    {
         try await self.handleFileDialog(path: path, filename: filename, actionButton: actionButton, appName: nil)
     }
 
-    func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
+    public func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
         try await self.dismissDialog(force: force, windowTitle: windowTitle, appName: nil)
     }
 
-    func listDialogElements(windowTitle: String?) async throws -> DialogElements {
+    public func listDialogElements(windowTitle: String?) async throws -> DialogElements {
         try await self.listDialogElements(windowTitle: windowTitle, appName: nil)
     }
 }

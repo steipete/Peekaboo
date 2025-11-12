@@ -224,8 +224,8 @@ public struct MenuBarItemInfo: Sendable, Codable {
         rawTitle: String? = nil,
         bundleIdentifier: String? = nil,
         ownerName: String? = nil,
-        frame: CGRect? = nil
-    ) {
+        frame: CGRect? = nil)
+    {
         self.title = title
         self.rawTitle = rawTitle
         self.bundleIdentifier = bundleIdentifier
@@ -263,8 +263,8 @@ public struct MenuExtraInfo: Sendable {
         bundleIdentifier: String? = nil,
         ownerName: String? = nil,
         position: CGPoint,
-        isVisible: Bool = true
-    ) {
+        isVisible: Bool = true)
+    {
         self.title = title
         self.rawTitle = rawTitle
         self.bundleIdentifier = bundleIdentifier

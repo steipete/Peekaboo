@@ -107,7 +107,7 @@ public struct AnalyzeTool: MCPTool {
             let timingMessage = [
                 "",
                 "👻 Peekaboo: Analyzed image with \(providerType ?? "unknown")/\(modelName)",
-                "in \(String(format: "%.2f", duration))s."
+                "in \(String(format: "%.2f", duration))s.",
             ].joined(separator: " ")
 
             return ToolResponse(

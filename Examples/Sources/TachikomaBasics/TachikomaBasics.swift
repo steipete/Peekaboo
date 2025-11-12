@@ -153,7 +153,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         let request = ModelRequest(
             messages: [Message.user(content: .text(message))], // Simple text message
             tools: nil, // No function calling for this basic example
-            settings: ModelSettings(maxTokens: 300) // Limit response length
+            settings: ModelSettings(maxTokens: 300), // Limit response length
         )
 
         if self.verbose {

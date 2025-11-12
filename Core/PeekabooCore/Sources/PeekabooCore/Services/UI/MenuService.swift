@@ -27,12 +27,10 @@ public final class MenuService: MenuServiceProtocol {
             self.logger.debug("Skipping visualizer connection (running inside Mac app)")
         }
     }
-
 }
 
 @MainActor
 extension MenuService {
-
     public func listMenus(for appIdentifier: String) async throws -> MenuStructure {
         let appInfo = try await applicationService.findApplication(identifier: appIdentifier)
 
@@ -77,8 +75,7 @@ extension MenuService {
         var traversalContext = MenuTraversalContext(
             menuPath: [],
             fullPath: itemPath,
-            appInfo: appInfo
-        )
+            appInfo: appInfo)
         currentElement = try await self.walkMenuPath(
             startingElement: currentElement,
             components: pathComponents,
@@ -191,8 +188,7 @@ extension MenuService {
         let windowExtras = self.getMenuBarItemsViaWindows()
         return Self.mergeMenuExtras(
             accessibilityExtras: axExtras,
-            fallbackExtras: windowExtras
-        )
+            fallbackExtras: windowExtras)
     }
 
     // MARK: - Private Helpers
@@ -237,8 +233,8 @@ extension MenuService {
     private func extractMenu(
         from menuBarItem: Element,
         parentPath: String,
-        application: ServiceApplicationInfo
-    ) -> Menu? {
+        application: ServiceApplicationInfo) -> Menu?
+    {
         guard let title = menuBarItem.title() else { return nil }
 
         let isEnabled = menuBarItem.isEnabled() ?? true
@@ -257,8 +253,7 @@ extension MenuService {
                     items = self.extractMenuItems(
                         from: menuChildren,
                         parentPath: currentPath,
-                        application: application
-                    )
+                        application: application)
                 } else {
                     self.logger.debug("Skipping menu items at depth \(currentDepth) (max: \(maxDepth))")
                 }
@@ -277,15 +272,14 @@ extension MenuService {
     private func extractMenuItems(
         from elements: [Element],
         parentPath: String,
-        application: ServiceApplicationInfo
-    ) -> [MenuItem] {
+        application: ServiceApplicationInfo) -> [MenuItem]
+    {
         // Process all items now that we have timeout protection
         elements.compactMap { element in
             self.extractMenuItem(
                 from: element,
                 parentPath: parentPath,
-                application: application
-            )
+                application: application)
         }
     }
 
@@ -293,8 +287,8 @@ extension MenuService {
     private func extractMenuItem(
         from element: Element,
         parentPath: String,
-        application: ServiceApplicationInfo
-    ) -> MenuItem? {
+        application: ServiceApplicationInfo) -> MenuItem?
+    {
         // Check if it's a separator
         if element.role() == "AXSeparatorMenuItem" {
             return MenuItem(
@@ -325,8 +319,7 @@ extension MenuService {
                 submenuItems = self.extractMenuItems(
                     from: submenuChildren,
                     parentPath: path,
-                    application: application
-                )
+                    application: application)
             }
         }
 
@@ -471,11 +464,10 @@ extension MenuService {
             let position = extra.position() ?? .zero
 
             return MenuExtraInfo(
-                title: makeMenuExtraDisplayName(
+                title: self.makeMenuExtraDisplayName(
                     rawTitle: title,
                     ownerName: nil,
-                    bundleIdentifier: nil
-                ),
+                    bundleIdentifier: nil),
                 rawTitle: title,
                 bundleIdentifier: nil,
                 ownerName: nil,
@@ -487,8 +479,8 @@ extension MenuService {
     @MainActor
     static func mergeMenuExtras(
         accessibilityExtras: [MenuExtraInfo],
-        fallbackExtras: [MenuExtraInfo]
-    ) -> [MenuExtraInfo] {
+        fallbackExtras: [MenuExtraInfo]) -> [MenuExtraInfo]
+    {
         var merged = [MenuExtraInfo]()
         var seen = Set<MenuExtraIdentifier>()
 
@@ -522,8 +514,8 @@ extension MenuService {
     private func makeMenuExtraDisplayName(
         rawTitle: String?,
         ownerName: String?,
-        bundleIdentifier: String?
-    ) -> String {
+        bundleIdentifier: String?) -> String
+    {
         let fallback = rawTitle?.isEmpty == false ? rawTitle! : (ownerName ?? "Unknown")
         let namespace = MenuExtraNamespace(bundleIdentifier: bundleIdentifier)
         switch namespace {
@@ -571,7 +563,6 @@ extension MenuService {
             }
         }
     }
-
 
     private func formatKeyboardShortcut(cmdChar: String, modifiers: Int) -> KeyboardShortcut {
         var modifierSet: Set<String> = []
@@ -680,21 +671,21 @@ extension MenuService {
             elementDescription: "Menu bar item [\(index)]: \(extra.title)",
             location: extra.position)
     }
+
     @MainActor
     private func walkMenuPath(
         startingElement: Element,
         components: [String],
-        context: inout MenuTraversalContext
-    ) async throws -> Element {
+        context: inout MenuTraversalContext) async throws -> Element
+    {
         var currentElement = startingElement
         for (index, component) in components.enumerated() {
             let isLastComponent = index == components.count - 1
-            currentElement = try await navigateMenuLevel(
+            currentElement = try await self.navigateMenuLevel(
                 currentElement: currentElement,
                 component: component,
                 isLastComponent: isLastComponent,
-                context: &context
-            )
+                context: &context)
         }
         return currentElement
     }
@@ -704,8 +695,8 @@ extension MenuService {
         currentElement: Element,
         component: String,
         isLastComponent: Bool,
-        context: inout MenuTraversalContext
-    ) async throws -> Element {
+        context: inout MenuTraversalContext) async throws -> Element
+    {
         let children = currentElement.children() ?? []
         guard let menuItem = findMenuItem(named: component, in: children) else {
             var errorContext = ErrorContext()
@@ -783,8 +774,8 @@ extension Element {
     }
 }
 
-private extension CGPoint {
-    func distance(to other: CGPoint) -> CGFloat {
+extension CGPoint {
+    fileprivate func distance(to other: CGPoint) -> CGFloat {
         hypot(x - other.x, y - other.y)
     }
 }

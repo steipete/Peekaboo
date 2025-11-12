@@ -162,7 +162,7 @@ public struct WindowTool: MCPTool {
 
         return ToolResponse(
             content: [
-                .text(successMessage(
+                .text(self.successMessage(
                     action: "Closed window '\(windowInfo.title)'",
                     duration: executionTime)),
             ],
@@ -178,7 +178,6 @@ public struct WindowTool: MCPTool {
         target: WindowTarget,
         startTime: Date) async throws -> ToolResponse
     {
-
         // Get window info before minimizing
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
@@ -191,7 +190,7 @@ public struct WindowTool: MCPTool {
 
         return ToolResponse(
             content: [
-                .text(successMessage(
+                .text(self.successMessage(
                     action: "Minimized window '\(windowInfo.title)'",
                     duration: executionTime)),
             ],
@@ -207,7 +206,6 @@ public struct WindowTool: MCPTool {
         target: WindowTarget,
         startTime: Date) async throws -> ToolResponse
     {
-
         // Get window info before maximizing
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
@@ -220,7 +218,7 @@ public struct WindowTool: MCPTool {
 
         return ToolResponse(
             content: [
-                .text(successMessage(
+                .text(self.successMessage(
                     action: "Maximized window '\(windowInfo.title)'",
                     duration: executionTime)),
             ],
@@ -237,7 +235,6 @@ public struct WindowTool: MCPTool {
         position: CGPoint,
         startTime: Date) async throws -> ToolResponse
     {
-
         // Get window info before moving
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
@@ -251,7 +248,7 @@ public struct WindowTool: MCPTool {
         let detail = "Moved window '\(windowInfo.title)' to (\(Int(position.x)), \(Int(position.y)))"
         return ToolResponse(
             content: [
-                .text(successMessage(action: detail, duration: executionTime)),
+                .text(self.successMessage(action: detail, duration: executionTime)),
             ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
@@ -268,7 +265,6 @@ public struct WindowTool: MCPTool {
         size: CGSize,
         startTime: Date) async throws -> ToolResponse
     {
-
         // Get window info before resizing
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
@@ -282,7 +278,7 @@ public struct WindowTool: MCPTool {
         let detail = "Resized window '\(windowInfo.title)' to \(Int(size.width)) × \(Int(size.height))"
         return ToolResponse(
             content: [
-                .text(successMessage(action: detail, duration: executionTime)),
+                .text(self.successMessage(action: detail, duration: executionTime)),
             ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
@@ -299,7 +295,6 @@ public struct WindowTool: MCPTool {
         bounds: CGRect,
         startTime: Date) async throws -> ToolResponse
     {
-
         // Get window info before setting bounds
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
@@ -314,7 +309,7 @@ public struct WindowTool: MCPTool {
             + "\(Int(bounds.origin.y)), \(Int(bounds.width)) × \(Int(bounds.height)))"
         return ToolResponse(
             content: [
-                .text(successMessage(action: detail, duration: executionTime)),
+                .text(self.successMessage(action: detail, duration: executionTime)),
             ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
@@ -332,7 +327,6 @@ public struct WindowTool: MCPTool {
         target: WindowTarget,
         startTime: Date) async throws -> ToolResponse
     {
-
         // Get window info before focusing
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
@@ -345,7 +339,7 @@ public struct WindowTool: MCPTool {
 
         return ToolResponse(
             content: [
-                .text(successMessage(
+                .text(self.successMessage(
                     action: "Focused window '\(windowInfo.title)'",
                     duration: executionTime)),
             ],
@@ -437,7 +431,7 @@ private enum WindowActionError: Error {
     var message: String {
         switch self {
         case let .missingParameters(details):
-            return details
+            details
         }
     }
 }

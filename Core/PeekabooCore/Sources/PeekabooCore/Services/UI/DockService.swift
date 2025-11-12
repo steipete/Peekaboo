@@ -75,7 +75,7 @@ public final class DockService: DockServiceProtocol {
         let subrole = element.subrole() ?? ""
 
         let itemType = self.determineItemType(role: role, subrole: subrole, title: title)
-        if itemType == .separator && !includeAll {
+        if itemType == .separator, !includeAll {
             return nil
         }
 
@@ -87,11 +87,10 @@ public final class DockService: DockServiceProtocol {
             isRunning = element.attribute(Attribute<Bool>("AXIsApplicationRunning"))
         }
 
-        let bundleIdentifier: String?
-        if itemType == .application, !title.isEmpty {
-            bundleIdentifier = self.findBundleIdentifier(for: title)
+        let bundleIdentifier: String? = if itemType == .application, !title.isEmpty {
+            self.findBundleIdentifier(for: title)
         } else {
-            bundleIdentifier = nil
+            nil
         }
 
         return DockItem(
@@ -327,7 +326,7 @@ public final class DockService: DockServiceProtocol {
     }
 
     public func showDock() async throws {
-        if !(await self.isDockAutoHidden()) {
+        if await !(self.isDockAutoHidden()) {
             return
         }
         try await self.setDockAutohide(false)
@@ -338,8 +337,7 @@ public final class DockService: DockServiceProtocol {
             let output = try await self.runCommand(
                 "/usr/bin/defaults",
                 arguments: ["read", "com.apple.dock", "autohide"],
-                captureOutput: true
-            )
+                captureOutput: true)
             let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             return trimmed == "1" || trimmed == "true"
         } catch {
@@ -464,16 +462,15 @@ public final class DockService: DockServiceProtocol {
         let boolFlag = enabled ? "true" : "false"
         _ = try await self.runCommand(
             "/usr/bin/defaults",
-            arguments: ["write", "com.apple.dock", "autohide", "-bool", boolFlag]
-        )
+            arguments: ["write", "com.apple.dock", "autohide", "-bool", boolFlag])
         _ = try await self.runCommand("/usr/bin/killall", arguments: ["Dock"])
     }
 
     private func runCommand(
         _ launchPath: String,
         arguments: [String],
-        captureOutput: Bool = false
-    ) async throws -> String {
+        captureOutput: Bool = false) async throws -> String
+    {
         try await withCheckedThrowingContinuation { continuation in
             Task {
                 let process = Process()

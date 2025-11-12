@@ -575,7 +575,6 @@ struct MessageActivityView: View {
         return (try? AttributedString(markdown: self.message.content, options: options)) ??
             AttributedString(self.message.content)
     }
-
 }
 
 // MARK: - Tool Call View

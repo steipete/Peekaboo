@@ -33,13 +33,13 @@ public struct InspectorVisualizationPreset: ElementStyleProvider {
 
         switch state {
         case .normal:
-            return normalCircleStyle(color: baseColor)
+            return self.normalCircleStyle(color: baseColor)
         case .hovered:
-            return hoveredFrameStyle(color: baseColor)
+            return self.hoveredFrameStyle(color: baseColor)
         case .selected:
-            return selectedStyle(color: baseColor)
+            return self.selectedStyle(color: baseColor)
         case .disabled:
-            return disabledCircleStyle()
+            return self.disabledCircleStyle()
         }
     }
 

@@ -231,7 +231,7 @@ struct TachikomaStreaming: AsyncParsableCommand {
         let request = ModelRequest(
             messages: [Message.user(content: .text(prompt))],
             tools: nil,
-            settings: ModelSettings(maxTokens: self.maxTokens / 2) // Shorter for racing
+            settings: ModelSettings(maxTokens: self.maxTokens / 2), // Shorter for racing
         )
 
         do {
@@ -270,7 +270,7 @@ struct TachikomaStreaming: AsyncParsableCommand {
                 totalTokens: totalTokens,
                 responseLength: responseText.count,
                 responsePreview: String(responseText.prefix(100)),
-                finishPosition: 0 // Will be set later
+                finishPosition: 0, // Will be set later
             )
 
         } catch {

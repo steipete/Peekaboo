@@ -427,7 +427,8 @@ struct DialogCommand: ParsableCommand {
                 // List dialog elements using the service
                 let elements = try await self.services.dialogs.listDialogElements(
                     windowTitle: self.window,
-                    appName: self.app)
+                    appName: self.app
+                )
 
                 // Output result
                 if self.jsonOutput {

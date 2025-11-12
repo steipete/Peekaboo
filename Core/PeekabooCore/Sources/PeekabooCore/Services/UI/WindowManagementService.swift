@@ -64,7 +64,6 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
 
 @MainActor
 extension WindowManagementService {
-
     public func closeWindow(target: WindowTarget) async throws {
         // Get window bounds for animation
         var windowBounds: CGRect?
@@ -291,7 +290,7 @@ extension WindowManagementService {
 
             let reason = [
                 "Failed to focus \(windowInfo).",
-                "The window may be minimized, on another Space, or the app may not be responding to focus requests."
+                "The window may be minimized, on another Space, or the app may not be responding to focus requests.",
             ].joined(separator: " ")
             throw OperationError.interactionFailed(action: "focus window", reason: reason)
         }
@@ -535,8 +534,7 @@ extension WindowManagementService {
                 appName: app.name,
                 searchedApps: searchedApps,
                 totalWindows: totalWindows,
-                startTime: startTime
-            )
+                startTime: startTime)
 
             if let match = self.windowMatchingTitle(titleSubstring, in: windows, context: context) {
                 return match
@@ -553,22 +551,22 @@ extension WindowManagementService {
         switch target {
         case let .application(appIdentifier):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
-            return try findFirstWindow(for: app)
+            return try self.findFirstWindow(for: app)
         case let .title(titleSubstring):
             let appsOutput = try await applicationService.listApplications()
-            return try findWindowByTitle(titleSubstring, in: appsOutput.data.applications)
+            return try self.findWindowByTitle(titleSubstring, in: appsOutput.data.applications)
         case let .applicationAndTitle(appIdentifier, titleSubstring):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
-            return try findWindowByTitleInApp(titleSubstring, app: app)
+            return try self.findWindowByTitleInApp(titleSubstring, app: app)
         case let .index(appIdentifier, index):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
-            return try findWindowByIndex(for: app, index: index)
+            return try self.findWindowByIndex(for: app, index: index)
         case .frontmost:
             let frontmostApp = try await applicationService.getFrontmostApplication()
-            return try findFirstWindow(for: frontmostApp)
+            return try self.findFirstWindow(for: frontmostApp)
         case let .windowId(id):
             let appsOutput = try await applicationService.listApplications()
-            return try findWindowById(id, in: appsOutput.data.applications)
+            return try self.findWindowById(id, in: appsOutput.data.applications)
         }
     }
 

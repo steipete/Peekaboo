@@ -290,8 +290,8 @@ struct ToolRegistryTests {
     }
 }
 
-private extension ToolRegistryTests {
-    func assertAgentParameters(_ agentParams: AgentToolParameters) {
+extension ToolRegistryTests {
+    private func assertAgentParameters(_ agentParams: AgentToolParameters) {
         #expect(agentParams.type == "object")
 
         let properties = agentParams.properties
@@ -318,7 +318,7 @@ private extension ToolRegistryTests {
         #expect(!required.contains("count"))
     }
 
-    func assertProperty(
+    private func assertProperty(
         _ name: String,
         expectedType: Tachikoma.AgentToolParameterProperty.ParameterType,
         existsIn properties: [String: Tachikoma.AgentToolParameterProperty])

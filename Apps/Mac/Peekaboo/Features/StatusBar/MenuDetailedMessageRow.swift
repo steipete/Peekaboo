@@ -30,8 +30,7 @@ struct MenuDetailedMessageRow: View {
                         hasToolCalls: !self.message.toolCalls.isEmpty,
                         isExpanded: self.$isExpanded,
                         canRetry: self.isErrorMessage && !self.agent.isProcessing,
-                        retryAction: self.retryLastTask
-                    )
+                        retryAction: self.retryLastTask)
 
                     MenuMessageContentView(
                         message: self.message,
@@ -39,13 +38,11 @@ struct MenuDetailedMessageRow: View {
                         isToolMessage: self.isToolMessage,
                         formattedToolContent: self.formatToolContent(),
                         attributedAssistantContent: self.makeAssistantAttributedContent(),
-                        isExpanded: self.isExpanded
-                    )
+                        isExpanded: self.isExpanded)
 
                     if self.isToolMessage, !self.message.toolCalls.isEmpty {
                         ToolExecutionSummaryView(
-                            message: self.message
-                        )
+                            message: self.message)
                     }
                 }
 
@@ -60,9 +57,8 @@ struct MenuDetailedMessageRow: View {
                     selectImage: { image in
                         self.selectedImage = image
                         self.showingImageInspector = true
-                    }
-                )
-                .padding(.leading, self.compactAvatarSize + self.compactSpacing)
+                    })
+                    .padding(.leading, self.compactAvatarSize + self.compactSpacing)
             }
         }
         .padding(.vertical, 6)
@@ -268,7 +264,7 @@ struct MenuDetailedMessageRow: View {
         return json
     }
 
-private func extractImageData(from result: String) -> Data? {
+    private func extractImageData(from result: String) -> Data? {
         if let data = result.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let screenshotData = json["screenshot_data"] as? String,
@@ -399,14 +395,12 @@ private struct MenuMessageContentView: View {
             ToolMessageView(
                 toolCalls: self.message.toolCalls,
                 formattedToolContent: self.formattedToolContent,
-                timestamp: self.message.timestamp
-            )
+                timestamp: self.message.timestamp)
         } else if self.message.role == .assistant {
             AssistantContentView(
                 message: self.message,
                 attributedAssistantContent: self.attributedAssistantContent,
-                isExpanded: self.isExpanded
-            )
+                isExpanded: self.isExpanded)
         } else {
             Text(self.message.content)
                 .font(.caption)
@@ -485,8 +479,7 @@ private struct MenuToolDetailsView: View {
                                     .cornerRadius(4)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 4)
-                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
-                                    )
+                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(.plain)
                             .help("Click to inspect")
@@ -519,15 +512,13 @@ private struct ThinkingContentView: View {
     var body: some View {
         HStack(spacing: 4) {
             Text(
-                text.replacingOccurrences(
+                self.text.replacingOccurrences(
                     of: "\(AgentDisplayTokens.Status.planning) ",
-                    with: ""
-                )
-            )
-            .font(.caption)
-            .foregroundColor(.purple)
-            .italic()
-            .lineLimit(2)
+                    with: ""))
+                .font(.caption)
+                .foregroundColor(.purple)
+                .italic()
+                .lineLimit(2)
 
             if #available(macOS 15.0, *) {
                 AnimatedThinkingDots()

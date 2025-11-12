@@ -214,8 +214,7 @@ struct AddCustomProviderView: View {
             baseURL: self.$baseURL,
             apiKey: self.$apiKey,
             headers: self.$headers,
-            isAdvancedMode: self.$isAdvancedMode
-        )
+            isAdvancedMode: self.$isAdvancedMode)
     }
 
     private var testView: some View {
@@ -226,8 +225,7 @@ struct AddCustomProviderView: View {
             type: self.type,
             testResult: self.testResult,
             isTestingConnection: self.isTestingConnection,
-            testAction: self.testConnection
-        )
+            testAction: self.testConnection)
     }
 
     private var navigationButton: some View {

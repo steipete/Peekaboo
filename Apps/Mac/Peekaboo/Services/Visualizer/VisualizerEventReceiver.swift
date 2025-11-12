@@ -62,8 +62,7 @@ final class VisualizerEventReceiver {
         visualizerDebugLog("VisualizerEventReceiver: received descriptor \(descriptor)")
         guard let eventID = Self.parseEventID(from: descriptor) else {
             self.logger.error(
-                "Visualizer notification contained invalid identifier: \(descriptor)"
-            )
+                "Visualizer notification contained invalid identifier: \(descriptor)")
             return
         }
 
@@ -74,8 +73,7 @@ final class VisualizerEventReceiver {
             let failureMessage = "Failed to load visualizer event \(eventID.uuidString)"
             self.logger.error("\(failureMessage): \(error.localizedDescription)")
             visualizerDebugLog(
-                "VisualizerEventReceiver: failed to load event \(eventID.uuidString) - \(error.localizedDescription)"
-            )
+                "VisualizerEventReceiver: failed to load event \(eventID.uuidString) - \(error.localizedDescription)")
             return
         }
 
@@ -90,50 +88,46 @@ final class VisualizerEventReceiver {
             let failureMessage = "Failed to delete visualizer event \(eventID.uuidString)"
             self.logger.error("\(failureMessage): \(error.localizedDescription)")
             visualizerDebugLog(
-                "VisualizerEventReceiver: failed to delete event \(eventID.uuidString) - \(error.localizedDescription)"
-            )
+                "VisualizerEventReceiver: failed to delete event \(eventID.uuidString) - \(error.localizedDescription)")
         }
     }
 
     private func execute(event: VisualizerEvent) async {
         self.logger.debug("Processing visualizer event \(event.kind.rawValue)")
-        let success: Bool
-
-        switch event.payload {
+        let success: Bool = switch event.payload {
         case let .screenshotFlash(rect):
-            success = await self.coordinator.showScreenshotFlash(in: rect)
+            await self.coordinator.showScreenshotFlash(in: rect)
         case let .clickFeedback(point, type):
-            success = await self.coordinator.showClickFeedback(at: point, type: type)
+            await self.coordinator.showClickFeedback(at: point, type: type)
         case let .typingFeedback(keys, duration):
-            success = await self.coordinator.showTypingFeedback(keys: keys, duration: duration)
+            await self.coordinator.showTypingFeedback(keys: keys, duration: duration)
         case let .scrollFeedback(point, direction, amount):
-            success = await self.coordinator.showScrollFeedback(at: point, direction: direction, amount: amount)
+            await self.coordinator.showScrollFeedback(at: point, direction: direction, amount: amount)
         case let .mouseMovement(from, to, duration):
-            success = await self.coordinator.showMouseMovement(from: from, to: to, duration: duration)
+            await self.coordinator.showMouseMovement(from: from, to: to, duration: duration)
         case let .swipeGesture(from, to, duration):
-            success = await self.coordinator.showSwipeGesture(from: from, to: to, duration: duration)
+            await self.coordinator.showSwipeGesture(from: from, to: to, duration: duration)
         case let .hotkeyDisplay(keys, duration):
-            success = await self.coordinator.showHotkeyDisplay(keys: keys, duration: duration)
+            await self.coordinator.showHotkeyDisplay(keys: keys, duration: duration)
         case let .appLaunch(name, iconPath):
-            success = await self.coordinator.showAppLaunch(appName: name, iconPath: iconPath)
+            await self.coordinator.showAppLaunch(appName: name, iconPath: iconPath)
         case let .appQuit(name, iconPath):
-            success = await self.coordinator.showAppQuit(appName: name, iconPath: iconPath)
+            await self.coordinator.showAppQuit(appName: name, iconPath: iconPath)
         case let .windowOperation(operation, rect, duration):
-            success = await self.coordinator.showWindowOperation(operation, windowRect: rect, duration: duration)
+            await self.coordinator.showWindowOperation(operation, windowRect: rect, duration: duration)
         case let .menuNavigation(path):
-            success = await self.coordinator.showMenuNavigation(menuPath: path)
+            await self.coordinator.showMenuNavigation(menuPath: path)
         case let .dialogInteraction(elementType, rect, action):
-            success = await self.coordinator.showDialogInteraction(
+            await self.coordinator.showDialogInteraction(
                 element: elementType,
                 elementRect: rect,
-                action: action
-            )
+                action: action)
         case let .spaceSwitch(from, to, direction):
-            success = await self.coordinator.showSpaceSwitch(from: from, to: to, direction: direction)
+            await self.coordinator.showSpaceSwitch(from: from, to: to, direction: direction)
         case let .elementDetection(elements, duration):
-            success = await self.coordinator.showElementDetection(elements: elements, duration: duration)
+            await self.coordinator.showElementDetection(elements: elements, duration: duration)
         case let .annotatedScreenshot(imageData, elements, windowBounds, duration):
-            success = await self.coordinator.showAnnotatedScreenshot(
+            await self.coordinator.showAnnotatedScreenshot(
                 imageData: imageData,
                 elements: elements,
                 windowBounds: windowBounds,

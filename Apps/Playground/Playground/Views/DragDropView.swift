@@ -125,7 +125,7 @@ struct DragDropView: View {
                                     let dragDetails = [
                                         "Item: \(itemId)",
                                         "From: \(startPointDescription)",
-                                        "To: \(endPointDescription)"
+                                        "To: \(endPointDescription)",
                                     ].joined(separator: " ")
 
                                     self.actionLogger.log(

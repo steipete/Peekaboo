@@ -107,7 +107,7 @@ public final class ElementDetectionService {
     }
 }
 
-private extension ElementDetectionService {
+extension ElementDetectionService {
     // MARK: - Helper Methods
 
     private func mapRoleToElementType(_ role: String) -> ElementType {
@@ -175,8 +175,8 @@ private extension ElementDetectionService {
 
     private func resolveWindow(
         for app: NSRunningApplication,
-        context: WindowContext?
-    ) async throws -> WindowResolution {
+        context: WindowContext?) async throws -> WindowResolution
+    {
         let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
         // Chrome and other multi-process apps occasionally return an empty window list unless we set
         // an explicit AX messaging timeout, so prefer the guarded helper.
@@ -320,8 +320,8 @@ private extension ElementDetectionService {
     // Fallback #3: ask the window-management service (which already talks to CG+AX) for candidates
     private func resolveWindowViaWindowServiceFallback(
         for app: NSRunningApplication,
-        title: String?
-    ) async -> Element? {
+        title: String?) async -> Element?
+    {
         let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
         do {
             let windows = try await self.windowManagementService.listWindows(target: .application(identifier))
@@ -338,13 +338,15 @@ private extension ElementDetectionService {
                 return lArea > rArea
             }
 
-            let targetWindowInfo: ServiceWindowInfo?
-            if let title,
-               let match = ordered.first(where: { $0.title.localizedCaseInsensitiveContains(title) })
+            let targetWindowInfo: ServiceWindowInfo? = if let title,
+                                                          let match = ordered
+                                                              .first(where: {
+                                                                  $0.title.localizedCaseInsensitiveContains(title)
+                                                              })
             {
-                targetWindowInfo = match
+                match
             } else {
-                targetWindowInfo = ordered.first
+                ordered.first
             }
 
             guard let windowInfo = targetWindowInfo,
@@ -699,6 +701,6 @@ private struct ElementAttributeInput {
     let keyboardShortcut: String?
 }
 
-private extension CGSize {
-    var area: CGFloat { width * height }
+extension CGSize {
+    fileprivate var area: CGFloat { width * height }
 }

@@ -67,8 +67,7 @@ public struct AppTool: MCPTool {
             except: arguments.getString("except"),
             switchTarget: arguments.getString("to"),
             cycle: arguments.getBool("cycle") ?? false,
-            startTime: Date()
-        )
+            startTime: Date())
 
         do {
             let actions = AppToolActions(
@@ -191,7 +190,7 @@ private struct AppToolActions {
 
         let quitSuccess = request.force ? runningApp.forceTerminate() : runningApp.terminate()
         if !quitSuccess {
-            return ToolResponse.error("Failed to quit \(appInfo.name). It may have unsaved changes." )
+            return ToolResponse.error("Failed to quit \(appInfo.name). It may have unsaved changes.")
         }
 
         let terminated = await self.waitForTermination(of: runningApp, timeout: 5.0)
@@ -379,8 +378,8 @@ private struct AppToolActions {
         message: String,
         app: ServiceApplicationInfo,
         startTime: Date,
-        extraMeta: [String: Value] = [:]
-    ) -> ToolResponse {
+        extraMeta: [String: Value] = [:]) -> ToolResponse
+    {
         var meta: [String: Value] = [
             "app_name": .string(app.name),
             "process_id": .double(Double(app.processIdentifier)),
@@ -427,7 +426,7 @@ private struct AppToolActions {
 
     private func waitForTermination(of app: NSRunningApplication, timeout: TimeInterval) async -> Bool {
         var elapsed: TimeInterval = 0
-        while !app.isTerminated && elapsed < timeout {
+        while !app.isTerminated, elapsed < timeout {
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
             elapsed += 0.1
         }
@@ -436,7 +435,7 @@ private struct AppToolActions {
 
     private func waitForLaunchCompletion(of app: NSRunningApplication, timeout: TimeInterval) async {
         var elapsed: TimeInterval = 0
-        while !app.isFinishedLaunching && elapsed < timeout {
+        while !app.isFinishedLaunching, elapsed < timeout {
             try? await Task.sleep(nanoseconds: 100_000_000)
             elapsed += 0.1
         }

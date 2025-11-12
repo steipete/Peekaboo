@@ -182,7 +182,8 @@ public final class ElementLayoutEngine {
 
         for i in 0..<elements.count {
             for j in (i + 1)..<elements.count
-            where self.elementsOverlap(elements[i], elements[j]) {
+                where self.elementsOverlap(elements[i], elements[j])
+            {
                 overlaps.append((elements[i], elements[j]))
             }
         }

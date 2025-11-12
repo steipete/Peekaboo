@@ -224,11 +224,11 @@ public struct SpaceTool: MCPTool {
     {
         switch action {
         case let .list(detailed):
-            return try await self.handleList(service: service, detailed: detailed, startTime: startTime)
+            try await self.handleList(service: service, detailed: detailed, startTime: startTime)
         case let .switchSpace(spaceNumber):
-            return try await self.handleSwitch(service: service, spaceNumber: spaceNumber, startTime: startTime)
+            try await self.handleSwitch(service: service, spaceNumber: spaceNumber, startTime: startTime)
         case let .moveWindow(request):
-            return try await self.handleMoveWindow(service: service, request: request, startTime: startTime)
+            try await self.handleMoveWindow(service: service, request: request, startTime: startTime)
         }
     }
 
@@ -311,11 +311,11 @@ private enum SpaceAction {
     var description: String {
         switch self {
         case .list:
-            return "list"
+            "list"
         case .switchSpace:
-            return "switch"
+            "switch"
         case .moveWindow:
-            return "move-window"
+            "move-window"
         }
     }
 }
@@ -335,10 +335,9 @@ private struct SpaceActionValidationError: Error {
     init(_ message: String) { self.message = message }
 }
 
-private extension SpaceTool {
-
+extension SpaceTool {
     @MainActor
-    func moveWindowToCurrentSpace(
+    private func moveWindowToCurrentSpace(
         service: SpaceManagementService,
         windowInfo: ServiceWindowInfo,
         windowID: UInt32,
@@ -362,7 +361,7 @@ private extension SpaceTool {
     }
 
     @MainActor
-    func moveWindowToSpecificSpace(
+    private func moveWindowToSpecificSpace(
         service: SpaceManagementService,
         request: MoveWindowRequest,
         windowInfo: ServiceWindowInfo,

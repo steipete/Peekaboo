@@ -25,37 +25,30 @@ public struct ClickTool: MCPTool {
                 "query": SchemaBuilder.string(
                     description: """
                     Optional. Element text or query to click. Will search for matching elements.
-                    """
-                ),
+                    """),
                 "on": SchemaBuilder.string(
                     description: """
                     Optional. Element ID to click (e.g., B1, T2) from see command output.
-                    """
-                ),
+                    """),
                 "coords": SchemaBuilder.string(
                     description: """
                     Optional. Click at specific coordinates in format 'x,y' (e.g., '100,200').
-                    """
-                ),
+                    """),
                 "session": SchemaBuilder.string(
                     description: """
                     Optional. Session ID from see command. Uses latest session if not specified.
-                    """
-                ),
+                    """),
                 "wait_for": SchemaBuilder.number(
                     description: """
                     Optional. Maximum milliseconds to wait for element to become actionable. Default: 5000.
                     """,
-                    default: 5000
-                ),
+                    default: 5000),
                 "double": SchemaBuilder.boolean(
                     description: "Optional. Double-click instead of single click.",
-                    default: false
-                ),
+                    default: false),
                 "right": SchemaBuilder.boolean(
                     description: "Optional. Right-click (secondary click) instead of left-click.",
-                    default: false
-                ),
+                    default: false),
             ],
             required: [])
     }
@@ -78,15 +71,13 @@ public struct ClickTool: MCPTool {
             try await self.performClick(
                 at: resolution.location,
                 sessionId: request.sessionId,
-                intent: request.intent
-            )
+                intent: request.intent)
 
             let executionTime = Date().timeIntervalSince(startTime)
             return self.buildResponse(
                 intent: request.intent,
                 resolution: resolution,
-                executionTime: executionTime
-            )
+                executionTime: executionTime)
         } catch let error as ClickToolError {
             return ToolResponse.error(error.message)
         } catch {
@@ -117,15 +108,13 @@ public struct ClickTool: MCPTool {
             let element = try await self.requireElement(id: identifier, session: session)
             return ClickResolution(
                 location: element.centerPoint,
-                elementDescription: element.humanDescription
-            )
+                elementDescription: element.humanDescription)
         case let .query(text):
             let session = try await self.requireSession(id: request.sessionId)
             let element = try await self.findElement(matching: text, session: session)
             return ClickResolution(
                 location: element.centerPoint,
-                elementDescription: element.humanDescription
-            )
+                elementDescription: element.humanDescription)
         }
     }
 
@@ -134,15 +123,14 @@ public struct ClickTool: MCPTool {
         try await service.click(
             target: .coordinates(location),
             clickType: intent.automationType,
-            sessionId: sessionId
-        )
+            sessionId: sessionId)
     }
 
     private func buildResponse(
         intent: ClickIntent,
         resolution: ClickResolution,
-        executionTime: TimeInterval
-    ) -> ToolResponse {
+        executionTime: TimeInterval) -> ToolResponse
+    {
         var message = "\(AgentDisplayTokens.Status.success) \(intent.displayVerb)"
         if let element = resolution.elementDescription {
             message += " on \(element)"
@@ -161,8 +149,7 @@ public struct ClickTool: MCPTool {
 
         return ToolResponse(
             content: [.text(message)],
-            meta: .object(metaDict)
-        )
+            meta: .object(metaDict))
     }
 
     private func parseCoordinates(_ raw: String) throws -> CGPoint {
@@ -186,8 +173,7 @@ public struct ClickTool: MCPTool {
     private func requireElement(id: String, session: UISession) async throws -> UIElement {
         guard let element = await session.getElement(byId: id) else {
             throw ClickToolError(
-                "Element '\(id)' not found in current session. Run 'see' command to update UI state."
-            )
+                "Element '\(id)' not found in current session. Run 'see' command to update UI state.")
         }
         return element
     }
@@ -268,12 +254,12 @@ private struct ClickToolError: Error {
     init(_ message: String) { self.message = message }
 }
 
-private extension UIElement {
-    var centerPoint: CGPoint {
+extension UIElement {
+    fileprivate var centerPoint: CGPoint {
         CGPoint(x: self.frame.midX, y: self.frame.midY)
     }
 
-    var humanDescription: String {
+    fileprivate var humanDescription: String {
         "\(self.role): \(self.title ?? self.label ?? "untitled")"
     }
 }

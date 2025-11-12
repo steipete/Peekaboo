@@ -38,7 +38,7 @@ public final class VisualizationClient: @unchecked Sendable {
     private let defaultConsoleLogLevel: ConsoleLogLevel
     private var minimumConsoleLogLevel: ConsoleLogLevel
     private let isRunningInsideMacApp: Bool
-    private let cleanupDisabled: Bool  // Allows disabling automatic cleanup when deep-debugging transport issues
+    private let cleanupDisabled: Bool // Allows disabling automatic cleanup when deep-debugging transport issues
 
     private var isEnabled: Bool = true
     private var hasLoggedMissingApp = false
@@ -56,7 +56,7 @@ public final class VisualizationClient: @unchecked Sendable {
         self.isRunningInsideMacApp = forcedAppContext || isAppBundle
         self.cleanupDisabled = environment["PEEKABOO_VISUALIZER_DISABLE_CLEANUP"] == "true"
 
-        if forcedAppContext && !isAppBundle {
+        if forcedAppContext, !isAppBundle {
             VisualizationClient.defaultConsoleLogHandler(
                 "[Visualizer][INFO] Visualizer client forcing mac-app context via PEEKABOO_VISUALIZER_FORCE_APP")
         }
@@ -235,32 +235,30 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 
     private func log(_ level: ConsoleLogLevel, _ message: String) {
-        let osLogType: OSLogType
-        switch level {
-        case .trace: osLogType = .debug
-        case .verbose: osLogType = .debug
-        case .debug: osLogType = .debug
-        case .info: osLogType = .info
-        case .notice: osLogType = .default
-        case .warning: osLogType = .default
-        case .error: osLogType = .error
-        case .fault: osLogType = .fault
+        let osLogType: OSLogType = switch level {
+        case .trace: .debug
+        case .verbose: .debug
+        case .debug: .debug
+        case .info: .info
+        case .notice: .default
+        case .warning: .default
+        case .error: .error
+        case .fault: .fault
         }
 
         self.logger.log(level: osLogType, "\(message, privacy: .public)")
 
         guard self.shouldMirrorToConsole, level >= self.minimumConsoleLogLevel else { return }
 
-        let emoji: String
-        switch level {
-        case .trace: emoji = "TRACE"
-        case .verbose: emoji = "VERBOSE"
-        case .debug: emoji = "DEBUG"
-        case .info: emoji = "INFO"
-        case .notice: emoji = "NOTICE"
-        case .warning: emoji = "WARN"
-        case .error: emoji = "ERROR"
-        case .fault: emoji = "FAULT"
+        let emoji = switch level {
+        case .trace: "TRACE"
+        case .verbose: "VERBOSE"
+        case .debug: "DEBUG"
+        case .info: "INFO"
+        case .notice: "NOTICE"
+        case .warning: "WARN"
+        case .error: "ERROR"
+        case .fault: "FAULT"
         }
 
         self.consoleLogHandler("[Visualizer][\(emoji)] \(message)")
@@ -283,12 +281,12 @@ public final class VisualizationClient: @unchecked Sendable {
 
     private static func consoleLogLevel(from logLevel: LogLevel) -> ConsoleLogLevel {
         switch logLevel {
-        case .trace: return .trace
-        case .debug: return .debug
-        case .info: return .info
-        case .warning: return .warning
-        case .error: return .error
-        case .critical: return .fault
+        case .trace: .trace
+        case .debug: .debug
+        case .info: .info
+        case .warning: .warning
+        case .error: .error
+        case .critical: .fault
         }
     }
 
@@ -331,8 +329,8 @@ public final class VisualizationClient: @unchecked Sendable {
     }
 }
 
-private extension VisualizerEvent.Payload {
-    var eventKindDescription: String {
+extension VisualizerEvent.Payload {
+    fileprivate var eventKindDescription: String {
         switch self {
         case .screenshotFlash: "screenshotFlash"
         case .clickFeedback: "clickFeedback"

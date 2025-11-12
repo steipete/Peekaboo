@@ -19,6 +19,7 @@ final class MenuBarAnimationController: ObservableObject {
         let opacity: CGFloat
         let cacheKey: GhostIconCacheKey
     }
+
     // MARK: - Properties
 
     /// Current animation state
@@ -196,8 +197,7 @@ final class MenuBarAnimationController: ObservableObject {
                 Double(state.verticalOffset),
                 Double(state.horizontalOffset),
                 Double(state.scale),
-                Double(state.opacity)
-            )
+                Double(state.opacity))
         } else {
             self.framesSinceLastChange += 1
         }

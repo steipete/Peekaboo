@@ -14,30 +14,28 @@ extension ApplicationService {
         // Get windows using CGWindowList API
         let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
         guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
-            return makeEmptyWindowResult(for: app, startTime: startTime)
+            return self.makeEmptyWindowResult(for: app, startTime: startTime)
         }
 
-        let windows = buildWindowList(
+        let windows = self.buildWindowList(
             from: windowList,
-            app: app
-        )
+            app: app)
 
         self.logger.debug("Found \(windows.count) windows for \(app.name) using CGWindowList")
 
-        let highlights = makeWindowHighlights(windows: windows)
+        let highlights = self.makeWindowHighlights(windows: windows)
 
-        return makeWindowListOutput(
+        return self.makeWindowListOutput(
             app: app,
             windows: windows,
             highlights: highlights,
-            startTime: startTime
-        )
+            startTime: startTime)
     }
 
     private func makeEmptyWindowResult(
         for app: ServiceApplicationInfo,
-        startTime: Date
-    ) -> UnifiedToolOutput<ServiceWindowListData> {
+        startTime: Date) -> UnifiedToolOutput<ServiceWindowListData>
+    {
         UnifiedToolOutput(
             data: ServiceWindowListData(windows: [], targetApplication: app),
             summary: UnifiedToolOutput.Summary(
@@ -51,8 +49,8 @@ extension ApplicationService {
 
     private func buildWindowList(
         from windowList: [[String: Any]],
-        app: ServiceApplicationInfo
-    ) -> [ServiceWindowInfo] {
+        app: ServiceApplicationInfo) -> [ServiceWindowInfo]
+    {
         var windows: [ServiceWindowInfo] = []
         var windowIndex = 0
         let spaceService = SpaceManagementService()
@@ -64,8 +62,8 @@ extension ApplicationService {
                 app: app,
                 windowIndex: windowIndex,
                 spaceService: spaceService,
-                screenService: screenService
-            ) else {
+                screenService: screenService)
+            else {
                 continue
             }
 
@@ -81,8 +79,8 @@ extension ApplicationService {
         app: ServiceApplicationInfo,
         windowIndex: Int,
         spaceService: SpaceManagementService,
-        screenService: ScreenService
-    ) -> (info: ServiceWindowInfo, nextIndex: Int)? {
+        screenService: ScreenService) -> (info: ServiceWindowInfo, nextIndex: Int)?
+    {
         guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
               ownerPID == app.processIdentifier
         else {
@@ -135,8 +133,8 @@ extension ApplicationService {
     }
 
     private func makeWindowHighlights(
-        windows: [ServiceWindowInfo]
-    ) -> [UnifiedToolOutput<ServiceWindowListData>.Summary.Highlight] {
+        windows: [ServiceWindowInfo]) -> [UnifiedToolOutput<ServiceWindowListData>.Summary.Highlight]
+    {
         var highlights: [UnifiedToolOutput<ServiceWindowListData>.Summary.Highlight] = []
         let minimizedCount = windows.count(where: { $0.isMinimized })
         let offScreenCount = windows.count(where: { $0.isOffScreen })
@@ -162,8 +160,8 @@ extension ApplicationService {
         app: ServiceApplicationInfo,
         windows: [ServiceWindowInfo],
         highlights: [UnifiedToolOutput<ServiceWindowListData>.Summary.Highlight],
-        startTime: Date
-    ) -> UnifiedToolOutput<ServiceWindowListData> {
+        startTime: Date) -> UnifiedToolOutput<ServiceWindowListData>
+    {
         let minimizedCount = windows.count(where: { $0.isMinimized })
         let offScreenCount = windows.count(where: { $0.isOffScreen })
 

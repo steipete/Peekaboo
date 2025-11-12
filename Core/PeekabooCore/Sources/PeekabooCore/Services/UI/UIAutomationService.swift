@@ -95,8 +95,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
      * - Important: All services are initialized on the main thread due to UI automation requirements
      * - Note: The visualizer connection is established asynchronously and failures are logged but not thrown
      */
-    public init(sessionManager: (any SessionManagerProtocol)? = nil,
-                loggingService: (any LoggingServiceProtocol)? = nil) {
+    public init(
+        sessionManager: (any SessionManagerProtocol)? = nil,
+        loggingService: (any LoggingServiceProtocol)? = nil)
+    {
         let manager = sessionManager ?? SessionManager()
         self.sessionManager = manager
 
@@ -125,7 +127,6 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
 }
 
 extension UIAutomationService {
-
     // MARK: - Element Detection
 
     /**
@@ -670,12 +671,13 @@ extension UIAutomationService {
 
     private func locateElementForWait(
         target: ClickTarget,
-        sessionId: String?
-    ) async -> DetectedElement? {
+        sessionId: String?) async -> DetectedElement?
+    {
         switch target {
         case let .elementId(id):
             guard let sessionId,
-                  let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId) else {
+                  let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+            else {
                 return nil
             }
             return detectionResult.elements.findById(id)
@@ -693,8 +695,7 @@ extension UIAutomationService {
                 label: info.label ?? query,
                 value: nil,
                 bounds: info.frame,
-                isEnabled: true
-            )
+                isEnabled: true)
 
         case .coordinates:
             return nil
@@ -703,7 +704,8 @@ extension UIAutomationService {
 
     private func findElementInSession(query: String, sessionId: String?) async -> DetectedElement? {
         guard let sessionId,
-              let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId) else {
+              let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+        else {
             return nil
         }
 
@@ -847,8 +849,8 @@ public struct ScrollRequest {
         target: String? = nil,
         smooth: Bool = false,
         delay: Int = 10,
-        sessionId: String? = nil
-    ) {
+        sessionId: String? = nil)
+    {
         self.direction = direction
         self.amount = amount
         self.target = target

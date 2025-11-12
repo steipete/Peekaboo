@@ -1,5 +1,5 @@
-import Foundation
 import Darwin
+import Foundation
 
 #if canImport(Configuration)
 import Configuration
@@ -62,10 +62,10 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Cached credentials
     private var credentials: [String: String] = [:]
 
-#if canImport(Configuration)
+    #if canImport(Configuration)
     @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, *)
     private static var environmentReader: ConfigReader {
-        struct Holder {
+        enum Holder {
             static let reader = ConfigReader(
                 keyDecoder: IdentityKeyDecoder(),
                 provider: EnvironmentVariablesProvider(
@@ -74,13 +74,11 @@ public final class ConfigurationManager: @unchecked Sendable {
                         return lowercased.contains("key") ||
                             lowercased.contains("token") ||
                             lowercased.contains("secret")
-                    }
-                )
-            )
+                    }))
         }
         return Holder.reader
     }
-#endif
+    #endif
 
     private init() {
         // Load configuration on init, but don't crash if it fails
@@ -604,10 +602,10 @@ public final class ConfigurationManager: @unchecked Sendable {
     public func persistMCPClientConfigs() throws {
         try TachikomaMCPClientManager.shared.persist()
     }
-
 }
 
 // MARK: - Custom Provider Management
+
 extension ConfigurationManager {
     public func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
         var config = self.loadConfiguration() ?? Configuration()
@@ -681,8 +679,8 @@ extension ConfigurationManager {
     }
 }
 
-private extension ConfigurationManager {
-    func saveConfiguration(_ config: Configuration) throws {
+extension ConfigurationManager {
+    private func saveConfiguration(_ config: Configuration) throws {
         let encoder = JSONCoding.encoder
         let data = try encoder.encode(config)
         try FileManager.default.createDirectory(
@@ -692,7 +690,7 @@ private extension ConfigurationManager {
         try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
     }
 
-    func resolveCredential(_ reference: String) -> String? {
+    private func resolveCredential(_ reference: String) -> String? {
         guard reference.hasPrefix("{env:"), reference.hasSuffix("}") else {
             return reference
         }
@@ -707,7 +705,7 @@ private extension ConfigurationManager {
         return nil
     }
 
-    func testOpenAICompatibleProvider(
+    private func testOpenAICompatibleProvider(
         provider: Configuration.CustomProvider,
         apiKey: String) async throws -> (success: Bool, error: String?)
     {
@@ -733,7 +731,7 @@ private extension ConfigurationManager {
         return (true, nil)
     }
 
-    func testAnthropicCompatibleProvider(
+    private func testAnthropicCompatibleProvider(
         provider: Configuration.CustomProvider,
         apiKey: String) async throws -> (success: Bool, error: String?)
     {
@@ -767,7 +765,7 @@ private extension ConfigurationManager {
         return (false, errorMessage)
     }
 
-    func discoverOpenAICompatibleModels(
+    private func discoverOpenAICompatibleModels(
         provider: Configuration.CustomProvider,
         apiKey: String) async throws -> (models: [String], error: String?)
     {
@@ -804,7 +802,7 @@ private extension ConfigurationManager {
         }
     }
 
-    func environmentValue(for key: String) -> String? {
+    private func environmentValue(for key: String) -> String? {
         guard let rawValue = getenv(key) else {
             return nil
         }
@@ -828,38 +826,38 @@ private struct JSONCommentStripper {
     }
 
     mutating func strip() -> String {
-        while index < characters.count {
-            let char = characters[index]
-            let next = peek()
+        while self.index < self.characters.count {
+            let char = self.characters[self.index]
+            let next = self.peek()
 
-            if handleEscape(char) { continue }
-            if handleQuote(char) { continue }
-            if inString {
-                append(char)
-                advance()
+            if self.handleEscape(char) { continue }
+            if self.handleQuote(char) { continue }
+            if self.inString {
+                self.append(char)
+                self.advance()
                 continue
             }
-            if handleCommentStart(char, next) { continue }
-            if handleCommentEnd(char, next) { continue }
-            appendIfNeeded(char)
-            advance()
+            if self.handleCommentStart(char, next) { continue }
+            if self.handleCommentEnd(char, next) { continue }
+            self.appendIfNeeded(char)
+            self.advance()
         }
 
-        return result
+        return self.result
     }
 
     private mutating func handleEscape(_ char: Character) -> Bool {
-        if escapeNext {
-            append(char)
-            escapeNext = false
-            advance()
+        if self.escapeNext {
+            self.append(char)
+            self.escapeNext = false
+            self.advance()
             return true
         }
 
-        if char == "\\" && inString {
-            escapeNext = true
-            append(char)
-            advance()
+        if char == "\\", self.inString {
+            self.escapeNext = true
+            self.append(char)
+            self.advance()
             return true
         }
 
@@ -867,23 +865,23 @@ private struct JSONCommentStripper {
     }
 
     private mutating func handleQuote(_ char: Character) -> Bool {
-        guard char == "\"", !singleLineComment, !multiLineComment else { return false }
-        inString.toggle()
-        append(char)
-        advance()
+        guard char == "\"", !self.singleLineComment, !self.multiLineComment else { return false }
+        self.inString.toggle()
+        self.append(char)
+        self.advance()
         return true
     }
 
     private mutating func handleCommentStart(_ char: Character, _ next: Character?) -> Bool {
-        if char == "/", next == "/", !multiLineComment {
-            singleLineComment = true
-            advance(by: 2)
+        if char == "/", next == "/", !self.multiLineComment {
+            self.singleLineComment = true
+            self.advance(by: 2)
             return true
         }
 
-        if char == "/", next == "*", !singleLineComment {
-            multiLineComment = true
-            advance(by: 2)
+        if char == "/", next == "*", !self.singleLineComment {
+            self.multiLineComment = true
+            self.advance(by: 2)
             return true
         }
 
@@ -891,16 +889,16 @@ private struct JSONCommentStripper {
     }
 
     private mutating func handleCommentEnd(_ char: Character, _ next: Character?) -> Bool {
-        if char == "\n", singleLineComment {
-            singleLineComment = false
-            append(char)
-            advance()
+        if char == "\n", self.singleLineComment {
+            self.singleLineComment = false
+            self.append(char)
+            self.advance()
             return true
         }
 
-        if char == "*", next == "/", multiLineComment {
-            multiLineComment = false
-            advance(by: 2)
+        if char == "*", next == "/", self.multiLineComment {
+            self.multiLineComment = false
+            self.advance(by: 2)
             return true
         }
 
@@ -908,20 +906,20 @@ private struct JSONCommentStripper {
     }
 
     private mutating func appendIfNeeded(_ char: Character) {
-        guard !singleLineComment, !multiLineComment else { return }
-        append(char)
+        guard !self.singleLineComment, !self.multiLineComment else { return }
+        self.append(char)
     }
 
     private mutating func append(_ char: Character) {
-        result.append(char)
+        self.result.append(char)
     }
 
     private mutating func advance(by value: Int = 1) {
-        index += value
+        self.index += value
     }
 
     private func peek() -> Character? {
-        (index + 1) < characters.count ? characters[index + 1] : nil
+        (self.index + 1) < self.characters.count ? self.characters[self.index + 1] : nil
     }
 }
 

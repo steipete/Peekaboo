@@ -103,8 +103,7 @@ public struct AIAssistantWindow: View {
                 model: self.selectedModel,
                 system: self.systemPrompt.isEmpty ? nil : self.systemPrompt,
                 settings: .default,
-                tools: nil
-            )
+                tools: nil)
         }
         .navigationTitle("AI Assistant")
         .toolbar {

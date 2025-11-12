@@ -278,8 +278,8 @@ struct ElementDetectionServiceTests {
     }
 }
 
-private extension ElementDetectionServiceTests {
-    func assertBasicElementCollections(
+extension ElementDetectionServiceTests {
+    private func assertBasicElementCollections(
         _ elements: DetectedElements,
         expectedTotal: Int,
         disabledId: String)
@@ -376,14 +376,13 @@ private actor MockSessionManager: SessionManagerProtocol {
     }
 }
 
-
-    private func createDetectionResult(elements: DetectedElements, total: Int) -> ElementDetectionResult {
-        ElementDetectionResult(
-            sessionId: "test-session",
-            screenshotPath: "/tmp/test.png",
-            elements: elements,
-            metadata: DetectionMetadata(
-                detectionTime: 0.1,
-                elementCount: total,
-                method: "AXorcist"))
-    }
+private func createDetectionResult(elements: DetectedElements, total: Int) -> ElementDetectionResult {
+    ElementDetectionResult(
+        sessionId: "test-session",
+        screenshotPath: "/tmp/test.png",
+        elements: elements,
+        metadata: DetectionMetadata(
+            detectionTime: 0.1,
+            elementCount: total,
+            method: "AXorcist"))
+}

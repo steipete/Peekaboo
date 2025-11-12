@@ -61,7 +61,7 @@ public final class PermissionsService {
             &addressDesc,
             typeWildCard,
             typeWildCard,
-            true // async notification
+            true, // async notification
         )
 
         let hasPermission = permissionStatus == noErr

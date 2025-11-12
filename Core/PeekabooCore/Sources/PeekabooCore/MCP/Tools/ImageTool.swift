@@ -52,22 +52,20 @@ public struct ImageTool: MCPTool {
             return try await self.performAnalysis(
                 question: question,
                 savedFiles: savedFiles,
-                captureResults: captureResults
-            )
+                captureResults: captureResults)
         }
 
         return self.buildCaptureResponse(
             format: request.format,
             savedFiles: savedFiles,
-            captureResults: captureResults
-        )
+            captureResults: captureResults)
     }
 }
 
 // MARK: - Supporting Types
 
-private extension ImageTool {
-    func captureImages(for request: ImageRequest) async throws -> [CaptureResult] {
+extension ImageTool {
+    private func captureImages(for request: ImageRequest) async throws -> [CaptureResult] {
         switch request.target {
         case let .screen(index):
             let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
@@ -79,18 +77,17 @@ private extension ImageTool {
             return try await self.captureApplication(
                 identifier: identifier,
                 windowIndex: windowIndex,
-                focus: request.captureFocus
-            )
+                focus: request.captureFocus)
         case .menubar:
-            return [try await captureMenuBar()]
+            return try await [captureMenuBar()]
         }
     }
 
-    func captureApplication(
+    private func captureApplication(
         identifier: String,
         windowIndex: Int?,
-        focus: CaptureFocus
-    ) async throws -> [CaptureResult] {
+        focus: CaptureFocus) async throws -> [CaptureResult]
+    {
         if focus == .foreground {
             try await PeekabooServices.shared.applications.activateApplication(identifier: identifier)
             try await Task.sleep(nanoseconds: 50_000_000)
@@ -99,8 +96,7 @@ private extension ImageTool {
         if let windowIndex {
             let result = try await PeekabooServices.shared.screenCapture.captureWindow(
                 appIdentifier: identifier,
-                windowIndex: windowIndex
-            )
+                windowIndex: windowIndex)
             return [result]
         }
 
@@ -110,15 +106,14 @@ private extension ImageTool {
         for index in windows.indices {
             let result = try await PeekabooServices.shared.screenCapture.captureWindow(
                 appIdentifier: identifier,
-                windowIndex: index
-            )
+                windowIndex: index)
             results.append(result)
         }
 
         return results
     }
 
-    func saveCaptures(_ results: [CaptureResult], request: ImageRequest) throws -> [MCPSavedFile] {
+    private func saveCaptures(_ results: [CaptureResult], request: ImageRequest) throws -> [MCPSavedFile] {
         guard let basePath = request.path else { return [] }
         var savedFiles: [MCPSavedFile] = []
 
@@ -128,8 +123,7 @@ private extension ImageTool {
                     basePath: basePath,
                     index: index,
                     metadata: result.metadata,
-                    format: request.format
-                ) :
+                    format: request.format) :
                 ensureExtension(basePath, format: request.format)
 
             try saveImageData(result.imageData, to: fileName, format: request.format)
@@ -140,19 +134,17 @@ private extension ImageTool {
                     window_title: result.metadata.windowInfo?.title,
                     window_id: nil,
                     window_index: index,
-                    mime_type: request.format.mimeType
-                )
-            )
+                    mime_type: request.format.mimeType))
         }
 
         return savedFiles
     }
 
-    func performAnalysis(
+    private func performAnalysis(
         question: String,
         savedFiles: [MCPSavedFile],
-        captureResults: [CaptureResult]
-    ) async throws -> ToolResponse {
+        captureResults: [CaptureResult]) async throws -> ToolResponse
+    {
         guard let firstCapture = captureResults.first else {
             throw OperationError.captureFailed(reason: "No capture data available")
         }
@@ -165,15 +157,14 @@ private extension ImageTool {
             meta: .object([
                 "model": .string(analysis.modelUsed),
                 "savedFiles": .array(savedFiles.map { Value.string($0.path) }),
-            ])
-        )
+            ]))
     }
 
-    func buildCaptureResponse(
+    private func buildCaptureResponse(
         format: ImageFormatOption,
         savedFiles: [MCPSavedFile],
-        captureResults: [CaptureResult]
-    ) -> ToolResponse {
+        captureResults: [CaptureResult]) -> ToolResponse
+    {
         let meta = Value.object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })])
 
         if format == .data, let capture = captureResults.first, captureResults.count == 1 {
@@ -182,8 +173,7 @@ private extension ImageTool {
 
         return ToolResponse.text(
             buildImageSummary(savedFiles: savedFiles, captureCount: captureResults.count),
-            meta: meta
-        )
+            meta: meta)
     }
 }
 

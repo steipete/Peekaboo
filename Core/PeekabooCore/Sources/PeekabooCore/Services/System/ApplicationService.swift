@@ -67,12 +67,10 @@ public final class ApplicationService: ApplicationServiceProtocol {
             self.logger.debug("Skipping visualizer connection (running inside Mac app)")
         }
     }
-
 }
 
 @MainActor
 extension ApplicationService {
-
     public func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
         let startTime = Date()
         self.logger.info("Listing all running applications")
@@ -479,14 +477,13 @@ extension ApplicationService {
             self.logger.debug("Unhidden \(unhiddenCount) applications")
         }
     }
-
 }
 
 // MARK: - Private Helpers
 
 @MainActor
-fileprivate extension ApplicationService {
-    func createApplicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {
+extension ApplicationService {
+    private func createApplicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {
         ServiceApplicationInfo(
             processIdentifier: app.processIdentifier,
             bundleIdentifier: app.bundleIdentifier,
@@ -494,18 +491,17 @@ fileprivate extension ApplicationService {
             bundlePath: app.bundleURL?.path,
             isActive: app.isActive,
             isHidden: app.isHidden,
-            windowCount: self.getWindowCount(for: app)
-        )
+            windowCount: self.getWindowCount(for: app))
     }
 
     fileprivate func createWindowInfo(from window: Element, index: Int) async -> ServiceWindowInfo? {
         guard let title = window.title() else { return nil }
 
-        let bounds = windowBounds(for: window)
-        let screen = screenInfo(for: bounds)
-        let windowID = resolveWindowID(for: window, title: title, bounds: bounds, fallbackIndex: index)
-        let spaces = spaceInfo(for: windowID)
-        let level = windowLevel(for: windowID)
+        let bounds = self.windowBounds(for: window)
+        let screen = self.screenInfo(for: bounds)
+        let windowID = self.resolveWindowID(for: window, title: title, bounds: bounds, fallbackIndex: index)
+        let spaces = self.spaceInfo(for: windowID)
+        let level = self.windowLevel(for: windowID)
 
         return ServiceWindowInfo(
             windowID: Int(windowID),
@@ -521,19 +517,19 @@ fileprivate extension ApplicationService {
             screenName: screen.name)
     }
 
-    func windowBounds(for window: Element) -> CGRect {
+    private func windowBounds(for window: Element) -> CGRect {
         let position = window.position() ?? .zero
         let size = window.size() ?? .zero
         return CGRect(origin: position, size: size)
     }
 
-    func screenInfo(for bounds: CGRect) -> (index: Int?, name: String?) {
+    fileprivate func screenInfo(for bounds: CGRect) -> (index: Int?, name: String?) {
         let screenService = ScreenService()
         let screenInfo = screenService.screenContainingWindow(bounds: bounds)
         return (screenInfo?.index, screenInfo?.name)
     }
 
-    func resolveWindowID(for window: Element, title: String, bounds: CGRect, fallbackIndex: Int) -> CGWindowID {
+    private func resolveWindowID(for window: Element, title: String, bounds: CGRect, fallbackIndex: Int) -> CGWindowID {
         let windowIdentityService = WindowIdentityService()
         if let identifier = windowIdentityService.getWindowID(from: window) {
             return identifier
@@ -549,7 +545,7 @@ fileprivate extension ApplicationService {
         return CGWindowID(fallbackIndex)
     }
 
-    func matchWindowID(pid: pid_t, title: String, bounds: CGRect) -> CGWindowID? {
+    private func matchWindowID(pid: pid_t, title: String, bounds: CGRect) -> CGWindowID? {
         let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
         guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return nil
@@ -585,7 +581,7 @@ fileprivate extension ApplicationService {
         return nil
     }
 
-    func spaceInfo(for windowID: CGWindowID) -> (spaceID: UInt64?, spaceName: String?) {
+    private func spaceInfo(for windowID: CGWindowID) -> (spaceID: UInt64?, spaceName: String?) {
         let spaceService = SpaceManagementService()
         let spaces = spaceService.getSpacesForWindow(windowID: windowID)
         guard let firstSpace = spaces.first else {
@@ -594,7 +590,7 @@ fileprivate extension ApplicationService {
         return (firstSpace.id, firstSpace.name)
     }
 
-    func windowLevel(for windowID: CGWindowID) -> Int {
+    fileprivate func windowLevel(for windowID: CGWindowID) -> Int {
         let spaceService = SpaceManagementService()
         return spaceService.getWindowLevel(windowID: windowID).map { Int($0) } ?? 0
     }
@@ -678,13 +674,13 @@ fileprivate extension ApplicationService {
     }
 
     @MainActor
-    func searchApplicationWithSpotlight(_ name: String) -> URL? {
+    private func searchApplicationWithSpotlight(_ name: String) -> URL? {
         SpotlightApplicationSearcher(logger: self.logger, name: name).search()
     }
 
     // MARK: - Helper for building window list output
 
-fileprivate func buildWindowListOutput(
+    fileprivate func buildWindowListOutput(
         windows: [ServiceWindowInfo],
         app: ServiceApplicationInfo,
         startTime: Date,
@@ -751,29 +747,29 @@ private struct WindowEnumerationContext {
     let logger: Logger
 
     func run() async -> UnifiedToolOutput<ServiceWindowListData> {
-        let snapshot = hasScreenRecording ? collectCGSnapshot() : nil
+        let snapshot = self.hasScreenRecording ? self.collectCGSnapshot() : nil
         if let snapshot, let fast = fastPath(using: snapshot) {
             return fast
         }
 
-        guard isApplicationRunning else {
-            return terminatedOutput()
+        guard self.isApplicationRunning else {
+            return self.terminatedOutput()
         }
 
-        let axWindows = fetchAXWindows()
+        let axWindows = self.fetchAXWindows()
         if let snapshot {
-            return await mergeWithSnapshot(snapshot, axResult: axWindows)
+            return await self.mergeWithSnapshot(snapshot, axResult: axWindows)
         }
 
-        return await buildAXOnlyResult(from: axWindows)
+        return await self.buildAXOnlyResult(from: axWindows)
     }
 
     private var isApplicationRunning: Bool {
-        NSRunningApplication(processIdentifier: app.processIdentifier)?.isTerminated == false
+        NSRunningApplication(processIdentifier: self.app.processIdentifier)?.isTerminated == false
     }
 
     private func collectCGSnapshot() -> CGSnapshot? {
-        logger.debug("Using hybrid approach: CGWindowList + selective AX enrichment")
+        self.logger.debug("Using hybrid approach: CGWindowList + selective AX enrichment")
         let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
         guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return nil
@@ -807,7 +803,7 @@ private struct WindowEnumerationContext {
             } else {
                 let missingTitleMessage =
                     "Window \(windowInfo.windowID) has no title in CGWindowList, will need AX enrichment"
-                logger.debug("\(missingTitleMessage)")
+                self.logger.debug("\(missingTitleMessage)")
             }
             windowIndex += 1
         }
@@ -816,7 +812,7 @@ private struct WindowEnumerationContext {
             return nil
         }
 
-        logger.debug("CGWindowList found \(windows.count) windows for \(app.name)")
+        self.logger.debug("CGWindowList found \(windows.count) windows for \(self.app.name)")
         return CGSnapshot(windows: windows, windowsByTitle: windowsByTitle)
     }
 
@@ -865,36 +861,36 @@ private struct WindowEnumerationContext {
             return nil
         }
 
-        logger.debug("All windows have titles from CGWindowList, using fast path")
-        return service.buildWindowListOutput(
+        self.logger.debug("All windows have titles from CGWindowList, using fast path")
+        return self.service.buildWindowListOutput(
             windows: snapshot.windows,
-            app: app,
-            startTime: startTime,
+            app: self.app,
+            startTime: self.startTime,
             warnings: [])
     }
 
     private func terminatedOutput() -> UnifiedToolOutput<ServiceWindowListData> {
-        logger.warning("Application \(app.name) appears to have terminated")
+        self.logger.warning("Application \(self.app.name) appears to have terminated")
         return UnifiedToolOutput(
-            data: ServiceWindowListData(windows: [], targetApplication: app),
+            data: ServiceWindowListData(windows: [], targetApplication: self.app),
             summary: UnifiedToolOutput.Summary(
-                brief: "Application \(app.name) has no windows (app terminated)",
+                brief: "Application \(self.app.name) has no windows (app terminated)",
                 status: .failed,
                 counts: ["windows": 0]),
             metadata: UnifiedToolOutput.Metadata(
-                duration: Date().timeIntervalSince(startTime),
+                duration: Date().timeIntervalSince(self.startTime),
                 warnings: ["Application appears to have terminated"]))
     }
 
     private func fetchAXWindows() -> AXWindowResult {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
-        appElement.setMessagingTimeout(axTimeout)
+        appElement.setMessagingTimeout(self.axTimeout)
         defer { appElement.setMessagingTimeout(0) }
 
         let windowStartTime = Date()
-        let windows = appElement.windowsWithTimeout(timeout: axTimeout) ?? []
-        let timedOut = Date().timeIntervalSince(windowStartTime) >= Double(axTimeout)
+        let windows = appElement.windowsWithTimeout(timeout: self.axTimeout) ?? []
+        let timedOut = Date().timeIntervalSince(windowStartTime) >= Double(self.axTimeout)
         return AXWindowResult(windows: windows, timedOut: timedOut)
     }
 
@@ -906,7 +902,7 @@ private struct WindowEnumerationContext {
         var warnings: [String] = []
 
         for (index, axWindow) in axResult.windows.enumerated() {
-            if Date().timeIntervalSince(startTime) > Double(axTimeout * 2) {
+            if Date().timeIntervalSince(self.startTime) > Double(self.axTimeout * 2) {
                 warnings.append("Stopped enrichment after timeout")
                 break
             }
@@ -930,18 +926,18 @@ private struct WindowEnumerationContext {
         }
 
         if axResult.timedOut {
-            warnings.append("Window enumeration timed out after \(axTimeout)s, results may be incomplete")
+            warnings.append("Window enumeration timed out after \(self.axTimeout)s, results may be incomplete")
         }
 
-        return service.buildWindowListOutput(
+        return self.service.buildWindowListOutput(
             windows: enrichedWindows,
-            app: app,
-            startTime: startTime,
+            app: self.app,
+            startTime: self.startTime,
             warnings: warnings)
     }
 
     private func buildAXOnlyResult(from axResult: AXWindowResult) async -> UnifiedToolOutput<ServiceWindowListData> {
-        logger.debug("Using pure AX approach (no screen recording permission)")
+        self.logger.debug("Using pure AX approach (no screen recording permission)")
         var warnings: [String] = []
         var windowInfos: [ServiceWindowInfo] = []
         let maxWindowsToProcess = 100
@@ -951,12 +947,12 @@ private struct WindowEnumerationContext {
             let warning =
                 "Application \(app.name) has \(axResult.windows.count) windows, " +
                 "processing only first \(maxWindowsToProcess)"
-            logger.warning("\(warning)")
+            self.logger.warning("\(warning)")
         }
 
         for (index, window) in limitedWindows.enumerated() {
-            if Date().timeIntervalSince(startTime) > Double(axTimeout) {
-                warnings.append("Stopped processing after \(axTimeout)s timeout")
+            if Date().timeIntervalSince(self.startTime) > Double(self.axTimeout) {
+                warnings.append("Stopped processing after \(self.axTimeout)s timeout")
                 break
             }
 
@@ -975,14 +971,14 @@ private struct WindowEnumerationContext {
             warnings.append(processedWarning)
         }
 
-        if !hasScreenRecording {
+        if !self.hasScreenRecording {
             warnings.append("Screen recording permission not granted - window listing may be slower")
         }
 
-        return service.buildWindowListOutput(
+        return self.service.buildWindowListOutput(
             windows: windowInfos,
-            app: app,
-            startTime: startTime,
+            app: self.app,
+            startTime: self.startTime,
             warnings: warnings)
     }
 }
@@ -995,19 +991,19 @@ private struct SpotlightApplicationSearcher {
     let name: String
 
     func search() -> URL? {
-        logger.debug("Using Spotlight to search for: \(name)")
-        let query = makeQuery()
+        self.logger.debug("Using Spotlight to search for: \(self.name)")
+        let query = self.makeQuery()
         query.start()
-        waitForResults(query)
+        self.waitForResults(query)
         query.stop()
-        logger.debug("Spotlight query completed with \(query.resultCount) results")
+        self.logger.debug("Spotlight query completed with \(query.resultCount) results")
 
         guard let match = bestMatch(in: query) else {
             return nil
         }
 
         let resultMessage = "Spotlight found app: \(match.url.path) (score: \(match.score))"
-        logger.debug("\(resultMessage)")
+        self.logger.debug("\(resultMessage)")
         return match.url
     }
 
@@ -1016,7 +1012,7 @@ private struct SpotlightApplicationSearcher {
         let predicateFormat =
             "(kMDItemContentType == 'com.apple.application-bundle' || kMDItemContentType == 'com.apple.application')" +
             " && (kMDItemDisplayName CONTAINS[cd] %@ || kMDItemFSName CONTAINS[cd] %@)"
-        query.predicate = NSPredicate(format: predicateFormat, name, name)
+        query.predicate = NSPredicate(format: predicateFormat, self.name, self.name)
         query.searchScopes = [
             NSMetadataQueryIndexedLocalComputerScope,
             NSMetadataQueryIndexedNetworkScope,
@@ -1033,7 +1029,7 @@ private struct SpotlightApplicationSearcher {
 
     private func bestMatch(in query: NSMetadataQuery) -> (url: URL, score: Int)? {
         var bestMatch: (url: URL, score: Int)?
-        let searchTerm = name.lowercased()
+        let searchTerm = self.name.lowercased()
 
         for index in 0..<query.resultCount {
             guard let item = query.result(at: index) as? NSMetadataItem,
@@ -1048,7 +1044,7 @@ private struct SpotlightApplicationSearcher {
 
             let spotlightMessage =
                 "Spotlight found: \(path), displayName: '\(displayName)', fsName: '\(fsName)'"
-            logger.debug("\(spotlightMessage)")
+            self.logger.debug("\(spotlightMessage)")
 
             let score = score(for: displayName, fsName: fsName, path: path, searchTerm: searchTerm)
             if score > (bestMatch?.score ?? 0) {
@@ -1076,7 +1072,8 @@ private struct SpotlightApplicationSearcher {
 
         if displayLower == searchTerm ||
             fsLower == searchTerm ||
-            fsName.lowercased() == "\(searchTerm).app" {
+            fsName.lowercased() == "\(searchTerm).app"
+        {
             score = 100
         } else if displayLower.hasPrefix(searchTerm) || fsLower.hasPrefix(searchTerm) {
             score = 80

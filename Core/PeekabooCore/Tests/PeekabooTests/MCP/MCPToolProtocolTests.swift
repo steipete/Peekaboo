@@ -275,7 +275,7 @@ struct MockToolTests {
             name: "slow",
             description: "Slow tool",
             inputSchema: .object([:]),
-            executionDelay: 0.1 // 100ms
+            executionDelay: 0.1, // 100ms
         )
 
         let start = Date()

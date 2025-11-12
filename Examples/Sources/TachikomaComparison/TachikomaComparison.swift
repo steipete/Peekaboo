@@ -218,7 +218,7 @@ struct TachikomaComparison: AsyncParsableCommand {
                 let request = ModelRequest(
                     messages: [Message.user(content: .text(prompt))],
                     tools: nil, // No function calling for comparison
-                    settings: ModelSettings(maxTokens: 500) // Limit response length
+                    settings: ModelSettings(maxTokens: 500), // Limit response length
                 )
 
                 let result = try await model.getResponse(request: request)

@@ -1,5 +1,5 @@
-import Foundation
 import Darwin
+import Foundation
 import os.log
 import PeekabooFoundation
 import Tachikoma
@@ -73,9 +73,9 @@ public final class PeekabooServices: @unchecked Sendable {
     /// Execute the supplied async operation with a temporary override for `PeekabooServices.shared`.
     public static func withTestServices<T>(
         _ services: PeekabooServices,
-        perform operation: () async throws -> T
-    ) async rethrows -> T {
-        try await $taskOverride.withValue(services) {
+        perform operation: () async throws -> T) async rethrows -> T
+    {
+        try await self.$taskOverride.withValue(services) {
             try await operation()
         }
     }
@@ -300,14 +300,13 @@ public final class PeekabooServices: @unchecked Sendable {
         let logger = SystemLogger(subsystem: "boo.peekaboo.core", category: "Services")
         logger.debug("🚀 Creating shared PeekabooServices instance")
 
-        let dependencies = buildServiceDependencies(logger: logger)
-        let services = makeServices(from: dependencies, agent: nil)
+        let dependencies = self.buildServiceDependencies(logger: logger)
+        let services = self.makeServices(from: dependencies, agent: nil)
 
-        services.agent = resolveAgentIfAvailable(
+        services.agent = self.resolveAgentIfAvailable(
             for: services,
             dependencies: dependencies,
-            logger: logger
-        )
+            logger: logger)
 
         return services
     }
@@ -341,8 +340,7 @@ public final class PeekabooServices: @unchecked Sendable {
             uiAutomationService: automation,
             windowManagementService: windows,
             menuService: menuService,
-            dockService: dockService
-        )
+            dockService: dockService)
 
         return ServiceDependencies(
             logging: logging,
@@ -359,15 +357,14 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             audioInput: audioInput,
             screens: screens,
-            process: process
-        )
+            process: process)
     }
 
     @MainActor
     private static func makeServices(
         from dependencies: ServiceDependencies,
-        agent: (any AgentServiceProtocol)?
-    ) -> PeekabooServices {
+        agent: (any AgentServiceProtocol)?) -> PeekabooServices
+    {
         PeekabooServices(
             logging: dependencies.logging,
             screenCapture: dependencies.screenCapture,
@@ -384,16 +381,15 @@ public final class PeekabooServices: @unchecked Sendable {
             audioInput: dependencies.audioInput,
             agent: agent,
             configuration: dependencies.configuration,
-            screens: dependencies.screens
-        )
+            screens: dependencies.screens)
     }
 
     @MainActor
     private static func resolveAgentIfAvailable(
         for services: PeekabooServices,
         dependencies: ServiceDependencies,
-        logger: SystemLogger
-    ) -> (any AgentServiceProtocol)? {
+        logger: SystemLogger) -> (any AgentServiceProtocol)?
+    {
         let config = dependencies.configuration
         let hasOpenAI = config.getOpenAIAPIKey().map { !$0.isEmpty } ?? false
         let hasAnthropic = config.getAnthropicAPIKey().map { !$0.isEmpty } ?? false
@@ -401,8 +397,7 @@ public final class PeekabooServices: @unchecked Sendable {
 
         guard hasOpenAI || hasAnthropic || hasOllama else {
             logger.debug(
-                "\(AgentDisplayTokens.Status.warning) PeekabooAgentService skipped - no API keys available"
-            )
+                "\(AgentDisplayTokens.Status.warning) PeekabooAgentService skipped - no API keys available")
             return nil
         }
 
@@ -419,14 +414,13 @@ public final class PeekabooServices: @unchecked Sendable {
             hasAnthropic: hasAnthropic,
             hasOllama: hasOllama,
             configuredDefault: config.getConfiguration()?.agent?.defaultModel,
-            isEnvironmentProvided: environmentProviders != nil
-        )
+            isEnvironmentProvided: environmentProviders != nil)
 
         let determination = services.determineDefaultModelWithConflict(sources)
         logger.debug("🔍 Determined default model: '\(determination.model)'")
 
         if determination.hasConflict {
-            logModelConflict(determination, logger: logger)
+            self.logModelConflict(determination, logger: logger)
         }
 
         do {
@@ -434,8 +428,7 @@ public final class PeekabooServices: @unchecked Sendable {
             logger.debug("\(AgentDisplayTokens.Status.info) Using AI model: \(defaultModel)")
             let agent = try PeekabooAgentService(services: services, defaultModel: defaultModel)
             logger.debug(
-                "\(AgentDisplayTokens.Status.success) PeekabooAgentService initialized with available providers"
-            )
+                "\(AgentDisplayTokens.Status.success) PeekabooAgentService initialized with available providers")
             return agent
         } catch {
             logger.error("Failed to initialize PeekabooAgentService: \(error)")
@@ -533,10 +526,10 @@ extension PeekabooServices {
     /// - Returns: Automation result
     public func automate(
         appIdentifier: String,
-        actions: [AutomationAction]
-    ) async throws -> AutomationResult {
-        logger.info("\(AgentDisplayTokens.Status.running) Starting automation for app: \(appIdentifier)")
-        logger.debug("Number of actions: \(actions.count)")
+        actions: [AutomationAction]) async throws -> AutomationResult
+    {
+        self.logger.info("\(AgentDisplayTokens.Status.running) Starting automation for app: \(appIdentifier)")
+        self.logger.debug("Number of actions: \(actions.count)")
 
         let preparation = try await prepareAutomationSession(appIdentifier: appIdentifier)
         let executedActions = try await executeAutomationActions(actions, sessionId: preparation.sessionId)
@@ -544,77 +537,73 @@ extension PeekabooServices {
         let successCount = executedActions.count(where: { $0.success })
         let summary = "\(AgentDisplayTokens.Status.success) Automation complete: "
             + "\(successCount)/\(executedActions.count) actions succeeded"
-        logger.info("\(summary)")
+        self.logger.info("\(summary)")
 
         return AutomationResult(
             sessionId: preparation.sessionId,
             actions: executedActions,
-            initialScreenshot: preparation.initialScreenshot
-        )
+            initialScreenshot: preparation.initialScreenshot)
     }
 
     private func prepareAutomationSession(appIdentifier: String) async throws -> AutomationPreparation {
         let sessionId = try await sessions.createSession()
-        logger.debug("Created session: \(sessionId)")
+        self.logger.debug("Created session: \(sessionId)")
 
-        logger.debug("Capturing initial window state")
+        self.logger.debug("Capturing initial window state")
         let captureResult = try await screenCapture.captureWindow(appIdentifier: appIdentifier, windowIndex: nil)
 
-        logger.debug("Detecting UI elements")
+        self.logger.debug("Detecting UI elements")
         let windowContext = WindowContext(
             applicationName: captureResult.metadata.applicationInfo?.name,
             windowTitle: captureResult.metadata.windowInfo?.title,
-            windowBounds: captureResult.metadata.windowInfo?.bounds
-        )
+            windowBounds: captureResult.metadata.windowInfo?.bounds)
 
         let detectionResult = try await automation.detectElements(
             in: captureResult.imageData,
             sessionId: sessionId,
-            windowContext: windowContext
-        )
-        logger.info("Detected \(detectionResult.elements.all.count) elements")
-        try await sessions.storeDetectionResult(sessionId: sessionId, result: detectionResult)
+            windowContext: windowContext)
+        self.logger.info("Detected \(detectionResult.elements.all.count) elements")
+        try await self.sessions.storeDetectionResult(sessionId: sessionId, result: detectionResult)
 
         return AutomationPreparation(sessionId: sessionId, initialScreenshot: captureResult.savedPath)
     }
 
     private func executeAutomationActions(
         _ actions: [AutomationAction],
-        sessionId: String
-    ) async throws -> [ExecutedAction] {
+        sessionId: String) async throws -> [ExecutedAction]
+    {
         var executedActions: [ExecutedAction] = []
 
         for (index, action) in actions.enumerated() {
-            logger.info("Executing action \(index + 1)/\(actions.count): \(String(describing: action), privacy: .public)")
+            self.logger
+                .info("Executing action \(index + 1)/\(actions.count): \(String(describing: action), privacy: .public)")
             let startTime = Date()
             do {
-                try await performAutomationAction(action, sessionId: sessionId)
+                try await self.performAutomationAction(action, sessionId: sessionId)
                 let duration = Date().timeIntervalSince(startTime)
                 let successMessage =
                     "\(AgentDisplayTokens.Status.success) Action completed in " +
                     "\(self.formatDuration(duration))s"
-                logger.debug("\(successMessage, privacy: .public)")
+                self.logger.debug("\(successMessage, privacy: .public)")
 
                 executedActions.append(ExecutedAction(
                     action: action,
                     success: true,
                     duration: duration,
-                    error: nil
-                ))
+                    error: nil))
             } catch {
                 let duration = Date().timeIntervalSince(startTime)
                 let peekabooError = error.asPeekabooError(context: "Action execution failed")
                 let failureMessage =
                     "\(AgentDisplayTokens.Status.failure) Action failed after " +
                     "\(self.formatDuration(duration))s: \(peekabooError.localizedDescription)"
-                logger.error("\(failureMessage, privacy: .public)")
+                self.logger.error("\(failureMessage, privacy: .public)")
 
                 executedActions.append(ExecutedAction(
                     action: action,
                     success: false,
                     duration: duration,
-                    error: peekabooError.localizedDescription
-                ))
+                    error: peekabooError.localizedDescription))
                 throw peekabooError
             }
         }
@@ -625,15 +614,14 @@ extension PeekabooServices {
     private func performAutomationAction(_ action: AutomationAction, sessionId: String) async throws {
         switch action {
         case let .click(target, clickType):
-            try await automation.click(target: target, clickType: clickType, sessionId: sessionId)
+            try await self.automation.click(target: target, clickType: clickType, sessionId: sessionId)
         case let .type(text, target, clear):
-            try await automation.type(
+            try await self.automation.type(
                 text: text,
                 target: target,
                 clearExisting: clear,
                 typingDelay: 50,
-                sessionId: sessionId
-            )
+                sessionId: sessionId)
         case let .scroll(direction, amount, target):
             let request = ScrollRequest(
                 direction: direction,
@@ -644,7 +632,7 @@ extension PeekabooServices {
                 sessionId: sessionId)
             try await automation.scroll(request)
         case let .hotkey(keys):
-            try await automation.hotkey(keys: keys, holdDuration: 100)
+            try await self.automation.hotkey(keys: keys, holdDuration: 100)
         case let .wait(milliseconds):
             try await Task.sleep(nanoseconds: UInt64(milliseconds) * 1_000_000)
         }
@@ -672,27 +660,25 @@ extension PeekabooServices {
             && sources.configuredDefault != nil
             && sources.configuredDefault != environmentModel
 
-        let model: String
-        if !sources.providers.isEmpty {
-            model = environmentModel ?? "gpt-5"
+        let model: String = if !sources.providers.isEmpty {
+            environmentModel ?? "gpt-5"
         } else if let configuredDefault = sources.configuredDefault {
-            model = configuredDefault
+            configuredDefault
         } else if sources.hasAnthropic {
-            model = "claude-sonnet-4.5"
+            "claude-sonnet-4.5"
         } else if sources.hasOpenAI {
-            model = "gpt-5"
+            "gpt-5"
         } else if sources.hasOllama {
-            model = "gpt-5"
+            "gpt-5"
         } else {
-            model = "gpt-5"
+            "gpt-5"
         }
 
         return ModelDetermination(
             model: model,
             hasConflict: hasConflict,
             configModel: sources.configuredDefault,
-            environmentModel: environmentModel
-        )
+            environmentModel: environmentModel)
     }
 }
 
@@ -769,4 +755,5 @@ public struct ExecutedAction: Sendable {
     public let duration: TimeInterval
     public let error: String?
 }
+
 private typealias SystemLogger = os.Logger

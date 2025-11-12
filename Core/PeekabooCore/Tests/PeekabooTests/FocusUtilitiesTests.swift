@@ -91,11 +91,10 @@ struct FocusUtilitiesTests {
         } catch {
             // Accept either our typed FocusError or the broader PeekabooError.appNotFound
             let isFocusError = error is FocusError
-            let isPeekabooAppError: Bool
-            if case let .some(.appNotFound(appName)) = (error as? PeekabooError) {
-                isPeekabooAppError = appName == "NonExistentApp12345"
+            let isPeekabooAppError: Bool = if case let .some(.appNotFound(appName)) = (error as? PeekabooError) {
+                appName == "NonExistentApp12345"
             } else {
-                isPeekabooAppError = false
+                false
             }
             #expect(isFocusError || isPeekabooAppError)
         }

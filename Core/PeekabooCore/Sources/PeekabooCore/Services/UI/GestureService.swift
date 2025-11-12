@@ -60,8 +60,7 @@ public final class GestureService {
             to: to,
             steps: steps,
             eventFlags: eventFlags,
-            stepDelayNanos: stepDelayNanos
-        )
+            stepDelayNanos: stepDelayNanos)
 
         self.logger.debug("Drag completed")
     }
@@ -256,7 +255,6 @@ private struct GesturePathContext {
     func point(at index: Int) -> CGPoint {
         CGPoint(
             x: self.start.x + (self.deltaX * CGFloat(index)),
-            y: self.start.y + (self.deltaY * CGFloat(index))
-        )
+            y: self.start.y + (self.deltaY * CGFloat(index)))
     }
 }

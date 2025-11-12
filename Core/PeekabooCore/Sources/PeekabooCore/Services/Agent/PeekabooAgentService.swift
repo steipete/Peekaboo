@@ -232,7 +232,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             maxSteps: maxSteps)
     }
 
-
     /// Clean up any cached sessions or resources
     public func cleanup() async {
         let cutoff = Date().addingTimeInterval(-7 * 24 * 60 * 60)
@@ -363,11 +362,11 @@ extension PeekabooAgentService {
     func generationSettings(for model: LanguageModel) -> GenerationSettings {
         switch model {
         case .openai(.gpt5):
-            return GenerationSettings(
+            GenerationSettings(
                 maxTokens: 4096,
                 providerOptions: .init(openai: .init(verbosity: .medium)))
         default:
-            return GenerationSettings(maxTokens: 4096)
+            GenerationSettings(maxTokens: 4096)
         }
     }
 
@@ -427,7 +426,6 @@ extension PeekabooAgentService {
         return result
     }
 }
-
 
 extension PeekabooAgentService {
     /// Resume a previous session
@@ -828,7 +826,6 @@ extension PeekabooAgentService {
                 endTime: endTime))
     }
 
-
     /// Execute task using direct generateText calls without streaming
     private func executeWithoutStreaming(
         _ task: String,
@@ -873,6 +870,4 @@ extension PeekabooAgentService {
                 startTime: sessionContext.startTime,
                 endTime: endTime))
     }
-
-
 }

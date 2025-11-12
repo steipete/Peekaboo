@@ -51,9 +51,9 @@ final class SessionTitleGenerator {
         do {
             try await Task.sleep(nanoseconds: 3_000_000_000)
         } catch {
-            return Self.fallbackTitle
+            return self.fallbackTitle
         }
-        return Self.fallbackTitle
+        return self.fallbackTitle
     }
 
     private func generateTitleCandidate(

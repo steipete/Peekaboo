@@ -48,25 +48,25 @@ public class WindowToolFormatter: BaseToolFormatter {
     override public func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .focusWindow:
-            return self.formatFocusWindowResult(result)
+            self.formatFocusWindowResult(result)
         case .resizeWindow:
-            return self.formatResizeWindowResult(result)
+            self.formatResizeWindowResult(result)
         case .listWindows:
-            return self.formatListWindowsResult(result)
+            self.formatListWindowsResult(result)
         case .minimizeWindow:
-            return self.formatMinimizeWindowResult(result)
+            self.formatMinimizeWindowResult(result)
         case .maximizeWindow:
-            return self.formatMaximizeWindowResult(result)
+            self.formatMaximizeWindowResult(result)
         case .listScreens:
-            return self.formatListScreensResult(result)
+            self.formatListScreensResult(result)
         case .listSpaces:
-            return self.formatListSpacesResult(result)
+            self.formatListSpacesResult(result)
         case .switchSpace:
-            return self.formatSwitchSpaceResult(result)
+            self.formatSwitchSpaceResult(result)
         case .moveWindowToSpace:
-            return self.formatMoveWindowToSpaceResult(result)
+            self.formatMoveWindowToSpaceResult(result)
         default:
-            return super.formatResultSummary(result: result)
+            super.formatResultSummary(result: result)
         }
     }
 
@@ -124,14 +124,13 @@ public class WindowToolFormatter: BaseToolFormatter {
             return super.formatStarting(arguments: arguments)
         }
     }
-
 }
 
-private extension WindowToolFormatter {
+extension WindowToolFormatter {
     // MARK: - Window Management
 
     private func formatFocusWindowResult(_ result: [String: Any]) -> String {
-        var parts: [String] = ["→ Focused"]
+        var parts = ["→ Focused"]
 
         if let title = self.truncatedTitle(from: result, limit: 40) {
             parts.append("\"\(title)\"")
@@ -151,7 +150,7 @@ private extension WindowToolFormatter {
     }
 
     private func formatResizeWindowResult(_ result: [String: Any]) -> String {
-        var parts: [String] = ["→ Resized"]
+        var parts = ["→ Resized"]
 
         if let description = self.resizeWindowDescription(result) {
             parts.append(contentsOf: description)
@@ -176,15 +175,15 @@ private extension WindowToolFormatter {
         var parts: [String] = []
 
         if let windows: [[String: Any]] = ToolResultExtractor.array("windows", from: result) {
-            appendWindowCountDescription(for: windows, into: &parts)
-            appendWindowAppBreakdown(from: windows, into: &parts)
-            appendWindowStateSummary(for: windows, into: &parts)
-            appendWindowTitlePreview(for: windows, into: &parts)
+            self.appendWindowCountDescription(for: windows, into: &parts)
+            self.appendWindowAppBreakdown(from: windows, into: &parts)
+            self.appendWindowStateSummary(for: windows, into: &parts)
+            self.appendWindowTitlePreview(for: windows, into: &parts)
         } else {
-            appendLegacyWindowCount(from: result, into: &parts)
+            self.appendLegacyWindowCount(from: result, into: &parts)
         }
 
-        appendWindowFilterInfo(from: result, into: &parts)
+        self.appendWindowFilterInfo(from: result, into: &parts)
         return parts.isEmpty ? "→ listed" : parts.joined(separator: " ")
     }
 
@@ -301,16 +300,16 @@ private extension WindowToolFormatter {
 
     private func appendWindowCountDescription(
         for windows: [[String: Any]],
-        into parts: inout [String]
-    ) {
+        into parts: inout [String])
+    {
         let count = windows.count
         parts.append("→ \(count) window\(count == 1 ? "" : "s")")
     }
 
     private func appendWindowAppBreakdown(
         from windows: [[String: Any]],
-        into parts: inout [String]
-    ) {
+        into parts: inout [String])
+    {
         let appGroups = Dictionary(grouping: windows) { window in
             (window["app"] as? String) ?? "Unknown"
         }
@@ -331,8 +330,8 @@ private extension WindowToolFormatter {
 
     private func appendWindowStateSummary(
         for windows: [[String: Any]],
-        into parts: inout [String]
-    ) {
+        into parts: inout [String])
+    {
         let minimized = windows.count(where: { ($0["isMinimized"] as? Bool) == true })
         let hidden = windows.count(where: { ($0["isHidden"] as? Bool) == true })
         let fullscreen = windows.count(where: { ($0["isFullscreen"] as? Bool) == true })
@@ -349,8 +348,8 @@ private extension WindowToolFormatter {
 
     private func appendWindowTitlePreview(
         for windows: [[String: Any]],
-        into parts: inout [String]
-    ) {
+        into parts: inout [String])
+    {
         guard windows.count <= 3 else { return }
 
         let titles = windows.compactMap { $0["title"] as? String }.prefix(3)
@@ -365,8 +364,8 @@ private extension WindowToolFormatter {
 
     private func appendLegacyWindowCount(
         from result: [String: Any],
-        into parts: inout [String]
-    ) {
+        into parts: inout [String])
+    {
         if let count = ToolResultExtractor.int("count", from: result) {
             parts.append("→ \(count) window\(count == 1 ? "" : "s")")
             return
@@ -382,8 +381,8 @@ private extension WindowToolFormatter {
 
     private func appendWindowFilterInfo(
         from result: [String: Any],
-        into parts: inout [String]
-    ) {
+        into parts: inout [String])
+    {
         if let app = ToolResultExtractor.string("app", from: result) ??
             ToolResultExtractor.string("appName", from: result)
         {
@@ -627,5 +626,4 @@ private extension WindowToolFormatter {
     private func isConstrained(_ result: [String: Any]) -> Bool {
         ToolResultExtractor.bool("constrained", from: result) ?? false
     }
-
 }

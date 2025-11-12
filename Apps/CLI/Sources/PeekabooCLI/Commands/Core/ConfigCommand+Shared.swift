@@ -58,7 +58,7 @@ struct ConfigCommandOutput {
     }
 
     func info(_ lines: [String]) {
-        guard !jsonOutput else { return }
+        guard !self.jsonOutput else { return }
         lines.forEach { print($0) }
     }
 

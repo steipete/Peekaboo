@@ -70,13 +70,11 @@ public struct DragTool: MCPTool {
             let (fromPoint, fromDescription) = try await self.resolveLocation(
                 target: request.fromTarget,
                 sessionId: request.sessionId,
-                parameterName: "from"
-            )
+                parameterName: "from")
             let (toPoint, toDescription) = try await self.resolveLocation(
                 target: request.toTarget,
                 sessionId: request.sessionId,
-                parameterName: "to"
-            )
+                parameterName: "to")
 
             guard fromPoint != toPoint else {
                 return ToolResponse.error("Start and end points must be different")
@@ -90,16 +88,14 @@ public struct DragTool: MCPTool {
                 to: toPoint,
                 duration: request.duration,
                 steps: request.steps,
-                modifiers: request.modifiers
-            )
+                modifiers: request.modifiers)
 
             let executionTime = Date().timeIntervalSince(startTime)
             return self.buildResponse(
                 from: DragPointDescription(point: fromPoint, description: fromDescription),
                 to: DragPointDescription(point: toPoint, description: toDescription),
                 executionTime: executionTime,
-                request: request
-            )
+                request: request)
         } catch let error as CoordinateParseError {
             return ToolResponse.error(error.message)
         } catch let error as DragToolError {
@@ -115,8 +111,8 @@ public struct DragTool: MCPTool {
     private func resolveLocation(
         target: DragLocationInput,
         sessionId: String?,
-        parameterName: String
-    ) async throws -> (CGPoint, String) {
+        parameterName: String) async throws -> (CGPoint, String)
+    {
         switch target {
         case let .coordinates(raw):
             let point = try self.parseCoordinates(raw, parameterName: parameterName)
@@ -206,8 +202,8 @@ public struct DragTool: MCPTool {
         from: DragPointDescription,
         to: DragPointDescription,
         executionTime: TimeInterval,
-        request: DragRequest
-    ) -> ToolResponse {
+        request: DragRequest) -> ToolResponse
+    {
         let deltaX = to.point.x - from.point.x
         let deltaY = to.point.y - from.point.y
         let distance = sqrt(deltaX * deltaX + deltaY * deltaY)
@@ -286,7 +282,7 @@ private struct DragRequest {
         guard durationValue > 0 else {
             throw DragToolError("Duration must be greater than 0.")
         }
-        guard durationValue <= 30_000 else {
+        guard durationValue <= 30000 else {
             throw DragToolError("Duration must be 30 seconds or less to prevent excessive delays.")
         }
 
@@ -318,7 +314,7 @@ private enum DragLocationInput {
     init?(element: String?, coordinates: String?) {
         if let coords = coordinates {
             self = .coordinates(coords)
-        } else if let element = element {
+        } else if let element {
             self = .element(element)
         } else {
             return nil
@@ -336,12 +332,12 @@ private struct DragPointDescription {
     let description: String
 }
 
-private extension UIElement {
-    var centerPoint: CGPoint {
+extension UIElement {
+    fileprivate var centerPoint: CGPoint {
         CGPoint(x: self.frame.midX, y: self.frame.midY)
     }
 
-    var humanDescription: String {
+    fileprivate var humanDescription: String {
         "\(self.role): \(self.title ?? self.label ?? "untitled")"
     }
 }

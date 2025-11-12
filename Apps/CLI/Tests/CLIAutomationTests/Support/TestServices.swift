@@ -876,8 +876,8 @@ final class StubDialogService: DialogServiceProtocol {
         path: String?,
         filename: String?,
         actionButton: String,
-        appName: String?) async throws -> DialogActionResult
-    {
+        appName: String?
+    ) async throws -> DialogActionResult {
         if let result = self.handleFileDialogResult {
             return result
         }

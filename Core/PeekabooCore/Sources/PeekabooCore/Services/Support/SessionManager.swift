@@ -350,8 +350,7 @@ public final class SessionManager: SessionManagerProtocol {
         if let latest = validSessions.first {
             let age = Int(-latest.date.timeIntervalSinceNow)
             self.logger.debug(
-                "Found valid session: \(latest.url.lastPathComponent) created \(age) seconds ago"
-            )
+                "Found valid session: \(latest.url.lastPathComponent) created \(age) seconds ago")
             return latest.url.lastPathComponent
         } else {
             self.logger.debug("No valid sessions found within \(Int(self.sessionValidityWindow)) second window")

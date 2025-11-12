@@ -731,7 +731,7 @@ extension SeeCommand {
 
     private func buildMenuSummaryIfNeeded() async -> MenuBarSummary? {
         // Placeholder for future UI summary generation; currently unused.
-        return nil
+        nil
     }
 
     private func determineMode() -> PeekabooCore.CaptureMode {

@@ -102,8 +102,8 @@ public final class ProcessService: ProcessServiceProtocol {
 }
 
 @MainActor
-public extension ProcessService {
-    func executeStep(
+extension ProcessService {
+    public func executeStep(
         _ step: ScriptStep,
         sessionId: String?) async throws -> StepExecutionResult
     {
@@ -141,8 +141,7 @@ public extension ProcessService {
 }
 
 @MainActor
-private extension ProcessService {
-
+extension ProcessService {
     // MARK: - Command Implementations
 
     private func executeSeeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
@@ -184,7 +183,7 @@ private extension ProcessService {
         let doubleClick = clickParams.button == "double"
 
         // Get session detection result
-        guard try await sessionManager.getDetectionResult(sessionId: effectiveSessionId) != nil else {
+        guard try await self.sessionManager.getDetectionResult(sessionId: effectiveSessionId) != nil else {
             throw PeekabooError.sessionNotFound(effectiveSessionId)
         }
 
@@ -574,38 +573,39 @@ private extension ProcessService {
             params: typedParams)
     }
 
-    func typedParameters(for command: String, dict: [String: String]) -> ProcessCommandParameters? {
+    private func typedParameters(for command: String, dict: [String: String]) -> ProcessCommandParameters? {
         switch command {
         case "see":
-            return .screenshot(self.typedScreenshotParameters(from: dict))
+            .screenshot(self.typedScreenshotParameters(from: dict))
         case "click":
-            return .click(self.typedClickParameters(from: dict))
+            .click(self.typedClickParameters(from: dict))
         case "type":
-            return self.typedTypeParameters(from: dict)
+            self.typedTypeParameters(from: dict)
         case "scroll":
-            return .scroll(self.typedScrollParameters(from: dict))
+            .scroll(self.typedScrollParameters(from: dict))
         case "hotkey":
-            return self.typedHotkeyParameters(from: dict)
+            self.typedHotkeyParameters(from: dict)
         case "menu":
-            return self.typedMenuParameters(from: dict)
+            self.typedMenuParameters(from: dict)
         case "window":
-            return .focusWindow(self.typedWindowParameters(from: dict))
+            .focusWindow(self.typedWindowParameters(from: dict))
         case "app":
-            return self.typedAppParameters(from: dict)
+            self.typedAppParameters(from: dict)
         case "swipe":
-            return .swipe(self.typedSwipeParameters(from: dict))
+            .swipe(self.typedSwipeParameters(from: dict))
         case "drag":
-            return self.typedDragParameters(from: dict)
+            self.typedDragParameters(from: dict)
         case "sleep":
-            return .sleep(self.typedSleepParameters(from: dict))
+            .sleep(self.typedSleepParameters(from: dict))
         case "dock":
-            return .dock(self.typedDockParameters(from: dict))
+            .dock(self.typedDockParameters(from: dict))
         default:
-            return nil
+            nil
         }
     }
 
-    func typedScreenshotParameters(from dict: [String: String]) -> ProcessCommandParameters.ScreenshotParameters {
+    private func typedScreenshotParameters(from dict: [String: String]) -> ProcessCommandParameters
+    .ScreenshotParameters {
         ProcessCommandParameters.ScreenshotParameters(
             path: dict["path"] ?? "screenshot.png",
             app: dict["app"],
@@ -615,7 +615,7 @@ private extension ProcessService {
             annotate: dict["annotate"].flatMap { Bool($0) })
     }
 
-    func typedClickParameters(from dict: [String: String]) -> ProcessCommandParameters.ClickParameters {
+    private func typedClickParameters(from dict: [String: String]) -> ProcessCommandParameters.ClickParameters {
         ProcessCommandParameters.ClickParameters(
             x: dict["x"].flatMap { Double($0) },
             y: dict["y"].flatMap { Double($0) },
@@ -627,7 +627,7 @@ private extension ProcessService {
             modifiers: nil)
     }
 
-    func typedTypeParameters(from dict: [String: String]) -> ProcessCommandParameters? {
+    private func typedTypeParameters(from dict: [String: String]) -> ProcessCommandParameters? {
         guard let text = dict["text"] else { return nil }
         return .type(ProcessCommandParameters.TypeParameters(
             text: text,
@@ -637,7 +637,7 @@ private extension ProcessService {
             pressEnter: dict["press-enter"].flatMap { Bool($0) }))
     }
 
-    func typedScrollParameters(from dict: [String: String]) -> ProcessCommandParameters.ScrollParameters {
+    private func typedScrollParameters(from dict: [String: String]) -> ProcessCommandParameters.ScrollParameters {
         ProcessCommandParameters.ScrollParameters(
             direction: dict["direction"] ?? "down",
             amount: dict["amount"].flatMap { Int($0) },
@@ -645,7 +645,7 @@ private extension ProcessService {
             target: dict["on"] ?? dict["target"])
     }
 
-    func typedHotkeyParameters(from dict: [String: String]) -> ProcessCommandParameters? {
+    private func typedHotkeyParameters(from dict: [String: String]) -> ProcessCommandParameters? {
         guard let key = dict["key"] else { return nil }
         var modifiers: [String] = []
         if dict["cmd"] == "true" || dict["command"] == "true" { modifiers.append("command") }
@@ -660,7 +660,7 @@ private extension ProcessService {
             app: dict["app"]))
     }
 
-    func typedMenuParameters(from dict: [String: String]) -> ProcessCommandParameters? {
+    private func typedMenuParameters(from dict: [String: String]) -> ProcessCommandParameters? {
         guard let path = dict["path"] ?? dict["menu"] else { return nil }
         let menuItems = path.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }
         return .menuClick(ProcessCommandParameters.MenuClickParameters(
@@ -668,14 +668,14 @@ private extension ProcessService {
             app: dict["app"]))
     }
 
-    func typedWindowParameters(from dict: [String: String]) -> ProcessCommandParameters.FocusWindowParameters {
+    private func typedWindowParameters(from dict: [String: String]) -> ProcessCommandParameters.FocusWindowParameters {
         ProcessCommandParameters.FocusWindowParameters(
             app: dict["app"],
             title: dict["title"],
             index: dict["index"].flatMap { Int($0) })
     }
 
-    func typedAppParameters(from dict: [String: String]) -> ProcessCommandParameters? {
+    private func typedAppParameters(from dict: [String: String]) -> ProcessCommandParameters? {
         guard let appName = dict["name"] else { return nil }
         return .launchApp(ProcessCommandParameters.LaunchAppParameters(
             appName: appName,
@@ -685,7 +685,7 @@ private extension ProcessService {
             force: dict["force"].flatMap { Bool($0) }))
     }
 
-    func typedSwipeParameters(from dict: [String: String]) -> ProcessCommandParameters.SwipeParameters {
+    private func typedSwipeParameters(from dict: [String: String]) -> ProcessCommandParameters.SwipeParameters {
         ProcessCommandParameters.SwipeParameters(
             direction: dict["direction"] ?? "right",
             distance: dict["distance"].flatMap { Double($0) },
@@ -694,7 +694,7 @@ private extension ProcessService {
             fromY: dict["from-y"].flatMap { Double($0) })
     }
 
-    func typedDragParameters(from dict: [String: String]) -> ProcessCommandParameters? {
+    private func typedDragParameters(from dict: [String: String]) -> ProcessCommandParameters? {
         guard let fromX = dict["from-x"].flatMap(Double.init),
               let fromY = dict["from-y"].flatMap(Double.init),
               let toX = dict["to-x"].flatMap(Double.init),
@@ -719,26 +719,28 @@ private extension ProcessService {
             modifiers: modifiers.isEmpty ? nil : modifiers))
     }
 
-    func typedSleepParameters(from dict: [String: String]) -> ProcessCommandParameters.SleepParameters {
+    private func typedSleepParameters(from dict: [String: String]) -> ProcessCommandParameters.SleepParameters {
         let duration = dict["duration"].flatMap { Double($0) } ?? 1.0
         return ProcessCommandParameters.SleepParameters(duration: duration)
     }
 
-    func typedDockParameters(from dict: [String: String]) -> ProcessCommandParameters.DockParameters {
+    private func typedDockParameters(from dict: [String: String]) -> ProcessCommandParameters.DockParameters {
         ProcessCommandParameters.DockParameters(
             action: dict["action"] ?? "list",
             item: dict["item"],
             path: dict["path"])
     }
 
-    func screenshotParameters(from step: ScriptStep) -> ProcessCommandParameters.ScreenshotParameters {
+    private func screenshotParameters(from step: ScriptStep) -> ProcessCommandParameters.ScreenshotParameters {
         if case let .screenshot(params) = step.params {
             return params
         }
         return ProcessCommandParameters.ScreenshotParameters(path: "screenshot.png")
     }
 
-    func captureScreenshot(using params: ProcessCommandParameters.ScreenshotParameters) async throws -> CaptureResult {
+    private func captureScreenshot(using params: ProcessCommandParameters
+        .ScreenshotParameters) async throws -> CaptureResult
+    {
         let mode = params.mode ?? "window"
         switch mode {
         case "fullscreen":
@@ -758,7 +760,7 @@ private extension ProcessService {
         }
     }
 
-    func saveScreenshot(
+    private func saveScreenshot(
         _ captureResult: CaptureResult,
         to outputPath: String) throws -> String
     {
@@ -769,16 +771,15 @@ private extension ProcessService {
         return outputPath
     }
 
-    func storeScreenshot(
+    private func storeScreenshot(
         captureResult: CaptureResult,
         path: String,
         existingSessionId: String?) async throws -> String
     {
-        let sessionIdentifier: String
-        if let existingSessionId {
-            sessionIdentifier = existingSessionId
+        let sessionIdentifier: String = if let existingSessionId {
+            existingSessionId
         } else {
-            sessionIdentifier = try await self.sessionManager.createSession()
+            try await self.sessionManager.createSession()
         }
         try await self.persistScreenshot(
             captureResult: captureResult,
@@ -787,7 +788,7 @@ private extension ProcessService {
         return sessionIdentifier
     }
 
-    func persistScreenshot(
+    private func persistScreenshot(
         captureResult: CaptureResult,
         path: String,
         sessionId: String) async throws
@@ -802,7 +803,7 @@ private extension ProcessService {
             windowBounds: windowInfo?.bounds)
     }
 
-    func annotateIfNeeded(
+    private func annotateIfNeeded(
         shouldAnnotate: Bool,
         captureResult: CaptureResult,
         sessionId: String) async throws
@@ -817,17 +818,17 @@ private extension ProcessService {
             result: detectionResult)
     }
 
-    func swipeDirection(from rawValue: String) -> SwipeDirection {
+    private func swipeDirection(from rawValue: String) -> SwipeDirection {
         switch rawValue.lowercased() {
-        case "up": return .up
-        case "down": return .down
-        case "left": return .left
-        case "right": return .right
-        default: return .right
+        case "up": .up
+        case "down": .down
+        case "left": .left
+        case "right": .right
+        default: .right
         }
     }
 
-    func swipeEndpoints(
+    private func swipeEndpoints(
         params: ProcessCommandParameters.SwipeParameters,
         direction: SwipeDirection,
         distance: Double) -> (start: CGPoint, end: CGPoint)
@@ -843,20 +844,20 @@ private extension ProcessService {
         return (center, endPoint)
     }
 
-    func offsetPoint(_ point: CGPoint, direction: SwipeDirection, distance: Double) -> CGPoint {
+    private func offsetPoint(_ point: CGPoint, direction: SwipeDirection, distance: Double) -> CGPoint {
         switch direction {
         case .up:
-            return CGPoint(x: point.x, y: point.y - distance)
+            CGPoint(x: point.x, y: point.y - distance)
         case .down:
-            return CGPoint(x: point.x, y: point.y + distance)
+            CGPoint(x: point.x, y: point.y + distance)
         case .left:
-            return CGPoint(x: point.x - distance, y: point.y)
+            CGPoint(x: point.x - distance, y: point.y)
         case .right:
-            return CGPoint(x: point.x + distance, y: point.y)
+            CGPoint(x: point.x + distance, y: point.y)
         }
     }
 
-    struct WindowCommandContext {
+    fileprivate struct WindowCommandContext {
         let action: String
         let app: String?
         let title: String?
@@ -864,7 +865,7 @@ private extension ProcessService {
         let resizeParams: ProcessCommandParameters.ResizeWindowParameters?
     }
 
-    func windowCommandContext(from step: ScriptStep) throws -> WindowCommandContext {
+    private func windowCommandContext(from step: ScriptStep) throws -> WindowCommandContext {
         if case let .focusWindow(params) = step.params {
             return WindowCommandContext(
                 action: "focus",
@@ -873,15 +874,14 @@ private extension ProcessService {
                 index: params.index,
                 resizeParams: nil)
         } else if case let .resizeWindow(params) = step.params {
-            let action: String
-            if params.maximize == true {
-                action = "maximize"
+            let action = if params.maximize == true {
+                "maximize"
             } else if params.minimize == true {
-                action = "minimize"
+                "minimize"
             } else if params.x != nil || params.y != nil {
-                action = "move"
+                "move"
             } else {
-                action = "resize"
+                "resize"
             }
 
             return WindowCommandContext(
@@ -895,7 +895,7 @@ private extension ProcessService {
         throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for window command")
     }
 
-    func fetchWindows(for app: String?) async throws -> [ServiceWindowInfo] {
+    private func fetchWindows(for app: String?) async throws -> [ServiceWindowInfo] {
         if let appName = app {
             return try await self.windowManagementService.listWindows(target: .application(appName))
         }
@@ -909,7 +909,7 @@ private extension ProcessService {
         return allWindows
     }
 
-    func selectWindow(
+    private func selectWindow(
         from windows: [ServiceWindowInfo],
         title: String?,
         index: Int?) throws -> ServiceWindowInfo
@@ -933,7 +933,7 @@ private extension ProcessService {
         throw PeekabooError.windowNotFound()
     }
 
-    func performWindowAction(
+    private func performWindowAction(
         _ action: String,
         window: ServiceWindowInfo,
         resizeParams: ProcessCommandParameters.ResizeWindowParameters?) async throws

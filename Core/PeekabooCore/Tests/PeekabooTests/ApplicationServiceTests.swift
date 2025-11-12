@@ -69,7 +69,7 @@ struct ApplicationServiceTests {
 
         // Then - should use fast path with CGWindowList
         #expect(result.metadata.duration < 1.25) // CGWindowList should be faster but allow slack
-        let nonEmptyTitleCount = result.data.windows.filter { !$0.title.isEmpty }.count
+        let nonEmptyTitleCount = result.data.windows.count(where: { !$0.title.isEmpty })
         if nonEmptyTitleCount > 0 {
             #expect(nonEmptyTitleCount == result.data.windows.count, "Expected all Finder windows to expose titles")
         }

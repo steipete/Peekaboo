@@ -101,8 +101,8 @@ extension AnnotationVisualizationPreset {
 
 // MARK: - Private Helpers
 
-private extension AnnotationVisualizationPreset {
-    func normalStyle(baseColor: CGColor) -> ElementStyle {
+extension AnnotationVisualizationPreset {
+    private func normalStyle(baseColor: CGColor) -> ElementStyle {
         ElementStyle(
             primaryColor: baseColor,
             fillOpacity: self.fillOpacity,
@@ -118,7 +118,7 @@ private extension AnnotationVisualizationPreset {
                 padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
     }
 
-    func selectedStyle(baseColor: CGColor) -> ElementStyle {
+    private func selectedStyle(baseColor: CGColor) -> ElementStyle {
         ElementStyle(
             primaryColor: baseColor,
             fillOpacity: self.selectedFillOpacity,
@@ -138,7 +138,7 @@ private extension AnnotationVisualizationPreset {
                 padding: LabelStyle.EdgeInsets(horizontal: 10, vertical: 5)))
     }
 
-    func disabledStyle() -> ElementStyle {
+    private func disabledStyle() -> ElementStyle {
         ElementStyle(
             primaryColor: PeekabooColorPalette.control,
             fillOpacity: 0.1,

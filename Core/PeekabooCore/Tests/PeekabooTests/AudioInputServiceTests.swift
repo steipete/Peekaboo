@@ -1,8 +1,8 @@
 import AVFoundation
 import Foundation
+import TachikomaAudio
 import Testing
 @testable import PeekabooCore
-import TachikomaAudio
 
 @preconcurrency
 private enum AudioTestEnvironment {
@@ -207,9 +207,9 @@ final class MockAudioRecorder: AudioRecorderProtocol, @unchecked Sendable {
         self.isRecording = false
     }
 
-    func pauseRecording() async { }
+    func pauseRecording() async {}
 
-    func resumeRecording() async { }
+    func resumeRecording() async {}
 }
 
 struct MockCredentialProvider: AudioTranscriptionCredentialProviding, Sendable {

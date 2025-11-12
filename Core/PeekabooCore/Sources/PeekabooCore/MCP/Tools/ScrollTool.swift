@@ -66,15 +66,15 @@ public struct ScrollTool: MCPTool {
     private func parseScrollDirection(_ direction: String) -> ToolScrollDirection? {
         switch direction.lowercased() {
         case "up":
-            return .up
+            .up
         case "down":
-            return .down
+            .down
         case "left":
-            return .left
+            .left
         case "right":
-            return .right
+            .right
         default:
-            return nil
+            nil
         }
     }
 

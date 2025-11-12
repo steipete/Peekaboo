@@ -214,7 +214,7 @@ public struct DockTool: MCPTool {
 
         Completed in \(duration)
         """
-        .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
         return ToolResponse(
             content: [.text(message)],

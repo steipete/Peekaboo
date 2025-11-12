@@ -302,8 +302,7 @@ public final class SpaceManagementService {
 
         return buildSpacesByDisplay(
             managedSpaces: managedSpacesArray,
-            activeSpace: activeSpace
-        )
+            activeSpace: activeSpace)
     }
 
     /// Get the current active Space
@@ -509,11 +508,11 @@ public final class SpaceManagementService {
     }
 }
 
-private extension SpaceManagementService {
-    func buildSpacesByDisplay(
+extension SpaceManagementService {
+    private func buildSpacesByDisplay(
         managedSpaces: NSArray,
-        activeSpace: CGSSpaceID
-    ) -> [CGDirectDisplayID: [SpaceInfo]] {
+        activeSpace: CGSSpaceID) -> [CGDirectDisplayID: [SpaceInfo]]
+    {
         var spacesByDisplay: [CGDirectDisplayID: [SpaceInfo]] = [:]
 
         for case let displayDict as [String: Any] in managedSpaces {
@@ -526,8 +525,7 @@ private extension SpaceManagementService {
                 makeSpaceInfo(
                     from: spaceDict,
                     displayID: displayID,
-                    activeSpace: activeSpace
-                )
+                    activeSpace: activeSpace)
             }
 
             if !displaySpaces.isEmpty {
@@ -538,7 +536,7 @@ private extension SpaceManagementService {
         return spacesByDisplay
     }
 
-    func resolveDisplayID(from displayDict: [String: Any]) -> CGDirectDisplayID {
+    private func resolveDisplayID(from displayDict: [String: Any]) -> CGDirectDisplayID {
         guard displayDict["Display Identifier"] is String else { return 0 }
 
         let displays = NSScreen.screens.compactMap { screen -> CGDirectDisplayID? in
@@ -550,11 +548,11 @@ private extension SpaceManagementService {
         return displays.first ?? 0
     }
 
-    func makeSpaceInfo(
+    private func makeSpaceInfo(
         from spaceDict: [String: Any],
         displayID: CGDirectDisplayID,
-        activeSpace: CGSSpaceID
-    ) -> SpaceInfo? {
+        activeSpace: CGSSpaceID) -> SpaceInfo?
+    {
         guard let spaceIDValue = spaceDict["ManagedSpaceID"] as? Int64 else { return nil }
         let spaceID = CGSSpaceID(spaceIDValue)
         let typeValue = spaceDict["type"] as? Int ?? 0
@@ -567,11 +565,10 @@ private extension SpaceManagementService {
             isActive: spaceID == activeSpace,
             displayID: displayID,
             name: spaceName,
-            ownerPIDs: ownerPIDs
-        )
+            ownerPIDs: ownerPIDs)
     }
 
-    func mapSpaceType(_ rawValue: Int) -> SpaceInfo.SpaceType {
+    private func mapSpaceType(_ rawValue: Int) -> SpaceInfo.SpaceType {
         switch rawValue {
         case kCGSSpaceUser: .user
         case kCGSSpaceFullscreen: .fullscreen

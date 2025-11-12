@@ -33,8 +33,7 @@ public final class ScrollService {
             deltas: (deltaX, deltaY),
             amount: request.amount,
             smooth: request.smooth,
-            delay: request.delay
-        )
+            delay: request.delay)
 
         try await self.performScroll(context)
         self.logger.debug("Scroll completed")
@@ -207,21 +206,21 @@ public final class ScrollService {
         CGEvent(source: nil)?.location ?? CGPoint.zero
     }
 
-private func moveMouseToPoint(_ point: CGPoint) async throws {
-    guard let moveEvent = CGEvent(
-        mouseEventSource: nil,
-        mouseType: .mouseMoved,
-        mouseCursorPosition: point,
-        mouseButton: .left)
-    else {
-        throw PeekabooError.operationError(message: "Failed to create move event")
+    private func moveMouseToPoint(_ point: CGPoint) async throws {
+        guard let moveEvent = CGEvent(
+            mouseEventSource: nil,
+            mouseType: .mouseMoved,
+            mouseCursorPosition: point,
+            mouseButton: .left)
+        else {
+            throw PeekabooError.operationError(message: "Failed to create move event")
+        }
+
+        moveEvent.post(tap: .cghidEventTap)
+
+        // Small delay after move
+        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
     }
-
-    moveEvent.post(tap: .cghidEventTap)
-
-    // Small delay after move
-    try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-}
 }
 
 private struct ScrollExecutionContext {

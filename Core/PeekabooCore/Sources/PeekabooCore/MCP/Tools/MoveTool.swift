@@ -104,7 +104,7 @@ public struct MoveTool: MCPTool {
         return CGPoint(x: x, y: y)
     }
 
-private func getCenterOfScreen() throws -> CGPoint {
+    private func getCenterOfScreen() throws -> CGPoint {
         #if canImport(AppKit)
         guard let mainScreen = NSScreen.main else {
             throw CoordinateParseError(message: "Unable to determine main screen dimensions")
@@ -159,7 +159,7 @@ private func getCenterOfScreen() throws -> CGPoint {
         guard duration > 0 else {
             throw MoveToolValidationError("Duration must be greater than 0")
         }
-        guard duration <= 30_000 else {
+        guard duration <= 30000 else {
             throw MoveToolValidationError("Duration must be 30 seconds or less to prevent excessive delays")
         }
         guard steps > 0 else {

@@ -103,7 +103,7 @@ struct PlaygroundApp: App {
         113: "F15",
         57: "Caps Lock",
         114: "Help",
-        71: "Clear"
+        71: "Clear",
     ]
 
     private func specialKeyName(for keyCode: UInt16) -> String {

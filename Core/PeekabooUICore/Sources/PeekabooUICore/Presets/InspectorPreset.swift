@@ -99,8 +99,8 @@ extension InspectorVisualizationPreset {
 
 // MARK: - Private Helpers
 
-private extension InspectorVisualizationPreset {
-    func normalStyle(baseColor: CGColor) -> ElementStyle {
+extension InspectorVisualizationPreset {
+    private func normalStyle(baseColor: CGColor) -> ElementStyle {
         ElementStyle(
             primaryColor: baseColor,
             fillOpacity: self.normalOpacity,
@@ -116,7 +116,7 @@ private extension InspectorVisualizationPreset {
                 padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)))
     }
 
-    func hoverStyle(baseColor: CGColor) -> ElementStyle {
+    private func hoverStyle(baseColor: CGColor) -> ElementStyle {
         ElementStyle(
             primaryColor: baseColor,
             fillOpacity: 0,
@@ -132,7 +132,7 @@ private extension InspectorVisualizationPreset {
                 padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
     }
 
-    func selectedStyle(baseColor: CGColor) -> ElementStyle {
+    private func selectedStyle(baseColor: CGColor) -> ElementStyle {
         ElementStyle(
             primaryColor: baseColor,
             fillOpacity: 0.3,
@@ -152,7 +152,7 @@ private extension InspectorVisualizationPreset {
                 padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
     }
 
-    func disabledStyle() -> ElementStyle {
+    private func disabledStyle() -> ElementStyle {
         ElementStyle(
             primaryColor: PeekabooColorPalette.control,
             fillOpacity: 0.3,

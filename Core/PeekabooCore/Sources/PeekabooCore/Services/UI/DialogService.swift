@@ -46,7 +46,7 @@ public final class DialogService: DialogServiceProtocol {
 }
 
 @MainActor
-public extension DialogService {
+extension DialogService {
     public func findActiveDialog(windowTitle: String?, appName: String?) async throws -> DialogInfo {
         self.logger.info("Finding active dialog")
         if let title = windowTitle {
@@ -81,8 +81,8 @@ public extension DialogService {
     public func clickButton(
         buttonText: String,
         windowTitle: String?,
-        appName: String?
-    ) async throws -> DialogActionResult {
+        appName: String?) async throws -> DialogActionResult
+    {
         self.logger.info("Clicking button: \(buttonText)")
         if let title = windowTitle {
             self.logger.debug("In window: \(title)")
@@ -169,7 +169,7 @@ public extension DialogService {
 
         try self.focusTextField(targetField)
         try self.clearFieldIfNeeded(targetField, shouldClear: clearExisting)
-        try self.typeTextValue(text, delay: 10_000)
+        try self.typeTextValue(text, delay: 10000)
 
         let result = DialogActionResult(
             success: true,
@@ -305,8 +305,8 @@ public extension DialogService {
 // MARK: - Private Helpers
 
 @MainActor
-private extension DialogService {
-    func findDialogElement(withTitle title: String?, appName: String?) throws -> Element {
+extension DialogService {
+    private func findDialogElement(withTitle title: String?, appName: String?) throws -> Element {
         self.logger.debug("Finding dialog element")
 
         let systemWide = Element.systemWide()
@@ -421,8 +421,7 @@ private extension DialogService {
                             timeout: 1.0,
                             retryCount: 1,
                             switchSpace: true,
-                            bringToCurrentSpace: true)
-                    )
+                            bringToCurrentSpace: true))
                     try await Task.sleep(nanoseconds: 200_000_000)
                     return
                 }
@@ -543,7 +542,7 @@ private extension DialogService {
         return fields
     }
 
-    func selectTextField(in textFields: [Element], identifier: String?) throws -> Element {
+    private func selectTextField(in textFields: [Element], identifier: String?) throws -> Element {
         guard let identifier else {
             return textFields[0]
         }
@@ -567,14 +566,14 @@ private extension DialogService {
         return field
     }
 
-    func elementBounds(for element: Element) -> CGRect {
+    private func elementBounds(for element: Element) -> CGRect {
         guard let position = element.position(), let size = element.size() else {
             return .zero
         }
         return CGRect(origin: position, size: size)
     }
 
-    func highlightDialogElement(
+    private func highlightDialogElement(
         element: DialogElementType,
         bounds: CGRect,
         action: DialogActionType) async
@@ -586,20 +585,20 @@ private extension DialogService {
             action: action)
     }
 
-    func focusTextField(_ field: Element) throws {
+    private func focusTextField(_ field: Element) throws {
         self.logger.debug("Focusing text field")
         try field.performAction(.press)
     }
 
-    func clearFieldIfNeeded(_ field: Element, shouldClear: Bool) throws {
+    private func clearFieldIfNeeded(_ field: Element, shouldClear: Bool) throws {
         guard shouldClear else { return }
         self.logger.debug("Clearing existing text")
         self.pressKey(0x00, modifiers: .maskCommand) // Cmd+A
         self.pressKey(0x33) // Delete
-        usleep(50_000)
+        usleep(50000)
     }
 
-    func typeTextValue(_ text: String, delay: useconds_t) throws {
+    private func typeTextValue(_ text: String, delay: useconds_t) throws {
         self.logger.debug("Typing text into field")
         for char in text {
             try self.typeCharacter(char)
@@ -607,7 +606,7 @@ private extension DialogService {
         }
     }
 
-    func pressKey(_ virtualKey: CGKeyCode, modifiers: CGEventFlags = []) {
+    private func pressKey(_ virtualKey: CGKeyCode, modifiers: CGEventFlags = []) {
         guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: true) else {
             return
         }
@@ -641,7 +640,7 @@ private extension DialogService {
         return buttons
     }
 
-    func dialogButtons(from dialog: Element) -> [DialogButton] {
+    private func dialogButtons(from dialog: Element) -> [DialogButton] {
         let axButtons = self.collectButtons(from: dialog)
         self.logger.debug("Found \(axButtons.count) buttons")
 
@@ -657,7 +656,7 @@ private extension DialogService {
         }
     }
 
-    func dialogTextFields(from dialog: Element) -> [DialogTextField] {
+    private func dialogTextFields(from dialog: Element) -> [DialogTextField] {
         let axTextFields = self.collectTextFields(from: dialog)
         self.logger.debug("Found \(axTextFields.count) text fields")
 
@@ -671,14 +670,14 @@ private extension DialogService {
         }
     }
 
-    func dialogStaticTexts(from dialog: Element) -> [String] {
+    private func dialogStaticTexts(from dialog: Element) -> [String] {
         let axStaticTexts = dialog.children()?.filter { $0.role() == "AXStaticText" } ?? []
         let staticTexts = axStaticTexts.compactMap { $0.value() as? String }
         self.logger.debug("Found \(staticTexts.count) static texts")
         return staticTexts
     }
 
-    func dialogOtherElements(from dialog: Element) -> [DialogElement] {
+    private func dialogOtherElements(from dialog: Element) -> [DialogElement] {
         let otherAxElements = dialog.children()?.filter { element in
             let role = element.role() ?? ""
             return role != "AXButton" && role != "AXTextField" &&
@@ -694,16 +693,16 @@ private extension DialogService {
         }
     }
 
-    func navigateToPath(_ filePath: String) throws {
+    private func navigateToPath(_ filePath: String) throws {
         self.logger.debug("Navigating to path using Cmd+Shift+G")
         self.pressKey(0x05, modifiers: [.maskCommand, .maskShift]) // G
         usleep(200_000)
-        try self.typeTextValue(filePath, delay: 5_000)
+        try self.typeTextValue(filePath, delay: 5000)
         self.pressKey(0x24) // Return
         usleep(100_000)
     }
 
-    func updateFilename(_ fileName: String, in dialog: Element) throws {
+    private func updateFilename(_ fileName: String, in dialog: Element) throws {
         self.logger.debug("Setting filename in dialog")
         let textFields = self.collectTextFields(from: dialog)
         guard let field = textFields.first else {
@@ -713,11 +712,11 @@ private extension DialogService {
 
         try field.performAction(.press)
         self.pressKey(0x00, modifiers: .maskCommand)
-        usleep(50_000)
-        try self.typeTextValue(fileName, delay: 5_000)
+        usleep(50000)
+        try self.typeTextValue(fileName, delay: 5000)
     }
 
-    func clickActionButton(named actionButton: String, in dialog: Element) throws -> Bool {
+    private func clickActionButton(named actionButton: String, in dialog: Element) throws -> Bool {
         let buttons = self.collectButtons(from: dialog)
         self.logger.debug("Found \(buttons.count) buttons, looking for: \(actionButton)")
 
@@ -741,11 +740,13 @@ private extension DialogService {
         let lowered = identifier.lowercased()
         return NSWorkspace.shared.runningApplications.first {
             if let name = $0.localizedName?.lowercased(),
-               name == lowered || name.contains(lowered) {
+               name == lowered || name.contains(lowered)
+            {
                 return true
             }
             if let bundle = $0.bundleIdentifier?.lowercased(),
-               bundle == lowered || bundle.contains(lowered) {
+               bundle == lowered || bundle.contains(lowered)
+            {
                 return true
             }
             return false
@@ -756,8 +757,7 @@ private extension DialogService {
     private func findDialogUsingCGWindowList(title: String?) -> Element? {
         guard let cgWindows = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]]
+            kCGNullWindowID) as? [[String: Any]]
         else {
             return nil
         }
@@ -888,7 +888,7 @@ private extension DialogService {
         }
     }
 
-    func postUnicodeCharacter(_ char: Character) {
+    private func postUnicodeCharacter(_ char: Character) {
         let str = String(char)
         let utf16 = Array(str.utf16)
         guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) else {
