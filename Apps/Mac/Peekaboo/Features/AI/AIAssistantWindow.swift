@@ -1,13 +1,30 @@
 import SwiftUI
 import Tachikoma
 
+private enum AIAssistantPrompts {
+    static let general = "You are a helpful assistant specialized in macOS automation and development using Peekaboo."
+    static let automation = """
+    You are an expert in macOS automation. Help users create powerful automation workflows using \
+    Peekaboo's tools. Be specific about which commands to use and provide working examples.
+    """
+    static let swift = """
+    You are a Swift development expert. Help with Swift programming, SwiftUI, macOS app development, \
+    and integration with Peekaboo's APIs. Provide clean, modern Swift code examples.
+    """
+    static let debugging = """
+    You are a debugging specialist. Help users troubleshoot issues with Peekaboo automation scripts, \
+    analyze error messages, and suggest solutions. Always ask for specific error details and logs.
+    """
+    static let compactDefault = "You are a helpful assistant."
+}
+
 // MARK: - AI Assistant Window
 
 @available(macOS 14.0, *)
 public struct AIAssistantWindow: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedModel: Model = .openai(.gpt5)
-    @State private var systemPrompt: String = "You are a helpful assistant specialized in macOS automation and development using Peekaboo."
+    @State private var systemPrompt: String = AIAssistantPrompts.general
     @State private var showSettings = false
 
     public init() {}
@@ -51,25 +68,25 @@ public struct AIAssistantWindow: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         Button("👻 General Assistant") {
-                            self.systemPrompt = "You are a helpful assistant specialized in macOS automation and development using Peekaboo."
+                            self.systemPrompt = AIAssistantPrompts.general
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(.blue)
 
                         Button("⚡ Automation Expert") {
-                            self.systemPrompt = "You are an expert in macOS automation. Help users create powerful automation workflows using Peekaboo's tools. Be specific about which commands to use and provide working examples."
+                            self.systemPrompt = AIAssistantPrompts.automation
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(.blue)
 
                         Button("🧑‍[sh] Swift Developer") {
-                            self.systemPrompt = "You are a Swift development expert. Help with Swift programming, SwiftUI, macOS app development, and integration with Peekaboo's APIs. Provide clean, modern Swift code examples."
+                            self.systemPrompt = AIAssistantPrompts.swift
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(.blue)
 
                         Button("🔍 Debugging Helper") {
-                            self.systemPrompt = "You are a debugging specialist. Help users troubleshoot issues with Peekaboo automation scripts, analyze error messages, and suggest solutions. Always ask for specific error details and logs."
+                            self.systemPrompt = AIAssistantPrompts.debugging
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(.blue)
@@ -82,11 +99,12 @@ public struct AIAssistantWindow: View {
             .frame(minWidth: 250, maxWidth: 300)
         } detail: {
             // Main chat area
+            let tools: [String]? = nil // Can be extended with Peekaboo automation tools
             PeekabooChatView(
                 model: self.selectedModel,
                 system: self.systemPrompt.isEmpty ? nil : self.systemPrompt,
                 settings: .default,
-                tools: nil // Can be extended with Peekaboo automation tools
+                tools: tools
             )
         }
         .navigationTitle("AI Assistant")
@@ -108,7 +126,7 @@ public struct CompactAIAssistant: View {
     @State private var model: Model = .openai(.gpt5)
     let systemPrompt: String
 
-    public init(systemPrompt: String = "You are a helpful assistant.") {
+    public init(systemPrompt: String = AIAssistantPrompts.compactDefault) {
         self.systemPrompt = systemPrompt
     }
 

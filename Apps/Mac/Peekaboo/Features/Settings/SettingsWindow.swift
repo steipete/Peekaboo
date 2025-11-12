@@ -103,15 +103,29 @@ struct AISettingsView: View {
     private var modelDescriptions: [String: String] {
         [
             // OpenAI models
-            "gpt-5": "Flagship GPT-5 model with 400K context and best-in-class coding + automation skills.",
-            "gpt-5-mini": "Cost-optimized GPT-5 Mini with the same tools + 400K context at a friendlier price.",
+            "gpt-5": "Flagship GPT-5 model with 400K context and best-in-class " +
+                "coding + automation skills.",
+            "gpt-5-mini": "Cost-optimized GPT-5 Mini with the same tools + 400K context " +
+                "at a friendlier price.",
             // Anthropic models
-            "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5 with new tools + computer use, tuned for long-running automation tasks.",
-            "claude-haiku-4.5": "Claude Haiku 4.5 for ultra-low latency assistant tasks with the updated reasoning stack.",
+            "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5 with new tools + computer use, " +
+                "tuned for long-running automation tasks.",
+            "claude-haiku-4.5": "Claude Haiku 4.5 for ultra-low latency assistant tasks with " +
+                "the updated reasoning stack.",
             // Ollama models
-            "llava:latest": "Open-source multimodal model that runs locally. Good for privacy-conscious users and offline usage.",
-            "llama3.2-vision:latest": "Meta's latest vision-capable model with strong performance on visual understanding tasks.",
+            "llava:latest": "Open-source multimodal model that runs locally. Good for " +
+                "privacy-conscious users and offline usage.",
+            "llama3.2-vision:latest": "Meta's latest vision-capable model with strong " +
+                "performance on visual understanding tasks.",
         ]
+    }
+
+    private func provider(for modelId: String) -> String? {
+        for (provider, models) in self.allModels
+        where models.contains(where: { $0.id == modelId }) {
+            return provider
+        }
+        return nil
     }
 
     var body: some View {
@@ -128,11 +142,8 @@ struct AISettingsView: View {
                             set: { newModel in
                                 self.settings.selectedModel = newModel
                                 // Update provider based on model selection
-                                for (provider, models) in self.allModels {
-                                    if models.contains(where: { $0.id == newModel }) {
-                                        self.settings.selectedProvider = provider
-                                        break
-                                    }
+                                if let provider = self.provider(for: newModel) {
+                                    self.settings.selectedProvider = provider
                                 }
                             })) {
                                 ForEach(self.allModels, id: \.provider) { provider, models in
@@ -208,9 +219,12 @@ struct AISettingsView: View {
                     Text("Temperature")
                         .frame(width: 80, alignment: .trailing)
 
-                    Slider(value: Binding(
-                        get: { self.settings.temperature },
-                        set: { self.settings.temperature = $0 }), in: 0...1, step: 0.1)
+                    Slider(
+                        value: Binding(
+                            get: { self.settings.temperature },
+                            set: { self.settings.temperature = $0 }),
+                        in: 0...1,
+                        step: 0.1)
 
                     Text(String(format: "%.1f", self.settings.temperature))
                         .monospacedDigit()
@@ -222,9 +236,12 @@ struct AISettingsView: View {
                     Text("Max Tokens")
                         .frame(width: 80, alignment: .trailing)
 
-                    TextField("", value: Binding(
-                        get: { self.settings.maxTokens },
-                        set: { self.settings.maxTokens = $0 }), format: .number)
+                    TextField(
+                        "",
+                        value: Binding(
+                            get: { self.settings.maxTokens },
+                            set: { self.settings.maxTokens = $0 }),
+                        format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 100)
 
@@ -265,7 +282,9 @@ struct AISettingsView: View {
                     }
 
                     Text(
-                        "When enabled, this model will be used for all vision-related tasks like screenshots and image analysis, regardless of the primary model selection.")
+                        "When enabled, this model will be used for all vision-related tasks " +
+                            "like screenshots and image analysis, regardless of the primary " +
+                            "model selection.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .padding(.leading, 88)
