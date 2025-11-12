@@ -92,91 +92,93 @@ func matchDomClassListCriterion(
         return false
     }
 
-    var matchFound = false
-    if let classListArray = domClassListValue as? [String] {
-        switch matchType {
-        case .exact:
-            matchFound = classListArray.contains(expectedValue)
-        case .contains:
-            matchFound = classListArray.contains { $0.localizedCaseInsensitiveContains(expectedValue) }
-        case .containsAny:
-            let expectedParts = expectedValue.split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            matchFound = classListArray.contains { actualPart in
-                expectedParts.contains { expectedPart in actualPart.localizedCaseInsensitiveContains(expectedPart) }
-            }
-        case .prefix:
-            matchFound = classListArray.contains { $0.hasPrefix(expectedValue) }
-        case .suffix:
-            matchFound = classListArray.contains { $0.hasSuffix(expectedValue) }
-        case .regex:
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "SC/DOMClass: Regex matching for array of classes. " +
-                    "Element: \(elementDescriptionForLog) Expected: \(expectedValue)."
-            ))
-            matchFound = classListArray.contains { item in
-                item.range(of: expectedValue, options: .regularExpression) != nil
-            }
+    let matcher = DOMClassMatcher(
+        value: domClassListValue,
+        matchType: matchType,
+        expectedValue: expectedValue,
+        elementDescription: elementDescriptionForLog
+    )
+    return matcher.evaluate()
+}
+
+private struct DOMClassMatcher {
+    let value: Any
+    let matchType: JSONPathHintComponent.MatchType
+    let expectedValue: String
+    let elementDescription: String
+
+    func evaluate() -> Bool {
+        if let classArray = self.value as? [String] {
+            return self.evaluateArray(classArray)
         }
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "SC/DOMClass: \(elementDescriptionForLog) (Array: \(classListArray)) " +
-                "match type '\(matchType.rawValue)' with '\(expectedValue)' resolved to \(matchFound)."
-        ))
-    } else if let classListString = domClassListValue as? String {
-        let classes = classListString.split(separator: " ").map(String.init)
-        switch matchType {
-        case .exact:
-            matchFound = classes.contains(expectedValue)
-        case .contains:
-            matchFound = classListString.localizedCaseInsensitiveContains(expectedValue)
-        case .containsAny:
-            let expectedParts = expectedValue.split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            matchFound = expectedParts.contains {
-                classListString.localizedCaseInsensitiveContains($0)
-            }
-        case .prefix:
-            matchFound = classes.contains { $0.hasPrefix(expectedValue) }
-        case .suffix:
-            matchFound = classes.contains { $0.hasSuffix(expectedValue) }
-        case .regex:
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "SC/DOMClass: Regex matching for space-separated class string. " +
-                    "Element: \(elementDescriptionForLog) Expected: \(expectedValue)."
-            ))
-            matchFound = classes.contains { item in
-                item.range(of: expectedValue, options: .regularExpression) != nil
-            }
+        if let classString = self.value as? String {
+            let components = classString.split(separator: " ").map(String.init)
+            return self.evaluateArray(components, joinedString: classString)
         }
+
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "SC/DOMClass: \(elementDescriptionForLog) (String: '\(classListString)') " +
-                "match type '\(matchType.rawValue)' with '\(expectedValue)' resolved to \(matchFound)."
-        ))
-    } else {
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "SC/DOMClass: \(elementDescriptionForLog) attribute was not [String] or String " +
-                "(type: \(type(of: domClassListValue))). No match."
+            message: "SC/DOMClass: \(self.elementDescription) attribute was not [String] or String " +
+                "(type: \(type(of: self.value))). No match."
         ))
         return false
     }
 
-    if matchFound {
+    private func evaluateArray(_ array: [String], joinedString: String? = nil) -> Bool {
+        let match = self.match(array: array, joinedString: joinedString)
+        self.logResult(array: array, joinedString: joinedString, matchFound: match)
+        return match
+    }
+
+    private func match(array: [String], joinedString: String?) -> Bool {
+        switch self.matchType {
+        case .exact:
+            return array.contains(self.expectedValue)
+        case .contains:
+            return (joinedString ?? array.joined(separator: " ")).localizedCaseInsensitiveContains(self.expectedValue)
+        case .containsAny:
+            let expectedParts = self.expectedValue
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            if let joined = joinedString {
+                return expectedParts.contains { joined.localizedCaseInsensitiveContains($0) }
+            }
+            return array.contains { actual in
+                expectedParts.contains { expected in actual.localizedCaseInsensitiveContains(expected) }
+            }
+        case .prefix:
+            return array.contains { $0.hasPrefix(self.expectedValue) }
+        case .suffix:
+            return array.contains { $0.hasSuffix(self.expectedValue) }
+        case .regex:
+            self.logRegexHint(isArray: joinedString == nil)
+            return array.contains { classEntry in
+                classEntry.range(of: self.expectedValue, options: .regularExpression) != nil
+            }
+        }
+    }
+
+    private func logRegexHint(isArray: Bool) {
+        let typeDescription = isArray ? "array of classes" : "space-separated class string"
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "SC/DOMClass: \(elementDescriptionForLog) MATCHED expected '\(expectedValue)' " +
-                "with type '\(matchType.rawValue)'. Classes: '\(domClassListValue)'"
-        ))
-    } else {
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "SC/DOMClass: \(elementDescriptionForLog) MISMATCHED expected '\(expectedValue)' " +
-                "with type '\(matchType.rawValue)'. Classes: '\(domClassListValue)'"
+            message: "SC/DOMClass: Regex matching for \(typeDescription). " +
+                "Element: \(self.elementDescription) Expected: \(self.expectedValue)."
         ))
     }
-    return matchFound
+
+    private func logResult(array: [String], joinedString: String?, matchFound: Bool) {
+        let representation = joinedString ?? array.description
+        GlobalAXLogger.shared.log(AXLogEntry(
+            level: .debug,
+            message: "SC/DOMClass: \(self.elementDescription) match type '\(self.matchType.rawValue)' " +
+                "with '\(self.expectedValue)' resolved to \(matchFound). Classes: \(representation)"
+        ))
+        let resultText = matchFound ? "MATCHED" : "MISMATCHED"
+        GlobalAXLogger.shared.log(AXLogEntry(
+            level: .debug,
+            message: "SC/DOMClass: \(self.elementDescription) \(resultText) expected '\(self.expectedValue)' " +
+                "with type '\(self.matchType.rawValue)'."
+        ))
+    }
 }

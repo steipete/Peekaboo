@@ -56,33 +56,8 @@ func extractAndFormatAttribute(
 
 @MainActor
 private func extractKnownAttribute(element: Element, attributeName: String, outputFormat: OutputFormat) async -> Any? {
-    switch attributeName {
-    case AXAttributeNames.kAXPathHintAttribute:
-        return element.attribute(Attribute<String>(AXAttributeNames.kAXPathHintAttribute))
-    case AXAttributeNames.kAXRoleAttribute:
-        return element.role()
-    case AXAttributeNames.kAXSubroleAttribute:
-        return element.subrole()
-    case AXAttributeNames.kAXTitleAttribute:
-        return element.title()
-    case AXAttributeNames.kAXDescriptionAttribute:
-        return element.descriptionText()
-    case AXAttributeNames.kAXEnabledAttribute:
-        return formatBooleanAttribute(element.isEnabled(), outputFormat: outputFormat)
-    case AXAttributeNames.kAXFocusedAttribute:
-        return formatBooleanAttribute(element.isFocused(), outputFormat: outputFormat)
-    case AXAttributeNames.kAXHiddenAttribute:
-        return formatBooleanAttribute(element.isHidden(), outputFormat: outputFormat)
-    case AXMiscConstants.isIgnoredAttributeKey:
-        let val = element.isIgnored()
-        return outputFormat == .textContent ? (val ? "true" : "false") : val
-    case "PID":
-        return formatOptionalIntAttribute(element.pid(), outputFormat: outputFormat)
-    case AXAttributeNames.kAXElementBusyAttribute:
-        return formatBooleanAttribute(element.isElementBusy(), outputFormat: outputFormat)
-    default:
-        return nil
-    }
+    AttributeFormatterMapping(attributeName: attributeName)
+        .extract(from: element, format: outputFormat)
 }
 
 @MainActor
@@ -98,9 +73,11 @@ private func formatOptionalIntAttribute(_ value: Int32?, outputFormat: OutputFor
 }
 
 @MainActor
-private func extractRawAttribute(element: Element, attributeName: String,
-                                 outputFormat: OutputFormat) async -> AttributeValue?
-{
+private func extractRawAttribute(
+    element: Element,
+    attributeName: String,
+    outputFormat: OutputFormat
+) async -> AttributeValue? {
     let rawCFValue = element.rawAttributeValue(named: attributeName)
 
     if outputFormat == .textContent {
@@ -169,5 +146,65 @@ func formatFocusedUIElementAttribute(
         return .string("Focused: \(element.role() ?? "?Role") - \(element.title() ?? "?Title")")
     } else {
         return .string(element.briefDescription(option: .raw))
+    }
+}
+private struct AttributeFormatterMapping {
+    let attributeName: String
+
+    func extract(from element: Element, format: OutputFormat) -> Any? {
+        guard let strategy = self.strategy else { return nil }
+        return strategy(element, format)
+    }
+
+    private var strategy: ((Element, OutputFormat) -> Any?)? {
+        switch self.attributeName {
+        case AXAttributeNames.kAXPathHintAttribute:
+            return { element, _ in
+                element.attribute(Attribute<String>(AXAttributeNames.kAXPathHintAttribute))
+            }
+        case AXAttributeNames.kAXRoleAttribute:
+            return { element, _ in element.role() }
+        case AXAttributeNames.kAXSubroleAttribute:
+            return { element, _ in element.subrole() }
+        case AXAttributeNames.kAXTitleAttribute:
+            return { element, _ in element.title() }
+        case AXAttributeNames.kAXDescriptionAttribute:
+            return { element, _ in element.descriptionText() }
+        case AXAttributeNames.kAXEnabledAttribute:
+            return AttributeFormatterMapping.booleanFormatter { $0.isEnabled() }
+        case AXAttributeNames.kAXFocusedAttribute:
+            return AttributeFormatterMapping.booleanFormatter { $0.isFocused() }
+        case AXAttributeNames.kAXHiddenAttribute:
+            return AttributeFormatterMapping.booleanFormatter { $0.isHidden() }
+        case AXMiscConstants.isIgnoredAttributeKey:
+            return { element, format in
+                let value = element.isIgnored()
+                return format == .textContent ? (value ? "true" : "false") : value
+            }
+        case "PID":
+            return AttributeFormatterMapping.numericFormatter { $0.pid() }
+        case AXAttributeNames.kAXElementBusyAttribute:
+            return AttributeFormatterMapping.booleanFormatter { $0.isElementBusy() }
+        default:
+            return nil
+        }
+    }
+
+    private static func booleanFormatter(
+        _ extractor: @escaping (Element) -> Bool?
+    ) -> ((Element, OutputFormat) -> Any?) {
+        { element, format in
+            guard let value = extractor(element) else { return nil }
+            return format == .textContent ? value.description : value
+        }
+    }
+
+    private static func numericFormatter(
+        _ extractor: @escaping (Element) -> Int32?
+    ) -> ((Element, OutputFormat) -> Any?) {
+        { element, format in
+            guard let value = extractor(element) else { return nil }
+            return format == .textContent ? value.description : value
+        }
     }
 }

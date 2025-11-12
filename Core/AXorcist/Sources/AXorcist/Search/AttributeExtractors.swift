@@ -12,60 +12,10 @@ func extractDirectPropertyValue(
     from element: Element,
     outputFormat: OutputFormat
 ) -> (value: Any?, handled: Bool) {
-    var extractedValue: Any?
-    var handled = true
-
-    switch attributeName {
-    case AXAttributeNames.kAXPathHintAttribute:
-        extractedValue = element.attribute(Attribute<String>(AXAttributeNames.kAXPathHintAttribute))
-    case AXAttributeNames.kAXRoleAttribute:
-        extractedValue = element.role()
-    case AXAttributeNames.kAXSubroleAttribute:
-        extractedValue = element.subrole()
-    case AXAttributeNames.kAXTitleAttribute:
-        extractedValue = element.title()
-    case AXAttributeNames.kAXDescriptionAttribute:
-        extractedValue = element.descriptionText() // Renamed
-    case AXAttributeNames.kAXEnabledAttribute:
-        let val = element.isEnabled()
-        extractedValue = val
-        if outputFormat == .textContent {
-            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
-        }
-    case AXAttributeNames.kAXFocusedAttribute:
-        let val = element.isFocused()
-        extractedValue = val
-        if outputFormat == .textContent {
-            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
-        }
-    case AXAttributeNames.kAXHiddenAttribute:
-        let val = element.isHidden()
-        extractedValue = val
-        if outputFormat == .textContent {
-            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
-        }
-    case AXMiscConstants.isIgnoredAttributeKey:
-        let val = element.isIgnored()
-        extractedValue = val
-        if outputFormat == .textContent {
-            extractedValue = val ? "true" : "false"
-        }
-    case "PID":
-        let val = element.pid()
-        extractedValue = val
-        if outputFormat == .textContent {
-            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
-        }
-    case AXAttributeNames.kAXElementBusyAttribute:
-        let val = element.isElementBusy()
-        extractedValue = val
-        if outputFormat == .textContent {
-            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
-        }
-    default:
-        handled = false
+    if let extractor = AttributeDirectMapping(attributeName: attributeName) {
+        return extractor.extract(from: element, format: outputFormat)
     }
-    return (extractedValue, handled)
+    return (nil, false)
 }
 
 @MainActor
@@ -75,42 +25,53 @@ func determineAttributesToFetch(
     targetRole: String?,
     element: Element
 ) -> [String] {
-    if forMultiDefault {
-        return defaultMultiAttributes(for: targetRole)
-    }
+    if forMultiDefault { return defaultMultiAttributes(for: targetRole) }
 
     if let requested = requestedAttributes, !requested.isEmpty {
         return requested
     }
 
-    if let names = element.attributeNames(), !names.isEmpty {
+    return fetchAllAttributeNames(from: element)
+}
+
+@MainActor
+private func fetchAllAttributeNames(from element: Element) -> [String] {
+    guard let names = element.attributeNames(), !names.isEmpty else {
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "determineAttributesToFetch: No specific attributes requested, fetched all \(names.count)"
+            message: "determineAttributesToFetch: Falling back to defaults; unable to fetch attribute names."
         ))
-        return names
+        return []
     }
 
     GlobalAXLogger.shared.log(AXLogEntry(
         level: .debug,
-        message: "determineAttributesToFetch: Falling back to defaults; unable to fetch attribute names."
+        message: "determineAttributesToFetch: No specific attributes requested, fetched all \(names.count)"
     ))
-    return []
+    return names
 }
 
 private func defaultMultiAttributes(for role: String?) -> [String] {
-    let base = [
-        AXAttributeNames.kAXRoleAttribute,
-        AXAttributeNames.kAXValueAttribute,
-        AXAttributeNames.kAXTitleAttribute,
-        AXAttributeNames.kAXIdentifierAttribute,
-    ]
-    guard role == AXRoleNames.kAXStaticTextRole else { return base }
-    return [
-        AXAttributeNames.kAXRoleAttribute,
-        AXAttributeNames.kAXValueAttribute,
-        AXAttributeNames.kAXIdentifierAttribute,
-    ]
+    AttributeDefaultSet(role: role).attributes
+}
+
+private struct AttributeDefaultSet {
+    let role: String?
+
+    var attributes: [String] {
+        let base = [
+            AXAttributeNames.kAXRoleAttribute,
+            AXAttributeNames.kAXValueAttribute,
+            AXAttributeNames.kAXTitleAttribute,
+            AXAttributeNames.kAXIdentifierAttribute,
+        ]
+        guard self.role == AXRoleNames.kAXStaticTextRole else { return base }
+        return [
+            AXAttributeNames.kAXRoleAttribute,
+            AXAttributeNames.kAXValueAttribute,
+            AXAttributeNames.kAXIdentifierAttribute,
+        ]
+    }
 }
 
 // Function to get specifically computed attributes for an element
@@ -143,4 +104,75 @@ func getComputedAttributes(for element: Element) async -> [String: AttributeData
     // }
 
     return computedAttrs
+}
+private struct AttributeDirectMapping {
+    let attributeName: String
+    private let strategyProvider: ((Element, OutputFormat) -> Any?)?
+
+    init?(attributeName: String) {
+        self.attributeName = attributeName
+        self.strategyProvider = AttributeDirectMapping.makeStrategy(for: attributeName)
+        if self.strategyProvider == nil {
+            return nil
+        }
+    }
+
+    func extract(from element: Element, format: OutputFormat) -> (value: Any?, handled: Bool) {
+        guard let strategy = self.strategyProvider else { return (nil, false) }
+        let value = strategy(element, format)
+        return (value, true)
+    }
+
+    private static func makeStrategy(for attributeName: String) -> ((Element, OutputFormat) -> Any?)? {
+        switch attributeName {
+        case AXAttributeNames.kAXPathHintAttribute:
+            return { element, _ in element.attribute(Attribute<String>(AXAttributeNames.kAXPathHintAttribute)) }
+        case AXAttributeNames.kAXRoleAttribute:
+            return { element, _ in element.role() }
+        case AXAttributeNames.kAXSubroleAttribute:
+            return { element, _ in element.subrole() }
+        case AXAttributeNames.kAXTitleAttribute:
+            return { element, _ in element.title() }
+        case AXAttributeNames.kAXDescriptionAttribute:
+            return { element, _ in element.descriptionText() }
+        case AXAttributeNames.kAXEnabledAttribute:
+            return AttributeDirectMapping.booleanFormatter { $0.isEnabled() }
+        case AXAttributeNames.kAXFocusedAttribute:
+            return AttributeDirectMapping.booleanFormatter { $0.isFocused() }
+        case AXAttributeNames.kAXHiddenAttribute:
+            return AttributeDirectMapping.booleanFormatter { $0.isHidden() }
+        case AXMiscConstants.isIgnoredAttributeKey:
+            return { element, format in
+                let value = element.isIgnored()
+                return format == .textContent ? (value ? "true" : "false") : value
+            }
+        case "PID":
+            return AttributeDirectMapping.numericFormatter { element in
+                guard let pid = element.pid() else { return nil }
+                return Int(pid)
+            }
+        case AXAttributeNames.kAXElementBusyAttribute:
+            return AttributeDirectMapping.booleanFormatter { $0.isElementBusy() }
+        default:
+            return nil
+        }
+    }
+
+    private static func booleanFormatter(
+        _ extractor: @escaping (Element) -> Bool?
+    ) -> ((Element, OutputFormat) -> Any?) {
+        { element, format in
+            guard let value = extractor(element) else { return nil }
+            return format == .textContent ? value.description : value
+        }
+    }
+
+    private static func numericFormatter(
+        _ extractor: @escaping (Element) -> Int?
+    ) -> ((Element, OutputFormat) -> Any?) {
+        { element, format in
+            guard let value = extractor(element) else { return nil }
+            return format == .textContent ? value.description : value
+        }
+    }
 }
