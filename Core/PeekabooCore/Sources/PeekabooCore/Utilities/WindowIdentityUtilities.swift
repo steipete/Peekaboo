@@ -230,17 +230,32 @@ public final class WindowIdentityService {
 
     /// Get all windows for a specific application
     public func getWindows(for app: NSRunningApplication) -> [WindowIdentityInfo] {
-        // Get all windows for a specific application
         let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
         guard let windowInfoList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return []
         }
 
+        let targetBundle = app.bundleIdentifier
+        let targetName = app.localizedName
+
         return windowInfoList.compactMap { windowInfo in
-            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
-                  ownerPID == app.processIdentifier,
-                  let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID
-            else {
+            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
+                return nil
+            }
+
+            let ownerApp = NSRunningApplication(processIdentifier: ownerPID)
+            let sameProcess = ownerPID == app.processIdentifier
+            let ownerBundle = ownerApp?.bundleIdentifier
+            let ownerName = ownerApp?.localizedName ?? (windowInfo[kCGWindowOwnerName as String] as? String)
+            let sameBundle = targetBundle != nil && (ownerBundle == targetBundle
+                || ownerBundle?.hasPrefix(targetBundle!) == true)
+            let sameName = targetName != nil && ownerName?.localizedCaseInsensitiveContains(targetName!) == true
+
+            guard sameProcess || sameBundle || sameName else {
+                return nil
+            }
+
+            guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID else {
                 return nil
             }
 

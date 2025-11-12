@@ -38,6 +38,8 @@ import PeekabooFoundation
 public final class ElementDetectionService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ElementDetectionService")
     private let sessionManager: any SessionManagerProtocol
+    private let windowIdentityService = WindowIdentityService()
+    private let windowManagementService = WindowManagementService()
 
     public init(sessionManager: (any SessionManagerProtocol)? = nil) {
         self.sessionManager = sessionManager ?? SessionManager()
@@ -52,7 +54,7 @@ public final class ElementDetectionService {
         self.logger.info("Starting element detection")
 
         let targetApp = try self.resolveApplication(windowContext: windowContext)
-        let windowResolution = try self.resolveWindow(for: targetApp, context: windowContext)
+        let windowResolution = try await self.resolveWindow(for: targetApp, context: windowContext)
         let windowName = windowResolution.window.title() ?? "Untitled"
         self.logger.debug("Found \(windowResolution.windowTypeDescription): \(windowName)")
 
@@ -169,21 +171,37 @@ public final class ElementDetectionService {
         return frontmost
     }
 
-    private func resolveWindow(for app: NSRunningApplication, context: WindowContext?) throws -> WindowResolution {
+    private func resolveWindow(for app: NSRunningApplication, context: WindowContext?) async throws -> WindowResolution {
         let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
-        let allWindows = appElement.windows() ?? []
-        self.logger.debug("Found \(allWindows.count) windows for \(app.localizedName ?? "app")")
+        let axWindows = appElement.windows() ?? []
+        self.logger.debug("Found \(axWindows.count) windows for \(app.localizedName ?? "app")")
 
-        let initialWindow = self.selectWindow(allWindows: allWindows, title: context?.windowTitle)
-        let dialogResolution = self.detectDialogWindow(in: allWindows, targetWindow: initialWindow)
+        let renderableWindows = self.renderableWindows(from: axWindows)
+        let candidateWindows = renderableWindows.isEmpty ? axWindows : renderableWindows
+        self.logger.notice("Renderable AX windows: \(renderableWindows.count) / \(axWindows.count)")
 
-        let finalWindow = dialogResolution.window ??
+        var initialWindow = self.selectWindow(allWindows: candidateWindows, title: context?.windowTitle)
+        let dialogResolution = self.detectDialogWindow(in: candidateWindows, targetWindow: initialWindow)
+
+        var finalWindow = dialogResolution.window ??
             initialWindow ??
-            allWindows.first { $0.isMain() == true } ??
-            allWindows.first
+            candidateWindows.first { $0.isMain() == true } ??
+            candidateWindows.first
+
+        if finalWindow == nil {
+            finalWindow = self.focusedWindowIfMatches(app: app)
+        }
+
+        if finalWindow == nil {
+            finalWindow = await self.resolveWindowViaCGFallback(for: app, title: context?.windowTitle)
+        }
+
+        if finalWindow == nil {
+            finalWindow = await self.resolveWindowViaWindowServiceFallback(for: app, title: context?.windowTitle)
+        }
 
         guard let resolvedWindow = finalWindow else {
-            try self.handleMissingWindow(app: app, windows: allWindows)
+            try self.handleMissingWindow(app: app, windows: axWindows)
         }
 
         return WindowResolution(
@@ -234,6 +252,131 @@ public final class ElementDetectionService {
 
         self.logger.error("No suitable window found for app '\(appName)'")
         throw PeekabooError.windowNotFound(criteria: "No accessible window found for '\(appName)'")
+    }
+
+    private func renderableWindows(from windows: [Element]) -> [Element] {
+        windows.filter { window in
+            guard
+                let frame = window.frame(),
+                frame.width >= 50,
+                frame.height >= 50,
+                window.isMinimized() != true
+            else { return false }
+            return true
+        }
+    }
+
+    private func resolveWindowViaCGFallback(for app: NSRunningApplication, title: String?) async -> Element? {
+        let cgWindows = self.windowIdentityService.getWindows(for: app)
+        guard !cgWindows.isEmpty else {
+            self.logger.notice("CG fallback found 0 windows for \(app.localizedName ?? "app")")
+            return nil
+        }
+
+        let renderable = cgWindows.filter(\.isRenderable)
+        let orderedWindows = (renderable.isEmpty ? cgWindows : renderable)
+            .sorted { $0.bounds.size.area > $1.bounds.size.area }
+        self.logger.notice("CG fallback renderable windows: \(renderable.count) / \(cgWindows.count)")
+
+        if let title {
+            if let matching = orderedWindows.first(where: { $0.title?.localizedCaseInsensitiveContains(title) == true }),
+                let element = self.windowIdentityService.findWindow(byID: matching.windowID)?.window
+            {
+                self.logger.info("Using CG fallback window '\(matching.title ?? "Untitled")' for \(app.localizedName ?? "app")")
+                await self.focusWindow(withID: Int(matching.windowID), appName: app.localizedName ?? "app")
+                if let focused = self.focusedWindowIfMatches(app: app) {
+                    return focused
+                }
+                return element
+            }
+        }
+
+        for info in orderedWindows {
+            if let element = self.windowIdentityService.findWindow(byID: info.windowID)?.window {
+                self.logger.info("Using CG fallback window '\(info.title ?? "Untitled")' for \(app.localizedName ?? "app")")
+                await self.focusWindow(withID: Int(info.windowID), appName: app.localizedName ?? "app")
+                if let focused = self.focusedWindowIfMatches(app: app) {
+                    return focused
+                }
+                return element
+            }
+        }
+
+        return nil
+    }
+
+    private func resolveWindowViaWindowServiceFallback(for app: NSRunningApplication, title: String?) async -> Element? {
+        let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
+        do {
+            let windows = try await self.windowManagementService.listWindows(target: .application(identifier))
+            guard !windows.isEmpty else {
+                self.logger.notice("Window service fallback found 0 windows for \(identifier)")
+                return nil
+            }
+
+            self.logger.notice("Window service fallback inspecting \(windows.count) windows for \(identifier)")
+
+            let ordered = windows.sorted { lhs, rhs in
+                let lArea = lhs.bounds.size.area
+                let rArea = rhs.bounds.size.area
+                return lArea > rArea
+            }
+
+            let targetWindowInfo: ServiceWindowInfo?
+            if let title,
+               let match = ordered.first(where: { $0.title.localizedCaseInsensitiveContains(title) })
+            {
+                targetWindowInfo = match
+            } else {
+                targetWindowInfo = ordered.first
+            }
+
+            guard let windowInfo = targetWindowInfo,
+                  let element = self.windowIdentityService.findWindow(byID: CGWindowID(windowInfo.windowID))?.window
+            else {
+                self.logger.warning("Window service fallback could not resolve AX window for \(identifier)")
+                return nil
+            }
+
+            self.logger.notice("Using window service fallback window '\(windowInfo.title)' for \(identifier)")
+            await self.focusWindow(withID: windowInfo.windowID, appName: identifier)
+            if let focused = self.focusedWindowIfMatches(app: app) {
+                return focused
+            }
+            return element
+        } catch {
+            self.logger.error("Window service fallback failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func focusedWindowIfMatches(app: NSRunningApplication) -> Element? {
+        let systemWide = Element.systemWide()
+        guard let focusedWindow = systemWide.focusedWindow(),
+              let pid = focusedWindow.pid()
+        else {
+            return nil
+        }
+
+        if pid != app.processIdentifier {
+            guard
+                let ownerApp = NSRunningApplication(processIdentifier: pid),
+                ownerApp.bundleIdentifier == app.bundleIdentifier
+            else {
+                return nil
+            }
+        }
+
+        self.logger.notice("Using focused window fallback for \(app.localizedName ?? "app")")
+        return focusedWindow
+    }
+
+    private func focusWindow(withID windowID: Int, appName: String) async {
+        do {
+            try await self.windowManagementService.focusWindow(target: .windowId(windowID))
+        } catch {
+            self.logger.warning("Failed to focus window \(windowID) for \(appName): \(error.localizedDescription)")
+        }
     }
 
     private func collectElements(
@@ -538,4 +681,8 @@ private struct ElementAttributeInput {
     let identifier: String?
     let isActionable: Bool
     let keyboardShortcut: String?
+}
+
+private extension CGSize {
+    var area: CGFloat { width * height }
 }

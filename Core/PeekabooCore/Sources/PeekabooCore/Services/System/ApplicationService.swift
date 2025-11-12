@@ -44,6 +44,7 @@ import PeekabooFoundation
 @MainActor
 public final class ApplicationService: ApplicationServiceProtocol {
     let logger = Logger(subsystem: "boo.peekaboo.core", category: "ApplicationService")
+    private let windowIdentityService = WindowIdentityService()
 
     // Timeout for accessibility API calls to prevent hangs
     private static let axTimeout: Float = 2.0 // 2 seconds instead of default 6 seconds
@@ -493,7 +494,7 @@ fileprivate extension ApplicationService {
             bundlePath: app.bundleURL?.path,
             isActive: app.isActive,
             isHidden: app.isHidden,
-            windowCount: 0 // Don't query window count by default for performance
+            windowCount: self.getWindowCount(for: app)
         )
     }
 
@@ -602,7 +603,25 @@ fileprivate extension ApplicationService {
     private func getWindowCount(for app: NSRunningApplication) -> Int {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
-        return appElement.windows()?.count ?? 0
+
+        if let windows = appElement.windows(), !windows.isEmpty {
+            let renderable = windows.filter { window -> Bool in
+                guard let frame = window.frame() else { return false }
+                return frame.width >= 50 && frame.height >= 50
+            }
+
+            if !renderable.isEmpty {
+                return renderable.count
+            }
+
+            return windows.count
+        }
+
+        let cgWindows = self.windowIdentityService.getWindows(for: app)
+        if cgWindows.isEmpty { return 0 }
+
+        let renderable = cgWindows.filter(\.isRenderable)
+        return renderable.isEmpty ? cgWindows.count : renderable.count
     }
 
     public func getApplicationWithWindowCount(identifier: String) async throws -> ServiceApplicationInfo {
