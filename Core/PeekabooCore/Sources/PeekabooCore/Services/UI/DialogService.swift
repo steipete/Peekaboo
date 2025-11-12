@@ -24,6 +24,7 @@ public final class DialogService: DialogServiceProtocol {
     private let dialogTitleHints = ["open", "save", "export", "import", "choose", "replace"]
     private let applicationService: any ApplicationServiceProtocol
     private let focusService = FocusManagementService()
+    private let windowIdentityService = WindowIdentityService()
 
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
@@ -46,13 +47,13 @@ public final class DialogService: DialogServiceProtocol {
 
 @MainActor
 public extension DialogService {
-    public func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
+    public func findActiveDialog(windowTitle: String?, appName: String?) async throws -> DialogInfo {
         self.logger.info("Finding active dialog")
         if let title = windowTitle {
             self.logger.debug("Looking for window with title: \(title)")
         }
 
-        let element = try await self.resolveDialogElement(windowTitle: windowTitle)
+        let element = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
 
         let title = element.title() ?? "Untitled Dialog"
         let role = element.role() ?? "Unknown"
@@ -77,13 +78,17 @@ public extension DialogService {
         return info
     }
 
-    public func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
+    public func clickButton(
+        buttonText: String,
+        windowTitle: String?,
+        appName: String?
+    ) async throws -> DialogActionResult {
         self.logger.info("Clicking button: \(buttonText)")
         if let title = windowTitle {
             self.logger.debug("In window: \(title)")
         }
 
-        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
 
         // Find buttons
         let buttons = self.collectButtons(from: dialog)
@@ -135,7 +140,8 @@ public extension DialogService {
         text: String,
         fieldIdentifier: String?,
         clearExisting: Bool,
-        windowTitle: String?) async throws -> DialogActionResult
+        windowTitle: String?,
+        appName: String?) async throws -> DialogActionResult
     {
         self.logger.info("Entering text into dialog field")
         self.logger.debug("Text length: \(text.count) chars, clear existing: \(clearExisting)")
@@ -143,7 +149,7 @@ public extension DialogService {
             self.logger.debug("Target field: \(identifier)")
         }
 
-        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
         let textFields = self.collectTextFields(from: dialog)
         self.logger.debug("Found \(textFields.count) text fields")
 
@@ -181,7 +187,8 @@ public extension DialogService {
     public func handleFileDialog(
         path: String?,
         filename: String?,
-        actionButton: String = "Save") async throws -> DialogActionResult
+        actionButton: String = "Save",
+        appName: String?) async throws -> DialogActionResult
     {
         self.logger.info("Handling file dialog")
         if let path {
@@ -192,7 +199,7 @@ public extension DialogService {
         }
         self.logger.debug("Action button: \(actionButton)")
 
-        await self.ensureDialogVisibility(windowTitle: nil)
+        await self.ensureDialogVisibility(windowTitle: nil, appName: appName)
         let dialog = try findFileDialogElement()
         var details: [String: String] = [:]
 
@@ -219,7 +226,7 @@ public extension DialogService {
         return result
     }
 
-    public func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
+    public func dismissDialog(force: Bool, windowTitle: String?, appName: String?) async throws -> DialogActionResult {
         self.logger.info("Dismissing dialog (force: \(force))")
 
         if force {
@@ -238,7 +245,7 @@ public extension DialogService {
             self.logger.debug("Looking for dismiss button")
 
             // Find and click dismiss button
-            let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
+            let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
             let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
             self.logger.debug("Found \(buttons.count) buttons in dialog")
 
@@ -267,14 +274,14 @@ public extension DialogService {
         }
     }
 
-    public func listDialogElements(windowTitle: String?) async throws -> DialogElements {
+    public func listDialogElements(windowTitle: String?, appName: String?) async throws -> DialogElements {
         self.logger.info("Listing dialog elements")
         if let title = windowTitle {
             self.logger.debug("For window: \(title)")
         }
 
-        let dialogInfo = try await findActiveDialog(windowTitle: windowTitle)
-        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
+        let dialogInfo = try await findActiveDialog(windowTitle: windowTitle, appName: appName)
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
 
         let buttons = self.dialogButtons(from: dialog)
         let textFields = self.dialogTextFields(from: dialog)
@@ -299,7 +306,7 @@ public extension DialogService {
 
 @MainActor
 private extension DialogService {
-    func findDialogElement(withTitle title: String?) throws -> Element {
+    func findDialogElement(withTitle title: String?, appName: String?) throws -> Element {
         self.logger.debug("Finding dialog element")
 
         let systemWide = Element.systemWide()
@@ -317,7 +324,21 @@ private extension DialogService {
             return focusedCandidate
         }
 
-        guard let focusedApp = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) else {
+        var focusedAppElement: Element? = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) ?? {
+            if let frontmost = NSWorkspace.shared.frontmostApplication {
+                return Element(AXUIElementCreateApplication(frontmost.processIdentifier))
+            }
+            return nil
+        }()
+
+        if focusedAppElement == nil,
+           let appName,
+           let targetApp = self.runningApplication(matching: appName)
+        {
+            focusedAppElement = Element(AXUIElementCreateApplication(targetApp.processIdentifier))
+        }
+
+        guard let focusedApp = focusedAppElement else {
             self.logger.error("No focused application found")
             throw PeekabooError.operationError(message: "No active dialog window found.")
         }
@@ -357,28 +378,38 @@ private extension DialogService {
         throw DialogError.noActiveDialog
     }
 
-    private func resolveDialogElement(windowTitle: String?) async throws -> Element {
-        if let element = try? self.findDialogElement(withTitle: windowTitle) {
+    private func resolveDialogElement(windowTitle: String?, appName: String?) async throws -> Element {
+        if let appName, !appName.isEmpty {
+            self.logger.debug("Resolving dialog with app hint: \(appName)")
+        }
+        if let element = try? self.findDialogElement(withTitle: windowTitle, appName: appName) {
             return element
         }
 
-        await self.ensureDialogVisibility(windowTitle: windowTitle)
+        await self.ensureDialogVisibility(windowTitle: windowTitle, appName: appName)
 
-        if let element = try? self.findDialogElement(withTitle: windowTitle) {
+        if let element = try? self.findDialogElement(withTitle: windowTitle, appName: appName) {
             return element
         }
 
-        if let element = await self.findDialogViaApplicationService(windowTitle: windowTitle) {
+        if let element = await self.findDialogViaApplicationService(windowTitle: windowTitle, appName: appName) {
             return element
         }
 
         throw DialogError.noActiveDialog
     }
 
-    private func ensureDialogVisibility(windowTitle: String?) async {
+    private func ensureDialogVisibility(windowTitle: String?, appName: String?) async {
         do {
             let applications = try await self.applicationService.listApplications()
             for app in applications.data.applications {
+                if let appName,
+                   app.name.caseInsensitiveCompare(appName) != .orderedSame,
+                   app.bundleIdentifier?.caseInsensitiveCompare(appName) != .orderedSame
+                {
+                    continue
+                }
+
                 let windowsOutput = try await self.applicationService.listWindows(for: app.name, timeout: nil)
                 if let window = windowsOutput.data.windows.first(where: {
                     self.matchesDialogWindowTitle($0.title, expectedTitle: windowTitle)
@@ -402,12 +433,37 @@ private extension DialogService {
     }
 
     @MainActor
-    private func findDialogViaApplicationService(windowTitle: String?) async -> Element? {
+    private func findDialogViaApplicationService(windowTitle: String?, appName: String?) async -> Element? {
         guard let applications = try? await self.applicationService.listApplications() else {
             return nil
         }
 
+        let frontmostApp = NSWorkspace.shared.frontmostApplication
+        let frontmostBundle = frontmostApp?.bundleIdentifier?.lowercased()
+        let frontmostName = frontmostApp?.localizedName?.lowercased()
+
         for app in applications.data.applications {
+            if let appName,
+               app.name.caseInsensitiveCompare(appName) != .orderedSame,
+               app.bundleIdentifier?.caseInsensitiveCompare(appName) != .orderedSame
+            {
+                continue
+            }
+
+            if let bundle = frontmostBundle,
+               let candidateBundle = app.bundleIdentifier?.lowercased(),
+               candidateBundle != bundle
+            {
+                continue
+            }
+
+            if frontmostBundle == nil,
+               let name = frontmostName,
+               app.name.lowercased() != name
+            {
+                continue
+            }
+
             guard let windowsOutput = try? await self.applicationService.listWindows(for: app.name, timeout: nil) else {
                 continue
             }
@@ -416,6 +472,14 @@ private extension DialogService {
                 self.matchesDialogWindowTitle($0.title, expectedTitle: windowTitle)
             }) else {
                 continue
+            }
+
+            if let windowMatch = self.windowIdentityService.findWindow(byID: CGWindowID(windowInfo.windowID)),
+               let candidate = self.resolveDialogCandidate(
+                   in: windowMatch.window,
+                   matching: windowTitle ?? windowInfo.title)
+            {
+                return candidate
             }
 
             let axApp = Element(AXUIElementCreateApplication(app.processIdentifier))
@@ -671,6 +735,21 @@ private extension DialogService {
             return title.localizedCaseInsensitiveContains(expectedTitle)
         }
         return self.dialogTitleHints.contains { title.localizedCaseInsensitiveContains($0) }
+    }
+
+    private func runningApplication(matching identifier: String) -> NSRunningApplication? {
+        let lowered = identifier.lowercased()
+        return NSWorkspace.shared.runningApplications.first {
+            if let name = $0.localizedName?.lowercased(),
+               name == lowered || name.contains(lowered) {
+                return true
+            }
+            if let bundle = $0.bundleIdentifier?.lowercased(),
+               bundle == lowered || bundle.contains(lowered) {
+                return true
+            }
+            return false
+        }
     }
 
     @MainActor

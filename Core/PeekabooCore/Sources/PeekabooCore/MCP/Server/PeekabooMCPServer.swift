@@ -89,10 +89,14 @@ public actor PeekabooMCPServer {
                 throw MCP.MCPError.methodNotFound("Server deallocated")
             }
 
-            let clientDescription = "\(request.clientInfo.name) \(request.clientInfo.version)"
-            self.logger.info(
-                "Client connected: \(clientDescription, privacy: .public), protocol: \(request.protocolVersion, privacy: .public)"
-            )
+                let clientDescription = "\(request.clientInfo.name) \(request.clientInfo.version)"
+                let protocolVersion = request.protocolVersion
+                self.logger.info(
+                    """
+                    Client connected: \(clientDescription, privacy: .public), \
+                    protocol: \(protocolVersion, privacy: .public)
+                    """
+                )
 
             // Create a response struct that matches Initialize.Result
             struct InitializeResult: Codable {

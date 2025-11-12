@@ -8,14 +8,21 @@ public protocol DialogServiceProtocol: Sendable {
     /// Find and return information about the active dialog
     /// - Parameter windowTitle: Optional specific window title to target
     /// - Returns: Information about the active dialog
-    func findActiveDialog(windowTitle: String?) async throws -> DialogInfo
+    func findActiveDialog(
+        windowTitle: String?,
+        appName: String?
+    ) async throws -> DialogInfo
 
     /// Click a button in the active dialog
     /// - Parameters:
     ///   - buttonText: Text of the button to click (e.g., "OK", "Cancel", "Save")
     ///   - windowTitle: Optional specific window title to target
     /// - Returns: Result of the click operation
-    func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult
+    func clickButton(
+        buttonText: String,
+        windowTitle: String?,
+        appName: String?
+    ) async throws -> DialogActionResult
 
     /// Enter text in a dialog field
     /// - Parameters:
@@ -24,8 +31,13 @@ public protocol DialogServiceProtocol: Sendable {
     ///   - clearExisting: Whether to clear existing text first
     ///   - windowTitle: Optional specific window title to target
     /// - Returns: Result of the input operation
-    func enterText(text: String, fieldIdentifier: String?, clearExisting: Bool, windowTitle: String?) async throws
-        -> DialogActionResult
+    func enterText(
+        text: String,
+        fieldIdentifier: String?,
+        clearExisting: Bool,
+        windowTitle: String?,
+        appName: String?
+    ) async throws -> DialogActionResult
 
     /// Handle file save/open dialogs
     /// - Parameters:
@@ -33,19 +45,67 @@ public protocol DialogServiceProtocol: Sendable {
     ///   - filename: File name to enter (for save dialogs)
     ///   - actionButton: Button to click after entering path/name (default: "Save")
     /// - Returns: Result of the file dialog operation
-    func handleFileDialog(path: String?, filename: String?, actionButton: String) async throws -> DialogActionResult
+    func handleFileDialog(
+        path: String?,
+        filename: String?,
+        actionButton: String,
+        appName: String?
+    ) async throws -> DialogActionResult
 
     /// Dismiss the active dialog
     /// - Parameters:
     ///   - force: Use Escape key to force dismiss
     ///   - windowTitle: Optional specific window title to target
     /// - Returns: Result of the dismiss operation
-    func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult
+    func dismissDialog(
+        force: Bool,
+        windowTitle: String?,
+        appName: String?
+    ) async throws -> DialogActionResult
 
     /// List all elements in the active dialog
     /// - Parameter windowTitle: Optional specific window title to target
     /// - Returns: Information about all dialog elements
-    func listDialogElements(windowTitle: String?) async throws -> DialogElements
+    func listDialogElements(
+        windowTitle: String?,
+        appName: String?
+    ) async throws -> DialogElements
+}
+
+public extension DialogServiceProtocol {
+    func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
+        try await self.findActiveDialog(windowTitle: windowTitle, appName: nil)
+    }
+
+    func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
+        try await self.clickButton(buttonText: buttonText, windowTitle: windowTitle, appName: nil)
+    }
+
+    func enterText(
+        text: String,
+        fieldIdentifier: String?,
+        clearExisting: Bool,
+        windowTitle: String?) async throws -> DialogActionResult
+    {
+        try await self.enterText(
+            text: text,
+            fieldIdentifier: fieldIdentifier,
+            clearExisting: clearExisting,
+            windowTitle: windowTitle,
+            appName: nil)
+    }
+
+    func handleFileDialog(path: String?, filename: String?, actionButton: String) async throws -> DialogActionResult {
+        try await self.handleFileDialog(path: path, filename: filename, actionButton: actionButton, appName: nil)
+    }
+
+    func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
+        try await self.dismissDialog(force: force, windowTitle: windowTitle, appName: nil)
+    }
+
+    func listDialogElements(windowTitle: String?) async throws -> DialogElements {
+        try await self.listDialogElements(windowTitle: windowTitle, appName: nil)
+    }
 }
 
 /// Information about a dialog

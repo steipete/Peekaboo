@@ -75,7 +75,7 @@ enum ScreenCaptureAPIResolver {
         case "modern-only":
             return [.modern]
         case "true", "1", "yes", "modern":
-            fallthrough
+            return [.modern, .legacy]
         default:
             return [.modern, .legacy]
         }

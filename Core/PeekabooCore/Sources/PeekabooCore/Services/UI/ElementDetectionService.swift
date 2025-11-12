@@ -105,7 +105,9 @@ public final class ElementDetectionService {
 
         return result
     }
+}
 
+private extension ElementDetectionService {
     // MARK: - Helper Methods
 
     private func mapRoleToElementType(_ role: String) -> ElementType {
@@ -171,9 +173,14 @@ public final class ElementDetectionService {
         return frontmost
     }
 
-    private func resolveWindow(for app: NSRunningApplication, context: WindowContext?) async throws -> WindowResolution {
+    private func resolveWindow(
+        for app: NSRunningApplication,
+        context: WindowContext?
+    ) async throws -> WindowResolution {
         let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
-        let axWindows = appElement.windows() ?? []
+        // Chrome and other multi-process apps occasionally return an empty window list unless we set
+        // an explicit AX messaging timeout, so prefer the guarded helper.
+        let axWindows = appElement.windowsWithTimeout() ?? []
         self.logger.debug("Found \(axWindows.count) windows for \(app.localizedName ?? "app")")
 
         let renderableWindows = self.renderableWindows(from: axWindows)
@@ -280,10 +287,12 @@ public final class ElementDetectionService {
         self.logger.notice("CG fallback renderable windows: \(renderable.count) / \(cgWindows.count)")
 
         if let title {
-            if let matching = orderedWindows.first(where: { $0.title?.localizedCaseInsensitiveContains(title) == true }),
-                let element = self.windowIdentityService.findWindow(byID: matching.windowID)?.window
-            {
-                self.logger.info("Using CG fallback window '\(matching.title ?? "Untitled")' for \(app.localizedName ?? "app")")
+            if let matching = orderedWindows.first(where: {
+                $0.title?.localizedCaseInsensitiveContains(title) == true
+            }), let element = self.windowIdentityService.findWindow(byID: matching.windowID)?.window {
+                let fallbackTarget = app.localizedName ?? "app"
+                let fallbackTitle = matching.title ?? "Untitled"
+                self.logger.info("Using CG fallback window '\(fallbackTitle)' for \(fallbackTarget)")
                 await self.focusWindow(withID: Int(matching.windowID), appName: app.localizedName ?? "app")
                 if let focused = self.focusedWindowIfMatches(app: app) {
                     return focused
@@ -294,7 +303,9 @@ public final class ElementDetectionService {
 
         for info in orderedWindows {
             if let element = self.windowIdentityService.findWindow(byID: info.windowID)?.window {
-                self.logger.info("Using CG fallback window '\(info.title ?? "Untitled")' for \(app.localizedName ?? "app")")
+                let fallbackTarget = app.localizedName ?? "app"
+                let fallbackTitle = info.title ?? "Untitled"
+                self.logger.info("Using CG fallback window '\(fallbackTitle)' for \(fallbackTarget)")
                 await self.focusWindow(withID: Int(info.windowID), appName: app.localizedName ?? "app")
                 if let focused = self.focusedWindowIfMatches(app: app) {
                     return focused
@@ -307,7 +318,10 @@ public final class ElementDetectionService {
     }
 
     // Fallback #3: ask the window-management service (which already talks to CG+AX) for candidates
-    private func resolveWindowViaWindowServiceFallback(for app: NSRunningApplication, title: String?) async -> Element? {
+    private func resolveWindowViaWindowServiceFallback(
+        for app: NSRunningApplication,
+        title: String?
+    ) async -> Element? {
         let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
         do {
             let windows = try await self.windowManagementService.listWindows(target: .application(identifier))

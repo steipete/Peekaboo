@@ -485,7 +485,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
 
-        // swiftlint:disable function_body_length
         func captureWindow(
             app: ServiceApplicationInfo,
             windowIndex: Int?,
@@ -583,7 +582,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
 
-        // swiftlint:enable function_body_length
 
         nonisolated private static func firstRenderableWindowIndex(in windows: [SCWindow]) -> Int? {
             for (index, window) in windows.enumerated() {
@@ -714,7 +712,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             self.logger = logger
         }
 
-        // swiftlint:disable function_body_length
         func captureWindow(
             app: ServiceApplicationInfo,
             windowIndex: Int?,
@@ -1050,7 +1047,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return configuration
         }
 
-        // swiftlint:enable function_body_length
     }
 }
 
