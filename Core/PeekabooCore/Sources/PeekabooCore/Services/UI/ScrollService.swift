@@ -43,7 +43,8 @@ public final class ScrollService {
     private func resolveScrollPoint(_ request: ScrollRequest) async throws -> CGPoint {
         guard let target = request.target else {
             let location = self.getCurrentMouseLocation()
-            self.logger.debug("Scrolling at current location: (\(location.x, privacy: .public), \(location.y, privacy: .public))")
+            self.logger.debug(
+                "Scrolling at current location: (\(location.x, privacy: .public), \(location.y, privacy: .public))")
             return location
         }
 
@@ -58,7 +59,8 @@ public final class ScrollService {
 
         let point = CGPoint(x: frame.midX, y: frame.midY)
         try await self.moveMouseToPoint(point)
-        self.logger.debug("Scrolling on element at (\(point.x, privacy: .public), \(point.y, privacy: .public))")
+        self.logger.debug(
+            "Scrolling on element at (\(point.x, privacy: .public), \(point.y, privacy: .public))")
         return point
     }
 

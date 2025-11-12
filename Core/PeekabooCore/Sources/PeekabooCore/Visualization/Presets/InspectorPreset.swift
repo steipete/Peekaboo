@@ -33,73 +33,82 @@ public struct InspectorVisualizationPreset: ElementStyleProvider {
 
         switch state {
         case .normal:
-            // Circle indicator with ID inside, semi-transparent
-            return ElementStyle(
-                primaryColor: baseColor,
-                fillOpacity: self.normalOpacity,
-                strokeWidth: 0, // No stroke for circles
-                strokeOpacity: 0,
-                cornerRadius: 15, // Half of diameter for circle
-                shadow: nil,
-                labelStyle: LabelStyle(
-                    fontSize: 8,
-                    fontWeight: .bold,
-                    backgroundColor: nil, // Text directly on circle
-                    textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)))
-
+            return normalCircleStyle(color: baseColor)
         case .hovered:
-            // Full opacity circle + outline frame + info bubble
-            return ElementStyle(
-                primaryColor: baseColor,
-                fillOpacity: 0, // Only for the frame overlay
-                strokeWidth: 2,
-                strokeOpacity: 1.0,
-                cornerRadius: 0, // Rectangle frame
-                shadow: nil,
-                labelStyle: LabelStyle(
-                    fontSize: 10,
-                    fontWeight: .regular,
-                    backgroundColor: CGColor(gray: 0, alpha: 0.8),
-                    textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
-
+            return hoveredFrameStyle(color: baseColor)
         case .selected:
-            // Enhanced visibility for selected elements
-            return ElementStyle(
-                primaryColor: baseColor,
-                fillOpacity: 0.3,
-                strokeWidth: 3,
-                strokeOpacity: 1.0,
-                cornerRadius: 0,
-                shadow: ShadowStyle(
-                    color: baseColor.copy(alpha: 0.5)!,
-                    radius: 8,
-                    offsetX: 0,
-                    offsetY: 0),
-                labelStyle: LabelStyle(
-                    fontSize: 10,
-                    fontWeight: .bold,
-                    backgroundColor: baseColor,
-                    textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
-
+            return selectedStyle(color: baseColor)
         case .disabled:
-            // Grayed out for disabled elements
-            return ElementStyle(
-                primaryColor: PeekabooColorPalette.control,
-                fillOpacity: 0.3,
-                strokeWidth: 0,
-                strokeOpacity: 0,
-                cornerRadius: 15,
-                shadow: nil,
-                labelStyle: LabelStyle(
-                    fontSize: 8,
-                    fontWeight: .regular,
-                    backgroundColor: nil,
-                    textColor: CGColor(gray: 0.7, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)))
+            return disabledCircleStyle()
         }
+    }
+
+    private func normalCircleStyle(color: CGColor) -> ElementStyle {
+        ElementStyle(
+            primaryColor: color,
+            fillOpacity: self.normalOpacity,
+            strokeWidth: 0,
+            strokeOpacity: 0,
+            cornerRadius: 15,
+            shadow: nil,
+            labelStyle: LabelStyle(
+                fontSize: 8,
+                fontWeight: .bold,
+                backgroundColor: nil,
+                textColor: CGColor(gray: 1, alpha: 1),
+                padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)))
+    }
+
+    private func hoveredFrameStyle(color: CGColor) -> ElementStyle {
+        ElementStyle(
+            primaryColor: color,
+            fillOpacity: 0,
+            strokeWidth: 2,
+            strokeOpacity: 1.0,
+            cornerRadius: 0,
+            shadow: nil,
+            labelStyle: LabelStyle(
+                fontSize: 10,
+                fontWeight: .regular,
+                backgroundColor: CGColor(gray: 0, alpha: 0.8),
+                textColor: CGColor(gray: 1, alpha: 1),
+                padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
+    }
+
+    private func selectedStyle(color: CGColor) -> ElementStyle {
+        ElementStyle(
+            primaryColor: color,
+            fillOpacity: 0.3,
+            strokeWidth: 3,
+            strokeOpacity: 1.0,
+            cornerRadius: 0,
+            shadow: ShadowStyle(
+                color: color.copy(alpha: 0.5)!,
+                radius: 8,
+                offsetX: 0,
+                offsetY: 0),
+            labelStyle: LabelStyle(
+                fontSize: 10,
+                fontWeight: .bold,
+                backgroundColor: color,
+                textColor: CGColor(gray: 1, alpha: 1),
+                padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
+    }
+
+    private func disabledCircleStyle() -> ElementStyle {
+        ElementStyle(
+            primaryColor: PeekabooColorPalette.control,
+            fillOpacity: 0.3,
+            strokeWidth: 0,
+            strokeOpacity: 0,
+            cornerRadius: 15,
+            shadow: nil,
+            labelStyle: LabelStyle(
+                fontSize: 8,
+                fontWeight: .regular,
+                backgroundColor: nil,
+                textColor: CGColor(gray: 0.7, alpha: 1),
+                padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)))
     }
 }
 

@@ -366,30 +366,6 @@ public final class MCPClientManager {
         }
     }
 
-        // Also add any other user-configured servers
-        for (serverName, serverConfig) in actualUserConfigs {
-            // Skip browser since we already handled it
-            if serverName == "browser" {
-                continue
-            }
-
-            self.configs[serverName] = serverConfig
-            let connection = MCPClientConnection(name: serverName, config: serverConfig)
-            self.connections[serverName] = connection
-
-            if serverConfig.enabled {
-                do {
-                    try await connection.connect()
-                    self.logger.info("Initialized user-configured server '\(serverName)'")
-                } catch {
-                    self.logger.error("Failed to connect to '\(serverName)': \(error.localizedDescription)")
-                }
-            }
-        }
-
-        self.logger.info("Default servers initialization completed with \(self.connections.count) servers")
-    }
-
     /// Connect to all enabled servers
     public func connectAll() async {
         // Connect to all enabled servers

@@ -355,13 +355,9 @@ public final class AgentSessionManager: @unchecked Sendable {
 
     private func generateSessionSummary(from messages: [ModelMessage]) -> String? {
         // Find the first user message to use as summary
-        for message in messages {
-            if message.role == .user {
-                for contentPart in message.content {
-                    if case let .text(text) = contentPart {
-                        return String(text.prefix(100))
-                    }
-                }
+        for message in messages where message.role == .user {
+            for case let .text(text) in message.content {
+                return String(text.prefix(100))
             }
         }
         return nil

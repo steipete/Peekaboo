@@ -54,7 +54,10 @@ extension MenuService {
         let appInfo = try await applicationService.findApplication(identifier: app)
 
         // Parse menu path
-        let pathComponents = itemPath.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }
+        let pathComponents = itemPath
+            .split(separator: ">")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { String($0) }
 
         // Get AX element for the application
         let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
@@ -71,71 +74,15 @@ extension MenuService {
 
         // Navigate menu hierarchy
         var currentElement: Element = menuBar
-        var menuPath: [String] = []
-
-        for (index, component) in pathComponents.enumerated() {
-            // Get children of current menu
-            let children = currentElement.children() ?? []
-
-            // Find matching menu item
-            guard let menuItem = findMenuItem(named: component, in: children) else {
-                var context = ErrorContext()
-                context.add("menuItem", component)
-                context.add("path", itemPath)
-                context.add("application", appInfo.name)
-                throw NotFoundError(
-                    code: .menuNotFound,
-                    userMessage: "Menu item '\(component)' not found in path '\(itemPath)'",
-                    context: context.build())
-            }
-
-            // Add to menu path for visual feedback
-            menuPath.append(component)
-
-            // If this is the last component, click it
-            if index == pathComponents.count - 1 {
-                // Show menu navigation visual feedback
-                _ = await self.visualizerClient.showMenuNavigation(menuPath: menuPath)
-
-                do {
-                    try menuItem.performAction(Attribute<String>("AXPress"))
-                } catch {
-                    throw OperationError.interactionFailed(
-                        action: "click menu item",
-                        reason: "Failed to click menu item '\(component)'")
-                }
-            } else {
-                // Otherwise, open the submenu
-                do {
-                    try menuItem.performAction(Attribute<String>("AXPress"))
-                } catch {
-                    throw OperationError.interactionFailed(
-                        action: "open submenu",
-                        reason: "Failed to open submenu '\(component)'")
-                }
-
-                // Wait for submenu to appear
-                if pathComponents.count > 1 {
-                    try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000)) // 50ms
-                }
-
-                // Get the submenu
-                guard let submenuChildren = menuItem.children(),
-                      let submenu = submenuChildren.first
-                else {
-                    var context = ErrorContext()
-                    context.add("submenu", component)
-                    context.add("path", itemPath)
-                    context.add("application", appInfo.name)
-                    throw NotFoundError(
-                        code: .menuNotFound,
-                        userMessage: "Submenu '\(component)' not found",
-                        context: context.build())
-                }
-
-                currentElement = submenu
-            }
-        }
+        var traversalContext = MenuTraversalContext(
+            menuPath: [],
+            fullPath: itemPath,
+            appInfo: appInfo
+        )
+        currentElement = try await self.walkMenuPath(
+            startingElement: currentElement,
+            components: pathComponents,
+            context: &traversalContext)
     }
 
     /// Click a menu item by searching for it recursively in the menu hierarchy
@@ -242,7 +189,7 @@ extension MenuService {
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
         let axExtras = self.getMenuBarItemsViaAccessibility()
         let windowExtras = self.getMenuBarItemsViaWindows()
-        return Self.mergeMenuExtras(
+        return self.mergeMenuExtras(
             accessibilityExtras: axExtras,
             fallbackExtras: windowExtras
         )
@@ -538,7 +485,7 @@ extension MenuService {
     }
 
     @MainActor
-    internal static func mergeMenuExtras(
+    private func mergeMenuExtras(
         accessibilityExtras: [MenuExtraInfo],
         fallbackExtras: [MenuExtraInfo]
     ) -> [MenuExtraInfo] {
@@ -733,6 +680,88 @@ extension MenuService {
             elementDescription: "Menu bar item [\(index)]: \(extra.title)",
             location: extra.position)
     }
+    @MainActor
+    private func walkMenuPath(
+        startingElement: Element,
+        components: [String],
+        context: inout MenuTraversalContext
+    ) async throws -> Element {
+        var currentElement = startingElement
+        for (index, component) in components.enumerated() {
+            let isLastComponent = index == components.count - 1
+            currentElement = try await navigateMenuLevel(
+                currentElement: currentElement,
+                component: component,
+                isLastComponent: isLastComponent,
+                context: &context
+            )
+        }
+        return currentElement
+    }
+
+    @MainActor
+    private func navigateMenuLevel(
+        currentElement: Element,
+        component: String,
+        isLastComponent: Bool,
+        context: inout MenuTraversalContext
+    ) async throws -> Element {
+        let children = currentElement.children() ?? []
+        guard let menuItem = findMenuItem(named: component, in: children) else {
+            var errorContext = ErrorContext()
+            errorContext.add("menuItem", component)
+            errorContext.add("path", context.fullPath)
+            errorContext.add("application", context.appInfo.name)
+            throw NotFoundError(
+                code: .menuNotFound,
+                userMessage: "Menu item '\(component)' not found in path '\(context.fullPath)'",
+                context: errorContext.build())
+        }
+
+        context.menuPath.append(component)
+
+        if isLastComponent {
+            _ = await self.visualizerClient.showMenuNavigation(menuPath: context.menuPath)
+            try self.pressMenuItem(menuItem, action: "click menu item", target: component)
+            return currentElement
+        }
+
+        try self.pressMenuItem(menuItem, action: "open submenu", target: component)
+        if context.menuPath.count > 1 {
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        guard let submenu = menuItem.children()?.first(where: { $0.role() == AXRoleNames.kAXMenuRole }) else {
+            var errorContext = ErrorContext()
+            errorContext.add("submenu", component)
+            errorContext.add("path", context.fullPath)
+            errorContext.add("application", context.appInfo.name)
+            throw NotFoundError(
+                code: .menuNotFound,
+                userMessage: "Submenu '\(component)' not found",
+                context: errorContext.build())
+        }
+
+        return submenu
+    }
+
+    private func pressMenuItem(_ element: Element, action: String, target: String) throws {
+        do {
+            try element.performAction(Attribute<String>("AXPress"))
+        } catch {
+            throw OperationError.interactionFailed(
+                action: action,
+                reason: "Failed to \(action) '\(target)'")
+        }
+    }
+}
+
+// MARK: - Menu Traversal Support
+
+private struct MenuTraversalContext {
+    var menuPath: [String]
+    let fullPath: String
+    let appInfo: ServiceApplicationInfo
 }
 
 // MARK: - Element Extension for Menu Bar

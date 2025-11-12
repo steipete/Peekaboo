@@ -197,13 +197,12 @@ extension ApplicationService {
             return self.createApplicationInfo(from: exactName)
         }
 
-        if let fuzzy = runningApps
-            .filter({ $0.activationPolicy != .prohibited })
-            .first(where: { app in
-                guard let name = app.localizedName else { return false }
-                return name.localizedCaseInsensitiveContains(identifier)
-            })
-        {
+        if let fuzzy = runningApps.first(where: { app in
+            guard app.activationPolicy != .prohibited,
+                  let name = app.localizedName
+            else { return false }
+            return name.localizedCaseInsensitiveContains(identifier)
+        }) {
             return self.createApplicationInfo(from: fuzzy)
         }
 

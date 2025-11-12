@@ -291,82 +291,19 @@ public final class SpaceManagementService {
 
     /// Get information about all Spaces organized by display
     public func getAllSpacesByDisplay() -> [CGDirectDisplayID: [SpaceInfo]] {
-        // Check if we have a valid connection
         guard connection != 0 else {
             print("ERROR: Invalid CGS connection")
             return [:]
         }
 
         let managedSpacesRef = CGSCopyManagedDisplaySpaces(connection)
-
         let managedSpacesArray = managedSpacesRef as NSArray
         let activeSpace = CGSGetActiveSpace(connection)
-        var spacesByDisplay: [CGDirectDisplayID: [SpaceInfo]] = [:]
 
-        // Process each display's spaces
-        for displayInfo in managedSpacesArray {
-            guard let displayDict = displayInfo as? [String: Any] else { continue }
-
-            // Get display identifier
-            var displayID: CGDirectDisplayID = 0
-            if displayDict["Display Identifier"] is String {
-                // Try to map UUID to display ID
-                let displays = NSScreen.screens.compactMap { screen -> CGDirectDisplayID? in
-                    // Get the display ID from the screen's device description
-                    if let screenNumber = screen
-                        .deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
-                    {
-                        return screenNumber.uint32Value
-                    }
-                    return nil
-                }
-
-                // For now, use the first display if we can't match the UUID
-                // In a production system, we'd need a proper UUID to display ID mapping
-                if !displays.isEmpty {
-                    displayID = displays[0]
-                }
-            }
-
-            // Get spaces for this display
-            guard let spaces = displayDict["Spaces"] as? [[String: Any]] else { continue }
-
-            var displaySpaces: [SpaceInfo] = []
-
-            for spaceDict in spaces {
-                guard let spaceID = spaceDict["ManagedSpaceID"] as? Int64 else { continue }
-
-                let spaceType = spaceDict["type"] as? Int ?? 0
-                let type: SpaceInfo.SpaceType = switch spaceType {
-                case kCGSSpaceUser: .user
-                case kCGSSpaceFullscreen: .fullscreen
-                case kCGSSpaceSystem: .system
-                case kCGSSpaceTiled: .tiled
-                default: .unknown
-                }
-
-                // Get additional space information
-                let spaceName = spaceDict["name"] as? String
-                let ownerPIDs = spaceDict["ownerPIDs"] as? [Int] ?? []
-                let isActive = CGSSpaceID(spaceID) == activeSpace
-
-                let spaceInfo = SpaceInfo(
-                    id: CGSSpaceID(spaceID),
-                    type: type,
-                    isActive: isActive,
-                    displayID: displayID,
-                    name: spaceName,
-                    ownerPIDs: ownerPIDs)
-
-                displaySpaces.append(spaceInfo)
-            }
-
-            if displayID != 0, !displaySpaces.isEmpty {
-                spacesByDisplay[displayID] = displaySpaces
-            }
-        }
-
-        return spacesByDisplay
+        return buildSpacesByDisplay(
+            managedSpaces: managedSpacesArray,
+            activeSpace: activeSpace
+        )
     }
 
     /// Get the current active Space
@@ -569,6 +506,79 @@ public final class SpaceManagementService {
         // Simplified implementation that avoids the problematic CGSManagedDisplayGetCurrentSpace
         // For now, just return the main display ID
         CGMainDisplayID()
+    }
+}
+
+private extension SpaceManagementService {
+    func buildSpacesByDisplay(
+        managedSpaces: NSArray,
+        activeSpace: CGSSpaceID
+    ) -> [CGDirectDisplayID: [SpaceInfo]] {
+        var spacesByDisplay: [CGDirectDisplayID: [SpaceInfo]] = [:]
+
+        for case let displayDict as [String: Any] in managedSpaces {
+            let displayID = resolveDisplayID(from: displayDict)
+            guard displayID != 0,
+                  let spaces = displayDict["Spaces"] as? [[String: Any]]
+            else { continue }
+
+            let displaySpaces = spaces.compactMap { spaceDict in
+                makeSpaceInfo(
+                    from: spaceDict,
+                    displayID: displayID,
+                    activeSpace: activeSpace
+                )
+            }
+
+            if !displaySpaces.isEmpty {
+                spacesByDisplay[displayID] = displaySpaces
+            }
+        }
+
+        return spacesByDisplay
+    }
+
+    func resolveDisplayID(from displayDict: [String: Any]) -> CGDirectDisplayID {
+        guard displayDict["Display Identifier"] is String else { return 0 }
+
+        let displays = NSScreen.screens.compactMap { screen -> CGDirectDisplayID? in
+            if let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
+                return screenNumber.uint32Value
+            }
+            return nil
+        }
+        return displays.first ?? 0
+    }
+
+    func makeSpaceInfo(
+        from spaceDict: [String: Any],
+        displayID: CGDirectDisplayID,
+        activeSpace: CGSSpaceID
+    ) -> SpaceInfo? {
+        guard let spaceIDValue = spaceDict["ManagedSpaceID"] as? Int64 else { return nil }
+        let spaceID = CGSSpaceID(spaceIDValue)
+        let typeValue = spaceDict["type"] as? Int ?? 0
+        let spaceName = spaceDict["name"] as? String ?? spaceDict["Name"] as? String
+        let ownerPIDs = spaceDict["ownerPIDs"] as? [Int] ?? spaceDict["Owners"] as? [Int] ?? []
+
+        return SpaceInfo(
+            id: spaceID,
+            type: mapSpaceType(typeValue),
+            isActive: spaceID == activeSpace,
+            displayID: displayID,
+            name: spaceName,
+            ownerPIDs: ownerPIDs
+        )
+    }
+
+    func mapSpaceType(_ rawValue: Int) -> SpaceInfo.SpaceType {
+        switch rawValue {
+        case kCGSSpaceUser: .user
+        case kCGSSpaceFullscreen: .fullscreen
+        case kCGSSpaceSystem: .system
+        case kCGSSpaceTiled: .tiled
+        default: .unknown
+        }
     }
 }
 

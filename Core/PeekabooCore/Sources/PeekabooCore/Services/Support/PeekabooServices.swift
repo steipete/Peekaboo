@@ -604,9 +604,8 @@ extension PeekabooServices {
             } catch {
                 let duration = Date().timeIntervalSince(startTime)
                 let peekabooError = error.asPeekabooError(context: "Action execution failed")
-                let failureMessage = "\(AgentDisplayTokens.Status.failure) Action failed after "
-                    + "\(self.formatDuration(duration))s"
-                logger.error("\(failureMessage, privacy: .public): \(peekabooError.localizedDescription, privacy: .public)")
+                logger.error(
+                    "\(AgentDisplayTokens.Status.failure) Action failed after \(self.formatDuration(duration))s: \(peekabooError.localizedDescription, privacy: .public)")
 
                 executedActions.append(ExecutedAction(
                     action: action,

@@ -75,12 +75,9 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
 
     private func registerRemainingTools() {
         // Register any remaining tools with appropriate formatters
-        for toolType in ToolType.allCases {
-            if self.formatters[toolType] == nil {
-                // Determine best formatter based on category
-                let formatter = self.createDefaultFormatter(for: toolType)
-                self.formatters[toolType] = formatter
-            }
+        for toolType in ToolType.allCases where self.formatters[toolType] == nil {
+            let formatter = self.createDefaultFormatter(for: toolType)
+            self.formatters[toolType] = formatter
         }
     }
 

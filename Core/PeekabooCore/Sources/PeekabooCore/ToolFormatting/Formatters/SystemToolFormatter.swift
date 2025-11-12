@@ -375,11 +375,11 @@ public class SystemToolFormatter: BaseToolFormatter {
         if toolType == .shell {
             let exitCode = ToolResultExtractor.int("exitCode", from: result) ?? 0
             if duration > 5.0 {
+                let durationText = formatDuration(duration)
                 if exitCode == 0 {
-                    return "\(AgentDisplayTokens.Status.success) Command completed successfully after \(formatDuration(duration))"
-                } else {
-                    return "\(AgentDisplayTokens.Status.failure) Command failed after \(formatDuration(duration))"
+                    return "\(AgentDisplayTokens.Status.success) Command completed successfully after \(durationText)"
                 }
+                return "\(AgentDisplayTokens.Status.failure) Command failed after \(durationText)"
             }
         }
 

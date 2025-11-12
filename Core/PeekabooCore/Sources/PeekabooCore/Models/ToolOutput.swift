@@ -57,6 +57,12 @@ public struct UnifiedToolOutput<T: Codable>: Codable, Sendable where T: Sendable
             case failed
         }
 
+        public enum HighlightKind: String, Codable, Sendable {
+            case primary // The main item (e.g., active app)
+            case warning // Something needing attention
+            case info // Additional context
+        }
+
         public struct Highlight: Codable, Sendable {
             public let label: String
             public let value: String
@@ -66,12 +72,6 @@ public struct UnifiedToolOutput<T: Codable>: Codable, Sendable where T: Sendable
                 self.label = label
                 self.value = value
                 self.kind = kind
-            }
-
-            public enum HighlightKind: String, Codable, Sendable {
-                case primary // The main item (e.g., active app)
-                case warning // Something needing attention
-                case info // Additional context
             }
         }
     }

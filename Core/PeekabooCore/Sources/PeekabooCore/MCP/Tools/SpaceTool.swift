@@ -195,8 +195,8 @@ public struct SpaceTool: MCPTool {
             return ToolResponse.error("No matching window found for app '\(request.appName)'")
         }
 
-        guard let windowID = windowInfo.window_id else {
-            return ToolResponse.error("Window '\(windowInfo.window_title)' is missing an identifier")
+        guard let windowID = UInt32(exactly: windowInfo.windowID) else {
+            return ToolResponse.error("Window '\(windowInfo.title)' is missing an identifier")
         }
 
         if request.toCurrent {
@@ -340,7 +340,7 @@ private extension SpaceTool {
     @MainActor
     func moveWindowToCurrentSpace(
         service: SpaceManagementService,
-        windowInfo: WindowInfo,
+        windowInfo: ServiceWindowInfo,
         windowID: UInt32,
         startTime: Date) throws -> ToolResponse
     {
@@ -348,13 +348,13 @@ private extension SpaceTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
         let message = self.successMessage(
-            "Moved window '\(windowInfo.window_title)' to current Space",
+            "Moved window '\(windowInfo.title)' to current Space",
             duration: executionTime)
 
         return ToolResponse(
             content: [.text(message)],
             meta: .object([
-                "window_title": .string(windowInfo.window_title),
+                "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowID)),
                 "moved_to_current": .bool(true),
                 "execution_time": .double(executionTime),
@@ -365,7 +365,7 @@ private extension SpaceTool {
     func moveWindowToSpecificSpace(
         service: SpaceManagementService,
         request: MoveWindowRequest,
-        windowInfo: WindowInfo,
+        windowInfo: ServiceWindowInfo,
         windowID: UInt32,
         startTime: Date) async throws -> ToolResponse
     {
@@ -387,13 +387,13 @@ private extension SpaceTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
         let followText = request.follow ? " and switched to Space \(targetSpaceNumber)" : ""
-        let body = "Moved window '\(windowInfo.window_title)' to Space \(targetSpaceNumber)\(followText)"
+        let body = "Moved window '\(windowInfo.title)' to Space \(targetSpaceNumber)\(followText)"
         let message = self.successMessage(body, duration: executionTime)
 
         return ToolResponse(
             content: [.text(message)],
             meta: .object([
-                "window_title": .string(windowInfo.window_title),
+                "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowID)),
                 "target_space_number": .double(Double(targetSpaceNumber)),
                 "target_space_id": .double(Double(targetSpace.id)),
