@@ -24,9 +24,6 @@ func executePeekabooCLI(arguments: [String]) async -> Int32 {
     // Load configuration at startup
     _ = ConfigurationManager.shared.loadConfiguration()
 
-    // Initialize visualizer event dispatch for CLI usage
-    PeekabooServices.shared.ensureVisualizerConnection()
-
     do {
         try await CommanderRuntimeExecutor.resolveAndRun(arguments: arguments)
         return EXIT_SUCCESS

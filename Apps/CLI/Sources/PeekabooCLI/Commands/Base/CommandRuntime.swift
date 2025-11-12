@@ -70,6 +70,8 @@ struct CommandRuntime {
         }
 
         VisualizationClient.shared.setConsoleLogLevelOverride(visualizerConsoleLevel)
+
+        self.services.ensureVisualizerConnection()
     }
 
     @MainActor
