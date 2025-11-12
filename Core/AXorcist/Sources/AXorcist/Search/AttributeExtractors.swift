@@ -75,53 +75,42 @@ func determineAttributesToFetch(
     targetRole: String?,
     element: Element
 ) -> [String] {
-    var attributesToFetch = requestedAttributes ?? []
     if forMultiDefault {
-        attributesToFetch = [
-            AXAttributeNames.kAXRoleAttribute,
-            AXAttributeNames.kAXValueAttribute,
-            AXAttributeNames.kAXTitleAttribute,
-            AXAttributeNames.kAXIdentifierAttribute,
-        ]
-        if let role = targetRole, role == AXRoleNames.kAXStaticTextRole {
-            attributesToFetch = [
-                AXAttributeNames.kAXRoleAttribute,
-                AXAttributeNames.kAXValueAttribute,
-                AXAttributeNames.kAXIdentifierAttribute,
-            ]
-        }
-    } else if attributesToFetch.isEmpty {
-        if requestedAttributes == nil || requestedAttributes!.isEmpty {
-            // If no specific attributes are requested, decide what to do based on context
-            // This part of the logic for deciding what to fetch if nothing specific is requested
-            // has been simplified or might be intended to be expanded.
-            // For now, if forMultiDefault is true, it implies fetching a default set (e.g., for multi-element views)
-            // otherwise, it might fetch all or a basic set.
-            // This example assumes if not forMultiDefault, and no specifics, it fetches all available.
-            if !forMultiDefault {
-                // Example: Fetch all attribute names if none are specified and not for a multi-default scenario
-                if let names = element.attributeNames() {
-                    attributesToFetch.append(contentsOf: names)
-                    GlobalAXLogger.shared.log(AXLogEntry(
-                        level: .debug,
-                        message: "determineAttributesToFetch: No specific attributes requested, " +
-                            "fetched all \(names.count) available: \(names.joined(separator: ", "))"
-                    ))
-                } else {
-                    GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
-                        "determineAttributesToFetch: No specific attributes requested and " +
-                            "failed to fetch all available names."))
-                }
-            } else {
-                // For multi-default, or if the above block doesn't execute,
-                // it might rely on a predefined default set or do nothing further here,
-                // letting subsequent logic handle AXorcist.defaultAttributesToFetch if attributesToFetch remains empty.
-                GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
-                    "determineAttributesToFetch: No specific attributes requested. Using defaults or context-specific set."))
-            }
-        }
+        return defaultMultiAttributes(for: targetRole)
     }
-    return attributesToFetch
+
+    if let requested = requestedAttributes, !requested.isEmpty {
+        return requested
+    }
+
+    if let names = element.attributeNames(), !names.isEmpty {
+        GlobalAXLogger.shared.log(AXLogEntry(
+            level: .debug,
+            message: "determineAttributesToFetch: No specific attributes requested, fetched all \(names.count)"
+        ))
+        return names
+    }
+
+    GlobalAXLogger.shared.log(AXLogEntry(
+        level: .debug,
+        message: "determineAttributesToFetch: Falling back to defaults; unable to fetch attribute names."
+    ))
+    return []
+}
+
+private func defaultMultiAttributes(for role: String?) -> [String] {
+    let base = [
+        AXAttributeNames.kAXRoleAttribute,
+        AXAttributeNames.kAXValueAttribute,
+        AXAttributeNames.kAXTitleAttribute,
+        AXAttributeNames.kAXIdentifierAttribute,
+    ]
+    guard role == AXRoleNames.kAXStaticTextRole else { return base }
+    return [
+        AXAttributeNames.kAXRoleAttribute,
+        AXAttributeNames.kAXValueAttribute,
+        AXAttributeNames.kAXIdentifierAttribute,
+    ]
 }
 
 // Function to get specifically computed attributes for an element

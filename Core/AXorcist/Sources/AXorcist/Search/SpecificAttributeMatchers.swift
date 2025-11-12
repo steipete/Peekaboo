@@ -65,64 +65,95 @@ func matchArrayAttribute(
     depth: Int
 ) -> Bool {
     guard let expectedArray = decodeExpectedArray(fromString: expectedValueString) else {
-        axWarningLog(
-            "matchArrayAttribute [D\(depth)]: Could not decode expected array string " +
-                "'\(expectedValueString)' for attribute '\(key)'. No match.",
-            file: #file,
-            function: #function,
-            line: #line
-        )
+        logArrayAttributeWarning(
+            "Could not decode expected array string '\(expectedValueString)' for attribute '\(key)'.",
+            depth: depth)
         return false
     }
 
-    var actualArray: [String]?
-    if key == AXAttributeNames.kAXActionNamesAttribute {
-        actualArray = element.supportedActions()
-    } else if key == AXAttributeNames.kAXAllowedValuesAttribute {
-        actualArray = element.attribute(Attribute<[String]>(key))
-    } else if key == AXAttributeNames.kAXChildrenAttribute {
-        actualArray = element.children()?.map { childElement -> String in
-            childElement.role() ?? "UnknownRole"
-        }
-    } else {
-        axWarningLog(
-            "matchArrayAttribute [D\(depth)]: Unknown array key '\(key)'. " +
-                "This function needs to be extended for this key.",
-            file: #file,
-            function: #function,
-            line: #line
-        )
+    switch fetchArrayAttribute(element: element, key: key) {
+    case .unsupported:
+        logArrayAttributeWarning(
+            "Unknown array key '\(key)'. Extend matchArrayAttribute for this key.",
+            depth: depth)
         return false
-    }
-
-    if let actual = actualArray {
-        if Set(actual) != Set(expectedArray) {
+    case .missing:
+        return handleMissingArrayAttribute(
+            expectedArray: expectedArray,
+            expectedValueString: expectedValueString,
+            key: key,
+            depth: depth)
+    case .value(let actual):
+        guard Set(actual) == Set(expectedArray) else {
             axDebugLog(
                 "matchArrayAttribute [D\(depth)]: Array Attribute '\(key)' expected '\(expectedArray)', " +
                     "but found '\(actual)'. Sets differ. No match.",
-                file: #file, function: #function, line: #line
+                file: #file,
+                function: #function,
+                line: #line
             )
             return false
         }
         return true
-    } else {
-        if expectedArray.isEmpty {
-            axDebugLog(
-                "matchArrayAttribute [D\(depth)]: Array Attribute '\(key)' not found, " +
-                    "but expected array was empty. Match for this key.",
-                file: #file, function: #function, line: #line
-            )
-            return true
-        }
+    }
+}
+
+private enum ArrayAttributeFetchResult {
+    case value([String])
+    case missing
+    case unsupported
+}
+
+@MainActor
+private func fetchArrayAttribute(element: Element, key: String) -> ArrayAttributeFetchResult {
+    switch key {
+    case AXAttributeNames.kAXActionNamesAttribute:
+        return element.supportedActions().map(ArrayAttributeFetchResult.value) ?? .missing
+    case AXAttributeNames.kAXAllowedValuesAttribute:
+        let value = element.attribute(Attribute<[String]>(key))
+        return value.map(ArrayAttributeFetchResult.value) ?? .missing
+    case AXAttributeNames.kAXChildrenAttribute:
+        let children = element.children()?.map { $0.role() ?? "UnknownRole" }
+        return children.map(ArrayAttributeFetchResult.value) ?? .missing
+    default:
+        return .unsupported
+    }
+}
+
+@MainActor
+private func handleMissingArrayAttribute(
+    expectedArray: [String],
+    expectedValueString: String,
+    key: String,
+    depth: Int) -> Bool
+{
+    if expectedArray.isEmpty {
         axDebugLog(
-            "matchArrayAttribute [D\(depth)]: Array Attribute '\(key)' " +
-                "(expected '\(expectedValueString)') not found in element. No match.",
+            "matchArrayAttribute [D\(depth)]: Array Attribute '\(key)' not found, " +
+                "but expected array was empty. Match for this key.",
             file: #file,
             function: #function,
             line: #line
         )
-        return false
+        return true
     }
+    axDebugLog(
+        "matchArrayAttribute [D\(depth)]: Array Attribute '\(key)' " +
+            "(expected '\(expectedValueString)') not found in element. No match.",
+        file: #file,
+        function: #function,
+        line: #line
+    )
+    return false
+}
+
+private func logArrayAttributeWarning(_ message: String, depth: Int) {
+    axWarningLog(
+        "matchArrayAttribute [D\(depth)]: \(message)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
 }
 
 @MainActor
@@ -157,7 +188,9 @@ func matchBooleanAttribute(
             axDebugLog(
                 "attributesMatch [D\(depth)]: Boolean Attribute '\(key)' expected '\(expectedBool)', " +
                     "but found '\(actualBool)'. No match.",
-                file: #file, function: #function, line: #line
+                file: #file,
+                function: #function,
+                line: #line
             )
             return false
         }
@@ -222,7 +255,9 @@ func matchComputedNameAttributes(
                 "matchComputedNameAttributes [D\(depth)]: Locator requires ComputedName " +
                     "(equals: \(equalsStr), contains: \(containsStr)), " +
                     "but element has none or it's not a string. No match.",
-                file: #file, function: #function, line: #line
+                file: #file,
+                function: #function,
+                line: #line
             )
             return false
         }
