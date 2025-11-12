@@ -276,7 +276,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Observed**: After the new focus fallbacks landed, every menu subcommand now fails with `APP_NOT_FOUND`/`Failed to activate application: Application failed to activate`. `ensureFocused` skips the AX-based window focus (because `FocusManagementService` still bails on window ID lookups) and ends up calling `PeekabooServices.shared.applications.activateApplication`, which returns `.operationError` even though TextEdit is already running. The error is rethrown before `MenuServiceBridge` ever attempts the click.
 - **Impact**: Menu automation regressed to 0 % success—agents have to add `--no-auto-focus` and manually run `window focus` before every menu command, otherwise Grindr’s Chrome menus are unreachable.
 - **Workaround — Nov 12, 2025**: `polter peekaboo -- window focus --app <App>` followed by `menu … --no-auto-focus` works because it bypasses the failing activation path.
-- **Next steps**: Make the focus fallback consider the AX-only heuristics (so `FocusManagementService` succeeds) and treat activation failures as warnings when the window has already been focused via AX.
+- **Resolution — Nov 12, 2025 (afternoon)**: `ApplicationService.activateApplication` no longer throws when `NSRunningApplication.activate` returns false, so the focus cascade doesn’t abort menu commands. Default `menu click/list` now succeed again without `--no-auto-focus`.
 
 ## Grindr login form is invisible to Peekaboo
 - **Command sequence** (all via Peekaboo CLI):
@@ -321,3 +321,34 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Impact**: Agents can’t enumerate or interact with dialogs—the command just errors out even when a system Open/Save sheet is on screen.
 - **Next steps**: Add better diagnostics (log the last window IDs checked, screenshot path, etc.) and ensure `DialogService` is looking at the correct window hierarchy before returning `NO_ACTIVE_DIALOG`.
 - **Status — Nov 12, 2025**: Retested via `polter peekaboo dialog list --app TextEdit --json-output --force` and the no-target variant `dialog list --json-output --force`; both return the Open sheet metadata cleanly (buttons, text field, role) so the `NO_ACTIVE_DIALOG` condition is no longer reproducible for this flow.
+
+## Visualizer logging regression broke mac builds (Nov 12, 2025)
+- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Observed**: Swift 6.2 flagged dozens of `implicit use of 'self'` errors plus `cannot convert value of type 'String' to expected argument type 'OSLogMessage'` across `Apps/Mac/Peekaboo/Services/Visualizer/VisualizerCoordinator.swift` and `VisualizerEventReceiver.swift`. The new Visualizer files leaned on temporary string variables and unlabeled closures, so Xcode refused to compile the mac target.
+- **Expected**: Visualizer should build cleanly so the mac app stays shippable.
+- **Resolution — Nov 12, 2025**: Prefixed every property/method reference with `self`, moved the animation queue closures to explicitly capture `self`, and replaced raw string variables with logger interpolations (`self.logger.info("\(message, privacy: .public)")`). `VisualizerEventReceiver` now logs errors via direct interpolation instead of concatenating `OSLogMessage`s, so both ScreenCaptureKit and legacy capture paths compile again.
+
+## AXorcist action handlers drifted from real APIs (Nov 12, 2025)
+- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Observed**: `Core/AXorcist/Sources/AXorcist/Core/AXorcist+ActionHandlers.swift` failed with “value of type 'AXorcist' has no member 'locateElement'” plus type mismatches because the helper extension used a `private extension` (hiding methods from the rest of the file) and assumed `PerformActionCommand.action` was an `AXActionNames` enum instead of a `String`.
+- **Expected**: AXorcist’s perform-action and set-focused-value handlers should compile under Swift 6 and drive element lookups directly.
+- **Resolution — Nov 12, 2025**: Rewrote the handlers to call `findTargetElement` just like the query commands, switched validation/execute helpers to take raw `String` action names, and removed the `Result<Element, AXResponse>` helper that tried to use `AXResponse` as `Error`. Action logging now consistently uses `ValueFormatOption.smart`, so AXorcist builds again.
+
+## Session title generator mis-parsed provider list (Nov 12, 2025)
+- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Observed**: `Apps/Mac/Peekaboo/Services/SessionTitleGenerator.swift` expected `ConfigurationManager.getAIProviders()` to return `[String]`, so Swift complained about “cannot convert value of type 'String' to expected argument type '[String]'`.
+- **Resolution — Nov 12, 2025**: Split the comma-separated provider string into lowercase tokens before passing them into the model-selection helper. The generator now compiles inside the mac target.
+
+## Mac app build still blocked on StatusBar SwiftUI files (Nov 12, 2025)
+- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Observed**: After fixing Visualizer, AXorcist, Permissions logging, and SessionTitleGenerator, Xcode now dies later with `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, and `UnifiedActivityFeed.swift`. The errors mirror the earlier logger issues (concatenating `OSLogMessage`s and mismatched tool-type parameters), so the mac build still exits 65 even though the rest of the tree compiles.
+- **Next steps**: Audit the StatusBar files for lingering `Logger` misuse and type mismatches (e.g., feed `PeekabooChatView` real `[AgentTool]?` arrays). Once those files match Swift 6’s stricter logging APIs, rerun `./runner ./scripts/build-mac-debug.sh` to confirm `Peekaboo.app` builds.
+
+## AXObserverManager helpers missing during mac build (Nov 12, 2025)
+- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Observed**: `SwiftCompile ... AXObserverManager.swift` still crashes with `value of type 'AXObserverManager' has no member 'attachNotification'` even though the helpers exist. Local `swift build --package-path Core/AXorcist` succeeds, so the failure is specific to the Xcode workspace build.
+- **Hypothesis**: The mac app’s build graph seems to use a stale SwiftPM artifact or a parallel copy of AXorcist that wasn’t updated when we rewrote the helpers. Nuking `.build/DerivedData` and rebuilding didn’t help; Xcode still reports the missing methods while the standalone package compiles fine.
+- **Next steps**:
+  1. Inspect the generated `AXorcist.SwiftFileList`/`axPackage.build` inside `.build/DerivedData` to see which copy of `AXObserverManager.swift` the workspace references.
+  2. If the workspace vendored an older checkout, re-point the dependency to the in-tree `Core/AXorcist` path or refresh the workspace’s SwiftPM pins.
+  3. As a fallback, move the helper logic entirely inline inside `addObserver` so even the stale copy compiles.

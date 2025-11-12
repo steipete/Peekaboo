@@ -108,7 +108,8 @@ public enum CaptureError: Error, LocalizedError, Sendable {
         case let .captureFailure(message):
             return "Capture failed: \(message)"
         case .permissionDeniedScreenRecording:
-            return "Screen recording permission is required. Please grant it in System Settings > Privacy & Security > Screen Recording."
+            return "Screen recording permission is required. Please grant it in " +
+                "System Settings > Privacy & Security > Screen Recording."
         case .noFrontmostApplication:
             return "No frontmost application found."
         case .invalidCaptureArea:

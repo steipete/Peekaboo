@@ -210,7 +210,8 @@ public nonisolated struct ErrorRecoveryFailure: PeekabooErrorProtocol {
     public let reason: String
 
     public var errorDescription: String? {
-        "Failed to recover from \(self.originalError.localizedDescription) after \(self.attempts) attempts: \(self.reason)"
+        "Failed to recover from \(self.originalError.localizedDescription) after " +
+            "\(self.attempts) attempts: \(self.reason)"
     }
 
     public var category: ErrorCategory {
