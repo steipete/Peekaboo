@@ -42,59 +42,9 @@ public final class DockService: DockServiceProtocol {
         var items: [DockItem] = []
 
         for (index, element) in dockElements.enumerated() {
-            let role = element.role() ?? ""
-            let title = element.title() ?? ""
-            let subrole = element.subrole() ?? ""
-
-            // Determine item type
-            let itemType: DockItemType
-            if role == "AXSeparator" || subrole == "AXSeparator" {
-                itemType = .separator
-                // Skip separators unless includeAll
-                if !includeAll {
-                    continue
-                }
-            } else if subrole == "AXApplicationDockItem" {
-                itemType = .application
-            } else if subrole == "AXFolderDockItem" {
-                itemType = .folder
-            } else if subrole == "AXFileDockItem" {
-                itemType = .file
-            } else if subrole == "AXURLDockItem" {
-                itemType = .url
-            } else if subrole == "AXMinimizedWindowDockItem" {
-                itemType = .minimizedWindow
-            } else if title.lowercased() == "trash" || title.lowercased() == "bin" {
-                itemType = .trash
-            } else {
-                itemType = .unknown
+            guard let item = self.makeDockItem(from: element, index: index, includeAll: includeAll) else {
+                continue
             }
-
-            // Get position and size
-            let position = element.position()
-            let size = element.size()
-
-            // Check if running (for applications)
-            var isRunning: Bool?
-            if itemType == .application {
-                isRunning = element.attribute(Attribute<Bool>("AXIsApplicationRunning"))
-            }
-
-            // Try to get bundle identifier for applications
-            var bundleIdentifier: String?
-            if itemType == .application, !title.isEmpty {
-                bundleIdentifier = self.findBundleIdentifier(for: title)
-            }
-
-            let item = DockItem(
-                index: index,
-                title: title,
-                itemType: itemType,
-                isRunning: isRunning,
-                bundleIdentifier: bundleIdentifier,
-                position: position,
-                size: size)
-
             items.append(item)
         }
 
@@ -117,6 +67,67 @@ public final class DockService: DockServiceProtocol {
 
         // Wait a bit for the launch to initiate
         try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+    }
+
+    private func makeDockItem(from element: Element, index: Int, includeAll: Bool) -> DockItem? {
+        let role = element.role() ?? ""
+        let title = element.title() ?? ""
+        let subrole = element.subrole() ?? ""
+
+        let itemType = self.determineItemType(role: role, subrole: subrole, title: title)
+        if itemType == .separator && !includeAll {
+            return nil
+        }
+
+        let position = element.position()
+        let size = element.size()
+
+        var isRunning: Bool?
+        if itemType == .application {
+            isRunning = element.attribute(Attribute<Bool>("AXIsApplicationRunning"))
+        }
+
+        let bundleIdentifier: String?
+        if itemType == .application, !title.isEmpty {
+            bundleIdentifier = self.findBundleIdentifier(for: title)
+        } else {
+            bundleIdentifier = nil
+        }
+
+        return DockItem(
+            index: index,
+            title: title,
+            itemType: itemType,
+            isRunning: isRunning,
+            bundleIdentifier: bundleIdentifier,
+            position: position,
+            size: size)
+    }
+
+    private func determineItemType(role: String, subrole: String, title: String) -> DockItemType {
+        if role == "AXSeparator" || subrole == "AXSeparator" {
+            return .separator
+        }
+        switch subrole {
+        case "AXApplicationDockItem":
+            return .application
+        case "AXFolderDockItem":
+            return .folder
+        case "AXFileDockItem":
+            return .file
+        case "AXURLDockItem":
+            return .url
+        case "AXMinimizedWindowDockItem":
+            return .minimizedWindow
+        default:
+            break
+        }
+
+        let normalizedTitle = title.lowercased()
+        if normalizedTitle == "trash" || normalizedTitle == "bin" {
+            return .trash
+        }
+        return .unknown
     }
 
     public func addToDock(path: String, persistent: Bool = true) async throws {
