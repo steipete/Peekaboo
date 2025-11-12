@@ -44,7 +44,7 @@ extension AgentOutputDelegate {
 
     // MARK: - AgentEventDelegate
 
-    func agentDidEmitEvent(_ event: PeekabooCore.AgentEvent) {
+    public func agentDidEmitEvent(_ event: PeekabooCore.AgentEvent) {
         guard !self.jsonOutput else { return }
 
         switch event {

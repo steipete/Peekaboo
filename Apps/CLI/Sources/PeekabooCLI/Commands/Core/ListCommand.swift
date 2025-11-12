@@ -330,7 +330,7 @@ extension ListCommand {
                         print(json)
                     }
                 } else {
-                    self.printMenuBarItems(items)
+                    self.displayMenuBarItems(items)
                 }
             } catch {
                 self.handleError(error)
@@ -339,29 +339,29 @@ extension ListCommand {
         }
 
         @MainActor
-        private func printMenuBarItems(_ items: [MenuBarItemInfo]) {
+        private func displayMenuBarItems(_ items: [MenuBarItemInfo]) {
             if items.isEmpty {
                 print("No menu bar items detected.")
                 return
             }
 
-            Swift.print("Menu Bar Items (\(items.count)):")
+            print("Menu Bar Items (\(items.count)):")
             for (index, item) in items.enumerated() {
-                self.print(menuBarItem: item, index: index)
+                self.displayMenuBarItem(item, index: index)
             }
         }
 
         @MainActor
-        private func print(menuBarItem item: MenuBarItemInfo, index: Int) {
+        private func displayMenuBarItem(_ item: MenuBarItemInfo, index: Int) {
             let title = item.title ?? "<untitled>"
-            Swift.print("  [\(index + 1)] \(title)")
+            print("  [\(index + 1)] \(title)")
             if let description = item.description, !description.isEmpty {
-                Swift.print("       Description: \(description)")
+                print("       Description: \(description)")
             }
             if let frame = item.frame {
                 let frameOrigin = "\(Int(frame.origin.x)),\(Int(frame.origin.y))"
                 let frameSize = "\(Int(frame.width))×\(Int(frame.height))"
-                Swift.print("       Frame: \(frameOrigin) \(frameSize)")
+                print("       Frame: \(frameOrigin) \(frameSize)")
             }
         }
     }
@@ -402,7 +402,7 @@ extension ListCommand {
                 if self.jsonOutput {
                     try print(output.toJSON())
                 } else {
-                    self.printScreenDetails(screens, count: screens.count)
+                    self.displayScreenDetails(screens, count: screens.count)
                 }
             } catch {
                 self.handleError(error)
@@ -411,20 +411,20 @@ extension ListCommand {
         }
 
         @MainActor
-        private func printScreenDetails(_ screens: [PeekabooCore.ScreenInfo], count: Int) {
-            Swift.print("Screens (\(count) total):")
+        private func displayScreenDetails(_ screens: [PeekabooCore.ScreenInfo], count: Int) {
+            print("Screens (\(count) total):")
             for screen in screens {
                 let primaryBadge = screen.isPrimary ? " (Primary)" : ""
-                Swift.print("\n\(screen.index). \(screen.name)\(primaryBadge)")
-                Swift.print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
-                Swift.print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
+                print("\n\(screen.index). \(screen.name)\(primaryBadge)")
+                print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
+                print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
                 let retinaBadge = screen.scaleFactor > 1 ? " (Retina)" : ""
-                Swift.print("   Scale: \(screen.scaleFactor)x\(retinaBadge)")
+                print("   Scale: \(screen.scaleFactor)x\(retinaBadge)")
                 if screen.visibleFrame.size != screen.frame.size {
-                    Swift.print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
+                    print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
                 }
             }
-            Swift.print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
+            print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
         }
 
         @MainActor

@@ -350,8 +350,12 @@ extension AgentCommand {
     private func printMissingTaskError(message: String, usage: String) {
         if self.jsonOutput {
             let error = ["success": false, "error": message] as [String: Any]
-            let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
-            print(String(data: jsonData, encoding: .utf8) ?? "{}")
+            if let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                print(jsonString)
+            } else {
+                print("{\"success\":false,\"error\":\"\(message)\"}")
+            }
         } else {
             print("\(TerminalColor.red)Error: \(message)\(TerminalColor.reset)")
             if !usage.isEmpty {
@@ -373,86 +377,102 @@ extension AgentCommand {
     }
 
     private func processAudioInput() async throws -> String? {
-        if !self.jsonOutput && !self.quiet {
-            if let audioPath = self.audioFile {
-                print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
-            } else {
-                let recordingMessage = [
-                    "\(TerminalColor.cyan)🎙️ Starting audio recording...",
-                    " (Press Ctrl+C to stop)\(TerminalColor.reset)"
-                ].joined()
-                print(recordingMessage)
-            }
-        }
-
+        self.logAudioStartMessage()
         let audioService = self.services.audioInput
 
         do {
-            let executionTask: String
-            if let audioPath = self.audioFile {
-                let url = URL(fileURLWithPath: audioPath)
-                executionTask = try await audioService.transcribeAudioFile(url)
-            } else {
-                try await audioService.startRecording()
-                let transcript = try await withTaskCancellationHandler {
-                    try await withCheckedThrowingContinuation { continuation in
-                        let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-                        signalSource.setEventHandler {
-                            signalSource.cancel()
-                            Task { @MainActor in
-                                do {
-                                    let transcript = try await audioService.stopRecording()
-                                    continuation.resume(returning: transcript)
-                                } catch {
-                                    continuation.resume(throwing: error)
-                                }
-                            }
-                        }
-                        signalSource.resume()
-                    }
-                } onCancel: {
+            let transcript = try await self.transcribeAudio(using: audioService)
+            self.logTranscriptionSuccess(transcript)
+            return self.composeExecutionTask(with: transcript)
+        } catch {
+            self.logAudioError(error)
+            return nil
+        }
+    }
+
+    private func logAudioStartMessage() {
+        guard !self.jsonOutput && !self.quiet else { return }
+        if let audioPath = self.audioFile {
+            print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
+        } else {
+            let recordingMessage = [
+                "\(TerminalColor.cyan)🎙️ Starting audio recording...",
+                " (Press Ctrl+C to stop)\(TerminalColor.reset)"
+            ].joined()
+            print(recordingMessage)
+        }
+    }
+
+    private func transcribeAudio(using audioService: AudioInputService) async throws -> String {
+        if let audioPath = self.audioFile {
+            let url = URL(fileURLWithPath: audioPath)
+            return try await audioService.transcribeAudioFile(url)
+        } else {
+            try await audioService.startRecording()
+            return try await self.captureMicrophoneAudio(using: audioService)
+        }
+    }
+
+    private func captureMicrophoneAudio(using audioService: AudioInputService) async throws -> String {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+                signalSource.setEventHandler {
+                    signalSource.cancel()
                     Task { @MainActor in
-                        _ = try? await audioService.stopRecording()
+                        do {
+                            let transcript = try await audioService.stopRecording()
+                            continuation.resume(returning: transcript)
+                        } catch {
+                            continuation.resume(throwing: error)
+                        }
                     }
                 }
-                executionTask = transcript
+                signalSource.resume()
             }
-
-            if !self.jsonOutput && !self.quiet {
-                let transcriptionCompleteMessage = [
-                    "\(TerminalColor.green)\(AgentDisplayTokens.Status.success) Transcription complete",
-                    "\(TerminalColor.reset)"
-                ].joined()
-                print(transcriptionCompleteMessage)
-                print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
+        } onCancel: {
+            Task { @MainActor in
+                _ = try? await audioService.stopRecording()
             }
+        }
+    }
 
-            var composedTask = executionTask
-            if let providedTask = self.task {
-                composedTask = "\(providedTask)
+    private func logTranscriptionSuccess(_ transcript: String) {
+        guard !self.jsonOutput && !self.quiet else { return }
+        let message = [
+            "\(TerminalColor.green)\(AgentDisplayTokens.Status.success) Transcription complete",
+            "\(TerminalColor.reset)"
+        ].joined()
+        print(message)
+        print("\(TerminalColor.gray)Transcript: \(transcript.prefix(100))...\(TerminalColor.reset)")
+    }
 
-Audio transcript:
-\(executionTask)"
-            }
+    private func composeExecutionTask(with transcript: String) -> String {
+        guard let providedTask = self.task else {
+            return transcript
+        }
+        return "\(providedTask)\n\nAudio transcript:\n\(transcript)"
+    }
 
-            return composedTask
-        } catch {
-            if self.jsonOutput {
-                let errorObj = [
-                    "success": false,
-                    "error": "Audio processing failed: \(error.localizedDescription)"
-                ] as [String: Any]
-                let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
-                print(String(data: jsonData, encoding: .utf8) ?? "{}")
+    private func logAudioError(_ error: any Error) {
+        if self.jsonOutput {
+            let errorObj = [
+                "success": false,
+                "error": "Audio processing failed: \(error.localizedDescription)"
+            ] as [String: Any]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                print(jsonString)
             } else {
-                let failurePrefix = [
-                    "\(TerminalColor.red)\(AgentDisplayTokens.Status.failure)",
-                    " Audio processing failed: \(error.localizedDescription)"
-                ].joined()
-                let audioErrorMessage = [failurePrefix, "\(TerminalColor.reset)"].joined()
-                print(audioErrorMessage)
+                print("{\"success\":false,\"error\":\"Audio processing failed\"}")
             }
-            return nil
+        } else {
+            let failurePrefix = [
+                "\(TerminalColor.red)\(AgentDisplayTokens.Status.failure)",
+                " Audio processing failed: \(error.localizedDescription)"
+            ].joined()
+            let audioErrorMessage = [failurePrefix, "\(TerminalColor.reset)"].joined()
+            print(audioErrorMessage)
         }
     }
     /// Render the agent execution result using either JSON output or a rich CLI transcript.
@@ -535,9 +555,9 @@ Audio transcript:
 
     private func printNoAgentSessions() {
         if self.jsonOutput {
-            let response = {"success": true, "sessions": []} as [String: Any]
+            let response = ["success": true, "sessions": []] as [String: Any]
             let jsonData = try? JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
-            print(String(data: jsonData ?? Data(), encoding: .utf-8) ?? "{}")
+            print(String(data: jsonData ?? Data(), encoding: .utf8) ?? "{}")
         } else {
             print("No agent sessions found.")
         }
@@ -552,9 +572,9 @@ Audio transcript:
                 "messageCount": session.messageCount
             ]
         }
-        let response = {"success": true, "sessions": sessionData} as [String: Any]
+        let response = ["success": true, "sessions": sessionData] as [String: Any]
         if let jsonData = try? JSONSerialization.data(withJSONObject: response, options: .prettyPrinted) {
-            print(String(data: jsonData, encoding: .utf-8) ?? "{}")
+            print(String(data: jsonData, encoding: .utf8) ?? "{}")
         }
     }
 
@@ -585,7 +605,8 @@ Audio transcript:
 
         let resumeHintLine = [
             "\n",
-            "\(TerminalColor.dim)To resume: peekaboo agent --resume <session-id> \"<continuation>\"\(TerminalColor.reset)"
+            "\(TerminalColor.dim)To resume: peekaboo agent --resume <session-id>",
+            " \"<continuation>\"\(TerminalColor.reset)"
         ].joined()
         print(resumeHintLine)
     }
@@ -749,3 +770,25 @@ Audio transcript:
 extension AgentCommand: ParsableCommand {}
 
 extension AgentCommand: AsyncRuntimeCommand {}
+
+@available(macOS 14.0, *)
+extension AgentCommand {
+    @MainActor
+    private func executeTask(
+        _ agentService: any AgentServiceProtocol,
+        task: String,
+        maxSteps: Int
+    ) async throws {
+        let eventDelegate: AgentOutputDelegate? = self.jsonOutput
+            ? nil
+            : AgentOutputDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
+
+        let result = try await agentService.executeTask(
+            task,
+            maxSteps: maxSteps,
+            dryRun: self.dryRun,
+            eventDelegate: eventDelegate)
+
+        self.displayResult(result)
+    }
+}
