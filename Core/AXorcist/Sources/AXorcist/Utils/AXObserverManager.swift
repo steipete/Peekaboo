@@ -66,82 +66,74 @@ public class AXObserverManager {
         observerLock.lock()
         defer { observerLock.unlock() }
 
-        // Check if we already have an observer for this element
         if var observerInfo = observers[elementId] {
-            // Add the callback for this notification
-            observerInfo.callbacks[notification.rawValue as CFString] = callback
+            observerInfo.callbacks[self.notificationKey(for: notification)] = callback
             observers[elementId] = observerInfo
 
-            // Add the notification to the existing observer
             let error = AXObserverAddNotification(
                 observerInfo.observer,
                 element.underlyingElement,
                 notification.rawValue as CFString,
                 nil
             )
+
             if error != .success {
                 axErrorLog("Failed to add notification: \(error)")
                 throw ObserverError.addNotificationFailed(error)
             }
-        } else {
-            // Create a new observer
-            guard let pid = element.pid() else {
-                throw ObserverError.other("Could not get PID for element")
-            }
 
-            var observer: AXObserver?
-
-            // Create the callback function for the observer
-            let observerCallback: AXObserverCallbackWithInfo = { observer, element, notification, userInfo, _ in
-                // Since we can't pass refcon through AXObserverCreateWithInfoCallback,
-                // we need to use a different approach to get back to the manager
-                AXObserverManager.shared.handleNotification(
-                    observer: observer,
-                    element: element,
-                    notification: notification,
-                    userInfo: userInfo
-                )
-            }
-
-            let error = AXObserverCreateWithInfoCallback(
-                pid,
-                observerCallback,
-                &observer
-            )
-
-            guard error == .success, let observer else {
-                axErrorLog("Failed to create observer: \(error)")
-                throw ObserverError.couldNotCreateObserver
-            }
-
-            // Add the notification
-            let addError = AXObserverAddNotification(
-                observer,
-                element.underlyingElement,
-                notification.rawValue as CFString,
-                nil
-            )
-            if addError != .success {
-                axErrorLog("Failed to add notification: \(addError)")
-                throw ObserverError.addNotificationFailed(addError)
-            }
-
-            // Get the run loop source and add it to the main run loop
-            let runLoopSource = AXObserverGetRunLoopSource(observer)
-            CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .defaultMode)
-
-            // Store the observer info
-            var callbacks: [CFString: AXNotificationCallback] = [:]
-            callbacks[notification.rawValue as CFString] = callback
-            let observerInfo = ObserverInfo(
-                observer: observer,
-                runLoopSource: runLoopSource,
-                callbacks: callbacks
-            )
-            observers[elementId] = observerInfo
-
-            axDebugLog("Created observer for PID \(pid) with notification \(notification.rawValue)")
+            return
         }
+
+        guard let pid = element.pid() else {
+            throw ObserverError.other("Could not get PID for element")
+        }
+
+        var observer: AXObserver?
+        let axCallback: AXObserverCallbackWithInfo = { observer, element, notification, userInfo, _ in
+            AXObserverManager.shared.handleNotification(
+                observer: observer,
+                element: element,
+                notification: notification,
+                userInfo: userInfo
+            )
+        }
+
+        let creationError = AXObserverCreateWithInfoCallback(
+            pid,
+            axCallback,
+            &observer
+        )
+
+        guard creationError == .success, let observer else {
+            axErrorLog("Failed to create observer: \(creationError)")
+            throw ObserverError.couldNotCreateObserver
+        }
+
+        let addError = AXObserverAddNotification(
+            observer,
+            element.underlyingElement,
+            notification.rawValue as CFString,
+            nil
+        )
+        if addError != .success {
+            axErrorLog("Failed to add notification: \(addError)")
+            throw ObserverError.addNotificationFailed(addError)
+        }
+
+        let runLoopSource = AXObserverGetRunLoopSource(observer)
+        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .defaultMode)
+
+        var callbacks: [CFString: AXNotificationCallback] = [:]
+        callbacks[self.notificationKey(for: notification)] = callback
+
+        observers[elementId] = ObserverInfo(
+            observer: observer,
+            runLoopSource: runLoopSource,
+            callbacks: callbacks
+        )
+
+        axDebugLog("Created observer for PID \(pid) with notification \(notification.rawValue)")
     }
 
     // Remove observer for an element and notification
@@ -212,6 +204,10 @@ public class AXObserverManager {
         let observer: AXObserver
         let runLoopSource: CFRunLoopSource
         var callbacks: [CFString: AXNotificationCallback] = [:]
+    }
+
+    private func notificationKey(for notification: AXNotification) -> CFString {
+        notification.rawValue as CFString
     }
 
     private var observers: [ObjectIdentifier: ObserverInfo] = [:]

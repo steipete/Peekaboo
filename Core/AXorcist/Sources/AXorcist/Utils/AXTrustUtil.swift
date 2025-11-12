@@ -12,7 +12,9 @@ public enum AXTrustUtil {
     /// - Parameter promptIfNeeded: If true, the system will prompt the user if not trusted.
     /// - Returns: True if the process is trusted, false otherwise.
     public static func checkAccessibilityPermissions(promptIfNeeded: Bool = true) -> Bool {
-        let options = [CFConstants.axTrustedCheckOptionPrompt: CFConstants.cfBoolean(from: promptIfNeeded)] as CFDictionary
+        let options: CFDictionary = [
+            CFConstants.axTrustedCheckOptionPrompt: CFConstants.cfBoolean(from: promptIfNeeded),
+        ] as CFDictionary
         return AXIsProcessTrustedWithOptions(options)
     }
 
