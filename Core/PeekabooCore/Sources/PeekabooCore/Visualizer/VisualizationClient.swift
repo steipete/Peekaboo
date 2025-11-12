@@ -11,13 +11,19 @@ import PeekabooFoundation
 
 @MainActor
 public final class VisualizationClient: @unchecked Sendable {
-    private enum LogLevel {
-        case debug
-        case info
-        case notice
-        case warning
-        case error
-        case fault
+    private enum ConsoleLogLevel: Int, Comparable {
+        case trace = 0
+        case verbose = 1
+        case debug = 2
+        case info = 3
+        case notice = 4
+        case warning = 5
+        case error = 6
+        case fault = 7
+
+        static func < (lhs: ConsoleLogLevel, rhs: ConsoleLogLevel) -> Bool {
+            lhs.rawValue < rhs.rawValue
+        }
     }
 
     public static let shared = VisualizationClient()
@@ -29,6 +35,8 @@ public final class VisualizationClient: @unchecked Sendable {
 
     private let consoleLogHandler: (String) -> Void
     private let shouldMirrorToConsole: Bool
+    private let defaultConsoleLogLevel: ConsoleLogLevel
+    private var minimumConsoleLogLevel: ConsoleLogLevel
     private let isRunningInsideMacApp: Bool
     private let cleanupDisabled: Bool  // Allows disabling automatic cleanup when deep-debugging transport issues
 
@@ -57,6 +65,10 @@ public final class VisualizationClient: @unchecked Sendable {
         } else {
             self.shouldMirrorToConsole = !self.isRunningInsideMacApp
         }
+
+        let envLogLevel = VisualizationClient.parseLogLevel(environment["PEEKABOO_LOG_LEVEL"])
+        self.defaultConsoleLogLevel = envLogLevel ?? .warning
+        self.minimumConsoleLogLevel = self.defaultConsoleLogLevel
 
         if environment["PEEKABOO_VISUAL_FEEDBACK"] == "false" {
             self.isEnabled = false
@@ -218,9 +230,11 @@ public final class VisualizationClient: @unchecked Sendable {
         }
     }
 
-    private func log(_ level: LogLevel, _ message: String) {
+    private func log(_ level: ConsoleLogLevel, _ message: String) {
         let osLogType: OSLogType
         switch level {
+        case .trace: osLogType = .debug
+        case .verbose: osLogType = .debug
         case .debug: osLogType = .debug
         case .info: osLogType = .info
         case .notice: osLogType = .default
@@ -231,10 +245,12 @@ public final class VisualizationClient: @unchecked Sendable {
 
         self.logger.log(level: osLogType, "\(message, privacy: .public)")
 
-        guard self.shouldMirrorToConsole else { return }
+        guard self.shouldMirrorToConsole, level >= self.minimumConsoleLogLevel else { return }
 
         let emoji: String
         switch level {
+        case .trace: emoji = "TRACE"
+        case .verbose: emoji = "VERBOSE"
         case .debug: emoji = "DEBUG"
         case .info: emoji = "INFO"
         case .notice: emoji = "NOTICE"
@@ -244,6 +260,41 @@ public final class VisualizationClient: @unchecked Sendable {
         }
 
         self.consoleLogHandler("[Visualizer][\(emoji)] \(message)")
+    }
+
+    private static func parseLogLevel(_ rawValue: String?) -> ConsoleLogLevel? {
+        guard let rawValue else { return nil }
+        switch rawValue.lowercased() {
+        case "trace": return .trace
+        case "verbose": return .verbose
+        case "debug": return .debug
+        case "info": return .info
+        case "notice": return .notice
+        case "warning", "warn": return .warning
+        case "error": return .error
+        case "critical", "fault": return .fault
+        default: return nil
+        }
+    }
+
+    private static func consoleLogLevel(from logLevel: LogLevel) -> ConsoleLogLevel {
+        switch logLevel {
+        case .trace: return .trace
+        case .debug: return .debug
+        case .info: return .info
+        case .warning: return .warning
+        case .error: return .error
+        case .critical: return .fault
+        }
+    }
+
+    @MainActor
+    public func setConsoleLogLevelOverride(_ newLevel: LogLevel?) {
+        if let newLevel {
+            self.minimumConsoleLogLevel = Self.consoleLogLevel(from: newLevel)
+        } else {
+            self.minimumConsoleLogLevel = self.defaultConsoleLogLevel
+        }
     }
 
     private static func parseBooleanEnvironmentValue(_ rawValue: String?) -> Bool? {
