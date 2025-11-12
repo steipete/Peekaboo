@@ -471,12 +471,7 @@ struct MessageActivityView: View {
 
                     // Message content
                     if self.message.role == .assistant {
-                        // Markdown support for assistant
-                        Text(try! AttributedString(
-                            markdown: self.message.content,
-                            options: AttributedString.MarkdownParsingOptions(
-                                allowsExtendedAttributes: true,
-                                interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+                        Text(self.assistantMarkdown)
                             .font(.system(size: 11))
                             .lineLimit(self.isExpanded ? nil : 3)
                     } else {
@@ -639,6 +634,14 @@ struct AnimatedThinkingDots: View {
                 }
             }
         }
+    }
+
+    private var assistantMarkdown: AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(
+            allowsExtendedAttributes: true,
+            interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        return (try? AttributedString(markdown: self.message.content, options: options)) ??
+            AttributedString(self.message.content)
     }
 }
 

@@ -191,10 +191,8 @@ final class StatusBarController: NSObject {
         menu.addItem(quitItem)
 
         // Configure menu items (except quit which needs NSApp as target)
-        for item in menu.items {
-            if item.action != #selector(NSApplication.terminate(_:)) {
-                item.target = self
-            }
+        for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) {
+            item.target = self
         }
 
         // Show menu

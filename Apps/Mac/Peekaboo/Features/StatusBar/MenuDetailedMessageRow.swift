@@ -15,33 +15,55 @@ struct MenuDetailedMessageRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: self.compactSpacing) {
-            // Main message content
             HStack(alignment: .top, spacing: self.compactSpacing) {
-                // Compact avatar or tool icon
                 self.avatarView
                     .frame(width: self.compactAvatarSize, height: self.compactAvatarSize)
 
-                // Message content
                 VStack(alignment: .leading, spacing: 4) {
-                    // Header line with role, time, and status
-                    self.headerView
+                    MenuMessageHeaderView(
+                        isToolMessage: self.isToolMessage,
+                        toolName: self.extractToolName(from: self.message.content),
+                        roleTitle: self.roleTitle,
+                        isErrorMessage: self.isErrorMessage,
+                        isWarningMessage: self.isWarningMessage,
+                        timestamp: self.message.timestamp,
+                        hasToolCalls: !self.message.toolCalls.isEmpty,
+                        isExpanded: self.$isExpanded,
+                        canRetry: self.isErrorMessage && !self.agent.isProcessing,
+                        retryAction: self.retryLastTask
+                    )
 
-                    // Message content
-                    self.contentView
+                    MenuMessageContentView(
+                        message: self.message,
+                        isThinkingMessage: self.isThinkingMessage,
+                        isToolMessage: self.isToolMessage,
+                        formattedToolContent: self.formatToolContent(),
+                        attributedAssistantContent: self.makeAssistantAttributedContent(),
+                        isExpanded: self.isExpanded
+                    )
 
-                    // Tool execution summary (if applicable)
                     if self.isToolMessage, !self.message.toolCalls.isEmpty {
-                        self.toolExecutionSummary
+                        ToolExecutionSummaryView(
+                            message: self.message,
+                            formatToolContent: self.formatToolContent()
+                        )
                     }
                 }
 
                 Spacer(minLength: 0)
             }
 
-            // Expandable tool details
             if self.isExpanded, !self.message.toolCalls.isEmpty {
-                self.toolDetailsView
-                    .padding(.leading, self.compactAvatarSize + self.compactSpacing)
+                MenuToolDetailsView(
+                    toolCalls: self.message.toolCalls,
+                    formatCompactJSON: self.formatCompactJSON,
+                    extractImageData: self.extractImageData,
+                    selectImage: { image in
+                        self.selectedImage = image
+                        self.showingImageInspector = true
+                    }
+                )
+                .padding(.leading, self.compactAvatarSize + self.compactSpacing)
             }
         }
         .padding(.vertical, 6)
@@ -93,224 +115,6 @@ struct MenuDetailedMessageRow: View {
                 .foregroundColor(self.iconColor)
                 .background(self.iconColor.opacity(0.1))
                 .clipShape(Circle())
-        }
-    }
-
-    // MARK: - Header View
-
-    @ViewBuilder
-    private var headerView: some View {
-        HStack(spacing: 4) {
-            // Role or tool name
-            if self.isToolMessage {
-                Text(self.extractToolName(from: self.message.content))
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-            } else {
-                Text(self.roleTitle)
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-            }
-
-            // Status indicators
-            if self.isErrorMessage {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .font(.caption2)
-                    .foregroundColor(.red)
-            } else if self.isWarningMessage {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.caption2)
-                    .foregroundColor(.orange)
-            }
-
-            // Time
-            Text("•")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-
-            Text(self.message.timestamp, style: .time)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            // Expand button for tool calls
-            if !self.message.toolCalls.isEmpty {
-                Button(action: { self.isExpanded.toggle() }, label: {
-                    Image(systemName: self.isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                })
-                .buttonStyle(.plain)
-                .help(self.isExpanded ? "Hide details" : "Show details")
-            }
-
-            // Retry button for errors
-            if self.isErrorMessage, !self.agent.isProcessing {
-                Button(action: self.retryLastTask, label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.caption2)
-                        .foregroundColor(.white)
-                        .padding(2)
-                        .background(Color.red)
-                        .cornerRadius(3)
-                })
-                .buttonStyle(.plain)
-                .help("Retry task")
-            }
-        }
-    }
-
-    // MARK: - Content View
-
-    @ViewBuilder
-    private var contentView: some View {
-        if self.isThinkingMessage {
-            HStack(spacing: 4) {
-                Text(self.message.content.replacingOccurrences(
-                    of: "\(AgentDisplayTokens.Status.planning) ",
-                    with: ""))
-                    .font(.caption)
-                    .foregroundColor(.purple)
-                    .italic()
-                    .lineLimit(2)
-
-                if #available(macOS 15.0, *) {
-                    AnimatedThinkingDots()
-                        .font(.caption)
-                        .foregroundColor(.purple)
-                }
-            }
-        } else if self.isToolMessage {
-            // Compact tool display
-            if let toolCall = message.toolCalls.first {
-                let isRunning = toolCall.result == "Running..."
-
-                HStack(spacing: 4) {
-                    Text(self.formatToolContent())
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-
-                    if isRunning {
-                        TimeIntervalText(startTime: self.message.timestamp)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            } else {
-                Text(self.formatToolContent())
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-            }
-        } else if self.message.role == .assistant {
-            // Markdown support for assistant messages
-            if let attributed = try? AttributedString(
-                markdown: self.message.content,
-                options: AttributedString.MarkdownParsingOptions(
-                    allowsExtendedAttributes: true,
-                    interpretedSyntax: .inlineOnlyPreservingWhitespace))
-            {
-                Text(attributed)
-                    .font(.caption)
-                    .lineLimit(self.isExpanded ? nil : 3)
-                    .textSelection(.enabled)
-            } else {
-                Text(self.message.content)
-                    .font(.caption)
-                    .lineLimit(self.isExpanded ? nil : 3)
-                    .textSelection(.enabled)
-            }
-        } else {
-            Text(self.message.content)
-                .font(.caption)
-                .foregroundColor(self.isErrorMessage ? .red : (self.isWarningMessage ? .orange : .primary))
-                .lineLimit(self.isExpanded ? nil : 2)
-                .textSelection(.enabled)
-        }
-    }
-
-    // MARK: - Tool Execution Summary
-
-    @ViewBuilder
-    private var toolExecutionSummary: some View {
-        if let toolCall = message.toolCalls.first,
-           toolCall.result != "Running...",
-           let toolName = message.toolCalls.first?.name,
-           let resultSummary = ToolFormatter.toolResultSummary(toolName: toolName, result: toolCall.result)
-        {
-            Text(resultSummary)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-        }
-    }
-
-    // MARK: - Tool Details View
-
-    @ViewBuilder
-    private var toolDetailsView: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(self.message.toolCalls) { toolCall in
-                VStack(alignment: .leading, spacing: 4) {
-                    // Arguments (if not empty)
-                    if !toolCall.arguments.isEmpty, toolCall.arguments != "{}" {
-                        Text("Arguments:")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-
-                        Text(self.formatCompactJSON(toolCall.arguments))
-                            .font(.system(size: 10, design: .monospaced))
-                            .textSelection(.enabled)
-                            .padding(4)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(3)
-                    }
-
-                    // Result (if available)
-                    if !toolCall.result.isEmpty, toolCall.result != "Running..." {
-                        Text("Result:")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-
-                        // Check for image data
-                        if toolCall.name.contains("image") || toolCall.name.contains("screenshot"),
-                           let imageData = extractImageData(from: toolCall.result),
-                           let image = NSImage(data: imageData)
-                        {
-                            Button(action: {
-                                self.selectedImage = image
-                                self.showingImageInspector = true
-                            }, label: {
-                                Image(nsImage: image)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(maxHeight: 100)
-                                    .cornerRadius(4)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5))
-                            })
-                            .buttonStyle(.plain)
-                            .help("Click to inspect")
-                        } else {
-                            Text(toolCall.result)
-                                .font(.system(size: 10, design: .monospaced))
-                                .textSelection(.enabled)
-                                .lineLimit(5)
-                                .padding(4)
-                                .background(Color(NSColor.textBackgroundColor))
-                                .cornerRadius(3)
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-            }
         }
     }
 
@@ -402,6 +206,14 @@ struct MenuDetailedMessageRow: View {
             .replacingOccurrences(of: AgentDisplayTokens.Status.failure + " ", with: "")
     }
 
+    private func makeAssistantAttributedContent() -> AttributedString? {
+        try? AttributedString(
+            markdown: self.message.content,
+            options: AttributedString.MarkdownParsingOptions(
+                allowsExtendedAttributes: true,
+                interpretedSyntax: .inlineOnlyPreservingWhitespace))
+    }
+
     private func determineToolStatus(from message: ConversationMessage) -> ToolExecutionStatus {
         if let toolCall = message.toolCalls.first {
             if toolCall.result == "Running..." {
@@ -457,7 +269,7 @@ struct MenuDetailedMessageRow: View {
         return json
     }
 
-    private func extractImageData(from result: String) -> Data? {
+private func extractImageData(from result: String) -> Data? {
         if let data = result.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let screenshotData = json["screenshot_data"] as? String,
@@ -493,6 +305,287 @@ struct MenuDetailedMessageRow: View {
                 }
                 break
             }
+        }
+    }
+}
+
+// MARK: - Subviews
+
+private struct MenuMessageHeaderView: View {
+    let isToolMessage: Bool
+    let toolName: String
+    let roleTitle: String
+    let isErrorMessage: Bool
+    let isWarningMessage: Bool
+    let timestamp: Date
+    let hasToolCalls: Bool
+    @Binding var isExpanded: Bool
+    let canRetry: Bool
+    let retryAction: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if self.isToolMessage {
+                Text(self.toolName)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+            } else {
+                Text(self.roleTitle)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+            }
+
+            if self.isErrorMessage {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundColor(.red)
+            } else if self.isWarningMessage {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+            }
+
+            Text("•")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+
+            Text(self.timestamp, style: .time)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            if self.hasToolCalls {
+                Button {
+                    self.isExpanded.toggle()
+                } label: {
+                    Image(systemName: self.isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(self.isExpanded ? "Hide details" : "Show details")
+            }
+
+            if self.canRetry {
+                Button(action: self.retryAction) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(2)
+                        .background(Color.red)
+                        .cornerRadius(3)
+                }
+                .buttonStyle(.plain)
+                .help("Retry task")
+            }
+        }
+    }
+}
+
+private struct MenuMessageContentView: View {
+    let message: ConversationMessage
+    let isThinkingMessage: Bool
+    let isToolMessage: Bool
+    let formattedToolContent: String
+    let attributedAssistantContent: AttributedString?
+    let isExpanded: Bool
+
+    var body: some View {
+        if self.isThinkingMessage {
+            ThinkingContentView(text: self.message.content)
+        } else if self.isToolMessage {
+            ToolMessageView(
+                toolCalls: self.message.toolCalls,
+                formattedToolContent: self.formattedToolContent,
+                timestamp: self.message.timestamp
+            )
+        } else if self.message.role == .assistant {
+            AssistantContentView(
+                message: self.message,
+                attributedAssistantContent: self.attributedAssistantContent,
+                isExpanded: self.isExpanded
+            )
+        } else {
+            Text(self.message.content)
+                .font(.caption)
+                .foregroundColor(self.statusColor)
+                .lineLimit(self.isExpanded ? nil : 2)
+                .textSelection(.enabled)
+        }
+    }
+
+    private var statusColor: Color {
+        if self.message.content.contains(AgentDisplayTokens.Status.failure) {
+            return .red
+        }
+        if self.message.content.contains(AgentDisplayTokens.Status.warning) {
+            return .orange
+        }
+        return .primary
+    }
+}
+
+private struct ToolExecutionSummaryView: View {
+    let message: ConversationMessage
+
+    var body: some View {
+        if let toolCall = self.message.toolCalls.first,
+           toolCall.result != "Running...",
+           let toolName = toolCall.name,
+           let resultSummary = ToolFormatter.toolResultSummary(toolName: toolName, result: toolCall.result)
+        {
+            Text(resultSummary)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+        }
+    }
+}
+
+private struct MenuToolDetailsView: View {
+    let toolCalls: [ConversationToolCall]
+    let formatCompactJSON: (String) -> String
+    let extractImageData: (String) -> Data?
+    let selectImage: (NSImage) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(self.toolCalls) { toolCall in
+                VStack(alignment: .leading, spacing: 4) {
+                    if !toolCall.arguments.isEmpty, toolCall.arguments != "{}" {
+                        Text("Arguments:")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+
+                        Text(self.formatCompactJSON(toolCall.arguments))
+                            .font(.system(size: 10, design: .monospaced))
+                            .textSelection(.enabled)
+                            .padding(4)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(3)
+                    }
+
+                    if !toolCall.result.isEmpty, toolCall.result != "Running..." {
+                        Text("Result:")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+
+                        if self.shouldShowImage(for: toolCall),
+                           let data = self.extractImageData(toolCall.result),
+                           let image = NSImage(data: data)
+                        {
+                            Button {
+                                self.selectImage(image)
+                            } label: {
+                                Image(nsImage: image)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(maxHeight: 100)
+                                    .cornerRadius(4)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .help("Click to inspect")
+                        } else {
+                            Text(toolCall.result)
+                                .font(.system(size: 10, design: .monospaced))
+                                .textSelection(.enabled)
+                                .lineLimit(5)
+                                .padding(4)
+                                .background(Color(NSColor.textBackgroundColor))
+                                .cornerRadius(3)
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    private func shouldShowImage(for toolCall: ConversationToolCall) -> Bool {
+        toolCall.name.contains("image") || toolCall.name.contains("screenshot")
+    }
+}
+
+// MARK: - Nested Content Views
+
+private struct ThinkingContentView: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(
+                text.replacingOccurrences(
+                    of: "\(AgentDisplayTokens.Status.planning) ",
+                    with: ""
+                )
+            )
+            .font(.caption)
+            .foregroundColor(.purple)
+            .italic()
+            .lineLimit(2)
+
+            if #available(macOS 15.0, *) {
+                AnimatedThinkingDots()
+                    .font(.caption)
+                    .foregroundColor(.purple)
+            }
+        }
+    }
+}
+
+private struct ToolMessageView: View {
+    let toolCalls: [ConversationMessage.ToolCall]
+    let formattedToolContent: String
+    let timestamp: Date
+
+    var body: some View {
+        if let toolCall = self.toolCalls.first,
+           toolCall.result == "Running..."
+        {
+            HStack(spacing: 4) {
+                Text(self.formattedToolContent)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                TimeIntervalText(startTime: self.timestamp)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        } else {
+            Text(self.formattedToolContent)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+                .lineLimit(1)
+        }
+    }
+}
+
+private struct AssistantContentView: View {
+    let message: ConversationMessage
+    let attributedAssistantContent: AttributedString?
+    let isExpanded: Bool
+
+    var body: some View {
+        if let attributedAssistantContent {
+            Text(attributedAssistantContent)
+                .font(.caption)
+                .lineLimit(self.isExpanded ? nil : 3)
+                .textSelection(.enabled)
+        } else {
+            Text(self.message.content)
+                .font(.caption)
+                .lineLimit(self.isExpanded ? nil : 3)
+                .textSelection(.enabled)
         }
     }
 }

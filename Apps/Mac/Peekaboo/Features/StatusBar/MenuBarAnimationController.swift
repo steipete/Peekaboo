@@ -11,6 +11,14 @@ import SwiftUI
 /// for smooth ghost animations while minimizing CPU usage.
 @MainActor
 final class MenuBarAnimationController: ObservableObject {
+    private struct IconFrameState {
+        let isDarkMode: Bool
+        let verticalOffset: CGFloat
+        let horizontalOffset: CGFloat
+        let scale: CGFloat
+        let opacity: CGFloat
+        let cacheKey: GhostIconCacheKey
+    }
     // MARK: - Properties
 
     /// Current animation state
@@ -135,116 +143,114 @@ final class MenuBarAnimationController: ObservableObject {
     }
 
     private func renderCurrentFrame() {
-        let isDarkMode = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let state = self.makeIconFrameState()
+        self.updateFrameTracking(with: state)
 
-        // Create cache key based on current animation state
-        // For animated state, we'll need to calculate current position based on time
+        if let cachedIcon = iconCache[state.cacheKey] {
+            self.onIconUpdateNeeded?(cachedIcon)
+            return
+        }
+
+        let icon = self.createGhostIcon(for: state)
+        self.iconCache[state.cacheKey] = icon
+        self.trimCacheIfNeeded()
+        self.onIconUpdateNeeded?(icon)
+    }
+
+    private func makeIconFrameState() -> IconFrameState {
+        let isDarkMode = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let animationTime = Date().timeIntervalSinceReferenceDate
         let animationPhase = self.isAnimating ? animationTime.truncatingRemainder(dividingBy: 3.0) / 3.0 : 0
 
-        // Calculate current position, scale, and opacity with smoother interpolation
-        // Use different phase offsets for more organic movement
         let verticalOffset = self.isAnimating ? sin(animationPhase * .pi * 2) * 2.0 : 0
         let horizontalOffset = self.isAnimating ? cos(animationPhase * .pi * 2 * 1.2) * 1.0 : 0
         let scale = self.isAnimating ? 1.0 + sin(animationPhase * .pi * 2 * 0.8) * 0.1 : 1.0
         let opacity = self.isAnimating ? 0.8 + sin(animationPhase * .pi * 2 * 0.9) * 0.2 : 1.0
 
-        // Quantize values for caching
-        let quantizedVOffset = Int(round(verticalOffset))
-        let quantizedHOffset = Int(round(horizontalOffset))
-        let quantizedScale = Int(round(scale * 10))
-        let quantizedOpacity = Int(round(opacity * 10))
-
         let cacheKey = GhostIconCacheKey(
-            isAnimating: isAnimating,
-            verticalOffset: quantizedVOffset,
-            horizontalOffset: quantizedHOffset,
-            scale: quantizedScale,
-            opacity: quantizedOpacity,
+            isAnimating: self.isAnimating,
+            verticalOffset: Int(round(verticalOffset)),
+            horizontalOffset: Int(round(horizontalOffset)),
+            scale: Int(round(scale * 10)),
+            opacity: Int(round(opacity * 10)),
             isDarkMode: isDarkMode)
 
-        // Check if frame changed significantly (more sensitive for smoother animation)
-        let frameChanged = abs(verticalOffset - self.lastRenderedFrame.vOffset) > 0.25 ||
-            abs(horizontalOffset - self.lastRenderedFrame.hOffset) > 0.25 ||
-            abs(scale - self.lastRenderedFrame.scale) > 0.02 ||
-            abs(opacity - self.lastRenderedFrame.opacity) > 0.03
+        return IconFrameState(
+            isDarkMode: isDarkMode,
+            verticalOffset: CGFloat(verticalOffset),
+            horizontalOffset: CGFloat(horizontalOffset),
+            scale: CGFloat(scale),
+            opacity: CGFloat(opacity),
+            cacheKey: cacheKey)
+    }
+
+    private func updateFrameTracking(with state: IconFrameState) {
+        let frameChanged = abs(Double(state.verticalOffset) - self.lastRenderedFrame.vOffset) > 0.25 ||
+            abs(Double(state.horizontalOffset) - self.lastRenderedFrame.hOffset) > 0.25 ||
+            abs(Double(state.scale) - self.lastRenderedFrame.scale) > 0.02 ||
+            abs(Double(state.opacity) - self.lastRenderedFrame.opacity) > 0.03
 
         if frameChanged {
             self.framesSinceLastChange = 0
-            self.lastRenderedFrame = (verticalOffset, horizontalOffset, scale, opacity)
+            self.lastRenderedFrame = (
+                Double(state.verticalOffset),
+                Double(state.horizontalOffset),
+                Double(state.scale),
+                Double(state.opacity)
+            )
         } else {
             self.framesSinceLastChange += 1
         }
+    }
 
-        // Check cache first
-        if let cachedIcon = iconCache[cacheKey] {
-            self.onIconUpdateNeeded?(cachedIcon)
-            return
-        }
-
-        // Create the ghost icon with animation properties
-        let nsImage = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+    private func createGhostIcon(for state: IconFrameState) -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
             let context = NSGraphicsContext.current!.cgContext
-
-            // Apply transformations for floating animation
             context.saveGState()
 
-            // Move to center for scaling
             context.translateBy(x: rect.midX, y: rect.midY)
-
-            // Apply scale
-            context.scaleBy(x: scale, y: scale)
-
-            // Apply position offsets
-            context.translateBy(x: CGFloat(horizontalOffset), y: CGFloat(verticalOffset))
-
-            // Move back from center
+            context.scaleBy(x: state.scale, y: state.scale)
+            context.translateBy(x: state.horizontalOffset, y: state.verticalOffset)
             context.translateBy(x: -rect.midX, y: -rect.midY)
+            context.setAlpha(state.opacity)
 
-            // Apply opacity
-            context.setAlpha(opacity)
-
-            // Draw the MenuIcon asset
             if let menuIcon = NSImage(named: "MenuIcon") {
-                // Scale the icon to fit the rect while maintaining aspect ratio
-                let iconSize = menuIcon.size
-                let scale = min(rect.width / iconSize.width, rect.height / iconSize.height)
-                let scaledSize = NSSize(width: iconSize.width * scale, height: iconSize.height * scale)
-
-                // Center the icon in the rect
-                let drawRect = NSRect(
-                    x: rect.midX - scaledSize.width / 2,
-                    y: rect.midY - scaledSize.height / 2,
-                    width: scaledSize.width,
-                    height: scaledSize.height)
-
-                menuIcon.draw(in: drawRect)
+                self.draw(menuIcon: menuIcon, in: rect)
             } else {
-                // Fallback: draw a simple circle if MenuIcon fails to load
-                NSColor.controlAccentColor.set()
-                let fallbackPath = NSBezierPath(ovalIn: rect.insetBy(dx: 4, dy: 4))
-                fallbackPath.fill()
+                self.drawFallbackIcon(in: rect)
             }
 
             context.restoreGState()
-
             return true
         }
 
-        nsImage.isTemplate = true // Allow system tinting
+        image.isTemplate = true
+        return image
+    }
 
-        // Cache the rendered image
-        self.iconCache[cacheKey] = nsImage
+    private func trimCacheIfNeeded() {
+        guard self.iconCache.count > self.maxCacheSize else { return }
+        let entriesToRemove = self.iconCache.count - self.maxCacheSize
+        self.iconCache.keys.prefix(entriesToRemove).forEach { self.iconCache.removeValue(forKey: $0) }
+    }
 
-        // Trim cache if needed
-        if self.iconCache.count > self.maxCacheSize {
-            // Remove oldest entries (simple strategy)
-            let entriesToRemove = self.iconCache.count - self.maxCacheSize
-            self.iconCache.keys.prefix(entriesToRemove).forEach { self.iconCache.removeValue(forKey: $0) }
-        }
+    private func draw(menuIcon: NSImage, in rect: NSRect) {
+        let iconSize = menuIcon.size
+        let scale = min(rect.width / iconSize.width, rect.height / iconSize.height)
+        let scaledSize = NSSize(width: iconSize.width * scale, height: iconSize.height * scale)
+        let drawRect = NSRect(
+            x: rect.midX - scaledSize.width / 2,
+            y: rect.midY - scaledSize.height / 2,
+            width: scaledSize.width,
+            height: scaledSize.height)
+        menuIcon.draw(in: drawRect)
+    }
 
-        // Update the menu bar icon
-        self.onIconUpdateNeeded?(nsImage)
+    private func drawFallbackIcon(in rect: NSRect) {
+        NSColor.controlAccentColor.set()
+        let fallbackPath = NSBezierPath(ovalIn: rect.insetBy(dx: 4, dy: 4))
+        fallbackPath.fill()
     }
 
     deinit {
