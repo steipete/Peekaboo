@@ -253,7 +253,8 @@ public final class SessionManager: SessionManagerProtocol {
         do {
             try FileManager.default.copyItem(at: sourceURL, to: rawPath)
         } catch {
-            throw CaptureError.fileIOError("Failed to copy screenshot to session storage: \(error.localizedDescription)")
+            let message = "Failed to copy screenshot to session storage: \(error.localizedDescription)"
+            throw CaptureError.fileIOError(message)
         }
 
         sessionData.screenshotPath = rawPath.path
@@ -347,9 +348,10 @@ public final class SessionManager: SessionManagerProtocol {
         }.sorted { $0.date > $1.date }
 
         if let latest = validSessions.first {
-            self.logger
-                .debug(
-                    "Found valid session: \(latest.url.lastPathComponent) created \(Int(-latest.date.timeIntervalSinceNow)) seconds ago")
+            let age = Int(-latest.date.timeIntervalSinceNow)
+            self.logger.debug(
+                "Found valid session: \(latest.url.lastPathComponent) created \(age) seconds ago"
+            )
             return latest.url.lastPathComponent
         } else {
             self.logger.debug("No valid sessions found within \(Int(self.sessionValidityWindow)) second window")
