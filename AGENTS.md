@@ -151,6 +151,8 @@ npm run poltergeist:stop     # Stop auto-builder
 polter peekaboo <args>       # Run CLI (waits for fresh build)
 ```
 
+> **Heads up:** `polter peekaboo …` always builds *and launches* the macOS app bundle alongside the CLI binary. There is no headless mode—expect the Peekaboo.app UI to start (and potentially crash) every time you run a Polter command unless you stop the daemon (`npm run poltergeist:stop`) first.
+
 ### NEVER
 - `polter wait` - doesn't exist
 - `npm run build:swift` - Poltergeist does this automatically

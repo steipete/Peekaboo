@@ -30,3 +30,7 @@ read_when:
 
 - Mention the lint count when you reopen CI runs; post-cleanup, future docs should reference this file to track progress.
 - If any rule needs temporary relaxation, add it to `.swiftlint.yml` with a clear justification and document it here (use `read_when` to capture when to revisit).
+
+## Activity log
+
+- `2025-11-12`: Documented the lint roadmap, refactored the Playground views (`ContentView`, `LogViewerWindow`, `TextInputView`) to stop using trailing-closure syntax when multiple blocks are supplied, and removed stale `swiftlint:disable` comments so these files now pass linting on CI. These changes are tracked under `style(playground): clean lint warnings`.
