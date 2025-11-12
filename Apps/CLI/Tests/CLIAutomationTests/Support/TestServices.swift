@@ -844,14 +844,14 @@ final class StubDialogService: DialogServiceProtocol {
         self.dialogElements = elements
     }
 
-    func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
+    func findActiveDialog(windowTitle: String?, appName: String?) async throws -> DialogInfo {
         guard let elements = self.dialogElements else {
             throw PeekabooError.elementNotFound(windowTitle ?? "dialog")
         }
         return elements.dialogInfo
     }
 
-    func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
+    func clickButton(buttonText: String, windowTitle: String?, appName: String?) async throws -> DialogActionResult {
         self.recordedButtonClicks.append((buttonText, windowTitle))
         if let result = self.clickButtonResult {
             return result
@@ -863,7 +863,8 @@ final class StubDialogService: DialogServiceProtocol {
         text: String,
         fieldIdentifier: String?,
         clearExisting: Bool,
-        windowTitle: String?
+        windowTitle: String?,
+        appName: String?
     ) async throws -> DialogActionResult {
         if let result = self.enterTextResult {
             return result
@@ -871,21 +872,26 @@ final class StubDialogService: DialogServiceProtocol {
         throw PeekabooError.elementNotFound(fieldIdentifier ?? "field")
     }
 
-    func handleFileDialog(path: String?, filename: String?, actionButton: String) async throws -> DialogActionResult {
+    func handleFileDialog(
+        path: String?,
+        filename: String?,
+        actionButton: String,
+        appName: String?) async throws -> DialogActionResult
+    {
         if let result = self.handleFileDialogResult {
             return result
         }
         throw PeekabooError.elementNotFound(actionButton)
     }
 
-    func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
+    func dismissDialog(force: Bool, windowTitle: String?, appName: String?) async throws -> DialogActionResult {
         if let result = self.dismissResult {
             return result
         }
         throw PeekabooError.elementNotFound(windowTitle ?? "dialog")
     }
 
-    func listDialogElements(windowTitle: String?) async throws -> DialogElements {
+    func listDialogElements(windowTitle: String?, appName: String?) async throws -> DialogElements {
         guard let elements = self.dialogElements else {
             throw PeekabooError.elementNotFound(windowTitle ?? "dialog")
         }
