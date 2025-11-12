@@ -59,12 +59,12 @@ final class AnimationOverlayManager {
                     NSAnimationContext.runAnimationGroup({ context in
                         context.duration = 0.3
                         window.animator().alphaValue = 0
-                    }) {
+                    }, completionHandler: {
                         Task { @MainActor in
                             self.removeWindow(window)
                             continuation.resume()
                         }
-                    }
+                    })
                 }
             } else {
                 // Remove after duration

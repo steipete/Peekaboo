@@ -34,9 +34,9 @@ struct SessionSidebar: View {
 
                 Spacer()
 
-                Button(action: self.createNewSession) {
+                Button(action: self.createNewSession, label: {
                     Image(systemName: "plus")
-                }
+                })
                 .buttonStyle(.plain)
                 .help("New Session")
             }
@@ -50,10 +50,10 @@ struct SessionSidebar: View {
                 TextField("Search sessions...", text: self.$searchText)
                     .textFieldStyle(.plain)
                 if !self.searchText.isEmpty {
-                    Button(action: { self.searchText = "" }) {
+                    Button(action: { self.searchText = "" }, label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
             }

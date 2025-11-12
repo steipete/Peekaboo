@@ -132,7 +132,7 @@ struct HeaderControlsView: View {
         HStack(spacing: 8) {
             // Voice mode toggle button
             if !self.agent.isProcessing {
-                Button(action: { self.isVoiceMode.toggle() }) {
+                Button(action: { self.isVoiceMode.toggle() }, label: {
                     Image(systemName: self.isVoiceMode ? "keyboard" : "mic")
                         .font(.title3)
                         .foregroundColor(self.isVoiceMode ? .red : .accentColor)
@@ -140,7 +140,7 @@ struct HeaderControlsView: View {
                             .pulse,
                             options: .repeating,
                             isActive: self.isVoiceMode && self.speechRecognizer.isListening)
-                }
+                })
                 .buttonStyle(.plain)
                 .help(self.isVoiceMode ? "Switch to text input" : "Switch to voice input")
             }
@@ -149,11 +149,11 @@ struct HeaderControlsView: View {
             if self.agent.isProcessing {
                 Button(action: {
                     self.agent.cancelCurrentTask()
-                }) {
+                }, label: {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
                         .foregroundColor(.red)
-                }
+                })
                 .buttonStyle(.plain)
                 .help("Cancel current task")
             }

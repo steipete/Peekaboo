@@ -55,7 +55,9 @@ private func checkGitCommitStaleness() {
         }
 
         let gitData = gitPipe.fileHandleForReading.readDataToEndOfFile()
-        let currentCommit = String(data: gitData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let rawCommitString = String(data: gitData, encoding: .utf8)
+        let currentCommit = rawCommitString?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         // Get embedded commit from build (strip -dirty suffix if present)
         let embeddedCommit = Version.gitCommit.replacingOccurrences(of: "-dirty", with: "")
@@ -111,15 +113,15 @@ private func checkFileModificationStaleness() {
         let modifiedFiles = parseGitStatusOutput(statusOutput)
 
         // Check each modified file's modification time
-        for filePath in modifiedFiles {
-            if isFileNewerThanBuild(filePath: filePath, buildDate: buildDate, gitRoot: gitRoot) {
-                logError("❌ CLI binary is outdated and needs to be rebuilt!")
-                logError("   Build time:     \(Version.buildDate)")
-                logError("   Modified file:  \(filePath)")
-                logError("")
-                logError("   Run ./scripts/build-swift-debug.sh to rebuild")
-                exit(1)
-            }
+        for filePath in modifiedFiles where
+            isFileNewerThanBuild(filePath: filePath, buildDate: buildDate, gitRoot: gitRoot)
+        {
+            logError("❌ CLI binary is outdated and needs to be rebuilt!")
+            logError("   Build time:     \(Version.buildDate)")
+            logError("   Modified file:  \(filePath)")
+            logError("")
+            logError("   Run ./scripts/build-swift-debug.sh to rebuild")
+            exit(1)
         }
     } catch {
         return // Git command failed, skip check

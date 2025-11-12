@@ -56,16 +56,16 @@ struct ImageInspectorView: View {
 
             // Controls
             HStack {
-                Button(action: { self.zoomLevel = max(0.25, self.zoomLevel - 0.25) }) {
+                Button(action: { self.zoomLevel = max(0.25, self.zoomLevel - 0.25) }, label: {
                     Image(systemName: "minus.magnifyingglass")
-                }
+                })
 
                 Slider(value: self.$zoomLevel, in: 0.25...4.0)
                     .frame(width: 200)
 
-                Button(action: { self.zoomLevel = min(4.0, self.zoomLevel + 0.25) }) {
+                Button(action: { self.zoomLevel = min(4.0, self.zoomLevel + 0.25) }, label: {
                     Image(systemName: "plus.magnifyingglass")
-                }
+                })
 
                 Divider()
                     .frame(height: 20)

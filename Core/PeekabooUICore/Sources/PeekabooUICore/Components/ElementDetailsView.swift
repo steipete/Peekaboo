@@ -70,10 +70,10 @@ public struct ElementDetailsView: View {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     self.isExpanded.toggle()
                 }
-            }) {
+            }, label: {
                 Image(systemName: self.isExpanded ? "chevron.up" : "chevron.down")
                     .font(.caption)
-            }
+            })
             .buttonStyle(.plain)
         }
     }

@@ -346,7 +346,7 @@ struct AnimationButton: View {
                 await self.action()
                 self.isRunning = false
             }
-        }) {
+        }, label: {
             HStack {
                 if let systemImage {
                     Image(systemName: systemImage)

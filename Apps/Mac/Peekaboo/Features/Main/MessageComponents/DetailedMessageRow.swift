@@ -85,7 +85,7 @@ struct DetailedMessageRow: View {
 
                         // Retry button for error messages
                         if self.isErrorMessage, !self.agent.isProcessing {
-                            Button(action: self.retryLastTask) {
+                            Button(action: self.retryLastTask, label: {
                                 Label("Retry", systemImage: "arrow.clockwise")
                                     .font(.caption)
                                     .foregroundColor(.white)
@@ -93,19 +93,19 @@ struct DetailedMessageRow: View {
                                     .padding(.vertical, 4)
                                     .background(Color.blue)
                                     .cornerRadius(4)
-                            }
+                            })
                             .buttonStyle(.plain)
                             .help("Retry the failed task")
                         }
 
                         if !self.message.toolCalls.isEmpty {
-                            Button(action: { self.isExpanded.toggle() }) {
+                            Button(action: { self.isExpanded.toggle() }, label: {
                                 Label(
                                     "\(self.message.toolCalls.count) tools",
                                     systemImage: self
                                         .isExpanded ? "chevron.down.circle.fill" : "chevron.right.circle")
                                     .font(.caption)
-                            }
+                            })
                             .buttonStyle(.plain)
                         }
                     }

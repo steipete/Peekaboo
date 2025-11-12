@@ -35,7 +35,7 @@ struct EnhancedSessionDetailView: View {
                 ForEach(Tab.allCases, id: \.self) { tab in
                     Button(action: {
                         self.selectedTab = tab
-                    }) {
+                    }, label: {
                         HStack(spacing: 6) {
                             Image(systemName: tab.systemImage)
                             Text(tab.rawValue)
@@ -49,7 +49,7 @@ struct EnhancedSessionDetailView: View {
                             self.selectedTab == tab ?
                                 .white : .primary)
                         .cornerRadius(6)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
 
@@ -137,9 +137,11 @@ private struct AIAssistantTab: View {
 
                 Spacer()
 
-                Button("Configure") {
+                Button(action: {
                     // Show configuration sheet
-                }
+                }, label: {
+                    Text("Configure")
+                })
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
@@ -148,20 +150,17 @@ private struct AIAssistantTab: View {
 
             // AI Chat interface
             CompactAIAssistant(
-                systemPrompt: self.systemPrompt.isEmpty ?
-                    "You are a helpful assistant analyzing the Peekaboo automation session '\(self.sessionTitle)'. Help the user understand the session data, troubleshoot issues, and improve their automation workflows." :
-                    self.systemPrompt)
+                systemPrompt: self.systemPrompt.isEmpty ? self.initialSystemPrompt : self.systemPrompt)
         }
         .onAppear {
             self.setupSystemPrompt()
         }
     }
 
-    private func setupSystemPrompt() {
-        self.systemPrompt = """
-        You are an expert AI assistant for Peekaboo, a macOS automation tool. You're helping analyze the session titled "\(
-            self
-                .sessionTitle)".
+    private var initialSystemPrompt: String {
+        """
+        You are an expert AI assistant for Peekaboo, a macOS automation tool.
+        You're helping analyze the session titled "\(self.sessionTitle)".
 
         Your role:
         - Help users understand their automation sessions
@@ -172,6 +171,10 @@ private struct AIAssistantTab: View {
 
         Be specific, helpful, and focused on practical automation solutions.
         """
+    }
+
+    private func setupSystemPrompt() {
+        self.systemPrompt = self.initialSystemPrompt
     }
 }
 

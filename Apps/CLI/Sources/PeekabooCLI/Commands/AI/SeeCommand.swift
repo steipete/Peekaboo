@@ -536,10 +536,13 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         var labelPositions: [(rect: NSRect, connection: NSPoint?, element: DetectedElement)] = []
 
         for (element, rect) in elementRects {
-            self.logger
-                .verbose(
-                    "Drawing element: \(element.id), type: \(element.type), original bounds: \(element.bounds), window rect: \(rect)"
-                )
+            let drawingDetails = [
+                "Drawing element: \(element.id)",
+                "type: \(element.type)",
+                "original bounds: \(element.bounds)",
+                "window rect: \(rect)"
+            ].joined(separator: ", ")
+            self.logger.verbose(drawingDetails)
 
             // Get color for element type
             let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
@@ -897,9 +900,11 @@ extension SeeCommand {
 
             // Add display info to output
             if let displayInfo = result.metadata.displayInfo {
-                let bounds = displayInfo.bounds
-                print(
-                    "[scrn]️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height)))"
+                self.printScreenDisplayInfo(
+                    index: index,
+                    displayInfo: displayInfo,
+                    indent: "",
+                    suffix: nil
                 )
             }
 
@@ -946,17 +951,23 @@ extension SeeCommand {
                     // Display info about this screen
                     if let displayInfo = result.metadata.displayInfo {
                         let fileSize = self.getFileSize(screenPath) ?? 0
-                        let bounds = displayInfo.bounds
-                        print(
-                            "   [scrn]️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → \(screenPath) (\(self.formatFileSize(Int64(fileSize))))"
+                        let suffix = "\(screenPath) (\(self.formatFileSize(Int64(fileSize))))"
+                        self.printScreenDisplayInfo(
+                            index: index,
+                            displayInfo: displayInfo,
+                            indent: "   ",
+                            suffix: suffix
                         )
                     }
                 } else {
                     // First screen will be saved by the normal flow, just show info
                     if let displayInfo = result.metadata.displayInfo {
                         let bounds = displayInfo.bounds
-                        print(
-                            "   [scrn]️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → (primary)"
+                        self.printScreenDisplayInfo(
+                            index: index,
+                            displayInfo: displayInfo,
+                            indent: "   ",
+                            suffix: "(primary)"
                         )
                     }
                 }
@@ -1061,5 +1072,27 @@ extension SeeCommand: CommanderBindableCommand {
         self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
         self.annotate = values.flag("annotate")
         self.analyze = values.singleOption("analyze")
+    }
+}
+
+private extension SeeCommand {
+    func screenDisplayBaseText(index: Int, displayInfo: DisplayInfo) -> String {
+        let displayName = displayInfo.name ?? "Display \(index)"
+        let bounds = displayInfo.bounds
+        let resolution = "(\(Int(bounds.width))×\(Int(bounds.height)))"
+        return "[scrn]️  Display \(index): \(displayName) \(resolution)"
+    }
+
+    func printScreenDisplayInfo(
+        index: Int,
+        displayInfo: DisplayInfo,
+        indent: String = "",
+        suffix: String? = nil)
+    {
+        var line = self.screenDisplayBaseText(index: index, displayInfo: displayInfo)
+        if let suffix {
+            line += " → \(suffix)"
+        }
+        print("\(indent)\(line)")
     }
 }

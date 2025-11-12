@@ -6,8 +6,9 @@ import PeekabooCore
 
 /// Manages conversation sessions with automatic persistence.
 ///
-/// Sessions are automatically saved to `~/Library/Application Support/Peekaboo/sessions.json` and loaded on initialization.
-/// This class uses the modern @Observable pattern for SwiftUI integration.
+/// Sessions are automatically saved to `~/Library/Application Support/Peekaboo/sessions.json`
+/// and loaded on initialization. This class uses the modern @Observable pattern
+/// for SwiftUI integration.
 @Observable
 @MainActor
 final class SessionStore {

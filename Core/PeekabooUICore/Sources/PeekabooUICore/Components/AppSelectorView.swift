@@ -55,7 +55,7 @@ public struct AppSelectorView: View {
                     ForEach(self.overlayManager.applications) { app in
                         Button(action: {
                             self.overlayManager.setAppSelectionMode(.single, bundleID: app.bundleIdentifier)
-                        }) {
+                        }, label: {
                             HStack {
                                 if let icon = app.icon {
                                     Image(nsImage: icon)
@@ -64,7 +64,7 @@ public struct AppSelectorView: View {
                                 }
                                 Text(app.name)
                             }
-                        }
+                        })
                         .disabled(self.overlayManager.selectedAppMode == .single &&
                             self.overlayManager.selectedAppBundleID == app.bundleIdentifier)
                     }

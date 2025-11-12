@@ -117,11 +117,11 @@ struct AgentMessageRow: View {
 
                 // Expand button if message is long
                 if self.message.content.count > 100 {
-                    Button(action: { self.isExpanded.toggle() }) {
+                    Button(action: { self.isExpanded.toggle() }, label: {
                         Image(systemName: self.isExpanded ? "chevron.up.circle" : "chevron.down.circle")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
             }

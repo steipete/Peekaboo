@@ -87,10 +87,10 @@ public struct AllElementsView: View {
                     .textFieldStyle(.plain)
 
                 if !self.searchText.isEmpty {
-                    Button(action: { self.searchText = "" }) {
+                    Button(action: { self.searchText = "" }, label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
             }
@@ -254,10 +254,10 @@ struct AppElementSection: View {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         self.isExpanded.toggle()
                     }
-                }) {
+                }, label: {
                     Image(systemName: self.isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption)
-                }
+                })
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 8)

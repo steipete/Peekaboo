@@ -138,25 +138,25 @@ struct MenuDetailedMessageRow: View {
 
             // Expand button for tool calls
             if !self.message.toolCalls.isEmpty {
-                Button(action: { self.isExpanded.toggle() }) {
+                Button(action: { self.isExpanded.toggle() }, label: {
                     Image(systemName: self.isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                }
+                })
                 .buttonStyle(.plain)
                 .help(self.isExpanded ? "Hide details" : "Show details")
             }
 
             // Retry button for errors
             if self.isErrorMessage, !self.agent.isProcessing {
-                Button(action: self.retryLastTask) {
+                Button(action: self.retryLastTask, label: {
                     Image(systemName: "arrow.clockwise")
                         .font(.caption2)
                         .foregroundColor(.white)
                         .padding(2)
                         .background(Color.red)
                         .cornerRadius(3)
-                }
+                })
                 .buttonStyle(.plain)
                 .help("Retry task")
             }
@@ -210,14 +210,22 @@ struct MenuDetailedMessageRow: View {
             }
         } else if self.message.role == .assistant {
             // Markdown support for assistant messages
-            Text(try! AttributedString(
+            if let attributed = try? AttributedString(
                 markdown: self.message.content,
                 options: AttributedString.MarkdownParsingOptions(
                     allowsExtendedAttributes: true,
-                    interpretedSyntax: .inlineOnlyPreservingWhitespace)))
-                .font(.caption)
-                .lineLimit(self.isExpanded ? nil : 3)
-                .textSelection(.enabled)
+                    interpretedSyntax: .inlineOnlyPreservingWhitespace))
+            {
+                Text(attributed)
+                    .font(.caption)
+                    .lineLimit(self.isExpanded ? nil : 3)
+                    .textSelection(.enabled)
+            } else {
+                Text(self.message.content)
+                    .font(.caption)
+                    .lineLimit(self.isExpanded ? nil : 3)
+                    .textSelection(.enabled)
+            }
         } else {
             Text(self.message.content)
                 .font(.caption)
@@ -278,7 +286,7 @@ struct MenuDetailedMessageRow: View {
                             Button(action: {
                                 self.selectedImage = image
                                 self.showingImageInspector = true
-                            }) {
+                            }, label: {
                                 Image(nsImage: image)
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
@@ -287,7 +295,7 @@ struct MenuDetailedMessageRow: View {
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 4)
                                             .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5))
-                            }
+                            })
                             .buttonStyle(.plain)
                             .help("Click to inspect")
                         } else {

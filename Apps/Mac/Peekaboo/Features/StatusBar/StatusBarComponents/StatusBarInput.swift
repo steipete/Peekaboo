@@ -31,18 +31,18 @@ struct StatusBarInputView: View {
                 }
 
             // Voice mode toggle
-            Button(action: { self.isVoiceMode.toggle() }) {
+            Button(action: { self.isVoiceMode.toggle() }, label: {
                 Image(systemName: self.isVoiceMode ? "keyboard" : "mic")
                     .font(.body)
                     .foregroundColor(self.isVoiceMode ? .red : .secondary)
-            }
+            })
             .buttonStyle(.plain)
             .help(self.isVoiceMode ? "Switch to text input" : "Switch to voice input")
 
-            Button(action: self.onSubmit) {
+            Button(action: self.onSubmit, label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.title2)
-            }
+            })
             .buttonStyle(.plain)
             .disabled(self.inputText.isEmpty && !self.isVoiceMode)
         }
@@ -113,7 +113,7 @@ struct VoiceInputView: View {
                         // Start session button
                         Button(action: {
                             self.showRealtimeWindow = true
-                        }) {
+                        }, label: {
                             VStack(spacing: 8) {
                                 Image(systemName: "waveform.circle.fill")
                                     .font(.system(size: 48))
@@ -125,7 +125,7 @@ struct VoiceInputView: View {
                                 Text("Start Realtime Conversation")
                                     .font(.caption)
                             }
-                        }
+                        })
                         .buttonStyle(.plain)
                     }
                 }
@@ -159,11 +159,11 @@ struct VoiceInputView: View {
                         .frame(maxHeight: 100)
 
                     // Microphone button
-                    Button(action: self.onToggleRecording) {
+                    Button(action: self.onToggleRecording, label: {
                         Image(systemName: self.speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
                             .font(.system(size: 48))
                             .foregroundColor(self.speechRecognizer.isListening ? .red : .accentColor)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
                 .padding()
@@ -217,10 +217,10 @@ struct IdleStateInputView: View {
                         self.onSubmit()
                     }
 
-                Button(action: self.onSubmit) {
+                Button(action: self.onSubmit, label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
-                }
+                })
                 .buttonStyle(.plain)
                 .disabled(self.inputText.isEmpty)
             }

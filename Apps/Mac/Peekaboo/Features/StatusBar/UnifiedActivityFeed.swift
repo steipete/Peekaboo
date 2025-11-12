@@ -304,11 +304,11 @@ struct ToolActivityView: View {
 
                 // Expand button
                 if self.hasExpandableContent {
-                    Button(action: { withAnimation { self.isExpanded.toggle() } }) {
+                    Button(action: { withAnimation { self.isExpanded.toggle() } }, label: {
                         Image(systemName: self.isExpanded ? "chevron.up.circle" : "chevron.down.circle")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
             }
@@ -491,11 +491,11 @@ struct MessageActivityView: View {
 
                 // Expand button for long messages
                 if self.message.content.count > 150 {
-                    Button(action: { withAnimation { self.isExpanded.toggle() } }) {
+                    Button(action: { withAnimation { self.isExpanded.toggle() } }, label: {
                         Image(systemName: self.isExpanded ? "chevron.up.circle" : "chevron.down.circle")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
             }

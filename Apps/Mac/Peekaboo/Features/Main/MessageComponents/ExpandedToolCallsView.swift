@@ -41,7 +41,7 @@ struct ExpandedToolCallsView: View {
                             {
                                 Button(action: {
                                     self.onImageTap(image)
-                                }) {
+                                }, label: {
                                     Image(nsImage: image)
                                         .resizable()
                                         .aspectRatio(contentMode: .fit)
@@ -50,7 +50,7 @@ struct ExpandedToolCallsView: View {
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8)
                                                 .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
-                                }
+                                })
                                 .buttonStyle(.plain)
                                 .help("Click to inspect image")
                             } else {
@@ -92,10 +92,10 @@ struct DetailedToolCallView: View {
 
                 Spacer()
 
-                Button(action: { self.isExpanded.toggle() }) {
+                Button(action: { self.isExpanded.toggle() }, label: {
                     Image(systemName: self.isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption)
-                }
+                })
                 .buttonStyle(.plain)
             }
 
@@ -129,7 +129,7 @@ struct DetailedToolCallView: View {
                                let imageData = toolCall.result.extractImageData(),
                                let image = NSImage(data: imageData)
                             {
-                                Button(action: { self.onImageTap(image) }) {
+                                Button(action: { self.onImageTap(image) }, label: {
                                     Image(nsImage: image)
                                         .resizable()
                                         .aspectRatio(contentMode: .fit)
@@ -138,7 +138,7 @@ struct DetailedToolCallView: View {
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8)
                                                 .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
-                                }
+                                })
                                 .buttonStyle(.plain)
                                 .help("Click to inspect image")
 

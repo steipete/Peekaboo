@@ -117,16 +117,16 @@ struct SessionChatView: View {
                 Button(action: {
                     self.inputMode = .voice
                     self.useRealtimeMode = false
-                }) {
+                }, label: {
                     Label("Voice Transcription", systemImage: "mic")
-                }
+                })
 
                 Button(action: {
                     self.inputMode = .realtime
                     self.useRealtimeMode = true
-                }) {
+                }, label: {
                     Label("Realtime Conversation", systemImage: "waveform.circle")
-                }
+                })
             } label: {
                 Image(systemName: self.inputMode == .realtime ? "waveform.circle" : "mic")
                     .foregroundColor(self.inputMode != .text ? .accentColor : .secondary)
@@ -138,20 +138,20 @@ struct SessionChatView: View {
                 // Show stop button during execution
                 Button(action: {
                     self.agent.cancelCurrentTask()
-                }) {
+                }, label: {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
                         .foregroundColor(.red)
-                }
+                })
                 .buttonStyle(.plain)
                 .help("Cancel current task")
             }
 
-            Button(action: self.submitInput) {
+            Button(action: self.submitInput, label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.title2)
                     .foregroundColor(self.inputText.isEmpty ? .secondary : .accentColor)
-            }
+            })
             .buttonStyle(.plain)
             .disabled(self.inputText.isEmpty)
         }
@@ -177,19 +177,19 @@ struct SessionChatView: View {
             }
 
             HStack {
-                Button(action: { self.inputMode = .text }) {
+                Button(action: { self.inputMode = .text }, label: {
                     Image(systemName: "keyboard")
                         .foregroundColor(.secondary)
-                }
+                })
                 .buttonStyle(.plain)
 
                 Spacer()
 
-                Button(action: self.toggleVoiceRecording) {
+                Button(action: self.toggleVoiceRecording, label: {
                     Image(systemName: self.speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
                         .font(.system(size: 48))
                         .foregroundColor(self.speechRecognizer.isListening ? .red : .accentColor)
-                }
+                })
                 .buttonStyle(.plain)
 
                 Spacer()
@@ -241,11 +241,11 @@ struct SessionChatView: View {
                 Spacer()
 
                 // Settings button
-                Button(action: { self.showRealtimeSettings.toggle() }) {
+                Button(action: { self.showRealtimeSettings.toggle() }, label: {
                     Image(systemName: "gear")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                }
+                })
                 .buttonStyle(.plain)
                 .popover(isPresented: self.$showRealtimeSettings) {
                     RealtimeSettingsView(service: self.realtimeService)
@@ -256,10 +256,10 @@ struct SessionChatView: View {
 
             // Main controls
             HStack {
-                Button(action: { self.inputMode = .text }) {
+                Button(action: { self.inputMode = .text }, label: {
                     Image(systemName: "keyboard")
                         .foregroundColor(.secondary)
-                }
+                })
                 .buttonStyle(.plain)
 
                 Spacer()
@@ -295,7 +295,7 @@ struct SessionChatView: View {
                     }
                 } else {
                     // Start session button
-                    Button(action: self.startRealtimeSession) {
+                    Button(action: self.startRealtimeSession, label: {
                         VStack(spacing: 8) {
                             Image(systemName: "waveform.circle.fill")
                                 .font(.system(size: 48))
@@ -306,17 +306,17 @@ struct SessionChatView: View {
                             Text("Start Conversation")
                                 .font(.caption)
                         }
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
 
                 Spacer()
 
                 if self.realtimeService.isConnected {
-                    Button(action: self.endRealtimeSession) {
+                    Button(action: self.endRealtimeSession, label: {
                         Image(systemName: "xmark.circle")
                             .foregroundColor(.secondary)
-                    }
+                    })
                     .buttonStyle(.plain)
                     .help("End conversation")
                 } else {
@@ -501,19 +501,19 @@ struct SessionChatHeader: View {
                 Spacer()
 
                 // Debug toggle
-                Button(action: { self.showDebugInfo.toggle() }) {
+                Button(action: { self.showDebugInfo.toggle() }, label: {
                     Label("Debug", systemImage: self.showDebugInfo ? "info.circle.fill" : "info.circle")
                         .foregroundColor(.secondary)
-                }
+                })
                 .buttonStyle(.plain)
 
                 if self.isActive, self.agent.isProcessing {
                     Button(action: {
                         self.agent.cancelCurrentTask()
-                    }) {
+                    }, label: {
                         Label("Cancel", systemImage: "stop.circle")
                             .foregroundColor(.red)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
 
@@ -612,9 +612,9 @@ struct EmptySessionView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button(action: { _ = self.sessionStore.createSession(title: "New Session") }) {
+            Button(action: { _ = self.sessionStore.createSession(title: "New Session") }, label: {
                 Label("New Session", systemImage: "plus.circle")
-            }
+            })
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
         }

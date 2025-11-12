@@ -131,7 +131,10 @@ struct ConversationToolCallTests {
 
     @Test("Tool call codable with complex arguments")
     func toolCallCodable() throws {
-        let arguments = "{\"string\":\"value\",\"number\":42,\"float\":3.14,\"bool\":true,\"array\":[1,2,3],\"nested\":{\"key\":\"value\"}}"
+        let arguments = """
+        {"string":"value","number":42,"float":3.14,"bool":true,
+        "array":[1,2,3],"nested":{"key":"value"}}
+        """
         let toolCall = ConversationToolCall(
             id: "test_call",
             name: "complex_tool",

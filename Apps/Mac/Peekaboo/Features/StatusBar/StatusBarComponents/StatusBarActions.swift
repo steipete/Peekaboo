@@ -69,11 +69,11 @@ struct NewSessionButton: View {
     let onCreateSession: () -> Void
 
     var body: some View {
-        Button(action: self.onCreateSession) {
+        Button(action: self.onCreateSession, label: {
             Label("New Session", systemImage: "plus.circle")
                 .font(.caption)
                 .frame(maxWidth: .infinity)
-        }
+        })
         .controlSize(.small)
         .buttonStyle(.bordered)
     }
@@ -84,11 +84,11 @@ struct ExpandButton: View {
     let onOpenMainWindow: () -> Void
 
     var body: some View {
-        Button(action: self.onOpenMainWindow) {
+        Button(action: self.onOpenMainWindow, label: {
             Label("Expand", systemImage: "arrow.up.left.and.arrow.down.right")
                 .font(.caption)
                 .frame(maxWidth: .infinity)
-        }
+        })
         .controlSize(.small)
         .buttonStyle(.bordered)
     }
@@ -101,17 +101,17 @@ struct QuickActionsView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Button(action: self.onOpenMainWindow) {
+            Button(action: self.onOpenMainWindow, label: {
                 Label("Open Main Window", systemImage: "rectangle.stack")
                     .frame(maxWidth: .infinity)
-            }
+            })
             .controlSize(.large)
             .buttonStyle(.bordered)
 
-            Button(action: self.onCreateNewSession) {
+            Button(action: self.onCreateNewSession, label: {
                 Label("New Session", systemImage: "plus.circle")
                     .frame(maxWidth: .infinity)
-            }
+            })
             .controlSize(.large)
             .buttonStyle(.borderedProminent)
         }

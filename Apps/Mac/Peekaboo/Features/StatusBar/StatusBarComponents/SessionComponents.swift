@@ -30,11 +30,11 @@ struct SessionRowCompact: View {
             Spacer()
 
             if self.isHovering, !self.isActive {
-                Button(action: self.onDelete) {
+                Button(action: self.onDelete, label: {
                     Image(systemName: "trash")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                }
+                })
                 .buttonStyle(.plain)
                 .help("Delete session")
             } else {
@@ -76,10 +76,10 @@ struct CurrentSessionPreview: View {
                 Spacer()
 
                 // Open button
-                Button(action: self.onOpenMainWindow) {
+                Button(action: self.onOpenMainWindow, label: {
                     Image(systemName: "arrow.up.right.square")
                         .font(.body)
-                }
+                })
                 .buttonStyle(.plain)
                 .help("Open in main window")
             }

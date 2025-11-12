@@ -150,6 +150,12 @@ read_when:
 ### Resolution — Nov 12, 2025
 - DockService now toggles `com.apple.dock autohide` via `defaults` and restarts the Dock process instead of driving System Events. We also skip the write entirely if the Dock is already in the requested state, so `dock hide`/`dock show` finish in <1 s.
 
+## CLI build currently blocked by legacy errors
+- **Command**: `polter peekaboo -- dialog list`
+- **Observed**: Even unrelated commands fail to launch because `ListCommand.swift` and `AgentOutputDelegate.swift` still have pre-existing build errors (missing `Screen` type, visibility mismatches). These errors fire before Commander sees new options, so we must run with `--force` when testing CLI behavior, and we can’t ship a fresh binary until they’re resolved.
+### Next Step
+- Fix the outstanding `ListCommand`/`AgentOutputDelegate` compile errors (or temporarily revert those files) so `polter peekaboo …` produces a clean build again. Once the build is green we can verify the dialog fast-path and future CLI changes without `--force`.
+
 ## Dialog commands need faster feedback
 - **Command**: `polter peekaboo dialog list --json-output` (no `--app` hint)
 - **Observed**: Even with the Open panel visible, the CLI spent ~8s enumerating every running app before returning.

@@ -86,11 +86,11 @@ struct ToolExecutionRow: View {
 
                 // Expand button for tools with arguments or results
                 if self.hasExpandableContent {
-                    Button(action: { self.toggleExpansion() }) {
+                    Button(action: { self.toggleExpansion() }, label: {
                         Image(systemName: self.expansionIcon)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
             }

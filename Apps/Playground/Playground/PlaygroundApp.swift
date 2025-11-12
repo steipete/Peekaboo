@@ -19,61 +19,32 @@ struct PlaygroundApp: App {
     private func setupGlobalMouseClickMonitor() {
         // Monitor mouse clicks globally within the app
         NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { event in
-            if let window = event.window {
-                let locationInWindow = event.locationInWindow
-                let windowFrame = window.frame
-
-                // Convert to screen coordinates (top-left origin like Peekaboo uses)
-                // macOS uses bottom-left origin, so we need to flip Y coordinate
-                let screenHeight = NSScreen.main?.frame.height ?? 0
-                let screenLocation = NSPoint(
-                    x: windowFrame.origin.x + locationInWindow.x,
-                    y: screenHeight - (windowFrame.origin.y + locationInWindow.y))
-
-                let clickType = event.type == .leftMouseDown ? "Left" : "Right"
-
-                // Try to identify what was clicked
-                if let contentView = window.contentView,
-                   let hitView = contentView.hitTest(locationInWindow)
-                {
-                    // Try to get element description from the hit view
-                    var elementDesc = "unknown element"
-
-                    // Check if it's a button
-                    if let button = hitView as? NSButton {
-                        elementDesc = button.title.isEmpty ? "button" : "'\(button.title)' button"
-                    }
-                    // Check accessibility label
-                    else if let accessibilityLabel = hitView.accessibilityLabel(), !accessibilityLabel.isEmpty {
-                        elementDesc = accessibilityLabel
-                    }
-                    // Check accessibility identifier
-                    else if !hitView.accessibilityIdentifier().isEmpty {
-                        let accessibilityId = hitView.accessibilityIdentifier()
-                        // Clean up identifier for display
-                        let cleaned = accessibilityId
-                            .replacingOccurrences(of: "-button", with: "")
-                            .replacingOccurrences(of: "-", with: " ")
-                        elementDesc = cleaned + " element"
-                    }
-                    // Fall back to view class name
-                    else {
-                        let className = String(describing: type(of: hitView))
-                            .replacingOccurrences(of: "SwiftUI.", with: "")
-                            .replacingOccurrences(of: "AppKit.", with: "")
-                        elementDesc = className
-                    }
-
-                    let logMessage = "\(clickType) click on \(elementDesc) at window: (\(Int(locationInWindow.x)), \(Int(locationInWindow.y))), screen: (\(Int(screenLocation.x)), \(Int(screenLocation.y)))"
-                    clickLogger.info("\(logMessage)")
-
-                    // Don't duplicate log in ActionLogger - let the button handlers do their specific logging
-                    // This is just for system-level logging
-                } else {
-                    let logMessage = "\(clickType) click at window: (\(Int(locationInWindow.x)), \(Int(locationInWindow.y))), screen: (\(Int(screenLocation.x)), \(Int(screenLocation.y)))"
-                    clickLogger.info("\(logMessage)")
-                }
+            guard let window = event.window else {
+                return event
             }
+
+            let locationInWindow = event.locationInWindow
+            let windowFrame = window.frame
+
+            // Convert to screen coordinates (top-left origin like Peekaboo uses)
+            // macOS uses bottom-left origin, so we need to flip Y coordinate
+            let screenHeight = NSScreen.main?.frame.height ?? 0
+            let screenLocation = NSPoint(
+                x: windowFrame.origin.x + locationInWindow.x,
+                y: screenHeight - (windowFrame.origin.y + locationInWindow.y))
+
+            let clickType = event.type == .leftMouseDown ? "Left" : "Right"
+            let descriptor = self.elementDescriptor(for: window, at: locationInWindow)
+
+            let logMessage = self.formatClickLogMessage(
+                type: clickType,
+                descriptor: descriptor,
+                windowLocation: locationInWindow,
+                screenLocation: screenLocation)
+            clickLogger.info(logMessage)
+
+            // Don't duplicate log in ActionLogger - let the button handlers do their specific logging
+            // This is just for system-level logging
             return event
         }
     }
@@ -81,46 +52,10 @@ struct PlaygroundApp: App {
     private func setupGlobalKeyMonitor() {
         // Monitor key events globally within the app
         NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
-            let eventTypeStr: String
-            var keyInfo = ""
+            let (eventTypeStr, keyInfo) = self.describeKeyEvent(event)
 
-            switch event.type {
-            case .keyDown:
-                eventTypeStr = "Key Down"
-                // Get the key character if available
-                if let chars = event.charactersIgnoringModifiers, !chars.isEmpty {
-                    keyInfo = "'\(chars)'"
-                }
-                // Add key code for special keys
-                let specialKey = self.specialKeyName(for: event.keyCode)
-                if !specialKey.isEmpty {
-                    keyInfo = keyInfo.isEmpty ? specialKey : "\(keyInfo) (\(specialKey))"
-                }
-            case .keyUp:
-                eventTypeStr = "Key Up"
-                if let chars = event.charactersIgnoringModifiers, !chars.isEmpty {
-                    keyInfo = "'\(chars)'"
-                }
-                let specialKey = self.specialKeyName(for: event.keyCode)
-                if !specialKey.isEmpty {
-                    keyInfo = keyInfo.isEmpty ? specialKey : "\(keyInfo) (\(specialKey))"
-                }
-            case .flagsChanged:
-                eventTypeStr = "Modifier Changed"
-                var modifiers: [String] = []
-                if event.modifierFlags.contains(.command) { modifiers.append("⌘ Command") }
-                if event.modifierFlags.contains(.shift) { modifiers.append("⇧ Shift") }
-                if event.modifierFlags.contains(.option) { modifiers.append("⌥ Option") }
-                if event.modifierFlags.contains(.control) { modifiers.append("⌃ Control") }
-                if event.modifierFlags.contains(.function) { modifiers.append("fn Function") }
-                keyInfo = modifiers.isEmpty ? "Released" : modifiers.joined(separator: " + ")
-            default:
-                eventTypeStr = "Unknown"
-            }
-
-            // Log with more detail for debugging
             let logMessage = "\(eventTypeStr): \(keyInfo) (keyCode: \(event.keyCode))"
-            keyLogger.info("\(logMessage)")
+            keyLogger.info(logMessage)
 
             // Also log to ActionLogger for UI display (only for keyDown events)
             if event.type == .keyDown {
@@ -131,43 +66,134 @@ struct PlaygroundApp: App {
         }
     }
 
+    private let specialKeyLabels: [UInt16: String] = [
+        36: "Return",
+        76: "Enter",
+        48: "Tab",
+        53: "Escape",
+        49: "Space",
+        51: "Delete",
+        117: "Forward Delete",
+        123: "Left Arrow",
+        124: "Right Arrow",
+        125: "Down Arrow",
+        126: "Up Arrow",
+        115: "Home",
+        119: "End",
+        116: "Page Up",
+        121: "Page Down",
+        122: "F1",
+        120: "F2",
+        99: "F3",
+        118: "F4",
+        96: "F5",
+        97: "F6",
+        98: "F7",
+        100: "F8",
+        101: "F9",
+        109: "F10",
+        103: "F11",
+        111: "F12",
+        105: "F13",
+        107: "F14",
+        113: "F15",
+        57: "Caps Lock",
+        114: "Help",
+        71: "Clear"
+    ]
+
     private func specialKeyName(for keyCode: UInt16) -> String {
-        switch keyCode {
-        case 36: "Return"
-        case 76: "Enter"
-        case 48: "Tab"
-        case 53: "Escape"
-        case 49: "Space"
-        case 51: "Delete"
-        case 117: "Forward Delete"
-        case 123: "Left Arrow"
-        case 124: "Right Arrow"
-        case 125: "Down Arrow"
-        case 126: "Up Arrow"
-        case 115: "Home"
-        case 119: "End"
-        case 116: "Page Up"
-        case 121: "Page Down"
-        case 122: "F1"
-        case 120: "F2"
-        case 99: "F3"
-        case 118: "F4"
-        case 96: "F5"
-        case 97: "F6"
-        case 98: "F7"
-        case 100: "F8"
-        case 101: "F9"
-        case 109: "F10"
-        case 103: "F11"
-        case 111: "F12"
-        case 105: "F13"
-        case 107: "F14"
-        case 113: "F15"
-        case 57: "Caps Lock"
-        case 114: "Help"
-        case 71: "Clear"
-        default: ""
+        self.specialKeyLabels[keyCode] ?? ""
+    }
+
+    private func describeKeyEvent(_ event: NSEvent) -> (String, String) {
+        var eventTypeStr: String
+        var keyInfo = ""
+
+        switch event.type {
+        case .keyDown:
+            eventTypeStr = "Key Down"
+            keyInfo = self.describeKeyCharacters(event)
+        case .keyUp:
+            eventTypeStr = "Key Up"
+            keyInfo = self.describeKeyCharacters(event)
+        case .flagsChanged:
+            eventTypeStr = "Modifier Changed"
+            keyInfo = self.describeModifierFlags(event.modifierFlags)
+        default:
+            eventTypeStr = "Unknown"
         }
+
+        return (eventTypeStr, keyInfo)
+    }
+
+    private func describeKeyCharacters(_ event: NSEvent) -> String {
+        var keyInfo = ""
+        if let chars = event.charactersIgnoringModifiers, !chars.isEmpty {
+            keyInfo = "'\(chars)'"
+        }
+        let specialKey = self.specialKeyName(for: event.keyCode)
+        if !specialKey.isEmpty {
+            keyInfo = keyInfo.isEmpty ? specialKey : "\(keyInfo) (\(specialKey))"
+        }
+        return keyInfo
+    }
+
+    private func describeModifierFlags(_ flags: NSEvent.ModifierFlags) -> String {
+        var modifiers: [String] = []
+        if flags.contains(.command) { modifiers.append("⌘ Command") }
+        if flags.contains(.shift) { modifiers.append("⇧ Shift") }
+        if flags.contains(.option) { modifiers.append("⌥ Option") }
+        if flags.contains(.control) { modifiers.append("⌃ Control") }
+        if flags.contains(.function) { modifiers.append("fn Function") }
+        return modifiers.isEmpty ? "Released" : modifiers.joined(separator: " + ")
+    }
+
+    private func elementDescriptor(for window: NSWindow, at location: CGPoint) -> String? {
+        guard let contentView = window.contentView,
+              let hitView = contentView.hitTest(location)
+        else {
+            return nil
+        }
+
+        return self.describeHitView(hitView)
+    }
+
+    private func describeHitView(_ hitView: NSView) -> String {
+        if let button = hitView as? NSButton {
+            return button.title.isEmpty ? "button" : "'\(button.title)' button"
+        }
+
+        if let accessibilityLabel = hitView.accessibilityLabel(), !accessibilityLabel.isEmpty {
+            return accessibilityLabel
+        }
+
+        if let accessibilityId = hitView.accessibilityIdentifier(), !accessibilityId.isEmpty {
+            let cleaned = accessibilityId
+                .replacingOccurrences(of: "-button", with: "")
+                .replacingOccurrences(of: "-", with: " ")
+            return "\(cleaned) element"
+        }
+
+        let className = String(describing: type(of: hitView))
+            .replacingOccurrences(of: "SwiftUI.", with: "")
+            .replacingOccurrences(of: "AppKit.", with: "")
+        return className
+    }
+
+    private func formatClickLogMessage(
+        type: ClickType,
+        descriptor: String?,
+        windowLocation: CGPoint,
+        screenLocation: CGPoint) -> String
+    {
+        let windowCoords = "window: (\(Int(windowLocation.x)), \(Int(windowLocation.y)))"
+        let screenCoords = "screen: (\(Int(screenLocation.x)), \(Int(screenLocation.y)))"
+        let coordinateDetails = "at \(windowCoords), \(screenCoords)"
+        if let descriptor, !descriptor.isEmpty {
+            return "\(type) click on \(descriptor) \(coordinateDetails)"
+        }
+        return "\(type) click \(coordinateDetails)"
     }
 
     var body: some Scene {

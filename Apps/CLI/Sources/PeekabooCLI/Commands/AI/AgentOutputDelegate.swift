@@ -37,6 +37,10 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         self.jsonOutput = jsonOutput
         self.task = task
     }
+}
+
+@available(macOS 14.0, *)
+extension AgentOutputDelegate {
 
     // MARK: - AgentEventDelegate
 
@@ -88,225 +92,64 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         self.toolStartTimes[name] = Date()
         self.toolCallCount += 1
 
-        // Parse arguments
         let args = self.parseArguments(arguments)
+        let (formatter, toolType) = self.toolFormatter(for: name)
 
-        // Get formatter for this tool
-        let formatter: any ToolFormatter
-        let toolType: ToolType?
-
-        if let type = ToolType(rawValue: name) {
-            toolType = type
-            // Use main formatter registry with detailed formatters
-            formatter = ToolFormatterRegistry.shared.formatter(for: type)
-        } else {
-            // Unknown tool - use a default formatter
-            toolType = nil
-            formatter = UnknownToolFormatter(toolName: name)
-        }
-
-        // Get proper display name
         var displayName = toolType?.displayName ?? name.replacingOccurrences(of: "_", with: " ").capitalized
-
-        // Special handling for app tool to show the action
         if name == "app", let action = args["action"] as? String {
             let appName = (args["name"] as? String) ?? (args["bundleId"] as? String) ?? ""
             displayName = "App \(action.capitalized)\(appName.isEmpty ? "" : ": \(appName)")"
         }
 
-        // Update terminal title
         let titleSummary = formatter.formatForTitle(arguments: args)
         self.updateTerminalTitle("\(displayName): \(titleSummary) - \(self.task?.prefix(30) ?? "")")
 
-        // Skip output for quiet mode
         guard self.outputMode != .quiet else { return }
 
-        // Stop animations
         self.spinner?.stop()
         self.spinner = nil
         self.isThinking = false
 
-        // Skip display for communication tools
-        if let t = toolType, [ToolType.taskCompleted, .needMoreInformation, .needInfo].contains(t) {
-            return
-        }
+        guard !self.shouldSkipCommunicationOutput(for: toolType) else { return }
 
-        // Add newline for spacing if needed
         if self.hasReceivedContent {
             print()
             self.hasReceivedContent = false
         }
 
-        // Format output based on mode
         let icon = toolType?.icon ?? "⚙️"
-
-        switch self.outputMode {
-        case .minimal:
-            print(displayName, terminator: "")
-
-        case .verbose:
-            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)")
-            if arguments.isEmpty || arguments == "{}" {
-                print("\(TerminalColor.gray)Arguments: (none)\(TerminalColor.reset)")
-            } else if let formatted = formatJSON(arguments) {
-                print("\(TerminalColor.gray)Arguments:\(TerminalColor.reset)")
-                print(formatted)
-            }
-
-        case .enhanced:
-            let startMessage = formatter.formatStarting(arguments: args)
-            print(
-                "\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(startMessage)\(TerminalColor.reset)",
-                terminator: ""
-            )
-
-        default: // .normal, .compact
-            print(
-                "\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)",
-                terminator: ""
-            )
-            let summary = formatter.formatCompactSummary(arguments: args)
-            if !summary.isEmpty {
-                print(" \(TerminalColor.gray)\(summary)\(TerminalColor.reset)", terminator: "")
-            }
-        }
-
-        fflush(stdout)
+        self.printToolCallStart(
+            displayName: displayName,
+            icon: icon,
+            args: args,
+            rawArguments: arguments,
+            formatter: formatter)
     }
 
     private func handleToolCallCompleted(name: String, result: String) {
-        // Calculate duration
-        let elapsed: TimeInterval
-        let durationString: String
+        let durationString = self.durationString(for: name)
 
-        if let startTime = toolStartTimes[name] {
-            elapsed = Date().timeIntervalSince(startTime)
-            durationString = " \(TerminalColor.gray)(\(self.formatDuration(elapsed)))\(TerminalColor.reset)"
-            self.toolStartTimes.removeValue(forKey: name)
-        } else {
-            elapsed = 0
-            durationString = ""
-        }
-
-        // Skip output for quiet mode
         guard self.outputMode != .quiet else { return }
-
-        // Parse result
-        guard let data = result.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            // Log the actual result for debugging in verbose mode
-            if self.outputMode == .verbose {
-                print(
-                    " \(TerminalColor.red)\(AgentDisplayTokens.Status.failure) Invalid JSON result\(TerminalColor.reset)\(durationString)"
-                )
-                print("\(TerminalColor.gray)Raw result: \(result.prefix(200))\(TerminalColor.reset)")
-            } else {
-                print(
-                    " \(TerminalColor.red)\(AgentDisplayTokens.Status.failure) Invalid result\(TerminalColor.reset)\(durationString)"
-                )
-            }
+        guard let json = self.parseResult(result) else {
+            self.printInvalidResult(rawResult: result, durationString: durationString)
             return
         }
 
-        // Get formatter for this tool
-        let formatter: any ToolFormatter
-        let toolType: ToolType?
+        let (formatter, toolType) = self.toolFormatter(for: name)
 
-        if let type = ToolType(rawValue: name) {
-            toolType = type
-            // Use main formatter registry with detailed formatters
-            formatter = ToolFormatterRegistry.shared.formatter(for: type)
-        } else {
-            toolType = nil
-            formatter = UnknownToolFormatter(toolName: name)
-        }
-
-        // Handle communication tools specially
-        if let t = toolType, [ToolType.taskCompleted, .needMoreInformation, .needInfo].contains(t) {
-            self.handleCommunicationToolComplete(name: name, toolType: t)
+        if let toolType, [ToolType.taskCompleted, .needMoreInformation, .needInfo].contains(toolType) {
+            self.handleCommunicationToolComplete(name: name, toolType: toolType)
             return
         }
 
-        // Check for success/failure
         let success = (json["success"] as? Bool) ?? true
 
         if success {
-            // Special handling for app tool results
-            var resultSummary = formatter.formatResultSummary(result: json)
-            if name == "app" {
-                if let meta = json["meta"] as? [String: Any],
-                   let appName = meta["app_name"] as? String {
-                    if let content = json["content"] as? [[String: Any]],
-                       let firstContent = content.first,
-                       let text = firstContent["text"] as? String {
-                        // Extract the key info from the result
-                        if text.contains("Launched") {
-                            resultSummary = "→ \(appName) launched"
-                        } else if text.contains("Quit") {
-                            resultSummary = "→ \(appName) quit"
-                        } else if text.contains("Focused") || text.contains("Switched") {
-                            resultSummary = "→ \(appName) focused"
-                        } else if text.contains("Hidden") {
-                            resultSummary = "→ \(appName) hidden"
-                        } else if text.contains("Unhidden") {
-                            resultSummary = "→ \(appName) shown"
-                        }
-                    }
-                }
-            }
-
-            switch self.outputMode {
-            case .minimal:
-                if !resultSummary.isEmpty {
-                    print(" OK \(resultSummary)\(durationString)")
-                } else {
-                    print(" OK\(durationString)")
-                }
-
-            case .enhanced:
-                if !resultSummary.isEmpty {
-                    print(
-                        " \(TerminalColor.bgGreen)\(TerminalColor.bold) \(AgentDisplayTokens.Status.success) \(TerminalColor.reset) \(TerminalColor.bold)\(resultSummary)\(TerminalColor.reset)\(durationString)"
-                    )
-                } else {
-                    print(
-                        " \(TerminalColor.bgGreen)\(TerminalColor.bold) \(AgentDisplayTokens.Status.success) \(TerminalColor.reset)\(durationString)"
-                    )
-                }
-
-            case .verbose:
-                print(
-                    " \(TerminalColor.green)\(AgentDisplayTokens.Status.success)\(TerminalColor.reset)\(durationString)"
-                )
-                if let formatted = formatJSON(result) {
-                    print("\(TerminalColor.gray)Result:\(TerminalColor.reset)")
-                    print(formatted)
-                }
-
-            default: // .normal, .compact
-                if !resultSummary.isEmpty {
-                    print(
-                        " \(TerminalColor.bgGreen)\(TerminalColor.bold) \(AgentDisplayTokens.Status.success) \(TerminalColor.reset) \(TerminalColor.bold)\(resultSummary)\(TerminalColor.reset)\(durationString)"
-                    )
-                } else {
-                    print(
-                        " \(TerminalColor.bgGreen)\(TerminalColor.bold) \(AgentDisplayTokens.Status.success) \(TerminalColor.reset)\(durationString)"
-                    )
-                }
-            }
+            let resultSummary = self.resultSummary(for: name, json: json, formatter: formatter)
+            self.handleSuccess(resultSummary: resultSummary, durationString: durationString, result: result)
         } else {
             let errorMessage = (json["error"] as? String) ?? "Failed"
-
-            if self.outputMode == .minimal {
-                print(" FAILED\(durationString)")
-            } else {
-                print(
-                    " \(TerminalColor.red)\(AgentDisplayTokens.Status.failure) \(errorMessage)\(TerminalColor.reset)\(durationString)"
-                )
-            }
-
-            // Display enhanced error information
-            self.displayEnhancedError(tool: name, json: json)
+            self.handleFailure(message: errorMessage, durationString: durationString, json: json, tool: name)
         }
 
         fflush(stdout)
@@ -392,9 +235,10 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
             print("\n\(TerminalColor.gray)Summary: \(summary)\(TerminalColor.reset)")
         }
 
-        print(
-            "\n\(TerminalColor.gray)Task completed in \(self.formatDuration(totalElapsed)) with \(toolsText)\(tokenInfo)\(TerminalColor.reset)"
-        )
+        print(self.completionSummaryLine(
+            totalElapsed: totalElapsed,
+            toolsText: toolsText,
+            tokenInfo: tokenInfo))
         self.hasShownFinalSummary = true
     }
 
@@ -415,9 +259,10 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
             print("\n\(TerminalColor.gray)Summary: \(result.content)\(TerminalColor.reset)")
         }
 
-        print(
-            "\n\(TerminalColor.gray)Task completed in \(self.formatDuration(totalElapsed)) with \(toolsText)\(tokenInfo)\(TerminalColor.reset)"
-        )
+        print(self.completionSummaryLine(
+            totalElapsed: totalElapsed,
+            toolsText: toolsText,
+            tokenInfo: tokenInfo))
         self.hasShownFinalSummary = true
     }
 
@@ -455,6 +300,226 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
         return result
     }
 
+    private func shouldSkipCommunicationOutput(for toolType: ToolType?) -> Bool {
+        guard let toolType else { return false }
+        return [ToolType.taskCompleted, .needMoreInformation, .needInfo].contains(toolType)
+    }
+
+    private func printToolCallStart(
+        displayName: String,
+        icon: String,
+        args: [String: Any],
+        rawArguments: String,
+        formatter: any ToolFormatter)
+    {
+        switch self.outputMode {
+        case .minimal:
+            print(displayName, terminator: "")
+
+        case .verbose:
+            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)")
+            if rawArguments.isEmpty || rawArguments == "{}" {
+                print("\(TerminalColor.gray)Arguments: (none)\(TerminalColor.reset)")
+            } else if let formatted = formatJSON(rawArguments) {
+                print("\(TerminalColor.gray)Arguments:\(TerminalColor.reset)")
+                print(formatted)
+            }
+
+        case .enhanced:
+            let startMessage = formatter.formatStarting(arguments: args)
+            print(
+                "\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(startMessage)\(TerminalColor.reset)",
+                terminator: ""
+            )
+
+        default: // .normal, .compact
+            print(
+                "\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)",
+                terminator: ""
+            )
+            let summary = formatter.formatCompactSummary(arguments: args)
+            if !summary.isEmpty {
+                print(" \(TerminalColor.gray)\(summary)\(TerminalColor.reset)", terminator: "")
+            }
+        }
+
+        fflush(stdout)
+    }
+
+    private func successStatusLine(resultSummary: String, durationString: String) -> String {
+        let statusPrefix = [
+            " ",
+            TerminalColor.bgGreen,
+            TerminalColor.bold,
+            " ",
+            AgentDisplayTokens.Status.success,
+            " ",
+            TerminalColor.reset
+        ].joined()
+
+        guard !resultSummary.isEmpty else {
+            return "\(statusPrefix)\(durationString)"
+        }
+
+        let summarySegment = [
+            " ",
+            TerminalColor.bold,
+            resultSummary,
+            TerminalColor.reset
+        ].joined()
+
+        return "\(statusPrefix)\(summarySegment)\(durationString)"
+    }
+
+    private func failureStatusLine(message: String, durationString: String) -> String {
+        let statusPrefix = [
+            " ",
+            TerminalColor.red,
+            AgentDisplayTokens.Status.failure
+        ].joined()
+        return [
+            statusPrefix,
+            " ",
+            message,
+            TerminalColor.reset,
+            durationString
+        ].joined()
+    }
+
+    private func completionSummaryLine(totalElapsed: TimeInterval, toolsText: String, tokenInfo: String) -> String {
+        let summaryPrefix = "\(TerminalColor.gray)Task completed in \(self.formatDuration(totalElapsed))"
+        return [
+            "\n",
+            summaryPrefix,
+            " with \(toolsText)\(tokenInfo)",
+            TerminalColor.reset
+        ].joined()
+    }
+
+    private func durationString(for toolName: String) -> String {
+        if let startTime = self.toolStartTimes[toolName] {
+            self.toolStartTimes.removeValue(forKey: toolName)
+            let elapsed = Date().timeIntervalSince(startTime)
+            return " \(TerminalColor.gray)(\(self.formatDuration(elapsed)))\(TerminalColor.reset)"
+        }
+        return ""
+    }
+
+    private func parseResult(_ rawResult: String) -> [String: Any]? {
+        guard let data = rawResult.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return json
+    }
+
+    private func printInvalidResult(rawResult: String, durationString: String) {
+        if self.outputMode == .verbose {
+            let failureBadge = [
+                " ",
+                TerminalColor.red,
+                AgentDisplayTokens.Status.failure
+            ].joined()
+            let invalidJsonMessage = [
+                failureBadge,
+                " Invalid JSON result",
+                TerminalColor.reset,
+                durationString
+            ].joined()
+            print(invalidJsonMessage)
+
+            let rawResultLine = [
+                TerminalColor.gray,
+                "Raw result: \(rawResult.prefix(200))",
+                TerminalColor.reset
+            ].joined()
+            print(rawResultLine)
+        } else {
+            let failureBadge = [
+                " ",
+                TerminalColor.red,
+                AgentDisplayTokens.Status.failure
+            ].joined()
+            let invalidResultMessage = [
+                failureBadge,
+                " Invalid result",
+                TerminalColor.reset,
+                durationString
+            ].joined()
+            print(invalidResultMessage)
+        }
+    }
+
+    private func toolFormatter(for name: String) -> (any ToolFormatter, ToolType?) {
+        if let type = ToolType(rawValue: name) {
+            return (ToolFormatterRegistry.shared.formatter(for: type), type)
+        }
+        return (UnknownToolFormatter(toolName: name), nil)
+    }
+
+    private func resultSummary(for name: String, json: [String: Any], formatter: any ToolFormatter) -> String {
+        var summary = formatter.formatResultSummary(result: json)
+
+        guard name == "app" else {
+            return summary
+        }
+
+        if let meta = json["meta"] as? [String: Any],
+           let appName = meta["app_name"] as? String,
+           let content = json["content"] as? [[String: Any]],
+           let firstContent = content.first,
+           let text = firstContent["text"] as? String {
+            switch text {
+            case let value where value.contains("Launched"):
+                summary = "→ \(appName) launched"
+            case let value where value.contains("Quit"):
+                summary = "→ \(appName) quit"
+            case let value where value.contains("Focused") || value.contains("Switched"):
+                summary = "→ \(appName) focused"
+            case let value where value.contains("Hidden"):
+                summary = "→ \(appName) hidden"
+            case let value where value.contains("Unhidden"):
+                summary = "→ \(appName) shown"
+            default:
+                break
+            }
+        }
+
+        return summary
+    }
+
+    private func handleSuccess(resultSummary: String, durationString: String, result: String) {
+        switch self.outputMode {
+        case .minimal:
+            if !resultSummary.isEmpty {
+                print(" OK \(resultSummary)\(durationString)")
+            } else {
+                print(" OK\(durationString)")
+            }
+
+        case .verbose:
+            print(
+                " \(TerminalColor.green)\(AgentDisplayTokens.Status.success)\(TerminalColor.reset)\(durationString)"
+            )
+            if let formatted = formatJSON(result) {
+                print("\(TerminalColor.gray)Result:\(TerminalColor.reset)")
+                print(formatted)
+            }
+
+        default:
+            print(self.successStatusLine(resultSummary: resultSummary, durationString: durationString))
+        }
+    }
+
+    private func handleFailure(message: String, durationString: String, json: [String: Any], tool: String) {
+        if self.outputMode == .minimal {
+            print(" FAILED\(durationString)")
+        } else {
+            print(self.failureStatusLine(message: message, durationString: durationString))
+        }
+        self.displayEnhancedError(tool: tool, json: json)
+    }
+
     private func updateTerminalTitle(_ title: String) {
         print("\u{001B}]0;\(title)\u{0007}", terminator: "")
         fflush(stdout)
@@ -462,9 +527,10 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
 
     private func handleCommunicationToolComplete(name: String, toolType: ToolType) {
         if self.outputMode == .verbose {
-            print(
-                "\n\(AgentDisplayTokens.Status.success) \(toolType.rawValue.replacingOccurrences(of: "_", with: " ").capitalized) completed"
-            )
+            let toolName = toolType.rawValue
+                .replacingOccurrences(of: "_", with: " ")
+                .capitalized
+            print("\n\(AgentDisplayTokens.Status.success) \(toolName) completed")
         }
     }
 

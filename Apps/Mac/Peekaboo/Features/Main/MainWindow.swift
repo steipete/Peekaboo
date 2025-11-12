@@ -441,7 +441,11 @@ struct MainWindow: View {
                     if let error = self.speechRecognizer.error {
                         self.errorMessage = error.localizedDescription
                         // Don't switch back to text for API key errors, just show the error
-                        if !(error is SpeechError && error as! SpeechError == .apiKeyRequired) {
+                        if let speechError = error as? SpeechError,
+                           speechError == .apiKeyRequired
+                        {
+                            // Keep showing the error; do not switch modes
+                        } else {
                             self.inputMode = .text
                         }
                     }
@@ -526,10 +530,10 @@ struct SessionListPopover: View {
                 Text("Sessions")
                     .font(.headline)
                 Spacer()
-                Button(action: { self.dismiss() }) {
+                Button(action: { self.dismiss() }, label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
-                }
+                })
                 .buttonStyle(.plain)
             }
             .padding()

@@ -120,10 +120,18 @@ struct DragDropView: View {
                                         get: { position },
                                         set: { self.itemPositions[itemId] = $0 }))
                                 { startPos, endPos in
+                                    let startPointDescription = "(\(Int(startPos.x)), \(Int(startPos.y)))"
+                                    let endPointDescription = "(\(Int(endPos.x)), \(Int(endPos.y)))"
+                                    let dragDetails = [
+                                        "Item: \(itemId)",
+                                        "From: \(startPointDescription)",
+                                        "To: \(endPointDescription)"
+                                    ].joined(separator: " ")
+
                                     self.actionLogger.log(
                                         .drag,
                                         "Free drag completed",
-                                        details: "Item: \(itemId), From: (\(Int(startPos.x)), \(Int(startPos.y))) To: (\(Int(endPos.x)), \(Int(endPos.y)))")
+                                        details: dragDetails)
                                 }
                             }
                         }

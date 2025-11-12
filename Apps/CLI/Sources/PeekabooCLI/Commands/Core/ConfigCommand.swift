@@ -263,12 +263,11 @@ struct ConfigCommand: ParsableCommand {
                     print("  Path: \(manager.getLogPath())")
                     print()
                     print("Files:")
-                    print(
-                        "  Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")"
-                    )
-                    print(
-                        "  Credentials: \(FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND")"
-                    )
+                    let configFilePath = FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND"
+                    let credentialsFilePath = FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND"
+
+                    print("  Config File: \(configFilePath)")
+                    print("  Credentials: \(credentialsFilePath)")
                 }
             }
         }
@@ -808,9 +807,8 @@ struct ConfigCommand: ParsableCommand {
             } else {
                 if customProviders.isEmpty {
                     print("No custom providers configured.")
-                    print(
-                        "Add one with: peekaboo config add-provider <id> --type <type> --name <name> --base-url <url> --api-key <key>"
-                    )
+                    print("Add one with: peekaboo config add-provider <id> --type <type>")
+                    print("  --name <name> --base-url <url> --api-key <key>")
                 } else {
                     print("Custom AI Providers:")
                     print()

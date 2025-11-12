@@ -173,6 +173,10 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
     var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
+}
+
+@available(macOS 14.0, *)
+extension AgentCommand {
 
     @MainActor
     mutating func run() async throws {
@@ -209,14 +213,11 @@ struct AgentCommand: RuntimeOptionsConfigurable {
 
     @MainActor
     mutating func runInternal(runtime: CommandRuntime) async throws {
-        if ProcessInfo.processInfo.environment["PEEKABOO_DISABLE_AGENT"] == "1" ||
-            ProcessInfo.processInfo.environment["PEEKABOO_DISABLE_AGENT"]?.lowercased() == "true" {
+        if self.isAgentDisabled() {
             self.emitAgentUnavailableMessage()
             return
         }
 
-        // Initialize services up front so we can handle lightweight commands without
-        // spinning up MCP infrastructure.
         let services = runtime.services
 
         guard let agentService = services.agent else {
@@ -224,28 +225,48 @@ struct AgentCommand: RuntimeOptionsConfigurable {
             return
         }
 
-        // Listing sessions is a metadata-only operation and shouldn't initialize MCP or
-        // require a configured provider. Handle it before any heavy setup.
         if self.listSessions {
             try await self.showSessions(agentService)
             return
         }
 
-        if !self.hasConfiguredAIProvider(configuration: services.configuration) {
+        guard self.hasConfiguredAIProvider(configuration: services.configuration) else {
             self.emitAgentUnavailableMessage()
             return
         }
 
-        // Initialize MCP clients first so agent has access to external tools
-        // Only show MCP initialization in verbose mode
         let shouldSuppressMCPLogs = !self.verbose && !self.debugTerminal
+        self.configureLogging(suppressingMCPLogs: shouldSuppressMCPLogs)
+        await self.initializeMCP()
 
-        // Configure logging level based on verbosity
-        if shouldSuppressMCPLogs {
-            // Configure swift-log to suppress info/debug messages from TachikomaMCP
+        guard let peekabooAgent = agentService as? PeekabooAgentService else {
+            throw PeekabooError.commandFailed("Agent service not properly initialized")
+        }
+
+        guard try await self.ensureAgentHasCredentials(peekabooAgent) else {
+            return
+        }
+
+        if try await self.handleSessionResumption(agentService) {
+            return
+        }
+
+        guard let executionTask = try await self.buildExecutionTask() else {
+            return
+        }
+
+        try await self.executeTask(agentService, task: executionTask, maxSteps: self.maxSteps ?? 20)
+    }
+
+    private func isAgentDisabled() -> Bool {
+        let value = ProcessInfo.processInfo.environment["PEEKABOO_DISABLE_AGENT"]?.lowercased()
+        return value == "1" || value == "true"
+    }
+
+    private func configureLogging(suppressingMCPLogs: Bool) {
+        if suppressingMCPLogs {
             LoggingSystem.bootstrap { label in
                 var handler = StreamLogHandler.standardOutput(label: label)
-                // Only show warnings and errors for TachikomaMCP unless in verbose mode
                 if label.hasPrefix("tachikoma.mcp") {
                     handler.logLevel = .warning
                 } else {
@@ -254,11 +275,11 @@ struct AgentCommand: RuntimeOptionsConfigurable {
                 return handler
             }
         } else {
-            // In verbose mode, show all logs
             LoggingSystem.bootstrap(StreamLogHandler.standardOutput)
         }
+    }
 
-        // Register browser MCP as a default server
+    private func initializeMCP() async {
         let defaultBrowser = TachikomaMCP.MCPServerConfig(
             transport: "stdio",
             command: "npx",
@@ -270,55 +291,39 @@ struct AgentCommand: RuntimeOptionsConfigurable {
             description: "Browser automation via BrowserMCP"
         )
         TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
-
-        // Initialize MCP from profile
         await TachikomaMCPClientManager.shared.initializeFromProfile()
+    }
 
-        if let peekabooAgent = agentService as? PeekabooAgentService {
-            let hasCredential = await peekabooAgent.maskedApiKey != nil
-            if !hasCredential {
-                self.emitAgentUnavailableMessage()
-                return
-            }
+    private func ensureAgentHasCredentials(_ peekabooAgent: PeekabooAgentService) async throws -> Bool {
+        let hasCredential = await peekabooAgent.maskedApiKey != nil
+        if !hasCredential {
+            self.emitAgentUnavailableMessage()
         }
+        return hasCredential
+    }
 
-        // Handle resume with specific session ID
+    private func handleSessionResumption(_ agentService: any AgentServiceProtocol) async throws -> Bool {
         if let sessionId = self.resumeSession {
             guard let continuationTask = self.task else {
-                if self.jsonOutput {
-                    let error = [
-                        "success": false,
-                        "error": "Task argument required when resuming session"
-                    ] as [String: Any]
-                    let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
-                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
-                } else {
-                    print(
-                        "\(TerminalColor.red)Error: Task argument required when resuming session\(TerminalColor.reset)"
-                    )
-                    print("Usage: peekaboo agent --resume-session <session-id> \"<continuation-task>\"")
-                }
-                return
+                self.printMissingTaskError(
+                    message: "Task argument required when resuming session",
+                    usage: "Usage: peekaboo agent --resume-session <session-id> \"<continuation-task>\""
+                )
+                return true
             }
             try await self.resumeAgentSession(agentService, sessionId: sessionId, task: continuationTask)
-            return
+            return true
         }
 
-        // Handle resume most recent session
         if self.resume {
-            guard let continuationTask = task else {
-                if self.jsonOutput {
-                    let error = ["success": false, "error": "Task argument required when resuming"] as [String: Any]
-                    let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
-                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
-                } else {
-                    print("\(TerminalColor.red)Error: Task argument required when resuming\(TerminalColor.reset)")
-                    print("Usage: peekaboo agent --resume \"<continuation-task>\"")
-                }
-                return
+            guard let continuationTask = self.task else {
+                self.printMissingTaskError(
+                    message: "Task argument required when resuming",
+                    usage: "Usage: peekaboo agent --resume \"<continuation-task>\""
+                )
+                return true
             }
 
-            // Get the most recent session
             guard let peekabooService = agentService as? PeekabooAgentService else {
                 throw PeekabooError.commandFailed("Agent service not properly initialized")
             }
@@ -327,7 +332,6 @@ struct AgentCommand: RuntimeOptionsConfigurable {
 
             if let mostRecent = sessions.first {
                 try await self.resumeAgentSession(agentService, sessionId: mostRecent.id, task: continuationTask)
-                return
             } else {
                 if self.jsonOutput {
                     let error = ["success": false, "error": "No sessions found to resume"] as [String: Any]
@@ -336,454 +340,121 @@ struct AgentCommand: RuntimeOptionsConfigurable {
                 } else {
                     print("\(TerminalColor.red)Error: No sessions found to resume\(TerminalColor.reset)")
                 }
-                return
+            }
+            return true
+        }
+
+        return false
+    }
+
+    private func printMissingTaskError(message: String, usage: String) {
+        if self.jsonOutput {
+            let error = ["success": false, "error": message] as [String: Any]
+            let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+            print(String(data: jsonData, encoding: .utf8) ?? "{}")
+        } else {
+            print("\(TerminalColor.red)Error: \(message)\(TerminalColor.reset)")
+            if !usage.isEmpty {
+                print(usage)
+            }
+        }
+    }
+
+    private func buildExecutionTask() async throws -> String? {
+        if self.audio || self.audioFile != nil {
+            return try await self.processAudioInput()
+        }
+
+        guard let providedTask = self.task else {
+            self.printMissingTaskError(message: "Task argument is required", usage: "")
+            return nil
+        }
+        return providedTask
+    }
+
+    private func processAudioInput() async throws -> String? {
+        if !self.jsonOutput && !self.quiet {
+            if let audioPath = self.audioFile {
+                print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
+            } else {
+                let recordingMessage = [
+                    "\(TerminalColor.cyan)🎙️ Starting audio recording...",
+                    " (Press Ctrl+C to stop)\(TerminalColor.reset)"
+                ].joined()
+                print(recordingMessage)
             }
         }
 
-        // Handle audio input
-        var executionTask: String
-        if self.audio || self.audioFile != nil {
-            if !self.jsonOutput && !self.quiet {
-                if let audioPath = audioFile {
-                    print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
-                } else {
-                    print(
-                        "\(TerminalColor.cyan)🎙️ Starting audio recording... (Press Ctrl+C to stop)\(TerminalColor.reset)"
-                    )
-                }
-            }
+        let audioService = self.services.audioInput
 
-            let audioService = services.audioInput
-
-            do {
-                if let audioPath = audioFile {
-                    // Transcribe from file
-                    let url = URL(fileURLWithPath: audioPath)
-                    executionTask = try await audioService.transcribeAudioFile(url)
-                } else {
-                    // Record from microphone
-                    try await audioService.startRecording()
-
-                    // Create a continuation to handle the async signal
-                    let transcript = try await withTaskCancellationHandler {
-                        try await withCheckedThrowingContinuation { continuation in
-                            // Set up signal handler for Ctrl+C
-                            let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-                            signalSource.setEventHandler {
-                                signalSource.cancel()
-                                Task { @MainActor in
-                                    do {
-                                        let transcript = try await audioService.stopRecording()
-                                        continuation.resume(returning: transcript)
-                                    } catch {
-                                        continuation.resume(throwing: error)
-                                    }
+        do {
+            let executionTask: String
+            if let audioPath = self.audioFile {
+                let url = URL(fileURLWithPath: audioPath)
+                executionTask = try await audioService.transcribeAudioFile(url)
+            } else {
+                try await audioService.startRecording()
+                let transcript = try await withTaskCancellationHandler {
+                    try await withCheckedThrowingContinuation { continuation in
+                        let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+                        signalSource.setEventHandler {
+                            signalSource.cancel()
+                            Task { @MainActor in
+                                do {
+                                    let transcript = try await audioService.stopRecording()
+                                    continuation.resume(returning: transcript)
+                                } catch {
+                                    continuation.resume(throwing: error)
                                 }
                             }
-                            signalSource.resume()
-
-                            // Also provide a way to stop recording after a timeout (optional)
-                            // This could be configured via a flag if needed
                         }
-                    } onCancel: {
-                        Task { @MainActor in
-                            _ = try? await audioService.stopRecording()
-                        }
+                        signalSource.resume()
                     }
-
-                    executionTask = transcript
+                } onCancel: {
+                    Task { @MainActor in
+                        _ = try? await audioService.stopRecording()
+                    }
                 }
-
-                if !self.jsonOutput && !self.quiet {
-                    print(
-                        "\(TerminalColor.green)\(AgentDisplayTokens.Status.success) Transcription complete\(TerminalColor.reset)"
-                    )
-                    print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
-                }
-
-                // If we have both audio and a task, combine them
-                if let providedTask = task {
-                    executionTask = "\(providedTask)\n\nAudio transcript:\n\(executionTask)"
-                }
-
-            } catch {
-                if self.jsonOutput {
-                    let errorObj = [
-                        "success": false,
-                        "error": "Audio processing failed: \(error.localizedDescription)"
-                    ] as [String: Any]
-                    let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
-                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
-                } else {
-                    print(
-                        "\(TerminalColor.red)\(AgentDisplayTokens.Status.failure) Audio processing failed: \(error.localizedDescription)\(TerminalColor.reset)"
-                    )
-                }
-                return
+                executionTask = transcript
             }
-        } else {
-            // Check if we have a task to execute
-            if let providedTask = task {
-                executionTask = providedTask
+
+            if !self.jsonOutput && !self.quiet {
+                let transcriptionCompleteMessage = [
+                    "\(TerminalColor.green)\(AgentDisplayTokens.Status.success) Transcription complete",
+                    "\(TerminalColor.reset)"
+                ].joined()
+                print(transcriptionCompleteMessage)
+                print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
+            }
+
+            var composedTask = executionTask
+            if let providedTask = self.task {
+                composedTask = "\(providedTask)
+
+Audio transcript:
+\(executionTask)"
+            }
+
+            return composedTask
+        } catch {
+            if self.jsonOutput {
+                let errorObj = [
+                    "success": false,
+                    "error": "Audio processing failed: \(error.localizedDescription)"
+                ] as [String: Any]
+                let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
+                print(String(data: jsonData, encoding: .utf8) ?? "{}")
             } else {
-                // No task provided, show error
-                if self.jsonOutput {
-                    let error = ["success": false, "error": "Task argument is required"] as [String: Any]
-                    let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
-                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
-                } else {
-                    print("\(TerminalColor.red)Error: Task argument is required\(TerminalColor.reset)")
-                    print("Usage: peekaboo agent \"<your-task>\"")
-                    print("       peekaboo agent --audio")
-                    print("       peekaboo agent --audio-file recording.wav")
-                }
-                return
-            }
-        }
-        // Execute task
-        try await self.executeTask(agentService, task: executionTask, maxSteps: self.maxSteps ?? 20)
-    }
-
-    // MARK: - Task Execution
-
-    @MainActor
-    func getActualModelName(_ agentService: PeekabooAgentService) async -> String {
-        // If model is explicitly provided via CLI, use that
-        if let providedModel = model {
-            return providedModel
-        }
-
-        // Otherwise, get the default model from the agent service
-        // The agent service determines this based on PEEKABOO_AI_PROVIDERS
-        return agentService.defaultModel
-    }
-
-    /// Convert internal model names to properly cased display names
-    func getDisplayModelName(_ modelName: String) -> String {
-        // Convert internal model names to properly cased display names
-        let lowercased = modelName.lowercased()
-
-        // OpenAI models - GPT should be uppercase with hyphen
-        if lowercased.hasPrefix("gpt-") {
-            let parts = modelName.split(separator: "-", maxSplits: 1)
-            if parts.count == 2 {
-                return "GPT-\(parts[1])"
-            }
-        }
-
-        // O3/O4 models - keep lowercase "o" as OpenAI uses
-        if lowercased.hasPrefix("o3") || lowercased.hasPrefix("o4") {
-            return modelName.lowercased()
-        }
-
-        // Grok models - "Grok" with capital G and hyphen
-        if lowercased.hasPrefix("grok-") {
-            let parts = modelName.split(separator: "-", maxSplits: 1)
-            if parts.count == 2 {
-                let version = String(parts[1])
-                // Handle special cases like "grok-2-vision-1212"
-                if version.contains("-vision-") {
-                    return "Grok-2 Vision"
-                } else if version.contains("-image-") {
-                    return "Grok-2 Image"
-                } else if version.hasSuffix("-fast") {
-                    let base = version.replacingOccurrences(of: "-fast", with: "")
-                    return "Grok-\(base) Fast"
-                } else if version.hasSuffix("-mini-fast") {
-                    let base = version.replacingOccurrences(of: "-mini-fast", with: "")
-                    return "Grok-\(base) Mini Fast"
-                } else if version.hasSuffix("-mini") {
-                    let base = version.replacingOccurrences(of: "-mini", with: "")
-                    return "Grok-\(base) Mini"
-                } else {
-                    // Simple version like grok-3, grok-4-0709
-                    return "Grok-\(version)"
-                }
-            }
-        }
-
-        // Claude models - proper spacing and capitalization
-        if lowercased.hasPrefix("claude-") {
-            // Special handling for specific model formats
-            if modelName.contains("opus-4-") {
-                return "Claude Opus 4"
-            } else if modelName.contains("sonnet-4-") {
-                return "Claude Sonnet 4"
-            } else if modelName.contains("haiku-4-") {
-                return "Claude Haiku 4"
-            }
-
-            // Handle Claude 3.x models
-            let parts = modelName.split(separator: "-")
-            if parts.count >= 3 {
-                var result = "Claude"
-
-                // Check for model type first (opus, sonnet, haiku)
-                if let modelTypeIndex = parts
-                    .firstIndex(where: { ["opus", "sonnet", "haiku"].contains($0.lowercased()) }) {
-                    let modelType = String(parts[modelTypeIndex]).capitalized
-
-                    // Look for version number before model type
-                    if modelTypeIndex > 1 {
-                        let version = String(parts[1])
-                        if parts.count > 2 && modelTypeIndex > 2, let decimal = Int(parts[2]) {
-                            result += " \(version).\(decimal)"
-                        } else {
-                            result += " \(version)"
-                        }
-                    }
-
-                    result += " \(modelType)"
-                    return result
-                }
-
-                // Fallback for other formats
-                if parts.count > 1 {
-                    let version = String(parts[1])
-                    result += " \(version)"
-
-                    if parts.count > 2 {
-                        let modelType = String(parts[2]).capitalized
-                        result += " \(modelType)"
-                    }
-                }
-
-                return result
-            }
-        }
-
-        // Default: return as-is
-        return modelName
-    }
-
-    func parseModelString(_ modelString: String) -> LanguageModel? {
-        if isDebugLoggingEnabled {
-            print("DEBUG AgentCommand: Parsing model string: '\(modelString)'")
-        }
-        guard let parsed = LanguageModel.parse(from: modelString) else {
-            if isDebugLoggingEnabled {
-                print("DEBUG AgentCommand: Parsed model: nil (unsupported input)")
+                let failurePrefix = [
+                    "\(TerminalColor.red)\(AgentDisplayTokens.Status.failure)",
+                    " Audio processing failed: \(error.localizedDescription)"
+                ].joined()
+                let audioErrorMessage = [failurePrefix, "\(TerminalColor.reset)"].joined()
+                print(audioErrorMessage)
             }
             return nil
         }
-
-        let restricted = self.restrictedPeekabooModel(for: parsed)
-
-        if isDebugLoggingEnabled {
-            print("DEBUG AgentCommand: Parsed model: \(String(describing: restricted))")
-        }
-
-        return restricted
     }
-
-    private func restrictedPeekabooModel(for model: LanguageModel) -> LanguageModel? {
-        switch model {
-        case .openai:
-            .openai(.gpt5)
-        case .anthropic:
-            .anthropic(.sonnet45)
-        default:
-            nil
-        }
-    }
-
-    /// Orchestrate a full agent run: configure UX, stream events, respect max steps, and support session resume.
-    func executeTask(
-        _ agentService: any AgentServiceProtocol,
-        task: String,
-        maxSteps: Int = 20,
-        sessionId: String? = nil
-    ) async throws {
-        // Update terminal title with VibeTunnel
-        self.updateTerminalTitle("Starting: \(task.prefix(50))...")
-
-        // Cast to PeekabooAgentService early for enhanced functionality
-        guard let peekabooAgent = agentService as? PeekabooAgentService else {
-            throw PeekabooError.commandFailed("Agent service not properly initialized")
-        }
-
-        // Get the actual model name that will be used
-        let actualModelName = await getActualModelName(peekabooAgent)
-        let displayModelName = self.getDisplayModelName(actualModelName)
-
-        // Create event delegate for real-time updates
-        let eventDelegate: any AgentEventDelegate = await MainActor.run {
-            AgentOutputDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
-        }
-
-        // Show header with properly cased model name when outputting directly
-        if self.outputMode != .quiet && self.outputMode != .minimal && !self.jsonOutput {
-            switch self.outputMode {
-            case .verbose:
-                print("\n╭─────────────────────────────────────────────────────────────╮")
-                print(
-                    "│ \(TerminalColor.bold)\(TerminalColor.cyan)PEEKABOO AGENT\(TerminalColor.reset)                                              │"
-                )
-                print("├─────────────────────────────────────────────────────────────┤")
-                print(
-                    "│ \(TerminalColor.gray)Task:\(TerminalColor.reset) \(task.truncated(to: 50).padding(toLength: 50, withPad: " ", startingAt: 0))│"
-                )
-                print(
-                    "│ \(TerminalColor.gray)Model:\(TerminalColor.reset) \(displayModelName.padding(toLength: 49, withPad: " ", startingAt: 0))│"
-                )
-                print("╰─────────────────────────────────────────────────────────────╯")
-                if let sessionId {
-                    print("Session: \(sessionId.prefix(8))... (resumed)")
-                }
-                print("\nInitializing agent...\n")
-            case .compact, .enhanced:
-                // Show model in header - split into two lines for better readability
-                let versionNumber = Version.current.replacingOccurrences(of: "Peekaboo ", with: "")
-                let versionInfo = "(\(Version.gitBranch)/\(Version.gitCommit), \(Version.gitCommitDate))"
-
-                // First line: Version and git info
-                print(
-                    "\(TerminalColor.cyan)\(TerminalColor.bold)\(AgentDisplayTokens.Glyph.agent) Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)\(versionNumber) \(versionInfo)\(TerminalColor.reset)"
-                )
-
-                // Second line: Model and API provider info
-                // Determine which API is being used based on the model
-                // Determine provider and API endpoint
-                let apiDescription: String = if let parsedModel = self.model.flatMap({ self.parseModelString($0) }) {
-                    // We have a parsed model with provider info
-                    switch parsedModel.providerName {
-                    case "OpenAI":
-                        // Note: GPT-5 can use either Completions or Responses API depending on configuration
-                        // We can't determine this from the model name alone
-                        // TODO: Get actual endpoint from provider configuration
-                        "\(parsedModel.providerName) API"
-                    case "Anthropic":
-                        "\(parsedModel.providerName) Messages API"
-                    case "xAI", "Groq", "Together", "Mistral":
-                        // These all use OpenAI-compatible APIs
-                        "\(parsedModel.providerName) (OpenAI-compatible)"
-                    case "Ollama":
-                        // Ollama provides an OpenAI-compatible API
-                        "Ollama (OpenAI-compatible)"
-                    default:
-                        parsedModel.providerName
-                    }
-                } else {
-                    // Fallback to guessing based on model name
-                    if actualModelName.lowercased().contains("gpt") || actualModelName.lowercased()
-                        .contains("o3") || actualModelName.lowercased().contains("o4") {
-                        "OpenAI API"
-                    } else if actualModelName.lowercased().contains("claude") {
-                        "Anthropic Messages API"
-                    } else if actualModelName.lowercased().contains("grok") {
-                        "xAI (OpenAI-compatible)"
-                    } else if actualModelName.lowercased().contains("llama") {
-                        "Ollama (OpenAI-compatible)"
-                    } else {
-                        "AI Provider"
-                    }
-                }
-
-                // Get the masked API key
-                let maskedKey = await peekabooAgent.maskedApiKey
-                let apiKeyInfo = maskedKey.map { " (\($0))" } ?? ""
-
-                print(
-                    "   \(TerminalColor.gray)Using \(displayModelName) via \(apiDescription)\(apiKeyInfo)\(TerminalColor.reset)"
-                )
-
-                if let sessionId {
-                    print(
-                        "\(TerminalColor.gray)\(AgentDisplayTokens.Status.info) Session: \(sessionId.prefix(8))...\(TerminalColor.reset)"
-                    )
-                }
-            case .quiet, .minimal:
-                break
-            }
-        }
-
-        do {
-            // Parse the model string from CLI parameter
-            let languageModel: LanguageModel? = self.model.flatMap { self.parseModelString($0) }
-
-            if isDebugLoggingEnabled {
-                print("DEBUG AgentCommand: CLI model parameter: \(String(describing: self.model))")
-                print("DEBUG AgentCommand: Parsed language model: \(String(describing: languageModel))")
-            }
-
-            if let requestedModel = self.model, languageModel == nil {
-                fputs(
-                    "⚠️  Unsupported model '\(requestedModel)'. Peekaboo only supports gpt-5 and claude-sonnet-4.5.\n",
-                    stderr
-                )
-            }
-
-            let result = try await peekabooAgent.executeTask(
-                task,
-                maxSteps: maxSteps,
-                sessionId: sessionId as String?, // Explicit cast to disambiguate method
-                model: languageModel,
-                eventDelegate: eventDelegate,
-                verbose: self.verbose
-            )
-
-            // Update token count in delegate if available
-            await MainActor.run {
-                if let usage = result.usage {
-                    (eventDelegate as? AgentOutputDelegate)?.updateTokenCount(usage.totalTokens)
-                }
-            }
-            self.displayResult(result)
-
-            // Show final summary if not already shown
-            if !self.jsonOutput && self.outputMode != .quiet && self.outputMode != .minimal {
-                await MainActor.run {
-                    (eventDelegate as? AgentOutputDelegate)?.showFinalSummaryIfNeeded(result)
-                }
-            }
-
-            // Show API key info in verbose mode
-            if self.outputMode == .verbose,
-               let apiKey = await peekabooAgent.maskedApiKey {
-                print("\(TerminalColor.gray)API Key: \(apiKey)\(TerminalColor.reset)")
-            }
-
-            // Update terminal title to show completion
-            self.updateTerminalTitle("Completed: \(task.prefix(50))")
-
-            // Show terminal capabilities in verbose mode for debugging
-            if self.outputMode == .verbose {
-                let capabilities = TerminalDetector.detectCapabilities()
-                print(
-                    "\(TerminalColor.gray)Terminal: \(TerminalDetector.capabilitiesDescription(capabilities))\(TerminalColor.reset)"
-                )
-                print("\(TerminalColor.gray)Selected mode: \(self.outputMode.description)\(TerminalColor.reset)")
-            }
-        } catch let error as DecodingError {
-            aiDebugPrint("DEBUG: DecodingError caught: \(error)")
-            throw error
-        } catch {
-            // Extract the actual error message from NSError if available
-            var errorMessage = error.localizedDescription
-            let nsError = error as NSError
-            if let detailedMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
-                errorMessage = detailedMessage
-            }
-
-            if self.jsonOutput {
-                let response = [
-                    "success": false,
-                    "error": errorMessage
-                ] as [String: Any]
-                let jsonData = try JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
-                print(String(data: jsonData, encoding: .utf8) ?? "{}")
-            } else {
-                print(
-                    "\n\(TerminalColor.red)\(TerminalColor.bold)\(AgentDisplayTokens.Status.failure) Error:\(TerminalColor.reset) \(errorMessage)"
-                )
-            }
-
-            // Update terminal title to show error
-            self.updateTerminalTitle("Error: \(task.prefix(40))...")
-            throw error
-        }
-    }
-
     /// Render the agent execution result using either JSON output or a rich CLI transcript.
     @MainActor
     func displayResult(_ result: AgentExecutionResult) {
@@ -835,14 +506,11 @@ struct AgentCommand: RuntimeOptionsConfigurable {
 
     @MainActor
     func showSessions(_ agentService: any AgentServiceProtocol) async throws {
-        // Cast to PeekabooAgentService - this should always succeed
         guard let peekabooService = agentService as? PeekabooAgentService else {
             throw PeekabooError.commandFailed("Agent service not properly initialized")
         }
 
         let sessionSummaries = try await peekabooService.listSessions()
-
-        // Convert SessionSummary to AgentSessionInfo for display
         let sessions = sessionSummaries.map { summary in
             AgentSessionInfo(
                 id: summary.id,
@@ -853,63 +521,96 @@ struct AgentCommand: RuntimeOptionsConfigurable {
             )
         }
 
-        if sessions.isEmpty {
-            if self.jsonOutput {
-                let response = ["success": true, "sessions": []] as [String: Any]
-                let jsonData = try JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
-                print(String(data: jsonData, encoding: .utf8) ?? "{}")
-            } else {
-                print("No agent sessions found.")
-            }
+        guard !sessions.isEmpty else {
+            self.printNoAgentSessions()
             return
         }
 
         if self.jsonOutput {
-            let sessionData = sessions.map { session in
-                [
-                    "id": session.id,
-                    "createdAt": ISO8601DateFormatter().string(from: session.created),
-                    "updatedAt": ISO8601DateFormatter().string(from: session.lastModified),
-                    "messageCount": session.messageCount
-                ]
-            }
-            let response = ["success": true, "sessions": sessionData] as [String: Any]
-            let jsonData = try JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
-            print(String(data: jsonData, encoding: .utf8) ?? "{}")
+            self.printSessionsJSON(sessions)
         } else {
-            print("\(TerminalColor.cyan)\(TerminalColor.bold)Agent Sessions:\(TerminalColor.reset)\n")
-
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .short
-            dateFormatter.timeStyle = .short
-
-            for (index, session) in sessions.prefix(10).enumerated() {
-                let timeAgo = self.formatTimeAgo(session.lastModified)
-                print(
-                    "\(TerminalColor.blue)\(index + 1).\(TerminalColor.reset) \(TerminalColor.bold)\(session.id.prefix(8))\(TerminalColor.reset)"
-                )
-                print("   Messages: \(session.messageCount)")
-                print("   Last activity: \(timeAgo)")
-                if index < sessions.count - 1 {
-                    print()
-                }
-            }
-
-            if sessions.count > 10 {
-                print("\n\(TerminalColor.dim)... and \(sessions.count - 10) more sessions\(TerminalColor.reset)")
-            }
-
-            print(
-                "\n\(TerminalColor.dim)To resume: peekaboo agent --resume <session-id> \"<continuation>\"\(TerminalColor.reset)"
-            )
+            self.printSessionsList(sessions)
         }
     }
 
+    private func printNoAgentSessions() {
+        if self.jsonOutput {
+            let response = {"success": true, "sessions": []} as [String: Any]
+            let jsonData = try? JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
+            print(String(data: jsonData ?? Data(), encoding: .utf-8) ?? "{}")
+        } else {
+            print("No agent sessions found.")
+        }
+    }
+
+    private func printSessionsJSON(_ sessions: [AgentSessionInfo]) {
+        let sessionData = sessions.map { session in
+            [
+                "id": session.id,
+                "createdAt": ISO8601DateFormatter().string(from: session.created),
+                "updatedAt": ISO8601DateFormatter().string(from: session.lastModified),
+                "messageCount": session.messageCount
+            ]
+        }
+        let response = {"success": true, "sessions": sessionData} as [String: Any]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: response, options: .prettyPrinted) {
+            print(String(data: jsonData, encoding: .utf-8) ?? "{}")
+        }
+    }
+
+    private func printSessionsList(_ sessions: [AgentSessionInfo]) {
+        let headerLine = [
+            "\(TerminalColor.cyan)\(TerminalColor.bold)Agent Sessions:\(TerminalColor.reset)",
+            "\n"
+        ].joined()
+        print(headerLine)
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .short
+        dateFormatter.timeStyle = .short
+
+        for (index, session) in sessions.prefix(10).enumerated() {
+            self.printSessionLine(index: index, session: session, dateFormatter: dateFormatter)
+            if index < sessions.count - 1 {
+                print()
+            }
+        }
+
+        if sessions.count > 10 {
+            print([
+                "\n",
+                "\(TerminalColor.dim)... and \(sessions.count - 10) more sessions\(TerminalColor.reset)"
+            ].joined())
+        }
+
+        let resumeHintLine = [
+            "\n",
+            "\(TerminalColor.dim)To resume: peekaboo agent --resume <session-id> \"<continuation>\"\(TerminalColor.reset)"
+        ].joined()
+        print(resumeHintLine)
+    }
+
+    private func printSessionLine(index: Int, session: AgentSessionInfo, dateFormatter: DateFormatter) {
+        let timeAgo = self.formatTimeAgo(session.lastModified)
+        let sessionLine = [
+            "\(TerminalColor.blue)\(index + 1).\(TerminalColor.reset)",
+            " ",
+            "\(TerminalColor.bold)\(session.id.prefix(8))\(TerminalColor.reset)"
+        ].joined()
+        print(sessionLine)
+        print("   Messages: \(session.messageCount)")
+        print("   Last activity: \(timeAgo)")
+    }
     func resumeAgentSession(_ agentService: any AgentServiceProtocol, sessionId: String, task: String) async throws {
         if !self.jsonOutput {
-            print(
-                "\(TerminalColor.cyan)\(TerminalColor.bold)\(AgentDisplayTokens.Status.info) Resuming session \(sessionId.prefix(8))...\(TerminalColor.reset)\n"
-            )
+            let resumingLine = [
+                "\(TerminalColor.cyan)\(TerminalColor.bold)",
+                "\(AgentDisplayTokens.Status.info)",
+                " Resuming session \(sessionId.prefix(8))...",
+                "\(TerminalColor.reset)",
+                "\n"
+            ].joined()
+            print(resumingLine)
         }
 
         // Use runInternal directly since executeTask was removed
@@ -950,6 +651,12 @@ struct AgentCommand: RuntimeOptionsConfigurable {
         }
     }
 
+    private func printCapabilityFlag(_ label: String, supported: Bool, detail: String? = nil) {
+        let status = supported ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.failure
+        let detailSuffix = detail.map { " (\($0))" } ?? ""
+        print("   • \(label): \(status)\(detailSuffix)")
+    }
+
     /// Print detailed terminal detection debugging information
     func printTerminalDetectionDebug(_ capabilities: TerminalCapabilities, actualMode: OutputMode) {
         // Print detailed terminal detection debugging information
@@ -965,25 +672,15 @@ struct AgentCommand: RuntimeOptionsConfigurable {
 
         // Capability flags
         print("\(AgentDisplayTokens.Status.running) \(TerminalColor.bold)Capabilities:\(TerminalColor.reset)")
-        print(
-            "   • Interactive: \(capabilities.isInteractive ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.failure) (isatty check)"
-        )
-        print(
-            "   • Colors: \(capabilities.supportsColors ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.failure) (ANSI support)"
-        )
-        print(
-            "   • True Color: \(capabilities.supportsTrueColor ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.failure) (24-bit)"
-        )
+        self.printCapabilityFlag("Interactive", supported: capabilities.isInteractive, detail: "isatty check")
+        self.printCapabilityFlag("Colors", supported: capabilities.supportsColors, detail: "ANSI support")
+        self.printCapabilityFlag("True Color", supported: capabilities.supportsTrueColor, detail: "24-bit")
         print("   • Dimensions: \(capabilities.width)x\(capabilities.height)")
 
         // Environment info
         print("[env] \(TerminalColor.bold)Environment:\(TerminalColor.reset)")
-        print(
-            "   • CI Environment: \(capabilities.isCI ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.failure)"
-        )
-        print(
-            "   • Piped Output: \(capabilities.isPiped ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.failure)"
-        )
+        self.printCapabilityFlag("CI Environment", supported: capabilities.isCI)
+        self.printCapabilityFlag("Piped Output", supported: capabilities.isPiped)
 
         // Environment variables
         let env = ProcessInfo.processInfo.environment
@@ -1000,9 +697,12 @@ struct AgentCommand: RuntimeOptionsConfigurable {
         print("[focus] \(TerminalColor.bold)Actual Mode:\(TerminalColor.reset) \(actualMode.description)")
 
         if recommendedMode != actualMode {
-            print(
-                "\(AgentDisplayTokens.Status.warning)  \(TerminalColor.yellow)Mode Override Detected\(TerminalColor.reset) - explicit flag or environment variable used"
-            )
+            let modeOverrideLine = [
+                "\(AgentDisplayTokens.Status.warning)  ",
+                "\(TerminalColor.yellow)Mode Override Detected\(TerminalColor.reset)",
+                " - explicit flag or environment variable used"
+            ].joined()
+            print(modeOverrideLine)
         }
 
         // Show decision logic
@@ -1036,9 +736,12 @@ struct AgentCommand: RuntimeOptionsConfigurable {
                 print("{\"success\":false,\"error\":\"Agent service not available\"}")
             }
         } else {
-            print(
-                "\(TerminalColor.red)Error: Agent service not available. Please set OPENAI_API_KEY environment variable.\(TerminalColor.reset)"
-            )
+            let errorPrefix = [
+                "\(TerminalColor.red)Error: Agent service not available.",
+                " Please set OPENAI_API_KEY environment variable."
+            ].joined()
+            let errorMessageLine = [errorPrefix, "\(TerminalColor.reset)"].joined()
+            print(errorMessageLine)
         }
     }
 }

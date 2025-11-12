@@ -345,18 +345,23 @@ extension ListCommand {
                 return
             }
 
-            print("Menu Bar Items (\(items.count)):")
+            Swift.print("Menu Bar Items (\(items.count)):")
             for (index, item) in items.enumerated() {
-                let title = item.title ?? "<untitled>"
-                print("  [\(index + 1)] \(title)")
-                if let description = item.description, !description.isEmpty {
-                    print("       Description: \(description)")
-                }
-                if let frame = item.frame {
-                    print(
-                        "       Frame: \(Int(frame.origin.x)),\(Int(frame.origin.y)) \(Int(frame.width))×\(Int(frame.height))"
-                    )
-                }
+                self.print(menuBarItem: item, index: index)
+            }
+        }
+
+        @MainActor
+        private func print(menuBarItem item: MenuBarItemInfo, index: Int) {
+            let title = item.title ?? "<untitled>"
+            Swift.print("  [\(index + 1)] \(title)")
+            if let description = item.description, !description.isEmpty {
+                Swift.print("       Description: \(description)")
+            }
+            if let frame = item.frame {
+                let frameOrigin = "\(Int(frame.origin.x)),\(Int(frame.origin.y))"
+                let frameSize = "\(Int(frame.width))×\(Int(frame.height))"
+                Swift.print("       Frame: \(frameOrigin) \(frameSize)")
             }
         }
     }
@@ -387,76 +392,95 @@ extension ListCommand {
 
             do {
                 let screens = self.services.screens.listScreens()
-                let primaryIndex = screens.firstIndex { $0.isPrimary }
-
-                let screenListData = ScreenListData(
-                    screens: screens.map { screen in
-                        ScreenListData.ScreenDetails(
-                            index: screen.index,
-                            name: screen.name,
-                            resolution: ScreenListData.Resolution(
-                                width: Int(screen.frame.width),
-                                height: Int(screen.frame.height)
-                            ),
-                            position: ScreenListData.Position(
-                                x: Int(screen.frame.origin.x),
-                                y: Int(screen.frame.origin.y)
-                            ),
-                            visibleArea: ScreenListData.Resolution(
-                                width: Int(screen.visibleFrame.width),
-                                height: Int(screen.visibleFrame.height)
-                            ),
-                            isPrimary: screen.isPrimary,
-                            scaleFactor: screen.scaleFactor,
-                            displayID: Int(screen.displayID)
-                        )
-                    },
-                    primaryIndex: primaryIndex
-                )
-
+                let screenListData = self.buildScreenListData(from: screens)
                 let output = UnifiedToolOutput(
                     data: screenListData,
-                    summary: ScreenOutput.Summary(
-                        brief: "Found \(screens.count) screen\(screens.count == 1 ? "" : "s")",
-                        detail: nil,
-                        status: ScreenOutput.Summary.Status.success,
-                        counts: ["screens": screens.count],
-                        highlights: screens.enumerated().compactMap { index, screen in
-                            screen.isPrimary ? ScreenOutput.Summary.Highlight(
-                                label: "Primary",
-                                value: "\(screen.name) (Index \(index))",
-                                kind: ScreenOutput.Summary.Highlight.HighlightKind.primary
-                            ) : nil
-                        }
-                    ),
-                    metadata: ScreenOutput.Metadata(
-                        duration: 0.0,
-                        warnings: [],
-                        hints: ["Use 'peekaboo see --screen-index N' to capture a specific screen"]
-                    )
+                    summary: self.buildScreenSummary(for: screens),
+                    metadata: self.buildScreenMetadata()
                 )
 
                 if self.jsonOutput {
                     try print(output.toJSON())
                 } else {
-                    print("Screens (\(screens.count) total):")
-                    for screen in screens {
-                        print("\n\(screen.index). \(screen.name)\(screen.isPrimary ? " (Primary)" : "")")
-                        print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
-                        print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
-                        print("   Scale: \(screen.scaleFactor)x\(screen.scaleFactor > 1 ? " (Retina)" : "")")
-                        if screen.visibleFrame.size != screen.frame.size {
-                            print(
-                                "   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))"
-                            )
-                        }
-                    }
-                    print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
+                    self.printScreenDetails(screens, count: screens.count)
                 }
             } catch {
                 self.handleError(error)
                 throw ExitCode(1)
             }
+        }
+
+        @MainActor
+        private func printScreenDetails(_ screens: [PeekabooCore.ScreenInfo], count: Int) {
+            Swift.print("Screens (\(count) total):")
+            for screen in screens {
+                let primaryBadge = screen.isPrimary ? " (Primary)" : ""
+                Swift.print("\n\(screen.index). \(screen.name)\(primaryBadge)")
+                Swift.print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
+                Swift.print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
+                let retinaBadge = screen.scaleFactor > 1 ? " (Retina)" : ""
+                Swift.print("   Scale: \(screen.scaleFactor)x\(retinaBadge)")
+                if screen.visibleFrame.size != screen.frame.size {
+                    Swift.print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
+                }
+            }
+            Swift.print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
+        }
+
+        @MainActor
+        private func buildScreenListData(from screens: [PeekabooCore.ScreenInfo]) -> ScreenListData {
+            let details = screens.map { screen in
+                ScreenListData.ScreenDetails(
+                    index: screen.index,
+                    name: screen.name,
+                    resolution: ScreenListData.Resolution(
+                        width: Int(screen.frame.width),
+                        height: Int(screen.frame.height)
+                    ),
+                    position: ScreenListData.Position(
+                        x: Int(screen.frame.origin.x),
+                        y: Int(screen.frame.origin.y)
+                    ),
+                    visibleArea: ScreenListData.Resolution(
+                        width: Int(screen.visibleFrame.width),
+                        height: Int(screen.visibleFrame.height)
+                    ),
+                    isPrimary: screen.isPrimary,
+                    scaleFactor: screen.scaleFactor,
+                    displayID: Int(screen.displayID)
+                )
+            }
+
+            return ScreenListData(
+                screens: details,
+                primaryIndex: screens.firstIndex { $0.isPrimary }
+            )
+        }
+
+        private func buildScreenSummary(for screens: [PeekabooCore.ScreenInfo]) -> ScreenOutput.Summary {
+            let count = screens.count
+            let highlights = screens.enumerated().compactMap { index, screen in
+                screen.isPrimary ? ScreenOutput.Summary.Highlight(
+                    label: "Primary",
+                    value: "\(screen.name) (Index \(index))",
+                    kind: ScreenOutput.Summary.Highlight.HighlightKind.primary
+                ) : nil
+            }
+            return ScreenOutput.Summary(
+                brief: "Found \(count) screen\(count == 1 ? "" : "s")",
+                detail: nil,
+                status: ScreenOutput.Summary.Status.success,
+                counts: ["screens": count],
+                highlights: highlights
+            )
+        }
+
+        private func buildScreenMetadata() -> ScreenOutput.Metadata {
+            ScreenOutput.Metadata(
+                duration: 0.0,
+                warnings: [],
+                hints: ["Use 'peekaboo see --screen-index N' to capture a specific screen"]
+            )
         }
     }
 }

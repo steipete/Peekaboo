@@ -490,7 +490,7 @@ struct DialogCommand: ParsableCommand {
         guard let appName, !appName.isEmpty else { return }
 
         let target: WindowTarget = if let windowTitle, !windowTitle.isEmpty {
-            .applicationAndTitle(appName, title: windowTitle)
+            .applicationAndTitle(app: appName, title: windowTitle)
         } else {
             .application(appName)
         }
