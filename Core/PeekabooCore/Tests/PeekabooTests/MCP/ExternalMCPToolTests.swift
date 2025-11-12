@@ -323,7 +323,8 @@ struct ToolOrganizerTests {
     @Test("ToolOrganizer description formatting")
     func descriptionFormatting() {
         let shortDescription = "Short description"
-        let longDescription = "This is a very long description that exceeds the maximum length and should be truncated properly with ellipsis"
+        let longDescription = "This is a very long description that exceeds the maximum length " +
+            "and should be truncated properly with ellipsis"
 
         // Test short description (no truncation)
         let shortFormatted = ToolOrganizer.formatDescription(shortDescription, maxLength: 50)

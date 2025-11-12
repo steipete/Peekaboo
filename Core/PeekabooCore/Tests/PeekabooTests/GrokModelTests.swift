@@ -45,7 +45,12 @@ struct GrokLanguageModelTests {
         }
 
         let visionModels = catalog.filter(\.supportsVision)
-        #expect(visionModels.allSatisfy { $0.modelId.contains("vision") || $0.modelId.contains("image") || $0.modelId.contains("grok-vision") })
+        let allVisionHaveIdentifier = visionModels.allSatisfy { model in
+            model.modelId.contains("vision") ||
+                model.modelId.contains("image") ||
+                model.modelId.contains("grok-vision")
+        }
+        #expect(allVisionHaveIdentifier)
     }
 
     @Test("Grok model context lengths")
