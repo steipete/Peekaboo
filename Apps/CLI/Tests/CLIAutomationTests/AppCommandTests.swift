@@ -238,7 +238,7 @@ private struct CommandFailure: Error {
 
 private func runAppCommand(
     _ args: [String],
-    configure: (@MainActor (StubApplicationService) -> Void)? = nil
+    configure: (@MainActor (StubApplicationService) -> ())? = nil
 ) async throws -> String {
     let (output, _) = try await runAppCommandWithService(args, configure: configure)
     return output
@@ -246,7 +246,7 @@ private func runAppCommand(
 
 private func runAppCommandWithService(
     _ args: [String],
-    configure: (@MainActor (StubApplicationService) -> Void)? = nil
+    configure: (@MainActor (StubApplicationService) -> ())? = nil
 ) async throws -> (String, StubApplicationService) {
     let context = await makeAppCommandContext()
     if let configure {
@@ -296,8 +296,8 @@ private func defaultAppCommandData()
     return (applications, windowsByApp)
 }
 
-private extension AppCommandTests {
-    static func defaultApplications() -> [ServiceApplicationInfo] {
+extension AppCommandTests {
+    fileprivate static func defaultApplications() -> [ServiceApplicationInfo] {
         [
             ServiceApplicationInfo(
                 processIdentifier: 101,
@@ -320,14 +320,14 @@ private extension AppCommandTests {
         ]
     }
 
-    static func defaultWindowsByApp() -> [String: [ServiceWindowInfo]] {
+    fileprivate static func defaultWindowsByApp() -> [String: [ServiceWindowInfo]] {
         [
-            "Finder": [finderWindow()],
-            "TextEdit": [textEditWindow()],
+            "Finder": [self.finderWindow()],
+            "TextEdit": [self.textEditWindow()],
         ]
     }
 
-    static func finderWindow() -> ServiceWindowInfo {
+    fileprivate static func finderWindow() -> ServiceWindowInfo {
         ServiceWindowInfo(
             windowID: 1,
             title: "Finder Window",
@@ -344,7 +344,7 @@ private extension AppCommandTests {
         )
     }
 
-    static func textEditWindow() -> ServiceWindowInfo {
+    fileprivate static func textEditWindow() -> ServiceWindowInfo {
         ServiceWindowInfo(
             windowID: 2,
             title: "Document",

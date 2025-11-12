@@ -274,8 +274,8 @@ struct SeeCommandAnnotationTests {
     }
 }
 
-private extension SeeCommandAnnotationTests {
-    static func detectionMetadata() -> DetectionMetadata {
+extension SeeCommandAnnotationTests {
+    fileprivate static func detectionMetadata() -> DetectionMetadata {
         DetectionMetadata(
             detectionTime: 0.5,
             elementCount: 10,
@@ -284,7 +284,7 @@ private extension SeeCommandAnnotationTests {
         )
     }
 
-    static func makeCaptureResult(
+    fileprivate static func makeCaptureResult(
         imageData: Data,
         appName: String,
         windowTitle: String,
@@ -298,13 +298,13 @@ private extension SeeCommandAnnotationTests {
         return CaptureResult(imageData: imageData, metadata: captureMetadata)
     }
 
-    static func expectDetectionMetadata(_ metadata: DetectionMetadata) {
+    fileprivate static func expectDetectionMetadata(_ metadata: DetectionMetadata) {
         #expect(metadata.detectionTime == 0.5)
         #expect(metadata.elementCount == 10)
         #expect(metadata.method == "AXorcist")
     }
 
-    static func expectCaptureResult(
+    fileprivate static func expectCaptureResult(
         _ result: CaptureResult,
         imageData: Data,
         appName: String,
@@ -315,7 +315,7 @@ private extension SeeCommandAnnotationTests {
         #expect(result.metadata.windowInfo?.bounds == windowBounds)
     }
 
-    static func makeSeeResult(
+    fileprivate static func makeSeeResult(
         sessionId: String,
         metadata: DetectionMetadata,
         captureMetadata: CaptureMetadata,
@@ -340,7 +340,7 @@ private extension SeeCommandAnnotationTests {
         )
     }
 
-    static func expectSeeResult(
+    fileprivate static func expectSeeResult(
         _ result: SeeResult,
         sessionId: String,
         appName: String,
@@ -351,7 +351,7 @@ private extension SeeCommandAnnotationTests {
         #expect(result.window_title == windowTitle)
     }
 
-    static func makeCaptureMetadata(
+    fileprivate static func makeCaptureMetadata(
         appName: String,
         windowTitle: String,
         windowBounds: CGRect
@@ -359,14 +359,14 @@ private extension SeeCommandAnnotationTests {
         CaptureMetadata(
             size: windowBounds.size,
             mode: .window,
-            applicationInfo: Self.makeApplicationInfo(appName: appName),
-            windowInfo: Self.makeWindowInfo(windowTitle: windowTitle, windowBounds: windowBounds),
+            applicationInfo: self.makeApplicationInfo(appName: appName),
+            windowInfo: self.makeWindowInfo(windowTitle: windowTitle, windowBounds: windowBounds),
             displayInfo: nil,
             timestamp: Date(timeIntervalSince1970: 0)
         )
     }
 
-    static func makeApplicationInfo(appName: String) -> ServiceApplicationInfo {
+    fileprivate static func makeApplicationInfo(appName: String) -> ServiceApplicationInfo {
         ServiceApplicationInfo(
             processIdentifier: 1234,
             bundleIdentifier: "com.apple.Safari",
@@ -378,7 +378,7 @@ private extension SeeCommandAnnotationTests {
         )
     }
 
-    static func makeWindowInfo(windowTitle: String, windowBounds: CGRect) -> ServiceWindowInfo {
+    fileprivate static func makeWindowInfo(windowTitle: String, windowBounds: CGRect) -> ServiceWindowInfo {
         ServiceWindowInfo(
             windowID: 42,
             title: windowTitle,

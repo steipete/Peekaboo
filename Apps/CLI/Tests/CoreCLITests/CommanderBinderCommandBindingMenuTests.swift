@@ -3,7 +3,7 @@ import Testing
 @testable import PeekabooCLI
 
 @Suite("Commander Binder Command Binding (Menu + Dock)")
-struct CommanderBinderCommandBindingMenuDockTests {
+struct CommanderBinderMenuDockTests {
     @Test("Scroll command binding")
     func bindScrollCommand() throws {
         let parsed = ParsedValues(

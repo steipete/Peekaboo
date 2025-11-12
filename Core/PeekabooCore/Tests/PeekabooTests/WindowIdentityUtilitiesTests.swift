@@ -215,7 +215,7 @@ struct WindowIdentityUtilitiesTests {
                         infoTitle == firstWindow.title ||
                             infoTitle.contains(firstWindow.title) ||
                             firstWindow.title.contains(infoTitle),
-                        mismatchMessage)
+                        Comment(rawValue: mismatchMessage))
                 }
                 #expect(info.ownerPID > 0)
                 // Other fields depend on the actual window

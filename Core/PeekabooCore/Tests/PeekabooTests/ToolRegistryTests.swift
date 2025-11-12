@@ -1,4 +1,5 @@
 import Foundation
+import Tachikoma
 import Testing
 @testable import PeekabooCore
 
@@ -238,15 +239,16 @@ struct ToolRegistryTests {
         let agentParams = tool.toAgentToolParameters()
 
         self.assertAgentParameters(agentParams)
+        let properties = agentParams.properties
 
         if let enabledParam = properties["enabled"] {
-            #expect(enabledParam.type == .boolean)
+            #expect(enabledParam.type == Tachikoma.AgentToolParameterProperty.ParameterType.boolean)
         } else {
             Issue.record("enabled parameter not found")
         }
 
         if let modeParam = properties["mode"] {
-            #expect(modeParam.type == .string) // Enumerations are string type with enumValues
+            #expect(modeParam.type == Tachikoma.AgentToolParameterProperty.ParameterType.string)
             #expect(modeParam.enumValues == ["fast", "slow", "medium"])
         } else {
             Issue.record("mode parameter not found")
@@ -295,10 +297,22 @@ private extension ToolRegistryTests {
         let properties = agentParams.properties
         let required = agentParams.required
 
-        self.assertProperty("input_text", expectedType: .string, existsIn: properties)
-        self.assertProperty("count", expectedType: .integer, existsIn: properties)
-        self.assertProperty("enabled", expectedType: .boolean, existsIn: properties)
-        self.assertProperty("mode", expectedType: .enumeration, existsIn: properties)
+        self.assertProperty(
+            "input_text",
+            expectedType: Tachikoma.AgentToolParameterProperty.ParameterType.string,
+            existsIn: properties)
+        self.assertProperty(
+            "count",
+            expectedType: Tachikoma.AgentToolParameterProperty.ParameterType.integer,
+            existsIn: properties)
+        self.assertProperty(
+            "enabled",
+            expectedType: Tachikoma.AgentToolParameterProperty.ParameterType.boolean,
+            existsIn: properties)
+        self.assertProperty(
+            "mode",
+            expectedType: Tachikoma.AgentToolParameterProperty.ParameterType.string,
+            existsIn: properties)
 
         #expect(required.contains("input_text"))
         #expect(!required.contains("count"))
@@ -306,8 +320,8 @@ private extension ToolRegistryTests {
 
     func assertProperty(
         _ name: String,
-        expectedType: ParameterDefinition.ParameterType,
-        existsIn properties: [String: AgentToolParameters.Property])
+        expectedType: Tachikoma.AgentToolParameterProperty.ParameterType,
+        existsIn properties: [String: Tachikoma.AgentToolParameterProperty])
     {
         if let property = properties[name] {
             #expect(property.type == expectedType)

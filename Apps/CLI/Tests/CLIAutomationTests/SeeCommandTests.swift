@@ -181,8 +181,8 @@ struct SeeCommandRuntimeTests {
     }
 }
 
-private extension SeeCommandRuntimeTests {
-    struct RuntimeFixture {
+extension SeeCommandRuntimeTests {
+    fileprivate struct RuntimeFixture {
         let sessionId: String
         let applicationInfo: ServiceApplicationInfo
         let windowInfo: ServiceWindowInfo
@@ -190,7 +190,7 @@ private extension SeeCommandRuntimeTests {
         let detectionResult: ElementDetectionResult
     }
 
-    static func makeSeeCommandRuntimeFixture() -> RuntimeFixture {
+    fileprivate static func makeSeeCommandRuntimeFixture() -> RuntimeFixture {
         let sessionId = UUID().uuidString
         let windowBounds = CGRect(x: 10, y: 20, width: 800, height: 600)
         let applicationInfo = Self.makeSeeFixtureApplicationInfo()
@@ -216,7 +216,7 @@ private extension SeeCommandRuntimeTests {
         )
     }
 
-    static func makeSeeCommandRuntimeContext(
+    fileprivate static func makeSeeCommandRuntimeContext(
         automation: StubAutomationService,
         screenCapture: StubScreenCaptureService
     ) -> (context: TestServicesFactory.AutomationTestContext, outputURL: URL) {
@@ -230,7 +230,7 @@ private extension SeeCommandRuntimeTests {
         return (context, outputURL)
     }
 
-    static func makeSeeFixtureApplicationInfo() -> ServiceApplicationInfo {
+    fileprivate static func makeSeeFixtureApplicationInfo() -> ServiceApplicationInfo {
         ServiceApplicationInfo(
             processIdentifier: 4242,
             bundleIdentifier: "com.example.app",
@@ -240,7 +240,7 @@ private extension SeeCommandRuntimeTests {
         )
     }
 
-    static func makeSeeFixtureWindowInfo(windowBounds: CGRect) -> ServiceWindowInfo {
+    fileprivate static func makeSeeFixtureWindowInfo(windowBounds: CGRect) -> ServiceWindowInfo {
         ServiceWindowInfo(
             windowID: 101,
             title: "Main Window",
@@ -249,7 +249,7 @@ private extension SeeCommandRuntimeTests {
         )
     }
 
-    static func makeSeeFixtureCaptureResult(
+    fileprivate static func makeSeeFixtureCaptureResult(
         applicationInfo: ServiceApplicationInfo,
         windowInfo: ServiceWindowInfo
     ) -> CaptureResult {
@@ -262,13 +262,13 @@ private extension SeeCommandRuntimeTests {
         return CaptureResult(imageData: Data(repeating: 0xAB, count: 1024), metadata: metadata)
     }
 
-    static func makeSeeFixtureScreenCapture(captureResult: CaptureResult) -> StubScreenCaptureService {
+    fileprivate static func makeSeeFixtureScreenCapture(captureResult: CaptureResult) -> StubScreenCaptureService {
         let screenCapture = StubScreenCaptureService(permissionGranted: true)
         screenCapture.defaultCaptureResult = captureResult
         return screenCapture
     }
 
-    static func makeSeeFixtureDetectionResult(
+    fileprivate static func makeSeeFixtureDetectionResult(
         sessionId: String,
         applicationInfo: ServiceApplicationInfo,
         windowInfo: ServiceWindowInfo,

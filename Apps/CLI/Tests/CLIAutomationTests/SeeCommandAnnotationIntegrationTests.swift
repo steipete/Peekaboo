@@ -215,7 +215,7 @@ struct SeeCommandAnnotationIntegrationTests {
     static func makeSampleElements() -> DetectedElements {
         DetectedElements(
             buttons: [
-                Self.makeElement(
+                self.makeElement(
                     id: "B1",
                     type: .button,
                     label: "Save",
@@ -223,7 +223,7 @@ struct SeeCommandAnnotationIntegrationTests {
                 )
             ],
             textFields: [
-                Self.makeElement(
+                self.makeElement(
                     id: "T1",
                     type: .textField,
                     label: "Name",
@@ -232,7 +232,7 @@ struct SeeCommandAnnotationIntegrationTests {
                 )
             ],
             links: [
-                Self.makeElement(
+                self.makeElement(
                     id: "L1",
                     type: .link,
                     label: "Click here",
@@ -241,7 +241,7 @@ struct SeeCommandAnnotationIntegrationTests {
             ],
             images: [],
             groups: [
-                Self.makeElement(
+                self.makeElement(
                     id: "G1",
                     type: .group,
                     bounds: CGRect(x: 10, y: 80, width: 300, height: 200)

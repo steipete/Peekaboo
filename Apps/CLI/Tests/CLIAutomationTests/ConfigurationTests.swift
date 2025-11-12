@@ -280,8 +280,8 @@ struct ConfigurationTests {
     }
 }
 
-private extension ConfigurationTests {
-    static func decodedDictionary(from data: Data) throws -> [String: Any] {
+extension ConfigurationTests {
+    fileprivate static func decodedDictionary(from data: Data) throws -> [String: Any] {
         let json = try JSONSerialization.jsonObject(with: data)
         guard let dictionary = json as? [String: Any] else {
             throw ConfigurationTestsError.invalidJSON

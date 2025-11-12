@@ -137,8 +137,8 @@ struct SpaceCommandReadTests {
     }
 }
 
-private extension SpaceCommandReadTests {
-    static func testApplications() -> [ServiceApplicationInfo] {
+extension SpaceCommandReadTests {
+    fileprivate static func testApplications() -> [ServiceApplicationInfo] {
         [
             ServiceApplicationInfo(
                 processIdentifier: 101,
@@ -161,14 +161,14 @@ private extension SpaceCommandReadTests {
         ]
     }
 
-    static func windowsByApp() -> [String: [ServiceWindowInfo]] {
+    fileprivate static func windowsByApp() -> [String: [ServiceWindowInfo]] {
         [
-            "Finder": [Self.finderWindow()],
-            "TextEdit": [Self.textEditWindow()],
+            "Finder": [self.finderWindow()],
+            "TextEdit": [self.textEditWindow()],
         ]
     }
 
-    static func finderWindow() -> ServiceWindowInfo {
+    fileprivate static func finderWindow() -> ServiceWindowInfo {
         ServiceWindowInfo(
             windowID: 1,
             title: "Finder Window",
@@ -185,7 +185,7 @@ private extension SpaceCommandReadTests {
         )
     }
 
-    static func textEditWindow() -> ServiceWindowInfo {
+    fileprivate static func textEditWindow() -> ServiceWindowInfo {
         ServiceWindowInfo(
             windowID: 2,
             title: "Document",
@@ -202,7 +202,7 @@ private extension SpaceCommandReadTests {
         )
     }
 
-    static func spaceInfos() -> [SpaceInfo] {
+    fileprivate static func spaceInfos() -> [SpaceInfo] {
         [
             SpaceInfo(
                 id: 1,
@@ -223,7 +223,7 @@ private extension SpaceCommandReadTests {
         ]
     }
 
-    static func windowSpaces(from infos: [SpaceInfo]) -> [Int: [SpaceInfo]] {
+    fileprivate static func windowSpaces(from infos: [SpaceInfo]) -> [Int: [SpaceInfo]] {
         [
             1: [infos[0]],
             2: [infos[1]],
