@@ -12,7 +12,10 @@ public enum VisionToolDefinitions {
         name: "see",
         commandName: "see",
         abstract: "Capture and analyze UI elements for automation",
-        discussion: "Captures a screenshot and analyzes UI elements for automation. Returns UI element map with Peekaboo IDs.",
+        discussion: """
+        Captures a screenshot and analyzes UI elements for automation.
+        Returns UI element map with Peekaboo IDs.
+        """,
         category: .vision,
         parameters: [
             ParameterDefinition(
@@ -52,7 +55,10 @@ public enum UIAutomationToolDefinitions {
         name: "click",
         commandName: "click",
         abstract: "Click on UI elements or coordinates",
-        discussion: "Clicks on UI elements or coordinates. Supports element queries, specific IDs from see command, or raw coordinates.",
+        discussion: """
+        Clicks on UI elements or coordinates. Supports element queries,
+        specific IDs from see command, or raw coordinates.
+        """,
         category: .ui,
         parameters: [
             ParameterDefinition(

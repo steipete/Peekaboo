@@ -18,7 +18,9 @@ public enum ToolRegistry {
             category: .vision,
             abstract: "Capture and analyze UI contexts, returning session-aware element maps.",
             discussion: """
-Capture a screenshot, analyze every visible UI element, and write the results to the session cache so later tools can reference the same IDs. The command automatically handles full screen, frontmost window, or app-specific captures.
+Capture a screenshot, analyze every visible UI element, and write the results to the session cache
+so later tools can reference the same IDs. The command automatically handles full screen,
+frontmost window, or app-specific captures.
 
 EXAMPLE
 peekaboo see --app Safari --path ~/Desktop/safari.png --annotate
@@ -34,12 +36,14 @@ If a window is missing, try `--mode screen` so Peekaboo can discover all windows
                 "peekaboo see --app Safari --path ~/Shots/safari.png --annotate",
                 "peekaboo see --mode screen --session FOCUS"
             ],
-            agentGuidance: "Run `see` whenever you need fresh element IDs; the response contains session ids and absolute coordinates."),
+            agentGuidance: "Run `see` whenever you need fresh element IDs; the response " +
+                "contains session ids and absolute coordinates."),
         "click": ToolOverride(
             category: .automation,
             abstract: "High-precision UI clicking with fuzzy matching and session-aware targeting.",
             discussion: """
-Clicks on UI elements or coordinates. Supports IDs from the `see` command, fuzzy text queries, or raw coordinates.
+Clicks on UI elements or coordinates. Supports IDs from the `see` command,
+fuzzy text queries, or raw coordinates.
 
 ELEMENT MATCHING
 - Fuzzy matching on element titles and labels
@@ -51,13 +55,15 @@ peekaboo click --wait-for 1500 --double \"Submit\"
 peekaboo click --on B2 --space-switch
 
 TROUBLESHOOTING
-If the element isn't found, re-run `peekaboo see` to refresh the session, or provide a more precise query (like an ID or coordinates).
+If the element isn't found, re-run `peekaboo see` to refresh the session,
+or provide a more precise query (like an ID or coordinates).
 """,
             examples: [
                 "peekaboo click \"Submit\"",
                 "peekaboo click --wait-for 2000 --double \"Save\""
             ],
-            agentGuidance: "Prefer ID-based clicks when possible. If fuzzy text fails, capture again and reference the new element id."
+            agentGuidance: "Prefer ID-based clicks when possible. If fuzzy text fails, capture " +
+                "again and reference the new element id."
         ),
         "type": ToolOverride(
             category: .automation,
@@ -79,31 +85,36 @@ If the text appears in the wrong place, focus the application with `peekaboo win
                 "peekaboo type \"Hello\\nWorld\"",
                 "peekaboo type --text \"Name:\\tJohn\" --delay 25"
             ],
-            agentGuidance: "Remember to escape newline/tab characters when providing prompts; literal newlines may be interpreted by the shell."
+            agentGuidance: "Remember to escape newline/tab characters when providing prompts; " +
+                "literal newlines may be interpreted by the shell."
         ),
         "launch_app": ToolOverride(
             category: .app,
             abstract: "Launch applications by name or bundle identifier with optional wait logic.",
             discussion: """
-Launches an application and optionally waits for it to become ready. You can pass either the display name or bundle identifier.
+Launches an application and optionally waits for it to become ready.
+You can pass either the display name or bundle identifier.
 
 EXAMPLE
 peekaboo launch_app --name \"Safari\"
 
 TROUBLESHOOTING
-If the app fails to launch, double-check the bundle identifier or try `peekaboo list apps` to confirm the exact name.
+If the app fails to launch, double-check the bundle identifier or try
+`peekaboo list apps` to confirm the exact name.
 """,
             examples: [
                 "peekaboo launch_app --name \"Simulator\"",
                 "peekaboo launch_app --bundle-id com.apple.Terminal --wait-until-ready"
             ],
-            agentGuidance: "After launching, follow up with `peekaboo window focus` to ensure the UI is ready for automation."
+            agentGuidance: "After launching, follow up with `peekaboo window focus` to ensure " +
+                "the UI is ready for automation."
         ),
         "shell": ToolOverride(
             category: .system,
             abstract: "Run shell commands with quoting guidance and examples.",
             discussion: """
-Runs shell commands directly from Peekaboo. Always quote your command when it contains spaces or shell metacharacters.
+Runs shell commands directly from Peekaboo. Always quote your command when it contains spaces
+or shell metacharacters.
 
 EXAMPLE
 peekaboo shell \"ls -la \\\"/Applications/Utilities\\\"\"
@@ -113,7 +124,8 @@ peekaboo shell --command 'bash -lc \"echo \\\"Hello\\\"\"'
                 "peekaboo shell \"open -a Safari\"",
                 "peekaboo shell --command 'bash -lc \"whoami\"'"
             ],
-            agentGuidance: "Use single quotes around the entire command and escape internal quotes when interacting via shells."
+            agentGuidance: "Use single quotes around the entire command and escape internal " +
+                "quotes when interacting via shells."
         )
     ]
 

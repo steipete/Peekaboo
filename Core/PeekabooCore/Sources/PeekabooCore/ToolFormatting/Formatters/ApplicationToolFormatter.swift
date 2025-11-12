@@ -25,71 +25,21 @@ public class ApplicationToolFormatter: BaseToolFormatter {
     }
 
     private func formatListAppsResult(_ result: [String: Any]) -> String {
-        var parts: [String] = []
+        let apps: [[String: Any]]? = ToolResultExtractor.array("apps", from: result)
+        let appCount = self.resolveAppCount(result: result, apps: apps)
+        var parts = ["→ \(appCount) apps running"]
 
-        // App count
-        var appCount = 0
-        if let count = ToolResultExtractor.int("count", from: result) {
-            appCount = count
-        } else if let apps: [[String: Any]] = ToolResultExtractor.array("apps", from: result) {
-            appCount = apps.count
-        }
-
-        parts.append("→ \(appCount) apps running")
-
-        // Categorize apps
-        if let apps: [[String: Any]] = ToolResultExtractor.array("apps", from: result) {
-            var categories: [String: Int] = [:]
-            var activeCount = 0
-            var hiddenCount = 0
-            var backgroundCount = 0
-
-            for app in apps {
-                // Count by category
-                if let category = app["category"] as? String {
-                    categories[category, default: 0] += 1
-                }
-
-                // Count by state
-                if let isActive = app["isActive"] as? Bool, isActive {
-                    activeCount += 1
-                }
-                if let isHidden = app["isHidden"] as? Bool, isHidden {
-                    hiddenCount += 1
-                }
-                if let isBackground = app["isBackground"] as? Bool, isBackground {
-                    backgroundCount += 1
-                }
+        if let apps {
+            if let stateSummary = self.stateSummary(forApps: apps) {
+                parts.append(stateSummary)
             }
 
-            // Add state summary
-            var states: [String] = []
-            if activeCount > 0 {
-                states.append("\(activeCount) active")
-            }
-            if hiddenCount > 0 {
-                states.append("\(hiddenCount) hidden")
-            }
-            if backgroundCount > 0 {
-                states.append("\(backgroundCount) background")
+            if let categorySummary = self.categorySummary(forApps: apps) {
+                parts.append(categorySummary)
             }
 
-            if !states.isEmpty {
-                parts.append("[\(states.joined(separator: ", "))]")
-            }
-
-            // Add top categories
-            if !categories.isEmpty {
-                let topCategories = categories.sorted { $0.value > $1.value }.prefix(3)
-                let categoryList = topCategories.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
-                parts.append("Categories: \(categoryList)")
-            }
-
-            // Memory usage summary
-            let totalMemory = apps.compactMap { $0["memoryUsage"] as? Int }.reduce(0, +)
-            if totalMemory > 0 {
-                let memoryStr = self.formatMemorySize(totalMemory)
-                parts.append("Total memory: \(memoryStr)")
+            if let memorySummary = self.memorySummary(forApps: apps) {
+                parts.append(memorySummary)
             }
         }
 
@@ -184,69 +134,17 @@ public class ApplicationToolFormatter: BaseToolFormatter {
     }
 
     private func formatListWindowsResult(_ result: [String: Any]) -> String {
-        var parts: [String] = []
+        let windows: [[String: Any]]? = ToolResultExtractor.array("windows", from: result)
+        let windowCount = self.resolveWindowCount(result: result, windows: windows)
+        var parts = [self.windowCountSummary(count: windowCount, result: result)]
 
-        // Window count
-        var windowCount = 0
-        if let count = ToolResultExtractor.int("count", from: result) {
-            windowCount = count
-        } else if let windows: [[String: Any]] = ToolResultExtractor.array("windows", from: result) {
-            windowCount = windows.count
-        }
-
-        // App context
-        if let app = ToolResultExtractor.string("app", from: result) {
-            parts.append("→ \(windowCount) window\(windowCount == 1 ? "" : "s") for \(app)")
-        } else {
-            parts.append("→ \(windowCount) window\(windowCount == 1 ? "" : "s")")
-        }
-
-        // Window details
-        if let windows: [[String: Any]] = ToolResultExtractor.array("windows", from: result) {
-            var visibleCount = 0
-            var minimizedCount = 0
-            var fullscreenCount = 0
-
-            for window in windows {
-                if let isVisible = window["isVisible"] as? Bool, isVisible {
-                    visibleCount += 1
-                }
-                if let isMinimized = window["isMinimized"] as? Bool, isMinimized {
-                    minimizedCount += 1
-                }
-                if let isFullscreen = window["isFullscreen"] as? Bool, isFullscreen {
-                    fullscreenCount += 1
-                }
+        if let windows {
+            if let stateSummary = self.windowStateSummary(for: windows) {
+                parts.append(stateSummary)
             }
 
-            var states: [String] = []
-            if visibleCount > 0 {
-                states.append("\(visibleCount) visible")
-            }
-            if minimizedCount > 0 {
-                states.append("\(minimizedCount) minimized")
-            }
-            if fullscreenCount > 0 {
-                states.append("\(fullscreenCount) fullscreen")
-            }
-
-            if !states.isEmpty {
-                parts.append("[\(states.joined(separator: ", "))]")
-            }
-
-            // List window titles if few
-            if windowCount <= 3 {
-                let titles = windows.compactMap { window in
-                    (window["title"] as? String)?.isEmpty == false ? window["title"] as? String : nil
-                }.prefix(3)
-
-                if !titles.isEmpty {
-                    let titleList = titles.map { title in
-                        let truncated = title.count > 30 ? String(title.prefix(30)) + "..." : title
-                        return "\"\(truncated)\""
-                    }.joined(separator: ", ")
-                    parts.append(titleList)
-                }
+            if let titleSummary = self.windowTitleSummary(for: windows, count: windowCount) {
+                parts.append(titleSummary)
             }
         }
 
@@ -294,6 +192,130 @@ public class ApplicationToolFormatter: BaseToolFormatter {
     }
 
     // MARK: - Helper Methods
+
+    private func resolveAppCount(result: [String: Any], apps: [[String: Any]]?) -> Int {
+        if let count = ToolResultExtractor.int("count", from: result) {
+            return count
+        }
+
+        return apps?.count ?? 0
+    }
+
+    private func stateSummary(forApps apps: [[String: Any]]) -> String? {
+        var active = 0
+        var hidden = 0
+        var background = 0
+
+        for app in apps {
+            if let isActive = app["isActive"] as? Bool, isActive {
+                active += 1
+            }
+            if let isHidden = app["isHidden"] as? Bool, isHidden {
+                hidden += 1
+            }
+            if let isBackground = app["isBackground"] as? Bool, isBackground {
+                background += 1
+            }
+        }
+
+        var segments: [String] = []
+        if active > 0 {
+            segments.append("\(active) active")
+        }
+        if hidden > 0 {
+            segments.append("\(hidden) hidden")
+        }
+        if background > 0 {
+            segments.append("\(background) background")
+        }
+
+        guard !segments.isEmpty else { return nil }
+        return "[\(segments.joined(separator: ", "))]"
+    }
+
+    private func categorySummary(forApps apps: [[String: Any]]) -> String? {
+        var categories: [String: Int] = [:]
+        for app in apps {
+            if let category = app["category"] as? String {
+                categories[category, default: 0] += 1
+            }
+        }
+
+        guard !categories.isEmpty else { return nil }
+        let top = categories.sorted { $0.value > $1.value }.prefix(3)
+        let text = top.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
+        return "Categories: \(text)"
+    }
+
+    private func memorySummary(forApps apps: [[String: Any]]) -> String? {
+        let total = apps.compactMap { $0["memoryUsage"] as? Int }.reduce(0, +)
+        guard total > 0 else { return nil }
+        return "Total memory: \(self.formatMemorySize(total))"
+    }
+
+    private func resolveWindowCount(result: [String: Any], windows: [[String: Any]]?) -> Int {
+        if let count = ToolResultExtractor.int("count", from: result) {
+            return count
+        }
+        return windows?.count ?? 0
+    }
+
+    private func windowCountSummary(count: Int, result: [String: Any]) -> String {
+        let suffix = count == 1 ? "" : "s"
+        if let app = ToolResultExtractor.string("app", from: result) {
+            return "→ \(count) window\(suffix) for \(app)"
+        }
+
+        return "→ \(count) window\(suffix)"
+    }
+
+    private func windowStateSummary(for windows: [[String: Any]]) -> String? {
+        var visible = 0
+        var minimized = 0
+        var fullscreen = 0
+
+        for window in windows {
+            if let isVisible = window["isVisible"] as? Bool, isVisible {
+                visible += 1
+            }
+            if let isMinimized = window["isMinimized"] as? Bool, isMinimized {
+                minimized += 1
+            }
+            if let isFullscreen = window["isFullscreen"] as? Bool, isFullscreen {
+                fullscreen += 1
+            }
+        }
+
+        var segments: [String] = []
+        if visible > 0 {
+            segments.append("\(visible) visible")
+        }
+        if minimized > 0 {
+            segments.append("\(minimized) minimized")
+        }
+        if fullscreen > 0 {
+            segments.append("\(fullscreen) fullscreen")
+        }
+
+        guard !segments.isEmpty else { return nil }
+        return "[\(segments.joined(separator: ", "))]"
+    }
+
+    private func windowTitleSummary(for windows: [[String: Any]], count: Int) -> String? {
+        guard count <= 3 else { return nil }
+        let titles = windows.compactMap { window -> String? in
+            guard let title = window["title"] as? String, !title.isEmpty else { return nil }
+            return title
+        }.prefix(3)
+
+        guard !titles.isEmpty else { return nil }
+        let formatted = titles.map { title -> String in
+            let truncated = title.count > 30 ? String(title.prefix(30)) + "..." : title
+            return "\"\(truncated)\""
+        }.joined(separator: ", ")
+
+        return formatted
+    }
 
     private func formatMemorySize(_ bytes: Int) -> String {
         let formatter = ByteCountFormatter()
