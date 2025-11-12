@@ -20,7 +20,9 @@ func matchRoleAttribute(
         ))
     }
     return compareStrings(
-        actual, expectedValue, matchType,
+        actual,
+        expectedValue,
+        matchType,
         caseSensitive: false,
         attributeName: AXAttributeNames.kAXRoleAttribute,
         elementDescriptionForLog: elementDescriptionForLog
@@ -37,7 +39,9 @@ func matchSubroleAttribute(
     let actual = element.subrole()
     GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: "SC/MSC/Subrole: Actual='\(actual ?? "nil")'"))
     return compareStrings(
-        actual, expectedValue, matchType,
+        actual,
+        expectedValue,
+        matchType,
         caseSensitive: false,
         attributeName: AXAttributeNames.kAXSubroleAttribute,
         elementDescriptionForLog: elementDescriptionForLog
@@ -54,7 +58,9 @@ func matchIdentifierAttribute(
     let actual = element.identifier()
     GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: "SC/MSC/ID: Actual='\(actual ?? "nil")'"))
     return compareStrings(
-        actual, expectedValue, matchType,
+        actual,
+        expectedValue,
+        matchType,
         caseSensitive: true,
         attributeName: AXAttributeNames.kAXIdentifierAttribute,
         elementDescriptionForLog: elementDescriptionForLog
@@ -132,7 +138,9 @@ func matchComputedNameAttributes(
         if let value = element.value() as? String {
             let combinedName = (computedName ?? "") + " " + value
             return compareStrings(
-                combinedName, expectedValue, matchType,
+                combinedName,
+                expectedValue,
+                matchType,
                 attributeName: attributeName,
                 elementDescriptionForLog: elementDescriptionForLog
             )
@@ -140,7 +148,9 @@ func matchComputedNameAttributes(
     }
 
     return compareStrings(
-        computedName, expectedValue, matchType,
+        computedName,
+        expectedValue,
+        matchType,
         attributeName: attributeName,
         elementDescriptionForLog: elementDescriptionForLog
     )

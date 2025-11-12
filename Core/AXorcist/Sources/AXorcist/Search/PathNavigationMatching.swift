@@ -3,6 +3,12 @@
 import ApplicationServices
 import Foundation
 
+private let smartValueFormat: ValueFormatOption = .smart
+
+private func logPathNavigation(_ level: AXLogLevel, _ message: String) {
+    GlobalAXLogger.shared.log(AXLogEntry(level: level, message: message))
+}
+
 // MARK: - Element Matching
 
 // New helper to check if an element matches all given criteria
@@ -12,70 +18,144 @@ func elementMatchesAllCriteria(
     criteria: [String: String],
     forPathComponent pathComponentForLog: String // For logging
 ) -> Bool {
-    let elementDescriptionForLog = element.briefDescription(option: ValueFormatOption.smart)
-    GlobalAXLogger.shared.log(AXLogEntry(
-        level: .info,
-        message: "PN/EMAC_START: Checking element [\(elementDescriptionForLog)] for component [\(pathComponentForLog)]. Criteria: \(criteria)"
-    ))
+    let elementDescription = element.briefDescription(option: smartValueFormat)
+    logCriteriaEvaluationStart(
+        elementDescription: elementDescription,
+        component: pathComponentForLog,
+        criteria: criteria
+    )
 
     if criteria.isEmpty {
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "PN/EMAC: Criteria empty for component [\(pathComponentForLog)]. " +
-                "Element [\(elementDescriptionForLog)] considered a match by default."
-        ))
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .info,
-            message: "PN/EMAC_END: Element [\(elementDescriptionForLog)] MATCHED (empty criteria) for component [\(pathComponentForLog)]."
-        ))
+        logEmptyCriteriaMatch(elementDescription: elementDescription, component: pathComponentForLog)
         return true
     }
 
     for (key, expectedValue) in criteria {
-        let matchTypeForKey: JSONPathHintComponent
-            .MatchType = (key.lowercased() == AXAttributeNames.kAXDOMClassListAttribute.lowercased()) ? .contains :
-            .exact
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "PN/EMAC_CRITERION: Checking criterion '\(key): \(expectedValue)' " +
-                "(matchType: \(matchTypeForKey.rawValue)) on element [\(elementDescriptionForLog)] " +
-                "for component [\(pathComponentForLog)]."
-        ))
+        let matchType = matchTypeForCriterionKey(key)
+        logCriterionCheck(
+            key: key,
+            expectedValue: expectedValue,
+            matchType: matchType,
+            elementDescription: elementDescription,
+            component: pathComponentForLog
+        )
 
-        let criterionDidMatch = matchSingleCriterion(
+        let didMatch = criterionMatches(
             element: element,
             key: key,
             expectedValue: expectedValue,
-            matchType: matchTypeForKey,
-            elementDescriptionForLog: elementDescriptionForLog
+            matchType: matchType,
+            component: pathComponentForLog
         )
-        let message =
-            "PN/EMAC_CRITERION_RESULT: Criterion '\(key): \(expectedValue)' on [\(elementDescriptionForLog)] for [\(pathComponentForLog)]: \(criterionDidMatch ? "MATCHED" : "FAILED")"
-        GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: message))
 
-        if !criterionDidMatch {
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "PN/EMAC: Element [\(elementDescriptionForLog)] FAILED to match criterion '\(key): \(expectedValue)' " +
-                    "for component [\(pathComponentForLog)]."
-            ))
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .info,
-                message: "PN/EMAC_END: Element [\(elementDescriptionForLog)] FAILED for component [\(pathComponentForLog)]."
-            ))
+        if !didMatch {
+            logCriterionFailure(
+                key: key,
+                expectedValue: expectedValue,
+                elementDescription: elementDescription,
+                component: pathComponentForLog
+            )
             return false
         }
     }
 
-    GlobalAXLogger.shared.log(AXLogEntry(
-        level: .debug,
-        message: "PN/EMAC: Element [\(elementDescriptionForLog)] successfully MATCHED ALL criteria for component [\(pathComponentForLog)]."
-    ))
-    GlobalAXLogger.shared.log(AXLogEntry(
-        level: .info,
-        message: "PN/EMAC_END: Element [\(elementDescriptionForLog)] MATCHED ALL criteria for component [\(pathComponentForLog)]."
-    ))
+    logCriteriaSuccess(elementDescription: elementDescription, component: pathComponentForLog)
     return true
+}
+
+private func logCriteriaEvaluationStart(
+    elementDescription: String,
+    component: String,
+    criteria: [String: String]
+) {
+    let message = "PN/EMAC_START: Checking element [\(elementDescription)] for component [\(component)]. "
+        + "Criteria: \(criteria)"
+    logPathNavigation(.info, message)
+}
+
+private func logEmptyCriteriaMatch(elementDescription: String, component: String) {
+    let debugMessage = "PN/EMAC: Criteria empty for component [\(component)]. "
+        + "Element [\(elementDescription)] considered a match by default."
+    logPathNavigation(.debug, debugMessage)
+    let infoMessage = "PN/EMAC_END: Element [\(elementDescription)] MATCHED (empty criteria) "
+        + "for component [\(component)]."
+    logPathNavigation(.info, infoMessage)
+}
+
+private func matchTypeForCriterionKey(_ key: String) -> JSONPathHintComponent.MatchType {
+    let domClassAttribute = AXAttributeNames.kAXDOMClassListAttribute.lowercased()
+    return key.lowercased() == domClassAttribute ? .contains : .exact
+}
+
+private func logCriterionCheck(
+    key: String,
+    expectedValue: String,
+    matchType: JSONPathHintComponent.MatchType,
+    elementDescription: String,
+    component: String
+) {
+    let message = "PN/EMAC_CRITERION: Checking criterion '\(key): \(expectedValue)' (matchType: \(matchType.rawValue)) "
+        + "on element [\(elementDescription)] for component [\(component)]."
+    logPathNavigation(.debug, message)
+}
+
+private func criterionMatches(
+    element: Element,
+    key: String,
+    expectedValue: String,
+    matchType: JSONPathHintComponent.MatchType,
+    component: String
+) -> Bool {
+    let elementDescription = element.briefDescription(option: smartValueFormat)
+    let didMatch = matchSingleCriterion(
+        element: element,
+        key: key,
+        expectedValue: expectedValue,
+        matchType: matchType,
+        elementDescriptionForLog: elementDescription
+    )
+    logCriterionResult(
+        key: key,
+        expectedValue: expectedValue,
+        elementDescription: elementDescription,
+        component: component,
+        didMatch: didMatch
+    )
+    return didMatch
+}
+
+private func logCriterionResult(
+    key: String,
+    expectedValue: String,
+    elementDescription: String,
+    component: String,
+    didMatch: Bool
+) {
+    let status = didMatch ? "MATCHED" : "FAILED"
+    let message = "PN/EMAC_CRITERION_RESULT: Criterion '\(key): \(expectedValue)' on [\(elementDescription)] "
+        + "for [\(component)]: \(status)"
+    logPathNavigation(.debug, message)
+}
+
+private func logCriterionFailure(
+    key: String,
+    expectedValue: String,
+    elementDescription: String,
+    component: String
+) {
+    let debugMessage = "PN/EMAC: Element [\(elementDescription)] FAILED to match criterion '\(key): \(expectedValue)' "
+        + "for component [\(component)]."
+    logPathNavigation(.debug, debugMessage)
+    let infoMessage = "PN/EMAC_END: Element [\(elementDescription)] FAILED for component [\(component)]."
+    logPathNavigation(.info, infoMessage)
+}
+
+private func logCriteriaSuccess(elementDescription: String, component: String) {
+    let debugMessage = "PN/EMAC: Element [\(elementDescription)] successfully MATCHED ALL criteria for component "
+        + "[\(component)]."
+    logPathNavigation(.debug, debugMessage)
+    let infoMessage = "PN/EMAC_END: Element [\(elementDescription)] MATCHED ALL criteria for component [\(component)]."
+    logPathNavigation(.info, infoMessage)
 }
 
 @MainActor
@@ -88,27 +168,24 @@ func findMatchingChild(
         return nil
     }
 
-    GlobalAXLogger.shared.log(AXLogEntry(
-        level: .debug,
-        message: "PN/FMC: Searching for matching child among \(children.count) children of " +
-            "[\(parentElement.briefDescription(option: ValueFormatOption.smart))] for component [\(pathComponentForLog)]."
-    ))
+    let parentDescription = parentElement.briefDescription(option: smartValueFormat)
+    let searchMessage = "PN/FMC: Searching for matching child among \(children.count) children of "
+        + "[\(parentDescription)] for component [\(pathComponentForLog)]."
+    logPathNavigation(.debug, searchMessage)
 
     for (childIndex, child) in children.enumerated()
         where elementMatchesAllCriteria(child, criteria: criteriaToMatch, forPathComponent: pathComponentForLog)
     {
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .info,
-            message: "PN/FMC: Found matching child at index \(childIndex) for component [\(pathComponentForLog)]: " +
-                "[\(child.briefDescription(option: ValueFormatOption.smart))]."
-        ))
+        let childDescription = child.briefDescription(option: smartValueFormat)
+        let matchMessage = "PN/FMC: Found matching child at index \(childIndex) for component "
+            + "[\(pathComponentForLog)]: [\(childDescription)]."
+        logPathNavigation(.info, matchMessage)
         return child
     }
 
-    GlobalAXLogger.shared.log(AXLogEntry(
-        level: .debug,
-        message: "PN/FMC: No matching child found for component [\(pathComponentForLog)] among \(children.count) children."
-    ))
+    let failureMessage =
+        "PN/FMC: No matching child found for component [\(pathComponentForLog)] among \(children.count) children."
+    logPathNavigation(.debug, failureMessage)
     return nil
 }
 
@@ -119,10 +196,8 @@ func logNoMatchFound(
     criteriaToMatch: [String: String],
     currentPathSegmentForLog: String
 ) {
-    let currentElementDescForLog = currentElement.briefDescription(option: ValueFormatOption.smart)
-    GlobalAXLogger.shared.log(AXLogEntry(
-        level: .warning,
-        message: "Path component '\(pathComponentString)' with criteria \(criteriaToMatch) did not match any child " +
-            "or current element [\(currentElementDescForLog)]. Path so far: \(currentPathSegmentForLog)"
-    ))
+    let elementDescription = currentElement.briefDescription(option: smartValueFormat)
+    let message = "Path component '\(pathComponentString)' with criteria \(criteriaToMatch) did not match any child "
+        + "or current element [\(elementDescription)]. Path so far: \(currentPathSegmentForLog)"
+    logPathNavigation(.warning, message)
 }
