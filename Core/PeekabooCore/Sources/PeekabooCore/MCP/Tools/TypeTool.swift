@@ -25,7 +25,8 @@ public struct TypeTool: MCPTool {
                 "text": SchemaBuilder.string(
                     description: "The text to type. If not specified, can use special key flags instead."),
                 "on": SchemaBuilder.string(
-                    description: "Optional. Element ID to type into (from see command). If not specified, types at current focus."),
+                    description: "Optional. Element ID to type into (from see command). " +
+                        "If not specified, types at current focus."),
                 "session": SchemaBuilder.string(
                     description: "Optional. Session ID from see command. Uses latest session if not specified."),
                 "delay": SchemaBuilder.number(

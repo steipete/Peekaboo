@@ -29,7 +29,8 @@ public struct ScrollTool: MCPTool {
                     description: "Scroll direction: up (content moves up), down (content moves down), left, or right.",
                     enum: ["up", "down", "left", "right"]),
                 "on": SchemaBuilder.string(
-                    description: "Optional. Element ID to scroll on (from see command). If not specified, scrolls at current mouse position."),
+                    description: "Optional. Element ID to scroll on (from see command). " +
+                        "If not specified, scrolls at current mouse position."),
                 "session": SchemaBuilder.string(
                     description: "Optional. Session ID from see command. Uses latest session if not specified."),
                 "amount": SchemaBuilder.number(

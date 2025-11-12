@@ -26,7 +26,8 @@ public struct MoveTool: MCPTool {
         SchemaBuilder.object(
             properties: [
                 "to": SchemaBuilder.string(
-                    description: "Optional. Coordinates in format 'x,y' (e.g., '100,200') or 'center' to center on screen."),
+                    description: "Optional. Coordinates in format 'x,y' (e.g., '100,200') " +
+                        "or 'center' to center on screen."),
                 "coordinates": SchemaBuilder.string(
                     description: "Optional. Alias for 'to' - coordinates in format 'x,y' (e.g., '100,200')."),
                 "id": SchemaBuilder.string(

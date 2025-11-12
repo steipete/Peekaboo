@@ -40,7 +40,8 @@ public struct MenuTool: MCPTool {
                     """.trimmingCharacters(in: .whitespacesAndNewlines),
                     enum: ["list", "click", "click-extra", "list-all"]),
                 "app": SchemaBuilder.string(
-                    description: "Target application name, bundle ID, or process ID (required for list and click actions)"),
+                    description: "Target application name, bundle ID, or process ID " +
+                        "(required for list and click actions)"),
                 "path": SchemaBuilder.string(
                     description: "Menu path for nested items (e.g., 'File > Save As...' or 'Edit > Copy')"),
                 "item": SchemaBuilder.string(
