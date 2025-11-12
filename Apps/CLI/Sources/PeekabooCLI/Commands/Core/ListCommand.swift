@@ -463,7 +463,7 @@ extension ListCommand {
                 screen.isPrimary ? ScreenOutput.Summary.Highlight(
                     label: "Primary",
                     value: "\(screen.name) (Index \(index))",
-                    kind: ScreenOutput.Summary.Highlight.HighlightKind.primary
+                    kind: .primary
                 ) : nil
             }
             return ScreenOutput.Summary(
