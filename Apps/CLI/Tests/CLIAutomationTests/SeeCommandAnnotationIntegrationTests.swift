@@ -215,58 +215,61 @@ struct SeeCommandAnnotationIntegrationTests {
     static func makeSampleElements() -> DetectedElements {
         DetectedElements(
             buttons: [
-                DetectedElement(
+                Self.makeElement(
                     id: "B1",
                     type: .button,
                     label: "Save",
-                    value: nil,
-                    bounds: CGRect(x: 10, y: 10, width: 80, height: 30),
-                    isEnabled: true,
-                    isSelected: nil,
-                    attributes: [:]
+                    bounds: CGRect(x: 10, y: 10, width: 80, height: 30)
                 )
             ],
             textFields: [
-                DetectedElement(
+                Self.makeElement(
                     id: "T1",
                     type: .textField,
                     label: "Name",
                     value: "John",
-                    bounds: CGRect(x: 100, y: 10, width: 200, height: 30),
-                    isEnabled: true,
-                    isSelected: nil,
-                    attributes: [:]
+                    bounds: CGRect(x: 100, y: 10, width: 200, height: 30)
                 )
             ],
             links: [
-                DetectedElement(
+                Self.makeElement(
                     id: "L1",
                     type: .link,
                     label: "Click here",
-                    value: nil,
-                    bounds: CGRect(x: 10, y: 50, width: 100, height: 20),
-                    isEnabled: true,
-                    isSelected: nil,
-                    attributes: [:]
+                    bounds: CGRect(x: 10, y: 50, width: 100, height: 20)
                 )
             ],
             images: [],
             groups: [
-                DetectedElement(
+                Self.makeElement(
                     id: "G1",
                     type: .group,
-                    label: nil,
-                    value: nil,
-                    bounds: CGRect(x: 10, y: 80, width: 300, height: 200),
-                    isEnabled: true,
-                    isSelected: nil,
-                    attributes: [:]
+                    bounds: CGRect(x: 10, y: 80, width: 300, height: 200)
                 )
             ],
             sliders: [],
             checkboxes: [],
             menus: [],
             other: []
+        )
+    }
+
+    static func makeElement(
+        id: String,
+        type: ElementType,
+        label: String?,
+        value: String? = nil,
+        bounds: CGRect
+    ) -> DetectedElement {
+        DetectedElement(
+            id: id,
+            type: type,
+            label: label,
+            value: value,
+            bounds: bounds,
+            isEnabled: true,
+            isSelected: nil,
+            attributes: [:]
         )
     }
 }
