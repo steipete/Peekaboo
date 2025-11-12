@@ -37,7 +37,7 @@ public struct MCPAgentTool: MCPTool {
         - "Open TextEdit, write 'Hello World', and save the document"
 
         Requires OPENAI_API_KEY environment variable to be set.
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5 and anthropic/claude-sonnet-4.5
         """
     }
 
@@ -45,9 +45,14 @@ public struct MCPAgentTool: MCPTool {
         SchemaBuilder.object(
             properties: [
                 "task": SchemaBuilder.string(
-                    description: "Natural language description of the task to perform (optional when listing sessions)"),
+                    description: "Task to perform in natural language (omit when only listing sessions)"),
                 "model": SchemaBuilder.string(
-                    description: "OpenAI model to use (e.g., gpt-4-turbo, gpt-4o). Call `list_models` first to see available presets and their descriptions. Choose based on task requirements (e.g., 'FastChat' for quick responses, 'DeepAnalysis' for complex reasoning). If omitted, auto-selects first mode-compatible preset."),
+                    description: """
+                    OpenAI model to use (e.g., gpt-4-turbo, gpt-4o).
+                    Call `list_models` first to see available presets and descriptions.
+                    Choose 'FastChat' for quick responses, 'DeepAnalysis' for complex reasoning, etc.
+                    If omitted, the tool auto-selects the first mode-compatible preset.
+                    """),
                 "quiet": SchemaBuilder.boolean(
                     description: "Quiet mode - only show final result",
                     default: false),
@@ -79,146 +84,153 @@ public struct MCPAgentTool: MCPTool {
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
         let input = try arguments.decode(AgentInput.self)
-
         self.logger.info("AgentTool executing with task: \(input.task ?? "none"), listSessions: \(input.listSessions)")
 
-        // Handle listing sessions
         if input.listSessions {
-            do {
-                guard let agent = PeekabooServices.shared.agent as? PeekabooAgentService else {
-                    return ToolResponse.error("Agent service not available")
-                }
-                let sessions = try await agent.listSessions()
-                let sessionDescriptions = sessions.map { session in
-                    let dateFormatter = DateFormatter()
-                    dateFormatter.dateStyle = .medium
-                    dateFormatter.timeStyle = .short
-
-                    return "ID: \(session.id)\nCreated: \(dateFormatter.string(from: session.createdAt))\nUpdated: \(dateFormatter.string(from: session.lastAccessedAt))\nMessage Count: \(session.messageCount)"
-                }.joined(separator: "\n---\n")
-
-                let sessionsArray = sessions.map { session in
-                    let dateFormatter = ISO8601DateFormatter()
-                    return Value.object([
-                        "id": .string(session.id),
-                        "createdAt": .string(dateFormatter.string(from: session.createdAt)),
-                        "updatedAt": .string(dateFormatter.string(from: session.lastAccessedAt)),
-                        "messageCount": .string(String(session.messageCount)),
-                    ])
-                }
-
-                let meta = Value.object([
-                    "sessionCount": .string(String(sessions.count)),
-                    "sessions": .array(sessionsArray),
-                ])
-
-                return ToolResponse.text(
-                    "Available Sessions:\n\n\(sessionDescriptions)",
-                    meta: meta)
-            } catch {
-                self.logger.error("Failed to list sessions: \(error.localizedDescription)")
-                return ToolResponse.error("Failed to list sessions: \(error.localizedDescription)")
-            }
+            return try await self.listSessionsResponse()
         }
 
-        // Require task for execution
         guard let task = input.task else {
             return ToolResponse.error("Missing required parameter: task")
         }
 
         do {
-            guard let agent = PeekabooServices.shared.agent as? PeekabooAgentService else {
-                return ToolResponse.error("Agent service not available")
-            }
-
-            let result: AgentExecutionResult
-
-            // Handle resume scenarios
-            if let resumeSessionId = input.resumeSession {
-                // Resume specific session
-                result = try await agent.resumeSession(
-                    sessionId: resumeSessionId,
-                    model: parseModelString(input.model ?? "gpt-5"))
-            } else if input.resume {
-                // Resume most recent session - get latest session and resume it
-                let sessions = try await agent.listSessions()
-                guard let latestSession = sessions.first else {
-                    return ToolResponse.error("No sessions available to resume")
-                }
-
-                result = try await agent.resumeSession(
-                    sessionId: latestSession.id,
-                    model: parseModelString(input.model ?? "gpt-5"))
-            } else {
-                // Execute new task
-                if input.dryRun {
-                    // Use the dryRun version
-                    result = try await agent.executeTask(
-                        task,
-                        dryRun: true,
-                        eventDelegate: nil)
-                } else {
-                    // Use the full-featured version with session and model
-                    let sessionId = input.noCache ? nil : UUID().uuidString
-                    result = try await agent.executeTask(
-                        task,
-                        sessionId: sessionId,
-                        model: parseModelString(input.model ?? "gpt-5"),
-                        eventDelegate: nil)
-                }
-            }
-
-            // Format response based on verbosity level
-            if input.quiet {
-                return ToolResponse.text(result.content)
-            } else if input.verbose {
-                var metadata: [String: Value] = [:]
-                if let sessionId = result.sessionId {
-                    metadata["sessionId"] = .string(sessionId)
-                }
-                metadata["toolCallCount"] = .int(result.metadata.toolCallCount)
-                metadata["modelName"] = .string(result.metadata.modelName)
-
-                if let usage = result.usage {
-                    metadata["usage"] = .object([
-                        "inputTokens": .string(String(usage.inputTokens)),
-                        "outputTokens": .string(String(usage.outputTokens)),
-                        "totalTokens": .string(String(usage.totalTokens)),
-                    ])
-                }
-
-                return ToolResponse.text(
-                    result.content,
-                    meta: .object(metadata))
-            } else {
-                // Default output format
-                var output = result.content
-
-                if let sessionId = result.sessionId {
-                    output += "\n🆔 Session: \(sessionId)"
-                }
-
-                if let usage = result.usage {
-                    output += "\n📊 Tokens: \(usage.inputTokens) in, \(usage.outputTokens) out"
-                }
-
-                // Add more details if needed
-
-                var meta: [String: Value] = [:]
-                if let sessionId = result.sessionId {
-                    meta["sessionId"] = .string(sessionId)
-                }
-
-                return ToolResponse.text(
-                    output,
-                    meta: meta.isEmpty ? nil : .object(meta))
-            }
-
+            let result = try await self.runAgentTask(task: task, input: input)
+            return self.formatResult(result: result, input: input)
+        } catch let error as AgentToolError {
+            return ToolResponse.error(error.message)
         } catch {
             self.logger.error("Agent execution failed: \(error.localizedDescription)")
             return ToolResponse.error("Agent execution failed: \(error.localizedDescription)")
         }
     }
+
+    // MARK: - Execution Helpers
+
+    private func listSessionsResponse() async throws -> ToolResponse {
+        guard let agent = PeekabooServices.shared.agent as? PeekabooAgentService else {
+            throw AgentToolError("Agent service not available")
+        }
+
+        let sessions = try await agent.listSessions()
+        let summary = self.renderSessionSummaries(sessions)
+        let isoFormatter = ISO8601DateFormatter()
+        let sessionsArray = sessions.map { session in
+            Value.object([
+                "id": .string(session.id),
+                "createdAt": .string(isoFormatter.string(from: session.createdAt)),
+                "updatedAt": .string(isoFormatter.string(from: session.lastAccessedAt)),
+                "messageCount": .string(String(session.messageCount)),
+            ])
+        }
+
+        let meta = Value.object([
+            "sessionCount": .string(String(sessions.count)),
+            "sessions": .array(sessionsArray),
+        ])
+
+        return ToolResponse.text("Available Sessions:\n\n\(summary)", meta: meta)
+    }
+
+    private func renderSessionSummaries(_ sessions: [SessionSummary]) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        return sessions.map { session in
+            [
+                "ID: \(session.id)",
+                "Created: \(formatter.string(from: session.createdAt))",
+                "Updated: \(formatter.string(from: session.lastAccessedAt))",
+                "Message Count: \(session.messageCount)",
+            ].joined(separator: "\n")
+        }.joined(separator: "\n---\n")
+    }
+
+    @MainActor
+    private func runAgentTask(task: String, input: AgentInput) async throws -> AgentExecutionResult {
+        guard let agent = PeekabooServices.shared.agent as? PeekabooAgentService else {
+            throw AgentToolError("Agent service not available")
+        }
+
+        if let sessionId = input.resumeSession {
+            return try await agent.resumeSession(
+                sessionId: sessionId,
+                model: parseModelString(input.model ?? "gpt-5"))
+        }
+
+        if input.resume {
+            let sessions = try await agent.listSessions()
+            guard let latest = sessions.first else {
+                throw AgentToolError("No sessions available to resume")
+            }
+            return try await agent.resumeSession(
+                sessionId: latest.id,
+                model: parseModelString(input.model ?? "gpt-5"))
+        }
+
+        if input.dryRun {
+            return try await agent.executeTask(task, dryRun: true, eventDelegate: nil)
+        }
+
+        let sessionId = input.noCache ? nil : UUID().uuidString
+        return try await agent.executeTask(
+            task,
+            sessionId: sessionId,
+            model: parseModelString(input.model ?? "gpt-5"),
+            eventDelegate: nil)
+    }
+
+    private func formatResult(result: AgentExecutionResult, input: AgentInput) -> ToolResponse {
+        if input.quiet {
+            return ToolResponse.text(result.content)
+        }
+
+        if input.verbose {
+            return ToolResponse.text(result.content, meta: self.verboseMetadata(for: result))
+        }
+
+        var output = result.content
+        if let sessionId = result.sessionId {
+            output += "\n🆔 Session: \(sessionId)"
+        }
+        if !result.metadata.modelName.isEmpty {
+            output += "\n⚙️  Model: \(result.metadata.modelName)"
+        }
+        if result.metadata.toolCallCount > 0 {
+            output += "\n🛠️  Tool Calls: \(result.metadata.toolCallCount)"
+        }
+        if let usage = result.usage {
+            let tokensLine = "\n📊 Tokens — Input: \(usage.inputTokens), " +
+                "Output: \(usage.outputTokens), Total: \(usage.totalTokens)"
+            output += tokensLine
+        }
+
+        let meta = result.sessionId.map { Value.object(["sessionId": .string($0)]) }
+        return ToolResponse.text(output, meta: meta)
+    }
+
+    private func verboseMetadata(for result: AgentExecutionResult) -> Value {
+        var metadata: [String: Value] = [
+            "toolCallCount": .int(result.metadata.toolCallCount),
+            "modelName": .string(result.metadata.modelName),
+        ]
+
+        if let sessionId = result.sessionId {
+            metadata["sessionId"] = .string(sessionId)
+        }
+
+        if let usage = result.usage {
+            metadata["usage"] = .object([
+                "inputTokens": .string(String(usage.inputTokens)),
+                "outputTokens": .string(String(usage.outputTokens)),
+                "totalTokens": .string(String(usage.totalTokens)),
+            ])
+        }
+
+        return .object(metadata)
+    }
+
 }
 
 // MARK: - Supporting Types
@@ -265,4 +277,9 @@ struct AgentInput: Codable {
 private func parseModelString(_ modelString: String) -> LanguageModel {
     // Parse a model string into a LanguageModel enum
     LanguageModel.parse(from: modelString) ?? .anthropic(.opus4)
+}
+
+private struct AgentToolError: Error {
+    let message: String
+    init(_ message: String) { self.message = message }
 }

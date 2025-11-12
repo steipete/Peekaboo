@@ -15,13 +15,14 @@ public struct AnalyzeTool: MCPTool {
         """
         Analyzes a pre-existing image file from the local filesystem using a configured AI model.
 
-        This tool is useful when an image already exists (e.g., previously captured, downloaded, or generated) and you
-        need to understand its content, extract text, or answer specific questions about it.
+        This tool is useful when an image already exists (e.g., previously captured, downloaded, or generated)
+        and you need to understand its content, extract text, or answer specific questions about it.
 
         Capabilities:
         - Image Understanding: Provide any question about the image (e.g., "What objects are in this picture?",
           "Describe the scene.", "Is there a red car?").
-        - Text Extraction (OCR): Ask the AI to extract text from the image (e.g., "What text is visible in this screenshot?").
+        - Text Extraction (OCR): Ask the AI to extract text from the image
+          (e.g., "What text is visible in this screenshot?").
         - Flexible AI Configuration: Can use server-default AI providers/models or specify a particular one per call
           via 'provider_config'.
 
@@ -29,6 +30,7 @@ public struct AnalyzeTool: MCPTool {
         If you have an image '/tmp/chart.png' showing a bar chart, you could ask:
         { "image_path": "/tmp/chart.png", "question": "Which category has the highest value in this bar chart?" }
         The AI will analyze the image and attempt to answer your question based on its visual content.
+
         Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
         """
     }
@@ -43,13 +45,13 @@ public struct AnalyzeTool: MCPTool {
                 "provider_config": SchemaBuilder.object(
                     properties: [
                         "type": SchemaBuilder.string(
-                            description: "AI provider, default: auto. 'auto' uses server's PEEKABOO_AI_PROVIDERS environment preference.",
+                            description: "AI provider, default: auto. 'auto' uses server's",
                             enum: ["auto", "ollama", "openai", "anthropic", "grok"],
                             default: "auto"),
                         "model": SchemaBuilder.string(
-                            description: "Optional. Model name. If omitted, uses model from server's PEEKABOO_AI_PROVIDERS."),
+                            description: "Optional. Model name. If omitted, uses server defaults."),
                     ],
-                    description: "Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS."),
+                    description: "Optional provider/model. Validated against server defaults."),
             ],
             required: ["question"])
     }
@@ -102,7 +104,11 @@ public struct AnalyzeTool: MCPTool {
             let duration = Date().timeIntervalSince(startTime)
             self.logger.info("Analysis completed in \(String(format: "%.2f", duration))s")
 
-            let timingMessage = "\n\n👻 Peekaboo: Analyzed image with \(providerType ?? "unknown")/\(modelName) in \(String(format: "%.2f", duration))s."
+            let timingMessage = [
+                "",
+                "👻 Peekaboo: Analyzed image with \(providerType ?? "unknown")/\(modelName)",
+                "in \(String(format: "%.2f", duration))s."
+            ].joined(separator: " ")
 
             return ToolResponse(
                 content: [

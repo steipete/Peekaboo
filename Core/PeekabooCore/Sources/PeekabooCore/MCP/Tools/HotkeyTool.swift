@@ -22,7 +22,12 @@ public struct HotkeyTool: MCPTool {
         SchemaBuilder.object(
             properties: [
                 "keys": SchemaBuilder.string(
-                    description: "Comma-separated list of keys to press (e.g., 'cmd,c' for copy, 'cmd,shift,t' for reopen tab). Supported keys: cmd, shift, alt/option, ctrl, fn, a-z, 0-9, space, return, tab, escape, delete, arrow_up, arrow_down, arrow_left, arrow_right, f1-f12."),
+                    description: """
+                    Comma-separated list of keys to press (e.g., 'cmd,c' for copy,
+                    'cmd,shift,t' for reopen tab). Supported keys: cmd, shift,
+                    alt/option, ctrl, fn, a-z, 0-9, space, return, tab, escape,
+                    delete, arrow_up, arrow_down, arrow_left, arrow_right, f1-f12.
+                    """),
                 "hold_duration": SchemaBuilder.number(
                     description: "Optional. Delay between key press and release in milliseconds. Default: 50.",
                     minimum: 0,
@@ -72,7 +77,9 @@ public struct HotkeyTool: MCPTool {
             let keyArray = keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             let formattedKeys = keyArray.joined(separator: "+")
 
-            let message = "\(AgentDisplayTokens.Status.success) Pressed \(formattedKeys) (held for \(holdDurationMs)ms) in \(String(format: "%.2f", executionTime))s"
+            let durationText = String(format: "%.2f", executionTime)
+            let message = "\(AgentDisplayTokens.Status.success) Pressed \(formattedKeys) " +
+                "(held for \(holdDurationMs)ms) in \(durationText)s"
 
             return ToolResponse(
                 content: [.text(message)],

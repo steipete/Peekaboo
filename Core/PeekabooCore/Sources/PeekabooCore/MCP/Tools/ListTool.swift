@@ -7,21 +7,17 @@ import TachikomaMCP
 public struct ListTool: MCPTool {
     public let name = "list"
     public let description = """
-    Lists various system items on macOS, providing situational awareness.
+    Lists system information so agents know what is running.
 
     Capabilities:
-    - Running Applications: Get a list of all currently running applications (names and bundle IDs).
-    - Application Windows: For a specific application (identified by name or bundle ID), list its open windows.
-      - Details: Optionally include window IDs, bounds (position and size), and whether a window is off-screen.
-      - Multi-window apps: Clearly lists each window of the target app.
-    - Server Status: Provides information about the Peekaboo MCP server itself (version, configured AI providers).
+    - Running applications: enumerate names, bundle IDs, and PIDs.
+    - Application windows: list titles for a target app and optionally include IDs, bounds, and off-screen hints.
+    - Server status: report Peekaboo MCP version, permissions, and configured AI providers.
 
-    Use Cases:
-    - Agent needs to know if 'Photoshop' is running before attempting to automate it.
-      { "item_type": "running_applications" } // Agent checks if 'Photoshop' is in the list.
-    - Agent wants to find a specific 'Notes' window to capture.
-      { "item_type": "application_windows", "app": "Notes", "include_window_details": ["ids", "bounds"] }
-      The agent can then use the window title or ID with the 'image' tool.
+    Example queries:
+    - { "item_type": "running_applications" }
+    - { "item_type": "application_windows", "app": "Notes", "include_window_details": ["ids", "bounds"] }
+    - { "item_type": "server_status" }
     Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
     """
 
@@ -29,14 +25,28 @@ public struct ListTool: MCPTool {
         SchemaBuilder.object(
             properties: [
                 "item_type": SchemaBuilder.string(
-                    description: "Specifies the type of items to list. If omitted or empty, it defaults to 'application_windows' if 'app' is provided, otherwise 'running_applications'. Valid options are:\n- `running_applications`: Lists all currently running applications.\n- `application_windows`: Lists open windows for a specific application. Requires the `app` parameter.\n- `server_status`: Returns information about the Peekaboo MCP server.",
-                    enum: ["running_applications", "application_windows", "server_status"]),
+                    description: """
+                    Controls what is listed. Defaults to:
+                    - application_windows when `app` is provided
+                    - running_applications otherwise
+
+                    Valid values:
+                    - running_applications
+                    - application_windows
+                    - server_status
+                    """,
+                    enum: ListItemType.allCases.map(\.rawValue)),
                 "app": SchemaBuilder.string(
-                    description: "Required when `item_type` is `application_windows`. Specifies the target application by its name (e.g., \"Safari\", \"TextEdit\"), bundle ID, or process ID (e.g., \"PID:663\"). Fuzzy matching is used for names, so partial names may work."),
+                    description: """
+                    Target application when listing windows. Accepts app name,
+                    bundle ID, or PID (e.g., PID:663). Partial names are fuzzy matched.
+                    """),
                 "include_window_details": SchemaBuilder.array(
-                    items: SchemaBuilder.string(
-                        enum: ["off_screen", "bounds", "ids"]),
-                    description: "Optional, only applicable when `item_type` is `application_windows`. Specifies additional details to include for each window. Provide an array of strings. Example: [\"bounds\", \"ids\"].\n- `ids`: Include window ID.\n- `bounds`: Include window position and size (x, y, width, height).\n- `off_screen`: Indicate if the window is currently off-screen."),
+                    items: SchemaBuilder.string(enum: WindowDetail.allCases.map(\.rawValue)),
+                    description: """
+                    Extra data for each window (application_windows only).
+                    Choose any combination of `ids`, `bounds`, or `off_screen`.
+                    """),
             ],
             required: [])
     }
@@ -45,38 +55,18 @@ public struct ListTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        // Determine item type
-        let itemTypeString = arguments.getString("item_type")
-        let app = arguments.getString("app")
-        let includeWindowDetails = arguments.getStringArray("include_window_details")
-
-        // Determine effective item type
-        let effectiveItemType: ItemType = if let typeStr = itemTypeString {
-            switch typeStr {
-            case "running_applications":
-                .runningApplications
-            case "application_windows":
-                .applicationWindows
-            case "server_status":
-                .serverStatus
-            default:
-                app != nil ? .applicationWindows : .runningApplications
-            }
-        } else {
-            app != nil ? .applicationWindows : .runningApplications
+        let request: ListRequest
+        do {
+            request = try ListRequest(arguments: arguments)
+        } catch let error as ListInputError {
+            return ToolResponse.error(error.message)
         }
 
-        // Validate parameters
-        if effectiveItemType == .applicationWindows, app == nil {
-            return ToolResponse.error("For 'application_windows', 'app' identifier is required.")
-        }
-
-        // Execute based on type
-        switch effectiveItemType {
+        switch request.itemType {
         case .runningApplications:
             return try await self.listRunningApplications()
         case .applicationWindows:
-            return try await self.listApplicationWindows(app: app!, includeDetails: includeWindowDetails)
+            return try await self.listApplicationWindows(request: request)
         case .serverStatus:
             return await self.getServerStatus()
         }
@@ -85,74 +75,51 @@ public struct ListTool: MCPTool {
     private func listRunningApplications() async throws -> ToolResponse {
         do {
             let output = try await PeekabooServices.shared.applications.listApplications()
-
             let apps = output.data.applications
-            var summary = "Found \(apps.count) running application\(apps.count != 1 ? "s" : ""):\n\n"
+            var lines: [String] = []
+            let countSuffix = apps.count == 1 ? "" : "s"
+            let appCountLine =
+                "\(AgentDisplayTokens.Status.success) Found \(apps.count) running application\(countSuffix):"
+            lines.append(appCountLine)
+            lines.append("")
 
             for (index, app) in apps.enumerated() {
-                summary += "\(index + 1). \(app.name)"
+                var entry = "\(index + 1). \(app.name)"
                 if let bundleID = app.bundleIdentifier, !bundleID.isEmpty {
-                    summary += " (\(bundleID))"
+                    entry += " (\(bundleID))"
                 }
-                summary += " - PID: \(app.processIdentifier)"
+                entry += " - PID: \(app.processIdentifier)"
                 if app.isActive {
-                    summary += " [ACTIVE]"
+                    entry += " [ACTIVE]"
                 }
-                summary += " - Windows: \(app.windowCount)\n"
+                entry += " - Windows: \(app.windowCount)"
+                lines.append(entry)
             }
 
-            return ToolResponse.text(summary)
+            if let activeApp = apps.first(where: { $0.isActive }) {
+                var activeLine = "\nActive application: \(activeApp.name)"
+                if let bundleID = activeApp.bundleIdentifier {
+                    activeLine += " (\(bundleID))"
+                }
+                lines.append(activeLine)
+            }
+
+            return ToolResponse.text(lines.joined(separator: "\n"))
         } catch {
             return ToolResponse.error("Failed to list applications: \(error.localizedDescription)")
         }
     }
 
-    private func listApplicationWindows(app: String, includeDetails: [String]?) async throws -> ToolResponse {
+    private func listApplicationWindows(request: ListRequest) async throws -> ToolResponse {
         do {
-            // Get windows for the app (the service handles identifier resolution)
-            let output = try await PeekabooServices.shared.applications.listWindows(for: app, timeout: nil)
-
-            let windows = output.data.windows
-            let appInfo = output.data.targetApplication
-
-            var summary: String
-            if let appInfo {
-                summary = "Found \(windows.count) window\(windows.count != 1 ? "s" : "") for application: \(appInfo.name)"
-
-                if let bundleID = appInfo.bundleIdentifier, !bundleID.isEmpty {
-                    summary += " (\(bundleID))"
-                }
-                summary += " - PID: \(appInfo.processIdentifier)\n\n"
-            } else {
-                summary = "Found \(windows.count) window\(windows.count != 1 ? "s" : "") for application: \(app)\n\n"
-            }
-
-            if !windows.isEmpty {
-                summary += "Windows:\n"
-                for (index, window) in windows.enumerated() {
-                    summary += "\(index + 1). \"\(window.title)\""
-
-                    // Add optional details
-                    if let details = includeDetails {
-                        if details.contains("ids"), window.windowID != 0 {
-                            summary += " [ID: \(window.windowID)]"
-                        }
-
-                        if details.contains("off_screen") {
-                            summary += window.isOffScreen ? " [OFF-SCREEN]" : " [ON-SCREEN]"
-                        }
-
-                        if details.contains("bounds") {
-                            let bounds = window.bounds
-                            summary += " [\(Int(bounds.origin.x)),\(Int(bounds.origin.y)) \(Int(bounds.width))×\(Int(bounds.height))]"
-                        }
-                    }
-
-                    summary += "\n"
-                }
-            }
-
-            return ToolResponse.text(summary)
+            let identifier = request.app ?? ""
+            let output = try await PeekabooServices.shared.applications.listWindows(for: identifier, timeout: nil)
+            let formatter = WindowListFormatter(
+                appInfo: output.data.targetApplication,
+                identifier: identifier,
+                windows: output.data.windows,
+                details: request.windowDetails)
+            return formatter.response()
         } catch {
             return ToolResponse.error("Failed to list windows: \(error.localizedDescription)")
         }
@@ -174,12 +141,15 @@ public struct ListTool: MCPTool {
         let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
         let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
 
-        sections
-            .append(
-                "- Screen Recording: \(screenRecording ? "\(AgentDisplayTokens.Status.success) Granted" : "\(AgentDisplayTokens.Status.failure) Not granted")")
-        sections
-            .append(
-                "- Accessibility: \(accessibility ? "\(AgentDisplayTokens.Status.success) Granted" : "\(AgentDisplayTokens.Status.failure) Not granted")")
+        let screenStatus = screenRecording
+            ? "\(AgentDisplayTokens.Status.success) Granted"
+            : "\(AgentDisplayTokens.Status.failure) Not granted"
+        let accessibilityStatus = accessibility
+            ? "\(AgentDisplayTokens.Status.success) Granted"
+            : "\(AgentDisplayTokens.Status.failure) Not granted"
+
+        sections.append("- Screen Recording: \(screenStatus)")
+        sections.append("- Accessibility: \(accessibilityStatus)")
         sections.append("")
 
         // 3. AI Provider Status
@@ -189,7 +159,7 @@ public struct ListTool: MCPTool {
             sections.append("Configured providers: \(providersString)")
         } else {
             sections.append("\(AgentDisplayTokens.Status.failure) No AI providers configured")
-            sections.append("Configure PEEKABOO_AI_PROVIDERS environment variable to enable image analysis")
+            sections.append("Set PEEKABOO_AI_PROVIDERS to enable image analysis features.")
         }
         sections.append("")
 
@@ -203,9 +173,8 @@ public struct ListTool: MCPTool {
         }
 
         if ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] == nil {
-            issues
-                .append(
-                    "\(AgentDisplayTokens.Status.warning)  No AI providers configured (analysis features will be limited)")
+            issues.append(
+                "\(AgentDisplayTokens.Status.warning) No AI providers configured (analysis features will be limited)")
         }
 
         if issues.isEmpty {
@@ -228,11 +197,129 @@ public struct ListTool: MCPTool {
     }
 }
 
-// Helper enum for item types
-private enum ItemType {
-    case runningApplications
-    case applicationWindows
-    case serverStatus
+private enum ListItemType: String, CaseIterable {
+    case runningApplications = "running_applications"
+    case applicationWindows = "application_windows"
+    case serverStatus = "server_status"
+}
+
+private enum WindowDetail: String, CaseIterable {
+    case ids
+    case bounds
+    case offScreen = "off_screen"
+}
+
+private enum ListInputError: Error {
+    case missingApp
+    case invalidDetail(String)
+
+    var message: String {
+        switch self {
+        case .missingApp:
+            return "For 'application_windows', the 'app' parameter is required."
+        case let .invalidDetail(value):
+            return "Unknown value in 'include_window_details': \(value)."
+        }
+    }
+}
+
+private struct ListRequest {
+    let itemType: ListItemType
+    let app: String?
+    let windowDetails: Set<WindowDetail>
+
+    init(arguments: ToolArguments) throws {
+        let app = arguments.getString("app")
+        self.app = app
+
+        if let typeString = arguments.getString("item_type"),
+           let type = ListItemType(rawValue: typeString)
+        {
+            self.itemType = type
+        } else {
+            self.itemType = app != nil ? .applicationWindows : .runningApplications
+        }
+
+        if self.itemType == .applicationWindows, app == nil {
+            throw ListInputError.missingApp
+        }
+
+        let rawDetails = arguments.getStringArray("include_window_details") ?? []
+        var parsed: Set<WindowDetail> = []
+        for raw in rawDetails {
+            guard let detail = WindowDetail(rawValue: raw) else {
+                throw ListInputError.invalidDetail(raw)
+            }
+            parsed.insert(detail)
+        }
+        self.windowDetails = parsed
+    }
+}
+
+private struct WindowListFormatter {
+    let appInfo: ServiceApplicationInfo?
+    let identifier: String
+    let windows: [ServiceWindowInfo]
+    let details: Set<WindowDetail>
+
+    func response() -> ToolResponse {
+        var lines = headerLines()
+        lines.append("")
+        lines.append(contentsOf: windowLines())
+        return ToolResponse.text(lines.joined(separator: "\n"))
+    }
+
+    private func headerLines() -> [String] {
+        var lines: [String] = []
+        let countLine =
+            "\(AgentDisplayTokens.Status.success) Found \(windows.count) window\(windows.count == 1 ? "" : "s")"
+        if let info = appInfo {
+            var line = countLine + " for \(info.name)"
+            if let bundleID = info.bundleIdentifier, !bundleID.isEmpty {
+                line += " (\(bundleID))"
+            }
+            line += " - PID: \(info.processIdentifier)"
+            lines.append(line)
+        } else {
+            lines.append(countLine + " for \(identifier)")
+        }
+        return lines
+    }
+
+    private func windowLines() -> [String] {
+        guard !windows.isEmpty else {
+            return ["No windows found"]
+        }
+
+        var lines: [String] = ["Windows:"]
+        for (index, window) in windows.enumerated() {
+            var entry = "\(index + 1). \"\(window.title)\""
+            let detailText = detailDescription(for: window)
+            if !detailText.isEmpty {
+                entry += " \(detailText)"
+            }
+            lines.append(entry)
+        }
+        return lines
+    }
+
+    private func detailDescription(for window: ServiceWindowInfo) -> String {
+        var parts: [String] = []
+        if details.contains(.ids), window.windowID != 0 {
+            parts.append("ID: \(window.windowID)")
+        }
+        if details.contains(.offScreen) {
+            parts.append(window.isOffScreen ? "OFF-SCREEN" : "ON-SCREEN")
+        }
+        if details.contains(.bounds) {
+            let bounds = window.bounds
+            let text = "Bounds: \(Int(bounds.origin.x)), \(Int(bounds.origin.y)) " +
+                "\(Int(bounds.width))×\(Int(bounds.height))"
+            parts.append(text)
+        }
+        guard !parts.isEmpty else { return "" }
+        return "[" + parts.joined(separator: ", ") + "]"
+    }
 }
 
 // Extension to get processor architecture

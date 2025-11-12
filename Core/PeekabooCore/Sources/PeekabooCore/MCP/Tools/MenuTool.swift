@@ -8,7 +8,8 @@ public struct MenuTool: MCPTool {
 
     public var description: String {
         """
-        Interact with application menu bars - list available menus and menu items for an application, or click on a specific menu item using path notation.
+        Interact with application menu bars - list available menus and menu items
+        for an application, or click on a specific menu item using path notation.
 
         Actions:
         - list: Discover all available menus and menu items for an application
@@ -17,13 +18,14 @@ public struct MenuTool: MCPTool {
         - click-extra: Click on a system menu extra (menu bar items)
 
         Target applications by name (e.g., "Safari"), bundle ID (e.g., "com.apple.Safari"),
-        or process ID (e.g., "PID:663"). Fuzzy matching is supported for application names.
+        or process ID (e.g., "PID:663"). Fuzzy matching is supported for names.
 
         Examples:
         - List Chrome menus: { "action": "list", "app": "Google Chrome" }
         - Save document: { "action": "click", "app": "TextEdit", "path": "File > Save" }
         - Copy selection: { "action": "click", "app": "Safari", "path": "Edit > Copy" }
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5
+        and anthropic/claude-sonnet-4.5
         """
     }
 
@@ -31,7 +33,11 @@ public struct MenuTool: MCPTool {
         SchemaBuilder.object(
             properties: [
                 "action": SchemaBuilder.string(
-                    description: "Action to perform: 'list' to discover menus, 'click' to interact with menu items, 'click-extra' for system menu extras, 'list-all' for all menus",
+                    description: """
+                    Action to perform. Use 'list' to discover menus, 'click' to
+                    interact with menu items, 'click-extra' for system menu extras,
+                    or 'list-all' for all menus.
+                    """.trimmingCharacters(in: .whitespacesAndNewlines),
                     enum: ["list", "click", "click-extra", "list-all"]),
                 "app": SchemaBuilder.string(
                     description: "Target application name, bundle ID, or process ID (required for list and click actions)"),
@@ -63,7 +69,8 @@ public struct MenuTool: MCPTool {
         case "click-extra":
             return try await self.handleClickExtraAction(arguments: arguments)
         default:
-            return ToolResponse.error("Invalid action: \(action). Must be one of: list, click, click-extra, list-all")
+            let errorMessage = "Invalid action: \(action). Must be one of: list, click, click-extra, list-all"
+            return ToolResponse.error(errorMessage)
         }
     }
 

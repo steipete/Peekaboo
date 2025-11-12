@@ -14,7 +14,8 @@ public struct DockTool: MCPTool {
         Interact with the macOS Dock - launch apps, show context menus, hide/show dock.
         Actions: launch, right-click (with menu selection), hide, show, list
         Can list all dock items including persistent and running applications.
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5
+        and anthropic/claude-sonnet-4.5
         """
     }
 
@@ -108,11 +109,11 @@ public struct DockTool: MCPTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
 
+        let duration = self.formatDuration(executionTime)
+        let message = "\(AgentDisplayTokens.Status.success) Launched \(app) from dock in \(duration)"
+
         return ToolResponse(
-            content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Launched \(app) from dock in \(String(format: "%.2f", executionTime))s"),
-            ],
+            content: [.text(message)],
             meta: .object([
                 "app_name": .string(app),
                 "execution_time": .double(executionTime),
@@ -137,7 +138,7 @@ public struct DockTool: MCPTool {
         if let menuItem {
             message += " and selected '\(menuItem)'"
         }
-        message += " in \(String(format: "%.2f", executionTime))s"
+        message += " in \(self.formatDuration(executionTime))"
 
         return ToolResponse(
             content: [.text(message)],
@@ -156,11 +157,11 @@ public struct DockTool: MCPTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
 
+        let duration = self.formatDuration(executionTime)
+        let message = "\(AgentDisplayTokens.Status.success) Hidden dock (enabled auto-hide) in \(duration)"
+
         return ToolResponse(
-            content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Hidden dock (enabled auto-hide) in \(String(format: "%.2f", executionTime))s"),
-            ],
+            content: [.text(message)],
             meta: .object([
                 "auto_hide_enabled": .bool(true),
                 "execution_time": .double(executionTime),
@@ -175,11 +176,11 @@ public struct DockTool: MCPTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
 
+        let duration = self.formatDuration(executionTime)
+        let message = "\(AgentDisplayTokens.Status.success) Shown dock (disabled auto-hide) in \(duration)"
+
         return ToolResponse(
-            content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Shown dock (disabled auto-hide) in \(String(format: "%.2f", executionTime))s"),
-            ],
+            content: [.text(message)],
             meta: .object([
                 "auto_hide_enabled": .bool(false),
                 "execution_time": .double(executionTime),
@@ -206,7 +207,14 @@ public struct DockTool: MCPTool {
         }.joined(separator: "\n")
 
         let filterText = includeAll ? "(including separators/spacers)" : "(applications and folders only)"
-        let message = "🚢 Dock Items \(filterText) (\(dockItems.count) total):\n\(itemList)\n\nCompleted in \(String(format: "%.2f", executionTime))s"
+        let duration = self.formatDuration(executionTime)
+        let message = """
+        🚢 Dock Items \(filterText) (\(dockItems.count) total):
+        \(itemList)
+
+        Completed in \(duration)
+        """
+        .trimmingCharacters(in: .whitespacesAndNewlines)
 
         return ToolResponse(
             content: [.text(message)],
@@ -232,5 +240,9 @@ public struct DockTool: MCPTool {
                 }),
                 "execution_time": .double(executionTime),
             ]))
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        String(format: "%.2f", duration) + "s"
     }
 }

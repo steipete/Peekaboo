@@ -62,70 +62,20 @@ public struct SpaceTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        guard let action = arguments.getString("action") else {
-            return ToolResponse.error("Missing required parameter: action")
-        }
-
-        let to = arguments.getNumber("to")
-        let appName = arguments.getString("app")
-        let windowTitle = arguments.getString("window_title")
-        let windowIndex = arguments.getInt("window_index")
-        let toCurrent = arguments.getBool("to_current") ?? false
-        let follow = arguments.getBool("follow") ?? false
-        let detailed = arguments.getBool("detailed") ?? false
-
         let spaceService = SpaceManagementService()
+        let parsedAction: SpaceAction
 
         do {
-            let startTime = Date()
+            parsedAction = try self.parseAction(arguments: arguments)
+        } catch let validationError as SpaceActionValidationError {
+            return ToolResponse.error(validationError.message)
+        }
 
-            switch action {
-            case "list":
-                return try await self.handleList(
-                    service: spaceService,
-                    detailed: detailed,
-                    startTime: startTime)
-
-            case "switch":
-                guard let spaceNumber = to else {
-                    return ToolResponse.error("Switch action requires 'to' parameter (space number)")
-                }
-                return try await self.handleSwitch(
-                    service: spaceService,
-                    spaceNumber: Int(spaceNumber),
-                    startTime: startTime)
-
-            case "move-window":
-                guard let appName else {
-                    return ToolResponse.error("Move-window action requires 'app' parameter")
-                }
-
-                if toCurrent, to != nil {
-                    return ToolResponse.error("Cannot specify both 'to_current' and 'to' parameters")
-                }
-
-                if !toCurrent, to == nil {
-                    return ToolResponse
-                        .error("Move-window action requires either 'to' (space number) or 'to_current' parameter")
-                }
-
-                return try await self.handleMoveWindow(
-                    service: spaceService,
-                    appName: appName,
-                    windowTitle: windowTitle,
-                    windowIndex: windowIndex,
-                    targetSpaceNumber: to != nil ? Int(to!) : nil,
-                    toCurrent: toCurrent,
-                    follow: follow,
-                    startTime: startTime)
-
-            default:
-                return ToolResponse.error("Unknown action: \(action). Supported actions: list, switch, move-window")
-            }
-
+        do {
+            return try await self.perform(action: parsedAction, service: spaceService, startTime: Date())
         } catch {
             self.logger.error("Space operation execution failed: \(error)")
-            return ToolResponse.error("Failed to \(action): \(error.localizedDescription)")
+            return ToolResponse.error("Failed to \(parsedAction.description): \(error.localizedDescription)")
         }
     }
 
@@ -167,7 +117,8 @@ public struct SpaceTool: MCPTool {
                     output += "  • Name: \(name)\n"
                 }
                 if !space.ownerPIDs.isEmpty {
-                    output += "  • Owner PIDs: \(space.ownerPIDs.map(String.init).joined(separator: ", "))\n"
+                    let owners = space.ownerPIDs.map(String.init).joined(separator: ", ")
+                    output += "  • Owner PIDs: \(owners)\n"
                 }
             } else {
                 output += "  • Type: \(space.type.rawValue)\n"
@@ -214,12 +165,10 @@ public struct SpaceTool: MCPTool {
         try await service.switchToSpace(targetSpace.id)
 
         let executionTime = Date().timeIntervalSince(startTime)
+        let message = self.successMessage("Switched to Space \(spaceNumber)", duration: executionTime)
 
         return ToolResponse(
-            content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Switched to Space \(spaceNumber) in \(String(format: "%.2f", executionTime))s"),
-            ],
+            content: [.text(message)],
             meta: .object([
                 "space_number": .double(Double(spaceNumber)),
                 "space_id": .double(Double(targetSpace.id)),
@@ -230,36 +179,36 @@ public struct SpaceTool: MCPTool {
     @MainActor
     private func handleMoveWindow(
         service: SpaceManagementService,
-        appName: String,
-        windowTitle: String?,
-        windowIndex: Int?,
-        targetSpaceNumber: Int?,
-        toCurrent: Bool,
-        follow: Bool,
+        request: MoveWindowRequest,
         startTime: Date) async throws -> ToolResponse
     {
         let windowService = PeekabooServices.shared.windows
 
         // Find the target window
-        let windowTarget = try createWindowTarget(app: appName, title: windowTitle, index: windowIndex)
+        let windowTarget = try self.createWindowTarget(
+            app: request.appName,
+            title: request.windowTitle,
+            index: request.windowIndex)
         let windows = try await windowService.listWindows(target: windowTarget)
 
         guard let windowInfo = windows.first else {
-            return ToolResponse.error("No matching window found for app '\(appName)'")
+            return ToolResponse.error("No matching window found for app '\(request.appName)'")
         }
 
         let windowID = UInt32(windowInfo.windowID)
 
-        if toCurrent {
+        if request.toCurrent {
             // Move to current space
             try service.moveWindowToCurrentSpace(windowID: windowID)
 
             let executionTime = Date().timeIntervalSince(startTime)
+            let message = self.successMessage(
+                "Moved window '\(windowInfo.title)' to current Space",
+                duration: executionTime)
 
             return ToolResponse(
                 content: [
-                    .text(
-                        "\(AgentDisplayTokens.Status.success) Moved window '\(windowInfo.title)' to current Space in \(String(format: "%.2f", executionTime))s"),
+                    .text(message),
                 ],
                 meta: .object([
                     "window_title": .string(windowInfo.title),
@@ -269,7 +218,7 @@ public struct SpaceTool: MCPTool {
                 ]))
         } else {
             // Move to specific space
-            guard let targetSpaceNumber else {
+            guard let targetSpaceNumber = request.targetSpaceNumber else {
                 return ToolResponse.error("Internal error: targetSpaceNumber is nil")
             }
 
@@ -284,30 +233,94 @@ public struct SpaceTool: MCPTool {
             try service.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
 
             // If follow is true, switch to the target space
-            if follow {
+            if request.follow {
                 try await service.switchToSpace(targetSpace.id)
             }
 
             let executionTime = Date().timeIntervalSince(startTime)
-            let followText = follow ? " and switched to Space \(targetSpaceNumber)" : ""
+            let followText = request.follow ? " and switched to Space \(targetSpaceNumber)" : ""
+            let body = "Moved window '\(windowInfo.title)' to Space \(targetSpaceNumber)\(followText)"
+            let message = self.successMessage(body, duration: executionTime)
 
             return ToolResponse(
-                content: [
-                    .text(
-                        "\(AgentDisplayTokens.Status.success) Moved window '\(windowInfo.title)' to Space \(targetSpaceNumber)\(followText) in \(String(format: "%.2f", executionTime))s"),
-                ],
+                content: [.text(message)],
                 meta: .object([
                     "window_title": .string(windowInfo.title),
                     "window_id": .double(Double(windowInfo.windowID)),
                     "target_space_number": .double(Double(targetSpaceNumber)),
                     "target_space_id": .double(Double(targetSpace.id)),
-                    "followed": .bool(follow),
+                    "followed": .bool(request.follow),
                     "execution_time": .double(executionTime),
                 ]))
         }
     }
 
     // MARK: - Helper Methods
+
+    private func perform(
+        action: SpaceAction,
+        service: SpaceManagementService,
+        startTime: Date) async throws -> ToolResponse
+    {
+        switch action {
+        case let .list(detailed):
+            return try await self.handleList(service: service, detailed: detailed, startTime: startTime)
+        case let .switchSpace(spaceNumber):
+            return try await self.handleSwitch(service: service, spaceNumber: spaceNumber, startTime: startTime)
+        case let .moveWindow(request):
+            return try await self.handleMoveWindow(service: service, request: request, startTime: startTime)
+        }
+    }
+
+    private func parseAction(arguments: ToolArguments) throws -> SpaceAction {
+        guard let actionName = arguments.getString("action") else {
+            throw SpaceActionValidationError("Missing required parameter: action")
+        }
+
+        switch actionName {
+        case "list":
+            let detailed = arguments.getBool("detailed") ?? false
+            return .list(detailed: detailed)
+        case "switch":
+            guard let spaceNumber = arguments.getNumber("to").map(Int.init) else {
+                throw SpaceActionValidationError("Switch action requires 'to' parameter (space number)")
+            }
+            return .switchSpace(spaceNumber: spaceNumber)
+        case "move-window":
+            return try self.parseMoveWindow(arguments: arguments)
+        default:
+            throw SpaceActionValidationError(
+                "Unknown action: \(actionName). Supported actions: list, switch, move-window")
+        }
+    }
+
+    private func parseMoveWindow(arguments: ToolArguments) throws -> SpaceAction {
+        guard let appName = arguments.getString("app") else {
+            throw SpaceActionValidationError("Move-window action requires 'app' parameter")
+        }
+
+        let toCurrent = arguments.getBool("to_current") ?? false
+        let targetSpace = arguments.getNumber("to").map(Int.init)
+
+        if toCurrent, targetSpace != nil {
+            throw SpaceActionValidationError("Cannot specify both 'to_current' and 'to' parameters")
+        }
+
+        if !toCurrent, targetSpace == nil {
+            throw SpaceActionValidationError(
+                "Move-window action requires either 'to' (space number) or 'to_current' parameter")
+        }
+
+        let request = MoveWindowRequest(
+            appName: appName,
+            windowTitle: arguments.getString("window_title"),
+            windowIndex: arguments.getInt("window_index"),
+            targetSpaceNumber: targetSpace,
+            toCurrent: toCurrent,
+            follow: arguments.getBool("follow") ?? false)
+
+        return .moveWindow(request)
+    }
 
     private func createWindowTarget(app: String, title: String?, index: Int?) throws -> WindowTarget {
         if let title {
@@ -320,4 +333,44 @@ public struct SpaceTool: MCPTool {
 
         return .application(app)
     }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        String(format: "%.2f", duration)
+    }
+
+    private func successMessage(_ body: String, duration: TimeInterval) -> String {
+        "\(AgentDisplayTokens.Status.success) \(body) in \(self.formatDuration(duration))s"
+    }
+}
+
+private enum SpaceAction {
+    case list(detailed: Bool)
+    case switchSpace(spaceNumber: Int)
+    case moveWindow(MoveWindowRequest)
+
+    var description: String {
+        switch self {
+        case .list:
+            return "list"
+        case .switchSpace:
+            return "switch"
+        case .moveWindow:
+            return "move-window"
+        }
+    }
+}
+
+private struct MoveWindowRequest {
+    let appName: String
+    let windowTitle: String?
+    let windowIndex: Int?
+    let targetSpaceNumber: Int?
+    let toCurrent: Bool
+    let follow: Bool
+}
+
+private struct SpaceActionValidationError: Error {
+    let message: String
+
+    init(_ message: String) { self.message = message }
 }

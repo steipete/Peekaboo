@@ -30,18 +30,21 @@ public struct PermissionsTool: MCPTool {
         var lines: [String] = []
         lines.append("macOS Permissions Status:")
         lines.append("")
-        lines
-            .append(
-                "Screen Recording: \(screenRecording ? "\(AgentDisplayTokens.Status.success) Granted" : "\(AgentDisplayTokens.Status.failure) Not Granted")")
-        lines
-            .append(
-                "Accessibility: \(accessibility ? "\(AgentDisplayTokens.Status.success) Granted" : "\(AgentDisplayTokens.Status.warning)  Not Granted (Optional)")")
+        let screenRecordingStatus = screenRecording
+            ? "\(AgentDisplayTokens.Status.success) Granted"
+            : "\(AgentDisplayTokens.Status.failure) Not Granted"
+        let accessibilityStatus = accessibility
+            ? "\(AgentDisplayTokens.Status.success) Granted"
+            : "\(AgentDisplayTokens.Status.warning) Not Granted (Optional)"
+
+        lines.append("Screen Recording: \(screenRecordingStatus)")
+        lines.append("Accessibility: \(accessibilityStatus)")
 
         if !screenRecording {
             lines.append("")
-            lines
-                .append(
-                    "\(AgentDisplayTokens.Status.warning)  Screen Recording permission is REQUIRED for capturing screenshots.")
+            let warning = "\(AgentDisplayTokens.Status.warning) Screen Recording permission is REQUIRED " +
+                "for capturing screenshots."
+            lines.append(warning)
             lines.append("Grant via: System Settings > Privacy & Security > Screen Recording")
         }
 
