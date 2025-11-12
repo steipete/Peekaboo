@@ -11,16 +11,16 @@ struct EndToEndTests {
     var agentService: PeekabooAgentService!
     var agent: PeekabooAgent!
 
-    mutating func setup() {
+    mutating func setup() throws {
         self.settings = PeekabooSettings()
         self.sessionStore = SessionStore()
-        self.agentService = try! PeekabooAgentService(services: .shared)
+        self.agentService = try PeekabooAgentService(services: .shared)
         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
     }
 
     @Test("Full agent execution flow", .enabled(if: !Test.isCI))
     mutating func fullAgentFlow() async throws {
-        self.setup()
+        try self.setup()
         // This test requires a valid API key, so skip in CI
         guard !self.settings.openAIAPIKey.isEmpty else {
             Issue.record("No API key configured - skipping test")
@@ -49,16 +49,16 @@ struct ErrorRecoveryTests {
     var agentService: PeekabooAgentService!
     var agent: PeekabooAgent!
 
-    mutating func setup() {
+    mutating func setup() throws {
         self.settings = PeekabooSettings()
         self.sessionStore = SessionStore()
-        self.agentService = try! PeekabooAgentService(services: .shared)
+        self.agentService = try PeekabooAgentService(services: .shared)
         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
     }
 
     @Test("Agent handles invalid API key gracefully")
-    mutating func invalidAPIKeyHandling() async {
-        self.setup()
+    mutating func invalidAPIKeyHandling() async throws {
+        try self.setup()
         self.settings.openAIAPIKey = "invalid-key"
 
         await #expect(throws: AgentError.serviceUnavailable) {
@@ -68,7 +68,7 @@ struct ErrorRecoveryTests {
 
     @Test("Session service handles corrupt data")
     mutating func corruptDataHandling() async throws {
-        self.setup()
+        try self.setup()
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let path = dir.appendingPathComponent("sessions.json")
@@ -104,16 +104,16 @@ struct ConcurrencyTests {
     var agentService: PeekabooAgentService!
     var agent: PeekabooAgent!
 
-    mutating func setup() {
+    mutating func setup() throws {
         self.settings = PeekabooSettings()
         self.sessionStore = SessionStore()
-        self.agentService = try! PeekabooAgentService(services: .shared)
+        self.agentService = try PeekabooAgentService(services: .shared)
         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
     }
 
     @Test("Multiple simultaneous agent executions")
     mutating func concurrentExecutions() async throws {
-        self.setup()
+        try self.setup()
         self.settings.openAIAPIKey = "test-key"
 
         // Start multiple tasks concurrently
@@ -129,8 +129,8 @@ struct ConcurrencyTests {
     }
 
     @Test("Session service thread safety")
-    mutating func sessionStoreThreadSafety() async {
-        self.setup()
+    mutating func sessionStoreThreadSafety() async throws {
+        try self.setup()
         let store = self.sessionStore!
         // Create sessions from multiple tasks
         await withTaskGroup(of: Void.self) { group in
