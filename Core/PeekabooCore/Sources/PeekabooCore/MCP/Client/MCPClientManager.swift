@@ -289,10 +289,8 @@ public final class MCPClientManager {
 
     /// Initialize default servers
     public func initializeDefaultServers(userConfigs: [String: MCPServerConfig]) async {
-        // Initialize default servers
         self.logger.info("Initializing default MCP servers...")
 
-        // Define default browser server configuration
         let defaultBrowserConfig = MCPServerConfig(
             transport: "stdio",
             command: "npx",
@@ -303,40 +301,70 @@ public final class MCPClientManager {
             autoReconnect: true,
             description: "Browser automation via BrowserMCP")
 
-        // Load user configs from ConfigurationManager if not provided
         let actualUserConfigs = userConfigs.isEmpty ?
             (ConfigurationManager.shared.getConfiguration()?.mcpClients ?? [:]) : userConfigs
 
-        // Check if user has explicitly configured the browser server
-        if let userBrowserConfig = actualUserConfigs["browser"] {
-            // User has configured it - respect their settings (including if disabled)
-            self.configs["browser"] = userBrowserConfig
-            let connection = MCPClientConnection(name: "browser", config: userBrowserConfig)
-            self.connections["browser"] = connection
+        await self.initializeBrowserServer(
+            userConfigs: actualUserConfigs,
+            defaultConfig: defaultBrowserConfig)
+        await self.initializeAdditionalServers(actualUserConfigs)
+    }
 
-            if userBrowserConfig.enabled {
-                do {
-                    try await connection.connect()
-                    self.logger.info("Initialized user-configured browser MCP server")
-                } catch {
-                    self.logger.error("Failed to connect to browser MCP server: \(error.localizedDescription)")
-                }
-            } else {
-                self.logger.info("Browser MCP server is disabled by user configuration")
-            }
-        } else {
-            // User hasn't configured it - add as default
-            self.configs["browser"] = defaultBrowserConfig
-            let connection = MCPClientConnection(name: "browser", config: defaultBrowserConfig)
-            self.connections["browser"] = connection
+    private func initializeBrowserServer(
+        userConfigs: [String: MCPServerConfig],
+        defaultConfig: MCPServerConfig) async
+    {
+        if let userBrowserConfig = userConfigs["browser"] {
+            await self.configureBrowserFromUserConfig(userBrowserConfig)
+            return
+        }
+
+        self.configs["browser"] = defaultConfig
+        let connection = MCPClientConnection(name: "browser", config: defaultConfig)
+        self.connections["browser"] = connection
+
+        do {
+            try await connection.connect()
+            self.logger.info("Initialized default browser MCP server")
+        } catch {
+            self.logger.error("Failed to connect to default browser MCP server: \\(error.localizedDescription)")
+        }
+    }
+
+    private func configureBrowserFromUserConfig(_ config: MCPServerConfig) async {
+        self.configs["browser"] = config
+        let connection = MCPClientConnection(name: "browser", config: config)
+        self.connections["browser"] = connection
+
+        guard config.enabled else {
+            self.logger.info("Browser MCP server is disabled by user configuration")
+            return
+        }
+
+        do {
+            try await connection.connect()
+            self.logger.info("Initialized user-configured browser MCP server")
+        } catch {
+            self.logger.error("Failed to connect to browser MCP server: \\(error.localizedDescription)")
+        }
+    }
+
+    private func initializeAdditionalServers(_ userConfigs: [String: MCPServerConfig]) async {
+        for (serverName, serverConfig) in userConfigs where serverName != "browser" {
+            self.configs[serverName] = serverConfig
+            let connection = MCPClientConnection(name: serverName, config: serverConfig)
+            self.connections[serverName] = connection
+
+            guard serverConfig.enabled else { continue }
 
             do {
                 try await connection.connect()
-                self.logger.info("Initialized default browser MCP server")
+                self.logger.info("Initialized user-configured server '\(serverName)'")
             } catch {
-                self.logger.error("Failed to connect to default browser MCP server: \(error.localizedDescription)")
+                self.logger.error("Failed to connect to '\(serverName)': \\(error.localizedDescription)")
             }
         }
+    }
 
         // Also add any other user-configured servers
         for (serverName, serverConfig) in actualUserConfigs {
