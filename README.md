@@ -56,6 +56,7 @@ Peekaboo uses a modern service-based architecture:
 - **CLI** - Command-line interface that uses PeekabooCore services directly
 - **Mac App** - Native macOS app with 100x+ performance improvement over CLI spawning
 - **MCP Server** - Model Context Protocol server for AI assistants
+- **Commander** (in-repo) - Lightweight Swift 6 parsing helpers used by the CLI runtime (swift-tools-version 6.0, no Swift 6.2+ features)
 
 All components share the same core services, ensuring consistent behavior and optimal performance. See [Service API Reference](docs/service-api-reference.md) for detailed documentation.
 
