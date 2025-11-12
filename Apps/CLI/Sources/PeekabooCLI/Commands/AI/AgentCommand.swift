@@ -215,6 +215,27 @@ struct AgentCommand: RuntimeOptionsConfigurable {
             return
         }
 
+        // Initialize services up front so we can handle lightweight commands without
+        // spinning up MCP infrastructure.
+        let services = runtime.services
+
+        guard let agentService = services.agent else {
+            self.emitAgentUnavailableMessage()
+            return
+        }
+
+        // Listing sessions is a metadata-only operation and shouldn't initialize MCP or
+        // require a configured provider. Handle it before any heavy setup.
+        if self.listSessions {
+            try await self.showSessions(agentService)
+            return
+        }
+
+        if !self.hasConfiguredAIProvider(configuration: services.configuration) {
+            self.emitAgentUnavailableMessage()
+            return
+        }
+
         // Initialize MCP clients first so agent has access to external tools
         // Only show MCP initialization in verbose mode
         let shouldSuppressMCPLogs = !self.verbose && !self.debugTerminal
@@ -253,32 +274,12 @@ struct AgentCommand: RuntimeOptionsConfigurable {
         // Initialize MCP from profile
         await TachikomaMCPClientManager.shared.initializeFromProfile()
 
-        // Initialize services
-        // Check if agent service is available
-        let services = runtime.services
-
-        if !self.hasConfiguredAIProvider(configuration: services.configuration) {
-            self.emitAgentUnavailableMessage()
-            return
-        }
-
-        guard let agentService = services.agent else {
-            self.emitAgentUnavailableMessage()
-            return
-        }
-
         if let peekabooAgent = agentService as? PeekabooAgentService {
             let hasCredential = await peekabooAgent.maskedApiKey != nil
             if !hasCredential {
                 self.emitAgentUnavailableMessage()
                 return
             }
-        }
-
-        // Handle list sessions
-        if self.listSessions {
-            try await self.showSessions(agentService)
-            return
         }
 
         // Handle resume with specific session ID
