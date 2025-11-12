@@ -1,5 +1,5 @@
-[submodule "Core/AXorcist"]
-	path = Core/AXorcist
+[submodule "AXorcist"]
+	path = AXorcist
 	url = https://github.com/steipete/AXorcist.git
 [submodule "Tachikoma"]
 	path = Tachikoma
