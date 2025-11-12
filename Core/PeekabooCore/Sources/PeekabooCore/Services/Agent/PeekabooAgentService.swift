@@ -42,11 +42,11 @@ final class StreamingEventDelegate: @unchecked Sendable, AgentEventDelegate {
 @MainActor
 public final class PeekabooAgentService: AgentServiceProtocol {
     let services: PeekabooServices
-    private let sessionManager: AgentSessionManager
+    let sessionManager: AgentSessionManager
     private let defaultLanguageModel: LanguageModel
-    private var currentModel: LanguageModel?
-    private let logger = os.Logger(subsystem: "boo.peekaboo", category: "agent")
-    private var isVerbose: Bool = false
+    var currentModel: LanguageModel?
+    let logger = os.Logger(subsystem: "boo.peekaboo", category: "agent")
+    var isVerbose: Bool = false
 
     /// The default model used by this agent service
     public var defaultModel: String { self.defaultLanguageModel.description }
@@ -210,85 +210,28 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         dryRun: Bool = false,
         eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
     {
-        // For dry run, just return a simulated result
         if dryRun {
-            let description = audioContent.transcript ?? "[Audio message - duration: \(Int(audioContent.duration ?? 0))s]"
-            return AgentExecutionResult(
-                content: "Dry run completed. Audio task: \(description)",
-                messages: [],
-                sessionId: UUID().uuidString,
-                usage: nil,
-                metadata: AgentMetadata(
-                    executionTime: 0,
-                    toolCallCount: 0,
-                    modelName: self.defaultLanguageModel.description,
-                    startTime: Date(),
-                    endTime: Date()))
+            let transcript = audioContent.transcript
+            let durationSeconds = Int(audioContent.duration ?? 0)
+            let description = transcript ?? "[Audio message - duration: \(durationSeconds)s]"
+            return self.makeAudioDryRunResult(description: description)
         }
 
-        // Note: In the new API, we don't need to create agents - we use direct functions
+        let input = audioContent.transcript ?? "[Audio message without transcript]"
 
-        // Execute with streaming if we have an event delegate
-        if eventDelegate != nil {
-            // SAFETY: We ensure that the delegate is only accessed on MainActor
-            // This is a legacy API pattern that predates Swift's strict concurrency
-            let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate!)
-
-            // Create event stream infrastructure
-            let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
-
-            // Start processing events on MainActor
-            let eventTask = Task { @MainActor in
-                let delegate = unsafeDelegate.wrappedValue
-                for await event in eventStream {
-                    delegate.agentDidEmitEvent(event)
-                }
-            }
-
-            // Create the event handler
-            let eventHandler = EventHandler { event in
-                eventContinuation.yield(event)
-            }
-
-            defer {
-                eventContinuation.finish()
-                eventTask.cancel()
-            }
-
-            // For now, convert audio to text if transcript is available
-            // In the future, we'll pass audio directly to providers that support it
-            let input = audioContent.transcript ?? "[Audio message without transcript]"
-
-            // Run the agent with streaming
-            let selectedModel = self.defaultLanguageModel
-
-            // Create event delegate wrapper for streaming
-            let streamingDelegate = await MainActor.run {
-                StreamingEventDelegate { chunk in
-                    await eventHandler.send(.assistantMessage(content: chunk))
-                }
-            }
-
-            let result = try await self.executeWithStreaming(
-                input,
-                model: selectedModel,
+        if let eventDelegate {
+            return try await self.executeAudioStreamingTask(
+                input: input,
                 maxSteps: maxSteps,
-                streamingDelegate: streamingDelegate)
-
-            // Send completion event with usage information
-            await eventHandler.send(.completed(summary: result.content, usage: result.usage))
-
-            return result
-        } else {
-            // For now, convert audio to text if transcript is available
-            // In the future, we'll pass audio directly to providers that support it
-            let input = audioContent.transcript ?? "[Audio message without transcript]"
-
-            // Execute without streaming
-            let selectedModel = self.defaultLanguageModel
-            return try await self.executeWithoutStreaming(input, model: selectedModel, maxSteps: maxSteps)
+                eventDelegate: eventDelegate)
         }
+
+        return try await self.executeWithoutStreaming(
+            input,
+            model: self.defaultLanguageModel,
+            maxSteps: maxSteps)
     }
+
 
     /// Clean up any cached sessions or resources
     public func cleanup() async {
@@ -417,6 +360,76 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 // MARK: - Convenience Methods
 
 extension PeekabooAgentService {
+    func generationSettings(for model: LanguageModel) -> GenerationSettings {
+        switch model {
+        case .openai(.gpt5):
+            return GenerationSettings(
+                maxTokens: 4096,
+                providerOptions: .init(openai: .init(verbosity: .medium)))
+        default:
+            return GenerationSettings(maxTokens: 4096)
+        }
+    }
+
+    func makeAudioDryRunResult(description: String) -> AgentExecutionResult {
+        let now = Date()
+        return AgentExecutionResult(
+            content: "Dry run completed. Audio task: \(description)",
+            messages: [],
+            sessionId: UUID().uuidString,
+            usage: nil,
+            metadata: AgentMetadata(
+                executionTime: 0,
+                toolCallCount: 0,
+                modelName: self.defaultLanguageModel.description,
+                startTime: now,
+                endTime: now))
+    }
+
+    private func executeAudioStreamingTask(
+        input: String,
+        maxSteps: Int,
+        eventDelegate: any AgentEventDelegate) async throws -> AgentExecutionResult
+    {
+        let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate)
+        let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
+
+        let eventTask = Task { @MainActor in
+            let delegate = unsafeDelegate.wrappedValue
+            for await event in eventStream {
+                delegate.agentDidEmitEvent(event)
+            }
+        }
+
+        let eventHandler = EventHandler { event in
+            eventContinuation.yield(event)
+        }
+
+        defer {
+            eventContinuation.finish()
+            eventTask.cancel()
+        }
+
+        let streamingDelegate = await MainActor.run {
+            StreamingEventDelegate { chunk in
+                await eventHandler.send(.assistantMessage(content: chunk))
+            }
+        }
+
+        let result = try await self.executeWithStreaming(
+            input,
+            model: self.defaultLanguageModel,
+            maxSteps: maxSteps,
+            streamingDelegate: streamingDelegate,
+            eventHandler: eventHandler)
+
+        await eventHandler.send(.completed(summary: result.content, usage: result.usage))
+        return result
+    }
+}
+
+
+extension PeekabooAgentService {
     /// Resume a previous session
     public func resumeSession(
         sessionId: String,
@@ -522,7 +535,7 @@ extension PeekabooAgentService {
 
 // MARK: - Event Handler
 
-private actor EventHandler {
+actor EventHandler {
     private let handler: @Sendable (AgentEvent) async -> Void
 
     init(handler: @escaping @Sendable (AgentEvent) async -> Void) {
@@ -547,76 +560,152 @@ private struct UnsafeTransfer<T>: @unchecked Sendable {
 
 // MARK: - Tool Creation Helpers
 
+extension AgentToolParameters {
+    static let empty = AgentToolParameters(properties: [:], required: [])
+}
+
 extension PeekabooAgentService {
     /// Convert MCP Value schema to AgentToolParameters
     private func convertMCPValueToAgentParameters(_ value: MCP.Value) -> AgentToolParameters {
-        // Default empty parameters if not an object
         guard case let .object(schemaDict) = value else {
-            return AgentToolParameters(properties: [:], required: [])
+            return .empty
         }
 
-        // Extract properties if they exist
+        let required = self.parseRequiredFields(in: schemaDict)
+
         guard let propertiesValue = schemaDict["properties"],
               case let .object(properties) = propertiesValue
         else {
-            return AgentToolParameters(properties: [:], required: [])
+            return AgentToolParameters(properties: [:], required: required)
         }
 
-        var agentProperties: [String: AgentToolParameterProperty] = [:]
-        var required: [String] = []
-
-        // Get required fields
-        if let requiredValue = schemaDict["required"],
-           case let .array(requiredArray) = requiredValue
-        {
-            required = requiredArray.compactMap { value in
-                if case let .string(str) = value {
-                    return str
-                }
-                return nil
-            }
-        }
-
-        // Convert each property
-        for (propName, propValue) in properties {
-            guard case let .object(propDict) = propValue else { continue }
-
-            // Get type
-            let typeStr: String = if let typeValue = propDict["type"],
-                                     case let .string(str) = typeValue
-            {
-                str
-            } else {
-                "string"
-            }
-
-            // Get description
-            let description: String = if let descValue = propDict["description"],
-                                         case let .string(str) = descValue
-            {
-                str
-            } else {
-                "Parameter \(propName)"
-            }
-
-            // Convert type string to enum
-            let paramType: AgentToolParameterProperty.ParameterType = switch typeStr {
-            case "string": .string
-            case "number": .number
-            case "integer": .integer
-            case "boolean": .boolean
-            case "array": .array
-            case "object": .object
-            default: .string
-            }
-
-            agentProperties[propName] = AgentToolParameterProperty(
-                name: propName,
-                type: paramType,
-                description: description)
-        }
-
+        let agentProperties = self.convertPropertyMap(properties)
         return AgentToolParameters(properties: agentProperties, required: required)
+    }
+
+    private func parseRequiredFields(in schemaDict: [String: MCP.Value]) -> [String] {
+        guard let requiredValue = schemaDict["required"],
+              case let .array(requiredArray) = requiredValue
+        else {
+            return []
+        }
+
+        return requiredArray.compactMap { value in
+            if case let .string(stringValue) = value {
+                return stringValue
+            }
+            return nil
+        }
+    }
+
+    private func convertPropertyMap(
+        _ properties: [String: MCP.Value]) -> [String: AgentToolParameterProperty]
+    {
+        var agentProperties: [String: AgentToolParameterProperty] = [:]
+
+        for (name, value) in properties {
+            guard let property = self.convertProperty(name: name, value: value) else { continue }
+            agentProperties[name] = property
+        }
+
+        return agentProperties
+    }
+
+    private func convertProperty(
+        name: String,
+        value: MCP.Value) -> AgentToolParameterProperty?
+    {
+        guard case let .object(propertyDict) = value else { return nil }
+
+        return AgentToolParameterProperty(
+            name: name,
+            type: self.parameterType(from: propertyDict["type"]),
+            description: self.propertyDescription(from: propertyDict["description"], defaultName: name))
+    }
+
+    private func parameterType(
+        from value: MCP.Value?) -> AgentToolParameterProperty.ParameterType
+    {
+        guard case let .string(typeString) = value else { return .string }
+
+        switch typeString {
+        case "string":
+            return .string
+        case "number":
+            return .number
+        case "integer":
+            return .integer
+        case "boolean":
+            return .boolean
+        case "array":
+            return .array
+        case "object":
+            return .object
+        default:
+            return .string
+        }
+    }
+
+    private func propertyDescription(from value: MCP.Value?, defaultName: String) -> String {
+        if case let .string(description) = value {
+            return description
+        }
+        return "Parameter \(defaultName)"
+    }
+
+    private func buildToolset(for model: LanguageModel) async -> [AgentTool] {
+        var tools = self.createAgentTools()
+        let mcpToolsByServer = await TachikomaMCPClientManager.shared.getExternalToolsByServer()
+
+        for (serverName, serverTools) in mcpToolsByServer {
+            for tool in serverTools {
+                let parameters = self.convertMCPValueToAgentParameters(tool.inputSchema)
+                let prefixedTool = AgentTool(
+                    name: "\(serverName)_\(tool.name)",
+                    description: tool.description ?? "",
+                    parameters: parameters,
+                    execute: { args in
+                        var argDict: [String: Any] = [:]
+                        for key in args.keys {
+                            if let value = args[key] {
+                                argDict[key] = try value.toJSON()
+                            }
+                        }
+
+                        let result = try await TachikomaMCPClientManager.shared.executeTool(
+                            serverName: serverName,
+                            toolName: tool.name,
+                            arguments: argDict)
+
+                        for contentItem in result.content {
+                            if case let .text(text) = contentItem {
+                                return AnyAgentToolValue(string: text)
+                            }
+                        }
+                        return AnyAgentToolValue(string: "Tool executed successfully")
+                    })
+                tools.append(prefixedTool)
+            }
+        }
+
+        self.logToolsetDetails(tools, model: model)
+        return tools
+    }
+
+    private func logToolsetDetails(_ tools: [AgentTool], model: LanguageModel) {
+        guard self.isVerbose else { return }
+        self.logger.debug("Using model: \(model)")
+        self.logger.debug("Model description: \(model.description)")
+        self.logger.debug("Passing \(tools.count) tools to generateText")
+        for tool in tools {
+            let propertyCount = tool.parameters.properties.count
+            let requiredCount = tool.parameters.required.count
+            self.logger.debug(
+                "Tool '\(tool.name)' has \(propertyCount) properties, \(requiredCount) required")
+            if tool.name == "see" {
+                self.logger.debug("'see' tool required array: \(tool.parameters.required)")
+            }
+        }
     }
 
     /// Create AgentTool instances from native Peekaboo tools
@@ -694,400 +783,51 @@ extension PeekabooAgentService {
         streamingDelegate: StreamingEventDelegate,
         eventHandler: EventHandler? = nil) async throws -> AgentExecutionResult
     {
-        // Store the current model for API key masking
-        self.currentModel = model
+        _ = streamingDelegate
+        let sessionContext = try await self.prepareSession(
+            task: task,
+            model: model,
+            label: "streaming",
+            logBehavior: .always)
 
-        let startTime = Date()
-        let sessionId = UUID().uuidString
+        let tools = await self.buildToolset(for: model)
+        self.logModelUsage(model, prefix: "Streaming ")
 
-        // Create conversation with the task
-        let messages = [
-            ModelMessage.system(AgentSystemPrompt.generate(for: model)),
-            ModelMessage.user(task),
-        ]
+        let configuration = StreamingLoopConfiguration(
+            model: model,
+            tools: tools,
+            sessionId: sessionContext.id,
+            eventHandler: eventHandler)
 
-        // Create and save initial session
-        let session = AgentSession(
-            id: sessionId,
-            modelName: model.description,
-            messages: messages,
-            metadata: SessionMetadata(),
-            createdAt: startTime,
-            updatedAt: startTime)
-
-        // Debug logging for session creation - ALWAYS print for debugging
-        self.logger.debug("Creating session with ID: \(sessionId), messages count: \(messages.count)")
-
-        do {
-            try self.sessionManager.saveSession(session)
-            self.logger.debug("Successfully saved initial session with ID: \(sessionId)")
-        } catch {
-            print("ERROR (streaming): Failed to save initial session: \(error)")
-            throw error
-        }
-
-        // Create tools for the model (native + MCP)
-        var tools = self.createAgentTools()
-        // Append external MCP tools discovered via TachikomaMCP
-        let mcpToolsByServer = await TachikomaMCPClientManager.shared.getExternalToolsByServer()
-        // Prefix tool names with server name to ensure uniqueness
-        for (serverName, serverTools) in mcpToolsByServer {
-            for tool in serverTools {
-                // Convert MCP tool's Value-based schema to AgentToolParameters
-                let parameters = self.convertMCPValueToAgentParameters(tool.inputSchema)
-
-                // Create a prefixed version of the tool
-                let prefixedTool = AgentTool(
-                    name: "\(serverName)_\(tool.name)",
-                    description: tool.description ?? "",
-                    parameters: parameters,
-                    execute: { args in
-                        // Convert AgentToolArguments to [String: Any] for MCP execution
-                        var argDict: [String: Any] = [:]
-                        for key in args.keys {
-                            if let value = args[key] {
-                                argDict[key] = try value.toJSON()
-                            }
-                        }
-
-                        // Execute via the MCP client
-                        let result = try await TachikomaMCPClientManager.shared.executeTool(
-                            serverName: serverName,
-                            toolName: tool.name,
-                            arguments: argDict)
-                        // Convert result to expected format
-                        // ToolResponse has content as [MCP.Tool.Content]
-                        for contentItem in result.content {
-                            if case let .text(text) = contentItem {
-                                return AnyAgentToolValue(string: text)
-                            }
-                        }
-                        return AnyAgentToolValue(string: "Tool executed successfully")
-                    })
-                tools.append(prefixedTool)
-            }
-        }
-
-        // Only log tool debug info in verbose mode
-        if self.isVerbose {
-            self.logger.debug("Passing \(tools.count) tools to generateText")
-            for tool in tools {
-                self.logger
-                    .debug(
-                        "Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
-                if tool.name == "see" {
-                    self.logger.debug("'see' tool required array: \(tool.parameters.required)")
-                }
-            }
-        }
-
-        // Debug: Log which model is being used (streaming)
-        if self.isVerbose {
-            self.logger.debug("Using model: \(model)")
-            self.logger.debug("Model description: \(model.description)")
-        }
-
-        // Implement proper streaming with manual tool execution
-        var currentMessages = messages
-        var fullContent = ""
-        var allSteps: [GenerationStep] = []
-        var totalUsage: Usage?
-
-        for stepIndex in 0..<maxSteps {
-            // Log tools being passed only in verbose mode
-            if self.isVerbose {
-                self.logger.debug("Step \(stepIndex): Passing \(tools.count) tools to streamText")
-                if !tools.isEmpty {
-                    self.logger.debug("Available tools: \(tools.map(\.name).joined(separator: ", "))")
-                } else {
-                    self.logger.warning("No tools available!")
-                }
-            }
-
-            // Stream the response
-            // Configure settings based on model type
-            let settings = switch model {
-            case .openai(.gpt5):
-                // GPT-5 models use verbosity instead of temperature
-                GenerationSettings(
-                    maxTokens: 4096,
-                    providerOptions: .init(
-                        openai: .init(
-                            verbosity: .medium)))
-            default:
-                // Standard models use default settings
-                GenerationSettings(maxTokens: 4096)
-            }
-
-            let streamResult = try await streamText(
-                model: model,
-                messages: currentMessages,
-                tools: tools.isEmpty ? nil : tools,
-                settings: settings)
-
-            var stepText = ""
-            var stepToolCalls: [AgentToolCall] = []
-            var isThinking = false
-
-            // Process the stream
-            if self.isVerbose {
-                self.logger.debug("Starting to process stream for step \(stepIndex)")
-            }
-            for try await delta in streamResult.stream {
-                if self.isVerbose {
-                    self.logger.debug("Received delta type: \(String(describing: delta.type))")
-                }
-                switch delta.type {
-                case .textDelta:
-                    if let content = delta.content {
-                        if self.isVerbose {
-                            self.logger.debug("Text delta content: \(content)")
-                        }
-                        stepText += content
-
-                        // Check if this is thinking content (starts with <thinking> or similar patterns)
-                        if content.contains("<thinking>") || content.contains("Let me") || content
-                            .contains("I need to") || content.contains("I'll")
-                        {
-                            isThinking = true
-                        }
-
-                        // Emit events based on content
-                        if let eventHandler {
-                            if isThinking, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                await eventHandler.send(.thinkingMessage(content: content))
-                            } else if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                await eventHandler.send(.assistantMessage(content: content))
-                            }
-                        }
-
-                        // Don't send to streaming delegate here - it's already handled by eventHandler
-                    }
-
-                case .toolCall:
-                    if let toolCall = delta.toolCall {
-                        if self.isVerbose {
-                            self.logger.debug("Received tool call: \(toolCall.name) with ID: \(toolCall.id)")
-                        }
-                        stepToolCalls.append(toolCall)
-
-                        // Emit tool call started event immediately
-                        if let eventHandler {
-                            let argumentsData = try JSONEncoder().encode(toolCall.arguments)
-                            let argumentsJSON = String(data: argumentsData, encoding: .utf8) ?? "{}"
-
-                            await eventHandler.send(.toolCallStarted(
-                                name: toolCall.name,
-                                arguments: argumentsJSON))
-                        }
-                    }
-
-                case .reasoning:
-                    // Handle reasoning/thinking content
-                    if let content = delta.content, let eventHandler {
-                        await eventHandler.send(.thinkingMessage(content: content))
-                    }
-
-                case .done:
-                    // Capture usage if available
-                    if let usage = delta.usage {
-                        totalUsage = usage
-                    }
-
-                default:
-                    break
-                }
-            }
-
-            fullContent += stepText
-
-            // Debug: Check what we collected (only in verbose mode)
-            if self.isVerbose {
-                self.logger
-                    .debug(
-                        "Step \(stepIndex) completed: collected \(stepToolCalls.count) tool calls, text length: \(stepText.count)")
-            }
-
-            // If we have tool calls, execute them
-            if !stepToolCalls.isEmpty {
-                // FIRST: Add assistant message with tool calls (must come before tool results)
-                var assistantContent: [ModelMessage.ContentPart] = []
-                if !stepText.isEmpty {
-                    assistantContent.append(.text(stepText))
-                }
-                assistantContent.append(contentsOf: stepToolCalls.map { .toolCall($0) })
-                currentMessages.append(ModelMessage(role: .assistant, content: assistantContent))
-
-                var toolResults: [AgentToolResult] = []
-
-                for toolCall in stepToolCalls {
-                    // Find and execute the tool
-                    if let tool = tools.first(where: { $0.name == toolCall.name }) {
-                        do {
-                            // Use the same settings as configured above for consistency
-                            let toolSettings = switch model {
-                            case .openai(.gpt5):
-                                GenerationSettings(
-                                    maxTokens: 4096,
-                                    providerOptions: .init(
-                                        openai: .init(
-                                            verbosity: .medium)))
-                            default:
-                                GenerationSettings(maxTokens: 4096)
-                            }
-
-                            let context = ToolExecutionContext(
-                                messages: currentMessages,
-                                model: model,
-                                settings: toolSettings,
-                                sessionId: sessionId,
-                                stepIndex: stepIndex)
-
-                            let toolArguments = AgentToolArguments(toolCall.arguments)
-                            let result = try await tool.execute(toolArguments, context: context)
-                            let toolResult = AgentToolResult.success(toolCallId: toolCall.id, result: result)
-                            toolResults.append(toolResult)
-
-                            // Emit tool call completed event
-                            if let eventHandler {
-                                // Convert result to JSON string for the event handler
-                                let resultString: String
-                                do {
-                                    let jsonObject = try result.toJSON()
-                                    // Wrap non-dictionary results in an object for valid JSON
-                                    let wrappedObject: Any = if jsonObject is [String: Any] {
-                                        jsonObject
-                                    } else {
-                                        // Wrap primitive values (string, number, bool, null) in a result object
-                                        ["result": jsonObject]
-                                    }
-                                    let jsonData = try JSONSerialization.data(
-                                        withJSONObject: wrappedObject,
-                                        options: [])
-                                    resultString = String(data: jsonData, encoding: .utf8) ?? "{}"
-                                } catch {
-                                    // Fallback to wrapped string value if JSON conversion fails
-                                    let fallbackValue = result.stringValue ?? String(describing: result)
-                                    resultString = "{\"result\": \"\(fallbackValue.replacingOccurrences(of: "\"", with: "\\\""))\"}"
-                                }
-                                await eventHandler.send(.toolCallCompleted(
-                                    name: toolCall.name,
-                                    result: resultString))
-                            }
-
-                            // Add tool result message
-                            currentMessages.append(ModelMessage(
-                                role: .tool,
-                                content: [.toolResult(toolResult)]))
-                        } catch {
-                            let errorResult = AgentToolResult.error(
-                                toolCallId: toolCall.id,
-                                error: error.localizedDescription)
-                            toolResults.append(errorResult)
-
-                            // Emit error event
-                            if let eventHandler {
-                                // Send error as JSON object for consistency
-                                let errorDict = ["error": error.localizedDescription]
-                                let resultString: String = if let jsonData = try? JSONSerialization.data(
-                                    withJSONObject: errorDict,
-                                    options: []),
-                                    let jsonString = String(data: jsonData, encoding: .utf8)
-                                {
-                                    jsonString
-                                } else {
-                                    "{\"error\": \"Unknown error\"}"
-                                }
-                                await eventHandler.send(.toolCallCompleted(
-                                    name: toolCall.name,
-                                    result: resultString))
-                            }
-
-                            currentMessages.append(ModelMessage(
-                                role: .tool,
-                                content: [.toolResult(errorResult)]))
-                        }
-                    }
-                }
-
-                // Store the step
-                allSteps.append(GenerationStep(
-                    stepIndex: stepIndex,
-                    text: stepText,
-                    toolCalls: stepToolCalls,
-                    toolResults: toolResults))
-
-                // Continue to next iteration if we have tool results
-                if !toolResults.isEmpty {
-                    if self.isVerbose {
-                        // Log what messages we're sending next
-                        self.logger.debug("Continuing to step \(stepIndex + 1) with tool results")
-                        self.logger.debug("Current messages count: \(currentMessages.count)")
-                        for (idx, msg) in currentMessages.enumerated() {
-                            self.logger
-                                .debug(
-                                    "Message \(idx): role=\(String(describing: msg.role)), content parts=\(msg.content.count)")
-                            if idx == currentMessages.count - 1 {
-                                // Log the last message (tool result) in detail
-                                for part in msg.content {
-                                    switch part {
-                                    case let .toolResult(result):
-                                        self.logger.debug("Tool result: \(String(describing: result))")
-                                    default:
-                                        self.logger.debug("Content part: \(String(describing: part))")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    continue
-                }
-            } else {
-                // No tool calls, add assistant message and we're done
-                if !stepText.isEmpty {
-                    currentMessages.append(ModelMessage.assistant(stepText))
-                }
-
-                allSteps.append(GenerationStep(
-                    stepIndex: stepIndex,
-                    text: stepText,
-                    toolCalls: [],
-                    toolResults: []))
-                break
-            }
-        }
-
-        // Don't send the complete response again - it was already streamed
+        let outcome = try await self.runStreamingLoop(
+            configuration: configuration,
+            maxSteps: maxSteps,
+            initialMessages: sessionContext.messages)
 
         let endTime = Date()
-        let executionTime = endTime.timeIntervalSince(startTime)
+        let executionTime = endTime.timeIntervalSince(sessionContext.startTime)
+        let toolCallCount = outcome.steps.reduce(0) { $0 + $1.toolCalls.count }
 
-        // Update session with final results
-        let updatedSession = AgentSession(
-            id: sessionId,
-            modelName: model.description,
-            messages: currentMessages,
-            metadata: SessionMetadata(
-                toolCallCount: allSteps.reduce(0) { $0 + $1.toolCalls.count },
-                totalExecutionTime: executionTime,
-                customData: ["status": "completed"]),
-            createdAt: startTime,
-            updatedAt: endTime)
-        try self.sessionManager.saveSession(updatedSession)
+        try self.saveCompletedSession(
+            context: sessionContext,
+            model: model,
+            finalMessages: outcome.messages,
+            endTime: endTime,
+            toolCallCount: toolCallCount)
 
-        // Create result
         return AgentExecutionResult(
-            content: fullContent,
-            messages: currentMessages,
-            sessionId: sessionId,
-            usage: totalUsage,
-            metadata: AgentMetadata(
+            content: outcome.content,
+            messages: outcome.messages,
+            sessionId: sessionContext.id,
+            usage: outcome.usage,
+            metadata: self.makeExecutionMetadata(
+                model: model,
                 executionTime: executionTime,
-                toolCallCount: allSteps.reduce(0) { $0 + $1.toolCalls.count },
-                modelName: model.description,
-                startTime: startTime,
+                toolCallCount: toolCallCount,
+                startTime: sessionContext.startTime,
                 endTime: endTime))
     }
+
 
     /// Execute task using direct generateText calls without streaming
     private func executeWithoutStreaming(
@@ -1095,139 +835,44 @@ extension PeekabooAgentService {
         model: LanguageModel,
         maxSteps: Int = 20) async throws -> AgentExecutionResult
     {
-        // Store the current model for API key masking
-        self.currentModel = model
+        let sessionContext = try await self.prepareSession(
+            task: task,
+            model: model,
+            label: "(non-streaming)",
+            logBehavior: .verboseOnly)
 
-        let startTime = Date()
-        let sessionId = UUID().uuidString
+        let tools = await self.buildToolset(for: model)
+        self.logModelUsage(model, prefix: "")
 
-        // Create conversation with the task
-        let messages = [
-            ModelMessage.system(AgentSystemPrompt.generate(for: model)),
-            ModelMessage.user(task),
-        ]
-
-        // Create and save initial session
-        let session = AgentSession(
-            id: sessionId,
-            modelName: model.description,
-            messages: messages,
-            metadata: SessionMetadata(),
-            createdAt: startTime,
-            updatedAt: startTime)
-
-        // Debug logging for session creation
-        if self.isVerbose {
-            self.logger.debug("(non-streaming): Creating session with ID: \(sessionId)")
-            self.logger.debug("(non-streaming): Session messages count: \(messages.count)")
-        }
-
-        do {
-            try self.sessionManager.saveSession(session)
-            if self.isVerbose {
-                self.logger.debug("(non-streaming): Successfully saved initial session")
-            }
-        } catch {
-            print("ERROR (non-streaming): Failed to save initial session: \(error)")
-            throw error
-        }
-
-        // Create tools for the model (native + MCP)
-        var tools = self.createAgentTools()
-        let mcpToolsByServer = await TachikomaMCPClientManager.shared.getExternalToolsByServer()
-        // Prefix tool names with server name to ensure uniqueness
-        for (serverName, serverTools) in mcpToolsByServer {
-            for tool in serverTools {
-                // Convert MCP tool's Value-based schema to AgentToolParameters
-                let parameters = self.convertMCPValueToAgentParameters(tool.inputSchema)
-
-                // Create a prefixed version of the tool
-                let prefixedTool = AgentTool(
-                    name: "\(serverName)_\(tool.name)",
-                    description: tool.description ?? "",
-                    parameters: parameters,
-                    execute: { args in
-                        // Convert AgentToolArguments to [String: Any] for MCP execution
-                        var argDict: [String: Any] = [:]
-                        for key in args.keys {
-                            if let value = args[key] {
-                                argDict[key] = try value.toJSON()
-                            }
-                        }
-
-                        // Execute via the MCP client
-                        let result = try await TachikomaMCPClientManager.shared.executeTool(
-                            serverName: serverName,
-                            toolName: tool.name,
-                            arguments: argDict)
-                        // Convert result to expected format
-                        // ToolResponse has content as [MCP.Tool.Content]
-                        for contentItem in result.content {
-                            if case let .text(text) = contentItem {
-                                return AnyAgentToolValue(string: text)
-                            }
-                        }
-                        return AnyAgentToolValue(string: "Tool executed successfully")
-                    })
-                tools.append(prefixedTool)
-            }
-        }
-
-        // Only log tool debug info in verbose mode
-        if self.isVerbose {
-            self.logger.debug("Passing \(tools.count) tools to generateText (non-streaming)")
-            for tool in tools {
-                self.logger
-                    .debug(
-                        "Tool '\(tool.name)' has \(tool.parameters.properties.count) properties, \(tool.parameters.required.count) required")
-                if tool.name == "see" {
-                    self.logger.debug("'see' tool required array: \(tool.parameters.required)")
-                }
-            }
-        }
-
-        // Debug: Log which model is being used
-        if self.isVerbose {
-            self.logger.debug("Using model: \(model)")
-            self.logger.debug("Model description: \(model.description)")
-        }
-
-        // Generate the response
         let response = try await generateText(
             model: model,
-            messages: messages,
+            messages: sessionContext.messages,
             tools: tools.isEmpty ? nil : tools,
             maxSteps: maxSteps)
 
         let endTime = Date()
-        let executionTime = endTime.timeIntervalSince(startTime)
+        let executionTime = endTime.timeIntervalSince(sessionContext.startTime)
+        let finalMessages = sessionContext.messages + [ModelMessage.assistant(response.text)]
 
-        // Update session with final results
-        let finalMessages = messages + [ModelMessage.assistant(response.text)]
-        let updatedSession = AgentSession(
-            id: sessionId,
-            modelName: model.description,
-            messages: finalMessages,
-            metadata: SessionMetadata(
-                toolCallCount: 0,
-                totalExecutionTime: executionTime,
-                customData: ["status": "completed"]),
-            createdAt: startTime,
-            updatedAt: endTime)
-        try self.sessionManager.saveSession(updatedSession)
+        try self.saveCompletedSession(
+            context: sessionContext,
+            model: model,
+            finalMessages: finalMessages,
+            endTime: endTime,
+            toolCallCount: 0)
 
-        // Create result
         return AgentExecutionResult(
             content: response.text,
             messages: finalMessages,
-            sessionId: sessionId,
-            usage: nil, // Usage info not available from generateText yet
-            metadata: AgentMetadata(
+            sessionId: sessionContext.id,
+            usage: nil,
+            metadata: self.makeExecutionMetadata(
+                model: model,
                 executionTime: executionTime,
                 toolCallCount: 0,
-                modelName: model.description,
-                startTime: startTime,
+                startTime: sessionContext.startTime,
                 endTime: endTime))
     }
+
 
 }
