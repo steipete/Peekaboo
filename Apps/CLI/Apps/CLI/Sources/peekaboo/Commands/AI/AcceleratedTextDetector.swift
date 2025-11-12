@@ -248,9 +248,11 @@ final class AcceleratedTextDetector {
             &sourceBuffer,
             &gradX,
             nil,
-            0, 0,
+            0,
+            0,
             self.sobelXKernel,
-            3, 3,
+            3,
+            3,
             1, // Divisor
             128, // Bias (to keep values positive)
             vImage_Flags(kvImageEdgeExtend)
@@ -261,9 +263,11 @@ final class AcceleratedTextDetector {
             &sourceBuffer,
             &gradY,
             nil,
-            0, 0,
+            0,
+            0,
             self.sobelYKernel,
-            3, 3,
+            3,
+            3,
             1, // Divisor
             128, // Bias (to keep values positive)
             vImage_Flags(kvImageEdgeExtend)

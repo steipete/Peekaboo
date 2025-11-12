@@ -426,13 +426,13 @@ extension MenuCommand {
                 bundle_id: item.bundleIdentifier,
                 owner_name: item.ownerName,
                 enabled: item.isEnabled,
-                    shortcut: item.keyboardShortcut?.displayString,
-                    checked: item.isChecked ? true : nil,
-                    separator: item.isSeparator ? true : nil,
-                    items: item.submenu.isEmpty ? nil : self.convertMenuItemsToTyped(item.submenu)
-                )
-            }
+                shortcut: item.keyboardShortcut?.displayString,
+                checked: item.isChecked ? true : nil,
+                separator: item.isSeparator ? true : nil,
+                items: item.submenu.isEmpty ? nil : self.convertMenuItemsToTyped(item.submenu)
+            )
         }
+    }
 
         private func printMenu(_ menu: Menu, indent: Int) {
             let spacing = String(repeating: "  ", count: indent)
