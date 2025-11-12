@@ -48,140 +48,66 @@ public class WindowToolFormatter: BaseToolFormatter {
     override public func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .focusWindow:
-            self.formatFocusWindowResult(result)
+            return self.formatFocusWindowResult(result)
         case .resizeWindow:
-            self.formatResizeWindowResult(result)
+            return self.formatResizeWindowResult(result)
         case .listWindows:
-            self.formatListWindowsResult(result)
+            return self.formatListWindowsResult(result)
         case .minimizeWindow:
-            self.formatMinimizeWindowResult(result)
+            return self.formatMinimizeWindowResult(result)
         case .maximizeWindow:
-            self.formatMaximizeWindowResult(result)
+            return self.formatMaximizeWindowResult(result)
         case .listScreens:
-            self.formatListScreensResult(result)
+            return self.formatListScreensResult(result)
         case .listSpaces:
-            self.formatListSpacesResult(result)
+            return self.formatListSpacesResult(result)
         case .switchSpace:
-            self.formatSwitchSpaceResult(result)
+            return self.formatSwitchSpaceResult(result)
         case .moveWindowToSpace:
-            self.formatMoveWindowToSpaceResult(result)
+            return self.formatMoveWindowToSpaceResult(result)
         default:
-            super.formatResultSummary(result: result)
+            return super.formatResultSummary(result: result)
         }
     }
 
     // MARK: - Window Management
 
     private func formatFocusWindowResult(_ result: [String: Any]) -> String {
-        var parts: [String] = []
+        var parts: [String] = ["→ Focused"]
 
-        parts.append("→ Focused")
-
-        // Window title
-        if let title = ToolResultExtractor.string("windowTitle", from: result) {
-            let truncated = title.count > 40
-                ? String(title.prefix(40)) + "..."
-                : title
-            parts.append("\"\(truncated)\"")
+        if let title = self.truncatedTitle(from: result, limit: 40) {
+            parts.append("\"\(title)\"")
         }
 
-        // App name
-        if let app = ToolResultExtractor.string("app", from: result) ??
-            ToolResultExtractor.string("appName", from: result)
-        {
+        if let app = self.windowAppName(from: result) {
             parts.append("(\(app))")
         }
 
-        // Window details
-        var details: [String] = []
-
-        if let windowId = ToolResultExtractor.int("windowId", from: result) {
-            details.append("ID: \(windowId)")
+        if let detailSummary = self.focusDetailSummary(result) {
+            parts.append(detailSummary)
         }
 
-        if let bounds = ToolResultExtractor.dictionary("bounds", from: result) {
-            if let width = bounds["width"] as? Int,
-               let height = bounds["height"] as? Int
-            {
-                details.append("\(width)×\(height)")
-            }
-        }
-
-        if let space = ToolResultExtractor.int("space", from: result) {
-            details.append("space \(space)")
-        }
-
-        if let screen = ToolResultExtractor.string("screen", from: result) {
-            details.append("on \(screen)")
-        }
-
-        if !details.isEmpty {
-            parts.append("[\(details.joined(separator: ", "))]")
-        }
-
-        // State changes
-        if let wasMinimized = ToolResultExtractor.bool("wasMinimized", from: result), wasMinimized {
-            parts.append("• Restored from minimized")
-        }
-
-        if let wasHidden = ToolResultExtractor.bool("wasHidden", from: result), wasHidden {
-            parts.append("• Unhidden")
-        }
+        parts.append(contentsOf: self.focusStateChanges(result))
 
         return parts.joined(separator: " ")
     }
 
     private func formatResizeWindowResult(_ result: [String: Any]) -> String {
-        var parts: [String] = []
+        var parts: [String] = ["→ Resized"]
 
-        parts.append("→ Resized")
-
-        // Window info
-        if let app = ToolResultExtractor.string("app", from: result) {
-            parts.append(app)
-
-            if let title = ToolResultExtractor.string("windowTitle", from: result) {
-                let truncated = title.count > 30
-                    ? String(title.prefix(30)) + "..."
-                    : title
-                parts.append("\"\(truncated)\"")
-            }
+        if let description = self.resizeWindowDescription(result) {
+            parts.append(contentsOf: description)
         }
 
-        // Size change
-        if let newBounds = ToolResultExtractor.dictionary("newBounds", from: result),
-           let oldBounds = ToolResultExtractor.dictionary("oldBounds", from: result)
-        {
-            if let newWidth = newBounds["width"] as? Int,
-               let newHeight = newBounds["height"] as? Int,
-               let oldWidth = oldBounds["width"] as? Int,
-               let oldHeight = oldBounds["height"] as? Int
-            {
-                parts.append("from \(oldWidth)×\(oldHeight) to \(newWidth)×\(newHeight)")
-
-                // Calculate percentage change
-                let widthChange = ((Double(newWidth) - Double(oldWidth)) / Double(oldWidth)) * 100
-                let heightChange = ((Double(newHeight) - Double(oldHeight)) / Double(oldHeight)) * 100
-
-                if abs(widthChange) > 5 || abs(heightChange) > 5 {
-                    parts.append(String(format: "[%+.0f%% width, %+.0f%% height]", widthChange, heightChange))
-                }
-            }
-        } else if let width = ToolResultExtractor.int("width", from: result),
-                  let height = ToolResultExtractor.int("height", from: result)
-        {
-            parts.append("to \(width)×\(height)")
+        if let sizeSummary = self.resizeSizeSummary(result) {
+            parts.append(sizeSummary)
         }
 
-        // Position change
-        if let newX = ToolResultExtractor.int("x", from: result),
-           let newY = ToolResultExtractor.int("y", from: result)
-        {
-            parts.append("at (\(newX), \(newY))")
+        if let positionSummary = self.resizePositionSummary(result) {
+            parts.append(positionSummary)
         }
 
-        // Constraints
-        if let constrained = ToolResultExtractor.bool("constrained", from: result), constrained {
+        if self.isConstrained(result) {
             parts.append("\(AgentDisplayTokens.Status.warning) Constrained to screen bounds")
         }
 
@@ -533,4 +459,111 @@ public class WindowToolFormatter: BaseToolFormatter {
             return super.formatStarting(arguments: arguments)
         }
     }
+
+    // MARK: - Focus Helpers
+
+    private func truncatedTitle(from result: [String: Any], limit: Int) -> String? {
+        guard let title = ToolResultExtractor.string("windowTitle", from: result) else { return nil }
+        if title.count > limit {
+            return String(title.prefix(limit)) + "..."
+        }
+        return title
+    }
+
+    private func windowAppName(from result: [String: Any]) -> String? {
+        ToolResultExtractor.string("app", from: result) ??
+            ToolResultExtractor.string("appName", from: result)
+    }
+
+    private func focusDetailSummary(_ result: [String: Any]) -> String? {
+        var details: [String] = []
+        if let windowId = ToolResultExtractor.int("windowId", from: result) {
+            details.append("ID: \(windowId)")
+        }
+        if let bounds = ToolResultExtractor.dictionary("bounds", from: result),
+           let width = bounds["width"] as? Int,
+           let height = bounds["height"] as? Int
+        {
+            details.append("\(width)×\(height)")
+        }
+        if let space = ToolResultExtractor.int("space", from: result) {
+            details.append("space \(space)")
+        }
+        if let screen = ToolResultExtractor.string("screen", from: result) {
+            details.append("on \(screen)")
+        }
+        guard !details.isEmpty else { return nil }
+        return "[\(details.joined(separator: ", "))]"
+    }
+
+    private func focusStateChanges(_ result: [String: Any]) -> [String] {
+        var states: [String] = []
+        if ToolResultExtractor.bool("wasMinimized", from: result) == true {
+            states.append("• Restored from minimized")
+        }
+        if ToolResultExtractor.bool("wasHidden", from: result) == true {
+            states.append("• Unhidden")
+        }
+        return states
+    }
+
+    // MARK: - Resize Helpers
+
+    private func resizeWindowDescription(_ result: [String: Any]) -> [String]? {
+        guard let app = ToolResultExtractor.string("app", from: result) else { return nil }
+        var description = [app]
+        if let title = ToolResultExtractor.string("windowTitle", from: result) {
+            description.append("\"\(self.truncated(title: title, limit: 30))\"")
+        }
+        return description
+    }
+
+    private func truncated(title: String, limit: Int) -> String {
+        if title.count > limit {
+            return String(title.prefix(limit)) + "..."
+        }
+        return title
+    }
+
+    private func resizeSizeSummary(_ result: [String: Any]) -> String? {
+        if let newBounds = ToolResultExtractor.dictionary("newBounds", from: result),
+           let oldBounds = ToolResultExtractor.dictionary("oldBounds", from: result),
+           let newWidth = newBounds["width"] as? Int,
+           let newHeight = newBounds["height"] as? Int,
+           let oldWidth = oldBounds["width"] as? Int,
+           let oldHeight = oldBounds["height"] as? Int
+        {
+            var summary = "from \(oldWidth)×\(oldHeight) to \(newWidth)×\(newHeight)"
+            let widthChange = self.percentageChange(newValue: newWidth, oldValue: oldWidth)
+            let heightChange = self.percentageChange(newValue: newHeight, oldValue: oldHeight)
+            if abs(widthChange) > 5 || abs(heightChange) > 5 {
+                summary += String(format: " [%+.0f%% width, %+.0f%% height]", widthChange, heightChange)
+            }
+            return summary
+        }
+
+        if let width = ToolResultExtractor.int("width", from: result),
+           let height = ToolResultExtractor.int("height", from: result)
+        {
+            return "to \(width)×\(height)"
+        }
+        return nil
+    }
+
+    private func resizePositionSummary(_ result: [String: Any]) -> String? {
+        guard let newX = ToolResultExtractor.int("x", from: result),
+              let newY = ToolResultExtractor.int("y", from: result)
+        else { return nil }
+        return "at (\(newX), \(newY))"
+    }
+
+    private func percentageChange(newValue: Int, oldValue: Int) -> Double {
+        guard oldValue != 0 else { return 0 }
+        return ((Double(newValue) - Double(oldValue)) / Double(oldValue)) * 100
+    }
+
+    private func isConstrained(_ result: [String: Any]) -> Bool {
+        ToolResultExtractor.bool("constrained", from: result) ?? false
+    }
+
 }

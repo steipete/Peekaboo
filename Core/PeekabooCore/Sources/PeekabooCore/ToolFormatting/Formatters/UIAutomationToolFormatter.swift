@@ -10,87 +10,36 @@ public class UIAutomationToolFormatter: BaseToolFormatter {
     override public func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .click:
-            self.formatClickResult(result)
+            return self.formatClickResult(result)
         case .type:
-            self.formatTypeResult(result)
+            return self.formatTypeResult(result)
         case .hotkey:
-            self.formatHotkeyResult(result)
+            return self.formatHotkeyResult(result)
         case .press:
-            self.formatPressResult(result)
+            return self.formatPressResult(result)
         case .scroll:
-            self.formatScrollResult(result)
+            return self.formatScrollResult(result)
         default:
-            super.formatResultSummary(result: result)
+            return super.formatResultSummary(result: result)
         }
     }
 
     private func formatClickResult(_ result: [String: Any]) -> String {
-        var parts: [String] = []
+        var parts: [String] = ["→ Clicked"]
 
-        // Basic click confirmation
-        parts.append("→ Clicked")
-
-        // Element details
-        if let element = ToolResultExtractor.string("element", from: result) {
-            let truncated = element.count > 40
-                ? String(element.prefix(40)) + "..."
-                : element
-            parts.append("on \"\(truncated)\"")
-        } else if let description = ToolResultExtractor.string("description", from: result) {
-            let truncated = description.count > 40
-                ? String(description.prefix(40)) + "..."
-                : description
-            parts.append("on \(truncated)")
+        if let elementDescription = self.elementDescription(from: result) {
+            parts.append(elementDescription)
         }
 
-        // Position
-        if let position = ToolResultExtractor.dictionary("position", from: result) {
-            if let x = position["x"] as? Int,
-               let y = position["y"] as? Int
-            {
-                parts.append("at (\(x), \(y))")
-            }
-        } else if let x = ToolResultExtractor.int("x", from: result),
-                  let y = ToolResultExtractor.int("y", from: result)
-        {
-            parts.append("at (\(x), \(y))")
+        if let positionSummary = self.positionSummary(from: result) {
+            parts.append(positionSummary)
         }
 
-        // Click details
-        var details: [String] = []
-
-        if let clickCount = ToolResultExtractor.int("clickCount", from: result), clickCount > 1 {
-            details.append("\(clickCount) clicks")
+        let detailEntries = self.clickDetailEntries(from: result)
+        if !detailEntries.isEmpty {
+            parts.append("[\(detailEntries.joined(separator: ", "))]")
         }
 
-        if let button = ToolResultExtractor.string("button", from: result), button != "left" {
-            details.append("\(button) button")
-        }
-
-        if let modifiers: [String] = ToolResultExtractor.array("modifiers", from: result), !modifiers.isEmpty {
-            let modifierStr = FormattingUtilities.formatKeyboardShortcut(modifiers.joined(separator: "+"))
-            details.append("with \(modifierStr)")
-        }
-
-        // Element info
-        if let elementType = ToolResultExtractor.string("elementType", from: result) {
-            details.append(elementType)
-        }
-
-        if let role = ToolResultExtractor.string("role", from: result) {
-            details.append("role: \(role)")
-        }
-
-        // App context
-        if let app = ToolResultExtractor.string("app", from: result) {
-            details.append("in \(app)")
-        }
-
-        if !details.isEmpty {
-            parts.append("[\(details.joined(separator: ", "))]")
-        }
-
-        // Action triggered
         if let actionTriggered = ToolResultExtractor.string("actionTriggered", from: result) {
             parts.append("• Triggered: \(actionTriggered)")
         }
@@ -517,5 +466,68 @@ public class UIAutomationToolFormatter: BaseToolFormatter {
             "[tap] \(key.uppercased())"
         default: key
         }
+    }
+
+
+    // MARK: - Helpers
+
+    private func elementDescription(from result: [String: Any]) -> String? {
+        if let element = ToolResultExtractor.string("element", from: result) {
+            return "on \"\(self.truncate(element, limit: 40))\""
+        }
+        if let description = ToolResultExtractor.string("description", from: result) {
+            return "on \(self.truncate(description, limit: 40))"
+        }
+        return nil
+    }
+
+    private func positionSummary(from result: [String: Any]) -> String? {
+        if let position = ToolResultExtractor.dictionary("position", from: result),
+           let x = position["x"] as? Int,
+           let y = position["y"] as? Int
+        {
+            return "at (\(x), \(y))"
+        }
+        if let x = ToolResultExtractor.int("x", from: result),
+           let y = ToolResultExtractor.int("y", from: result)
+        {
+            return "at (\(x), \(y))"
+        }
+        return nil
+    }
+
+    private func clickDetailEntries(from result: [String: Any]) -> [String] {
+        var details: [String] = []
+
+        if let clickCount = ToolResultExtractor.int("clickCount", from: result), clickCount > 1 {
+            details.append("\(clickCount) clicks")
+        }
+        if let button = ToolResultExtractor.string("button", from: result), button != "left" {
+            details.append("\(button) button")
+        }
+        if let modifiers: [String] = ToolResultExtractor.array("modifiers", from: result),
+           !modifiers.isEmpty
+        {
+            let shortcut = modifiers.joined(separator: "+")
+            details.append("with \(FormattingUtilities.formatKeyboardShortcut(shortcut))")
+        }
+        if let elementType = ToolResultExtractor.string("elementType", from: result) {
+            details.append(elementType)
+        }
+        if let role = ToolResultExtractor.string("role", from: result) {
+            details.append("role: \(role)")
+        }
+        if let app = ToolResultExtractor.string("app", from: result) {
+            details.append("in \(app)")
+        }
+
+        return details
+    }
+
+    private func truncate(_ text: String, limit: Int) -> String {
+        if text.count > limit {
+            return String(text.prefix(limit)) + "..."
+        }
+        return text
     }
 }

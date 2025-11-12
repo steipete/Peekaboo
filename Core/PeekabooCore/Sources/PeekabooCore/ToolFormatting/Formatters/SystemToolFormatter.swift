@@ -385,4 +385,31 @@ public class SystemToolFormatter: BaseToolFormatter {
 
         return super.formatCompleted(result: result, duration: duration)
     }
+
+    private func formatShellError(result: [String: Any]) -> String {
+        let error = ToolResultExtractor.string("errorMessage", from: result) ?? "Command failed for an unknown reason."
+        let exitCode = ToolResultExtractor.int("exitCode", from: result) ?? -1
+
+        var parts: [String] = [
+            "\(AgentDisplayTokens.Status.failure) Shell command failed (exit code \(exitCode))"
+        ]
+
+        if let command = ToolResultExtractor.string("command", from: result) {
+            parts.append("  • Command: \(command)")
+        }
+
+        let truncated = error.count > 160 ? String(error.prefix(160)) + "…" : error
+        parts.append("  • Error: \(truncated)")
+
+        if exitCode == 127 {
+            parts.append("   💡 Command not found - check if the program is installed")
+        } else if exitCode == 126 {
+            parts.append("   💡 Permission denied - check file permissions")
+        } else if exitCode == 1, error.lowercased().contains("permission") {
+            parts.append("   💡 May need elevated privileges (sudo)")
+        }
+
+        return parts.joined(separator: "\n")
+    }
+
 }
