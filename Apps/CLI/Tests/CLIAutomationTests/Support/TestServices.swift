@@ -852,6 +852,12 @@ final class StubMenuService: MenuServiceProtocol {
 @MainActor
 final class StubDialogService: DialogServiceProtocol {
     var dialogElements: DialogElements?
+    var clickButtonResult: DialogActionResult?
+    var handleFileDialogResult: DialogActionResult?
+    var dismissResult: DialogActionResult?
+    var enterTextResult: DialogActionResult?
+
+    private(set) var recordedButtonClicks: [(button: String, window: String?)] = []
 
     init(elements: DialogElements? = nil) {
         self.dialogElements = elements
@@ -865,7 +871,11 @@ final class StubDialogService: DialogServiceProtocol {
     }
 
     func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
-        throw TestStubError.unimplemented(#function)
+        self.recordedButtonClicks.append((buttonText, windowTitle))
+        if let result = self.clickButtonResult {
+            return result
+        }
+        throw PeekabooError.elementNotFound(buttonText)
     }
 
     func enterText(
@@ -874,15 +884,24 @@ final class StubDialogService: DialogServiceProtocol {
         clearExisting: Bool,
         windowTitle: String?
     ) async throws -> DialogActionResult {
-        throw TestStubError.unimplemented(#function)
+        if let result = self.enterTextResult {
+            return result
+        }
+        throw PeekabooError.elementNotFound(fieldIdentifier ?? "field")
     }
 
     func handleFileDialog(path: String?, filename: String?, actionButton: String) async throws -> DialogActionResult {
-        throw TestStubError.unimplemented(#function)
+        if let result = self.handleFileDialogResult {
+            return result
+        }
+        throw PeekabooError.elementNotFound(actionButton)
     }
 
     func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
-        throw TestStubError.unimplemented(#function)
+        if let result = self.dismissResult {
+            return result
+        }
+        throw PeekabooError.elementNotFound(windowTitle ?? "dialog")
     }
 
     func listDialogElements(windowTitle: String?) async throws -> DialogElements {

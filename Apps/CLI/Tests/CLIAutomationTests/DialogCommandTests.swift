@@ -117,6 +117,80 @@ struct DialogCommandTests {
         _ = services.dialogs // This should compile without errors
     }
 
+    @Test("dialog list surfaces stubbed elements in JSON")
+    func dialogListWithStubData() async throws {
+        let elements = DialogElements(
+            dialogInfo: DialogInfo(
+                title: "Open",
+                role: "AXWindow",
+                subrole: "AXDialog",
+                isFileDialog: true,
+                bounds: .init(x: 0, y: 0, width: 400, height: 300)
+            ),
+            buttons: [
+                DialogButton(title: "New Document"),
+                DialogButton(title: "Open"),
+            ],
+            textFields: [
+                DialogTextField(title: "Name", value: "", placeholder: "File name", index: 0, isEnabled: true),
+            ],
+            staticTexts: ["Choose a document to open"]
+        )
+        let dialogService = await MainActor.run {
+            StubDialogService(elements: elements)
+        }
+        let services = await self.makeTestServices(dialogs: dialogService)
+
+        let (output, status) = try await self.runCommand(
+            ["dialog", "list", "--json-output"],
+            services: services
+        )
+        #expect(status == 0)
+
+        struct DialogTextFieldPayload: Codable {
+            let title: String?
+            let value: String?
+            let placeholder: String?
+        }
+
+        struct DialogListPayload: Codable {
+            let title: String
+            let role: String
+            let buttons: [String]
+            let textFields: [DialogTextFieldPayload]
+            let textElements: [String]
+        }
+
+        let data = try #require(output.data(using: .utf8))
+        let response = try JSONDecoder().decode(UnifiedToolOutput<DialogListPayload>.self, from: data)
+        #expect(response.data.title == "Open")
+        #expect(response.data.buttons.contains("New Document"))
+        #expect(response.data.textFields.first?.placeholder == "File name")
+    }
+
+    @Test("dialog click emits JSON success when stub succeeds")
+    func dialogClickJSON() async throws {
+        let dialogService = await MainActor.run { StubDialogService() }
+        dialogService.clickButtonResult = DialogActionResult(
+            success: true,
+            action: .clickButton,
+            details: ["button": "New Document", "window": "Open"]
+        )
+        let services = await self.makeTestServices(dialogs: dialogService)
+
+        let (output, status) = try await self.runCommand(
+            ["dialog", "click", "--button", "New Document", "--json-output"],
+            services: services
+        )
+        #expect(status == 0)
+
+        let data = try #require(output.data(using: .utf8))
+        let response = try JSONDecoder().decode(JSONResponse.self, from: data)
+        #expect(response.success == true)
+        #expect(dialogService.recordedButtonClicks.count == 1)
+        #expect(dialogService.recordedButtonClicks.first?.button == "New Document")
+    }
+
     private struct CommandFailure: Error {
         let status: Int32
         let stderr: String
@@ -124,6 +198,10 @@ struct DialogCommandTests {
 
     private func runCommand(_ args: [String]) async throws -> (output: String, status: Int32) {
         let services = await self.makeTestServices()
+        return try await self.runCommand(args, services: services)
+    }
+
+    private func runCommand(_ args: [String], services: PeekabooServices) async throws -> (output: String, status: Int32) {
         let result = try await InProcessCommandRunner.run(args, services: services)
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         if result.exitStatus != 0 {
@@ -133,8 +211,10 @@ struct DialogCommandTests {
     }
 
     @MainActor
-    private func makeTestServices() -> PeekabooServices {
-        TestServicesFactory.makePeekabooServices()
+    private func makeTestServices(
+        dialogs: DialogServiceProtocol = StubDialogService()
+    ) -> PeekabooServices {
+        TestServicesFactory.makePeekabooServices(dialogs: dialogs)
     }
 }
 
