@@ -208,11 +208,14 @@ struct WindowIdentityUtilitiesTests {
                    !infoTitle.isEmpty,
                    !firstWindow.title.isEmpty
                 {
+                    let mismatchMessage =
+                        "Window title mismatch (WindowIdentityService returned \"\(infoTitle)\", " +
+                        "WindowManagementService returned \"\(firstWindow.title)\")"
                     #expect(
                         infoTitle == firstWindow.title ||
                             infoTitle.contains(firstWindow.title) ||
                             firstWindow.title.contains(infoTitle),
-                        "Window title mismatch (WindowIdentityService returned \"\(infoTitle)\", WindowManagementService returned \"\(firstWindow.title)\")")
+                        mismatchMessage)
                 }
                 #expect(info.ownerPID > 0)
                 // Other fields depend on the actual window

@@ -237,31 +237,7 @@ struct ToolRegistryTests {
 
         let agentParams = tool.toAgentToolParameters()
 
-        // Verify parameter conversion (dashes should be converted to underscores)
-        #expect(agentParams.type == "object")
-        let properties = agentParams.properties
-        let required = agentParams.required
-        #expect(properties["input_text"] != nil)
-        #expect(properties["count"] != nil)
-        #expect(properties["enabled"] != nil)
-        #expect(properties["mode"] != nil)
-
-        // Check required parameters
-        #expect(required.contains("input_text"))
-        #expect(!required.contains("count")) // Not required
-
-        // Verify parameter types
-        if let inputTextParam = properties["input_text"] {
-            #expect(inputTextParam.type == .string)
-        } else {
-            Issue.record("input_text parameter not found")
-        }
-
-        if let countParam = properties["count"] {
-            #expect(countParam.type == .integer)
-        } else {
-            Issue.record("count parameter not found")
-        }
+        self.assertAgentParameters(agentParams)
 
         if let enabledParam = properties["enabled"] {
             #expect(enabledParam.type == .boolean)
@@ -308,6 +284,35 @@ struct ToolRegistryTests {
         for tool in allTools {
             #expect(!tool.abstract.isEmpty, "Tool \(tool.name) has empty abstract")
             #expect(!tool.discussion.isEmpty, "Tool \(tool.name) has empty discussion")
+        }
+    }
+}
+
+private extension ToolRegistryTests {
+    func assertAgentParameters(_ agentParams: AgentToolParameters) {
+        #expect(agentParams.type == "object")
+
+        let properties = agentParams.properties
+        let required = agentParams.required
+
+        self.assertProperty("input_text", expectedType: .string, existsIn: properties)
+        self.assertProperty("count", expectedType: .integer, existsIn: properties)
+        self.assertProperty("enabled", expectedType: .boolean, existsIn: properties)
+        self.assertProperty("mode", expectedType: .enumeration, existsIn: properties)
+
+        #expect(required.contains("input_text"))
+        #expect(!required.contains("count"))
+    }
+
+    func assertProperty(
+        _ name: String,
+        expectedType: ParameterDefinition.ParameterType,
+        existsIn properties: [String: AgentToolParameters.Property])
+    {
+        if let property = properties[name] {
+            #expect(property.type == expectedType)
+        } else {
+            Issue.record("\(name) parameter not found")
         }
     }
 }

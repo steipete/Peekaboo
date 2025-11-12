@@ -180,36 +180,14 @@ struct ElementDetectionServiceTests {
             buttons: [button1, button2],
             textFields: [textField])
 
-        // Test collection properties
-        #expect(detectedElements.all.count == 3)
-
-        // Test findById
-        let found = detectedElements.findById("btn-1")
-        #expect(found?.label == "Submit")
-
-        // Test buttons property
-        #expect(detectedElements.buttons.count == 2)
-        #expect(detectedElements.buttons.allSatisfy { $0.type == .button })
-
-        // Test textFields property
-        #expect(detectedElements.textFields.count == 1)
-        #expect(detectedElements.textFields.first?.type == .textField)
-
-        // Test enabled elements
-        let enabledElements = detectedElements.all.filter(\.isEnabled)
-        #expect(enabledElements.count == 2)
-
-        // Test disabled elements
-        let disabledElements = detectedElements.all.filter { !$0.isEnabled }
-        #expect(disabledElements.count == 1)
-        #expect(disabledElements.first?.id == "btn-2")
+        self.assertBasicElementCollections(
+            detectedElements,
+            expectedTotal: 3,
+            disabledId: "btn-2")
     }
 
     @Test("Actionable element detection")
     func detectActionableElements() async throws {
-        let sessionManager = MockSessionManager()
-        _ = ElementDetectionService(sessionManager: sessionManager)
-
         // Create elements with various actionable states
         let elements = [
             DetectedElement(
@@ -250,14 +228,7 @@ struct ElementDetectionServiceTests {
             links: linkElements,
             other: otherElements)
 
-        let result = ElementDetectionResult(
-            sessionId: "test-session",
-            screenshotPath: "/tmp/test.png",
-            elements: detectedElements,
-            metadata: DetectionMetadata(
-                detectionTime: 0.1,
-                elementCount: elements.count,
-                method: "AXorcist"))
+        let result = createDetectionResult(elements: detectedElements, total: elements.count)
 
         // Verify actionable elements are correctly identified
         let actionableTypes: Set<ElementType> = [.button, .link, .checkbox]
@@ -304,6 +275,31 @@ struct ElementDetectionServiceTests {
         #expect(elementsWithShortcuts.count == 2)
         #expect(elementsWithShortcuts[0].attributes["keyboardShortcut"] == "⌘S")
         #expect(elementsWithShortcuts[1].attributes["keyboardShortcut"] == "⇧⌘S")
+    }
+}
+
+private extension ElementDetectionServiceTests {
+    func assertBasicElementCollections(
+        _ elements: DetectedElements,
+        expectedTotal: Int,
+        disabledId: String)
+    {
+        #expect(elements.all.count == expectedTotal)
+
+        let found = elements.findById("btn-1")
+        #expect(found?.label == "Submit")
+
+        #expect(elements.buttons.count == 2)
+        #expect(elements.buttons.allSatisfy { $0.type == .button })
+        #expect(elements.textFields.count == 1)
+        #expect(elements.textFields.first?.type == .textField)
+
+        let enabledElements = elements.all.filter(\.isEnabled)
+        #expect(enabledElements.count == expectedTotal - 1)
+
+        let disabledElements = elements.all.filter { !$0.isEnabled }
+        #expect(disabledElements.count == 1)
+        #expect(disabledElements.first?.id == disabledId)
     }
 }
 
@@ -379,3 +375,15 @@ private actor MockSessionManager: SessionManagerProtocol {
         nil
     }
 }
+
+
+    private func createDetectionResult(elements: DetectedElements, total: Int) -> ElementDetectionResult {
+        ElementDetectionResult(
+            sessionId: "test-session",
+            screenshotPath: "/tmp/test.png",
+            elements: elements,
+            metadata: DetectionMetadata(
+                detectionTime: 0.1,
+                elementCount: total,
+                method: "AXorcist"))
+    }
