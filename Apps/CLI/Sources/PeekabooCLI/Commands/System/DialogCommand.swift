@@ -3,6 +3,7 @@ import AXorcist
 import Commander
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Interact with system dialogs and alerts
 @MainActor
@@ -499,6 +500,12 @@ struct DialogCommand: ParsableCommand {
             try await WindowServiceBridge.focusWindow(services: services, target: target)
             try await Task.sleep(nanoseconds: 150_000_000)
         } catch {
+            if let focusError = error as? FocusError, case .windowNotFound = focusError {
+                return
+            }
+            if let peekabooError = error as? PeekabooError, case .operationError = peekabooError {
+                return
+            }
             logger.debug("Dialog focus hint failed for \(appName): \(String(describing: error))")
         }
     }
