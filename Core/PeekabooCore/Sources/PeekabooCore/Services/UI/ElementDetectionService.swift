@@ -192,6 +192,7 @@ public final class ElementDetectionService {
             finalWindow = self.focusedWindowIfMatches(app: app)
         }
 
+        // When AX window enumeration yields nothing, progressively fall back to CG metadata
         if finalWindow == nil {
             finalWindow = await self.resolveWindowViaCGFallback(for: app, title: context?.windowTitle)
         }
@@ -305,6 +306,7 @@ public final class ElementDetectionService {
         return nil
     }
 
+    // Fallback #3: ask the window-management service (which already talks to CG+AX) for candidates
     private func resolveWindowViaWindowServiceFallback(for app: NSRunningApplication, title: String?) async -> Element? {
         let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
         do {

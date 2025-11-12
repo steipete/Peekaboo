@@ -11,10 +11,10 @@ import Testing
 @Suite("ScreenCaptureService planning helpers")
 @MainActor
 struct ScreenCaptureServicePlanTests {
-    @Test("Resolver defaults to legacy APIs when flag is unset")
-    func resolverDefaultsToLegacy() {
+    @Test("Resolver defaults to modern first when flag is unset")
+    func resolverDefaultsToModern() {
         let order = ScreenCaptureAPIResolver.resolve(environment: [:])
-        #expect(order == [.legacy])
+        #expect(order == [.modern, .legacy])
     }
 
     @Test("Resolver prefers modern APIs when flag is true")
@@ -68,3 +68,14 @@ struct ScreenCaptureServicePlanTests {
         }
     }
 }
+    @Test("Resolver forces modern only when explicitly requested")
+    func resolverModernOnly() {
+        let order = ScreenCaptureAPIResolver.resolve(environment: ["PEEKABOO_USE_MODERN_CAPTURE": "modern-only"])
+        #expect(order == [.modern])
+    }
+
+    @Test("Resolver forces legacy when flag is false")
+    func resolverLegacyOnly() {
+        let order = ScreenCaptureAPIResolver.resolve(environment: ["PEEKABOO_USE_MODERN_CAPTURE": "false"])
+        #expect(order == [.legacy])
+    }
