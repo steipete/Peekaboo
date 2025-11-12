@@ -47,6 +47,9 @@ struct DialogCommand: ParsableCommand {
 
         @Option(help: "Specific window/sheet title to target")
         var window: String?
+
+        @Option(help: "Application hosting the dialog (focus hint)")
+        var app: String?
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -67,6 +70,13 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
+                await DialogCommand.focusDialogAppIfNeeded(
+                    appName: self.app,
+                    windowTitle: self.window,
+                    services: self.services,
+                    logger: self.logger
+                )
+
                 // Click the button using the service
                 let result = try await self.services.dialogs.clickButton(
                     buttonText: self.button,
@@ -121,6 +131,9 @@ struct DialogCommand: ParsableCommand {
 
         @Flag(help: "Clear existing text first")
         var clear = false
+
+        @Option(help: "Application hosting the dialog (focus hint)")
+        var app: String?
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -141,6 +154,13 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
+                await DialogCommand.focusDialogAppIfNeeded(
+                    appName: self.app,
+                    windowTitle: nil,
+                    services: self.services,
+                    logger: self.logger
+                )
+
                 // Determine field identifier (index or label)
                 let fieldIdentifier = self.field ?? self.index.map { String($0) }
 
@@ -199,6 +219,9 @@ struct DialogCommand: ParsableCommand {
 
         @Option(help: "Button to click after entering path/name")
         var select: String = "Save"
+
+        @Option(help: "Application hosting the dialog (focus hint)")
+        var app: String?
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -219,6 +242,13 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
+                await DialogCommand.focusDialogAppIfNeeded(
+                    appName: self.app,
+                    windowTitle: nil,
+                    services: self.services,
+                    logger: self.logger
+                )
+
                 // Handle file dialog using the service
                 let result = try await self.services.dialogs.handleFileDialog(
                     path: self.path,
@@ -273,6 +303,9 @@ struct DialogCommand: ParsableCommand {
 
         @Option(help: "Specific window/sheet title to target")
         var window: String?
+
+        @Option(help: "Application hosting the dialog (focus hint)")
+        var app: String?
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -293,6 +326,13 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
+                await DialogCommand.focusDialogAppIfNeeded(
+                    appName: self.app,
+                    windowTitle: self.window,
+                    services: self.services,
+                    logger: self.logger
+                )
+
                 // Dismiss dialog using the service
                 let result = try await self.services.dialogs.dismissDialog(
                     force: self.force,
@@ -341,6 +381,9 @@ struct DialogCommand: ParsableCommand {
             commandName: "list",
             abstract: "List elements in current dialog using DialogService"
         )
+
+        @Option(help: "Application hosting the dialog (focus hint)")
+        var app: String?
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -362,6 +405,13 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
+                await DialogCommand.focusDialogAppIfNeeded(
+                    appName: self.app,
+                    windowTitle: nil,
+                    services: self.services,
+                    logger: self.logger
+                )
+
                 // List dialog elements using the service
                 let elements = try await self.services.dialogs.listDialogElements(windowTitle: nil)
 
@@ -429,6 +479,29 @@ struct DialogCommand: ParsableCommand {
             }
         }
     }
+
+    @MainActor
+    private static func focusDialogAppIfNeeded(
+        appName: String?,
+        windowTitle: String?,
+        services: PeekabooServices,
+        logger: Logger
+    ) async {
+        guard let appName, !appName.isEmpty else { return }
+
+        let target: WindowTarget = if let windowTitle, !windowTitle.isEmpty {
+            .applicationAndTitle(appName, title: windowTitle)
+        } else {
+            .application(appName)
+        }
+
+        do {
+            try await WindowServiceBridge.focusWindow(services: services, target: target)
+            try await Task.sleep(nanoseconds: 150_000_000)
+        } catch {
+            logger.debug("Dialog focus hint failed for \(appName): \(String(describing: error))")
+        }
+    }
 }
 
 @MainActor
@@ -442,6 +515,7 @@ extension DialogCommand.InputSubcommand: CommanderBindableCommand {
         self.field = values.singleOption("field")
         self.index = try values.decodeOption("index", as: Int.self)
         self.clear = values.flag("clear")
+        self.app = values.singleOption("app")
     }
 }
 
@@ -457,6 +531,7 @@ extension DialogCommand.FileSubcommand: CommanderBindableCommand {
         if let select = values.singleOption("select") {
             self.select = select
         }
+        self.app = values.singleOption("app")
     }
 }
 
@@ -469,6 +544,7 @@ extension DialogCommand.DismissSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.force = values.flag("force")
         self.window = values.singleOption("window")
+        self.app = values.singleOption("app")
     }
 }
 
@@ -479,7 +555,7 @@ extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 @MainActor
 extension DialogCommand.ListSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        _ = values
+        self.app = values.singleOption("app")
     }
 }
 
@@ -502,6 +578,7 @@ extension DialogCommand.ClickSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.button = try values.requireOption("button", as: String.self)
         self.window = values.singleOption("window")
+        self.app = values.singleOption("app")
     }
 }
 
