@@ -70,6 +70,28 @@ extension ErrorHandlingCommand {
     }
 
     private func mapPeekabooErrorToCode(_ error: PeekabooError) -> ErrorCode {
+        if let lookupCode = self.lookupErrorCode(for: error) {
+            return lookupCode
+        }
+        if let permissionCode = self.permissionErrorCode(for: error) {
+            return permissionCode
+        }
+        if let timeoutCode = self.timeoutErrorCode(for: error) {
+            return timeoutCode
+        }
+        if let automationCode = self.automationErrorCode(for: error) {
+            return automationCode
+        }
+        if let inputCode = self.inputErrorCode(for: error) {
+            return inputCode
+        }
+        if let credentialCode = self.credentialErrorCode(for: error) {
+            return credentialCode
+        }
+        return .UNKNOWN_ERROR
+    }
+
+    private func lookupErrorCode(for error: PeekabooError) -> ErrorCode? {
         switch error {
         case .appNotFound:
             .APP_NOT_FOUND
@@ -85,38 +107,63 @@ extension ErrorHandlingCommand {
             .MENU_BAR_NOT_FOUND
         case .menuItemNotFound:
             .MENU_ITEM_NOT_FOUND
+        default:
+            nil
+        }
+    }
+
+    private func permissionErrorCode(for error: PeekabooError) -> ErrorCode? {
+        switch error {
         case .permissionDeniedScreenRecording:
             .PERMISSION_ERROR_SCREEN_RECORDING
         case .permissionDeniedAccessibility:
             .PERMISSION_ERROR_ACCESSIBILITY
+        default:
+            nil
+        }
+    }
+
+    private func timeoutErrorCode(for error: PeekabooError) -> ErrorCode? {
+        switch error {
         case .captureTimeout, .timeout:
             .TIMEOUT
+        default:
+            nil
+        }
+    }
+
+    private func automationErrorCode(for error: PeekabooError) -> ErrorCode? {
+        switch error {
         case .captureFailed, .clickFailed, .typeFailed:
             .CAPTURE_FAILED
+        case .serviceUnavailable, .networkError, .apiError, .commandFailed, .encodingError:
+            .UNKNOWN_ERROR
+        default:
+            nil
+        }
+    }
+
+    private func inputErrorCode(for error: PeekabooError) -> ErrorCode? {
+        switch error {
         case .invalidCoordinates:
             .INVALID_COORDINATES
         case .fileIOError:
             .FILE_IO_ERROR
-        case .commandFailed:
-            .UNKNOWN_ERROR
         case .invalidInput:
             .INVALID_INPUT
-        case .encodingError:
-            .UNKNOWN_ERROR
-        case .noAIProviderAvailable:
+        default:
+            nil
+        }
+    }
+
+    private func credentialErrorCode(for error: PeekabooError) -> ErrorCode? {
+        switch error {
+        case .noAIProviderAvailable, .authenticationFailed:
             .MISSING_API_KEY
         case .aiProviderError:
             .AGENT_ERROR
-        case .serviceUnavailable:
-            .UNKNOWN_ERROR
-        case .networkError:
-            .UNKNOWN_ERROR
-        case .apiError:
-            .UNKNOWN_ERROR
-        case .authenticationFailed:
-            .MISSING_API_KEY
         default:
-            .UNKNOWN_ERROR
+            nil
         }
     }
 
@@ -186,7 +233,7 @@ protocol OutputFormattable {
 
 extension OutputFormattable {
     /// Output data in appropriate format
-    func output(_ data: some Codable, humanReadable: () -> ()) {
+    func output(_ data: some Codable, humanReadable: () -> Void) {
         // Output data in appropriate format
         if jsonOutput {
             outputSuccessCodable(data: data, logger: self.outputLogger)
@@ -258,33 +305,22 @@ enum AutomationServiceBridge {
 
     static func typeActions(
         services: PeekabooServices,
-        actions: [TypeAction],
-        typingDelay: Int,
-        sessionId: String?
+        request: TypeActionsRequest
     ) async throws -> TypeResult {
         try await Task { @MainActor in
-            try await services.automation.typeActions(actions, typingDelay: typingDelay, sessionId: sessionId)
+            try await services.automation.typeActions(
+                request.actions,
+                typingDelay: request.typingDelay,
+                sessionId: request.sessionId
+            )
         }.value
     }
 
     static func scroll(
         services: PeekabooServices,
-        direction: ScrollDirection,
-        amount: Int,
-        target: String?,
-        smooth: Bool,
-        delay: Int,
-        sessionId: String?
+        request: ScrollRequest
     ) async throws {
         try await Task { @MainActor in
-            let request = ScrollRequest(
-                direction: direction,
-                amount: amount,
-                target: target,
-                smooth: smooth,
-                delay: delay,
-                sessionId: sessionId
-            )
             try await services.automation.scroll(request)
         }.value
     }
@@ -309,19 +345,15 @@ enum AutomationServiceBridge {
 
     static func drag(
         services: PeekabooServices,
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        modifiers: String?
+        request: DragRequest
     ) async throws {
         try await Task { @MainActor in
             try await services.automation.drag(
-                from: from,
-                to: to,
-                duration: duration,
-                steps: steps,
-                modifiers: modifiers
+                from: request.from,
+                to: request.to,
+                duration: request.duration,
+                steps: request.steps,
+                modifiers: request.modifiers
             )
         }.value
     }
@@ -357,6 +389,20 @@ enum AutomationServiceBridge {
             await services.automation.hasAccessibilityPermission()
         }.value
     }
+}
+
+struct TypeActionsRequest: Sendable {
+    let actions: [TypeAction]
+    let typingDelay: Int
+    let sessionId: String?
+}
+
+struct DragRequest: Sendable {
+    let from: CGPoint
+    let to: CGPoint
+    let duration: Int
+    let steps: Int
+    let modifiers: String?
 }
 
 enum WindowServiceBridge {

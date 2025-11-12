@@ -46,7 +46,7 @@ func ensureFocused(
     } catch let error as FocusError {
         switch error {
         case .windowNotFound, .axElementNotFound:
-            var fallbackErrors: [Error] = []
+            var fallbackErrors: [any Error] = []
             var fallbackTargets: [WindowTarget] = [.windowId(Int(windowID))]
             if let applicationName {
                 fallbackTargets.append(.application(applicationName))

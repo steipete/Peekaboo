@@ -131,7 +131,7 @@ func outputSuccessCodable(data: some Codable, messages: [String]? = nil, logger:
     outputJSONCodable(response, logger: logger)
 }
 
-func outputJSONCodable(_ response: some Codable, logger: Logger) {
+func outputJSONCodable(_ response: some Encodable, logger: Logger) {
     do {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted

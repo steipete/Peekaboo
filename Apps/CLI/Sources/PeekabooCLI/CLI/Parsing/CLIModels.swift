@@ -10,19 +10,19 @@ typealias SavedFile = PeekabooCore.SavedFile
 typealias ImageCaptureData = PeekabooCore.ImageCaptureData
 
 // Extend PeekabooCore types to conform to Commander argument parsing for CLI usage
-extension PeekabooCore.CaptureMode: ExpressibleFromArgument {
+extension PeekabooCore.CaptureMode: @retroactive ExpressibleFromArgument {
     public init?(argument: String) {
         self.init(rawValue: argument.lowercased())
     }
 }
 
-extension PeekabooCore.ImageFormat: ExpressibleFromArgument {
+extension PeekabooCore.ImageFormat: @retroactive ExpressibleFromArgument {
     public init?(argument: String) {
         self.init(rawValue: argument.lowercased())
     }
 }
 
-extension PeekabooCore.CaptureFocus: ExpressibleFromArgument {
+extension PeekabooCore.CaptureFocus: @retroactive ExpressibleFromArgument {
     public init?(argument: String) {
         self.init(rawValue: argument.lowercased())
     }
