@@ -11,7 +11,7 @@ import PeekabooFoundation
 struct CommandRuntimeOptions: Sendable {
     var verbose = false
     var jsonOutput = false
-    var logLevel: LogLevel? = nil
+    var logLevel: LogLevel?
 
     func makeConfiguration() -> CommandRuntime.Configuration {
         CommandRuntime.Configuration(
