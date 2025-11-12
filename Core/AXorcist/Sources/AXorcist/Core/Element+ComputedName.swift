@@ -7,71 +7,65 @@ public extension Element {
     /// This is useful for logging and debugging, and can be part of the `collectAll` output.
     @MainActor
     func computedName() -> String? {
-        // Prioritize specific, descriptive attributes first
-        if let title = self.title(), !title.isEmpty { // title() will become sync
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "ComputedName: Using AXTitle '\(title)' for \(self.briefDescription(option: .raw))"
-            ))
-            return title
-        }
-        if let value = self.value() as? String, !value.isEmpty { // value() will become sync
-            // Be cautious with AXValue; it can be very long or non-descriptive.
-            // Limit length and perhaps check for common non-descriptive patterns if needed.
-            let truncatedValue = String(value.prefix(50))
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "ComputedName: Using AXValue '\(truncatedValue)' (truncated) for \(self.briefDescription(option: .raw))"
-            ))
-            return truncatedValue
-        }
-        if let identifier = self.identifier(), !identifier.isEmpty { // identifier() will become sync
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "ComputedName: Using AXIdentifier '\(identifier)' for \(self.briefDescription(option: .raw))"
-            ))
-            return identifier
-        }
-        if let desc = self.descriptionText(), !desc.isEmpty { // descriptionText() will become sync
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "ComputedName: Using AXDescription '\(desc)' for \(self.briefDescription(option: .raw))"
-            ))
-            return desc
-        }
-        if let help = self.help(), !help.isEmpty { // help() will become sync
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "ComputedName: Using AXHelp '\(help)' for \(self.briefDescription(option: .raw))"
-            ))
-            return help
-        }
-        // self.attribute() will become sync, so this call becomes sync
-        if let placeholder = self.attribute(Attribute<String>(AXAttributeNames.kAXPlaceholderValueAttribute)),
-           !placeholder.isEmpty
-        {
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "ComputedName: Using AXPlaceholderValue '\(placeholder)' for \(self.briefDescription(option: .raw))"
-            ))
-            return placeholder
+        let elementDescription = briefDescription(option: .raw)
+
+        func nonEmpty(_ value: String?) -> String? {
+            guard let value, !value.isEmpty else { return nil }
+            return value
         }
 
-        // Fallback to role if no other descriptive attribute is found
-        if let role = self.role(), !role.isEmpty { // role() will become sync
-            // Make role more readable, e.g., "AXButton" -> "Button"
-            let cleanRole = role.replacingOccurrences(of: "AX", with: "")
-            GlobalAXLogger.shared.log(AXLogEntry(
-                level: .debug,
-                message: "ComputedName: Falling back to AXRole '\(cleanRole)' for \(self.briefDescription(option: .raw))"
-            ))
-            return cleanRole
+        let candidates: [(source: String, provider: () -> String?)] = [
+            ("AXTitle", { nonEmpty(self.title()) }),
+            ("AXValue", {
+                guard let rawValue = self.value() as? String, !rawValue.isEmpty else { return nil }
+                return String(rawValue.prefix(50))
+            }),
+            ("AXIdentifier", { nonEmpty(self.identifier()) }),
+            ("AXDescription", { nonEmpty(self.descriptionText()) }),
+            ("AXHelp", { nonEmpty(self.help()) }),
+            ("AXPlaceholderValue", {
+                let placeholder = self.attribute(Attribute<String>(AXAttributeNames.kAXPlaceholderValueAttribute))
+                return nonEmpty(placeholder)
+            })
+        ]
+
+        for candidate in candidates {
+            if let value = candidate.provider() {
+                return logComputedName(
+                    source: candidate.source,
+                    value: value,
+                    elementDescription: elementDescription
+                )
+            }
         }
 
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "ComputedName: No suitable attribute found for \(self.briefDescription(option: .raw)). Returning nil."
-        ))
-        return nil // No suitable name found
+        if let roleName = nonEmpty(role()) {
+            let cleanRole = roleName.replacingOccurrences(of: "AX", with: "")
+            return logComputedName(
+                source: "AXRole",
+                value: cleanRole,
+                elementDescription: elementDescription
+            )
+        }
+
+        logMissingComputedName(elementDescription: elementDescription)
+        return nil
+    }
+
+    private func logComputedName(source: String, value: String, elementDescription: String) -> String {
+        let message = [
+            "ComputedName: Using \(source)",
+            "'\(value)' for \(elementDescription)"
+        ].joined(separator: " ")
+        GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: message))
+        return value
+    }
+
+    private func logMissingComputedName(elementDescription: String) {
+        let message = [
+            "ComputedName: No suitable attribute found for",
+            "\(elementDescription). Returning nil."
+        ].joined(separator: " ")
+        GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: message))
     }
 }

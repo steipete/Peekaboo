@@ -66,7 +66,12 @@ public struct Element: Equatable, Hashable, Sendable {
     ///   - attributes: Pre-fetched accessibility attributes
     ///   - children: Pre-fetched child elements
     ///   - actions: Pre-fetched available actions
-    public init(_ element: AXUIElement, attributes: [String: AttributeValue]?, children: [Element]?, actions: [String]?) {
+    public init(
+        _ element: AXUIElement,
+        attributes: [String: AttributeValue]?,
+        children: [Element]?,
+        actions: [String]?)
+    {
         self.underlyingElement = element
         self.attributes = attributes
         self.prefetchedChildren = children // Renamed from 'children'.
@@ -358,21 +363,26 @@ public struct Element: Equatable, Hashable, Sendable {
 
         if let cfArray = value, CFGetTypeID(cfArray) == CFArrayGetTypeID() {
             if let axElements = cfArray as? [AXUIElement] {
+                let message = "Successfully fetched and cast \(axElements.count) AXUIElements " +
+                    "for '\(attribute.rawValue)'."
                 GlobalAXLogger.shared.log(AXLogEntry(
                     level: .debug,
-                    message: "Successfully fetched and cast \(axElements.count) AXUIElements for '\(attribute.rawValue)'."
+                    message: message
                 ))
                 return axElements as? T
             } else {
+                let message = "CFArray for '\(attribute.rawValue)' failed to cast to [AXUIElement]."
                 GlobalAXLogger.shared.log(AXLogEntry(
                     level: .debug,
-                    message: "CFArray for '\(attribute.rawValue)' failed to cast to [AXUIElement]."
+                    message: message
                 ))
             }
         } else if let unwrappedValue = value {
+            let typeDescription = String(describing: CFGetTypeID(unwrappedValue))
+            let message = "Value for '\(attribute.rawValue)' was not a CFArray. TypeID: \(typeDescription)"
             GlobalAXLogger.shared.log(AXLogEntry(
                 level: .debug,
-                message: "Value for '\(attribute.rawValue)' was not a CFArray. TypeID: \(String(describing: CFGetTypeID(unwrappedValue)))"
+                message: message
             ))
         } else {
             GlobalAXLogger.shared.log(AXLogEntry(
@@ -387,7 +397,8 @@ public struct Element: Equatable, Hashable, Sendable {
     private func fetchAndConvertAttribute<T>(_ attribute: Attribute<T>) -> T? {
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "Using basic CFTypeRef conversion for T = \\(String(describing: T.self)), Attribute: \\(attribute.rawValue)."
+            message: "Using basic CFTypeRef conversion for T = \\(String(describing: T.self)), " +
+                "Attribute: \\(attribute.rawValue)."
         ))
         var value: CFTypeRef?
         let error = AXUIElementCopyAttributeValue(self.underlyingElement, attribute.rawValue as CFString, &value)

@@ -15,8 +15,10 @@ public extension Element {
         // self.briefDescription and ancestor?.briefDescription now use GlobalAXLogger
         // Assumes self.briefDescription() has been refactored in Element+Description.swift
         let ancestorDesc = ancestor?.briefDescription(option: .smart) ?? "nil"
-        let logMessage1 =
-            "generatePathString started for element: \(self.briefDescription(option: .smart)) upTo: \(ancestorDesc)"
+        let logMessage1 = """
+        generatePathString started for element: \(self.briefDescription(option: .smart))
+        upTo: \(ancestorDesc)
+        """.trimmingCharacters(in: .whitespacesAndNewlines)
         axDebugLog(logMessage1)
 
         while let element = currentElement, depth < maxDepth {
@@ -39,8 +41,8 @@ public extension Element {
             if role == AXRoleNames.kAXApplicationRole ||
                 (role == AXRoleNames.kAXWindowRole && parentRole == AXRoleNames.kAXApplicationRole && ancestor == nil)
             {
-                let logMessage2 =
-                    "Stopping at \(role == AXRoleNames.kAXApplicationRole ? "Application" : "Window under App"): \(briefDesc)"
+                let locationType = role == AXRoleNames.kAXApplicationRole ? "Application" : "Window under App"
+                let logMessage2 = "Stopping at \(locationType): \(briefDesc)"
                 axDebugLog(logMessage2)
                 break
             }
@@ -55,8 +57,7 @@ public extension Element {
             }
         }
         if depth >= maxDepth {
-            axWarningLog("Reached max depth (\(maxDepth)) for path generation. Path might be truncated.") // Changed to
-            // warning
+            axWarningLog("Reached max depth (\(maxDepth)) for path generation. Path might be truncated.")
             pathComponents.append("<...max_depth_reached...>")
         }
 
@@ -73,8 +74,11 @@ public extension Element {
         var depth = 0
         let maxDepth = 25
 
-        let logMessage3 =
-            "generatePathArray started for element: \(self.briefDescription(option: .smart)) upTo: \(ancestor?.briefDescription(option: .smart) ?? "nil")"
+        let targetDesc = ancestor?.briefDescription(option: .smart) ?? "nil"
+        let logMessage3 = """
+        generatePathArray started for element: \(self.briefDescription(option: .smart))
+        upTo: \(targetDesc)
+        """.trimmingCharacters(in: .whitespacesAndNewlines)
         axDebugLog(logMessage3)
 
         while let element = currentElement, depth < maxDepth {
@@ -95,9 +99,8 @@ public extension Element {
             if role == AXRoleNames.kAXApplicationRole ||
                 (role == AXRoleNames.kAXWindowRole && parentRole == AXRoleNames.kAXApplicationRole && ancestor == nil)
             {
-                let logMessage4 =
-                    "Stopping at \(role == AXRoleNames.kAXApplicationRole ? "Application" : "Window under App"): \(briefDesc)"
-                axDebugLog(logMessage4)
+                let locationType = role == AXRoleNames.kAXApplicationRole ? "Application" : "Window under App"
+                axDebugLog("Stopping at \(locationType): \(briefDesc)")
                 break
             }
 
@@ -116,7 +119,8 @@ public extension Element {
         }
 
         let reversedPathComponents = Array(pathComponents.reversed())
-        axDebugLog("generatePathArray finished. Path components: \(reversedPathComponents.joined(separator: "/"))")
+        let summary = reversedPathComponents.joined(separator: "/")
+        axDebugLog("generatePathArray finished. Path components: \(summary)")
         return reversedPathComponents
     }
 }

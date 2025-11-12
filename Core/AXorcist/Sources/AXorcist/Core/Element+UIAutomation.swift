@@ -4,9 +4,9 @@ import ApplicationServices
 // MARK: - Mouse Button Types
 
 public enum MouseButton: String, Sendable {
-    case left = "left"
-    case right = "right"
-    case middle = "middle"
+    case left
+    case right
+    case middle
 }
 
 // MARK: - Click Operations
@@ -72,7 +72,10 @@ public extension Element {
     }
 
     /// Wait for this element to become actionable
-    @MainActor func waitUntilActionable(timeout: TimeInterval = 5.0, pollInterval: TimeInterval = 0.1) async throws -> Element {
+    @MainActor func waitUntilActionable(
+        timeout: TimeInterval = 5.0,
+        pollInterval: TimeInterval = 0.1) async throws -> Element
+    {
         let startTime = Date()
 
         while Date().timeIntervalSince(startTime) < timeout {
@@ -254,61 +257,61 @@ public extension Element {
 // MARK: - Special Keys
 
 public enum SpecialKey: String {
-    case escape = "escape"
-    case tab = "tab"
-    case space = "space"
-    case delete = "delete"
+    case escape
+    case tab
+    case space
+    case delete
     case forwardDelete = "forwarddelete"
-    case `return` = "return"
-    case enter = "enter"
-    case up = "up"
-    case down = "down"
-    case left = "left"
-    case right = "right"
+    case `return`
+    case enter
+    case up
+    case down
+    case left
+    case right
     case pageUp = "pageup"
     case pageDown = "pagedown"
-    case home = "home"
-    case end = "end"
-    case f1 = "f1"
-    case f2 = "f2"
-    case f3 = "f3"
-    case f4 = "f4"
-    case f5 = "f5"
-    case f6 = "f6"
-    case f7 = "f7"
-    case f8 = "f8"
-    case f9 = "f9"
-    case f10 = "f10"
-    case f11 = "f11"
-    case f12 = "f12"
+    case home
+    case end
+    case f1
+    case f2
+    case f3
+    case f4
+    case f5
+    case f6
+    case f7
+    case f8
+    case f9
+    case f10
+    case f11
+    case f12
 
     // Single character keys
-    case a = "a"
-    case b = "b"
-    case c = "c"
-    case d = "d"
-    case e = "e"
-    case f = "f"
-    case g = "g"
-    case h = "h"
-    case i = "i"
-    case j = "j"
-    case k = "k"
-    case l = "l"
-    case m = "m"
-    case n = "n"
-    case o = "o"
-    case p = "p"
-    case q = "q"
-    case r = "r"
-    case s = "s"
-    case t = "t"
-    case u = "u"
-    case v = "v"
-    case w = "w"
-    case x = "x"
-    case y = "y"
-    case z = "z"
+    case a
+    case b
+    case c
+    case d
+    case e
+    case f
+    case g
+    case h
+    case i
+    case j
+    case k
+    case l
+    case m
+    case n
+    case o
+    case p
+    case q
+    case r
+    case s
+    case t
+    case u
+    case v
+    case w
+    case x
+    case y
+    case z
 
     init?(character: Character) {
         if let special = SpecialKey(rawValue: String(character).lowercased()) {
@@ -379,10 +382,10 @@ public enum SpecialKey: String {
 // MARK: - Scroll Operations
 
 public enum ScrollDirection: String, Sendable {
-    case up = "up"
-    case down = "down"
-    case left = "left"
-    case right = "right"
+    case up
+    case down
+    case left
+    case right
 }
 
 public extension Element {
@@ -401,7 +404,12 @@ public extension Element {
     }
 
     /// Scroll at a specific point
-    @MainActor static func scrollAt(_ point: CGPoint, direction: ScrollDirection, amount: Int = 3, smooth: Bool = false) throws {
+    @MainActor static func scrollAt(
+        _ point: CGPoint,
+        direction: ScrollDirection,
+        amount: Int = 3,
+        smooth: Bool = false) throws
+    {
         let scrollAmount = smooth ? 1 : amount
         let iterations = smooth ? amount : 1
         let delay = smooth ? 0.01 : 0.05
