@@ -235,6 +235,7 @@ public final class SessionManager: SessionManagerProtocol {
     {
         // Store raw screenshot and build UI map
         let sessionPath = self.getSessionPath(for: sessionId)
+        try FileManager.default.createDirectory(at: sessionPath, withIntermediateDirectories: true)
 
         // Load or create session data
         var sessionData = await sessionActor
@@ -242,8 +243,18 @@ public final class SessionManager: SessionManagerProtocol {
 
         // Copy screenshot to session directory
         let rawPath = sessionPath.appendingPathComponent("raw.png")
-        try? FileManager.default.removeItem(at: rawPath)
-        try FileManager.default.copyItem(atPath: screenshotPath, toPath: rawPath.path)
+        let sourceURL = URL(fileURLWithPath: screenshotPath).standardizedFileURL
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            throw CaptureError.fileIOError("Screenshot missing at \(sourceURL.path)")
+        }
+        if FileManager.default.fileExists(atPath: rawPath.path) {
+            try FileManager.default.removeItem(at: rawPath)
+        }
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: rawPath)
+        } catch {
+            throw CaptureError.fileIOError("Failed to copy screenshot to session storage: \(error.localizedDescription)")
+        }
 
         sessionData.screenshotPath = rawPath.path
         sessionData.applicationName = applicationName
