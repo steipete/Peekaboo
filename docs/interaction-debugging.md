@@ -103,6 +103,20 @@ read_when:
 - Added `MenuServiceTests` to verify the merge logic keeps accessibility titles (Wi-Fi, Control Center) and only adds fallback entries when new positions appear.
 - `MenuExtraInfo` now stores the raw title, bundle, and owner metadata so the CLI can map `com.apple.controlcenter` → “Control Center”, `com.apple.Siri` → “Siri”, etc., and we skip duplicates whenever a new entry overlaps an already-rendered location.
 
+## `menubar list` now includes raw metadata
+- **Command**: `polter peekaboo menubar list --json-output`
+- **Observed**: Beyond the friendly display string, downstream automation needed the raw bundle/title/owner info for analytics and status item indexing.
+- **Resolution — Nov 12, 2025**: `MenuBarItemInfo` now exposes `rawTitle`, `bundleIdentifier`, and `ownerName`, and the JSON schema includes `raw_title`, `bundle_id`, `owner_name` so callers can schedule more precise actions.
+
+## `menu list --json-output` now also reports owner name
+- **Command**: `polter peekaboo menu list --json-output`
+- **Observed**: Scripts needed a consistent `owner_name` for the targeted app, not just the app title and bundle ID.
+- **Resolution — Nov 12, 2025**: The JSON response now returns `owner_name` (set to the resolved application name) alongside `bundle_id`, mirroring the menubar metadata so downstream consumers can use the same schema for both commands.
+
+## Menu structure now carries owner metadata in every node
+- **Motivation**: Future tooling may need bundle/owner context even for submenu entries, not just the root app. Adding it to `Menu`/`MenuItem` makes the JSON tree richer without extra API calls.
+- **Resolution — Nov 12, 2025**: `Menu` and `MenuItem` structs now expose `bundle_id`/`owner_name`, and the CLI JSON output includes them for every node (the menu command now ships `bundle_id`/`owner_name` alongside `title` for menus and items). Services still populate those fields from the resolved `ServiceApplicationInfo`, so even deeply nested menu entries keep the same owner metadata.
+
 ## `window focus` reports INTERNAL_SWIFT_ERROR instead of WINDOW_NOT_FOUND
 - **Command**: `polter peekaboo window focus --app Finder --json-output`
 - **Observed**: `FocusSubcommand` returned `{ "code": "INTERNAL_SWIFT_ERROR", "message": "Could not find accessibility element for window ID 91" }` when the window could not be focused.

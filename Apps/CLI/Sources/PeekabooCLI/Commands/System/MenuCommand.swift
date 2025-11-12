@@ -57,6 +57,8 @@ extension MenuCommand {
         @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
         var app: String
 
+        var positionalAppIdentifier: String { self.app }
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 
@@ -96,10 +98,11 @@ extension MenuCommand {
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                try await ensureFocused(
+                try await ensureFocusIgnoringMissingWindows(
                     applicationName: appIdentifier,
                     options: self.focusOptions,
-                    services: self.services
+                    services: self.services,
+                    logger: self.logger
                 )
 
                 if let itemName = self.item {
@@ -303,6 +306,8 @@ extension MenuCommand {
         @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
         var app: String
 
+        var positionalAppIdentifier: String { self.app }
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 
@@ -331,10 +336,11 @@ extension MenuCommand {
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                try await ensureFocused(
+                try await ensureFocusIgnoringMissingWindows(
                     applicationName: appIdentifier,
                     options: self.focusOptions,
-                    services: self.services
+                    services: self.services,
+                    logger: self.logger
                 )
 
                 let menuStructure = try await MenuServiceBridge.listMenus(
@@ -345,11 +351,12 @@ extension MenuCommand {
                     .filterDisabledMenus(menuStructure.menus)
 
                 if self.jsonOutput {
-                    let data = MenuListData(
-                        app: menuStructure.application.name,
-                        bundle_id: menuStructure.application.bundleIdentifier,
-                        menu_structure: self.convertMenusToTyped(filteredMenus)
-                    )
+                let data = MenuListData(
+                    app: menuStructure.application.name,
+                    owner_name: menuStructure.application.name,
+                    bundle_id: menuStructure.application.bundleIdentifier,
+                    menu_structure: self.convertMenusToTyped(filteredMenus)
+                )
                     outputSuccessCodable(data: data, logger: self.outputLogger)
                 } else {
                     print("Menu structure for \(menuStructure.application.name):")
@@ -394,21 +401,25 @@ extension MenuCommand {
             }
         }
 
-        private func convertMenusToTyped(_ menus: [Menu]) -> [MenuData] {
-            menus.map { menu in
-                MenuData(
-                    title: menu.title,
-                    enabled: menu.isEnabled,
-                    items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
-                )
-            }
+    private func convertMenusToTyped(_ menus: [Menu]) -> [MenuData] {
+        menus.map { menu in
+            MenuData(
+                title: menu.title,
+                bundle_id: menu.bundleIdentifier,
+                owner_name: menu.ownerName,
+                enabled: menu.isEnabled,
+                items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
+            )
         }
+    }
 
-        private func convertMenuItemsToTyped(_ items: [MenuItem]) -> [MenuItemData] {
-            items.map { item in
-                MenuItemData(
-                    title: item.title,
-                    enabled: item.isEnabled,
+    private func convertMenuItemsToTyped(_ items: [MenuItem]) -> [MenuItemData] {
+        items.map { item in
+            MenuItemData(
+                title: item.title,
+                bundle_id: item.bundleIdentifier,
+                owner_name: item.ownerName,
+                enabled: item.isEnabled,
                     shortcut: item.keyboardShortcut?.displayString,
                     checked: item.isChecked ? true : nil,
                     separator: item.isSeparator ? true : nil,
@@ -747,6 +758,31 @@ extension MenuCommand {
             }
         }
     }
+
+}
+
+// MARK: - Focus Helpers
+
+@MainActor
+private func ensureFocusIgnoringMissingWindows(
+    applicationName: String,
+    options: any FocusOptionsProtocol,
+    services: PeekabooServices,
+    logger: Logger
+) async throws {
+    do {
+        try await ensureFocused(
+            applicationName: applicationName,
+            options: options,
+            services: services
+        )
+    } catch let focusError as FocusError {
+        if case .noWindowsFound = focusError {
+            logger.debug("Skipping focus: no windows found for '\(applicationName)'")
+        } else {
+            throw focusError
+        }
+    }
 }
 
 // MARK: - Subcommand Conformances
@@ -862,18 +898,23 @@ struct MenuExtraClickResult: Codable {
 // Typed menu structures for JSON output
 struct MenuListData: Codable {
     let app: String
+    let owner_name: String?
     let bundle_id: String?
     let menu_structure: [MenuData]
 }
 
 struct MenuData: Codable {
     let title: String
+    let bundle_id: String?
+    let owner_name: String?
     let enabled: Bool
     let items: [MenuItemData]?
 }
 
 struct MenuItemData: Codable {
     let title: String
+    let bundle_id: String?
+    let owner_name: String?
     let enabled: Bool
     let shortcut: String?
     let checked: Bool?

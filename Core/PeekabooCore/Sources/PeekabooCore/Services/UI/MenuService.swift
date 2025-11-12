@@ -63,7 +63,7 @@ public final class MenuService: MenuServiceProtocol {
 
             // Extract menu with time tracking
             let menuItemStartTime = Date()
-            if let menu = extractMenu(from: menuBarItem, parentPath: "") {
+            if let menu = extractMenu(from: menuBarItem, parentPath: "", application: appInfo) {
                 let menuProcessingTime = Date().timeIntervalSince(menuItemStartTime)
                 if menuProcessingTime > 1.0 {
                     self.logger.debug("Menu '\(menu.title)' took \(menuProcessingTime)s to process")
@@ -281,7 +281,11 @@ public final class MenuService: MenuServiceProtocol {
     // MARK: - Private Helpers
 
     @MainActor
-    private func extractMenu(from menuBarItem: Element, parentPath: String) -> Menu? {
+    private func extractMenu(
+        from menuBarItem: Element,
+        parentPath: String,
+        application: ServiceApplicationInfo
+    ) -> Menu? {
         guard let title = menuBarItem.title() else { return nil }
 
         let isEnabled = menuBarItem.isEnabled() ?? true
@@ -298,7 +302,11 @@ public final class MenuService: MenuServiceProtocol {
                         let maxDepth = 3
                         let currentDepth = currentPath.split(separator: ">").count
                         if currentDepth < maxDepth {
-                            items = self.extractMenuItems(from: menuChildren, parentPath: currentPath)
+                            items = self.extractMenuItems(
+                                from: menuChildren,
+                                parentPath: currentPath,
+                                application: application
+                            )
                         } else {
                             self.logger.debug("Skipping menu items at depth \(currentDepth) (max: \(maxDepth))")
                         }
@@ -308,23 +316,42 @@ public final class MenuService: MenuServiceProtocol {
             }
         }
 
-        return Menu(title: title, items: items, isEnabled: isEnabled)
+        return Menu(
+            title: title,
+            bundleIdentifier: application.bundleIdentifier,
+            ownerName: application.name,
+            items: items,
+            isEnabled: isEnabled)
     }
 
     @MainActor
-    private func extractMenuItems(from elements: [Element], parentPath: String) -> [MenuItem] {
+    private func extractMenuItems(
+        from elements: [Element],
+        parentPath: String,
+        application: ServiceApplicationInfo
+    ) -> [MenuItem] {
         // Process all items now that we have timeout protection
         elements.compactMap { element in
-            self.extractMenuItem(from: element, parentPath: parentPath)
+            self.extractMenuItem(
+                from: element,
+                parentPath: parentPath,
+                application: application
+            )
         }
     }
 
     @MainActor
-    private func extractMenuItem(from element: Element, parentPath: String) -> MenuItem? {
+    private func extractMenuItem(
+        from element: Element,
+        parentPath: String,
+        application: ServiceApplicationInfo
+    ) -> MenuItem? {
         // Check if it's a separator
         if element.role() == "AXSeparatorMenuItem" {
             return MenuItem(
                 title: "---",
+                bundleIdentifier: application.bundleIdentifier,
+                ownerName: application.name,
                 isSeparator: true,
                 path: "\(parentPath) > ---")
         }
@@ -346,7 +373,11 @@ public final class MenuService: MenuServiceProtocol {
             for child in children {
                 if child.role() == AXRoleNames.kAXMenuRole {
                     if let submenuChildren = child.children() {
-                        submenuItems = self.extractMenuItems(from: submenuChildren, parentPath: path)
+                        submenuItems = self.extractMenuItems(
+                            from: submenuChildren,
+                            parentPath: path,
+                            application: application
+                        )
                     }
                     break
                 }
@@ -355,6 +386,8 @@ public final class MenuService: MenuServiceProtocol {
 
         return MenuItem(
             title: title,
+            bundleIdentifier: application.bundleIdentifier,
+            ownerName: application.name,
             keyboardShortcut: keyboardShortcut,
             isEnabled: isEnabled,
             isChecked: isChecked,

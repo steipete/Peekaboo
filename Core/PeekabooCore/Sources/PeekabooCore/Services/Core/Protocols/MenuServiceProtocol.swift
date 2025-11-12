@@ -83,6 +83,12 @@ public struct Menu: Sendable {
     /// Menu title
     public let title: String
 
+    /// Owning bundle identifier (inherited from application)
+    public let bundleIdentifier: String?
+
+    /// Owning application name
+    public let ownerName: String?
+
     /// Menu items
     public let items: [MenuItem]
 
@@ -94,8 +100,16 @@ public struct Menu: Sendable {
         self.items.reduce(0) { $0 + 1 + $1.totalSubitems }
     }
 
-    public init(title: String, items: [MenuItem], isEnabled: Bool = true) {
+    public init(
+        title: String,
+        bundleIdentifier: String? = nil,
+        ownerName: String? = nil,
+        items: [MenuItem],
+        isEnabled: Bool = true)
+    {
         self.title = title
+        self.bundleIdentifier = bundleIdentifier
+        self.ownerName = ownerName
         self.items = items
         self.isEnabled = isEnabled
     }
@@ -105,6 +119,12 @@ public struct Menu: Sendable {
 public struct MenuItem: Sendable {
     /// Item title
     public let title: String
+
+    /// Owning bundle identifier
+    public let bundleIdentifier: String?
+
+    /// Owning application name
+    public let ownerName: String?
 
     /// Keyboard shortcut if available
     public let keyboardShortcut: KeyboardShortcut?
@@ -131,6 +151,8 @@ public struct MenuItem: Sendable {
 
     public init(
         title: String,
+        bundleIdentifier: String? = nil,
+        ownerName: String? = nil,
         keyboardShortcut: KeyboardShortcut? = nil,
         isEnabled: Bool = true,
         isChecked: Bool = false,
@@ -139,6 +161,8 @@ public struct MenuItem: Sendable {
         path: String)
     {
         self.title = title
+        self.bundleIdentifier = bundleIdentifier
+        self.ownerName = ownerName
         self.keyboardShortcut = keyboardShortcut
         self.isEnabled = isEnabled
         self.isChecked = isChecked
