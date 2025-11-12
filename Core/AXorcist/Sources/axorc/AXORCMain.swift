@@ -341,7 +341,12 @@ struct AXORCCommand: ParsableCommand {
             // the actual command type if it's available here.
             // For now, if stdin is true or json is provided, assume it might be an observe command.
             // This is imperfect.
-            let parsedInput = InputHandler.parseInput(stdin: stdin, file: file, json: json, directPayload: directPayload)
+            let parsedInput = InputHandler.parseInput(
+                stdin: stdin,
+                file: file,
+                json: json,
+                directPayload: directPayload
+            )
             if
                 let jsonString = parsedInput.jsonString,
                 let inputData = jsonString.data(using: .utf8)
