@@ -644,14 +644,6 @@ struct AnimatedThinkingDots: View {
             }
         }
     }
-
-    private var assistantMarkdown: AttributedString {
-        let options = AttributedString.MarkdownParsingOptions(
-            allowsExtendedAttributes: true,
-            interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        return (try? AttributedString(markdown: self.message.content, options: options)) ??
-            AttributedString(self.message.content)
-    }
 }
 
 // MARK: - Scroll Position Tracking

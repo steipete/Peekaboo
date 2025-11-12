@@ -93,7 +93,7 @@ extension InspectorVisualizationPreset {
                 fontWeight: .regular,
                 backgroundColor: nil,
                 textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
+                padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
     }
 }
 

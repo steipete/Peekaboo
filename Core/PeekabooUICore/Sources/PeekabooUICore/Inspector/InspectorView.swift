@@ -72,9 +72,7 @@ public struct InspectorView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Peekaboo Inspector")
                         .font(.headline)
-                    Text(self.overlayManager.applications.isEmpty ?
-                        "Hover over UI elements to inspect" :
-                        "Monitoring \(self.overlayManager.applications.count) app\(self.overlayManager.applications.count == 1 ? "" : "s")")
+                    Text(self.overlayStatusText)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -137,6 +135,15 @@ public struct InspectorView: View {
         }
     }
 
+    private var overlayStatusText: String {
+        guard !self.overlayManager.applications.isEmpty else {
+            return "Hover over UI elements to inspect"
+        }
+
+        let count = self.overlayManager.applications.count
+        let suffix = count == 1 ? "" : "s"
+        return "Monitoring \(count) app\(suffix)"
+    }
     private func startPermissionMonitoring() {
         // Initial check with prompt
         self.checkPermissions(prompt: self.configuration.showPermissionAlert)

@@ -380,15 +380,15 @@ public final class OverlayManager {
 
         // Find element at mouse location
         for app in self.applications {
-            for element in app.elements {
-                if element.frame.contains(mouseLocation) {
-                    if self.hoveredElement?.id != element.id {
-                        self.hoveredElement = element
-                        self.delegate?.overlayManager(self, didHoverElement: element)
-                    }
-                    return
-                }
+            guard let element = app.elements.first(where: { $0.frame.contains(mouseLocation) }) else {
+                continue
             }
+
+            if self.hoveredElement?.id != element.id {
+                self.hoveredElement = element
+                self.delegate?.overlayManager(self, didHoverElement: element)
+            }
+            return
         }
 
         // No element found

@@ -230,7 +230,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Status bar will be created after state is connected
     }
 
-    func connectToState(_ context: AppStateConnectionContext) {
+    fileprivate func connectToState(_ context: AppStateConnectionContext) {
         self.settings = context.settings
         self.sessionStore = context.sessionStore
         self.permissions = context.permissions
@@ -262,7 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.setupNotificationObservers()
 
         // Show onboarding if needed
-        if !settings.hasValidAPIKey {
+        if self.settings?.hasValidAPIKey != true {
             self.showMainWindow()
         }
     }

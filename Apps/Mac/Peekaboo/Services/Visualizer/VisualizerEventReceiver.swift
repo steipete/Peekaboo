@@ -20,7 +20,7 @@ private func visualizerDebugLog(_ message: @autoclosure () -> String) {}
 
 @MainActor
 final class VisualizerEventReceiver {
-    private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "VisualizerEventReceiver")
+    private let logger = os.Logger(subsystem: "boo.peekaboo.mac", category: "VisualizerEventReceiver")
     private let coordinator: VisualizerCoordinator
     private var observer: (any NSObjectProtocol)?
     private var cleanupTask: Task<Void, Never>?
@@ -61,7 +61,9 @@ final class VisualizerEventReceiver {
     private func handle(descriptor: String) async {
         visualizerDebugLog("VisualizerEventReceiver: received descriptor \(descriptor)")
         guard let eventID = Self.parseEventID(from: descriptor) else {
-            self.logger.error("Visualizer notification contained invalid identifier: \(descriptor, privacy: .public)")
+            self.logger.error(
+                "Visualizer notification contained invalid identifier: \(descriptor, privacy: .public)"
+            )
             return
         }
 
