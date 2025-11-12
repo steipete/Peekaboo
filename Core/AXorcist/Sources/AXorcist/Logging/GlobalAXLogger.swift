@@ -11,12 +11,9 @@ public class GlobalAXLogger {
     // MARK: Lifecycle
 
     private init() {
-        if let envVar = ProcessInfo.processInfo.environment["AXORC_JSON_LOG_ENABLED"], envVar.lowercased() == "true" {
-            isJSONLoggingEnabled = true
-            fputs(
-                "{\\\"axorc_log_stream_type\\\": \\\"json_objects\\\", \\\"status\\\": \\\"AXGlobalLogger initialized with JSON output to stderr.\"}\n",
-                stderr
-            )
+        if self.shouldEnableJSONLogging() {
+            self.isJSONLoggingEnabled = true
+            fputs(Self.jsonInitializationMessage + "\n", stderr)
         }
     }
 
@@ -36,76 +33,14 @@ public class GlobalAXLogger {
 
     // Assumes this method is always called on the main thread.
     public func log(_ entry: AXLogEntry) {
-        guard self.isLoggingEnabled else { return }
-        // Use fully qualified enum cases
-        if entry.level == .debug, self.detailLevel != AXLogDetailLevel.verbose {
-            if self.detailLevel == AXLogDetailLevel.minimal { return }
-            if self.detailLevel == AXLogDetailLevel.normal, entry.level == .debug { return }
-        }
+        guard self.shouldLog(entry) else { return }
 
-        let condensedMessage: String = {
-            if entry.message.count > maxMessageLength {
-                let prefix = entry.message.prefix(maxMessageLength)
-                return "\(prefix)… (\(entry.message.count) chars)"
-            } else {
-                return entry.message
-            }
-        }()
+        let condensedMessage = self.condensedMessage(for: entry.message)
+        if self.shouldSkipDueToDuplicate(message: condensedMessage, entry: entry) { return }
 
-        if let last = self.lastCondensedMessage, last == condensedMessage {
-            self.duplicateCount += 1
-            if self.duplicateCount % self.duplicateSummaryThreshold != 0 {
-                return
-            } else {
-                let summaryEntry = AXLogEntry(
-                    level: .debug,
-                    message: "⟳ Previous message repeated \(self.duplicateSummaryThreshold) more times",
-                    file: entry.file,
-                    function: entry.function,
-                    line: entry.line,
-                    details: nil
-                )
-                self.logEntries.append(summaryEntry)
-            }
-        } else {
-            if self.duplicateCount >= self.duplicateSummaryThreshold, self.lastCondensedMessage != nil {
-                let summaryEntry = AXLogEntry(
-                    level: .debug,
-                    message: "⟳ Previous message repeated \(self.duplicateCount) times in total",
-                    file: entry.file,
-                    function: entry.function,
-                    line: entry.line,
-                    details: nil
-                )
-                self.logEntries.append(summaryEntry)
-            }
-            self.lastCondensedMessage = condensedMessage
-            self.duplicateCount = 0
-        }
-
-        let processedEntry = AXLogEntry(
-            level: entry.level,
-            message: condensedMessage,
-            file: entry.file,
-            function: entry.function,
-            line: entry.line,
-            details: entry.details
-        )
+        let processedEntry = entry.withMessage(condensedMessage)
         self.logEntries.append(processedEntry)
-
-        if self.isJSONLoggingEnabled {
-            do {
-                let jsonData = try JSONEncoder().encode(processedEntry)
-                if let jsonString = String(data: jsonData, encoding: .utf8) {
-                    fputs(jsonString + "\n", stderr)
-                }
-            } catch {
-                fputs(
-                    "{\\\"error\\\": \\\"Failed to serialize AXLogEntry to JSON: \(error.localizedDescription)\\\"}\n",
-                    stderr
-                )
-            }
-        }
+        self.emitJSONIfNeeded(processedEntry)
     }
 
     // MARK: - Log Retrieval
@@ -132,7 +67,10 @@ public class GlobalAXLogger {
                     let jsonData = try JSONEncoder().encode(entry)
                     return String(data: jsonData, encoding: .utf8)
                 } catch {
-                    return "{\\\"error\\\": \\\"Failed to serialize log entry to JSON: \\(error.localizedDescription)\\\"}"
+                    return """
+                    {"error": "Failed to serialize log entry to JSON: \(error.localizedDescription)"}
+                    """
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 }
             }
         case .text:
@@ -149,6 +87,85 @@ public class GlobalAXLogger {
     private let duplicateSummaryThreshold: Int = 5
     // Maximum characters to keep in a log message before truncating (for readability)
     private let maxMessageLength: Int = 300
+
+    private static let jsonInitializationMessage = """
+    {"axorc_log_stream_type": "json_objects",
+     "status": "AXGlobalLogger initialized with JSON output to stderr."}
+    """
+
+    private func shouldEnableJSONLogging() -> Bool {
+        guard let envVar = ProcessInfo.processInfo.environment["AXORC_JSON_LOG_ENABLED"] else { return false }
+        return envVar.lowercased() == "true"
+    }
+
+    private func shouldLog(_ entry: AXLogEntry) -> Bool {
+        guard self.isLoggingEnabled else { return false }
+        guard entry.level == .debug else { return true }
+
+        switch self.detailLevel {
+        case .verbose:
+            return true
+        case .normal, .minimal:
+            return false
+        }
+    }
+
+    private func condensedMessage(for message: String) -> String {
+        guard message.count > self.maxMessageLength else { return message }
+        let prefix = message.prefix(self.maxMessageLength)
+        return "\(prefix)… (\(message.count) chars)"
+    }
+
+    private func shouldSkipDueToDuplicate(message: String, entry: AXLogEntry) -> Bool {
+        if self.lastCondensedMessage == message {
+            self.incrementDuplicateCount(entry: entry)
+            return true
+        }
+
+        self.appendTotalDuplicateSummaryIfNeeded(entry: entry)
+        self.lastCondensedMessage = message
+        self.duplicateCount = 0
+        return false
+    }
+
+    private func incrementDuplicateCount(entry: AXLogEntry) {
+        self.duplicateCount += 1
+        guard self.duplicateCount % self.duplicateSummaryThreshold == 0 else { return }
+        let summaryMessage = "⟳ Previous message repeated \(self.duplicateSummaryThreshold) more times"
+        self.logEntries.append(self.summaryEntry(message: summaryMessage, sourceEntry: entry))
+    }
+
+    private func appendTotalDuplicateSummaryIfNeeded(entry: AXLogEntry) {
+        guard self.duplicateCount >= self.duplicateSummaryThreshold, self.lastCondensedMessage != nil else { return }
+        let summaryMessage = "⟳ Previous message repeated \(self.duplicateCount) times in total"
+        self.logEntries.append(self.summaryEntry(message: summaryMessage, sourceEntry: entry))
+    }
+
+    private func summaryEntry(message: String, sourceEntry: AXLogEntry) -> AXLogEntry {
+        AXLogEntry(
+            level: .debug,
+            message: message,
+            file: sourceEntry.file,
+            function: sourceEntry.function,
+            line: sourceEntry.line,
+            details: nil
+        )
+    }
+
+    private func emitJSONIfNeeded(_ entry: AXLogEntry) {
+        guard self.isJSONLoggingEnabled else { return }
+        do {
+            let jsonData = try JSONEncoder().encode(entry)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                fputs(jsonString + "\n", stderr)
+            }
+        } catch {
+            let errorMessage = """
+            {"error": "Failed to serialize AXLogEntry to JSON: \(error.localizedDescription)"}
+            """
+            fputs(errorMessage.trimmingCharacters(in: .whitespacesAndNewlines) + "\n", stderr)
+        }
+    }
 }
 
 // MARK: - Logger Convenience Overloads
@@ -172,6 +189,19 @@ extension Logging.Logger {
     @inlinable
     public func error(_ message: @autoclosure () -> String) {
         self.log(level: .error, "\(message())")
+    }
+}
+
+private extension AXLogEntry {
+    func withMessage(_ message: String) -> AXLogEntry {
+        AXLogEntry(
+            level: self.level,
+            message: message,
+            file: self.file,
+            function: self.function,
+            line: self.line,
+            details: self.details
+        )
     }
 }
 
@@ -209,7 +239,14 @@ public func axInfoLog(
     line: Int = #line
 ) {
     Task { @MainActor in
-        let entry = AXLogEntry(level: .info, message: message, file: file, function: function, line: line, details: details)
+        let entry = AXLogEntry(
+            level: .info,
+            message: message,
+            file: file,
+            function: function,
+            line: line,
+            details: details
+        )
         GlobalAXLogger.shared.log(entry)
     }
 }

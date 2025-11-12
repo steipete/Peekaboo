@@ -46,7 +46,8 @@ enum ValueUnwrapper {
             return unwrapCFDictionary(value)
         default:
             let typeDescription = CFCopyTypeIDDescription(typeID) as String? ?? "Unknown"
-            axDebugLog("Unhandled CFTypeID: \(typeID) - \(typeDescription). Returning raw value.")
+            let message = "Unhandled CFTypeID: \(typeID) - \(typeDescription). Returning raw value."
+            axDebugLog(message)
             return value
         }
     }
@@ -59,9 +60,11 @@ enum ValueUnwrapper {
         let axValueType = axVal.valueType
 
         // Log the AXValueType
-        axDebugLog(
-            "ValueUnwrapper.unwrapAXValue: Encountered AXValue with type: \(axValueType) (rawValue: \(axValueType.rawValue))"
-        )
+        let message = """
+        ValueUnwrapper.unwrapAXValue: Encountered AXValue with type: \(axValueType)
+        (rawValue: \(axValueType.rawValue))
+        """.trimmingCharacters(in: .whitespacesAndNewlines)
+        axDebugLog(message)
 
         // Handle special boolean type
         if axValueType.rawValue == 4 { // kAXValueBooleanType (private)
@@ -73,9 +76,10 @@ enum ValueUnwrapper {
 
         // Use new AXValue extensions for cleaner unwrapping
         let unwrappedExtensionValue = axVal.value()
-        axDebugLog(
-            "ValueUnwrapper.unwrapAXValue: axVal.value() returned: \(String(describing: unwrappedExtensionValue)) for type: \(axValueType)"
-        )
+        let valueDescription = String(describing: unwrappedExtensionValue)
+        let returnMessage = "ValueUnwrapper.unwrapAXValue: axVal.value() returned: \(valueDescription) " +
+            "for type: \(axValueType)"
+        axDebugLog(returnMessage)
         return unwrappedExtensionValue
     }
 
@@ -111,7 +115,7 @@ enum ValueUnwrapper {
             }
         } else {
             axWarningLog(
-                "Failed to bridge CFDictionary to [String: AnyObject]. Full CFDictionary iteration not yet implemented here."
+                "Failed to bridge CFDictionary to [String: AnyObject]. Full iteration not implemented yet."
             )
         }
         return swiftDict
