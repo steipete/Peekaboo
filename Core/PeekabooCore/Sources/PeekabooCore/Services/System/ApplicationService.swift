@@ -327,9 +327,8 @@ extension ApplicationService {
         let activated = runningApp.activate(options: [])
 
         if !activated {
-            self.logger.error("Failed to activate application: \(app.name)")
-            throw PeekabooError.operationError(
-                message: "Failed to activate application: Application failed to activate")
+            self.logger.error("Failed to activate application: \(app.name). Continuing without activation.")
+            return
         }
 
         self.logger.info("Successfully activated: \(app.name)")
