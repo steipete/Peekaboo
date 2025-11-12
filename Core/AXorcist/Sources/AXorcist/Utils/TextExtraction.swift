@@ -51,7 +51,7 @@ public func extractTextFromElementNonRecursive(_ element: Element) -> String? {
     if let description = element.descriptionText(), !description.isEmpty { return description }
 
     // Fallback to a broader set if primary ones fail
-    if let placeholder = element.placeholderValue(), !placeholder.isEmpty { return placeholder }
+    // if let placeholder = element.placeholderValue(), !placeholder.isEmpty { return placeholder }
     if let help = element.help(), !help.isEmpty { return help }
 
     // Consider role description as a last resort if it's textual and meaningful
@@ -75,100 +75,68 @@ func getElementTextualContent(
     maxDepth: Int = 1,
     currentDepth: Int = 0
 ) -> String? {
-    let directText = joinedText(from: collectDirectText(from: element))
-    let childText = childText(
-        for: element,
-        includeChildren: includeChildren,
-        maxDepth: maxDepth,
-        currentDepth: currentDepth
-    )
+    var textPieces: [String] = []
 
-    let resolved = mergeText(directText: directText, childText: childText)
-    logExtractionResult(
-        resolvedText: resolved,
-        element: element,
-        includeChildren: includeChildren,
-        depth: currentDepth
-    )
-    return resolved
-}
+    // Prioritize attributes common for text content
+    if let title: String = element.attribute(Attribute<String>.title) { textPieces.append(title) }
+    if let value: String = element.attribute(Attribute<String>(AXAttributeNames.kAXValueAttribute)) {
+        textPieces.append(value)
+    }
+    if let description: String = element.attribute(Attribute<String>.description) { textPieces.append(description) }
+    // if let placeholder: String = element.attribute(Attribute<String>.placeholderValue) {
+    //     textPieces.append(placeholder)
+    // }
+    // Less common but potentially useful
+    // if let help: String = element.attribute(Attribute.help) { textPieces.append(help) }
+    // if let selectedText: String = element.attribute(Attribute.selectedText) { textPieces.append(selectedText) }
 
-@MainActor
-private func collectDirectText(from element: Element) -> [String] {
-    var pieces: [String] = []
-    if let title: String = element.attribute(Attribute<String>.title), !title.isEmpty { pieces.append(title) }
-    if let value: String = element.attribute(Attribute<String>(AXAttributeNames.kAXValueAttribute)), !value.isEmpty {
-        pieces.append(value)
-    }
-    if let description: String = element.attribute(Attribute<String>.description), !description.isEmpty {
-        pieces.append(description)
-    }
-    if let placeholder: String = element.attribute(Attribute<String>.placeholderValue), !placeholder.isEmpty {
-        pieces.append(placeholder)
-    }
-    return pieces
-}
+    let joinedDirectText = textPieces.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
 
-@MainActor
-private func childText(
-    for element: Element,
-    includeChildren: Bool,
-    maxDepth: Int,
-    currentDepth: Int
-) -> String? {
-    guard includeChildren, currentDepth < maxDepth, let children = element.children() else { return nil }
-    let childTexts = children.compactMap { child in
-        getElementTextualContent(
-            element: child,
-            includeChildren: true,
-            maxDepth: maxDepth,
-            currentDepth: currentDepth + 1
-        )
+    if includeChildren, currentDepth < maxDepth {
+        if let children = element.children() {
+            var childTexts: [String] = []
+            for child in children {
+                // Recursive call is now synchronous
+                if let childTextContent = getElementTextualContent(
+                    element: child,
+                    includeChildren: true,
+                    maxDepth: maxDepth,
+                    currentDepth: currentDepth + 1
+                ) {
+                    childTexts.append(childTextContent)
+                }
+            }
+            let joinedChildText = childTexts.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !joinedChildText.isEmpty {
+                // Smartly join parent and child text, avoiding duplicates if child text is part of parent text.
+                if joinedDirectText.isEmpty {
+                    return joinedChildText
+                } else if joinedChildText.isEmpty {
+                    return joinedDirectText
+                } else {
+                    // A more sophisticated joining might be needed if there's overlap.
+                    // For now, simple space join.
+                    return "\(joinedDirectText) \(joinedChildText)"
+                }
+            }
+        }
     }
-    return joinedText(from: childTexts)
-}
 
-@MainActor
-private func joinedText(from pieces: [String]) -> String? {
-    let joined = pieces.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
-    return joined.isEmpty ? nil : joined
-}
-
-@MainActor
-private func mergeText(directText: String?, childText: String?) -> String? {
-    switch (directText, childText) {
-    case let (direct?, child?):
-        if direct.isEmpty { return child }
-        if child.isEmpty { return direct }
-        return "\(direct) \(child)"
-    case let (direct?, nil):
-        return direct
-    case let (nil, child?):
-        return child
-    default:
-        return nil
+    if !joinedDirectText.isEmpty {
+        GlobalAXLogger.shared.log(AXLogEntry(
+            level: .debug,
+            message: "TextExtraction/Content: Extracted '\(joinedDirectText)' for element " +
+                "\(element.briefDescription(option: ValueFormatOption.smart)) " +
+                "(children included: \(includeChildren), depth: \(currentDepth))"
+        ))
+        return joinedDirectText
     }
-}
 
-@MainActor
-private func logExtractionResult(
-    resolvedText: String?,
-    element: Element,
-    includeChildren: Bool,
-    depth: Int
-) {
-    let descriptor = element.briefDescription(option: ValueFormatOption.smart)
-    if let resolvedText {
-        let message = """
-        TextExtraction/Content: Extracted '\(resolvedText)' for element
-        \(descriptor) (children included: \(includeChildren), depth: \(depth))
-        """
-        GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: message))
-    } else {
-        let message = """
-        TextExtraction/Content: No direct text found for \(descriptor)
-        (children included: \(includeChildren), depth: \(depth))
-        """
-        GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: message))
-    }
+    GlobalAXLogger.shared.log(AXLogEntry(
+        level: .debug,
+        message: "TextExtraction/Content: No direct text found for " +
+            "\(element.briefDescription(option: ValueFormatOption.smart)) " +
+            "(children included: \(includeChildren), depth: \(currentDepth))"
+    ))
+    return nil
 }

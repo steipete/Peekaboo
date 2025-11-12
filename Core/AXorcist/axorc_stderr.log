@@ -1,0 +1,15 @@
+AXORCMain.run: VERY FIRST LINE EXECUTED.
+AXORCMain.run: CLI --debug flag is: true. Logger enabled: true.
+AXORCMain.run: STDERR - CLI --debug IS ON. TEST LOGGING.
+2025-05-27T00:52:06+0200 info AXorcist.ElementSearch : [AXorcist] FindTargetEl: START
+  App: 'com.todesktop.230313mzl4w4u92'
+  MaxDepth: 10
+  Initial Criteria: [AXRole:AXTextArea, match:exact]
+  PathHint (count: 0):
+    -> nil
+2025-05-27T00:52:11+0200 warning AXorcist.ElementSearch : [AXorcist] FindTargetEl: No element found matching final criteria [AXRole:AXTextArea] starting from application root Role: AXApplication, Title: 'Cursor'.
+
+--- Debug Logs (axorc run end) ---
+[2025-05-26T22:54:42.489Z] [DEBUG] [InputHandler.swift:21] [parseInput(stdin:file:json:directPayload:)] - InputHandler: Parsing input...
+[2025-05-26T22:54:42.489Z] [DEBUG] [InputHandler.swift:34] [parseInput(stdin:file:json:directPayload:)] - Using --json flag with payload of 720 characters.
+--- End Debug Logs ---

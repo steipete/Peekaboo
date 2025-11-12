@@ -2,7 +2,8 @@
 
 import Foundation
 
-// These utilities are marked as public to allow usage from other modules that depend on AXorcist.
+// TODO: Consider if this should be public or internal depending on usage across modules if this were a larger project.
+// For AXHelper, internal or public within the module is fine.
 
 /// Decodes a string representation of an array into an array of strings.
 /// The input string can be JSON-style (e.g., "["item1", "item2"]")

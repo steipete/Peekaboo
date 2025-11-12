@@ -12,10 +12,60 @@ func extractDirectPropertyValue(
     from element: Element,
     outputFormat: OutputFormat
 ) -> (value: Any?, handled: Bool) {
-    if let extractor = AttributeDirectMapping(attributeName: attributeName) {
-        return extractor.extract(from: element, format: outputFormat)
+    var extractedValue: Any?
+    var handled = true
+
+    switch attributeName {
+    case AXAttributeNames.kAXPathHintAttribute:
+        extractedValue = element.attribute(Attribute<String>(AXAttributeNames.kAXPathHintAttribute))
+    case AXAttributeNames.kAXRoleAttribute:
+        extractedValue = element.role()
+    case AXAttributeNames.kAXSubroleAttribute:
+        extractedValue = element.subrole()
+    case AXAttributeNames.kAXTitleAttribute:
+        extractedValue = element.title()
+    case AXAttributeNames.kAXDescriptionAttribute:
+        extractedValue = element.descriptionText() // Renamed
+    case AXAttributeNames.kAXEnabledAttribute:
+        let val = element.isEnabled()
+        extractedValue = val
+        if outputFormat == .textContent {
+            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
+        }
+    case AXAttributeNames.kAXFocusedAttribute:
+        let val = element.isFocused()
+        extractedValue = val
+        if outputFormat == .textContent {
+            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
+        }
+    case AXAttributeNames.kAXHiddenAttribute:
+        let val = element.isHidden()
+        extractedValue = val
+        if outputFormat == .textContent {
+            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
+        }
+    case AXMiscConstants.isIgnoredAttributeKey:
+        let val = element.isIgnored()
+        extractedValue = val
+        if outputFormat == .textContent {
+            extractedValue = val ? "true" : "false"
+        }
+    case "PID":
+        let val = element.pid()
+        extractedValue = val
+        if outputFormat == .textContent {
+            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
+        }
+    case AXAttributeNames.kAXElementBusyAttribute:
+        let val = element.isElementBusy()
+        extractedValue = val
+        if outputFormat == .textContent {
+            extractedValue = val?.description ?? AXMiscConstants.kAXNotAvailableString
+        }
+    default:
+        handled = false
     }
-    return (nil, false)
+    return (extractedValue, handled)
 }
 
 @MainActor
@@ -25,53 +75,53 @@ func determineAttributesToFetch(
     targetRole: String?,
     element: Element
 ) -> [String] {
-    if forMultiDefault { return defaultMultiAttributes(for: targetRole) }
-
-    if let requested = requestedAttributes, !requested.isEmpty {
-        return requested
-    }
-
-    return fetchAllAttributeNames(from: element)
-}
-
-@MainActor
-private func fetchAllAttributeNames(from element: Element) -> [String] {
-    guard let names = element.attributeNames(), !names.isEmpty else {
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .debug,
-            message: "determineAttributesToFetch: Falling back to defaults; unable to fetch attribute names."
-        ))
-        return []
-    }
-
-    GlobalAXLogger.shared.log(AXLogEntry(
-        level: .debug,
-        message: "determineAttributesToFetch: No specific attributes requested, fetched all \(names.count)"
-    ))
-    return names
-}
-
-private func defaultMultiAttributes(for role: String?) -> [String] {
-    AttributeDefaultSet(role: role).attributes
-}
-
-private struct AttributeDefaultSet {
-    let role: String?
-
-    var attributes: [String] {
-        let base = [
+    var attributesToFetch = requestedAttributes ?? []
+    if forMultiDefault {
+        attributesToFetch = [
             AXAttributeNames.kAXRoleAttribute,
             AXAttributeNames.kAXValueAttribute,
             AXAttributeNames.kAXTitleAttribute,
             AXAttributeNames.kAXIdentifierAttribute,
         ]
-        guard self.role == AXRoleNames.kAXStaticTextRole else { return base }
-        return [
-            AXAttributeNames.kAXRoleAttribute,
-            AXAttributeNames.kAXValueAttribute,
-            AXAttributeNames.kAXIdentifierAttribute,
-        ]
+        if let role = targetRole, role == AXRoleNames.kAXStaticTextRole {
+            attributesToFetch = [
+                AXAttributeNames.kAXRoleAttribute,
+                AXAttributeNames.kAXValueAttribute,
+                AXAttributeNames.kAXIdentifierAttribute,
+            ]
+        }
+    } else if attributesToFetch.isEmpty {
+        if requestedAttributes == nil || requestedAttributes!.isEmpty {
+            // If no specific attributes are requested, decide what to do based on context
+            // This part of the logic for deciding what to fetch if nothing specific is requested
+            // has been simplified or might be intended to be expanded.
+            // For now, if forMultiDefault is true, it implies fetching a default set (e.g., for multi-element views)
+            // otherwise, it might fetch all or a basic set.
+            // This example assumes if not forMultiDefault, and no specifics, it fetches all available.
+            if !forMultiDefault {
+                // Example: Fetch all attribute names if none are specified and not for a multi-default scenario
+                if let names = element.attributeNames() {
+                    attributesToFetch.append(contentsOf: names)
+                    GlobalAXLogger.shared.log(AXLogEntry(
+                        level: .debug,
+                        message: "determineAttributesToFetch: No specific attributes requested, " +
+                            "fetched all \(names.count) available: \(names.joined(separator: ", "))"
+                    ))
+                } else {
+                    GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
+                        "determineAttributesToFetch: No specific attributes requested and " +
+                            "failed to fetch all available names."))
+                }
+            } else {
+                // For multi-default, or if the above block doesn't execute,
+                // it might rely on a predefined default set or do nothing further here,
+                // letting subsequent logic handle AXorcist.defaultAttributesToFetch if attributesToFetch remains empty.
+                GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
+                    "determineAttributesToFetch: No specific attributes requested. Using defaults or context-specific set."))
+            }
+        }
     }
+    return attributesToFetch
 }
 
 // Function to get specifically computed attributes for an element
@@ -81,7 +131,7 @@ func getComputedAttributes(for element: Element) async -> [String: AttributeData
 
     if let name = element.computedName() {
         computedAttrs[AXMiscConstants.computedNameAttributeKey] = AttributeData(
-            value: .string(name),
+            value: AnyCodable(name),
             source: .computed
         )
         GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
@@ -99,70 +149,9 @@ func getComputedAttributes(for element: Element) async -> [String: AttributeData
     // let hasPressAction = element.isActionSupported(AXActionNames.kAXPressAction)
     // if isButton || hasPressAction {
     //     computedAttrs[AXMiscConstants.isClickableAttributeKey] = AttributeData(
-    //         value: .bool(true), source: .computed
+    //         value: AnyCodable(true), source: .computed
     //     )
     // }
 
     return computedAttrs
-}
-private struct AttributeDirectMapping {
-    let attributeName: String
-    private let strategyProvider: ((Element, OutputFormat) -> Any?)?
-    private static let strategies: [String: (Element, OutputFormat) -> Any?] = [
-        AXAttributeNames.kAXPathHintAttribute: { element, _ in
-            element.attribute(Attribute<String>(AXAttributeNames.kAXPathHintAttribute))
-        },
-        AXAttributeNames.kAXRoleAttribute: { element, _ in element.role() },
-        AXAttributeNames.kAXSubroleAttribute: { element, _ in element.subrole() },
-        AXAttributeNames.kAXTitleAttribute: { element, _ in element.title() },
-        AXAttributeNames.kAXDescriptionAttribute: { element, _ in element.descriptionText() },
-        AXAttributeNames.kAXEnabledAttribute: AttributeDirectMapping.booleanFormatter { $0.isEnabled() },
-        AXAttributeNames.kAXFocusedAttribute: AttributeDirectMapping.booleanFormatter { $0.isFocused() },
-        AXAttributeNames.kAXHiddenAttribute: AttributeDirectMapping.booleanFormatter { $0.isHidden() },
-        AXMiscConstants.isIgnoredAttributeKey: { element, format in
-            let value = element.isIgnored()
-            return format == .textContent ? (value ? "true" : "false") : value
-        },
-        "PID": AttributeDirectMapping.numericFormatter { element in
-            guard let pid = element.pid() else { return nil }
-            return Int(pid)
-        },
-        AXAttributeNames.kAXElementBusyAttribute: AttributeDirectMapping.booleanFormatter { $0.isElementBusy() }
-    ]
-
-    init?(attributeName: String) {
-        self.attributeName = attributeName
-        self.strategyProvider = AttributeDirectMapping.makeStrategy(for: attributeName)
-        if self.strategyProvider == nil {
-            return nil
-        }
-    }
-
-    func extract(from element: Element, format: OutputFormat) -> (value: Any?, handled: Bool) {
-        guard let strategy = self.strategyProvider else { return (nil, false) }
-        let value = strategy(element, format)
-        return (value, true)
-    }
-
-    private static func makeStrategy(for attributeName: String) -> ((Element, OutputFormat) -> Any?)? {
-        strategies[attributeName]
-    }
-
-    private static func booleanFormatter(
-        _ extractor: @escaping (Element) -> Bool?
-    ) -> ((Element, OutputFormat) -> Any?) {
-        { element, format in
-            guard let value = extractor(element) else { return nil }
-            return format == .textContent ? value.description : value
-        }
-    }
-
-    private static func numericFormatter(
-        _ extractor: @escaping (Element) -> Int?
-    ) -> ((Element, OutputFormat) -> Any?) {
-        { element, format in
-            guard let value = extractor(element) else { return nil }
-            return format == .textContent ? value.description : value
-        }
-    }
 }

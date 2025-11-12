@@ -1,11 +1,11 @@
-import Foundation
-import Testing
 @testable import AXorcist
+import Foundation
+import XCTest
 
-@Suite("AXorcist Ping Integration Tests", .tags(.safe))
-struct PingIntegrationTests {
-    @Test("Ping via stdin", .tags(.safe))
-    func pingViaStdin() async throws {
+// MARK: - Ping Command Tests
+
+class PingIntegrationTests: XCTestCase {
+    func testPingViaStdin() async throws {
         let inputJSON = """
         {
             "command_id": "test_ping_stdin",
@@ -20,35 +20,37 @@ struct PingIntegrationTests {
             arguments: ["--stdin"]
         )
 
-        let stdinFailureMessage = """
-        axorc command failed with status \(result.exitCode).
-        Error: \(result.errorOutput ?? "N/A")
-        """
-        #expect(result.exitCode == 0, stdinFailureMessage)
-        let stdinErrorMessage = "Expected no error output, but got: \(result.errorOutput ?? "N/A")"
-        #expect(result.errorOutput?.isEmpty ?? true, stdinErrorMessage)
+        XCTAssertEqual(
+            result.exitCode, 0,
+            "axorc command failed with status \(result.exitCode). Error: \(result.errorOutput ?? "N/A")"
+        )
+        XCTAssertTrue(
+            (result.errorOutput == nil || result.errorOutput!.isEmpty),
+            "Expected no error output, but got: \(result.errorOutput!)"
+        )
 
         guard let outputString = result.output else {
-            Issue.record("Output was nil for ping via STDIN")
+            XCTAssertTrue(Bool(false), "Output was nil for ping via STDIN")
             return
         }
 
-        guard let responseData = outputString.data(using: .utf8) else {
-            Issue.record("Failed to convert output to Data for ping via STDIN. Output: \(outputString)")
+        guard let responseData = outputString.data(using: String.Encoding.utf8) else {
+            XCTAssertTrue(
+                Bool(false),
+                "Failed to convert output to Data for ping via STDIN. Output: \(outputString)"
+            )
             return
         }
-
         let decodedResponse = try JSONDecoder().decode(SimpleSuccessResponse.self, from: responseData)
-        #expect(decodedResponse.success)
-        #expect(
-            decodedResponse.message == "Ping handled by AXORCCommand. Input source: STDIN",
+        XCTAssertEqual(decodedResponse.success, true)
+        XCTAssertEqual(
+            decodedResponse.message, "Ping handled by AXORCCommand. Input source: STDIN",
             "Unexpected success message: \(decodedResponse.message)"
         )
-        #expect(decodedResponse.details == "Hello from testPingViaStdin")
+        XCTAssertEqual(decodedResponse.details, "Hello from testPingViaStdin")
     }
 
-    @Test("Ping via file input", .tags(.safe))
-    func pingViaFile() async throws {
+    func testPingViaFile() async throws {
         let payloadMessage = "Hello from testPingViaFile"
         let inputJSON = """
         {
@@ -62,67 +64,72 @@ struct PingIntegrationTests {
 
         let result = try runAXORCCommand(arguments: ["--file", tempFilePath])
 
-        let fileFailureMessage = """
-        axorc command failed with status \(result.exitCode).
-        Error: \(result.errorOutput ?? "N/A")
-        """
-        #expect(result.exitCode == 0, fileFailureMessage)
-        let fileErrorMessage = "Expected no error output, but got: \(result.errorOutput ?? "N/A")"
-        #expect(result.errorOutput?.isEmpty ?? true, fileErrorMessage)
+        XCTAssertEqual(
+            result.exitCode, 0,
+            "axorc command failed with status \(result.exitCode). Error: \(result.errorOutput ?? "N/A")"
+        )
+        XCTAssertTrue(
+            (result.errorOutput == nil || result.errorOutput!.isEmpty),
+            "Expected no error output, but got: \(result.errorOutput ?? "N/A")"
+        )
 
         guard let outputString = result.output else {
-            Issue.record("Output was nil for ping via file")
+            XCTAssertTrue(Bool(false), "Output was nil for ping via file")
             return
         }
-        guard let responseData = outputString.data(using: .utf8) else {
-            Issue.record("Failed to convert output to Data for ping via file. Output: \(outputString)")
+        guard let responseData = outputString.data(using: String.Encoding.utf8) else {
+            XCTAssertTrue(
+                Bool(false),
+                "Failed to convert output to Data for ping via file. Output: \(outputString)"
+            )
             return
         }
         let decodedResponse = try JSONDecoder().decode(SimpleSuccessResponse.self, from: responseData)
-        #expect(decodedResponse.success)
-        #expect(
+        XCTAssertEqual(decodedResponse.success, true)
+        XCTAssertTrue(
             decodedResponse.message.lowercased().contains("file: \(tempFilePath.lowercased())"),
             "Message should contain file path. Got: \(decodedResponse.message)"
         )
-        #expect(decodedResponse.details == payloadMessage)
+        XCTAssertEqual(decodedResponse.details, payloadMessage)
     }
 
-    @Test("Ping via direct payload argument", .tags(.safe))
-    func pingViaDirectPayload() async throws {
+    func testPingViaDirectPayload() async throws {
         let payloadMessage = "Hello from testPingViaDirectPayload"
-        let inputJSON = """
-        {"command_id":"test_ping_direct","command":"ping","payload":{"message":"\(payloadMessage)"}}
-        """
+        let inputJSON =
+            "{\"command_id\":\"test_ping_direct\",\"command\":\"ping\",\"payload\":{\"message\":\"\(payloadMessage)\"}}"
 
         let result = try runAXORCCommand(arguments: [inputJSON])
 
-        let directFailureMessage = """
-        axorc command failed with status \(result.exitCode).
-        Error: \(result.errorOutput ?? "N/A")
-        """
-        #expect(result.exitCode == 0, directFailureMessage)
-        let directErrorMessage = "Expected no error output, but got: \(result.errorOutput ?? "N/A")"
-        #expect(result.errorOutput?.isEmpty ?? true, directErrorMessage)
+        XCTAssertEqual(
+            result.exitCode, 0,
+            "axorc command failed with status \(result.exitCode). Error: \(result.errorOutput ?? "N/A")"
+        )
+        XCTAssertTrue(
+            (result.errorOutput == nil || result.errorOutput!.isEmpty),
+            "Expected no error output, but got: \(result.errorOutput ?? "N/A")"
+        )
 
         guard let outputString = result.output else {
-            Issue.record("Output was nil for ping via direct payload")
+            XCTAssertTrue(Bool(false), "Output was nil for ping via direct payload")
             return
         }
-        guard let responseData = outputString.data(using: .utf8) else {
-            Issue.record("Failed to convert output to Data for ping via direct payload. Output: \(outputString)")
+        guard let responseData = outputString.data(using: String.Encoding.utf8) else {
+            XCTAssertTrue(
+                Bool(false),
+                "Failed to convert output to Data for ping via direct payload. Output: \(outputString)"
+            )
             return
         }
         let decodedResponse = try JSONDecoder().decode(SimpleSuccessResponse.self, from: responseData)
-        #expect(decodedResponse.success)
-        #expect(
+        XCTAssertEqual(decodedResponse.success, true)
+        XCTAssertTrue(
             decodedResponse.message.contains("Direct Argument Payload"),
             "Unexpected success message: \(decodedResponse.message)"
         )
-        #expect(decodedResponse.details == payloadMessage)
+        XCTAssertEqual(decodedResponse.details, payloadMessage)
     }
 
-    @Test("Reject multiple input sources", .tags(.safe))
-    func errorMultipleInputMethods() async throws {
+    func testErrorMultipleInputMethods() async throws {
         let inputJSON = """
         {
             "command_id": "test_error_multiple_inputs",
@@ -138,50 +145,63 @@ struct PingIntegrationTests {
             arguments: ["--file", tempFilePath]
         )
 
-        let multiInputMessage = """
-        axorc command should return 0 with error on stdout.
-        Status: \(result.exitCode). Error STDOUT: \(result.output ?? "nil").
-        Error STDERR: \(result.errorOutput ?? "nil")
-        """
-        #expect(result.exitCode == 0, multiInputMessage)
+        XCTAssertEqual(
+            result.exitCode, 0,
+            "axorc command should return 0 with error on stdout. Status: \(result.exitCode). " +
+                "Error STDOUT: \(result.output ?? "nil"). Error STDERR: \(result.errorOutput ?? "nil")"
+        )
 
         guard let outputString = result.output, !outputString.isEmpty else {
-            Issue.record("Output was nil or empty for multiple input methods error test")
+            XCTAssertTrue(
+                Bool(false),
+                "Output was nil or empty for multiple input methods error test"
+            )
             return
         }
-        guard let responseData = outputString.data(using: .utf8) else {
-            Issue.record("Failed to convert output to Data for multiple input methods error. Output: \(outputString)")
+        guard let responseData = outputString.data(using: String.Encoding.utf8) else {
+            XCTAssertTrue(
+                Bool(false),
+                "Failed to convert output to Data for multiple input methods error. Output: \(outputString)"
+            )
             return
         }
         let errorResponse = try JSONDecoder().decode(ErrorResponse.self, from: responseData)
-        #expect(errorResponse.success == false)
-        #expect(
+        XCTAssertEqual(errorResponse.success, false)
+        XCTAssertTrue(
             errorResponse.error.message.contains("Multiple input flags specified"),
             "Unexpected error message: \(errorResponse.error.message)"
         )
     }
 
-    @Test("Reject ping without input", .tags(.safe))
-    func errorNoInputProvidedForPing() async throws {
+    func testErrorNoInputProvidedForPing() async throws {
         let result = try runAXORCCommand(arguments: [])
 
-        let noInputMessage = """
-        axorc should return 0 with error on stdout. Status: \(result.exitCode).
-        Error STDOUT: \(result.output ?? "nil"). Error STDERR: \(result.errorOutput ?? "nil")
-        """
-        #expect(result.exitCode == 0, noInputMessage)
+        XCTAssertEqual(
+            result.exitCode, 0,
+            "axorc should return 0 with error on stdout. Status: \(result.exitCode). " +
+                "Error STDOUT: \(result.output ?? "nil"). Error STDERR: \(result.errorOutput ?? "nil")"
+        )
 
         guard let outputString = result.output, !outputString.isEmpty else {
-            Issue.record("Output was nil or empty for no input test.")
+            XCTAssertTrue(Bool(false), "Output was nil or empty for no input test.")
             return
         }
-        guard let responseData = outputString.data(using: .utf8) else {
-            Issue.record("Failed to convert output to Data for no input error. Output: \(outputString)")
+        guard let responseData = outputString.data(using: String.Encoding.utf8) else {
+            XCTAssertTrue(
+                Bool(false),
+                "Failed to convert output to Data for no input error. Output: \(outputString)"
+            )
             return
         }
         let errorResponse = try JSONDecoder().decode(ErrorResponse.self, from: responseData)
-        #expect(errorResponse.success == false)
-        let commandIdMessage = "Expected commandId to be input_error, got \(errorResponse.commandId)"
-        #expect(errorResponse.commandId == "input_error", commandIdMessage)
+        XCTAssertEqual(errorResponse.success, false)
+        XCTAssertEqual(
+            errorResponse.commandId, "input_error",
+            "Expected commandId to be input_error, got \(errorResponse.commandId)"
+        )
+        XCTAssertTrue(
+            errorResponse.error.message.contains("No JSON input method specified"),
+            "Unexpected error message for no input: \(errorResponse.error.message)"
+        )
     }
 }

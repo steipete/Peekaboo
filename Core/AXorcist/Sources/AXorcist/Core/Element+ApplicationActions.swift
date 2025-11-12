@@ -12,8 +12,7 @@ public extension Element {
         let error = AXUIElementSetAttributeValue(underlyingElement, attributeName as CFString, cfValue)
         if error != AXError.success {
             axErrorLog(
-                "Failed to set attribute \(attributeName) to \(value). "
-                    + "Error: \(error.rawValue) - \(error.localizedDescription)"
+                "Failed to set attribute \(attributeName) to \(value). Error: \(error.rawValue) - \(error.localizedDescription)"
             )
             return false
         }
@@ -30,8 +29,7 @@ public extension Element {
         // Try to set kAXFrontmostAttribute. If not settable or fails, fallback to kAXRaiseAction.
         guard isAttributeSettable(named: AXAttributeNames.kAXFrontmostAttribute) else {
             axWarningLog(
-                "kAXFrontmostAttribute is not settable for element \(self.briefDescription()). "
-                    + "Falling back to .raise action."
+                "kAXFrontmostAttribute is not settable for element \(self.briefDescription()). Falling back to .raise action."
             )
             // Use the throwing performAction and handle potential errors, or make it non-throwing if that's the design.
             // For now, assuming it should succeed or log internally, returning bool.
@@ -40,8 +38,7 @@ public extension Element {
                 return true // If performAction succeeded
             } catch {
                 axErrorLog(
-                    "Fallback action .raise failed for element \(self.briefDescription()): "
-                        + error.localizedDescription
+                    "Fallback action .raise failed for element \(self.briefDescription()): \(error.localizedDescription)"
                 )
                 return false // If performAction failed
             }
@@ -49,8 +46,7 @@ public extension Element {
         let success = setBooleanAttribute(AXAttributeNames.kAXFrontmostAttribute, value: true)
         if !success {
             axWarningLog(
-                "Setting kAXFrontmostAttribute failed for \(self.briefDescription()). "
-                    + "Falling back to .raise action."
+                "Setting kAXFrontmostAttribute failed for \(self.briefDescription()). Falling back to .raise action."
             )
             // Similar handling for the fallback action
             do {
@@ -58,8 +54,7 @@ public extension Element {
                 return true
             } catch {
                 axErrorLog(
-                    "Fallback action .raise failed after setBooleanAttribute failed for "
-                        + "\(self.briefDescription()): \(error.localizedDescription)"
+                    "Fallback action .raise failed after setBooleanAttribute failed for \(self.briefDescription()): \(error.localizedDescription)"
                 )
                 return false
             }
@@ -75,8 +70,7 @@ public extension Element {
         axDebugLog("Attempting to hide application (element: \(self.briefDescription()))")
         if !isAttributeSettable(named: AXAttributeNames.kAXHiddenAttribute) {
             axWarningLog(
-                "Attribute \(AXAttributeNames.kAXHiddenAttribute) is not settable for "
-                    + "element \(self.briefDescription())."
+                "Attribute \(AXAttributeNames.kAXHiddenAttribute) is not settable for element \(self.briefDescription())."
             )
             return false
         }
@@ -91,8 +85,7 @@ public extension Element {
         axDebugLog("Attempting to unhide application (element: \(self.briefDescription()))")
         if !isAttributeSettable(named: AXAttributeNames.kAXHiddenAttribute) {
             axWarningLog(
-                "Attribute \(AXAttributeNames.kAXHiddenAttribute) is not settable for "
-                    + "element \(self.briefDescription())."
+                "Attribute \(AXAttributeNames.kAXHiddenAttribute) is not settable for element \(self.briefDescription())."
             )
             return false
         }

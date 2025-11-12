@@ -37,7 +37,6 @@ public enum AXPermissionHelpers {
     /// Only call this method when you're ready to present the system permission dialog
     /// to the user. Consider using ``hasAccessibilityPermissions()`` first to check
     /// current permission status.
-    @MainActor
     public static func askForAccessibilityIfNeeded() -> Bool {
         // Skip permission dialog in test environment
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
@@ -56,7 +55,6 @@ public enum AXPermissionHelpers {
     /// permission dialog.
     ///
     /// - Returns: `true` if accessibility permissions are granted, `false` otherwise
-    @MainActor
     public static func hasAccessibilityPermissions() -> Bool {
         AXIsProcessTrusted()
     }
@@ -96,8 +94,13 @@ public enum AXPermissionHelpers {
     /// > Important: This method will display the system permission dialog.
     /// > Only call it when appropriate for your user experience.
     public static func requestPermissions() async -> Bool {
-        await MainActor.run {
-            askForAccessibilityIfNeeded()
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let hasPermissions = askForAccessibilityIfNeeded()
+                DispatchQueue.main.async {
+                    continuation.resume(returning: hasPermissions)
+                }
+            }
         }
     }
 
@@ -129,52 +132,34 @@ public enum AXPermissionHelpers {
         interval: TimeInterval = 1.0
     ) -> AsyncStream<Bool> {
         AsyncStream { continuation in
-            let initialState = Self.syncOnMainActor {
-                hasAccessibilityPermissions()
-            }
+            let initialState = hasAccessibilityPermissions()
             continuation.yield(initialState)
 
             // Use a class to hold the timer and state to avoid capture issues
             final class TimerBox: @unchecked Sendable {
                 var timer: Timer?
                 var lastState: Bool
-
+                
                 init(initialState: Bool) {
                     self.lastState = initialState
                 }
             }
             let timerBox = TimerBox(initialState: initialState)
 
-            Self.syncOnMainActor {
-                timerBox.timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-                    let currentState = Self.syncOnMainActor {
-                        hasAccessibilityPermissions()
-                    }
-                    if currentState != timerBox.lastState {
-                        timerBox.lastState = currentState
-                        continuation.yield(currentState)
-                    }
+            timerBox.timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+                let currentState = hasAccessibilityPermissions()
+                if currentState != timerBox.lastState {
+                    timerBox.lastState = currentState
+                    continuation.yield(currentState)
                 }
             }
 
             continuation.onTermination = { @Sendable _ in
-                Self.syncOnMainActor {
+                DispatchQueue.main.async {
                     timerBox.timer?.invalidate()
                     timerBox.timer = nil
                 }
             }
-        }
-    }
-
-    @inline(__always)
-    nonisolated private static func syncOnMainActor<Value: Sendable>(
-        _ work: @MainActor () -> Value
-    ) -> Value {
-        if Thread.isMainThread {
-            return MainActor.assumeIsolated(work)
-        }
-        return DispatchQueue.main.sync {
-            MainActor.assumeIsolated(work)
         }
     }
 }

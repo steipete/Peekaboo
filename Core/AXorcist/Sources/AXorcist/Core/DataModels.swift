@@ -4,8 +4,8 @@ import ApplicationServices // Added for AXUIElementGetTypeID
 import Foundation
 
 /// Type alias for a dictionary of accessibility element attributes.
-/// Keys are attribute names (e.g., "AXTitle", "AXValue") and values are strongly typed using AttributeValue.
-public typealias ElementAttributes = [String: AttributeValue]
+/// Keys are attribute names (e.g., "AXTitle", "AXValue") and values are wrapped in AnyCodable.
+public typealias ElementAttributes = [String: AnyCodable]
 
 /// Wrapper that makes accessibility attribute values Codable and Sendable.
 ///
@@ -28,21 +28,14 @@ public struct AXValueWrapper: Codable, Sendable, Equatable {
 
             if let array = unwrappedValue as? [Any?] {
                 axDebugLog("AXVW.init: Detected Array. Count: \(array.count)")
-                // Sanitize each item and wrap the resulting array of sanitized items in AttributeValue
-                let sanitizedArray = array.compactMap { item -> AttributeValue? in
-                    AXValueWrapper.convertToAttributeValue(AXValueWrapper.recursivelySanitize(item))
-                }
-                self.anyValue = .array(sanitizedArray)
+                // Sanitize each item and wrap the resulting array of sanitized items in AnyCodable
+                self.anyValue = AnyCodable(array.map { AXValueWrapper.recursivelySanitize($0) })
             } else if let dict = unwrappedValue as? [String: Any?] {
                 axDebugLog("AXVW.init: Detected Dictionary. Count: \(dict.count)")
-                let sanitizedDict = dict.compactMapValues { value -> AttributeValue? in
-                    AXValueWrapper.convertToAttributeValue(AXValueWrapper.recursivelySanitize(value))
-                }
-                self.anyValue = .dictionary(sanitizedDict)
+                self.anyValue = AnyCodable(dict.mapValues { AXValueWrapper.recursivelySanitize($0) })
             } else {
                 // Handle single, non-collection items
-                let sanitized = AXValueWrapper.recursivelySanitize(unwrappedValue)
-                self.anyValue = AXValueWrapper.convertToAttributeValue(sanitized)
+                self.anyValue = AnyCodable(AXValueWrapper.recursivelySanitize(unwrappedValue))
             }
         } else { // value was nil (absence of value)
             axDebugLog("AXVW.init: Original value was nil.")
@@ -52,70 +45,27 @@ public struct AXValueWrapper: Codable, Sendable, Equatable {
 
     // MARK: Public
 
-    public var anyValue: AttributeValue? // This can be nil if the attribute itself had no value or was absent
+    public var anyValue: AnyCodable? // This can be nil if the attribute itself had no value or was absent
 
     // MARK: Private
 
     // Static helper to sanitize individual items, called recursively by init for collections
     @MainActor
-    private static func recursivelySanitize(_ item: Any?) -> Any {
-        return recursivelySanitizeWithDepth(item, depth: 0, visited: Set<ObjectIdentifier>())
-    }
-
-    // Convert sanitized Any value to AttributeValue
-    private static func convertToAttributeValue(_ value: Any) -> AttributeValue? {
-        switch value {
-        case let string as String:
-            return .string(string)
-        case let bool as Bool:
-            return .bool(bool)
-        case let int as Int:
-            return .int(int)
-        case let double as Double:
-            return .double(double)
-        case let array as [Any]:
-            let attributeArray = array.compactMap { convertToAttributeValue($0) }
-            return .array(attributeArray)
-        case let dict as [String: Any]:
-            let attributeDict = dict.compactMapValues { convertToAttributeValue($0) }
-            return .dictionary(attributeDict)
-        case is ():
-            return .null
-        default:
-            // Convert unknown types to string representation
-            return .string(String(describing: value))
-        }
-    }
-
-    @MainActor
-    private static func recursivelySanitizeWithDepth(_ item: Any?, depth: Int, visited: Set<ObjectIdentifier>) -> Any {
-        // Prevent infinite recursion with depth limit
-        guard depth < 50 else { return "<max_depth_reached>" }
-
-        guard let anItem = item else { return () } // Convert nil to null marker for AttributeValue
-
-        // Check for circular references in collections
-        var currentVisited = visited
-        if type(of: anItem) is AnyClass {
-            let object = anItem as AnyObject
-            let id = ObjectIdentifier(object)
-            if currentVisited.contains(id) {
-                return "<circular_reference>"
-            }
-            currentVisited.insert(id)
-        }
-
+    private static func recursivelySanitize(_ item: Any?) -> Any { // Returns Any (basic types or () for nil)
+        guard let anItem = item else { return () } // Convert nil to AnyCodable's nil marker
         let cfItem = anItem as CFTypeRef
-        if CFGetTypeID(cfItem) == CFNullGetTypeID() { return () } // NSNull to null marker
+        if CFGetTypeID(cfItem) == CFNullGetTypeID() { return () } // NSNull to AnyCodable's nil
         if CFGetTypeID(cfItem) == AXUIElementGetTypeID() { return "<AXUIElement_RS>" }
         if let element = anItem as? Element { return "<Element_RS: \(element.briefDescription(option: .raw))>" }
 
-        // If it's a collection, recurse with cycle detection
+        // If it's a collection, recurse. This handles nested collections.
+        // Note: This recursive call inside a static func might lead to issues if not careful with types.
+        // However, we are returning basic types or placeholders from the checks above.
         if let array = anItem as? [Any?] {
-            return array.map { recursivelySanitizeWithDepth($0, depth: depth + 1, visited: currentVisited) }
+            return array.map { recursivelySanitize($0) }
         }
         if let dict = anItem as? [String: Any?] {
-            return dict.mapValues { recursivelySanitizeWithDepth($0, depth: depth + 1, visited: currentVisited) }
+            return dict.mapValues { recursivelySanitize($0) }
         }
 
         // For basic, already encodable types, return as is.
@@ -123,12 +73,12 @@ public struct AXValueWrapper: Codable, Sendable, Equatable {
         return anItem
     }
 
-    // If AttributeValue has trouble with certain AX types (like AXUIElementRef),
-    // they are converted to string representations in the convertToAttributeValue method.
-    // For instance, AXUIElementRef is converted to a placeholder string like "<AXUIElement_RS>".
+    // If AnyCodable has trouble with certain AX types (like AXUIElementRef),
+    // custom Encodable/Decodable logic might be needed here or in AnyCodable itself.
+    // For instance, AXUIElementRef might be encoded as a placeholder string or an empty dict.
 }
 
-public nonisolated struct AXElement: Codable, HandlerDataRepresentable {
+public struct AXElement: Codable, HandlerDataRepresentable {
     // MARK: Lifecycle
 
     public init(attributes: ElementAttributes?, path: [String]? = nil) {

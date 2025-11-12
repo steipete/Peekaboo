@@ -20,7 +20,7 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         self.value = value ?? ()
     }
 
-    public init(from decoder: any Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
             self.value = ()
@@ -48,7 +48,7 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
 
     public let value: Any
 
-    public func encode(to encoder: any Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         if value is () { // Our nil marker for explicit nil
             try container.encodeNil()
@@ -68,29 +68,26 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         case let dictionary as [String: Any]:
             try container.encode(dictionary.mapValues { AnyCodable($0) })
         default:
-            if let codableValue = value as? any Encodable {
+            if let codableValue = value as? Encodable {
                 // If the value conforms to Encodable, let it encode itself using the provided encoder.
                 // This is the most flexible approach as the Encodable type can use any container type it needs.
                 try codableValue.encode(to: encoder)
             } else if CFGetTypeID(value as CFTypeRef) == CFNullGetTypeID() {
                 try container.encodeNil()
             } else {
-                let debugDescription =
-                    "AnyCodable value (\(type(of: value))) cannot be encoded " +
-                    "and does not conform to Encodable."
                 throw EncodingError.invalidValue(
                     value,
                     EncodingError.Context(
                         codingPath: [],
-                        debugDescription: debugDescription
+                        debugDescription: "AnyCodable value (\(type(of: value))) cannot be encoded and does not conform to Encodable."
                     )
                 )
             }
         }
     }
-
+    
     // MARK: - Equatable Implementation
-
+    
     public static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
         // Handle nil marker case
         if lhs.value is (), rhs.value is () {
@@ -99,7 +96,7 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         if lhs.value is () || rhs.value is () {
             return false
         }
-
+        
         // Compare based on type
         switch (lhs.value, rhs.value) {
         case let (lhsBool as Bool, rhsBool as Bool):
@@ -111,10 +108,24 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         case let (lhsString as String, rhsString as String):
             return lhsString == rhsString
         case let (lhsArray as [Any], rhsArray as [Any]):
-            return Self.compareArrays(lhsArray, rhsArray)
+            guard lhsArray.count == rhsArray.count else { return false }
+            for (lhsElement, rhsElement) in zip(lhsArray, rhsArray) {
+                if AnyCodable(lhsElement) != AnyCodable(rhsElement) {
+                    return false
+                }
+            }
+            return true
         case let (lhsDict as [String: Any], rhsDict as [String: Any]):
-            return Self.compareDictionaries(lhsDict, rhsDict)
+            guard lhsDict.count == rhsDict.count else { return false }
+            for (key, lhsValue) in lhsDict {
+                guard let rhsValue = rhsDict[key] else { return false }
+                if AnyCodable(lhsValue) != AnyCodable(rhsValue) {
+                    return false
+                }
+            }
+            return true
         default:
+            // For types we don't specifically handle, try to compare as strings
             return String(describing: lhs.value) == String(describing: rhs.value)
         }
     }
@@ -131,7 +142,7 @@ struct AnyCodablePośrednik<T: Encodable>: Encodable {
 
     let value: T
 
-    func encode(to encoder: any Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         try value.encode(to: encoder)
     }
 }
@@ -144,27 +155,5 @@ private protocol OptionalProtocol {
 extension Optional: OptionalProtocol {
     static func isOptional() -> Bool {
         true
-    }
-}
-
-private extension AnyCodable {
-    static func compareArrays(_ lhs: [Any], _ rhs: [Any]) -> Bool {
-        guard lhs.count == rhs.count else { return false }
-        for (lhsElement, rhsElement) in zip(lhs, rhs)
-        where AnyCodable(lhsElement) != AnyCodable(rhsElement) {
-            return false
-        }
-        return true
-    }
-
-    static func compareDictionaries(_ lhs: [String: Any], _ rhs: [String: Any]) -> Bool {
-        guard lhs.count == rhs.count else { return false }
-        for (key, lhsValue) in lhs {
-            guard let rhsValue = rhs[key] else { return false }
-            if AnyCodable(lhsValue) != AnyCodable(rhsValue) {
-                return false
-            }
-        }
-        return true
     }
 }

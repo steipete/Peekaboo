@@ -50,17 +50,12 @@ func finalizeAndEncodeResponse(
         finalResponseObject.debugLogs = logsForResponse
     }
 
-    if let encoded = encodeToJson(finalResponseObject) {
-        return encoded
-    }
-
-    return "{\"error\": \"JSON encoding failed\", \"commandId\": \"\(commandId)\"}"
+    return encodeToJson(finalResponseObject) ?? "{\"error\": \"JSON encoding failed\", \"commandId\": \"\(commandId)\"}"
 }
 
 func encodeToJson(_ object: some Encodable) -> String? {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
-    encoder.keyEncodingStrategy = .convertToSnakeCase
 
     do {
         let data = try encoder.encode(object)
@@ -74,19 +69,27 @@ func encodeToJson(_ object: some Encodable) -> String? {
     }
 }
 
+// Extension for EncodingError details
+protocol CodingPathProvider {
+    var codingPath: [CodingKey] { get }
+}
+
+extension EncodingError.Context: CodingPathProvider {}
+
 extension EncodingError {
-    @preconcurrency nonisolated var detailedDescription: String {
+    var detailedDescription: String {
         switch self {
         case let .invalidValue(value, context):
-            let pathDescription = MainActor.assumeIsolated {
-                context.codingPath.map { $0.stringValue }.joined(separator: ".")
-            }
-            return [
-                "InvalidValue: '\(value)' attempting to encode at path '\(pathDescription)'.",
-                "Debug: \(context.debugDescription)"
-            ].joined(separator: " ")
+            return "InvalidValue: '\(value)' attempting to encode at path '\(context.codingPathString)'. Debug: \(context.debugDescription)"
         @unknown default:
             return "Unknown encoding error. Localized: \(self.localizedDescription)"
         }
+    }
+}
+
+// Helper for CodingPathProvider to get a string representation
+extension CodingPathProvider {
+    var codingPathString: String {
+        codingPath.map(\.stringValue).joined(separator: ".")
     }
 }

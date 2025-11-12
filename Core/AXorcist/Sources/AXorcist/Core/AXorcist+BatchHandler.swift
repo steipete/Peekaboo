@@ -33,9 +33,10 @@ extension AXorcist {
                 overallSuccess = false
                 let errorDetail = response.error?
                     .message ?? "Unknown error in sub-command \(subCommandEnvelope.commandID)"
-                let failureMessage = "Sub-command \(subCommandEnvelope.commandID) " +
-                    "('\(subCommandEnvelope.command.type)') failed: \(errorDetail)"
-                errorMessages.append(failureMessage)
+                errorMessages
+                    .append(
+                        "Sub-command \(subCommandEnvelope.commandID) ('\(subCommandEnvelope.command.type)') failed: \(errorDetail)"
+                    )
                 GlobalAXLogger.shared.log(AXLogEntry(
                     level: .warning,
                     message: "HandleBatch: Sub-command \(subCommandEnvelope.commandID) failed: \(errorDetail)"
@@ -51,24 +52,14 @@ extension AXorcist {
             let successfulPayloads = results.map(\.payload)
             return .successResponse(payload: AnyCodable(BatchResponsePayload(results: successfulPayloads, errors: nil)))
         } else {
-            let combinedErrorMessage = "HandleBatch: One or more sub-commands failed. Errors: " +
-                errorMessages.joined(separator: "; ")
+            let combinedErrorMessage =
+                "HandleBatch: One or more sub-commands failed. Errors: \(errorMessages.joined(separator: "; "))"
             GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: combinedErrorMessage))
             return .errorResponse(message: combinedErrorMessage, code: .batchOperationFailed)
         }
     }
 
     private func processSingleBatchCommand(_ command: AXCommand) -> AXResponse {
-        if let response = self.processQueryAndActionCommands(command) {
-            return response
-        }
-        if let response = self.processFocusAndPointCommands(command) {
-            return response
-        }
-        return self.processBatchSpecificCommands(command)
-    }
-
-    private func processQueryAndActionCommands(_ command: AXCommand) -> AXResponse? {
         switch command {
         case let .query(queryCommand):
             return handleQuery(command: queryCommand, maxDepth: queryCommand.maxDepthForSearch)
@@ -82,37 +73,18 @@ extension AXorcist {
             return handleExtractText(command: extractTextCommand)
         case let .setFocusedValue(setFocusedValueCommand):
             return handleSetFocusedValue(command: setFocusedValueCommand)
-        default:
-            return nil
-        }
-    }
-
-    private func processFocusAndPointCommands(_ command: AXCommand) -> AXResponse? {
-        switch command {
         case let .getElementAtPoint(getElementAtPointCommand):
             return handleGetElementAtPoint(command: getElementAtPointCommand)
         case let .getFocusedElement(getFocusedElementCommand):
             return handleGetFocusedElement(command: getFocusedElementCommand)
-        case let .collectAll(collectAllCommand):
-            return handleCollectAll(command: collectAllCommand)
-        default:
-            return nil
-        }
-    }
-
-    private func processBatchSpecificCommands(_ command: AXCommand) -> AXResponse {
-        switch command {
         case let .observe(observeCommand):
             GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: "BatchProc: Processing Observe command."))
             return handleObserve(command: observeCommand)
+        case let .collectAll(collectAllCommand):
+            return handleCollectAll(command: collectAllCommand)
         case .batch:
             return .errorResponse(
                 message: "Nested batch commands are not supported within a single batch operation.",
-                code: .invalidCommand
-            )
-        default:
-            return .errorResponse(
-                message: "Unsupported command type in batch operation: \(command.type)",
                 code: .invalidCommand
             )
         }

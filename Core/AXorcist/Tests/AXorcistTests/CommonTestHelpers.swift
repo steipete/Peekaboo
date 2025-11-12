@@ -1,23 +1,6 @@
 @preconcurrency import AppKit
-import Testing
 @testable import AXorcist
-
-extension Tag {
-    @Tag static var safe: Self
-    @Tag static var automation: Self
-}
-
-@preconcurrency
-enum AXTestEnvironment {
-    @inline(__always)
-    @preconcurrency nonisolated static func flag(_ key: String) -> Bool {
-        ProcessInfo.processInfo.environment[key]?.lowercased() == "true"
-    }
-
-    @preconcurrency nonisolated(unsafe) static var runAutomationScenarios: Bool {
-        flag("RUN_AUTOMATION_TESTS") || flag("RUN_LOCAL_TESTS")
-    }
-}
+import XCTest
 
 
 // Result struct for AXORC commands
@@ -30,115 +13,89 @@ struct CommandResult {
 // MARK: - Test Helpers
 
 func setupTextEditAndGetInfo() async throws -> (pid: pid_t, axAppElement: AXUIElement?) {
-    let runningApp = try await ensureTextEditRunning()
+    let textEditBundleId = "com.apple.TextEdit"
+    var app: NSRunningApplication? = NSRunningApplication.runningApplications(withBundleIdentifier: textEditBundleId)
+        .first
+
+    if app == nil {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: textEditBundleId) else {
+            throw TestError.generic("Could not find URL for TextEdit application.")
+        }
+
+        print("Attempting to launch TextEdit from URL: \(url.path)")
+        let configuration: [NSWorkspace.LaunchConfigurationKey: Any] = [:]
+        do {
+            app = try NSWorkspace.shared.launchApplication(at: url,
+                                                           options: [.async, .withoutActivation],
+                                                           configuration: configuration)
+            print("launchApplication call completed. App PID if returned: \(app?.processIdentifier ?? -1)")
+        } catch {
+            throw TestError
+                .appNotRunning(
+                    "Failed to launch TextEdit using launchApplication(at:options:configuration:): " +
+                        "\(error.localizedDescription)"
+                )
+        }
+
+        var launchedApp: NSRunningApplication?
+        for attempt in 1 ... 10 {
+            launchedApp = NSRunningApplication.runningApplications(withBundleIdentifier: textEditBundleId).first
+            if launchedApp != nil {
+                print("TextEdit found running after launch, attempt \(attempt).")
+                break
+            }
+            try await Task.sleep(for: .milliseconds(500))
+            print("Waiting for TextEdit to appear in running list... attempt \(attempt)")
+        }
+
+        guard let runningAppAfterLaunch = launchedApp else {
+            throw TestError.appNotRunning("TextEdit did not appear in running applications list after launch attempt.")
+        }
+        app = runningAppAfterLaunch
+    }
+
+    guard let runningApp = app else {
+        throw TestError.appNotRunning("TextEdit is unexpectedly nil before activation checks.")
+    }
+
     let pid = runningApp.processIdentifier
     let axAppElement = AXUIElementCreateApplication(pid)
-    try await ensureWindowExists(for: runningApp, axAppElement: axAppElement)
-    logFocusedElement(axAppElement: axAppElement)
-    return (pid, axAppElement)
-}
 
-private func ensureTextEditRunning() async throws -> NSRunningApplication {
-    let textEditBundleId = "com.apple.TextEdit"
-    if let app = NSRunningApplication.runningApplications(withBundleIdentifier: textEditBundleId).first {
-        return app
+    if !runningApp.isActive {
+        runningApp.activate(options: [.activateAllWindows])
+        try await Task.sleep(for: .seconds(1.5))
     }
 
-    guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: textEditBundleId) else {
-        throw TestError.generic("Could not find URL for TextEdit application.")
-    }
-
-    let configuration = NSWorkspace.OpenConfiguration()
-    configuration.activates = false
-
-    do {
-        let launchedApp = try await withCheckedThrowingContinuation { continuation in
-            NSWorkspace.shared.openApplication(at: url, configuration: configuration) { runningApp, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else if let runningApp {
-                    continuation.resume(returning: runningApp)
-                } else {
-                    continuation.resume(
-                        throwing: TestError.appNotRunning(
-                            "openApplication completion returned nil without error."
-                        )
-                    )
-                }
-            }
-        }
-        return try await waitForTextEdit(launchedApp: launchedApp)
-    } catch {
-        throw TestError.appNotRunning(
-            "Failed to launch TextEdit using openApplication: \(error.localizedDescription)"
-        )
-    }
-}
-
-@MainActor
-private func waitForTextEdit(launchedApp: NSRunningApplication) async throws -> NSRunningApplication {
-    let textEditBundleId = "com.apple.TextEdit"
-    for attempt in 1 ... 10 {
-        if let running = NSRunningApplication.runningApplications(withBundleIdentifier: textEditBundleId).first {
-            print("TextEdit found running after launch, attempt \(attempt)")
-            return running
-        }
-        try await Task.sleep(for: .milliseconds(500))
-        print("Waiting for TextEdit to appear in running list... attempt \(attempt)")
-    }
-    throw TestError.appNotRunning("TextEdit did not appear in running applications list after launch attempt.")
-}
-
-@MainActor
-private func ensureWindowExists(for app: NSRunningApplication, axAppElement: AXUIElement) async throws {
-    try await activate(app)
-    if try await axWindowCount(for: axAppElement) == 0 {
-        try await createNewDocument()
-    }
-    try await activate(app)
-}
-
-@MainActor
-private func activate(_ app: NSRunningApplication) async throws {
-    guard !app.isActive else { return }
-    app.activate(options: [.activateAllWindows])
-    try await Task.sleep(for: .seconds(1))
-}
-
-@MainActor
-private func axWindowCount(for appElement: AXUIElement) async throws -> Int {
     var window: AnyObject?
-    let result = AXUIElementCopyAttributeValue(
-        appElement,
+    let resultCopyAttribute = AXUIElementCopyAttributeValue(
+        axAppElement,
         ApplicationServices.kAXWindowsAttribute as CFString,
         &window
     )
-    guard result == AXError.success else { return 0 }
-    return (window as? [AXUIElement])?.count ?? 0
-}
-
-@MainActor
-private func createNewDocument() async throws {
-    let appleScript = """
-    tell application "System Events"
-        tell process "TextEdit"
-            set frontmost to true
-            keystroke "n" using command down
+    if resultCopyAttribute != AXError.success || (window as? [AXUIElement])?.isEmpty ?? true {
+        let appleScript = """
+        tell application "System Events"
+            tell process "TextEdit"
+                set frontmost to true
+                keystroke "n" using command down
+            end tell
         end tell
-    end tell
-    """
-    var errorDict: NSDictionary?
-    if let scriptObject = NSAppleScript(source: appleScript) {
-        scriptObject.executeAndReturnError(&errorDict)
-        if let error = errorDict {
-            throw TestError.appleScriptError("Failed to create new document in TextEdit: \(error)")
+        """
+        var errorDict: NSDictionary?
+        if let scriptObject = NSAppleScript(source: appleScript) {
+            scriptObject.executeAndReturnError(&errorDict)
+            if let error = errorDict {
+                throw TestError.appleScriptError("Failed to create new document in TextEdit: \(error)")
+            }
+            try await Task.sleep(for: .seconds(2))
         }
-        try await Task.sleep(for: .seconds(2))
     }
-}
 
-@MainActor
-private func logFocusedElement(axAppElement: AXUIElement) {
+    if !runningApp.isActive {
+        runningApp.activate(options: [.activateAllWindows])
+        try await Task.sleep(for: .seconds(1))
+    }
+
     var cfFocusedElement: CFTypeRef?
     let status = AXUIElementCopyAttributeValue(
         axAppElement,
@@ -150,6 +107,8 @@ private func logFocusedElement(axAppElement: AXUIElement) {
     } else {
         print("AX API did not get a focused element during setup. Status: \(status.rawValue). This might be okay.")
     }
+
+    return (pid, axAppElement)
 }
 
 @MainActor
@@ -281,8 +240,8 @@ struct CommandEnvelope: Codable {
          maxElements: Int? = nil,
          outputFormat: OutputFormat? = nil,
          actionName: String? = nil,
-         actionValue: AttributeValue? = nil,
-         payload: [String: AttributeValue]? = nil,
+         actionValue: AnyCodable? = nil,
+         payload: [String: AnyCodable]? = nil,
          subCommands: [CommandEnvelope]? = nil)
     {
         self.commandId = commandId
@@ -328,8 +287,8 @@ struct CommandEnvelope: Codable {
     let maxElements: Int?
     let outputFormat: OutputFormat?
     let actionName: String?
-    let actionValue: AttributeValue?
-    let payload: [String: AttributeValue]?
+    let actionValue: AnyCodable?
+    let payload: [String: AnyCodable]?
     let subCommands: [CommandEnvelope]?
 }
 
@@ -403,14 +362,14 @@ struct ErrorResponse: Codable {
 struct AXElementData: Codable {
     // MARK: Lifecycle
 
-    init(attributes: [String: AttributeValue]? = nil, path: [String]? = nil) {
+    init(attributes: [String: AnyCodable]? = nil, path: [String]? = nil) {
         self.attributes = attributes
         self.path = path
     }
 
     // MARK: Internal
 
-    let attributes: [String: AttributeValue]?
+    let attributes: [String: AnyCodable]?
     let path: [String]?
 }
 
@@ -470,32 +429,32 @@ enum TestError: Error, CustomStringConvertible {
 
 var productsDirectory: URL {
     #if os(macOS)
-    for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
-        return bundle.bundleURL.deletingLastPathComponent()
-    }
+        for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
+            return bundle.bundleURL.deletingLastPathComponent()
+        }
 
-    let currentFileURL = URL(fileURLWithPath: #filePath)
-    let packageRootPath = currentFileURL.deletingLastPathComponent().deletingLastPathComponent()
-        .deletingLastPathComponent()
+        let currentFileURL = URL(fileURLWithPath: #filePath)
+        let packageRootPath = currentFileURL.deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent()
 
-    let buildPathsToTry = [
-        packageRootPath.appendingPathComponent(".build/debug"),
-        packageRootPath.appendingPathComponent(".build/arm64-apple-macosx/debug"),
-        packageRootPath.appendingPathComponent(".build/x86_64-apple-macosx/debug"),
-    ]
+        let buildPathsToTry = [
+            packageRootPath.appendingPathComponent(".build/debug"),
+            packageRootPath.appendingPathComponent(".build/arm64-apple-macosx/debug"),
+            packageRootPath.appendingPathComponent(".build/x86_64-apple-macosx/debug"),
+        ]
 
-    let fileManager = FileManager.default
-    for path in buildPathsToTry where fileManager.fileExists(atPath: path.appendingPathComponent("axorc").path) {
-        return path
-    }
+        let fileManager = FileManager.default
+        for path in buildPathsToTry where fileManager.fileExists(atPath: path.appendingPathComponent("axorc").path) {
+            return path
+        }
 
-    let searchedPaths = buildPathsToTry.map(\.path).joined(separator: ", ")
-    fatalError(
-        "couldn't find the products directory via Bundle or SPM fallback. " +
-            "Package root guessed as: \(packageRootPath.path). " +
-            "Searched paths: \(searchedPaths)"
-    )
+        let searchedPaths = buildPathsToTry.map(\.path).joined(separator: ", ")
+        fatalError(
+            "couldn't find the products directory via Bundle or SPM fallback. " +
+                "Package root guessed as: \(packageRootPath.path). " +
+                "Searched paths: \(searchedPaths)"
+        )
     #else
-    return Bundle.main.bundleURL
+        return Bundle.main.bundleURL
     #endif
 }

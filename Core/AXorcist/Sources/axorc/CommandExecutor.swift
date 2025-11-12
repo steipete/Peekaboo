@@ -29,8 +29,7 @@ struct CommandExecutor {
         }
 
         axDebugLog(
-            "Executing command: \(command.command) (ID: \(command.commandId)), "
-                + "cmdDebug: \(command.debugLogging), cliDebug: \(debugCLI)"
+            "Executing command: \(command.command) (ID: \(command.commandId)), cmdDebug: \(command.debugLogging), cliDebug: \(debugCLI)"
         )
 
         let responseString = processCommand(command: command, axorcist: axorcist, debugCLI: debugCLI)
@@ -58,71 +57,67 @@ struct CommandExecutor {
         return previousDetailLevel
     }
 
-    private typealias DirectCommandHandler = (CommandEnvelope, AXorcist, Bool) -> String
-    private typealias SimpleCommandExecutor = (CommandEnvelope, AXorcist) -> HandlerResponse
-
-    private static let simpleExecutors: [CommandType: SimpleCommandExecutor] = [
-        .getFocusedElement: executeGetFocusedElement,
-        .getAttributes: executeGetAttributes,
-        .query: executeQuery,
-        .describeElement: executeDescribeElement,
-        .extractText: executeExtractText
-    ]
-
-    private static let commandHandlers: [CommandType: DirectCommandHandler] = [
-        .performAction: handlePerformActionCommand,
-        .collectAll: handleCollectAllCommand,
-        .getElementAtPoint: handleGetElementAtPointCommand,
-        .setFocusedValue: handleSetFocusedValueCommand,
-        .ping: { command, _, debugCLI in handlePingCommand(command: command, debugCLI: debugCLI) },
-        .batch: handleBatchCommand,
-        .observe: handleObserveCommand,
-        .stopObservation: { command, _, debugCLI in
-            handleStopObservationCommand(command: command, debugCLI: debugCLI)
-        },
-        .isProcessTrusted: { command, _, _ in handleIsProcessTrustedCommand(command: command) },
-        .isAXFeatureEnabled: { command, _, _ in handleIsAXFeatureEnabledCommand(command: command) }
-    ]
-
-    private static let notImplementedCommands: Set<CommandType> = [
-        .setNotificationHandler,
-        .removeNotificationHandler,
-        .getElementDescription
-    ]
-
     @MainActor
     private static func processCommand(command: CommandEnvelope, axorcist: AXorcist, debugCLI: Bool) -> String {
-        if let executor = simpleExecutors[command.command] {
-            return handleSimpleCommand(
+        switch command.command {
+        case .performAction:
+            handlePerformActionCommand(command: command, axorcist: axorcist, debugCLI: debugCLI)
+        case .getFocusedElement:
+            handleSimpleCommand(
                 command: command,
                 axorcist: axorcist,
                 debugCLI: debugCLI,
-                executor: executor
+                executor: executeGetFocusedElement
             )
-        }
-
-        if let handler = commandHandlers[command.command] {
-            return handler(command, axorcist, debugCLI)
-        }
-
-        if notImplementedCommands.contains(command.command) {
-            return handleNotImplementedCommand(
+        case .getAttributes:
+            handleSimpleCommand(
+                command: command,
+                axorcist: axorcist,
+                debugCLI: debugCLI,
+                executor: executeGetAttributes
+            )
+        case .query:
+            handleSimpleCommand(command: command, axorcist: axorcist, debugCLI: debugCLI, executor: executeQuery)
+        case .describeElement:
+            handleSimpleCommand(
+                command: command,
+                axorcist: axorcist,
+                debugCLI: debugCLI,
+                executor: executeDescribeElement
+            )
+        case .extractText:
+            handleSimpleCommand(command: command, axorcist: axorcist, debugCLI: debugCLI, executor: executeExtractText)
+        case .collectAll:
+            handleCollectAllCommand(command: command, axorcist: axorcist, debugCLI: debugCLI)
+        case .getElementAtPoint:
+            handleGetElementAtPointCommand(command: command, axorcist: axorcist, debugCLI: debugCLI)
+        case .setFocusedValue:
+            handleSetFocusedValueCommand(command: command, axorcist: axorcist, debugCLI: debugCLI)
+        case .ping:
+            handlePingCommand(command: command, debugCLI: debugCLI)
+        case .batch:
+            handleBatchCommand(command: command, axorcist: axorcist, debugCLI: debugCLI)
+        case .observe:
+            handleObserveCommand(command: command, axorcist: axorcist, debugCLI: debugCLI)
+        case .stopObservation:
+            handleStopObservationCommand(command: command, debugCLI: debugCLI)
+        case .isProcessTrusted:
+            handleIsProcessTrustedCommand(command: command)
+        case .isAXFeatureEnabled:
+            handleIsAXFeatureEnabledCommand(command: command)
+        case .setNotificationHandler, .removeNotificationHandler, .getElementDescription:
+            handleNotImplementedCommand(
                 command: command,
                 message: "\(command.command.rawValue) is not implemented in axorc",
                 debugCLI: debugCLI
             )
         }
-
-        axErrorLog("Unhandled command: \(command.command.rawValue)")
-        return "{\"error\": \"Unhandled command \(command.command.rawValue)\", \"commandId\": \"\(command.commandId)\"}"
     }
 
     @MainActor
-    private static func handleCollectAllCommand(
-        command: CommandEnvelope,
-        axorcist: AXorcist,
-        debugCLI: Bool
-    ) -> String {
+    private static func handleCollectAllCommand(command: CommandEnvelope, axorcist: AXorcist,
+                                                debugCLI: Bool) -> String
+    {
         axDebugLog("CollectAll called. debugCLI=\(debugCLI). Passing to axorcist.handleCollectAll.")
         guard let axCommand = command.command.toAXCommand(commandEnvelope: command) else {
             axErrorLog("Failed to convert CollectAll to AXCommand")
@@ -154,11 +149,9 @@ struct CommandExecutor {
     }
 
     @MainActor
-    private static func handleGetElementAtPointCommand(
-        command: CommandEnvelope,
-        axorcist: AXorcist,
-        debugCLI: Bool
-    ) -> String {
+    private static func handleGetElementAtPointCommand(command: CommandEnvelope, axorcist: AXorcist,
+                                                       debugCLI: Bool) -> String
+    {
         handleSimpleCommand(command: command, axorcist: axorcist, debugCLI: debugCLI) { cmd, axorcist in
             guard let axCmd = cmd.command.toAXCommand(commandEnvelope: cmd) else {
                 axErrorLog("Failed to convert GetElementAtPoint to AXCommand")
@@ -173,11 +166,9 @@ struct CommandExecutor {
     }
 
     @MainActor
-    private static func handleSetFocusedValueCommand(
-        command: CommandEnvelope,
-        axorcist: AXorcist,
-        debugCLI: Bool
-    ) -> String {
+    private static func handleSetFocusedValueCommand(command: CommandEnvelope, axorcist: AXorcist,
+                                                     debugCLI: Bool) -> String
+    {
         handleSimpleCommand(command: command, axorcist: axorcist, debugCLI: debugCLI) { cmd, axorcist in
             guard let axCmd = cmd.command.toAXCommand(commandEnvelope: cmd) else {
                 axErrorLog("Failed to convert SetFocusedValue to AXCommand")

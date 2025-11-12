@@ -42,8 +42,8 @@ public enum AccessibilityError: Error, CustomStringConvertible {
 
     // Generic & System Errors
     case unknownAXError(AXError) // An unknown or unexpected AXError occurred.
-    case jsonEncodingFailed((any Error)?) // Failed to encode response to JSON.
-    case jsonDecodingFailed((any Error)?) // Failed to decode request from JSON.
+    case jsonEncodingFailed(Error?) // Failed to encode response to JSON.
+    case jsonDecodingFailed(Error?) // Failed to decode request from JSON.
     case genericError(String) // A generic error with a custom message.
 
     // MARK: Public
@@ -106,7 +106,7 @@ public enum AccessibilityError: Error, CustomStringConvertible {
         case let .actionFailed(action, elDesc, axErr):
             var parts = ["Action '\(action)' failed."]
             if let desc = elDesc { parts.append("On element: '\(desc)'.") }
-            if let error = axErr { parts.append("AXError: \(error).") }
+            if let error = axErr { parts.append("AXError: \(error.stringValue).") }
             return parts.joined(separator: " ")
         // Generic & System
         case let .unknownAXError(error): return "An unexpected Accessibility Framework error occurred: \(error)."

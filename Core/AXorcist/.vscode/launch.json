@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:AXorcist}",
+            "name": "Debug axorc",
+            "program": "${workspaceFolder:AXorcist}/.build/debug/axorc",
+            "preLaunchTask": "swift: Build Debug axorc"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:AXorcist}",
+            "name": "Release axorc",
+            "program": "${workspaceFolder:AXorcist}/.build/release/axorc",
+            "preLaunchTask": "swift: Build Release axorc"
+        }
+    ]
+}

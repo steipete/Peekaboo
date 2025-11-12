@@ -1,6 +1,6 @@
 // AXORCModels.swift - Response models and main types for AXORC CLI
 
-import Commander
+import ArgumentParser
 
 // Potentially AXorcist if common types are defined there and used here
 import AXorcist
@@ -87,7 +87,7 @@ struct AXElementForEncoding: Codable {
 
     // MARK: Internal
 
-    let attributes: [String: AttributeValue]?
+    let attributes: [String: AnyCodable]?
     let path: [String]?
 }
 
@@ -210,18 +210,19 @@ struct GenericQueryResponse: Codable {
 extension DecodingError {
     var humanReadableDescription: String {
         switch self {
-        case let .typeMismatch(type, context):
-            let path = context.codingPath.map(\.stringValue).joined(separator: ".")
-            return "Type mismatch for \(type): \(context.debugDescription) at \(path)"
-        case let .valueNotFound(type, context):
-            let path = context.codingPath.map(\.stringValue).joined(separator: ".")
-            return "Value not found for \(type): \(context.debugDescription) at \(path)"
-        case let .keyNotFound(key, context):
-            let path = context.codingPath.map(\.stringValue).joined(separator: ".")
-            return "Key not found: \(key.stringValue) at \(path) - \(context.debugDescription)"
-        case let .dataCorrupted(context):
-            let path = context.codingPath.map(\.stringValue).joined(separator: ".")
-            return "Data corrupted: \(context.debugDescription) at \(path)"
+        case let .typeMismatch(
+            type,
+            context
+        ): return "Type mismatch for \(type): \(context.debugDescription) at \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        case let .valueNotFound(
+            type,
+            context
+        ): return "Value not found for \(type): \(context.debugDescription) at \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        case let .keyNotFound(
+            key,
+            context
+        ): return "Key not found: \(key.stringValue) at \(context.codingPath.map(\.stringValue).joined(separator: ".")) - \(context.debugDescription)"
+        case let .dataCorrupted(context): return "Data corrupted: \(context.debugDescription) at \(context.codingPath.map(\.stringValue).joined(separator: "."))"
         @unknown default: return self.localizedDescription
         }
     }

@@ -12,16 +12,11 @@ func matchSingleCriterion(
     matchType: JSONPathHintComponent.MatchType,
     elementDescriptionForLog: String
 ) -> Bool {
-    GlobalAXLogger.shared.log(
-        AXLogEntry(
-            level: .debug,
-            message: logSegments(
-                "SC/MSC: Matching key '\(key)' (expected: '\(expectedValue)', ",
-                "type: \(matchType.rawValue)) on ",
-                elementDescriptionForLog
-            )
-        )
-    )
+    GlobalAXLogger.shared.log(AXLogEntry(
+        level: .debug,
+        message: "SC/MSC: Matching key '\(key)' (expected: '\(expectedValue)', " +
+            "type: \(matchType.rawValue)) on \(elementDescriptionForLog)"
+    ))
 
     let comparisonResult = matchAttributeByKey(
         element: element,
@@ -31,19 +26,11 @@ func matchSingleCriterion(
         elementDescriptionForLog: elementDescriptionForLog
     )
 
-    GlobalAXLogger.shared.log(
-        AXLogEntry(
-            level: .debug,
-            message: logSegments(
-                [
-                    "SC/MSC: Key '\(key)'",
-                    "Expected='\(expectedValue)'",
-                    "MatchType='\(matchType.rawValue)'",
-                    "Result=\(comparisonResult) on \(elementDescriptionForLog)."
-                ]
-            )
-        )
-    )
+    GlobalAXLogger.shared.log(AXLogEntry(
+        level: .debug,
+        message: "SC/MSC: Key '\(key)', Expected='\(expectedValue)', MatchType='\(matchType.rawValue)', " +
+            "Result=\(comparisonResult) on \(elementDescriptionForLog)."
+    ))
     return comparisonResult
 }
 
@@ -55,125 +42,48 @@ private func matchAttributeByKey(
     matchType: JSONPathHintComponent.MatchType,
     elementDescriptionForLog: String
 ) -> Bool {
-    let context = CriterionContext(
-        element: element,
-        expectedValue: expectedValue,
-        matchType: matchType,
-        elementDescriptionForLog: elementDescriptionForLog
-    )
-    switch criterionKey(for: key) {
-    case .role:
-        return context.matchRole()
-    case .subrole:
-        return context.matchSubrole()
-    case .identifier:
-        return context.matchIdentifier()
-    case .pid:
-        return context.matchPid()
-    case .domClassList:
-        return context.matchDomClassList()
-    case .isIgnored:
-        return context.matchIsIgnored()
-    case .computedName:
-        return context.matchComputedName()
-    case .computedNameWithValue:
-        return context.matchComputedNameWithValue()
-    case let .generic(originalKey):
-        return context.matchGenericAttributeValue(key: originalKey)
-    }
-}
-
-private enum CriterionKey {
-    case role, subrole, identifier, pid, domClassList, isIgnored, computedName, computedNameWithValue
-    case generic(String)
-}
-
-private func criterionKey(for rawKey: String) -> CriterionKey {
-    let normalized = rawKey.lowercased()
-    switch normalized {
+    switch key.lowercased() {
     case AXAttributeNames.kAXRoleAttribute.lowercased(), "role":
-        return .role
-    case AXAttributeNames.kAXSubroleAttribute.lowercased(), "subrole":
-        return .subrole
-    case AXAttributeNames.kAXIdentifierAttribute.lowercased(), "identifier", "id":
-        return .identifier
-    case "pid":
-        return .pid
-    case AXAttributeNames.kAXDOMClassListAttribute.lowercased(),
-        "domclasslist", "classlist", "dom":
-        return .domClassList
-    case AXMiscConstants.isIgnoredAttributeKey.lowercased(), "isignored", "ignored":
-        return .isIgnored
-    case AXMiscConstants.computedNameAttributeKey.lowercased(), "computedname", "name":
-        return .computedName
-    case "computednamewithvalue", "namewithvalue":
-        return .computedNameWithValue
-    default:
-        return .generic(rawKey)
-    }
-}
-
-private struct CriterionContext {
-    let element: Element
-    let expectedValue: String
-    let matchType: JSONPathHintComponent.MatchType
-    let elementDescriptionForLog: String
-}
-
-private extension CriterionContext {
-    func matchRole() -> Bool {
         matchRoleAttribute(
             element: element,
             expectedValue: expectedValue,
             matchType: matchType,
             elementDescriptionForLog: elementDescriptionForLog
         )
-    }
-
-    func matchSubrole() -> Bool {
+    case AXAttributeNames.kAXSubroleAttribute.lowercased(), "subrole":
         matchSubroleAttribute(
             element: element,
             expectedValue: expectedValue,
             matchType: matchType,
             elementDescriptionForLog: elementDescriptionForLog
         )
-    }
-
-    func matchIdentifier() -> Bool {
+    case AXAttributeNames.kAXIdentifierAttribute.lowercased(), "identifier", "id":
         matchIdentifierAttribute(
             element: element,
             expectedValue: expectedValue,
             matchType: matchType,
             elementDescriptionForLog: elementDescriptionForLog
         )
-    }
-
-    func matchPid() -> Bool {
+    case "pid":
         matchPidCriterion(
             element: element,
             expectedValue: expectedValue,
             elementDescriptionForLog: elementDescriptionForLog
         )
-    }
-
-    func matchDomClassList() -> Bool {
+    case AXAttributeNames.kAXDOMClassListAttribute.lowercased(), "domclasslist", "classlist", "dom":
         matchDomClassListAttribute(
             element: element,
             expectedValue: expectedValue,
             matchType: matchType,
             elementDescriptionForLog: elementDescriptionForLog
         )
-    }
-
-    func matchIsIgnored() -> Bool {
+    case AXMiscConstants.isIgnoredAttributeKey.lowercased(), "isignored", "ignored":
         matchIsIgnoredCriterion(
             element: element,
             expectedValue: expectedValue,
             elementDescriptionForLog: elementDescriptionForLog
         )
-    }
-
-    func matchComputedName() -> Bool {
+    case AXMiscConstants.computedNameAttributeKey.lowercased(), "computedname", "name":
         matchComputedNameAttributes(
             element: element,
             expectedValue: expectedValue,
@@ -181,9 +91,7 @@ private extension CriterionContext {
             attributeName: AXMiscConstants.computedNameAttributeKey,
             elementDescriptionForLog: elementDescriptionForLog
         )
-    }
-
-    func matchComputedNameWithValue() -> Bool {
+    case "computednamewithvalue", "namewithvalue":
         matchComputedNameAttributes(
             element: element,
             expectedValue: expectedValue,
@@ -192,10 +100,8 @@ private extension CriterionContext {
             elementDescriptionForLog: elementDescriptionForLog,
             includeValueInComputedName: true
         )
-    }
-
-    func matchGenericAttributeValue(key: String) -> Bool {
-        performGenericAttributeMatch(
+    default:
+        matchGenericAttribute(
             element: element,
             key: key,
             expectedValue: expectedValue,
@@ -206,7 +112,7 @@ private extension CriterionContext {
 }
 
 @MainActor
-private func performGenericAttributeMatch(
+private func matchGenericAttribute(
     element: Element,
     key: String,
     expectedValue: String,
@@ -214,16 +120,11 @@ private func performGenericAttributeMatch(
     elementDescriptionForLog: String
 ) -> Bool {
     guard let actualValueAny: Any = element.attribute(Attribute(key)) else {
-        GlobalAXLogger.shared.log(
-            AXLogEntry(
-                level: .debug,
-                message: logSegments(
-                    "SC/MSC/Default: Attribute '\(key)' not found or nil on ",
-                    elementDescriptionForLog,
-                    ". No match."
-                )
-            )
-        )
+        GlobalAXLogger.shared.log(AXLogEntry(
+            level: .debug,
+            message: "SC/MSC/Default: Attribute '\(key)' not found or nil on " +
+                "\(elementDescriptionForLog). No match."
+        ))
         return false
     }
     let actualValueString: String
@@ -231,33 +132,21 @@ private func performGenericAttributeMatch(
         actualValueString = str
     } else {
         actualValueString = "\(actualValueAny)"
-        GlobalAXLogger.shared.log(
-            AXLogEntry(
-                level: .debug,
-                message: logSegments(
-                    [
-                        "SC/MSC/Default: Attribute '\(key)' on \(elementDescriptionForLog)",
-                        "was not String (type: \(type(of: actualValueAny)))",
-                        "using string description: '\(actualValueString)' for comparison."
-                    ]
-                )
-            )
-        )
-    }
-    GlobalAXLogger.shared.log(
-        AXLogEntry(
+        GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "SC/MSC/Default: Attribute '\(key)', Actual='\(actualValueString)'"
-        )
-    )
+            message: "SC/MSC/Default: Attribute '\(key)' on \(elementDescriptionForLog) " +
+                "was not String (type: \(type(of: actualValueAny))), " +
+                "using string description: '\(actualValueString)' for comparison."
+        ))
+    }
+    GlobalAXLogger.shared.log(AXLogEntry(
+        level: .debug,
+        message: "SC/MSC/Default: Attribute '\(key)', Actual='\(actualValueString)'"
+    ))
     return compareStrings(
-        actualValueString,
-        expectedValue,
-        matchType,
+        actualValueString, expectedValue, matchType,
         caseSensitive: true,
-        context: StringComparisonContext(
-            attributeName: key,
-            elementDescription: elementDescriptionForLog
-        )
+        attributeName: key,
+        elementDescriptionForLog: elementDescriptionForLog
     )
 }

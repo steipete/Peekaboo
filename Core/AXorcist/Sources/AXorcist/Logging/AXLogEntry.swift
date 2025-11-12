@@ -92,7 +92,7 @@ public extension AXLogEntry {
             let detailString = details.map { key, value in
                 let valueStr: String = if let val = value.value as? String {
                     val
-                } else if let val = value.value as? any CustomStringConvertible {
+                } else if let val = value.value as? CustomStringConvertible {
                     val.description
                 } else {
                     String(describing: value.value)

@@ -20,14 +20,10 @@ func matchRoleAttribute(
         ))
     }
     return compareStrings(
-        actual,
-        expectedValue,
-        matchType,
+        actual, expectedValue, matchType,
         caseSensitive: false,
-        context: StringComparisonContext(
-            attributeName: AXAttributeNames.kAXRoleAttribute,
-            elementDescription: elementDescriptionForLog
-        )
+        attributeName: AXAttributeNames.kAXRoleAttribute,
+        elementDescriptionForLog: elementDescriptionForLog
     )
 }
 
@@ -41,14 +37,10 @@ func matchSubroleAttribute(
     let actual = element.subrole()
     GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: "SC/MSC/Subrole: Actual='\(actual ?? "nil")'"))
     return compareStrings(
-        actual,
-        expectedValue,
-        matchType,
+        actual, expectedValue, matchType,
         caseSensitive: false,
-        context: StringComparisonContext(
-            attributeName: AXAttributeNames.kAXSubroleAttribute,
-            elementDescription: elementDescriptionForLog
-        )
+        attributeName: AXAttributeNames.kAXSubroleAttribute,
+        elementDescriptionForLog: elementDescriptionForLog
     )
 }
 
@@ -62,14 +54,10 @@ func matchIdentifierAttribute(
     let actual = element.identifier()
     GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message: "SC/MSC/ID: Actual='\(actual ?? "nil")'"))
     return compareStrings(
-        actual,
-        expectedValue,
-        matchType,
+        actual, expectedValue, matchType,
         caseSensitive: true,
-        context: StringComparisonContext(
-            attributeName: AXAttributeNames.kAXIdentifierAttribute,
-            elementDescription: elementDescriptionForLog
-        )
+        attributeName: AXAttributeNames.kAXIdentifierAttribute,
+        elementDescriptionForLog: elementDescriptionForLog
     )
 }
 
@@ -144,24 +132,16 @@ func matchComputedNameAttributes(
         if let value = element.value() as? String {
             let combinedName = (computedName ?? "") + " " + value
             return compareStrings(
-                combinedName,
-                expectedValue,
-                matchType,
-                context: StringComparisonContext(
-                    attributeName: attributeName,
-                    elementDescription: elementDescriptionForLog
-                )
+                combinedName, expectedValue, matchType,
+                attributeName: attributeName,
+                elementDescriptionForLog: elementDescriptionForLog
             )
         }
     }
 
     return compareStrings(
-        computedName,
-        expectedValue,
-        matchType,
-        context: StringComparisonContext(
-            attributeName: attributeName,
-            elementDescription: elementDescriptionForLog
-        )
+        computedName, expectedValue, matchType,
+        attributeName: attributeName,
+        elementDescriptionForLog: elementDescriptionForLog
     )
 }

@@ -204,138 +204,175 @@ public extension Element {
 
     @MainActor
     func dump() -> String {
-        var builder = AXPropertyDumpBuilder(root: self.underlyingElement, description: self.briefDescription())
-        return builder.build()
+        var output = "Dumping AX properties for Element: \(self.briefDescription())\n"
+
+        output += _dumpRecursive(element: self.underlyingElement, currentIndent: "  ")
+        return output
+    }
+
+    @MainActor
+    private func _dumpRecursive(element: AXUIElement, currentIndent: String) -> String {
+        var output = ""
+
+        // Helper to append to output string with current indent
+        func appendLine(_ text: String) {
+            output += currentIndent + text + "\n"
+        }
+
+        // 1. ordinary attributes
+        var attrCF: CFArray?
+        let copyAttrNamesResult = AXUIElementCopyAttributeNames(element, &attrCF)
+        if copyAttrNamesResult == .success {
+            if let names = attrCF as? [String] {
+                if names.isEmpty {
+                    appendLine("Attributes: (No attributes found)")
+                } else {
+                    appendLine("Attributes:")
+                    let attributeIndent = currentIndent + "  "
+                    for name in names.sorted() {
+                        var value: AnyObject?
+                        let err = AXUIElementCopyAttributeValue(element, name as CFString, &value)
+                        if err == .success {
+                            if let childrenElements = value as? [AXUIElement] {
+                                output += attributeIndent + "\(name): [\(childrenElements.count) children]\n"
+                                // Only recurse on known children attributes for brevity
+                                if name == kAXChildrenAttribute as String || name ==
+                                    kAXVisibleChildrenAttribute as String || name ==
+                                    kAXSelectedChildrenAttribute as String
+                                {
+                                    for _ in childrenElements {
+                                        // output += _dumpRecursive(element: childAXUIElement, currentIndent:
+                                        // attributeIndent + "  ")
+                                    }
+                                }
+                            } else if let stringValue = value as? String, stringValue.isEmpty {
+                                output += attributeIndent + "\(name): \"\" (empty string)\n"
+                            } else if value is NSNull {
+                                output += attributeIndent + "\(name): NSNull\n"
+                            } else {
+                                let valueDescription = String(describing: value ?? "nil" as AnyObject)
+                                output += attributeIndent + "\(name): \(valueDescription)\n"
+                            }
+                        } else {
+                            let axError = AXError(rawValue: err.rawValue)
+                            let errorDetail = String(describing: axError ?? "Unknown AXError" as Any)
+                            output += attributeIndent +
+                                "\(name): (Error fetching value: \(errorDetail) - Code \(err.rawValue))\n"
+                        }
+                    }
+                }
+            } else {
+                appendLine("Attributes: (Attribute names list was nil or not [String])")
+            }
+        } else {
+            let axError = AXError(rawValue: copyAttrNamesResult.rawValue)
+            let errorDetail = String(describing: axError ?? "Unknown AXError" as Any)
+            appendLine(
+                "Attributes: (Error copying attribute names: \(errorDetail) - Code \(copyAttrNamesResult.rawValue))"
+            )
+        }
+
+        // 2. parameterized attributes
+        var paramCF: CFArray?
+        let copyParamAttrNamesResult = AXUIElementCopyParameterizedAttributeNames(element, &paramCF)
+        if copyParamAttrNamesResult == .success {
+            if let params = paramCF as? [String], !params.isEmpty {
+                appendLine("Parameterized Attributes:")
+                let paramSubIndent = currentIndent + "  "
+                for param in params.sorted() {
+                    var paramValue: CFTypeRef?
+                    let paramErr = AXUIElementCopyParameterizedAttributeValue(
+                        element,
+                        param as CFString,
+                        NSNumber(value: 0),
+                        &paramValue
+                    )
+                    if paramErr == .success {
+                        let valueStr = String(describing: paramValue ?? "nil" as Any)
+                        output += paramSubIndent + "\(param)(param: 0): \(valueStr)\n"
+                    } else {
+                        let paramErrNull = AXUIElementCopyParameterizedAttributeValue(
+                            element,
+                            param as CFString,
+                            CFConstants.cfNull!,
+                            &paramValue
+                        )
+                        if paramErrNull == .success {
+                            let valueStrNull = String(describing: paramValue ?? "nil" as Any)
+                            output += paramSubIndent + "\(param)(param: CFConstants.cfNull): \(valueStrNull)\n"
+                        } else {
+                            let axError1 = AXError(rawValue: paramErr.rawValue)
+                            let errorDetail1 = String(describing: axError1 ?? "Error" as Any)
+                            let axError2 = AXError(rawValue: paramErrNull.rawValue)
+                            let errorDetail2 = String(describing: axError2 ?? "Error" as Any)
+                            output += paramSubIndent +
+                                "\(param)(…): (Error fetching with common params: \(errorDetail1) (\(paramErr.rawValue)) / \(errorDetail2) (\(paramErrNull.rawValue)))\n"
+                        }
+                    }
+                }
+            } else {
+                appendLine("Parameterized Attributes: (No names found or not [String])")
+            }
+        } else {
+            let axError = AXError(rawValue: copyParamAttrNamesResult.rawValue)
+            let errorDetail = String(describing: axError ?? "Unknown AXError" as Any)
+            appendLine(
+                "Parameterized Attributes: (Error copying names: \(errorDetail) - Code \(copyParamAttrNamesResult.rawValue))"
+            )
+        }
+
+        // 3. actions
+        var actCF: CFArray?
+        let copyActionNamesResult = AXUIElementCopyActionNames(element, &actCF)
+        if copyActionNamesResult == .success {
+            if let actions = actCF as? [String], !actions.isEmpty {
+                let joinedActions = actions.sorted().joined(separator: ", ")
+                appendLine("Actions: \(joinedActions)")
+            }
+        } else {
+            let axError = AXError(rawValue: copyActionNamesResult.rawValue)
+            let errorDetail = String(describing: axError ?? "Unknown AXError" as Any)
+            appendLine("Actions: (Error copying action names: \(errorDetail) - Code \(copyActionNamesResult.rawValue))")
+        }
+        return output
     }
 }
 
-
+/// Example usage: Dumps the focused element's AX properties to the console.
 @MainActor
-private struct AXPropertyDumpBuilder {
-    private enum AttributeFetchResult {
-        case success([String])
-        case failure(AXError)
-    }
+public func example_dumpFocusedElementToString() {
+    #if DEBUG
+        GlobalAXLogger.shared.log(AXLogEntry(
+            level: .info,
+            message: "Attempting to dump focused element AX properties to string:"
+        ))
+        var outputString = "Focused Element Details:\n"
+        if AXIsProcessTrustedWithOptions(nil) { // nil means check current process
+            var focusedCF: CFTypeRef?
+            let systemWideElement = AXUIElementCreateSystemWide()
 
-    let root: AXUIElement
-    let description: String
-    private var lines: [String]
-
-    init(root: AXUIElement, description: String) {
-        self.root = root
-        self.description = description
-        self.lines = []
-    }
-
-    mutating func build() -> String {
-        self.lines.append("Dumping AX properties for Element: \(self.description)")
-        self.appendAttributes(for: self.root, indent: "  ")
-        self.appendParameterizedAttributes(for: self.root, indent: "  ")
-        return self.lines.joined(separator: "\n")
-    }
-
-    private mutating func appendAttributes(for element: AXUIElement, indent: String) {
-        switch self.attributeNames(for: element) {
-        case let .success(names) where names.isEmpty:
-            self.appendLine(indent, "Attributes: (No attributes found)")
-        case let .success(names):
-            self.appendLine(indent, "Attributes:")
-            for name in names.sorted() {
-                self.appendAttributeValue(name: name, element: element, indent: indent + "  ")
+            if AXUIElementCopyAttributeValue(systemWideElement, kAXFocusedUIElementAttribute as CFString, &focusedCF) ==
+                .success
+            {
+                if let focusedAXUIEl = focusedCF as! AXUIElement? { // Safely cast to AXUIElement
+                    let focusedElement = Element(focusedAXUIEl) // Create an Element instance
+                    outputString += "Successfully obtained focused element. Dumping details:\n"
+                    outputString += focusedElement.dump() // Call the updated dump method, added await
+                } else {
+                    outputString += "Focused element is nil (no element has focus, or could not be cast).\n"
+                }
+            } else {
+                outputString += "Failed to get the focused UI element from system wide element.\n"
             }
-        case let .failure(error):
-            let detail = String(describing: error)
-            self.appendLine(indent, "Attributes: (Error copying names: \(detail) - Code \(error.rawValue))")
+        } else {
+            outputString += "AXPermissions: Process is not trusted. Please enable Accessibility for this application.\n"
         }
-    }
-
-    private mutating func appendAttributeValue(name: String, element: AXUIElement, indent: String) {
-        var value: AnyObject?
-        let result = AXUIElementCopyAttributeValue(element, name as CFString, &value)
-        guard result == .success else {
-            let detail = String(describing: AXError(rawValue: result.rawValue) ?? "Unknown AXError" as Any)
-            self.appendLine(indent, "\(name): (Error fetching value: \(detail) - Code \(result.rawValue))")
-            return
-        }
-
-        if let children = value as? [AXUIElement] {
-            self.appendLine(indent, "\(name): [\(children.count) children]")
-            return
-        }
-
-        if let stringValue = value as? String, stringValue.isEmpty {
-            self.appendLine(indent, "\(name): \"\" (empty string)")
-            return
-        }
-
-        if value is NSNull {
-            self.appendLine(indent, "\(name): NSNull")
-            return
-        }
-
-        let description = String(describing: value ?? "nil" as AnyObject)
-        self.appendLine(indent, "\(name): \(description)")
-    }
-
-    private mutating func appendParameterizedAttributes(for element: AXUIElement, indent: String) {
-        switch self.parameterizedAttributeNames(for: element) {
-        case let .success(names) where names.isEmpty:
-            self.appendLine(indent, "Parameterized Attributes: (None)")
-        case let .success(names):
-            self.appendLine(indent, "Parameterized Attributes:")
-            for name in names.sorted() {
-                let description = self.parameterizedValueDescription(name: name, element: element)
-                self.appendLine(indent + "  ", description)
-            }
-        case let .failure(error):
-            let detail = String(describing: error)
-            let message = "Parameterized Attributes: (Error copying names: \(detail) - " +
-                "Code \(error.rawValue))"
-            self.appendLine(indent, message)
-        }
-    }
-
-    private func attributeNames(for element: AXUIElement) -> AttributeFetchResult {
-        var names: CFArray?
-        let result = AXUIElementCopyAttributeNames(element, &names)
-        guard result == .success else { return .failure(AXError(rawValue: result.rawValue) ?? .failure) }
-        return .success((names as? [String]) ?? [])
-    }
-
-    private func parameterizedAttributeNames(for element: AXUIElement) -> AttributeFetchResult {
-        var names: CFArray?
-        let result = AXUIElementCopyParameterizedAttributeNames(element, &names)
-        guard result == .success else { return .failure(AXError(rawValue: result.rawValue) ?? .failure) }
-        return .success((names as? [String]) ?? [])
-    }
-
-    private func parameterizedValueDescription(name: String, element: AXUIElement) -> String {
-        let zeroParameter: AnyObject = NSNumber(value: 0)
-        if let value = self.parameterValue(name: name, element: element, parameter: zeroParameter) {
-            return "\(name)(param: 0): \(value)"
-        }
-
-        let nullParameter: AnyObject = (CFConstants.cfNull ?? kCFNull)
-        if let value = self.parameterValue(name: name, element: element, parameter: nullParameter) {
-            return "\(name)(param: CFConstants.cfNull): \(value)"
-        }
-
-        return "\(name)(…): (Error fetching value with common parameters)"
-    }
-
-    private func parameterValue(name: String, element: AXUIElement, parameter: AnyObject) -> String? {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyParameterizedAttributeValue(
-            element,
-            name as CFString,
-            parameter,
-            &value
-        )
-        guard result == .success else { return nil }
-        return String(describing: value ?? "nil" as Any)
-    }
-
-    private mutating func appendLine(_ indent: String, _ text: String) {
-        self.lines.append(indent + text)
-    }
+        GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: outputString))
+    #else
+        // print("example_dumpFocusedElementToString is only available in DEBUG builds.")
+    #endif
 }
+
+// The old dumpProperties method is effectively replaced by the new public func dump() in Element extension.
+// If dumpProperties was used externally with a different signature or purpose, that needs to be re-evaluated.
+// For now, assuming the new dump() method fulfills its role.
