@@ -406,9 +406,9 @@ public class AXObserverCenter {
             // Convert CFString to AXNotification
             guard let axNotification = AXNotification(rawValue: notificationCFString as String) else {
                 axWarningLog(
-                    center.logSegments(
+                    logSegments(
                         "Received unknown notification string: \(notificationCFString as String)",
-                        "for \(center.describePid(elementPID))",
+                        "for \(describePid(elementPID))",
                         "Cannot call handler"
                     )
                 )
@@ -426,7 +426,7 @@ public class AXObserverCenter {
                     nsUserInfo = tempDict
                 } else {
                     axWarningLog(
-                        center.logSegments(
+                        logSegments(
                             "Could not cast userInfo CFDictionary to Dictionary<CFString, CFTypeRef>",
                             "initial conversion failed"
                         )
