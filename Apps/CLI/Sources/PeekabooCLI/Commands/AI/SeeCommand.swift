@@ -53,7 +53,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     @Option(help: "Capture mode (screen, window, frontmost)")
     var mode: PeekabooCore.CaptureMode?
 
-    @Option(help: "Output path for screenshot")
+    @Option(
+        names: [.automatic, .customLong("save"), .customLong("output"), .customShort("o", allowingJoined: false)],
+        help: "Output path for screenshot (aliases: --save, --output, -o)")
     var path: String?
 
     @Option(
