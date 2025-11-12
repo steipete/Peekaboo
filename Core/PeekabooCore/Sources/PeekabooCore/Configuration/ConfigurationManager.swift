@@ -135,8 +135,10 @@ public final class ConfigurationManager: @unchecked Sendable {
                 }
             }
 
-            print(
-                "\(AgentDisplayTokens.Status.success) Migrated configuration from \(Self.legacyConfigPath) to \(Self.configPath)")
+            let migrationMessage =
+                "\(AgentDisplayTokens.Status.success) Migrated configuration from \(Self.legacyConfigPath) " +
+                "to \(Self.configPath)"
+            print(migrationMessage)
         }
     }
 
@@ -193,34 +195,42 @@ public final class ConfigurationManager: @unchecked Sendable {
             // Provide more detailed error information for JSON decoding errors
             switch error {
             case let .keyNotFound(key, context):
-                print(
-                    "Warning: JSON key not found '\(key.stringValue)' at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                let path = self.codingPathDescription(context)
+                self.printWarning("JSON key not found '\(key.stringValue)' at path: \(path)")
             case let .typeMismatch(type, context):
-                print(
-                    "Warning: Type mismatch for type '\(type)' at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                let path = self.codingPathDescription(context)
+                self.printWarning("Type mismatch for type '\(type)' at path: \(path)")
             case let .valueNotFound(type, context):
-                print(
-                    "Warning: Value not found for type '\(type)' at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                let path = self.codingPathDescription(context)
+                self.printWarning("Value not found for type '\(type)' at path: \(path)")
             case let .dataCorrupted(context):
-                print(
-                    "Warning: Data corrupted at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                let path = self.codingPathDescription(context)
+                self.printWarning("Data corrupted at path: \(path)")
                 if let underlyingError = context.underlyingError {
                     print("Underlying error: \(underlyingError)")
                 }
             @unknown default:
-                print("Warning: Unknown decoding error: \(error)")
+                self.printWarning("Unknown decoding error: \(error)")
             }
 
             // For debugging, print the cleaned JSON
             if expandedJSON.count < 5000 { // Only print if reasonably sized
-                print("Cleaned JSON that failed to parse:")
+                self.printWarning("Cleaned JSON that failed to parse:")
                 print(expandedJSON)
             }
         } catch {
-            print("Warning: Failed to load configuration from \(configPath): \(error)")
+            self.printWarning("Failed to load configuration from \(configPath): \(error)")
         }
 
         return nil
+    }
+
+    private func printWarning(_ message: String) {
+        print("Warning: \(message)")
+    }
+
+    private func codingPathDescription(_ context: DecodingError.Context) -> String {
+        context.codingPath.map(\.stringValue).joined(separator: ".")
     }
 
     /// Load credentials from file
@@ -256,36 +266,26 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Save credentials to file with proper permissions
     public func saveCredentials(_ newCredentials: [String: String]) throws {
-        // Merge with existing credentials
-        for (key, value) in newCredentials {
-            self.credentials[key] = value
-        }
+        newCredentials.forEach { self.credentials[$0.key] = $0.value }
 
-        // Create directory if needed
         try FileManager.default.createDirectory(
             atPath: Self.baseDir,
             withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])
 
-        // Build credentials file content
-        var lines: [String] = []
-        lines.append("# Peekaboo credentials file")
-        lines.append("# This file contains sensitive API keys and should not be shared")
-        lines.append("")
+        let header = [
+            "# Peekaboo credentials file",
+            "# This file contains sensitive API keys and should not be shared",
+            "",
+        ]
+        let body = self.credentials.sorted(by: { $0.key < $1.key }).map { "\($0.key)=\($0.value)" }
+        let content = (header + body).joined(separator: "\n")
 
-        for (key, value) in self.credentials.sorted(by: { $0.key < $1.key }) {
-            lines.append("\(key)=\(value)")
-        }
-
-        let content = lines.joined(separator: "\n")
-
-        // Write file with restricted permissions
         try content.write(
             to: URL(fileURLWithPath: Self.credentialsPath),
             atomically: true,
             encoding: .utf8)
 
-        // Set file permissions to 600 (readable/writable by owner only)
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o600],
             ofItemAtPath: Self.credentialsPath)
@@ -293,91 +293,8 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Strip comments from JSONC content
     public func stripJSONComments(from json: String) -> String {
-        // Strip comments from JSONC content
-        var result = ""
-        var inString = false
-        var escapeNext = false
-        var inSingleLineComment = false
-        var inMultiLineComment = false
-
-        let characters = Array(json)
-        var i = 0
-
-        while i < characters.count {
-            let char = characters[i]
-            let nextChar = i + 1 < characters.count ? characters[i + 1] : nil
-
-            // Handle escape sequences
-            if escapeNext {
-                if !inSingleLineComment, !inMultiLineComment {
-                    result.append(char)
-                }
-                escapeNext = false
-                i += 1
-                continue
-            }
-
-            // Check for escape character
-            if char == "\\", inString {
-                escapeNext = true
-                if !inSingleLineComment, !inMultiLineComment {
-                    result.append(char)
-                }
-                i += 1
-                continue
-            }
-
-            // Handle string boundaries
-            if char == "\"", !inSingleLineComment, !inMultiLineComment {
-                inString.toggle()
-                result.append(char)
-                i += 1
-                continue
-            }
-
-            // Inside string, keep everything
-            if inString {
-                result.append(char)
-                i += 1
-                continue
-            }
-
-            // Check for comment start
-            if char == "/", nextChar == "/", !inMultiLineComment {
-                inSingleLineComment = true
-                i += 2
-                continue
-            }
-
-            if char == "/", nextChar == "*", !inSingleLineComment {
-                inMultiLineComment = true
-                i += 2
-                continue
-            }
-
-            // Check for comment end
-            if char == "\n", inSingleLineComment {
-                inSingleLineComment = false
-                result.append(char)
-                i += 1
-                continue
-            }
-
-            if char == "*", nextChar == "/", inMultiLineComment {
-                inMultiLineComment = false
-                i += 2
-                continue
-            }
-
-            // Add character if not in comment
-            if !inSingleLineComment, !inMultiLineComment {
-                result.append(char)
-            }
-
-            i += 1
-        }
-
-        return result
+        var stripper = JSONCommentStripper(json: json)
+        return stripper.strip()
     }
 
     /// Expand environment variables in the format ${VAR_NAME}
@@ -426,23 +343,10 @@ public final class ConfigurationManager: @unchecked Sendable {
 
         // Environment variable takes second precedence
         if let envVar,
-           let envValue = self.environmentValue(for: envVar)
+           let envValue = self.environmentValue(for: envVar),
+           let converted: T = self.convertEnvValue(envValue, as: T.self)
         {
-            // Try to convert string to the expected type
-            if T.self == String.self {
-                return envValue as! T
-            } else if T.self == Bool.self {
-                return (envValue.lowercased() == "true" || envValue == "1") as! T
-            } else if T.self == Int.self {
-                if let intValue = Int(envValue) {
-                    return intValue as! T
-                }
-            } else if T.self == Double.self {
-                if let doubleValue = Double(envValue) {
-                    return doubleValue as! T
-                }
-            }
-            // For other types, we can't convert from string, so fall through
+            return converted
         }
 
         // Config file value takes third precedence
@@ -452,6 +356,22 @@ public final class ConfigurationManager: @unchecked Sendable {
 
         // Default value as fallback
         return defaultValue
+    }
+
+    private func convertEnvValue<T>(_ value: String, as type: T.Type) -> T? {
+        switch type {
+        case is String.Type:
+            return value as? T
+        case is Bool.Type:
+            let boolValue = value.lowercased() == "true" || value == "1"
+            return boolValue as? T
+        case is Int.Type:
+            return Int(value) as? T
+        case is Double.Type:
+            return Double(value) as? T
+        default:
+            return nil
+        }
     }
 
     /// Get AI providers with proper precedence
@@ -467,7 +387,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Get OpenAI API key with proper precedence
     public func getOpenAIAPIKey() -> String? {
         // 1. Environment variable (highest priority)
-        if let envValue = self.environmentValue(for: "OPENAI_API_KEY", isSecret: true) {
+        if let envValue = self.environmentValue(for: "OPENAI_API_KEY") {
             return envValue
         }
 
@@ -487,7 +407,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Get Anthropic API key with proper precedence
     public func getAnthropicAPIKey() -> String? {
         // 1. Environment variable (highest priority)
-        if let envValue = self.environmentValue(for: "ANTHROPIC_API_KEY", isSecret: true) {
+        if let envValue = self.environmentValue(for: "ANTHROPIC_API_KEY") {
             return envValue
         }
 
@@ -548,98 +468,19 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Create default configuration file
     public func createDefaultConfiguration() throws {
-        // Create default configuration file
-        let configPath = Self.configPath
-
-        // Create directory with proper permissions
         try FileManager.default.createDirectory(
             atPath: Self.baseDir,
             withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])
 
-        let defaultConfig = """
-        {
-          // AI Provider Settings
-          "aiProviders": {
-            // Comma-separated list of AI providers in order of preference
-            // Format: "provider/model,provider/model"
-            // Supported providers: openai, anthropic, ollama
-            "providers": "openai/gpt-5,anthropic/claude-sonnet-4.5",
-
-            // NOTE: API keys should be stored in ~/.peekaboo/credentials
-            // or set as environment variables, not in this file
-
-            // Ollama server URL (if not using default)
-            // "ollamaBaseUrl": "http://localhost:11434"
-          },
-
-          // MCP Client Configuration
-          "mcpClients": {
-            // External MCP servers to connect to
-            // Peekaboo ships with BrowserMCP by default (https://browsermcp.io)
-            // To disable the default browser server, add:
-            // "browser": {
-            //   "transport": "stdio",
-            //   "command": "npx", 
-            //   "args": ["-y", "@agent-infra/mcp-server-browser@latest"],
-            //   "enabled": false,
-            //   "timeout": 15.0,
-            //   "autoReconnect": true,
-            //   "description": "Browser automation via BrowserMCP"
-            // }
-            
-            // Example: Add GitHub MCP server
-            // "github": {
-            //   "transport": "stdio",
-            //   "command": "npx",
-            //   "args": ["-y", "@modelcontextprotocol/server-github"],
-            //   "enabled": true,
-            //   "timeout": 15.0,
-            //   "autoReconnect": true,
-            //   "description": "GitHub repository integration"
-            // }
-          },
-
-          // Default Settings for Capture Operations
-          "defaults": {
-            // Default path for saving screenshots
-            "savePath": "~/Desktop/Screenshots",
-
-            // Default image format (png, jpg, jpeg)
-            "imageFormat": "png",
-
-            // Default capture mode (window, screen, area)
-            "captureMode": "window",
-
-            // Default focus behavior (auto, frontmost, none)
-            "captureFocus": "auto"
-          },
-
-          // Logging Configuration
-          "logging": {
-            // Log level (trace, debug, info, warn, error, fatal)
-            "level": "info",
-
-            // Log file path
-            "path": "~/.peekaboo/logs/peekaboo.log"
-          }
-        }
-        """
-
-        try defaultConfig.write(to: URL(fileURLWithPath: configPath), atomically: true, encoding: .utf8)
+        try ConfigurationDefaults.configurationTemplate.write(
+            to: URL(fileURLWithPath: Self.configPath),
+            atomically: true,
+            encoding: .utf8)
 
         // Create a sample credentials file if it doesn't exist
         if !FileManager.default.fileExists(atPath: Self.credentialsPath) {
-            let sampleCredentials = """
-            # Peekaboo credentials file
-            # This file contains sensitive API keys and should not be shared
-            #
-            # Example:
-            # OPENAI_API_KEY=sk-...
-            # ANTHROPIC_API_KEY=sk-ant-...
-            """
-
-            try sampleCredentials.write(
+            try ConfigurationDefaults.sampleCredentials.write(
                 to: URL(fileURLWithPath: Self.credentialsPath),
                 atomically: true,
                 encoding: .utf8)
@@ -764,84 +605,47 @@ public final class ConfigurationManager: @unchecked Sendable {
         try TachikomaMCPClientManager.shared.persist()
     }
 
-    // MARK: - Custom Provider Management
+}
 
-    /// Add a custom AI provider to the configuration
-    /// - Parameters:
-    ///   - provider: The custom provider configuration
-    ///   - id: Unique identifier for the provider
-    /// - Throws: Configuration errors if save fails
+// MARK: - Custom Provider Management
+extension ConfigurationManager {
     public func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
-        // Add a custom AI provider to the configuration
         var config = self.loadConfiguration() ?? Configuration()
-
-        // Initialize customProviders if needed
         if config.customProviders == nil {
             config.customProviders = [:]
         }
-
-        // Add the provider
         config.customProviders?[id] = provider
-
-        // Save configuration
         try self.saveConfiguration(config)
-
-        // Reload in memory
         self.configuration = config
     }
 
-    /// Remove a custom provider from the configuration
-    /// - Parameter id: Provider identifier to remove
-    /// - Throws: Configuration errors if save fails
     public func removeCustomProvider(id: String) throws {
-        // Remove a custom provider from the configuration
         var config = self.loadConfiguration() ?? Configuration()
-
-        // Remove the provider if it exists
         config.customProviders?.removeValue(forKey: id)
-
-        // If no providers left, clean up the empty dictionary
         if config.customProviders?.isEmpty == true {
             config.customProviders = nil
         }
-
-        // Save configuration
         try self.saveConfiguration(config)
-
-        // Reload in memory
         self.configuration = config
     }
 
-    /// Get a specific custom provider by ID
-    /// - Parameter id: Provider identifier
-    /// - Returns: The custom provider if found
     public func getCustomProvider(id: String) -> Configuration.CustomProvider? {
-        // Get a specific custom provider by ID
         self.loadConfiguration()?.customProviders?[id]
     }
 
-    /// List all configured custom providers
-    /// - Returns: Dictionary of provider ID to provider configuration
     public func listCustomProviders() -> [String: Configuration.CustomProvider] {
-        // List all configured custom providers
         self.loadConfiguration()?.customProviders ?? [:]
     }
 
-    /// Test connection to a custom provider
-    /// - Parameter id: Provider identifier to test
-    /// - Returns: True if connection successful
     public func testCustomProvider(id: String) async -> (success: Bool, error: String?) {
-        // Test connection to a custom provider
         guard let provider = getCustomProvider(id: id) else {
             return (false, "Provider '\(id)' not found")
         }
 
-        // Resolve API key from environment
         guard let apiKey = resolveCredential(provider.options.apiKey) else {
             return (false, "API key not found or invalid: \(provider.options.apiKey)")
         }
 
-        // Test basic connection based on provider type
         do {
             switch provider.type {
             case .openai:
@@ -854,11 +658,7 @@ public final class ConfigurationManager: @unchecked Sendable {
         }
     }
 
-    /// Discover available models from a custom provider
-    /// - Parameter id: Provider identifier
-    /// - Returns: List of available model IDs
     public func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
-        // Discover available models from a custom provider
         guard let provider = getCustomProvider(id: id) else {
             return ([], "Provider '\(id)' not found")
         }
@@ -872,7 +672,6 @@ public final class ConfigurationManager: @unchecked Sendable {
             case .openai:
                 return try await self.discoverOpenAICompatibleModels(provider: provider, apiKey: apiKey)
             case .anthropic:
-                // Anthropic doesn't have a models endpoint, return configured models
                 let configuredModels = provider.models?.keys.map { String($0) } ?? []
                 return (configuredModels, nil)
             }
@@ -880,93 +679,70 @@ public final class ConfigurationManager: @unchecked Sendable {
             return ([], "Model discovery failed: \(error.localizedDescription)")
         }
     }
+}
 
-    // MARK: - Private Helper Methods
-
-    /// Save configuration to disk
-    private func saveConfiguration(_ config: Configuration) throws {
-        // Save configuration to disk
+private extension ConfigurationManager {
+    func saveConfiguration(_ config: Configuration) throws {
         let encoder = JSONCoding.encoder
         let data = try encoder.encode(config)
-
-        // Ensure directory exists
         try FileManager.default.createDirectory(
             atPath: Self.baseDir,
             withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])
-
-        // Write file atomically
         try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
     }
 
-    /// Resolve a credential reference like {env:API_KEY} to actual value
-    private func resolveCredential(_ reference: String) -> String? {
-        // Handle {env:VAR_NAME} format
-        if reference.hasPrefix("{env:"), reference.hasSuffix("}") {
-            let varName = String(reference.dropFirst(5).dropLast(1))
-
-            // Try environment variable first
-            if let envValue = self.environmentValue(for: varName) {
-                return envValue
-            }
-
-            // Try credentials file
-            if let credValue = credentials[varName] {
-                return credValue
-            }
-
-            return nil
+    func resolveCredential(_ reference: String) -> String? {
+        guard reference.hasPrefix("{env:"), reference.hasSuffix("}") else {
+            return reference
         }
 
-        // Return as-is if not an environment reference
-        return reference
+        let varName = String(reference.dropFirst(5).dropLast(1))
+        if let envValue = self.environmentValue(for: varName) {
+            return envValue
+        }
+        if let credValue = credentials[varName] {
+            return credValue
+        }
+        return nil
     }
 
-    /// Test OpenAI-compatible provider connection
-    private func testOpenAICompatibleProvider(
+    func testOpenAICompatibleProvider(
         provider: Configuration.CustomProvider,
         apiKey: String) async throws -> (success: Bool, error: String?)
     {
-        // Test OpenAI-compatible provider connection
         let url = URL(string: "\(provider.options.baseURL)/models")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Add custom headers
         provider.options.headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
 
         let (data, response) = try await URLSession.shared.data(for: request)
-
         guard let httpResponse = response as? HTTPURLResponse else {
             return (false, "Invalid response")
         }
 
-        if httpResponse.statusCode == 200 {
-            return (true, nil)
-        } else {
+        guard httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
             return (false, errorMessage)
         }
+
+        return (true, nil)
     }
 
-    /// Test Anthropic-compatible provider connection
-    private func testAnthropicCompatibleProvider(
+    func testAnthropicCompatibleProvider(
         provider: Configuration.CustomProvider,
         apiKey: String) async throws -> (success: Bool, error: String?)
     {
-        // For Anthropic-compatible providers, we'll try a simple message request
         let url = URL(string: "\(provider.options.baseURL)/messages")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-
-        // Add custom headers
         provider.options.headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
@@ -974,48 +750,37 @@ public final class ConfigurationManager: @unchecked Sendable {
         let testPayload: [String: Any] = [
             "model": "claude-3-5-sonnet-20241022",
             "max_tokens": 10,
-            "messages": [
-                ["role": "user", "content": "Hi"],
-            ],
+            "messages": [["role": "user", "content": "Hi"]],
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: testPayload)
-
         let (data, response) = try await URLSession.shared.data(for: request)
-
         guard let httpResponse = response as? HTTPURLResponse else {
             return (false, "Invalid response")
         }
 
-        // Accept both success (200) and client errors (400s) as "connection working"
-        // since we're just testing connectivity, not actual API functionality
         if httpResponse.statusCode < 500 {
             return (true, nil)
-        } else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
-            return (false, errorMessage)
         }
+
+        let errorMessage = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+        return (false, errorMessage)
     }
 
-    /// Discover models from OpenAI-compatible provider
-    private func discoverOpenAICompatibleModels(
+    func discoverOpenAICompatibleModels(
         provider: Configuration.CustomProvider,
         apiKey: String) async throws -> (models: [String], error: String?)
     {
-        // Discover models from OpenAI-compatible provider
         let url = URL(string: "\(provider.options.baseURL)/models")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Add custom headers
         provider.options.headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
 
         let (data, response) = try await URLSession.shared.data(for: request)
-
         guard let httpResponse = response as? HTTPURLResponse else {
             return ([], "Invalid response")
         }
@@ -1025,28 +790,167 @@ public final class ConfigurationManager: @unchecked Sendable {
             return ([], errorMessage)
         }
 
-        // Parse OpenAI models response format
         struct ModelsResponse: Codable {
             let data: [ModelInfo]
 
-            struct ModelInfo: Codable {
-                let id: String
-            }
+            struct ModelInfo: Codable { let id: String }
         }
 
         do {
             let response = try JSONDecoder().decode(ModelsResponse.self, from: data)
-            let modelIds = response.data.map(\.id)
-            return (modelIds, nil)
+            return (response.data.map(\.id), nil)
         } catch {
             return ([], "Failed to parse models response: \(error.localizedDescription)")
         }
     }
 
-    private func environmentValue(for key: String, isSecret: Bool = false) -> String? {
+    func environmentValue(for key: String) -> String? {
         guard let rawValue = getenv(key) else {
             return nil
         }
         return String(cString: rawValue)
     }
+}
+
+// MARK: - Helper Types
+
+private struct JSONCommentStripper {
+    private let characters: [Character]
+    private var index: Int = 0
+    private var result = ""
+    private var inString = false
+    private var escapeNext = false
+    private var singleLineComment = false
+    private var multiLineComment = false
+
+    init(json: String) {
+        self.characters = Array(json)
+    }
+
+    mutating func strip() -> String {
+        while index < characters.count {
+            let char = characters[index]
+            let next = peek()
+
+            if handleEscape(char) { continue }
+            if handleQuote(char) { continue }
+            if inString {
+                append(char)
+                advance()
+                continue
+            }
+            if handleCommentStart(char, next) { continue }
+            if handleCommentEnd(char, next) { continue }
+            appendIfNeeded(char)
+            advance()
+        }
+
+        return result
+    }
+
+    private mutating func handleEscape(_ char: Character) -> Bool {
+        if escapeNext {
+            append(char)
+            escapeNext = false
+            advance()
+            return true
+        }
+
+        if char == "\\" && inString {
+            escapeNext = true
+            append(char)
+            advance()
+            return true
+        }
+
+        return false
+    }
+
+    private mutating func handleQuote(_ char: Character) -> Bool {
+        guard char == "\"", !singleLineComment, !multiLineComment else { return false }
+        inString.toggle()
+        append(char)
+        advance()
+        return true
+    }
+
+    private mutating func handleCommentStart(_ char: Character, _ next: Character?) -> Bool {
+        if char == "/", next == "/", !multiLineComment {
+            singleLineComment = true
+            advance(by: 2)
+            return true
+        }
+
+        if char == "/", next == "*", !singleLineComment {
+            multiLineComment = true
+            advance(by: 2)
+            return true
+        }
+
+        return false
+    }
+
+    private mutating func handleCommentEnd(_ char: Character, _ next: Character?) -> Bool {
+        if char == "\n", singleLineComment {
+            singleLineComment = false
+            append(char)
+            advance()
+            return true
+        }
+
+        if char == "*", next == "/", multiLineComment {
+            multiLineComment = false
+            advance(by: 2)
+            return true
+        }
+
+        return false
+    }
+
+    private mutating func appendIfNeeded(_ char: Character) {
+        guard !singleLineComment, !multiLineComment else { return }
+        append(char)
+    }
+
+    private mutating func append(_ char: Character) {
+        result.append(char)
+    }
+
+    private mutating func advance(by value: Int = 1) {
+        index += value
+    }
+
+    private func peek() -> Character? {
+        (index + 1) < characters.count ? characters[index + 1] : nil
+    }
+}
+
+private enum ConfigurationDefaults {
+    static let configurationTemplate = """
+    {
+      "aiProviders": {
+        "providers": "openai/gpt-5,anthropic/claude-sonnet-4.5"
+      },
+      "mcpClients": {},
+      "defaults": {
+        "savePath": "~/Desktop/Screenshots",
+        "imageFormat": "png",
+        "captureMode": "window",
+        "captureFocus": "auto"
+      },
+      "logging": {
+        "level": "info",
+        "path": "~/.peekaboo/logs/peekaboo.log"
+      }
+    }
+    """
+
+    static let sampleCredentials = """
+    # Peekaboo credentials file
+    # This file contains sensitive API keys and should not be shared
+    #
+    # Example:
+    # OPENAI_API_KEY=sk-...
+    # ANTHROPIC_API_KEY=sk-ant-...
+    """
 }
