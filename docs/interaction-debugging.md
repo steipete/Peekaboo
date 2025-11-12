@@ -24,6 +24,14 @@ read_when:
 ### Resolution — Nov 12, 2025
 - `SessionManager.storeScreenshot` now creates the per-session directory before copying, standardizes the source URL, and reports a clearer file I/O error if the user-provided path truly disappears. `peekaboo see --path /tmp/foo.png --annotate --json-output` completes successfully and downstream element/session storage works again.
 
+## `see` now returns WINDOW_NOT_FOUND for Chrome despite saving screenshots
+- **Command**: `polter peekaboo -- see --app "Google Chrome" --json-output`
+- **Observed**: The capture pipeline runs, `peekaboo_see_1762952828.png` lands on the Desktop, but the CLI exits with `{ "code": "WINDOW_NOT_FOUND", "message": "App 'Google Chrome' is running but has no windows or dialogs" }`. Debug logs confirm ScreenCaptureKit grabbed the window (duration 171 ms) before the error fires.
+- **Variant**: Adding `--window-title "New Tab"` now fails even earlier with `WINDOW_NOT_FOUND` while the window search logs “Found windows {count=6}” right before it bails—so the heuristic sees Chrome’s windows but insists none match.
+- **Expected**: Once a screenshot is on disk, the command should return success and emit the session/element list so agents can interact with Grindr’s UI.
+- **Impact**: Grindr automation is stalled again—we can’t obtain element IDs or session IDs even though Chrome’s window is visible and focusable.
+- **Status — Nov 12, 2025 13:07**: Reproducible immediately after navigating to the login page; need to trace why `CaptureWindowWorkflow` thinks Chrome has zero windows while the capture step succeeds.
+
 ## AXorcist logging broke every CLI build
 - **Command**: `polter peekaboo -- type "Hello"` (or any other subcommand)
 - **Observed**: Poltergeist failed the build instantly with `cannot convert value of type 'String' to expected argument type 'Logger.Message'` coming from `ElementSearch`/`AXObserverCenter`. Even a bare `./runner swift build --package-path Apps/CLI` tripped on the same diagnostics, so no CLI binary could launch.
@@ -263,7 +271,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Observed**: Every application’s `windowCount` is reported as `0`, and the summary shows `appsWithWindows: 0` / `totalWindows: 0` even though Chrome, Finder, etc., have visible windows (confirmed via `list windows --app "Google Chrome"` which reports 22 windows). This regression appeared right after the UnifiedToolOutput refactor.
 - **Expected**: `list apps` should include accurate per-application window counts so agents can pick an app with open windows.
 - **Impact**: Automation must issue a slow `list windows` call per bundle just to discover if anything is on screen, adding seconds to workflows like the Grindr login flow.
-- **Status — Nov 12, 2025**: Reproducible on main. Need to trace whether `ApplicationService.listApplications()` stopped populating `windowCount` or if the CLI dropped the counts when serializing.
+- **Resolution — Nov 12, 2025**: `ApplicationService` now counts windows per process (AX first, falling back to CG-renderable windows) before returning `ServiceApplicationInfo`, so the CLI reports accurate numbers. Verified via `polter peekaboo -- list apps --json-output` (run at 13:25) which listed 7 apps with 22 total windows instead of all zeros.
 
 ## `dock hide` never returns
 - **Command**: `polter peekaboo dock hide`
