@@ -168,8 +168,17 @@ public struct KeyboardShortcut: Sendable {
 
 /// Information about a menu bar item (status bar item)
 public struct MenuBarItemInfo: Sendable, Codable {
-    /// Title of the menu bar item
+    /// Title to surface to users
     public let title: String?
+
+    /// Original raw title reported by the system (Item-0, etc.)
+    public let rawTitle: String?
+
+    /// Owning bundle identifier, if known
+    public let bundleIdentifier: String?
+
+    /// Owning application name or owner string
+    public let ownerName: String?
 
     /// Index in the menu bar
     public let index: Int
@@ -183,16 +192,20 @@ public struct MenuBarItemInfo: Sendable, Codable {
     /// Bounding rectangle in screen coordinates, if available
     public let frame: CGRect?
 
-    public init(title: String?, index: Int, isVisible: Bool = true, description: String? = nil) {
+    public init(
+        title: String?,
+        index: Int,
+        isVisible: Bool = true,
+        description: String? = nil,
+        rawTitle: String? = nil,
+        bundleIdentifier: String? = nil,
+        ownerName: String? = nil,
+        frame: CGRect? = nil
+    ) {
         self.title = title
-        self.index = index
-        self.isVisible = isVisible
-        self.description = description
-        self.frame = nil
-    }
-
-    public init(title: String?, index: Int, isVisible: Bool = true, description: String? = nil, frame: CGRect?) {
-        self.title = title
+        self.rawTitle = rawTitle
+        self.bundleIdentifier = bundleIdentifier
+        self.ownerName = ownerName
         self.index = index
         self.isVisible = isVisible
         self.description = description
@@ -202,8 +215,17 @@ public struct MenuBarItemInfo: Sendable, Codable {
 
 /// Information about a system menu extra (status bar item)
 public struct MenuExtraInfo: Sendable {
-    /// Title of the menu extra
+    /// Display title chosen for automation clients (maybe localized/humanized).
     public let title: String
+
+    /// Raw title reported by the OS (may be generic like Item-0).
+    public let rawTitle: String?
+
+    /// The owning bundle identifier for the extra, if known.
+    public let bundleIdentifier: String?
+
+    /// The owning application name, if available.
+    public let ownerName: String?
 
     /// Position in the menu bar
     public let position: CGPoint
@@ -211,8 +233,18 @@ public struct MenuExtraInfo: Sendable {
     /// Whether it's currently visible
     public let isVisible: Bool
 
-    public init(title: String, position: CGPoint, isVisible: Bool = true) {
+    public init(
+        title: String,
+        rawTitle: String? = nil,
+        bundleIdentifier: String? = nil,
+        ownerName: String? = nil,
+        position: CGPoint,
+        isVisible: Bool = true
+    ) {
         self.title = title
+        self.rawTitle = rawTitle
+        self.bundleIdentifier = bundleIdentifier
+        self.ownerName = ownerName
         self.position = position
         self.isVisible = isVisible
     }

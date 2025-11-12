@@ -95,6 +95,9 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                     menuBarItems: menuBarItems.map { item in
                         JSONMenuBarItem(
                             title: item.title,
+                            raw_title: item.rawTitle,
+                            bundle_id: item.bundleIdentifier,
+                            owner_name: item.ownerName,
                             index: item.index,
                             isVisible: item.isVisible,
                             description: item.description
@@ -190,6 +193,9 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
 private struct JSONMenuBarItem: Codable {
     let title: String?
+    let raw_title: String?
+    let bundle_id: String?
+    let owner_name: String?
     let index: Int
     let isVisible: Bool
     let description: String?

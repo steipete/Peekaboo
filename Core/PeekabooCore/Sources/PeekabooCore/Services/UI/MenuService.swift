@@ -270,30 +270,12 @@ public final class MenuService: MenuServiceProtocol {
     }
 
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
-        var allExtras: [MenuExtraInfo] = []
-
-        // First, try the window-based approach for comprehensive detection
-        let windowExtras = self.getMenuBarItemsViaWindows()
-        allExtras.append(contentsOf: windowExtras)
-
-        // Then supplement with AX-based detection for any missed items
         let axExtras = self.getMenuBarItemsViaAccessibility()
-
-        // Merge results, avoiding duplicates based on position
-        for axExtra in axExtras {
-            let isDuplicate = allExtras.contains { extra in
-                abs(extra.position.x - axExtra.position.x) < 5 &&
-                    abs(extra.position.y - axExtra.position.y) < 5
-            }
-            if !isDuplicate {
-                allExtras.append(axExtra)
-            }
-        }
-
-        // Sort by X position (left to right)
-        allExtras.sort { $0.position.x < $1.position.x }
-
-        return allExtras
+        let windowExtras = self.getMenuBarItemsViaWindows()
+        return Self.mergeMenuExtras(
+            accessibilityExtras: axExtras,
+            fallbackExtras: windowExtras
+        )
     }
 
     // MARK: - Private Helpers
@@ -468,11 +450,16 @@ public final class MenuService: MenuServiceProtocol {
                 continue
             }
 
+            let titleOrOwner = windowTitle.isEmpty ? ownerName : windowTitle
             // Determine display name
-            let displayName = self.getDisplayName(title: windowTitle, appName: ownerName, bundleID: bundleID)
+            let friendlyTitle = self.makeMenuExtraDisplayName(
+                rawTitle: titleOrOwner, ownerName: ownerName, bundleIdentifier: bundleID)
 
             let item = MenuExtraInfo(
-                title: displayName,
+                title: friendlyTitle,
+                rawTitle: titleOrOwner,
+                bundleIdentifier: bundleID,
+                ownerName: ownerName,
                 position: CGPoint(x: frame.midX, y: frame.midY),
                 isVisible: true)
 
@@ -505,42 +492,107 @@ public final class MenuService: MenuServiceProtocol {
             let position = extra.position() ?? .zero
 
             return MenuExtraInfo(
-                title: title,
+                title: makeMenuExtraDisplayName(
+                    rawTitle: title,
+                    ownerName: nil,
+                    bundleIdentifier: nil
+                ),
+                rawTitle: title,
+                bundleIdentifier: nil,
+                ownerName: nil,
                 position: position,
                 isVisible: true)
         }
     }
 
-    private func getDisplayName(title: String, appName: String, bundleID: String?) -> String {
-        // Handle special system items
-        if bundleID == "com.apple.controlcenter" {
-            switch title {
+    @MainActor
+    internal static func mergeMenuExtras(
+        accessibilityExtras: [MenuExtraInfo],
+        fallbackExtras: [MenuExtraInfo]
+    ) -> [MenuExtraInfo] {
+        var merged = [MenuExtraInfo]()
+        var seen = Set<MenuExtraIdentifier>()
+
+        func appendIfNew(_ extra: MenuExtraInfo) {
+            if merged.contains(where: { $0.position.distance(to: extra.position) < 5 }) {
+                return
+            }
+            let identifier = MenuExtraIdentifier(extra: extra)
+            guard !seen.contains(identifier) else { return }
+            seen.insert(identifier)
+            merged.append(extra)
+        }
+
+        accessibilityExtras.forEach(appendIfNew)
+        fallbackExtras.forEach(appendIfNew)
+
+        merged.sort { $0.position.x < $1.position.x }
+        return merged
+    }
+
+    private struct MenuExtraIdentifier: Hashable {
+        let bundleIdentifier: String?
+        let normalizedTitle: String
+
+        init(extra: MenuExtraInfo) {
+            self.bundleIdentifier = extra.bundleIdentifier
+            self.normalizedTitle = (extra.rawTitle ?? extra.title).lowercased()
+        }
+    }
+
+    private func makeMenuExtraDisplayName(
+        rawTitle: String?,
+        ownerName: String?,
+        bundleIdentifier: String?
+    ) -> String {
+        let fallback = rawTitle?.isEmpty == false ? rawTitle! : (ownerName ?? "Unknown")
+        let namespace = MenuExtraNamespace(bundleIdentifier: bundleIdentifier)
+        switch namespace {
+        case .controlCenter:
+            switch rawTitle {
             case "WiFi": return "Wi-Fi"
             case "BentoBox": return "Control Center"
             case "FocusModes": return "Focus"
             case "NowPlaying": return "Now Playing"
             case "ScreenMirroring": return "Screen Mirroring"
-            case "UserSwitcher": return "Fast User Switching"
-            case "AccessibilityShortcuts": return "Accessibility Shortcuts"
             case "KeyboardBrightness": return "Keyboard Brightness"
-            default: return title.isEmpty ? appName : title
+            case "MusicRecognition": return "Music Recognition"
+            case "StageManager": return "Stage Manager"
+            default: return fallback
             }
-        } else if bundleID == "com.apple.systemuiserver" {
-            switch title {
+        case .systemUIServer:
+            switch rawTitle {
             case "TimeMachine.TMMenuExtraHost", "TimeMachineMenuExtra.TMMenuExtraHost":
                 return "Time Machine"
             default:
-                return title.isEmpty ? appName : title
+                return fallback
             }
-        } else if bundleID == "com.apple.Spotlight" {
+        case .spotlight:
             return "Spotlight"
-        } else if bundleID == "com.apple.Siri" {
+        case .siri:
             return "Siri"
+        case .passwords:
+            return "Passwords"
+        case .other:
+            return fallback
         }
-
-        // For regular apps, use app name
-        return appName
     }
+
+    private enum MenuExtraNamespace {
+        case controlCenter, systemUIServer, spotlight, siri, passwords, other
+
+        init(bundleIdentifier: String?) {
+            switch bundleIdentifier {
+            case "com.apple.controlcenter": self = .controlCenter
+            case "com.apple.systemuiserver": self = .systemUIServer
+            case "com.apple.Spotlight": self = .spotlight
+            case "com.apple.Siri": self = .siri
+            case "com.apple.Passwords.MenuBarExtra": self = .passwords
+            default: self = .other
+            }
+        }
+    }
+
 
     private func formatKeyboardShortcut(cmdChar: String, modifiers: Int) -> KeyboardShortcut {
         var modifierSet: Set<String> = []
@@ -585,6 +637,9 @@ public final class MenuService: MenuServiceProtocol {
                 index: index,
                 isVisible: extra.isVisible,
                 description: extra.title,
+                rawTitle: extra.rawTitle,
+                bundleIdentifier: extra.bundleIdentifier,
+                ownerName: extra.ownerName,
                 frame: CGRect(origin: extra.position, size: .zero))
         }
     }
@@ -664,5 +719,11 @@ extension Element {
     static func systemWide() -> Element {
         // Return the shared system-wide accessibility element for menu interactions.
         Element(AXUIElementCreateSystemWide())
+    }
+}
+
+private extension CGPoint {
+    func distance(to other: CGPoint) -> CGFloat {
+        hypot(x - other.x, y - other.y)
     }
 }
