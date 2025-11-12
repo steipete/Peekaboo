@@ -29,61 +29,12 @@ public struct AnnotationVisualizationPreset: ElementStyleProvider {
         let baseColor = PeekabooColorPalette.color(for: category)
 
         switch state {
-        case .normal:
-            // Semi-transparent rectangle with solid border
-            return ElementStyle(
-                primaryColor: baseColor,
-                fillOpacity: self.fillOpacity,
-                strokeWidth: 2.5,
-                strokeOpacity: 1.0,
-                cornerRadius: 4.0,
-                shadow: nil,
-                labelStyle: LabelStyle(
-                    fontSize: 12,
-                    fontWeight: .bold,
-                    backgroundColor: baseColor,
-                    textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
-
-        case .hovered:
-            // Same as normal since we don't support hover
-            return self.style(for: category, state: .normal)
-
+        case .normal, .hovered:
+            return self.normalStyle(baseColor: baseColor)
         case .selected:
-            // Enhanced visibility for selected elements
-            return ElementStyle(
-                primaryColor: baseColor,
-                fillOpacity: self.selectedFillOpacity,
-                strokeWidth: 3.0,
-                strokeOpacity: 1.0,
-                cornerRadius: 4.0,
-                shadow: PeekabooCore.ShadowStyle(
-                    color: baseColor.copy(alpha: 0.4)!,
-                    radius: 6,
-                    offsetX: 0,
-                    offsetY: 2),
-                labelStyle: LabelStyle(
-                    fontSize: 13,
-                    fontWeight: .bold,
-                    backgroundColor: baseColor,
-                    textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 10, vertical: 5)))
-
+            return self.selectedStyle(baseColor: baseColor)
         case .disabled:
-            // Reduced visibility for disabled elements
-            return ElementStyle(
-                primaryColor: PeekabooColorPalette.control,
-                fillOpacity: 0.1,
-                strokeWidth: 1.5,
-                strokeOpacity: 0.5,
-                cornerRadius: 4.0,
-                shadow: nil,
-                labelStyle: LabelStyle(
-                    fontSize: 11,
-                    fontWeight: .medium,
-                    backgroundColor: CGColor(gray: 0.5, alpha: 0.8),
-                    textColor: CGColor(gray: 1, alpha: 0.9),
-                    padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
+            return self.disabledStyle()
         }
     }
 }
@@ -145,5 +96,61 @@ extension AnnotationVisualizationPreset {
                 backgroundColor: baseColor.copy(alpha: 0.9),
                 textColor: CGColor(gray: 1, alpha: 1),
                 padding: LabelStyle.EdgeInsets(horizontal: 4, vertical: 2)))
+    }
+}
+
+// MARK: - Private Helpers
+
+private extension AnnotationVisualizationPreset {
+    func normalStyle(baseColor: CGColor) -> ElementStyle {
+        ElementStyle(
+            primaryColor: baseColor,
+            fillOpacity: self.fillOpacity,
+            strokeWidth: 2.5,
+            strokeOpacity: 1.0,
+            cornerRadius: 4.0,
+            shadow: nil,
+            labelStyle: LabelStyle(
+                fontSize: 12,
+                fontWeight: .bold,
+                backgroundColor: baseColor,
+                textColor: CGColor(gray: 1, alpha: 1),
+                padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
+    }
+
+    func selectedStyle(baseColor: CGColor) -> ElementStyle {
+        ElementStyle(
+            primaryColor: baseColor,
+            fillOpacity: self.selectedFillOpacity,
+            strokeWidth: 3.0,
+            strokeOpacity: 1.0,
+            cornerRadius: 4.0,
+            shadow: PeekabooCore.ShadowStyle(
+                color: baseColor.copy(alpha: 0.4)!,
+                radius: 6,
+                offsetX: 0,
+                offsetY: 2),
+            labelStyle: LabelStyle(
+                fontSize: 13,
+                fontWeight: .bold,
+                backgroundColor: baseColor,
+                textColor: CGColor(gray: 1, alpha: 1),
+                padding: LabelStyle.EdgeInsets(horizontal: 10, vertical: 5)))
+    }
+
+    func disabledStyle() -> ElementStyle {
+        ElementStyle(
+            primaryColor: PeekabooColorPalette.control,
+            fillOpacity: 0.1,
+            strokeWidth: 1.5,
+            strokeOpacity: 0.5,
+            cornerRadius: 4.0,
+            shadow: nil,
+            labelStyle: LabelStyle(
+                fontSize: 11,
+                fontWeight: .medium,
+                backgroundColor: CGColor(gray: 0.5, alpha: 0.8),
+                textColor: CGColor(gray: 1, alpha: 0.9),
+                padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
     }
 }
