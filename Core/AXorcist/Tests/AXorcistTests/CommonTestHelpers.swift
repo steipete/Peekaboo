@@ -30,101 +30,115 @@ struct CommandResult {
 // MARK: - Test Helpers
 
 func setupTextEditAndGetInfo() async throws -> (pid: pid_t, axAppElement: AXUIElement?) {
-    let textEditBundleId = "com.apple.TextEdit"
-    var app: NSRunningApplication? = NSRunningApplication.runningApplications(withBundleIdentifier: textEditBundleId)
-        .first
-
-    if app == nil {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: textEditBundleId) else {
-            throw TestError.generic("Could not find URL for TextEdit application.")
-        }
-
-        print("Attempting to launch TextEdit from URL: \(url.path)")
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = false
-
-        do {
-            app = try await withCheckedThrowingContinuation { continuation in
-                NSWorkspace.shared.openApplication(at: url, configuration: configuration) { runningApp, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else if let runningApp {
-                        continuation.resume(returning: runningApp)
-                    } else {
-                        continuation.resume(
-                            throwing: TestError.appNotRunning("openApplication completion returned nil without error.")
-                        )
-                    }
-                }
-            }
-            print("openApplication call completed. App PID if returned: \(app?.processIdentifier ?? -1)")
-        } catch {
-            throw TestError
-                .appNotRunning(
-                    "Failed to launch TextEdit using openApplication(at:configuration:): " +
-                        "\(error.localizedDescription)"
-                )
-        }
-
-        var launchedApp: NSRunningApplication?
-        for attempt in 1 ... 10 {
-            launchedApp = NSRunningApplication.runningApplications(withBundleIdentifier: textEditBundleId).first
-            if launchedApp != nil {
-                print("TextEdit found running after launch, attempt \(attempt).")
-                break
-            }
-            try await Task.sleep(for: .milliseconds(500))
-            print("Waiting for TextEdit to appear in running list... attempt \(attempt)")
-        }
-
-        guard let runningAppAfterLaunch = launchedApp else {
-            throw TestError.appNotRunning("TextEdit did not appear in running applications list after launch attempt.")
-        }
-        app = runningAppAfterLaunch
-    }
-
-    guard let runningApp = app else {
-        throw TestError.appNotRunning("TextEdit is unexpectedly nil before activation checks.")
-    }
-
+    let runningApp = try await ensureTextEditRunning()
     let pid = runningApp.processIdentifier
     let axAppElement = AXUIElementCreateApplication(pid)
+    try await ensureWindowExists(for: runningApp, axAppElement: axAppElement)
+    logFocusedElement(axAppElement: axAppElement)
+    return (pid, axAppElement)
+}
 
-    if !runningApp.isActive {
-        runningApp.activate(options: [.activateAllWindows])
-        try await Task.sleep(for: .seconds(1.5))
+private func ensureTextEditRunning() async throws -> NSRunningApplication {
+    let textEditBundleId = "com.apple.TextEdit"
+    if let app = NSRunningApplication.runningApplications(withBundleIdentifier: textEditBundleId).first {
+        return app
     }
 
+    guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: textEditBundleId) else {
+        throw TestError.generic("Could not find URL for TextEdit application.")
+    }
+
+    let configuration = NSWorkspace.OpenConfiguration()
+    configuration.activates = false
+
+    do {
+        let launchedApp = try await withCheckedThrowingContinuation { continuation in
+            NSWorkspace.shared.openApplication(at: url, configuration: configuration) { runningApp, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let runningApp {
+                    continuation.resume(returning: runningApp)
+                } else {
+                    continuation.resume(
+                        throwing: TestError.appNotRunning(
+                            "openApplication completion returned nil without error."
+                        )
+                    )
+                }
+            }
+        }
+        return try await waitForTextEdit(launchedApp: launchedApp)
+    } catch {
+        throw TestError.appNotRunning(
+            "Failed to launch TextEdit using openApplication: \(error.localizedDescription)"
+        )
+    }
+}
+
+@MainActor
+private func waitForTextEdit(launchedApp: NSRunningApplication) async throws -> NSRunningApplication {
+    let textEditBundleId = "com.apple.TextEdit"
+    for attempt in 1 ... 10 {
+        if let running = NSRunningApplication.runningApplications(withBundleIdentifier: textEditBundleId).first {
+            print("TextEdit found running after launch, attempt \(attempt)")
+            return running
+        }
+        try await Task.sleep(for: .milliseconds(500))
+        print("Waiting for TextEdit to appear in running list... attempt \(attempt)")
+    }
+    throw TestError.appNotRunning("TextEdit did not appear in running applications list after launch attempt.")
+}
+
+@MainActor
+private func ensureWindowExists(for app: NSRunningApplication, axAppElement: AXUIElement) async throws {
+    try await activate(app)
+    if try await axWindowCount(for: axAppElement) == 0 {
+        try await createNewDocument()
+    }
+    try await activate(app)
+}
+
+@MainActor
+private func activate(_ app: NSRunningApplication) async throws {
+    guard !app.isActive else { return }
+    app.activate(options: [.activateAllWindows])
+    try await Task.sleep(for: .seconds(1))
+}
+
+@MainActor
+private func axWindowCount(for appElement: AXUIElement) async throws -> Int {
     var window: AnyObject?
-    let resultCopyAttribute = AXUIElementCopyAttributeValue(
-        axAppElement,
+    let result = AXUIElementCopyAttributeValue(
+        appElement,
         ApplicationServices.kAXWindowsAttribute as CFString,
         &window
     )
-    if resultCopyAttribute != AXError.success || (window as? [AXUIElement])?.isEmpty ?? true {
-        let appleScript = """
-        tell application "System Events"
-            tell process "TextEdit"
-                set frontmost to true
-                keystroke "n" using command down
-            end tell
+    guard result == AXError.success else { return 0 }
+    return (window as? [AXUIElement])?.count ?? 0
+}
+
+@MainActor
+private func createNewDocument() async throws {
+    let appleScript = """
+    tell application "System Events"
+        tell process "TextEdit"
+            set frontmost to true
+            keystroke "n" using command down
         end tell
-        """
-        var errorDict: NSDictionary?
-        if let scriptObject = NSAppleScript(source: appleScript) {
-            scriptObject.executeAndReturnError(&errorDict)
-            if let error = errorDict {
-                throw TestError.appleScriptError("Failed to create new document in TextEdit: \(error)")
-            }
-            try await Task.sleep(for: .seconds(2))
+    end tell
+    """
+    var errorDict: NSDictionary?
+    if let scriptObject = NSAppleScript(source: appleScript) {
+        scriptObject.executeAndReturnError(&errorDict)
+        if let error = errorDict {
+            throw TestError.appleScriptError("Failed to create new document in TextEdit: \(error)")
         }
+        try await Task.sleep(for: .seconds(2))
     }
+}
 
-    if !runningApp.isActive {
-        runningApp.activate(options: [.activateAllWindows])
-        try await Task.sleep(for: .seconds(1))
-    }
-
+@MainActor
+private func logFocusedElement(axAppElement: AXUIElement) {
     var cfFocusedElement: CFTypeRef?
     let status = AXUIElementCopyAttributeValue(
         axAppElement,
@@ -136,8 +150,6 @@ func setupTextEditAndGetInfo() async throws -> (pid: pid_t, axAppElement: AXUIEl
     } else {
         print("AX API did not get a focused element during setup. Status: \(status.rawValue). This might be okay.")
     }
-
-    return (pid, axAppElement)
 }
 
 @MainActor

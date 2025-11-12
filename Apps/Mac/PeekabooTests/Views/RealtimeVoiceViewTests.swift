@@ -15,9 +15,9 @@ import Testing
 struct RealtimeVoiceViewTests {
     // MARK: - Test Helpers
 
-    private func createMockService() -> RealtimeVoiceService {
+    private func createMockService() throws -> RealtimeVoiceService {
         let services = PeekabooServices.shared
-        let agentService = try! PeekabooAgentService(services: services)
+        let agentService = try PeekabooAgentService(services: services)
         let sessionStore = SessionStore()
         let settings = PeekabooSettings()
 
@@ -33,7 +33,7 @@ struct RealtimeVoiceViewTests {
 
     @Test("Connection indicator shows correct state")
     func connectionIndicatorState() throws {
-        let service = self.createMockService()
+        let service = try self.createMockService()
 
         // Test different connection states
         #expect(service.connectionState == .idle)

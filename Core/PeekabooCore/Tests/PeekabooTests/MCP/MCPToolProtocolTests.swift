@@ -179,10 +179,11 @@ struct MCPToolProtocolTests {
 
     @Test("ToolResponse multi-content")
     func toolResponseMultiContent() {
+        let imageData = Data("imagedata".utf8)
         let contents: [MCP.Tool.Content] = [
             .text("Processing started"),
             .text("Step 1 complete"),
-            .image(data: "imagedata".data(using: .utf8)!.base64EncodedString(), mimeType: "image/png", metadata: nil),
+            .image(data: imageData.base64EncodedString(), mimeType: "image/png", metadata: nil),
             .text("Processing complete"),
         ]
 

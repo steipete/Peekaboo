@@ -13,7 +13,12 @@ struct PeekabooAgentServiceTests {
 
     mutating func setup() {
         let services = PeekabooServices.shared
-        self.agentService = try! PeekabooAgentService(services: services)
+        do {
+            self.agentService = try PeekabooAgentService(services: services)
+        } catch {
+            Issue.record("Failed to initialize PeekabooAgentService: \\(error)")
+            self.agentService = nil
+        }
         self.settings = PeekabooSettings()
         self.sessionStore = SessionStore()
         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
