@@ -78,6 +78,16 @@ jobs:
         run: |
           echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
 
+      - name: Export Swift runtime library path
+        run: |
+          RUNTIME_PATH="/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/lib/swift/macosx"
+          echo "SWIFT_RUNTIME_LIB=${RUNTIME_PATH}" >> "$GITHUB_ENV"
+          if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
+            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+          else
+            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}" >> "$GITHUB_ENV"
+          fi
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -153,6 +163,16 @@ jobs:
         run: |
           echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
 
+      - name: Export Swift runtime library path
+        run: |
+          RUNTIME_PATH="/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/lib/swift/macosx"
+          echo "SWIFT_RUNTIME_LIB=${RUNTIME_PATH}" >> "$GITHUB_ENV"
+          if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
+            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+          else
+            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}" >> "$GITHUB_ENV"
+          fi
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -227,6 +247,16 @@ jobs:
       - name: Export Swift toolchain binary
         run: |
           echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
+
+      - name: Export Swift runtime library path
+        run: |
+          RUNTIME_PATH="/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/lib/swift/macosx"
+          echo "SWIFT_RUNTIME_LIB=${RUNTIME_PATH}" >> "$GITHUB_ENV"
+          if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
+            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+          else
+            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}" >> "$GITHUB_ENV"
+          fi
 
       - name: Show Xcode version
         run: xcodebuild -version
