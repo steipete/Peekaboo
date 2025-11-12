@@ -29,6 +29,14 @@ read_when:
 - Fixed `AXObserverCenter`’s observer callback to call `center.logSegments/describePid` explicitly, preventing implicit `self` captures.
 - Verified the end-to-end fix by running `./runner swift build --package-path Apps/CLI` and `./runner polter peekaboo -- type "Hello from CLI" --app TextEdit --json-output`, both of which now succeed without `--force`.
 
+## Agent `--model` flag lost its parser
+- **Command**: `./runner swift test --package-path Apps/CLI --filter DialogCommandTests`
+- **Observed**: Build failed with `value of type 'AgentCommand' has no member 'parseModelString'` because the helper that normalizes model aliases was deleted. That broke the CLI tests and meant `peekaboo agent --model ...` no longer validated user input.
+- **Expected**: Human-facing aliases like `gpt`, `gpt-4o`, or `claude-sonnet-4.5` should downcase to the supported defaults (`gpt-5` or `claude-sonnet-4.5`) so both tests and the runtime can enforce safe model choices.
+### Resolution — Nov 12, 2025
+- Reintroduced `AgentCommand.parseModelString(_:)`, delegating to `LanguageModel.parse` and whitelisting the GPT-5/Claude 4.5 families. GPT variants (gpt/gpt-5-mini/gpt-4o) now map to `.openai(.gpt5)`, Claude variants (opus/sonnet 4.x) map to `.anthropic(.sonnet45)`, and unsupported providers still return `nil`.
+- `./runner swift test --package-path Apps/CLI --filter DialogCommandTests` now builds again (the filter currently matches zero tests, but the previous compiler failure is gone), and the helper is ready for the rest of the CLI to consume when we re-enable the `--model` flag.
+
 ## `list windows` silently emits nothing
 - **Command**: `polter peekaboo list windows --app TextEdit`
 - **Observed**: Exit status 0 but no stdout/stderr, regardless of `--json-output` or `--verbose`.
@@ -160,12 +168,6 @@ read_when:
 - **Expected**: Dock hide/show should complete quickly without extra permissions.
 ### Resolution — Nov 12, 2025
 - DockService now toggles `com.apple.dock autohide` via `defaults` and restarts the Dock process instead of driving System Events. We also skip the write entirely if the Dock is already in the requested state, so `dock hide`/`dock show` finish in <1 s.
-
-## CLI build currently blocked by legacy errors
-- **Command**: `polter peekaboo -- dialog list`
-- **Observed**: Even unrelated commands fail to launch because `ListCommand.swift` and `AgentOutputDelegate.swift` still have pre-existing build errors (missing `Screen` type, visibility mismatches). These errors fire before Commander sees new options, so we must run with `--force` when testing CLI behavior, and we can’t ship a fresh binary until they’re resolved.
-### Next Step
-- Fix the outstanding `ListCommand`/`AgentOutputDelegate` compile errors (or temporarily revert those files) so `polter peekaboo …` produces a clean build again. Once the build is green we can verify the dialog fast-path and future CLI changes without `--force`.
 
 ## Dialog commands need faster feedback
 - **Command**: `polter peekaboo dialog list --json-output` (no `--app` hint)

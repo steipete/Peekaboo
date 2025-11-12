@@ -753,6 +753,55 @@ extension AgentCommand {
             print(errorMessageLine)
         }
     }
+
+    // MARK: - Model Parsing
+
+    func parseModelString(_ modelString: String) -> LanguageModel? {
+        let trimmed = modelString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        guard let parsed = LanguageModel.parse(from: trimmed) else {
+            return nil
+        }
+
+        switch parsed {
+        case let .openai(model):
+            if Self.supportedOpenAIInputs.contains(model) {
+                return .openai(.gpt5)
+            }
+        case let .anthropic(model):
+            if Self.supportedAnthropicInputs.contains(model) {
+                return .anthropic(.sonnet45)
+            }
+        default:
+            break
+        }
+
+        return nil
+    }
+
+    private static let supportedOpenAIInputs: Set<LanguageModel.OpenAI> = [
+        .gpt5,
+        .gpt5Pro,
+        .gpt5Mini,
+        .gpt5Nano,
+        .gpt5Thinking,
+        .gpt5ThinkingMini,
+        .gpt5ThinkingNano,
+        .gpt5ChatLatest,
+        .gpt4o,
+        .gpt4oMini,
+        .gpt4oRealtime,
+        .o4Mini,
+    ]
+
+    private static let supportedAnthropicInputs: Set<LanguageModel.Anthropic> = [
+        .sonnet45,
+        .sonnet4,
+        .sonnet4Thinking,
+        .opus4,
+        .opus4Thinking,
+    ]
 }
 
 extension AgentCommand: ParsableCommand {}
