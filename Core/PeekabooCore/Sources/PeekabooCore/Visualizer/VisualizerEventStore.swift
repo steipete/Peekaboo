@@ -178,7 +178,11 @@ public enum VisualizerEventStore {
                 try? FileManager.default.removeItem(at: file)
                 #if DEBUG
                 let proc = ProcessInfo.processInfo.processName
-                visualizerDebugLog("[VisualizerEventStore][\(proc)] cleanup removed \(file.path) (modified \(modified))")
+                let cleanupMessage = """
+                [VisualizerEventStore][\(proc)] cleanup removed \(file.path)
+                (modified \(modified))
+                """
+                visualizerDebugLog(cleanupMessage)
                 #endif
             }
         }
@@ -218,10 +222,18 @@ public enum VisualizerEventStore {
            !appGroup.isEmpty,
            let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
         {
-            self.logger.debug("Visualizer storage using app group \(appGroup, privacy: .public): \(container.path, privacy: .public)")
+            let appGroupLog = """
+            Visualizer storage using app group \(appGroup, privacy: .public):
+            \(container.path, privacy: .public)
+            """
+            self.logger.debug(appGroupLog)
             #if DEBUG
             let proc = ProcessInfo.processInfo.processName
-            visualizerDebugLog("[VisualizerEventStore][\(proc)] storage app group (\(appGroup)): \(container.path)")
+            let debugMessage = """
+            [VisualizerEventStore][\(proc)] storage app group (\(appGroup)):
+            \(container.path)
+            """
+            visualizerDebugLog(debugMessage)
             #endif
             return container
         }

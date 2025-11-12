@@ -36,7 +36,7 @@ final class VisualizerCoordinator {
     /// Settings reference
     private weak var settings: PeekabooSettings?
 
-    private enum AnimationBaseline {
+private enum AnimationBaseline {
         static let screenshotFlash: TimeInterval = 0.35
         static let clickRipple: TimeInterval = 0.45
         static let typingOverlay: TimeInterval = 1.2
@@ -80,173 +80,6 @@ final class VisualizerCoordinator {
         max(requested, baseline) * self.animationSpeedScale
     }
 
-    // MARK: - Animation Methods
-
-    /// Shows screenshot flash animation
-    func showScreenshotFlash(in rect: CGRect) async -> Bool {
-        self.logger.info("📸 Visualizer: Showing screenshot flash for rect: \(String(describing: rect))")
-
-        // Easter egg: Show ghost on every 100th screenshot
-        self.screenshotCount += 1
-        let showGhost = (screenshotCount % 100 == 0)
-        self.logger.debug("Screenshot count: \(self.screenshotCount), show ghost: \(showGhost)")
-
-        return await self.animationQueue.enqueue(priority: .high) {
-            await self.displayScreenshotFlash(in: rect, showGhost: showGhost)
-        }
-    }
-
-    /// Shows click feedback animation
-    func showClickFeedback(at point: CGPoint, type: PeekabooFoundation.ClickType) async -> Bool {
-        self.logger.info("🖱️ Visualizer: Showing click feedback at \(String(describing: point)), type: \(type)")
-
-        return await self.animationQueue.enqueue(priority: .high) {
-            await self.displayClickAnimation(at: point, type: type)
-        }
-    }
-
-    /// Shows typing feedback
-    func showTypingFeedback(keys: [String], duration: TimeInterval) async -> Bool {
-        self.logger.info("⌨️ Visualizer: Showing typing feedback for \(keys.count) keys: \(keys.joined())")
-
-        return await self.animationQueue.enqueue(priority: .normal) {
-            await self.displayTypingWidget(keys: keys, duration: duration)
-        }
-    }
-
-    /// Shows scroll feedback
-    func showScrollFeedback(
-        at point: CGPoint,
-        direction: PeekabooFoundation.ScrollDirection,
-        amount: Int) async -> Bool
-    {
-        self.logger
-            .info(
-                "📜 Visualizer: Showing scroll feedback at \(String(describing: point)), direction: \(direction), amount: \(amount)")
-
-        return await self.animationQueue.enqueue(priority: .normal) {
-            await self.displayScrollIndicators(at: point, direction: direction, amount: amount)
-        }
-    }
-
-    /// Shows mouse movement trail
-    func showMouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
-        self.logger
-            .info(
-                "🐭 Visualizer: Showing mouse movement from \(String(describing: from)) to \(String(describing: to)), duration: \(duration)s")
-
-        return await self.animationQueue.enqueue(priority: .low) {
-            await self.displayMouseTrail(from: from, to: to, duration: duration)
-        }
-    }
-
-    /// Shows swipe gesture
-    func showSwipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
-        self.logger
-            .info(
-                "👆 Visualizer: Showing swipe gesture from \(String(describing: from)) to \(String(describing: to)), duration: \(duration)s")
-
-        return await self.animationQueue.enqueue(priority: .normal) {
-            await self.displaySwipeAnimation(from: from, to: to, duration: duration)
-        }
-    }
-
-    /// Shows hotkey display
-    func showHotkeyDisplay(keys: [String], duration: TimeInterval) async -> Bool {
-        self.logger.debug("Showing hotkey display for keys: \(keys)")
-
-        return await self.animationQueue.enqueue(priority: .high) {
-            await self.displayHotkeyOverlay(keys: keys, duration: duration)
-        }
-    }
-
-    /// Shows app launch animation
-    func showAppLaunch(appName: String, iconPath: String?) async -> Bool {
-        self.logger.debug("Showing app launch animation for: \(appName)")
-
-        return await self.animationQueue.enqueue {
-            await self.displayAppLaunchAnimation(appName: appName, iconPath: iconPath)
-        }
-    }
-
-    /// Shows app quit animation
-    func showAppQuit(appName: String, iconPath: String?) async -> Bool {
-        self.logger.debug("Showing app quit animation for: \(appName)")
-
-        return await self.animationQueue.enqueue {
-            await self.displayAppQuitAnimation(appName: appName, iconPath: iconPath)
-        }
-    }
-
-    /// Shows window operation
-    func showWindowOperation(_ operation: WindowOperation, windowRect: CGRect, duration: TimeInterval) async -> Bool {
-        self.logger.debug("Showing window operation: \(String(describing: operation))")
-
-        return await self.animationQueue.enqueue {
-            await self.displayWindowOperation(operation, windowRect: windowRect, duration: duration)
-        }
-    }
-
-    /// Shows menu navigation
-    func showMenuNavigation(menuPath: [String]) async -> Bool {
-        self.logger.debug("Showing menu navigation for path: \(menuPath)")
-
-        return await self.animationQueue.enqueue {
-            await self.displayMenuHighlights(menuPath: menuPath)
-        }
-    }
-
-    /// Shows dialog interaction
-    func showDialogInteraction(
-        element: DialogElementType,
-        elementRect: CGRect,
-        action: DialogActionType) async -> Bool
-    {
-        self.logger
-            .debug(
-                "Showing dialog interaction: \(String(describing: element)) with action: \(String(describing: action))")
-
-        return await self.animationQueue.enqueue {
-            await self.displayDialogFeedback(element: element, elementRect: elementRect, action: action)
-        }
-    }
-
-    /// Shows space switch animation
-    func showSpaceSwitch(from: Int, to: Int, direction: SpaceDirection) async -> Bool {
-        self.logger.debug("Showing space switch from \(from) to \(to)")
-
-        return await self.animationQueue.enqueue {
-            await self.displaySpaceTransition(from: from, to: to, direction: direction)
-        }
-    }
-
-    /// Shows element detection overlays
-    func showElementDetection(elements: [String: CGRect], duration: TimeInterval) async -> Bool {
-        self.logger.debug("Showing element detection for \(elements.count) elements")
-
-        return await self.animationQueue.enqueue {
-            await self.displayElementOverlays(elements: elements, duration: duration)
-        }
-    }
-
-    /// Shows annotated screenshot with UI element overlays
-    func showAnnotatedScreenshot(
-        imageData: Data,
-        elements: [DetectedElement],
-        windowBounds: CGRect,
-        duration: TimeInterval) async -> Bool
-    {
-        self.logger.info("🎯 Visualizer: Showing annotated screenshot with \(elements.count) elements")
-
-        return await self.animationQueue.enqueue(priority: .high) {
-            await self.displayAnnotatedScreenshot(
-                imageData: imageData,
-                elements: elements,
-                windowBounds: windowBounds,
-                duration: duration)
-        }
-    }
-
     // MARK: - Settings
 
     /// Connect to PeekabooSettings
@@ -287,10 +120,177 @@ final class VisualizerCoordinator {
             NSScreen.mouseScreen
         }
     }
+}
 
-    // MARK: - Private Display Methods
+// MARK: - Animation API
 
-    private func displayScreenshotFlash(in rect: CGRect, showGhost: Bool) async -> Bool {
+@available(macOS 14.0, *)
+@MainActor
+extension VisualizerCoordinator {
+    func showScreenshotFlash(in rect: CGRect) async -> Bool {
+        self.logger.info("📸 Visualizer: Showing screenshot flash for rect: \(String(describing: rect))")
+
+        screenshotCount += 1
+        let showGhost = screenshotCount % 100 == 0
+        self.logger.debug("Screenshot count: \(screenshotCount), show ghost: \(showGhost)")
+
+        return await animationQueue.enqueue(priority: .high) {
+            await displayScreenshotFlash(in: rect, showGhost: showGhost)
+        }
+    }
+
+    func showClickFeedback(at point: CGPoint, type: PeekabooFoundation.ClickType) async -> Bool {
+        self.logger.info("🖱️ Visualizer: Showing click feedback at \(String(describing: point)), type: \(type)")
+
+        return await animationQueue.enqueue(priority: .high) {
+            await displayClickAnimation(at: point, type: type)
+        }
+    }
+
+    func showTypingFeedback(keys: [String], duration: TimeInterval) async -> Bool {
+        self.logger.info("⌨️ Visualizer: Showing typing feedback for \(keys.count) keys: \(keys.joined())")
+
+        return await animationQueue.enqueue(priority: .normal) {
+            await displayTypingWidget(keys: keys, duration: duration)
+        }
+    }
+
+    func showScrollFeedback(
+        at point: CGPoint,
+        direction: PeekabooFoundation.ScrollDirection,
+        amount: Int
+    ) async -> Bool {
+        let message = [
+            "📜 Visualizer: Showing scroll feedback at \(String(describing: point))",
+            "direction: \(direction), amount: \(amount)"
+        ].joined(separator: ", ")
+        self.logger.info(message)
+
+        return await animationQueue.enqueue(priority: .normal) {
+            await displayScrollIndicators(at: point, direction: direction, amount: amount)
+        }
+    }
+
+    func showMouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
+        let message = [
+            "🐭 Visualizer: Showing mouse movement from \(String(describing: from))",
+            "to \(String(describing: to)), duration: \(duration)s"
+        ].joined(separator: " ")
+        self.logger.info(message)
+
+        return await animationQueue.enqueue(priority: .low) {
+            await displayMouseTrail(from: from, to: to, duration: duration)
+        }
+    }
+
+    func showSwipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
+        let message = [
+            "👆 Visualizer: Showing swipe gesture from \(String(describing: from))",
+            "to \(String(describing: to)), duration: \(duration)s"
+        ].joined(separator: " ")
+        self.logger.info(message)
+
+        return await animationQueue.enqueue(priority: .normal) {
+            await displaySwipeAnimation(from: from, to: to, duration: duration)
+        }
+    }
+
+    func showHotkeyDisplay(keys: [String], duration: TimeInterval) async -> Bool {
+        self.logger.debug("Showing hotkey display for keys: \(keys)")
+
+        return await animationQueue.enqueue(priority: .high) {
+            await displayHotkeyOverlay(keys: keys, duration: duration)
+        }
+    }
+
+    func showAppLaunch(appName: String, iconPath: String?) async -> Bool {
+        self.logger.debug("Showing app launch animation for: \(appName)")
+
+        return await animationQueue.enqueue {
+            await displayAppLaunchAnimation(appName: appName, iconPath: iconPath)
+        }
+    }
+
+    func showAppQuit(appName: String, iconPath: String?) async -> Bool {
+        self.logger.debug("Showing app quit animation for: \(appName)")
+
+        return await animationQueue.enqueue {
+            await displayAppQuitAnimation(appName: appName, iconPath: iconPath)
+        }
+    }
+
+    func showWindowOperation(_ operation: WindowOperation, windowRect: CGRect, duration: TimeInterval) async -> Bool {
+        self.logger.debug("Showing window operation: \(String(describing: operation))")
+
+        return await animationQueue.enqueue {
+            await displayWindowOperation(operation, windowRect: windowRect, duration: duration)
+        }
+    }
+
+    func showMenuNavigation(menuPath: [String]) async -> Bool {
+        self.logger.debug("Showing menu navigation for path: \(menuPath)")
+
+        return await animationQueue.enqueue {
+            await displayMenuHighlights(menuPath: menuPath)
+        }
+    }
+
+    func showDialogInteraction(
+        element: DialogElementType,
+        elementRect: CGRect,
+        action: DialogActionType
+    ) async -> Bool {
+        let message = [
+            "Showing dialog interaction: \(String(describing: element))",
+            "action: \(String(describing: action))"
+        ].joined(separator: " ")
+        self.logger.debug(message)
+
+        return await animationQueue.enqueue {
+            await displayDialogFeedback(element: element, elementRect: elementRect, action: action)
+        }
+    }
+
+    func showSpaceSwitch(from: Int, to: Int, direction: SpaceDirection) async -> Bool {
+        self.logger.debug("Showing space switch from \(from) to \(to)")
+
+        return await animationQueue.enqueue {
+            await displaySpaceTransition(from: from, to: to, direction: direction)
+        }
+    }
+
+    func showElementDetection(elements: [String: CGRect], duration: TimeInterval) async -> Bool {
+        self.logger.debug("Showing element detection for \(elements.count) elements")
+
+        return await animationQueue.enqueue {
+            await displayElementOverlays(elements: elements, duration: duration)
+        }
+    }
+
+    func showAnnotatedScreenshot(
+        imageData: Data,
+        elements: [DetectedElement],
+        windowBounds: CGRect,
+        duration: TimeInterval
+    ) async -> Bool {
+        self.logger.info("🎯 Visualizer: Showing annotated screenshot with \(elements.count) elements")
+
+        return await animationQueue.enqueue(priority: .high) {
+            await displayAnnotatedScreenshot(
+                imageData: imageData,
+                elements: elements,
+                windowBounds: windowBounds,
+                duration: duration
+            )
+        }
+    }
+}
+
+// MARK: - Private Display Methods
+
+@available(macOS 14.0, *)
+private extension VisualizerCoordinator {
+    func displayScreenshotFlash(in rect: CGRect, showGhost: Bool) async -> Bool {
         // Check if enabled
         guard self.settings?.visualizerEnabled ?? true,
               self.settings?.screenshotFlashEnabled ?? true
@@ -299,14 +299,18 @@ final class VisualizerCoordinator {
             return false
         }
 
-        self.logger
-            .info(
-                "📸 Visualizer: Creating screenshot flash view, showGhost: \(showGhost), intensity: \(self.settings?.visualizerEffectIntensity ?? 1.0)")
+        let intensity = self.settings?.visualizerEffectIntensity ?? 1.0
+        let message = [
+            "📸 Visualizer: Creating screenshot flash view",
+            "showGhost: \(showGhost)",
+            "intensity: \(intensity)"
+        ].joined(separator: ", ")
+        self.logger.info(message)
 
         // Create flash view
         let flashView = ScreenshotFlashView(
             showGhost: showGhost,
-            intensity: settings?.visualizerEffectIntensity ?? 1.0)
+            intensity: intensity)
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(

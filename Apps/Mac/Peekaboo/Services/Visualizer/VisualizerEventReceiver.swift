@@ -18,6 +18,11 @@ private func visualizerDebugLog(_ message: @autoclosure () -> String) {
 private func visualizerDebugLog(_ message: @autoclosure () -> String) {}
 #endif
 
+@inline(__always)
+private func visualizerLogMessage(_ parts: String...) -> String {
+    parts.joined(separator: " ")
+}
+
 @MainActor
 final class VisualizerEventReceiver {
     private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "VisualizerEventReceiver")
@@ -61,7 +66,11 @@ final class VisualizerEventReceiver {
     private func handle(descriptor: String) async {
         visualizerDebugLog("VisualizerEventReceiver: received descriptor \(descriptor)")
         guard let eventID = Self.parseEventID(from: descriptor) else {
-            self.logger.error("Visualizer notification contained invalid identifier: \(descriptor, privacy: .public)")
+            let message = visualizerLogMessage(
+                "Visualizer notification contained invalid identifier:",
+                "\(descriptor, privacy: .public)"
+            )
+            self.logger.error(message)
             return
         }
 
@@ -70,8 +79,14 @@ final class VisualizerEventReceiver {
         do {
             event = try VisualizerEventStore.loadEvent(id: eventID)
         } catch {
-            self.logger.error("Failed to load visualizer event \(eventID.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            visualizerDebugLog("VisualizerEventReceiver: failed to load event \(eventID.uuidString) - \(error.localizedDescription)")
+            let message = visualizerLogMessage(
+                "Failed to load visualizer event \(eventID.uuidString, privacy: .public):",
+                "\(error.localizedDescription, privacy: .public)"
+            )
+            self.logger.error(message)
+            visualizerDebugLog(
+                "VisualizerEventReceiver: failed to load event \(eventID.uuidString) - \(error.localizedDescription)"
+            )
             return
         }
 
@@ -83,8 +98,14 @@ final class VisualizerEventReceiver {
             try VisualizerEventStore.removeEvent(id: eventID)
             visualizerDebugLog("VisualizerEventReceiver: deleted event \(eventID.uuidString)")
         } catch {
-            self.logger.error("Failed to delete visualizer event \(eventID.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            visualizerDebugLog("VisualizerEventReceiver: failed to delete event \(eventID.uuidString) - \(error.localizedDescription)")
+            let message = visualizerLogMessage(
+                "Failed to delete visualizer event \(eventID.uuidString, privacy: .public):",
+                "\(error.localizedDescription, privacy: .public)"
+            )
+            self.logger.error(message)
+            visualizerDebugLog(
+                "VisualizerEventReceiver: failed to delete event \(eventID.uuidString) - \(error.localizedDescription)"
+            )
         }
     }
 
@@ -116,7 +137,11 @@ final class VisualizerEventReceiver {
         case let .menuNavigation(path):
             success = await self.coordinator.showMenuNavigation(menuPath: path)
         case let .dialogInteraction(elementType, rect, action):
-            success = await self.coordinator.showDialogInteraction(element: elementType, elementRect: rect, action: action)
+            success = await self.coordinator.showDialogInteraction(
+                element: elementType,
+                elementRect: rect,
+                action: action
+            )
         case let .spaceSwitch(from, to, direction):
             success = await self.coordinator.showSpaceSwitch(from: from, to: to, direction: direction)
         case let .elementDetection(elements, duration):
@@ -130,7 +155,11 @@ final class VisualizerEventReceiver {
         }
 
         if !success {
-            self.logger.warning("Visualizer event \(event.kind.rawValue, privacy: .public) reported failure")
+            let message = visualizerLogMessage(
+                "Visualizer event \(event.kind.rawValue, privacy: .public)",
+                "reported failure"
+            )
+            self.logger.warning(message)
         }
     }
 
