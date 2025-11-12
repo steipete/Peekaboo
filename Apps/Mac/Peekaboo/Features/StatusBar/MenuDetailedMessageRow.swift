@@ -44,8 +44,7 @@ struct MenuDetailedMessageRow: View {
 
                     if self.isToolMessage, !self.message.toolCalls.isEmpty {
                         ToolExecutionSummaryView(
-                            message: self.message,
-                            formatToolContent: self.formatToolContent()
+                            message: self.message
                         )
                     }
                 }
@@ -434,8 +433,7 @@ private struct ToolExecutionSummaryView: View {
     var body: some View {
         if let toolCall = self.message.toolCalls.first,
            toolCall.result != "Running...",
-           let toolName = toolCall.name,
-           let resultSummary = ToolFormatter.toolResultSummary(toolName: toolName, result: toolCall.result)
+           let resultSummary = ToolFormatter.toolResultSummary(toolName: toolCall.name, result: toolCall.result)
         {
             Text(resultSummary)
                 .font(.caption2)
@@ -541,7 +539,7 @@ private struct ThinkingContentView: View {
 }
 
 private struct ToolMessageView: View {
-    let toolCalls: [ConversationMessage.ToolCall]
+    let toolCalls: [ConversationToolCall]
     let formattedToolContent: String
     let timestamp: Date
 

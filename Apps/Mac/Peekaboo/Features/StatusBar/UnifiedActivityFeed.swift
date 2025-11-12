@@ -567,6 +567,15 @@ struct MessageActivityView: View {
         case .system: return .orange.opacity(0.03)
         }
     }
+
+    private var assistantMarkdown: AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(
+            allowsExtendedAttributes: true,
+            interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        return (try? AttributedString(markdown: self.message.content, options: options)) ??
+            AttributedString(self.message.content)
+    }
+
 }
 
 // MARK: - Tool Call View

@@ -69,10 +69,9 @@ final class VisualizerEventReceiver {
         do {
             event = try VisualizerEventStore.loadEvent(id: eventID)
         } catch {
-            let message =
-                "Failed to load visualizer event \(eventID.uuidString, privacy: .public): " +
-                "\(error.localizedDescription, privacy: .public)"
-            self.logger.error(message)
+            self.logger.error(
+                "Failed to load visualizer event \(eventID.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)"
+            )
             visualizerDebugLog(
                 "VisualizerEventReceiver: failed to load event \(eventID.uuidString) - \(error.localizedDescription)"
             )
@@ -87,10 +86,9 @@ final class VisualizerEventReceiver {
             try VisualizerEventStore.removeEvent(id: eventID)
             visualizerDebugLog("VisualizerEventReceiver: deleted event \(eventID.uuidString)")
         } catch {
-            let message =
-                "Failed to delete visualizer event \(eventID.uuidString, privacy: .public): " +
-                "\(error.localizedDescription, privacy: .public)"
-            self.logger.error(message)
+            self.logger.error(
+                "Failed to delete visualizer event \(eventID.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)"
+            )
             visualizerDebugLog(
                 "VisualizerEventReceiver: failed to delete event \(eventID.uuidString) - \(error.localizedDescription)"
             )
