@@ -211,7 +211,7 @@ public extension Element {
 
 
 @MainActor
-fileprivate struct AXPropertyDumpBuilder {
+private struct AXPropertyDumpBuilder {
     private enum AttributeFetchResult {
         case success([String])
         case failure(AXError)
@@ -289,7 +289,9 @@ fileprivate struct AXPropertyDumpBuilder {
             }
         case let .failure(error):
             let detail = String(describing: error)
-            self.appendLine(indent, "Parameterized Attributes: (Error copying names: \(detail) - Code \(error.rawValue))")
+            let message = "Parameterized Attributes: (Error copying names: \(detail) - " +
+                "Code \(error.rawValue))"
+            self.appendLine(indent, message)
         }
     }
 

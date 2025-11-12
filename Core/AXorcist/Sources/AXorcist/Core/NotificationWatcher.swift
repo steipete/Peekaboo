@@ -116,7 +116,8 @@ public class NotificationWatcher {
 
         let pidToLog = effectivePid ?? 0
         let logStart =
-            "NotificationWatcher starting for target: \(targetDescription) (PID: \(pidToLog)), notification: \(self.notification.rawValue)"
+            "NotificationWatcher starting for target: \(targetDescription) " +
+            "(PID: \(pidToLog)), notification: \(self.notification.rawValue)"
         axInfoLog(logStart)
 
         let subscribeResult = AXObserverCenter.shared.subscribe(

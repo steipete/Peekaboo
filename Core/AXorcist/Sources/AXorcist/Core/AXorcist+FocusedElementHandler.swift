@@ -21,27 +21,31 @@ public extension AXorcist {
 
         guard let appElement = getApplicationElement(for: command.appIdentifier ?? "focused") else {
             let target = String(describing: command.appIdentifier)
-            let errorMessage = "HandleGetFocused: Could not get application element for '\(target)'."
+            let errorMessage =
+                "HandleGetFocused: Could not get application element for '\(target)'."
             GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: errorMessage))
             return .errorResponse(message: errorMessage, code: .elementNotFound)
         }
+        let appDescription = appElement.briefDescription(option: ValueFormatOption.smart)
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "HandleGetFocused: Got app element: \(appElement.briefDescription(option: ValueFormatOption.smart))"
+            message: "HandleGetFocused: Got app element: \(appDescription)"
         ))
 
         guard let focusedElement = appElement.focusedUIElement() else {
             let target = String(describing: command.appIdentifier)
-            let errorMessage = "HandleGetFocused: No focused element found for application '\(target)' " +
-                "(\(appElement.briefDescription(option: ValueFormatOption.smart)))."
+            let elementDescription = appElement.briefDescription(option: ValueFormatOption.smart)
+            let errorMessage =
+                "HandleGetFocused: No focused element found for application '\(target)' (\(elementDescription))."
             GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: errorMessage))
             // This is not necessarily an error, could be a valid state.
             // Return success with an empty payload or specific indication.
             return .successResponse(payload: AnyCodable(NoFocusPayload(message: "No focused element found.")))
         }
+        let focusedDescription = focusedElement.briefDescription(option: ValueFormatOption.smart)
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "HandleGetFocused: Focused element: \(focusedElement.briefDescription(option: ValueFormatOption.smart))"
+            message: "HandleGetFocused: Focused element: \(focusedDescription)"
         ))
 
         let attributesToFetch = command.attributesToReturn ?? AXMiscConstants.defaultAttributesToFetch

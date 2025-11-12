@@ -41,7 +41,8 @@ public struct AXValueWrapper: Codable, Sendable, Equatable {
                 self.anyValue = .dictionary(sanitizedDict)
             } else {
                 // Handle single, non-collection items
-                self.anyValue = AXValueWrapper.convertToAttributeValue(AXValueWrapper.recursivelySanitize(unwrappedValue))
+                let sanitized = AXValueWrapper.recursivelySanitize(unwrappedValue)
+                self.anyValue = AXValueWrapper.convertToAttributeValue(sanitized)
             }
         } else { // value was nil (absence of value)
             axDebugLog("AXVW.init: Original value was nil.")

@@ -394,7 +394,11 @@ private extension AXObserverCenter {
         { _, element, notificationCFString, userInfo, refcon in
             guard let refcon else { return }
             let center = Unmanaged<AXObserverCenter>.fromOpaque(refcon).takeUnretainedValue()
-            center.handleObserverCallback(element: element, notificationCFString: notificationCFString, userInfo: userInfo)
+            center.handleObserverCallback(
+                element: element,
+                notificationCFString: notificationCFString,
+                userInfo: userInfo
+            )
         }
     }
 

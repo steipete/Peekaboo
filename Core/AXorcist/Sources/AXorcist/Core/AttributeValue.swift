@@ -144,20 +144,8 @@ public extension AttributeValue {
         case let dictionary as [String: Any]:
             self = .dictionary(dictionary.mapValues { AttributeValue(from: $0) })
         default:
-            // For NSNumber, try to determine the best representation
             if let nsNumber = value as? NSNumber {
-                // Check if it's actually a boolean
-                if nsNumber === kCFBooleanTrue as NSNumber {
-                    self = .bool(true)
-                } else if nsNumber === kCFBooleanFalse as NSNumber {
-                    self = .bool(false)
-                } else if nsNumber.doubleValue.truncatingRemainder(dividingBy: 1) == 0 {
-                    // It's a whole number
-                    self = .int(nsNumber.intValue)
-                } else {
-                    // It has decimals
-                    self = .double(nsNumber.doubleValue)
-                }
+                self = AttributeValue.fromNSNumber(nsNumber)
             } else if CFGetTypeID(value as CFTypeRef) == CFNullGetTypeID() {
                 self = .null
             } else {
@@ -220,5 +208,22 @@ public extension AttributeValue {
     /// This will be removed once AnyCodable is fully eliminated
     init(fromAnyCodable anyCodable: AnyCodable) {
         self.init(from: anyCodable.value)
+    }
+}
+
+// MARK: - Private Helpers
+
+private extension AttributeValue {
+    static func fromNSNumber(_ number: NSNumber) -> AttributeValue {
+        if number === kCFBooleanTrue as NSNumber {
+            return .bool(true)
+        }
+        if number === kCFBooleanFalse as NSNumber {
+            return .bool(false)
+        }
+        if number.doubleValue.truncatingRemainder(dividingBy: 1) == 0 {
+            return .int(number.intValue)
+        }
+        return .double(number.doubleValue)
     }
 }

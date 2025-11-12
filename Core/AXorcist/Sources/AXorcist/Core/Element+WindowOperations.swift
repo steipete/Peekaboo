@@ -288,17 +288,13 @@ public extension Element {
         // Find screen containing window center
         let center = CGPoint(x: frame.midX, y: frame.midY)
 
-        for screen in NSScreen.screens {
-            if screen.frame.contains(center) {
-                return screen
-            }
+        if let containingScreen = NSScreen.screens.first(where: { $0.frame.contains(center) }) {
+            return containingScreen
         }
 
         // Fall back to screen containing any part of window
-        for screen in NSScreen.screens {
-            if screen.frame.intersects(frame) {
-                return screen
-            }
+        if let intersectingScreen = NSScreen.screens.first(where: { $0.frame.intersects(frame) }) {
+            return intersectingScreen
         }
 
         return nil

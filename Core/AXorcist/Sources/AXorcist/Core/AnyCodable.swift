@@ -75,11 +75,14 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
             } else if CFGetTypeID(value as CFTypeRef) == CFNullGetTypeID() {
                 try container.encodeNil()
             } else {
+                let debugDescription =
+                    "AnyCodable value (\(type(of: value))) cannot be encoded " +
+                    "and does not conform to Encodable."
                 throw EncodingError.invalidValue(
                     value,
                     EncodingError.Context(
                         codingPath: [],
-                        debugDescription: "AnyCodable value (\(type(of: value))) cannot be encoded and does not conform to Encodable."
+                        debugDescription: debugDescription
                     )
                 )
             }
@@ -147,10 +150,9 @@ extension Optional: OptionalProtocol {
 private extension AnyCodable {
     static func compareArrays(_ lhs: [Any], _ rhs: [Any]) -> Bool {
         guard lhs.count == rhs.count else { return false }
-        for (lhsElement, rhsElement) in zip(lhs, rhs) {
-            if AnyCodable(lhsElement) != AnyCodable(rhsElement) {
-                return false
-            }
+        for (lhsElement, rhsElement) in zip(lhs, rhs)
+        where AnyCodable(lhsElement) != AnyCodable(rhsElement) {
+            return false
         }
         return true
     }

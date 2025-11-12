@@ -83,7 +83,8 @@ public struct PathStep: Codable, Sendable {
         let matchTypeStringPart = (matchType ?? .exact).rawValue
         let matchAllStringPart = "\(matchAllCriteria ?? true)"
 
-        return "[Criteria: (\(critDesc)), MatchType: \(matchTypeStringPart), MatchAll: \(matchAllStringPart)\(depthStringPart)]"
+        return "[Criteria: (\(critDesc)), MatchType: \(matchTypeStringPart), " +
+            "MatchAll: \(matchAllStringPart)\(depthStringPart)]"
     }
 
     // MARK: Internal
