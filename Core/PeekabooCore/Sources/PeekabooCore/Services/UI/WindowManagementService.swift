@@ -41,6 +41,7 @@ import PeekabooFoundation
 @MainActor
 public final class WindowManagementService: WindowManagementServiceProtocol {
     private let applicationService: any ApplicationServiceProtocol
+    private let windowIdentityService = WindowIdentityService()
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowManagementService")
 
     // Visualizer client for visual feedback
@@ -59,6 +60,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             self.logger.debug("Skipping visualizer connection (running inside Mac app)")
         }
     }
+}
+
+@MainActor
+extension WindowManagementService {
 
     public func closeWindow(target: WindowTarget) async throws {
         // Get window bounds for animation
@@ -183,9 +188,8 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         var windowBounds: CGRect?
 
         // Log the resize operation for performance debugging
-        self.logger
-            .info(
-                "Starting resize window operation: target=\(target), size=(width: \(size.width), height: \(size.height))")
+        let resizeDescription = "target=\(target), size=(width: \(size.width), height: \(size.height))"
+        self.logger.info("Starting resize window operation: \(resizeDescription)")
         let startTime = Date()
 
         let success = try await performWindowOperation(target: target) { window in
@@ -285,44 +289,28 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
 
             self.logger.error("Focus window failed for: \(windowInfo)")
 
-            throw OperationError.interactionFailed(
-                action: "focus window",
-                reason: "Failed to focus \(windowInfo). The window may be minimized, on another Space, or the app may not be responding to focus requests.")
+            let reason = [
+                "Failed to focus \(windowInfo).",
+                "The window may be minimized, on another Space, or the app may not be responding to focus requests."
+            ].joined(separator: " ")
+            throw OperationError.interactionFailed(action: "focus window", reason: reason)
         }
     }
 
     public func listWindows(target: WindowTarget) async throws -> [ServiceWindowInfo] {
         switch target {
         case let .application(appIdentifier):
-            let output = try await applicationService.listWindows(for: appIdentifier, timeout: nil)
-            return output.data.windows
+            return try await self.windows(for: appIdentifier)
 
         case let .title(titleSubstring):
-            // List all windows and filter by title
-            let appsOutput = try await applicationService.listApplications()
-            var matchingWindows: [ServiceWindowInfo] = []
-
-            for app in appsOutput.data.applications {
-                let windowsOutput = try await applicationService.listWindows(for: app.name, timeout: nil)
-                let filtered = windowsOutput.data.windows.filter { window in
-                    window.title.localizedCaseInsensitiveContains(titleSubstring)
-                }
-                matchingWindows.append(contentsOf: filtered)
-            }
-
-            return matchingWindows
+            return try await self.windowsWithTitleSubstring(titleSubstring)
 
         case let .applicationAndTitle(appIdentifier, titleSubstring):
-            // More efficient: only search windows of the specified app
-            let windowsOutput = try await applicationService.listWindows(for: appIdentifier, timeout: nil)
-            let filtered = windowsOutput.data.windows.filter { window in
-                window.title.localizedCaseInsensitiveContains(titleSubstring)
-            }
-            return filtered
+            return try await self.windows(for: appIdentifier)
+                .filter { $0.title.localizedCaseInsensitiveContains(titleSubstring) }
 
         case let .index(app, index):
-            let windowsOutput = try await applicationService.listWindows(for: app, timeout: nil)
-            let windows = windowsOutput.data.windows
+            let windows = try await self.windows(for: app)
             guard index >= 0, index < windows.count else {
                 throw PeekabooError.invalidInput(
                     "windowIndex: Index \(index) is out of range. Available windows: 0-\(windows.count - 1)")
@@ -331,76 +319,30 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
 
         case .frontmost:
             let frontmostApp = try await applicationService.getFrontmostApplication()
-            let windowsOutput = try await applicationService.listWindows(for: frontmostApp.name, timeout: nil)
-            let windows = windowsOutput.data.windows
+            let windows = try await self.windows(for: frontmostApp.name)
             return windows.isEmpty ? [] : [windows[0]]
 
         case let .windowId(id):
-            // Need to search all windows to find by ID
-            let appsOutput = try await applicationService.listApplications()
-
-            for app in appsOutput.data.applications {
-                let windowsOutput = try await applicationService.listWindows(for: app.name, timeout: nil)
-                if let window = windowsOutput.data.windows.first(where: { $0.windowID == id }) {
-                    return [window]
-                }
-            }
-
-            throw PeekabooError.windowNotFound()
+            return try await self.windowById(id)
         }
     }
 
     public func getFocusedWindow() async throws -> ServiceWindowInfo? {
-        // Get the frontmost application
         let frontmostApp = try await applicationService.getFrontmostApplication()
-
-        // Get its windows
-        let windowsOutput = try await applicationService.listWindows(for: frontmostApp.name, timeout: nil)
-
-        // The first window is typically the focused one
-        return windowsOutput.data.windows.first
+        let windows = try await self.windows(for: frontmostApp.name)
+        return windows.first
     }
 
     // MARK: - Private Helpers
 
     /// Performs a window operation within MainActor context
+    @MainActor
     private func performWindowOperation<T: Sendable>(
         target: WindowTarget,
         operation: @MainActor (Element) -> T) async throws -> T
     {
-        // Performs a window operation within MainActor context
-        switch target {
-        case let .application(appIdentifier):
-            let app = try await applicationService.findApplication(identifier: appIdentifier)
-            let window = try findFirstWindow(for: app)
-            return operation(window)
-
-        case let .title(titleSubstring):
-            let appsOutput = try await applicationService.listApplications()
-            let window = try findWindowByTitle(titleSubstring, in: appsOutput.data.applications)
-            return operation(window)
-
-        case let .applicationAndTitle(appIdentifier, titleSubstring):
-            // More efficient: only search within the specified app
-            let app = try await applicationService.findApplication(identifier: appIdentifier)
-            let window = try findWindowByTitleInApp(titleSubstring, app: app)
-            return operation(window)
-
-        case let .index(appIdentifier, index):
-            let app = try await applicationService.findApplication(identifier: appIdentifier)
-            let window = try findWindowByIndex(for: app, index: index)
-            return operation(window)
-
-        case .frontmost:
-            let frontmostApp = try await applicationService.getFrontmostApplication()
-            let window = try findFirstWindow(for: frontmostApp)
-            return operation(window)
-
-        case let .windowId(id):
-            let appsOutput = try await applicationService.listApplications()
-            let window = try findWindowById(id, in: appsOutput.data.applications)
-            return operation(window)
-        }
+        let window = try await self.element(for: target)
+        return operation(window)
     }
 
     @MainActor
@@ -412,6 +354,11 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             throw NotFoundError.window(app: app.name)
         }
 
+        if let renderable = self.firstRenderableWindow(from: windows, appName: app.name) {
+            return renderable
+        }
+
+        self.logger.debug("Falling back to first AX window for \(app.name); no renderable window detected")
         return windows[0]
     }
 
@@ -433,77 +380,57 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
 
     @MainActor
+    private func firstRenderableWindow(from windows: [Element], appName: String) -> Element? {
+        let minimumDimension: CGFloat = 50
+
+        for (idx, window) in windows.enumerated() {
+            if window.isMinimized() == true {
+                self.logger.debug("Skipping minimized window idx \(idx) for \(appName)")
+                continue
+            }
+
+            guard
+                let size = window.size(),
+                size.width >= minimumDimension,
+                size.height >= minimumDimension,
+                let position = window.position()
+            else {
+                self.logger.debug("Skipping tiny window idx \(idx) for \(appName)")
+                continue
+            }
+
+            let bounds = CGRect(origin: position, size: size)
+            guard bounds.width >= minimumDimension, bounds.height >= minimumDimension else {
+                self.logger.debug("Skipping non-renderable window idx \(idx) for \(appName)")
+                continue
+            }
+
+            self.logger.debug(
+                "Selected renderable window idx \(idx) for \(appName) with bounds \(String(describing: bounds))")
+            return window
+        }
+
+        return nil
+    }
+
+    @MainActor
     private func findWindowByTitle(_ titleSubstring: String, in apps: [ServiceApplicationInfo]) throws -> Element {
         // Log the search operation
         self.logger.info("Searching for window with title containing: '\(titleSubstring)' in \(apps.count) apps")
         let startTime = Date()
 
-        // First, try to find the window in the frontmost app (most common case)
-        if let frontmostApp = apps.first(where: { app in
-            // Check if this is the frontmost app by checking if it's active
-            NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier
-        }) {
-            self.logger.debug("Checking frontmost app first: \(frontmostApp.name)")
-            let axApp = AXUIElementCreateApplication(frontmostApp.processIdentifier)
-            let appElement = Element(axApp)
-
-            if let windows = appElement.windows() {
-                for window in windows {
-                    if let title = window.title(),
-                       title.localizedCaseInsensitiveContains(titleSubstring)
-                    {
-                        let elapsed = Date().timeIntervalSince(startTime)
-                        self.logger.info("Found window in frontmost app after \(elapsed)s")
-                        return window
-                    }
-                }
-            }
+        if let frontmostWindow = self.findWindowInFrontmostApp(
+            titleSubstring: titleSubstring,
+            apps: apps,
+            startTime: startTime)
+        {
+            return frontmostWindow
         }
 
-        // If not found in frontmost app, search all apps
-        var searchedApps = 0
-        var totalWindows = 0
-
-        for app in apps {
-            searchedApps += 1
-
-            // Skip system apps that rarely have user windows
-            if app.name.hasPrefix("com.apple."),
-               !["Safari", "Mail", "Notes", "Terminal", "Finder"].contains(app.name)
-            {
-                continue
-            }
-
-            let axApp = AXUIElementCreateApplication(app.processIdentifier)
-            let appElement = Element(axApp)
-
-            if let windows = appElement.windows() {
-                totalWindows += windows.count
-
-                // Log progress every 5 apps to help debug performance
-                if searchedApps % 5 == 0 {
-                    let elapsed = Date().timeIntervalSince(startTime)
-                    self.logger.debug("Searched \(searchedApps) apps, \(totalWindows) windows so far (\(elapsed)s)")
-                }
-
-                for window in windows {
-                    if let title = window.title(),
-                       title.localizedCaseInsensitiveContains(titleSubstring)
-                    {
-                        let elapsed = Date().timeIntervalSince(startTime)
-                        self.logger
-                            .info(
-                                "Found window '\(title)' in app '\(app.name)' after searching \(searchedApps) apps and \(totalWindows) windows (\(elapsed)s)")
-                        return window
-                    }
-                }
-            }
-        }
-
-        let elapsed = Date().timeIntervalSince(startTime)
-        self.logger
-            .error("Window not found after searching \(searchedApps) apps and \(totalWindows) windows (\(elapsed)s)")
-        throw PeekabooError.windowNotFound()
+        return try self.searchAllApplications(
+            titleSubstring: titleSubstring,
+            apps: apps,
+            startTime: startTime)
     }
 
     @MainActor
@@ -535,16 +462,186 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             let axApp = AXUIElementCreateApplication(app.processIdentifier)
             let appElement = Element(axApp)
 
-            if let windows = appElement.windows() {
-                // We don't have direct window IDs in AXorcist, so use index
-                for (index, window) in windows.enumerated() {
-                    if index == id {
-                        return window
-                    }
+            guard let windows = appElement.windows() else { continue }
+            for window in windows {
+                if let windowID = self.windowIdentityService.getWindowID(from: window),
+                   Int(windowID) == id
+                {
+                    self.logger.debug("Matched window id \(id) in app \(app.name)")
+                    return window
                 }
             }
         }
 
+        throw PeekabooError.windowNotFound(criteria: "windowId \(id)")
+    }
+
+    // MARK: - Window Search Helpers
+
+    @MainActor
+    private func findWindowInFrontmostApp(
+        titleSubstring: String,
+        apps: [ServiceApplicationInfo],
+        startTime: Date) -> Element?
+    {
+        guard let frontmostApp = apps.first(where: { app in
+            NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier
+        }) else {
+            return nil
+        }
+
+        self.logger.debug("Checking frontmost app first: \(frontmostApp.name)")
+        let axApp = AXUIElementCreateApplication(frontmostApp.processIdentifier)
+        let appElement = Element(axApp)
+
+        guard let windows = appElement.windows() else { return nil }
+        for window in windows where window.title()?.localizedCaseInsensitiveContains(titleSubstring) == true {
+            let elapsed = Date().timeIntervalSince(startTime)
+            self.logger.info("Found window in frontmost app after \(elapsed)s")
+            return window
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private func searchAllApplications(
+        titleSubstring: String,
+        apps: [ServiceApplicationInfo],
+        startTime: Date) throws -> Element
+    {
+        var searchedApps = 0
+        var totalWindows = 0
+
+        for app in apps {
+            searchedApps += 1
+
+            if self.shouldSkipSystemApp(app) {
+                continue
+            }
+
+            let axApp = AXUIElementCreateApplication(app.processIdentifier)
+            let appElement = Element(axApp)
+
+            guard let windows = appElement.windows() else { continue }
+            totalWindows += windows.count
+
+            if searchedApps % 5 == 0 {
+                let elapsed = Date().timeIntervalSince(startTime)
+                self.logger.debug("Searched \(searchedApps) apps, \(totalWindows) windows so far (\(elapsed)s)")
+            }
+
+            let context = WindowSearchContext(
+                appName: app.name,
+                searchedApps: searchedApps,
+                totalWindows: totalWindows,
+                startTime: startTime
+            )
+
+            if let match = self.windowMatchingTitle(titleSubstring, in: windows, context: context) {
+                return match
+            }
+        }
+
+        let elapsed = Date().timeIntervalSince(startTime)
+        self.logger
+            .error("Window not found after searching \(searchedApps) apps and \(totalWindows) windows (\(elapsed)s)")
         throw PeekabooError.windowNotFound()
     }
+
+    private func element(for target: WindowTarget) async throws -> Element {
+        switch target {
+        case let .application(appIdentifier):
+            let app = try await applicationService.findApplication(identifier: appIdentifier)
+            return try findFirstWindow(for: app)
+        case let .title(titleSubstring):
+            let appsOutput = try await applicationService.listApplications()
+            return try findWindowByTitle(titleSubstring, in: appsOutput.data.applications)
+        case let .applicationAndTitle(appIdentifier, titleSubstring):
+            let app = try await applicationService.findApplication(identifier: appIdentifier)
+            return try findWindowByTitleInApp(titleSubstring, app: app)
+        case let .index(appIdentifier, index):
+            let app = try await applicationService.findApplication(identifier: appIdentifier)
+            return try findWindowByIndex(for: app, index: index)
+        case .frontmost:
+            let frontmostApp = try await applicationService.getFrontmostApplication()
+            return try findFirstWindow(for: frontmostApp)
+        case let .windowId(id):
+            let appsOutput = try await applicationService.listApplications()
+            return try findWindowById(id, in: appsOutput.data.applications)
+        }
+    }
+
+    @MainActor
+    private func windows(for appIdentifier: String) async throws -> [ServiceWindowInfo] {
+        let output = try await applicationService.listWindows(for: appIdentifier, timeout: nil)
+        return output.data.windows
+    }
+
+    @MainActor
+    private func windowsWithTitleSubstring(_ substring: String) async throws -> [ServiceWindowInfo] {
+        let appsOutput = try await applicationService.listApplications()
+        var matches: [ServiceWindowInfo] = []
+
+        for app in appsOutput.data.applications {
+            let windows = try await self.windows(for: app.name)
+            matches.append(contentsOf: windows.filter {
+                $0.title.localizedCaseInsensitiveContains(substring)
+            })
+        }
+        return matches
+    }
+
+    @MainActor
+    private func windowById(_ id: Int) async throws -> [ServiceWindowInfo] {
+        let appsOutput = try await applicationService.listApplications()
+        for app in appsOutput.data.applications {
+            let windows = try await self.windows(for: app.name)
+            if let window = windows.first(where: { $0.windowID == id }) {
+                return [window]
+            }
+        }
+        throw PeekabooError.windowNotFound()
+    }
+
+    private func shouldSkipSystemApp(_ app: ServiceApplicationInfo) -> Bool {
+        app.name.hasPrefix("com.apple.") &&
+            !["Safari", "Mail", "Notes", "Terminal", "Finder"].contains(app.name)
+    }
+
+    @MainActor
+    private func windowMatchingTitle(
+        _ titleSubstring: String,
+        in windows: [Element],
+        context: WindowSearchContext) -> Element?
+    {
+        for window in windows where window.title()?.localizedCaseInsensitiveContains(titleSubstring) == true {
+            let elapsed = Date().timeIntervalSince(context.startTime)
+            let message = self.buildWindowFoundMessage(
+                windowTitle: window.title() ?? "",
+                context: context,
+                elapsed: elapsed)
+            self.logger.info("\(message, privacy: .public)")
+            return window
+        }
+        return nil
+    }
+
+    private func buildWindowFoundMessage(
+        windowTitle: String,
+        context: WindowSearchContext,
+        elapsed: TimeInterval) -> String
+    {
+        [
+            "Found window '\(windowTitle)' in app '\(context.appName)'",
+            "after searching \(context.searchedApps) apps and \(context.totalWindows) windows (\(elapsed)s)",
+        ].joined(separator: " ")
+    }
+}
+
+private struct WindowSearchContext {
+    let appName: String
+    let searchedApps: Int
+    let totalWindows: Int
+    let startTime: Date
 }
