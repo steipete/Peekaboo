@@ -5,6 +5,128 @@ import os.log
 import PeekabooFoundation
 import TachikomaMCP
 
+// MARK: - Annotated Screenshot Rendering Helper
+
+private struct AnnotatedScreenshotRenderer {
+    let logger: os.Logger
+
+    func render(originalPath: String, elements: [UIElement]) throws -> String {
+        guard let originalImage = NSImage(contentsOfFile: originalPath) else {
+            self.logger.warning("Failed to load image for annotation, returning original")
+            return originalPath
+        }
+
+        let annotatedImage = self.makeAnnotatedImage(from: originalImage, elements: elements)
+        let annotatedPath = originalPath.replacingOccurrences(of: ".png", with: "_annotated.png")
+
+        guard let pngData = self.makePNGData(from: annotatedImage) else {
+            self.logger.warning("Failed to generate PNG data for annotation, returning original")
+            return originalPath
+        }
+
+        do {
+            try pngData.write(to: URL(fileURLWithPath: annotatedPath))
+            self.logger.info("Generated annotated screenshot at: \(annotatedPath)")
+            return annotatedPath
+        } catch {
+            self.logger.error("Failed to save annotated screenshot: \(error)")
+            return originalPath
+        }
+    }
+
+    private func makeAnnotatedImage(from originalImage: NSImage, elements: [UIElement]) -> NSImage {
+        let annotatedImage = NSImage(size: originalImage.size)
+        annotatedImage.lockFocus()
+        defer { annotatedImage.unlockFocus() }
+
+        originalImage.draw(
+            at: .zero,
+            from: NSRect(origin: .zero, size: originalImage.size),
+            operation: .copy,
+            fraction: 1.0)
+
+        let screenHeight = NSScreen.main?.frame.height ?? originalImage.size.height
+        for element in elements {
+            guard let rect = self.elementRect(for: element, screenHeight: screenHeight) else { continue }
+            self.drawElement(id: element.id, rect: rect)
+        }
+
+        return annotatedImage
+    }
+
+    private func elementRect(for element: UIElement, screenHeight: CGFloat) -> NSRect? {
+        guard element.frame.width > 0, element.frame.height > 0 else { return nil }
+        let flippedY = screenHeight - element.frame.minY - element.frame.height
+        return NSRect(
+            x: element.frame.minX,
+            y: flippedY,
+            width: element.frame.width,
+            height: element.frame.height)
+    }
+
+    private func drawElement(id: String, rect: NSRect) {
+        self.fillColor.setFill()
+        NSBezierPath(rect: rect).fill()
+
+        self.strokeColor.setStroke()
+        let borderPath = NSBezierPath(rect: rect)
+        borderPath.lineWidth = 2.0
+        borderPath.stroke()
+
+        self.drawLabel(id: id, rect: rect)
+    }
+
+    private func drawLabel(id: String, rect: NSRect) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: self.labelFont,
+            .foregroundColor: NSColor.white,
+            .backgroundColor: self.textBackgroundColor,
+        ]
+
+        let label = id as NSString
+        let labelSize = label.size(withAttributes: attributes)
+
+        let labelRect = NSRect(
+            x: rect.minX,
+            y: rect.maxY + 4,
+            width: labelSize.width + 8,
+            height: labelSize.height + 4)
+
+        self.textBackgroundColor.setFill()
+        NSBezierPath(roundedRect: labelRect, xRadius: 4, yRadius: 4).fill()
+
+        label.draw(
+            in: NSRect(
+                x: labelRect.minX + 4,
+                y: labelRect.minY + 2,
+                width: labelSize.width,
+                height: labelSize.height),
+            withAttributes: attributes)
+    }
+
+    private func makePNGData(from image: NSImage) -> Data? {
+        guard let tiffData = image.tiffRepresentation else { return nil }
+        guard let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
+        return bitmap.representation(using: .png, properties: [:])
+    }
+
+    private var fillColor: NSColor {
+        NSColor(red: 0.2, green: 0.6, blue: 1.0, alpha: 0.15)
+    }
+
+    private var strokeColor: NSColor {
+        NSColor(red: 0.2, green: 0.6, blue: 1.0, alpha: 0.9)
+    }
+
+    private var labelFont: NSFont {
+        NSFont.monospacedSystemFont(ofSize: 11, weight: .medium)
+    }
+
+    private var textBackgroundColor: NSColor {
+        NSColor(calibratedWhite: 0.1, alpha: 0.85)
+    }
+}
+
 /// MCP tool for capturing UI state and element detection
 public struct SeeTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "SeeTool")
@@ -12,12 +134,14 @@ public struct SeeTool: MCPTool {
     public let name = "see"
 
     public var description: String {
+
         """
-        Captures a screenshot and analyzes UI elements for automation.
-        Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.)
-        that can be used with interaction commands.
-        Creates or updates a session for tracking UI state across multiple commands.
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
+        Captures a screenshot of the active UI and generates an element map.
+
+        Returns Peekaboo element IDs (B1 for buttons, T1 for text fields, etc.) that can be
+        used with interaction commands and creates/updates a session that tracks UI state.
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5
+        and anthropic/claude-sonnet-4.5.
         """
     }
 
@@ -35,12 +159,21 @@ public struct SeeTool: MCPTool {
                     Use 'PID:PROCESS_ID' (e.g., 'PID:663') to target a specific process by its PID.
                     """),
                 "path": SchemaBuilder.string(
-                    description: "Optional. Path to save the screenshot. If not provided, uses a temporary file."),
+                    description: """
+                    Optional. Path to save the screenshot. If omitted, a temporary file is used.
+                    """
+                ),
                 "session": SchemaBuilder.string(
-                    description: "Optional. Session ID for UI automation state tracking. Creates new session if not provided."),
+                    description: """
+                    Optional. Session ID for UI automation tracking. A new session is created when absent.
+                    """
+                ),
                 "annotate": SchemaBuilder.boolean(
-                    description: "Optional. If true, generates an annotated screenshot with interaction markers and IDs.",
-                    default: false),
+                    description: """
+                    Optional. Generate an annotated screenshot with interaction markers and IDs.
+                    """,
+                    default: false
+                ),
             ],
             required: [])
     }
@@ -49,65 +182,31 @@ public struct SeeTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        // Parse input
-        let appTarget = arguments.getString("app_target")
-        let path = arguments.getString("path")
-        let sessionId = arguments.getString("session")
-        let annotate = arguments.getBool("annotate") ?? false
+        let request = SeeRequest(arguments: arguments)
 
         do {
-            // Create or get session
-            let session = try await getOrCreateSession(sessionId: sessionId)
+            let session = try await self.getOrCreateSession(sessionId: request.sessionId)
+            let target = try self.parseCaptureTarget(request.appTarget)
+            let screenshotPath = try await self.captureScreenshot(target: target, path: request.path, session: session)
+            let elements = try await self.detectUIElements(target: target, session: session)
+            let annotatedPath = try self.generateAnnotationIfNeeded(
+                annotate: request.annotate,
+                screenshotPath: screenshotPath,
+                elements: elements
+            )
 
-            // Parse capture target
-            let target = try parseCaptureTarget(appTarget)
-
-            // Capture screenshot
-            let screenshotPath = try await captureScreenshot(
-                target: target,
-                path: path,
-                session: session)
-
-            // Detect UI elements
-            let elements = try await detectUIElements(
-                target: target,
-                session: session)
-
-            // Generate annotated screenshot if requested
-            let annotatedPath: String? = if annotate {
-                try await self.generateAnnotatedScreenshot(
-                    originalPath: screenshotPath,
-                    elements: elements,
-                    session: session)
-            } else {
-                nil
-            }
-
-            // Build response
-            let summary = await buildSummary(
+            return try await self.buildToolResponse(
                 session: session,
                 elements: elements,
-                screenshotPath: annotatedPath ?? screenshotPath,
-                target: target)
-
-            var content: [MCP.Tool.Content] = [.text(summary)]
-
-            // Add annotated screenshot as base64 if requested
-            if annotate, let annotatedPath {
-                let imageData = try Data(contentsOf: URL(fileURLWithPath: annotatedPath))
-                content.append(.image(data: imageData.base64EncodedString(), mimeType: "image/png", metadata: nil))
-            }
-
-            return ToolResponse(
-                content: content,
-                meta: .object([
-                    "session_id": .string(session.id),
-                    "element_count": .double(Double(elements.count)),
-                    "actionable_count": .double(Double(elements.count(where: { $0.isActionable }))),
-                ]))
-
+                output: ScreenshotOutput(
+                    screenshotPath: screenshotPath,
+                    annotatedPath: annotatedPath,
+                    annotate: request.annotate
+                ),
+                target: target
+            )
         } catch {
-            self.logger.error("See tool execution failed: \(error)")
+            self.logger.error("See tool execution failed: \(error.localizedDescription)")
             return ToolResponse.error("Failed to capture UI state: \(error.localizedDescription)")
         }
     }
@@ -162,213 +261,163 @@ public struct SeeTool: MCPTool {
     }
 
     private func captureScreenshot(target: CaptureTarget, path: String?, session: UISession) async throws -> String {
-        let screenshotPath = path ?? FileManager.default.temporaryDirectory
-            .appendingPathComponent("peekaboo-see-\(Date().timeIntervalSince1970).png")
-            .path
+        let screenshotPath = self.makeScreenshotPath(from: path)
+        let captureResult = try await self.captureResult(for: target)
+        try self.saveCaptureResult(captureResult, to: screenshotPath)
+        await session.setScreenshot(path: screenshotPath, metadata: captureResult.metadata)
+        return screenshotPath
+    }
 
-        // Use screen capture service
-        let captureResult: CaptureResult
+    private func generateAnnotationIfNeeded(
+        annotate: Bool,
+        screenshotPath: String,
+        elements: [UIElement]
+    ) throws -> String? {
+        guard annotate else { return nil }
+        return try self.generateAnnotatedScreenshot(originalPath: screenshotPath, elements: elements)
+    }
+
+    private func makeScreenshotPath(from userProvidedPath: String?) -> String {
+        if let userProvidedPath {
+            return userProvidedPath
+        }
+
+        let filename = "peekaboo-see-\(Date().timeIntervalSince1970).png"
+        return FileManager.default.temporaryDirectory
+            .appendingPathComponent(filename)
+            .path
+    }
+
+    private func captureResult(for target: CaptureTarget) async throws -> CaptureResult {
         switch target {
         case let .screen(index):
-            captureResult = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
+            return try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
         case .frontmost:
-            captureResult = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            return try await PeekabooServices.shared.screenCapture.captureFrontmost()
         case let .window(identifier, _):
-            // Capture first window of the app
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(identifier))
-            guard !windows.isEmpty else {
-                throw PeekabooError.windowNotFound(criteria: "No windows found for application: \(identifier)")
-            }
-            captureResult = try await PeekabooServices.shared.screenCapture.captureWindow(
+            try await self.validateWindowsExist(for: identifier)
+            return try await PeekabooServices.shared.screenCapture.captureWindow(
                 appIdentifier: identifier,
                 windowIndex: 0)
         case .area:
             throw PeekabooError.invalidInput("Area capture not supported for see tool")
         }
+    }
 
-        // Save the image
-        try captureResult.imageData.write(to: URL(fileURLWithPath: screenshotPath))
+    private func validateWindowsExist(for identifier: String) async throws {
+        let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(identifier))
+        guard !windows.isEmpty else {
+            throw PeekabooError.windowNotFound(criteria: "No windows found for application: \(identifier)")
+        }
+    }
 
-        // Store in session
-        await session.setScreenshot(path: screenshotPath, metadata: captureResult.metadata)
-
-        return screenshotPath
+    private func saveCaptureResult(_ result: CaptureResult, to path: String) throws {
+        try result.imageData.write(to: URL(fileURLWithPath: path))
     }
 
     private func detectUIElements(target: CaptureTarget, session: UISession) async throws -> [UIElement] {
-        // Get the screenshot path from session
         guard let screenshotPath = await session.screenshotPath else {
             self.logger.warning("No screenshot available for element detection")
             return []
         }
 
-        // Read the screenshot data
         let imageData = try Data(contentsOf: URL(fileURLWithPath: screenshotPath))
+        let windowContext = try await self.windowContext(for: target)
 
-        // Get window context based on target
-        let windowContext: WindowContext?
-        switch target {
-        case .frontmost:
-            let appInfo = try await PeekabooServices.shared.applications.getFrontmostApplication()
-            windowContext = WindowContext(
-                applicationName: appInfo.name,
-                windowTitle: nil,
-                windowBounds: nil)
-        case let .window(appIdentifier, _):
-            // Get window information
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(appIdentifier))
-            if let firstWindow = windows.first {
-                windowContext = WindowContext(
-                    applicationName: appIdentifier,
-                    windowTitle: firstWindow.title,
-                    windowBounds: firstWindow.bounds)
-            } else {
-                windowContext = WindowContext(
-                    applicationName: appIdentifier,
-                    windowTitle: nil,
-                    windowBounds: nil)
-            }
-        default:
-            windowContext = nil
-        }
-
-        // Use automation service for element detection
         let detectionResult = try await PeekabooServices.shared.automation.detectElements(
             in: imageData,
             sessionId: session.id,
-            windowContext: windowContext)
+            windowContext: windowContext
+        )
 
-        // Get all detected elements
         let detectedElements = await MainActor.run { detectionResult.elements.all }
+        let elements = self.convertElements(detectedElements)
+        self.logger.info("Detected \(elements.count) UI elements")
+        await session.setUIElements(elements)
+        return elements
+    }
 
-        // Convert DetectedElement to UIElement
-        let elements: [UIElement] = detectedElements.map { detected in
+    private func windowContext(for target: CaptureTarget) async throws -> WindowContext? {
+        switch target {
+        case .frontmost:
+            let appInfo = try await PeekabooServices.shared.applications.getFrontmostApplication()
+            return WindowContext(applicationName: appInfo.name, windowTitle: nil, windowBounds: nil)
+        case let .window(appIdentifier, _):
+            let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(appIdentifier))
+            if let firstWindow = windows.first {
+                return WindowContext(
+                    applicationName: appIdentifier,
+                    windowTitle: firstWindow.title,
+                    windowBounds: firstWindow.bounds
+                )
+            }
+            return WindowContext(applicationName: appIdentifier, windowTitle: nil, windowBounds: nil)
+        default:
+            return nil
+        }
+    }
+
+    private func convertElements(_ detected: [DetectedElement]) -> [UIElement] {
+        detected.map { element in
             UIElement(
-                id: detected.id,
-                elementId: detected.id, // Using same ID for compatibility
-                role: detected.type.rawValue,
-                title: detected.label,
-                label: detected.label,
-                value: detected.value,
+                id: element.id,
+                elementId: element.id,
+                role: element.type.rawValue,
+                title: element.label,
+                label: element.label,
+                value: element.value,
                 description: nil,
                 help: nil,
                 roleDescription: nil,
                 identifier: nil,
-                frame: detected.bounds,
-                isActionable: detected.isEnabled,
+                frame: element.bounds,
+                isActionable: element.isEnabled,
                 parentId: nil,
                 children: [],
-                keyboardShortcut: nil)
+                keyboardShortcut: nil
+            )
+        }
+    }
+
+    private func buildToolResponse(
+        session: UISession,
+        elements: [UIElement],
+        output: ScreenshotOutput,
+        target: CaptureTarget
+    ) async throws -> ToolResponse {
+        let finalScreenshot = output.annotatedPath ?? output.screenshotPath
+        let summary = await buildSummary(
+            session: session,
+            elements: elements,
+            screenshotPath: finalScreenshot,
+            target: target)
+
+        var content: [MCP.Tool.Content] = [.text(summary)]
+        if output.annotate, let annotatedPath = output.annotatedPath {
+            let imageData = try Data(contentsOf: URL(fileURLWithPath: annotatedPath))
+            content.append(.image(data: imageData.base64EncodedString(), mimeType: "image/png", metadata: nil))
         }
 
-        self.logger.info("Detected \(elements.count) UI elements")
+        return ToolResponse(content: content, meta: self.makeMetadata(session: session, elements: elements))
+    }
 
-        // Store in session
-        await session.setUIElements(elements)
-
-        return elements
+    private func makeMetadata(session: UISession, elements: [UIElement]) -> Value {
+        .object([
+            "session_id": .string(session.id),
+            "element_count": .double(Double(elements.count)),
+            "actionable_count": .double(Double(elements.count(where: { $0.isActionable }))),
+        ])
     }
 
     // Removed getRolePrefix - no longer needed after refactoring to use main UIElement struct
 
     private func generateAnnotatedScreenshot(
         originalPath: String,
-        elements: [UIElement],
-        session: UISession) async throws -> String
+        elements: [UIElement]) throws -> String
     {
-        // Load the original image
-        guard let originalImage = NSImage(contentsOfFile: originalPath) else {
-            self.logger.warning("Failed to load image for annotation, returning original")
-            return originalPath
-        }
-
-        // Create a new image with annotations
-        let annotatedImage = NSImage(size: originalImage.size)
-        annotatedImage.lockFocus()
-
-        // Draw the original image
-        originalImage.draw(
-            at: .zero,
-            from: NSRect(origin: .zero, size: originalImage.size),
-            operation: .copy,
-            fraction: 1.0)
-
-        // Set up drawing attributes
-        let strokeColor = NSColor.systemRed
-        let fillColor = NSColor.systemRed.withAlphaComponent(0.2)
-        let textColor = NSColor.white
-        let textBackgroundColor = NSColor.systemRed
-
-        // Draw markers for each element
-        for element in elements {
-            // Skip elements without bounds
-            guard element.frame.width > 0, element.frame.height > 0 else { continue }
-
-            // Convert coordinates (flip Y axis for screen coordinates)
-            let screenHeight = NSScreen.main?.frame.height ?? originalImage.size.height
-            let flippedY = screenHeight - element.frame.minY - element.frame.height
-            let elementRect = NSRect(
-                x: element.frame.minX,
-                y: flippedY,
-                width: element.frame.width,
-                height: element.frame.height)
-
-            // Draw semi-transparent fill
-            fillColor.setFill()
-            NSBezierPath(rect: elementRect).fill()
-
-            // Draw border
-            strokeColor.setStroke()
-            let borderPath = NSBezierPath(rect: elementRect)
-            borderPath.lineWidth = 2.0
-            borderPath.stroke()
-
-            // Draw element ID label
-            let labelText = element.id
-            let font = NSFont.boldSystemFont(ofSize: 12)
-            let textAttributes: [NSAttributedString.Key: Any] = [
-                .font: font,
-                .foregroundColor: textColor,
-                .backgroundColor: textBackgroundColor,
-            ]
-
-            let textSize = labelText.size(withAttributes: textAttributes)
-            let labelRect = NSRect(
-                x: elementRect.minX,
-                y: elementRect.minY - textSize.height - 2,
-                width: textSize.width + 8,
-                height: textSize.height + 4)
-
-            // Draw label background
-            textBackgroundColor.setFill()
-            NSBezierPath(rect: labelRect).fill()
-
-            // Draw label text
-            let textPoint = NSPoint(x: labelRect.minX + 4, y: labelRect.minY + 2)
-            labelText.draw(at: textPoint, withAttributes: textAttributes)
-        }
-
-        annotatedImage.unlockFocus()
-
-        // Save the annotated image
-        let annotatedPath = originalPath.replacingOccurrences(of: ".png", with: "_annotated.png")
-
-        if let tiffData = annotatedImage.tiffRepresentation,
-           let bitmapRep = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmapRep.representation(using: .png, properties: [:])
-        {
-            do {
-                try pngData.write(to: URL(fileURLWithPath: annotatedPath))
-                self.logger.info("Generated annotated screenshot at: \(annotatedPath)")
-                return annotatedPath
-            } catch {
-                self.logger.error("Failed to save annotated screenshot: \(error)")
-                return originalPath
-            }
-        }
-
-        self.logger.warning("Failed to generate PNG data for annotation, returning original")
-        return originalPath
+        try AnnotatedScreenshotRenderer(logger: self.logger).render(
+            originalPath: originalPath,
+            elements: elements)
     }
 
     @MainActor
@@ -378,57 +427,11 @@ public struct SeeTool: MCPTool {
         screenshotPath: String,
         target: CaptureTarget) async -> String
     {
-        var lines: [String] = []
-
-        lines.append("📸 UI State Captured")
-        lines.append("Session ID: \(session.id)")
-
-        // Add app/window info if available
-        if let metadata = await session.screenshotMetadata {
-            if let appInfo = metadata.applicationInfo {
-                lines.append("Application: \(appInfo.name)")
-            }
-            if let windowInfo = metadata.windowInfo {
-                lines.append("Window: \(windowInfo.title)")
-            }
-        }
-
-        lines.append("Screenshot: \(screenshotPath)")
-        lines.append("Elements found: \(elements.count)")
-
-        // Group elements by role
-        let elementsByRole = Dictionary(grouping: elements, by: { $0.role })
-
-        lines.append("\nUI Elements:")
-
-        for (role, roleElements) in elementsByRole.sorted(by: { $0.key < $1.key }) {
-            let actionableCount = roleElements.count(where: { $0.isActionable })
-            lines.append("\n\(role) (\(roleElements.count) found, \(actionableCount) actionable):")
-
-            for element in roleElements {
-                var parts = ["  \(element.id)"]
-
-                if let title = element.title {
-                    parts.append("\"\(title)\"")
-                } else if let label = element.label {
-                    parts.append("\"\(label)\"")
-                } else if let value = element.value {
-                    parts.append("value: \"\(value)\"")
-                }
-
-                parts.append("at (\(Int(element.frame.origin.x)), \(Int(element.frame.origin.y)))")
-
-                if !element.isActionable {
-                    parts.append("[not actionable]")
-                }
-
-                lines.append(parts.joined(separator: " - "))
-            }
-        }
-
-        lines.append("\nUse element IDs (B1, T1, etc.) with click, type, and other interaction commands.")
-
-        return lines.joined(separator: "\n")
+        return await SeeSummaryBuilder(
+            session: session,
+            elements: elements,
+            screenshotPath: screenshotPath)
+            .build()
     }
 }
 
@@ -440,6 +443,99 @@ public struct SeeTool: MCPTool {
 // Using the main UIElement from Session.swift - no need to redefine
 
 // MARK: - UI Session Management
+
+private struct SeeRequest {
+    let appTarget: String?
+    let path: String?
+    let sessionId: String?
+    let annotate: Bool
+
+    init(arguments: ToolArguments) {
+        self.appTarget = arguments.getString("app_target")
+        self.path = arguments.getString("path")
+        self.sessionId = arguments.getString("session")
+        self.annotate = arguments.getBool("annotate") ?? false
+    }
+}
+
+private struct ScreenshotOutput {
+    let screenshotPath: String
+    let annotatedPath: String?
+    let annotate: Bool
+}
+
+@MainActor
+private struct SeeSummaryBuilder {
+    let session: UISession
+    let elements: [UIElement]
+    let screenshotPath: String
+
+    func build() async -> String {
+        var lines = self.headerLines()
+        lines.append(contentsOf: await self.metadataLines())
+        lines.append("Screenshot: \(self.screenshotPath)")
+        lines.append("Elements found: \(self.elements.count)")
+        lines.append("")
+        lines.append(contentsOf: self.elementSection())
+        lines.append("")
+        lines.append("Use element IDs (B1, T1, etc.) with click, type, and other interaction commands.")
+        return lines.joined(separator: "\n")
+    }
+
+    private func headerLines() -> [String] {
+        [
+            "📸 UI State Captured",
+            "Session ID: \(self.session.id)",
+        ]
+    }
+
+    private func metadataLines() async -> [String] {
+        guard let metadata = await self.session.screenshotMetadata else { return [] }
+        var lines: [String] = []
+        if let appInfo = metadata.applicationInfo {
+            lines.append("Application: \(appInfo.name)")
+        }
+        if let windowInfo = metadata.windowInfo {
+            lines.append("Window: \(windowInfo.title)")
+        }
+        return lines
+    }
+
+    private func elementSection() -> [String] {
+        let elementsByRole = Dictionary(grouping: self.elements, by: { $0.role })
+        var lines = ["UI Elements:"]
+        for (role, roleElements) in elementsByRole.sorted(by: { $0.key < $1.key }) {
+            lines.append("")
+            lines.append(self.roleHeader(role: role, elements: roleElements))
+            lines.append(contentsOf: roleElements.map(self.describeElement))
+        }
+        return lines
+    }
+
+    private func roleHeader(role: String, elements: [UIElement]) -> String {
+        let actionableCount = elements.count(where: { $0.isActionable })
+        return "\(role) (\(elements.count) found, \(actionableCount) actionable):"
+    }
+
+    private func describeElement(_ element: UIElement) -> String {
+        var parts = ["  \(element.id)"]
+        if let label = self.primaryLabel(for: element) {
+            parts.append("\"\(label)\"")
+        }
+        parts.append("at (\(Int(element.frame.origin.x)), \(Int(element.frame.origin.y)))")
+        if !element.isActionable {
+            parts.append("[not actionable]")
+        }
+        return parts.joined(separator: " - ")
+    }
+
+    private func primaryLabel(for element: UIElement) -> String? {
+        if let title = element.title { return title }
+        if let label = element.label { return label }
+        if let value = element.value { return "value: \(value)" }
+        return nil
+    }
+}
 
 actor UISession {
     let id: String
@@ -496,9 +592,9 @@ actor UISessionManager {
         let cutoffDate = Date().addingTimeInterval(-timeInterval)
         var newSessions: [String: UISession] = [:]
         for (id, session) in self.sessions {
-            if await session.lastAccessedAt > cutoffDate {
-                newSessions[id] = session
-            }
+            let lastAccessed = await session.lastAccessedAt
+            guard lastAccessed > cutoffDate else { continue }
+            newSessions[id] = session
         }
         self.sessions = newSessions
     }
