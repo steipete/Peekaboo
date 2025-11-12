@@ -148,115 +148,138 @@ public final class HotkeyService {
     }
 
     private func mapKeyToVirtualCode(_ key: String) -> CGKeyCode {
-        switch key.lowercased() {
-        // Letters
-        case "a": 0x00
-        case "s": 0x01
-        case "d": 0x02
-        case "f": 0x03
-        case "h": 0x04
-        case "g": 0x05
-        case "z": 0x06
-        case "x": 0x07
-        case "c": 0x08
-        case "v": 0x09
-        case "b": 0x0B
-        case "q": 0x0C
-        case "w": 0x0D
-        case "e": 0x0E
-        case "r": 0x0F
-        case "y": 0x10
-        case "t": 0x11
-        case "1", "!": 0x12
-        case "2", "@": 0x13
-        case "3", "#": 0x14
-        case "4", "$": 0x15
-        case "5", "%": 0x16
-        case "6", "^": 0x17
-        case "=", "+": 0x18
-        case "9", "(": 0x19
-        case "7", "&": 0x1A
-        case "-", "_": 0x1B
-        case "8", "*": 0x1C
-        case "0", ")": 0x1D
-        case "]", "}": 0x1E
-        case "o": 0x1F
-        case "u": 0x20
-        case "[", "{": 0x21
-        case "i": 0x22
-        case "p": 0x23
-        case "l": 0x25
-        case "j": 0x26
-        case "'", "\"": 0x27
-        case "k": 0x28
-        case ";", ":": 0x29
-        case "\\", "|": 0x2A
-        case ",", "<": 0x2B
-        case "/", "?": 0x2C
-        case "n": 0x2D
-        case "m": 0x2E
-        case ".", ">": 0x2F
-        case "`", "~": 0x32
-        // Special keys
-        case "return", "enter": 0x24
-        case "tab": 0x30
-        case "space": 0x31
-        case "delete", "backspace": 0x33
-        case "escape", "esc": 0x35
-        case "right", "rightarrow": 0x7C
-        case "left", "leftarrow": 0x7B
-        case "down", "downarrow": 0x7D
-        case "up", "uparrow": 0x7E
-        case "home": 0x73
-        case "end": 0x77
-        case "pageup": 0x74
-        case "pagedown": 0x79
-        // Function keys
-        case "f1": 0x7A
-        case "f2": 0x78
-        case "f3": 0x63
-        case "f4": 0x76
-        case "f5": 0x60
-        case "f6": 0x61
-        case "f7": 0x62
-        case "f8": 0x64
-        case "f9": 0x65
-        case "f10": 0x6D
-        case "f11": 0x67
-        case "f12": 0x6F
-        case "f13": 0x69
-        case "f14": 0x6B
-        case "f15": 0x71
-        case "f16": 0x6A
-        case "f17": 0x40
-        case "f18": 0x4F
-        case "f19": 0x50
-        case "f20": 0x5A
-        // Numeric keypad
-        case "keypad0": 0x52
-        case "keypad1": 0x53
-        case "keypad2": 0x54
-        case "keypad3": 0x55
-        case "keypad4": 0x56
-        case "keypad5": 0x57
-        case "keypad6": 0x58
-        case "keypad7": 0x59
-        case "keypad8": 0x5B
-        case "keypad9": 0x5C
-        case "keypadplus": 0x45
-        case "keypadminus": 0x4E
-        case "keypadmultiply": 0x43
-        case "keypaddivide": 0x4B
-        case "keypadenter": 0x4C
-        case "keypaddecimal": 0x41
-        case "keypadequals": 0x51
-        // Media keys
-        case "volumeup": 0x48
-        case "volumedown": 0x49
-        case "mute": 0x4A
-        default:
-            0xFFFF // Invalid key
+        HotkeyKeyMapping.value(for: key)
+    }
+}
+
+private enum HotkeyKeyMapping {
+    private static let unknown: CGKeyCode = 0xFFFF
+
+    private static let map: [String: CGKeyCode] = {
+        var dictionary: [String: CGKeyCode] = [:]
+
+        func register(_ code: CGKeyCode, keys: [String]) {
+            for key in keys {
+                dictionary[key] = code
+            }
         }
+
+        // Letters
+        register(0x00, keys: ["a"])
+        register(0x01, keys: ["s"])
+        register(0x02, keys: ["d"])
+        register(0x03, keys: ["f"])
+        register(0x04, keys: ["h"])
+        register(0x05, keys: ["g"])
+        register(0x06, keys: ["z"])
+        register(0x07, keys: ["x"])
+        register(0x08, keys: ["c"])
+        register(0x09, keys: ["v"])
+        register(0x0B, keys: ["b"])
+        register(0x0C, keys: ["q"])
+        register(0x0D, keys: ["w"])
+        register(0x0E, keys: ["e"])
+        register(0x0F, keys: ["r"])
+        register(0x10, keys: ["y"])
+        register(0x11, keys: ["t"])
+        register(0x12, keys: ["1", "!"])
+        register(0x13, keys: ["2", "@"])
+        register(0x14, keys: ["3", "#"])
+        register(0x15, keys: ["4", "$"])
+        register(0x16, keys: ["5", "%"])
+        register(0x17, keys: ["6", "^"])
+        register(0x18, keys: ["=", "+"])
+        register(0x19, keys: ["9", "("])
+        register(0x1A, keys: ["7", "&"])
+        register(0x1B, keys: ["-", "_"])
+        register(0x1C, keys: ["8", "*"])
+        register(0x1D, keys: ["0", ")"])
+        register(0x1E, keys: ["]", "}"])
+        register(0x1F, keys: ["o"])
+        register(0x20, keys: ["u"])
+        register(0x21, keys: ["[", "{"])
+        register(0x22, keys: ["i"])
+        register(0x23, keys: ["p"])
+        register(0x25, keys: ["l"])
+        register(0x26, keys: ["j"])
+        register(0x27, keys: ["'", "\""])
+        register(0x28, keys: ["k"])
+        register(0x29, keys: [";", ":"])
+        register(0x2A, keys: ["\\", "|"])
+        register(0x2B, keys: [",", "<"])
+        register(0x2C, keys: ["/", "?"])
+        register(0x2D, keys: ["n"])
+        register(0x2E, keys: ["m"])
+        register(0x2F, keys: [".", ">"])
+        register(0x32, keys: ["`", "~"])
+
+        // Special keys
+        register(0x24, keys: ["return", "enter"])
+        register(0x30, keys: ["tab"])
+        register(0x31, keys: ["space"])
+        register(0x33, keys: ["delete", "backspace"])
+        register(0x35, keys: ["escape", "esc"])
+        register(0x7C, keys: ["right", "rightarrow"])
+        register(0x7B, keys: ["left", "leftarrow"])
+        register(0x7D, keys: ["down", "downarrow"])
+        register(0x7E, keys: ["up", "uparrow"])
+        register(0x73, keys: ["home"])
+        register(0x77, keys: ["end"])
+        register(0x74, keys: ["pageup"])
+        register(0x79, keys: ["pagedown"])
+
+        // Function keys
+        register(0x7A, keys: ["f1"])
+        register(0x78, keys: ["f2"])
+        register(0x63, keys: ["f3"])
+        register(0x76, keys: ["f4"])
+        register(0x60, keys: ["f5"])
+        register(0x61, keys: ["f6"])
+        register(0x62, keys: ["f7"])
+        register(0x64, keys: ["f8"])
+        register(0x65, keys: ["f9"])
+        register(0x6D, keys: ["f10"])
+        register(0x67, keys: ["f11"])
+        register(0x6F, keys: ["f12"])
+        register(0x69, keys: ["f13"])
+        register(0x6B, keys: ["f14"])
+        register(0x71, keys: ["f15"])
+        register(0x6A, keys: ["f16"])
+        register(0x40, keys: ["f17"])
+        register(0x4F, keys: ["f18"])
+        register(0x50, keys: ["f19"])
+        register(0x5A, keys: ["f20"])
+
+        // Numeric keypad
+        register(0x52, keys: ["keypad0"])
+        register(0x53, keys: ["keypad1"])
+        register(0x54, keys: ["keypad2"])
+        register(0x55, keys: ["keypad3"])
+        register(0x56, keys: ["keypad4"])
+        register(0x57, keys: ["keypad5"])
+        register(0x58, keys: ["keypad6"])
+        register(0x59, keys: ["keypad7"])
+        register(0x5B, keys: ["keypad8"])
+        register(0x5C, keys: ["keypad9"])
+        register(0x45, keys: ["keypadplus"])
+        register(0x4E, keys: ["keypadminus"])
+        register(0x43, keys: ["keypadmultiply"])
+        register(0x4B, keys: ["keypaddivide"])
+        register(0x4C, keys: ["keypadenter"])
+        register(0x41, keys: ["keypaddecimal"])
+        register(0x51, keys: ["keypadequals"])
+
+        // Media keys
+        register(0x48, keys: ["volumeup"])
+        register(0x49, keys: ["volumedown"])
+        register(0x4A, keys: ["mute"])
+
+        return dictionary
+    }()
+
+    static func value(for key: String) -> CGKeyCode {
+        let normalized = key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return self.map[normalized] ?? Self.unknown
     }
 }
 

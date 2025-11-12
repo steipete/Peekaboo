@@ -42,7 +42,10 @@ public final class DialogService: DialogServiceProtocol {
             self.logger.debug("Skipping visualizer connection (running inside Mac app)")
         }
     }
+}
 
+@MainActor
+public extension DialogService {
     public func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
         self.logger.info("Finding active dialog")
         if let title = windowTitle {
@@ -93,6 +96,8 @@ public final class DialogService: DialogServiceProtocol {
             throw PeekabooError.elementNotFound("\(buttonText)")
         }
 
+        let resolvedButtonTitle = targetButton.title() ?? buttonText
+
         // Get button bounds for visual feedback
         let buttonBounds: CGRect = if let position = targetButton.position(), let size = targetButton.size() {
             CGRect(origin: position, size: size)
@@ -109,20 +114,20 @@ public final class DialogService: DialogServiceProtocol {
         }
 
         // Click the button
-        self.logger.debug("Clicking button: \(targetButton.title() ?? buttonText)")
+        self.logger.debug("Clicking button: \(resolvedButtonTitle)")
         try targetButton.performAction(.press)
 
         let result = DialogActionResult(
             success: true,
             action: .clickButton,
             details: [
-                "button": targetButton.title() ?? buttonText,
+                "button": resolvedButtonTitle,
                 "window": dialog.title() ?? "Dialog",
             ])
 
         self.logger
             .info(
-                "\(AgentDisplayTokens.Status.success) Successfully clicked button: \(targetButton.title() ?? buttonText)")
+                "\(AgentDisplayTokens.Status.success) Successfully clicked button: \(resolvedButtonTitle)")
         return result
     }
 
@@ -139,8 +144,6 @@ public final class DialogService: DialogServiceProtocol {
         }
 
         let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
-
-        // Find text fields
         let textFields = self.collectTextFields(from: dialog)
         self.logger.debug("Found \(textFields.count) text fields")
 
@@ -149,75 +152,18 @@ public final class DialogService: DialogServiceProtocol {
             throw PeekabooError.operationError(message: "No text fields found in dialog.")
         }
 
-        // Select target field
-        let targetField: Element
+        let targetField = try self.selectTextField(
+            in: textFields,
+            identifier: fieldIdentifier)
 
-        if let identifier = fieldIdentifier {
-            // Try to parse as index
-            if let index = Int(identifier) {
-                guard index < textFields.count else {
-                    throw PeekabooError
-                        .invalidInput("Invalid field index: \(index). Dialog has \(textFields.count) fields.")
-                }
-                targetField = textFields[index]
-            } else {
-                // Find by label/placeholder
-                guard let field = textFields.first(where: { field in
-                    field.title() == identifier ||
-                        field.attribute(Attribute<String>("AXPlaceholderValue")) == identifier ||
-                        field.descriptionText()?.contains(identifier) == true
-                }) else {
-                    throw PeekabooError.elementNotFound("\(identifier)")
-                }
-                targetField = field
-            }
-        } else {
-            // Use first field
-            targetField = textFields[0]
-        }
+        await self.highlightDialogElement(
+            element: .textField,
+            bounds: self.elementBounds(for: targetField),
+            action: .enterText)
 
-        // Get field bounds for visual feedback
-        let fieldBounds: CGRect = if let position = targetField.position(), let size = targetField.size() {
-            CGRect(origin: position, size: size)
-        } else {
-            .zero
-        }
-
-        // Show dialog interaction visual feedback for text field
-        if fieldBounds != .zero {
-            _ = await self.visualizerClient.showDialogInteraction(
-                element: .textField,
-                elementRect: fieldBounds,
-                action: .enterText)
-        }
-
-        // Focus the field
-        self.logger.debug("Focusing text field")
-        try targetField.performAction(.press)
-
-        // Clear if requested
-        if clearExisting {
-            self.logger.debug("Clearing existing text")
-
-            // Select all (Cmd+A)
-            let selectAll = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) // A
-            selectAll?.flags = .maskCommand
-            selectAll?.post(tap: .cghidEventTap)
-
-            // Delete
-            let deleteKey = CGEvent(keyboardEventSource: nil, virtualKey: 0x33, keyDown: true) // Delete
-            deleteKey?.post(tap: .cghidEventTap)
-
-            // Small delay
-            usleep(50000) // 50ms
-        }
-
-        // Type the text
-        self.logger.debug("Typing text into field")
-        for char in text {
-            try self.typeCharacter(char)
-            usleep(10000) // 10ms between characters
-        }
+        try self.focusTextField(targetField)
+        try self.clearFieldIfNeeded(targetField, shouldClear: clearExisting)
+        try self.typeTextValue(text, delay: 10_000)
 
         let result = DialogActionResult(
             success: true,
@@ -250,69 +196,17 @@ public final class DialogService: DialogServiceProtocol {
         let dialog = try findFileDialogElement()
         var details: [String: String] = [:]
 
-        // Handle path navigation
         if let filePath = path {
-            self.logger.debug("Navigating to path using Cmd+Shift+G")
-
-            // Use Go To folder shortcut (Cmd+Shift+G)
-            let cmdShiftG = CGEvent(keyboardEventSource: nil, virtualKey: 0x05, keyDown: true) // G
-            cmdShiftG?.flags = [.maskCommand, .maskShift]
-            cmdShiftG?.post(tap: .cghidEventTap)
-
-            // Wait for go to sheet
-            usleep(200_000) // 200ms
-
-            // Type the path
-            for char in filePath {
-                try self.typeCharacter(char)
-                usleep(5000) // 5ms between characters
-            }
-
-            // Press Enter
-            let enter = CGEvent(keyboardEventSource: nil, virtualKey: 0x24, keyDown: true) // Return
-            enter?.post(tap: .cghidEventTap)
-
-            usleep(100_000) // 100ms
+            try self.navigateToPath(filePath)
             details["path"] = filePath
         }
 
-        // Handle filename
         if let fileName = filename {
-            self.logger.debug("Setting filename in dialog")
-
-            // Find the name field (usually the first text field)
-            let textFields = self.collectTextFields(from: dialog)
-            guard let field = textFields.first else {
-                self.logger.error("No text fields found in file dialog")
-                throw PeekabooError.operationError(message: "No text fields found in dialog.")
-            }
-
-            // Focus and clear the field
-            try field.performAction(.press)
-
-            // Select all
-            let selectAll = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) // A
-            selectAll?.flags = .maskCommand
-            selectAll?.post(tap: .cghidEventTap)
-
-            usleep(50000) // 50ms
-
-            // Type the filename
-            for char in fileName {
-                try self.typeCharacter(char)
-                usleep(5000) // 5ms between characters
-            }
-
+            try self.updateFilename(fileName, in: dialog)
             details["filename"] = fileName
         }
 
-        // Click the action button
-        let buttons = self.collectButtons(from: dialog)
-        self.logger.debug("Found \(buttons.count) buttons, looking for: \(actionButton)")
-
-        if let button = buttons.first(where: { $0.title() == actionButton }) {
-            self.logger.debug("Clicking action button: \(actionButton)")
-            try button.performAction(.press)
+        if try self.clickActionButton(named: actionButton, in: dialog) {
             details["button_clicked"] = actionButton
         }
 
@@ -379,59 +273,13 @@ public final class DialogService: DialogServiceProtocol {
             self.logger.debug("For window: \(title)")
         }
 
-        // Get dialog info first (this is already properly structured)
         let dialogInfo = try await findActiveDialog(windowTitle: windowTitle)
-
-        // Collect all elements
         let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
 
-        // Collect buttons
-        let axButtons = self.collectButtons(from: dialog)
-        self.logger.debug("Found \(axButtons.count) buttons")
-
-        let buttons = axButtons.compactMap { btn -> DialogButton? in
-            guard let title = btn.title() else { return nil }
-            let isEnabled = btn.isEnabled() ?? true
-            let isDefault = btn.attribute(Attribute<Bool>("AXDefault")) ?? false
-
-            return DialogButton(
-                title: title,
-                isEnabled: isEnabled,
-                isDefault: isDefault)
-        }
-
-        // Collect text fields
-        let axTextFields = self.collectTextFields(from: dialog)
-        self.logger.debug("Found \(axTextFields.count) text fields")
-
-        let textFields = axTextFields.enumerated().map { index, field in
-            DialogTextField(
-                title: field.title(),
-                value: field.value() as? String,
-                placeholder: field.attribute(Attribute<String>("AXPlaceholderValue")),
-                index: index,
-                isEnabled: field.isEnabled() ?? true)
-        }
-
-        // Collect static texts
-        let axStaticTexts = dialog.children()?.filter { $0.role() == "AXStaticText" } ?? []
-        let staticTexts = axStaticTexts.compactMap { $0.value() as? String }
-        self.logger.debug("Found \(staticTexts.count) static texts")
-
-        // Collect other elements
-        let otherAxElements = dialog.children()?.filter { element in
-            let role = element.role() ?? ""
-            return role != "AXButton" && role != "AXTextField" &&
-                role != "AXTextArea" && role != "AXStaticText"
-        } ?? []
-
-        let otherElements = otherAxElements.compactMap { element -> DialogElement? in
-            guard let role = element.role() else { return nil }
-            return DialogElement(
-                role: role,
-                title: element.title(),
-                value: element.value() as? String)
-        }
+        let buttons = self.dialogButtons(from: dialog)
+        let textFields = self.dialogTextFields(from: dialog)
+        let staticTexts = self.dialogStaticTexts(from: dialog)
+        let otherElements = self.dialogOtherElements(from: dialog)
 
         let elements = DialogElements(
             dialogInfo: dialogInfo,
@@ -440,16 +288,18 @@ public final class DialogService: DialogServiceProtocol {
             staticTexts: staticTexts,
             otherElements: otherElements)
 
-        self.logger
-            .info(
-                "\(AgentDisplayTokens.Status.success) Listed \(buttons.count) buttons, \(textFields.count) fields, \(staticTexts.count) texts")
+        let summary = "\(AgentDisplayTokens.Status.success) Listed \(buttons.count) buttons, " +
+            "\(textFields.count) fields, \(staticTexts.count) texts"
+        self.logger.info("\(summary, privacy: .public)")
         return elements
     }
+}
 
-    // MARK: - Private Helpers
+// MARK: - Private Helpers
 
-    @MainActor
-    private func findDialogElement(withTitle title: String?) throws -> Element {
+@MainActor
+private extension DialogService {
+    func findDialogElement(withTitle title: String?) throws -> Element {
         self.logger.debug("Finding dialog element")
 
         let systemWide = Element.systemWide()
@@ -629,6 +479,84 @@ public final class DialogService: DialogServiceProtocol {
         return fields
     }
 
+    func selectTextField(in textFields: [Element], identifier: String?) throws -> Element {
+        guard let identifier else {
+            return textFields[0]
+        }
+
+        if let index = Int(identifier) {
+            guard textFields.indices.contains(index) else {
+                throw PeekabooError
+                    .invalidInput("Invalid field index: \(index). Dialog has \(textFields.count) fields.")
+            }
+            return textFields[index]
+        }
+
+        guard let field = textFields.first(where: { field in
+            field.title() == identifier ||
+                field.attribute(Attribute<String>("AXPlaceholderValue")) == identifier ||
+                field.descriptionText()?.contains(identifier) == true
+        }) else {
+            throw PeekabooError.elementNotFound("\(identifier)")
+        }
+
+        return field
+    }
+
+    func elementBounds(for element: Element) -> CGRect {
+        guard let position = element.position(), let size = element.size() else {
+            return .zero
+        }
+        return CGRect(origin: position, size: size)
+    }
+
+    func highlightDialogElement(
+        element: DialogElementType,
+        bounds: CGRect,
+        action: DialogActionType) async
+    {
+        guard bounds != .zero else { return }
+        _ = await self.visualizerClient.showDialogInteraction(
+            element: element,
+            elementRect: bounds,
+            action: action)
+    }
+
+    func focusTextField(_ field: Element) throws {
+        self.logger.debug("Focusing text field")
+        try field.performAction(.press)
+    }
+
+    func clearFieldIfNeeded(_ field: Element, shouldClear: Bool) throws {
+        guard shouldClear else { return }
+        self.logger.debug("Clearing existing text")
+        self.pressKey(0x00, modifiers: .maskCommand) // Cmd+A
+        self.pressKey(0x33) // Delete
+        usleep(50_000)
+    }
+
+    func typeTextValue(_ text: String, delay: useconds_t) throws {
+        self.logger.debug("Typing text into field")
+        for char in text {
+            try self.typeCharacter(char)
+            usleep(delay)
+        }
+    }
+
+    func pressKey(_ virtualKey: CGKeyCode, modifiers: CGEventFlags = []) {
+        guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: true) else {
+            return
+        }
+        keyDown.flags = modifiers
+        keyDown.post(tap: .cghidEventTap)
+
+        guard let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: false) else {
+            return
+        }
+        keyUp.flags = modifiers
+        keyUp.post(tap: .cghidEventTap)
+    }
+
     @MainActor
     private func collectButtons(from element: Element) -> [Element] {
         var buttons: [Element] = []
@@ -647,6 +575,95 @@ public final class DialogService: DialogServiceProtocol {
 
         collect(from: element)
         return buttons
+    }
+
+    func dialogButtons(from dialog: Element) -> [DialogButton] {
+        let axButtons = self.collectButtons(from: dialog)
+        self.logger.debug("Found \(axButtons.count) buttons")
+
+        return axButtons.compactMap { btn -> DialogButton? in
+            guard let title = btn.title() else { return nil }
+            let isEnabled = btn.isEnabled() ?? true
+            let isDefault = btn.attribute(Attribute<Bool>("AXDefault")) ?? false
+
+            return DialogButton(
+                title: title,
+                isEnabled: isEnabled,
+                isDefault: isDefault)
+        }
+    }
+
+    func dialogTextFields(from dialog: Element) -> [DialogTextField] {
+        let axTextFields = self.collectTextFields(from: dialog)
+        self.logger.debug("Found \(axTextFields.count) text fields")
+
+        return axTextFields.enumerated().map { index, field in
+            DialogTextField(
+                title: field.title(),
+                value: field.value() as? String,
+                placeholder: field.attribute(Attribute<String>("AXPlaceholderValue")),
+                index: index,
+                isEnabled: field.isEnabled() ?? true)
+        }
+    }
+
+    func dialogStaticTexts(from dialog: Element) -> [String] {
+        let axStaticTexts = dialog.children()?.filter { $0.role() == "AXStaticText" } ?? []
+        let staticTexts = axStaticTexts.compactMap { $0.value() as? String }
+        self.logger.debug("Found \(staticTexts.count) static texts")
+        return staticTexts
+    }
+
+    func dialogOtherElements(from dialog: Element) -> [DialogElement] {
+        let otherAxElements = dialog.children()?.filter { element in
+            let role = element.role() ?? ""
+            return role != "AXButton" && role != "AXTextField" &&
+                role != "AXTextArea" && role != "AXStaticText"
+        } ?? []
+
+        return otherAxElements.compactMap { element -> DialogElement? in
+            guard let role = element.role() else { return nil }
+            return DialogElement(
+                role: role,
+                title: element.title(),
+                value: element.value() as? String)
+        }
+    }
+
+    func navigateToPath(_ filePath: String) throws {
+        self.logger.debug("Navigating to path using Cmd+Shift+G")
+        self.pressKey(0x05, modifiers: [.maskCommand, .maskShift]) // G
+        usleep(200_000)
+        try self.typeTextValue(filePath, delay: 5_000)
+        self.pressKey(0x24) // Return
+        usleep(100_000)
+    }
+
+    func updateFilename(_ fileName: String, in dialog: Element) throws {
+        self.logger.debug("Setting filename in dialog")
+        let textFields = self.collectTextFields(from: dialog)
+        guard let field = textFields.first else {
+            self.logger.error("No text fields found in file dialog")
+            throw PeekabooError.operationError(message: "No text fields found in dialog.")
+        }
+
+        try field.performAction(.press)
+        self.pressKey(0x00, modifiers: .maskCommand)
+        usleep(50_000)
+        try self.typeTextValue(fileName, delay: 5_000)
+    }
+
+    func clickActionButton(named actionButton: String, in dialog: Element) throws -> Bool {
+        let buttons = self.collectButtons(from: dialog)
+        self.logger.debug("Found \(buttons.count) buttons, looking for: \(actionButton)")
+
+        guard let button = buttons.first(where: { $0.title() == actionButton }) else {
+            return false
+        }
+
+        self.logger.debug("Clicking action button: \(actionButton)")
+        try button.performAction(.press)
+        return true
     }
 
     private func matchesDialogWindowTitle(_ title: String, expectedTitle: String?) -> Bool {
@@ -784,89 +801,77 @@ public final class DialogService: DialogServiceProtocol {
 
     @MainActor
     private func typeCharacter(_ char: Character) throws {
-        // Extended key mapping
-        let keyMap: [Character: (CGKeyCode, Bool)] = [
-            // Letters
-            "a": (0x00, false), "A": (0x00, true),
-            "b": (0x0B, false), "B": (0x0B, true),
-            "c": (0x08, false), "C": (0x08, true),
-            "d": (0x02, false), "D": (0x02, true),
-            "e": (0x0E, false), "E": (0x0E, true),
-            "f": (0x03, false), "F": (0x03, true),
-            "g": (0x05, false), "G": (0x05, true),
-            "h": (0x04, false), "H": (0x04, true),
-            "i": (0x22, false), "I": (0x22, true),
-            "j": (0x26, false), "J": (0x26, true),
-            "k": (0x28, false), "K": (0x28, true),
-            "l": (0x25, false), "L": (0x25, true),
-            "m": (0x2E, false), "M": (0x2E, true),
-            "n": (0x2D, false), "N": (0x2D, true),
-            "o": (0x1F, false), "O": (0x1F, true),
-            "p": (0x23, false), "P": (0x23, true),
-            "q": (0x0C, false), "Q": (0x0C, true),
-            "r": (0x0F, false), "R": (0x0F, true),
-            "s": (0x01, false), "S": (0x01, true),
-            "t": (0x11, false), "T": (0x11, true),
-            "u": (0x20, false), "U": (0x20, true),
-            "v": (0x09, false), "V": (0x09, true),
-            "w": (0x0D, false), "W": (0x0D, true),
-            "x": (0x07, false), "X": (0x07, true),
-            "y": (0x10, false), "Y": (0x10, true),
-            "z": (0x06, false), "Z": (0x06, true),
-
-            // Numbers
-            "0": (0x1D, false), ")": (0x1D, true),
-            "1": (0x12, false), "!": (0x12, true),
-            "2": (0x13, false), "@": (0x13, true),
-            "3": (0x14, false), "#": (0x14, true),
-            "4": (0x15, false), "$": (0x15, true),
-            "5": (0x17, false), "%": (0x17, true),
-            "6": (0x16, false), "^": (0x16, true),
-            "7": (0x1A, false), "&": (0x1A, true),
-            "8": (0x1C, false), "*": (0x1C, true),
-            "9": (0x19, false), "(": (0x19, true),
-
-            // Special characters
-            " ": (0x31, false),
-            ".": (0x2F, false),
-            ",": (0x2B, false),
-            "/": (0x2C, false),
-            "\\": (0x2A, false),
-            "-": (0x1B, false),
-            "_": (0x1B, true),
-            "=": (0x18, false),
-            "+": (0x18, true),
-            ":": (0x29, true),
-            ";": (0x29, false),
-            "'": (0x27, false),
-            "\"": (0x27, true),
-        ]
-
-        if let (keyCode, needsShift) = keyMap[char] {
-            if needsShift {
-                let shiftDown = CGEvent(keyboardEventSource: nil, virtualKey: 0x38, keyDown: true)
-                shiftDown?.post(tap: .cghidEventTap)
-            }
-
-            let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
-            let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
-
-            keyDown?.post(tap: .cghidEventTap)
-            keyUp?.post(tap: .cghidEventTap)
-
-            if needsShift {
-                let shiftUp = CGEvent(keyboardEventSource: nil, virtualKey: 0x38, keyDown: false)
-                shiftUp?.post(tap: .cghidEventTap)
-            }
+        if let (keyCode, needsShift) = DialogKeyMap.characters[char] {
+            let modifiers: CGEventFlags = needsShift ? .maskShift : []
+            self.pressKey(keyCode, modifiers: modifiers)
         } else {
-            // Fallback: type as unicode
-            let str = String(char)
-            let utf16 = Array(str.utf16)
-            let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)
-            utf16.withUnsafeBufferPointer { buffer in
-                keyDown?.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
-            }
-            keyDown?.post(tap: .cghidEventTap)
+            self.postUnicodeCharacter(char)
         }
     }
+
+    func postUnicodeCharacter(_ char: Character) {
+        let str = String(char)
+        let utf16 = Array(str.utf16)
+        guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) else {
+            return
+        }
+        utf16.withUnsafeBufferPointer { buffer in
+            keyDown.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
+        }
+        keyDown.post(tap: .cghidEventTap)
+    }
+}
+
+private enum DialogKeyMap {
+    static let characters: [Character: (CGKeyCode, Bool)] = [
+        "a": (0x00, false), "A": (0x00, true),
+        "b": (0x0B, false), "B": (0x0B, true),
+        "c": (0x08, false), "C": (0x08, true),
+        "d": (0x02, false), "D": (0x02, true),
+        "e": (0x0E, false), "E": (0x0E, true),
+        "f": (0x03, false), "F": (0x03, true),
+        "g": (0x05, false), "G": (0x05, true),
+        "h": (0x04, false), "H": (0x04, true),
+        "i": (0x22, false), "I": (0x22, true),
+        "j": (0x26, false), "J": (0x26, true),
+        "k": (0x28, false), "K": (0x28, true),
+        "l": (0x25, false), "L": (0x25, true),
+        "m": (0x2E, false), "M": (0x2E, true),
+        "n": (0x2D, false), "N": (0x2D, true),
+        "o": (0x1F, false), "O": (0x1F, true),
+        "p": (0x23, false), "P": (0x23, true),
+        "q": (0x0C, false), "Q": (0x0C, true),
+        "r": (0x0F, false), "R": (0x0F, true),
+        "s": (0x01, false), "S": (0x01, true),
+        "t": (0x11, false), "T": (0x11, true),
+        "u": (0x20, false), "U": (0x20, true),
+        "v": (0x09, false), "V": (0x09, true),
+        "w": (0x0D, false), "W": (0x0D, true),
+        "x": (0x07, false), "X": (0x07, true),
+        "y": (0x10, false), "Y": (0x10, true),
+        "z": (0x06, false), "Z": (0x06, true),
+        "0": (0x1D, false), ")": (0x1D, true),
+        "1": (0x12, false), "!": (0x12, true),
+        "2": (0x13, false), "@": (0x13, true),
+        "3": (0x14, false), "#": (0x14, true),
+        "4": (0x15, false), "$": (0x15, true),
+        "5": (0x17, false), "%": (0x17, true),
+        "6": (0x16, false), "^": (0x16, true),
+        "7": (0x1A, false), "&": (0x1A, true),
+        "8": (0x1C, false), "*": (0x1C, true),
+        "9": (0x19, false), "(": (0x19, true),
+        " ": (0x31, false),
+        ".": (0x2F, false),
+        ",": (0x2B, false),
+        "/": (0x2C, false),
+        "\\": (0x2A, false),
+        "-": (0x1B, false),
+        "_": (0x1B, true),
+        "=": (0x18, false),
+        "+": (0x18, true),
+        ":": (0x29, true),
+        ";": (0x29, false),
+        "'": (0x27, false),
+        "\"": (0x27, true),
+    ]
 }

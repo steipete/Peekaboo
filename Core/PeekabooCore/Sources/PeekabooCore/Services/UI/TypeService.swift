@@ -252,70 +252,7 @@ public final class TypeService {
     }
 
     private func mapSpecialKeyToVirtualCode(_ key: String) -> CGKeyCode {
-        switch key.lowercased() {
-        case "return":
-            CGKeyCode(kVK_Return)
-        case "enter":
-            CGKeyCode(kVK_ANSI_KeypadEnter)
-        case "tab":
-            CGKeyCode(kVK_Tab)
-        case "delete", "backspace":
-            CGKeyCode(kVK_Delete)
-        case "forward_delete", "forwarddelete":
-            CGKeyCode(kVK_ForwardDelete)
-        case "escape", "esc":
-            CGKeyCode(kVK_Escape)
-        case "space":
-            CGKeyCode(kVK_Space)
-        case "up", "arrow_up":
-            CGKeyCode(kVK_UpArrow)
-        case "down", "arrow_down":
-            CGKeyCode(kVK_DownArrow)
-        case "left", "arrow_left":
-            CGKeyCode(kVK_LeftArrow)
-        case "right", "arrow_right":
-            CGKeyCode(kVK_RightArrow)
-        case "home":
-            CGKeyCode(kVK_Home)
-        case "end":
-            CGKeyCode(kVK_End)
-        case "pageup", "page_up":
-            CGKeyCode(kVK_PageUp)
-        case "pagedown", "page_down":
-            CGKeyCode(kVK_PageDown)
-        case "f1":
-            CGKeyCode(kVK_F1)
-        case "f2":
-            CGKeyCode(kVK_F2)
-        case "f3":
-            CGKeyCode(kVK_F3)
-        case "f4":
-            CGKeyCode(kVK_F4)
-        case "f5":
-            CGKeyCode(kVK_F5)
-        case "f6":
-            CGKeyCode(kVK_F6)
-        case "f7":
-            CGKeyCode(kVK_F7)
-        case "f8":
-            CGKeyCode(kVK_F8)
-        case "f9":
-            CGKeyCode(kVK_F9)
-        case "f10":
-            CGKeyCode(kVK_F10)
-        case "f11":
-            CGKeyCode(kVK_F11)
-        case "f12":
-            CGKeyCode(kVK_F12)
-        case "caps_lock", "capslock":
-            CGKeyCode(kVK_CapsLock)
-        case "clear":
-            CGKeyCode(kVK_ANSI_KeypadClear)
-        case "help":
-            CGKeyCode(kVK_Help)
-        default:
-            0xFFFF // Invalid
-        }
+        SpecialKeyMapping.value(for: key)
     }
 }
 
@@ -372,3 +309,55 @@ private let kVK_ForwardDelete: CGKeyCode = 0x75
 private let kVK_Help: CGKeyCode = 0x72
 private let kVK_ANSI_KeypadEnter: CGKeyCode = 0x4C
 private let kVK_ANSI_KeypadClear: CGKeyCode = 0x47
+
+private enum SpecialKeyMapping {
+    private static let unknown: CGKeyCode = 0xFFFF
+
+    private static let map: [String: CGKeyCode] = [
+        "return": kVK_Return,
+        "enter": kVK_ANSI_KeypadEnter,
+        "tab": kVK_Tab,
+        "delete": kVK_Delete,
+        "backspace": kVK_Delete,
+        "forward_delete": kVK_ForwardDelete,
+        "forwarddelete": kVK_ForwardDelete,
+        "escape": kVK_Escape,
+        "esc": kVK_Escape,
+        "space": kVK_Space,
+        "up": kVK_UpArrow,
+        "arrow_up": kVK_UpArrow,
+        "down": kVK_DownArrow,
+        "arrow_down": kVK_DownArrow,
+        "left": kVK_LeftArrow,
+        "arrow_left": kVK_LeftArrow,
+        "right": kVK_RightArrow,
+        "arrow_right": kVK_RightArrow,
+        "home": kVK_Home,
+        "end": kVK_End,
+        "pageup": kVK_PageUp,
+        "page_up": kVK_PageUp,
+        "pagedown": kVK_PageDown,
+        "page_down": kVK_PageDown,
+        "f1": kVK_F1,
+        "f2": kVK_F2,
+        "f3": kVK_F3,
+        "f4": kVK_F4,
+        "f5": kVK_F5,
+        "f6": kVK_F6,
+        "f7": kVK_F7,
+        "f8": kVK_F8,
+        "f9": kVK_F9,
+        "f10": kVK_F10,
+        "f11": kVK_F11,
+        "f12": kVK_F12,
+        "caps_lock": kVK_CapsLock,
+        "capslock": kVK_CapsLock,
+        "clear": kVK_ANSI_KeypadClear,
+        "help": kVK_Help,
+    ]
+
+    static func value(for key: String) -> CGKeyCode {
+        let normalized = key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return self.map[normalized] ?? Self.unknown
+    }
+}

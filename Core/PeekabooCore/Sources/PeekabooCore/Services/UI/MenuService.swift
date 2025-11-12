@@ -28,6 +28,11 @@ public final class MenuService: MenuServiceProtocol {
         }
     }
 
+}
+
+@MainActor
+extension MenuService {
+
     public func listMenus(for appIdentifier: String) async throws -> MenuStructure {
         let appInfo = try await applicationService.findApplication(identifier: appIdentifier)
 
@@ -35,43 +40,8 @@ public final class MenuService: MenuServiceProtocol {
         let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
         let appElement = Element(axApp)
 
-        // Get menu bar with timeout protection
-        guard let menuBar = appElement.menuBarWithTimeout(timeout: 2.0) else {
-            var context = ErrorContext()
-            context.add("application", appInfo.name)
-            throw NotFoundError(
-                code: .menuNotFound,
-                userMessage: "Menu bar not found for application '\(appInfo.name)'",
-                context: context.build())
-        }
-
-        // Collect all menus with timeout
-        var menus: [Menu] = []
-        let menuEnumerationTimeout: TimeInterval = 5.0 // 5 seconds total for menu enumeration
-        let menuStartTime = Date()
-
-        let topLevelMenus = menuBar.children() ?? []
-
-        for menuBarItem in topLevelMenus {
-            // Check if we've exceeded total timeout
-            if Date().timeIntervalSince(menuStartTime) > menuEnumerationTimeout {
-                self.logger
-                    .warning(
-                        "Menu enumeration timed out after \(menuEnumerationTimeout)s, collected \(menus.count) menus")
-                break
-            }
-
-            // Extract menu with time tracking
-            let menuItemStartTime = Date()
-            if let menu = extractMenu(from: menuBarItem, parentPath: "", application: appInfo) {
-                let menuProcessingTime = Date().timeIntervalSince(menuItemStartTime)
-                if menuProcessingTime > 1.0 {
-                    self.logger.debug("Menu '\(menu.title)' took \(menuProcessingTime)s to process")
-                }
-                menus.append(menu)
-            }
-        }
-
+        let menuBar = try self.menuBar(for: appElement, appInfo: appInfo)
+        let menus = self.collectMenus(from: menuBar, appInfo: appInfo)
         return MenuStructure(application: appInfo, menus: menus)
     }
 
@@ -280,6 +250,42 @@ public final class MenuService: MenuServiceProtocol {
 
     // MARK: - Private Helpers
 
+    private func menuBar(for appElement: Element, appInfo: ServiceApplicationInfo) throws -> Element {
+        guard let menuBar = appElement.menuBarWithTimeout(timeout: 2.0) else {
+            var context = ErrorContext()
+            context.add("application", appInfo.name)
+            throw NotFoundError(
+                code: .menuNotFound,
+                userMessage: "Menu bar not found for application '\(appInfo.name)'",
+                context: context.build())
+        }
+        return menuBar
+    }
+
+    private func collectMenus(from menuBar: Element, appInfo: ServiceApplicationInfo) -> [Menu] {
+        var menus: [Menu] = []
+        let timeout: TimeInterval = 5.0
+        let startTime = Date()
+
+        for menuBarItem in menuBar.children() ?? [] {
+            guard Date().timeIntervalSince(startTime) <= timeout else {
+                self.logger.warning("Menu enumeration timed out after \(timeout)s, collected \(menus.count) menus")
+                break
+            }
+
+            let extractionStart = Date()
+            if let menu = self.extractMenu(from: menuBarItem, parentPath: "", application: appInfo) {
+                let duration = Date().timeIntervalSince(extractionStart)
+                if duration > 1.0 {
+                    self.logger.debug("Menu '\(menu.title)' took \(duration)s to process")
+                }
+                menus.append(menu)
+            }
+        }
+
+        return menus
+    }
+
     @MainActor
     private func extractMenu(
         from menuBarItem: Element,
@@ -292,26 +298,22 @@ public final class MenuService: MenuServiceProtocol {
         var items: [MenuItem] = []
 
         // Look for the actual menu (first child with AXMenu role)
-        if let children = menuBarItem.children() {
-            for child in children {
-                if child.role() == AXRoleNames.kAXMenuRole {
-                    // This is the menu, extract its items
-                    if let menuChildren = child.children() {
-                        let currentPath = parentPath.isEmpty ? title : "\(parentPath) > \(title)"
-                        // Limit depth to prevent excessive recursion
-                        let maxDepth = 3
-                        let currentDepth = currentPath.split(separator: ">").count
-                        if currentDepth < maxDepth {
-                            items = self.extractMenuItems(
-                                from: menuChildren,
-                                parentPath: currentPath,
-                                application: application
-                            )
-                        } else {
-                            self.logger.debug("Skipping menu items at depth \(currentDepth) (max: \(maxDepth))")
-                        }
-                    }
-                    break
+        if let children = menuBarItem.children(),
+           let menuElement = children.first(where: { $0.role() == AXRoleNames.kAXMenuRole })
+        {
+            if let menuChildren = menuElement.children() {
+                let currentPath = parentPath.isEmpty ? title : "\(parentPath) > \(title)"
+                // Limit depth to prevent excessive recursion
+                let maxDepth = 3
+                let currentDepth = currentPath.split(separator: ">").count
+                if currentDepth < maxDepth {
+                    items = self.extractMenuItems(
+                        from: menuChildren,
+                        parentPath: currentPath,
+                        application: application
+                    )
+                } else {
+                    self.logger.debug("Skipping menu items at depth \(currentDepth) (max: \(maxDepth))")
                 }
             }
         }
@@ -369,18 +371,15 @@ public final class MenuService: MenuServiceProtocol {
 
         // Check for submenu
         var submenuItems: [MenuItem] = []
-        if let children = element.children() {
-            for child in children {
-                if child.role() == AXRoleNames.kAXMenuRole {
-                    if let submenuChildren = child.children() {
-                        submenuItems = self.extractMenuItems(
-                            from: submenuChildren,
-                            parentPath: path,
-                            application: application
-                        )
-                    }
-                    break
-                }
+        if let children = element.children(),
+           let submenuElement = children.first(where: { $0.role() == AXRoleNames.kAXMenuRole })
+        {
+            if let submenuChildren = submenuElement.children() {
+                submenuItems = self.extractMenuItems(
+                    from: submenuChildren,
+                    parentPath: path,
+                    application: application
+                )
             }
         }
 
@@ -462,7 +461,7 @@ public final class MenuService: MenuServiceProtocol {
             if x < 0 { continue }
 
             // Get window details
-            guard let _ = windowInfo[kCGWindowNumber as String] as? CGWindowID,
+            guard (windowInfo[kCGWindowNumber as String] as? CGWindowID) != nil,
                   let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t
             else {
                 continue
