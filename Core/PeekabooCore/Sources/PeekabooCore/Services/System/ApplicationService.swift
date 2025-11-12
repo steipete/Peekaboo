@@ -67,6 +67,11 @@ public final class ApplicationService: ApplicationServiceProtocol {
         }
     }
 
+}
+
+@MainActor
+extension ApplicationService {
+
     public func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
         let startTime = Date()
         self.logger.info("Listing all running applications")
@@ -171,122 +176,44 @@ public final class ApplicationService: ApplicationServiceProtocol {
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
         self.logger.info("Finding application with identifier: \(identifier, privacy: .public)")
 
-        // Already on main thread due to @MainActor on class
-        let runningApps = NSWorkspace.shared.runningApplications
-
-        // Check for PID format first
-        if identifier.hasPrefix("PID:") {
-            let pidString = String(identifier.dropFirst(4))
-            if let pid = Int32(pidString) {
-                // Create NSRunningApplication
-                let app = NSRunningApplication(processIdentifier: pid)
-                if let app, !app.isTerminated {
-                    self.logger.debug("Found app by PID: \(pid)")
-                    return self.createApplicationInfo(from: app)
-                } else {
-                    throw PeekabooError.appNotFound("Process with PID \(pidString) not found or terminated")
-                }
-            } else {
-                throw PeekabooError.appNotFound("Invalid PID format: \(pidString)")
-            }
+        let runningApps = NSWorkspace.shared.runningApplications.filter { app in
+            !app.isTerminated
         }
 
-        // Try exact bundle ID match
-        if let app = runningApps.first(where: { $0.bundleIdentifier == identifier }) {
-            self.logger.debug("Found app by bundle ID match: \(app.localizedName ?? "Unknown")")
+        if let pid = Self.parsePID(identifier),
+           let app = runningApps.first(where: { $0.processIdentifier == pid })
+        {
             return self.createApplicationInfo(from: app)
         }
 
-        // Try exact name match (case-insensitive), but prefer GUI apps
-        let lowercaseIdentifier = identifier.lowercased()
-
-        let exactMatches = runningApps.filter {
-            $0.localizedName?.lowercased() == lowercaseIdentifier
+        if let bundleMatch = runningApps.first(where: { $0.bundleIdentifier == identifier }) {
+            return self.createApplicationInfo(from: bundleMatch)
         }
 
-        if exactMatches.count == 1 {
-            self.logger
-                .debug("Found app by exact name match: \(exactMatches[0].localizedName ?? "Unknown", privacy: .public)")
-            return self.createApplicationInfo(from: exactMatches[0])
-        } else if exactMatches.count > 1 {
-            // Multiple exact matches - prefer GUI apps
-            let sortedExactMatches = exactMatches.sorted { app1, app2 in
-                // GUI apps come first
-                let app1IsGUI = app1.activationPolicy != .prohibited
-                let app2IsGUI = app2.activationPolicy != .prohibited
-                if app1IsGUI != app2IsGUI {
-                    return app1IsGUI
-                }
-                // Then apps with bundle IDs
-                let app1HasBundle = app1.bundleIdentifier != nil
-                let app2HasBundle = app2.bundleIdentifier != nil
-                if app1HasBundle != app2HasBundle {
-                    return app1HasBundle
-                }
-                return false
-            }
-            self.logger
-                .debug(
-                    "Multiple exact matches for '\(identifier, privacy: .public)', selected: \(sortedExactMatches[0].localizedName ?? "Unknown", privacy: .public) (PID: \(sortedExactMatches[0].processIdentifier, privacy: .public))")
-            return self.createApplicationInfo(from: sortedExactMatches[0])
+        if let exactName = runningApps.first(where: {
+            guard let name = $0.localizedName else { return false }
+            return name.compare(identifier, options: .caseInsensitive) == .orderedSame
+        }) {
+            return self.createApplicationInfo(from: exactName)
         }
 
-        // Try fuzzy match
-        let matches = runningApps.filter { app in
-            guard let name = app.localizedName else { return false }
-            return name.lowercased().contains(lowercaseIdentifier) ||
-                (app.bundleIdentifier?.lowercased().contains(lowercaseIdentifier) ?? false)
+        if let fuzzy = runningApps
+            .filter({ $0.activationPolicy != .prohibited })
+            .first(where: { app in
+                guard let name = app.localizedName else { return false }
+                return name.localizedCaseInsensitiveContains(identifier)
+            })
+        {
+            return self.createApplicationInfo(from: fuzzy)
         }
 
-        if matches.count == 1 {
-            self.logger.debug("Found single fuzzy match: \(matches[0].localizedName ?? "Unknown")")
-            return self.createApplicationInfo(from: matches[0])
-        } else if matches.count > 1 {
-            // Sort matches by priority:
-            // 1. GUI apps (regular or accessory) over prohibited (background/CLI)
-            // 2. Apps with bundle identifiers over those without
-            // 3. Active apps over inactive
-            let sortedMatches = matches.sorted { app1, app2 in
-                // First priority: GUI apps
-                let app1IsGUI = app1.activationPolicy != .prohibited
-                let app2IsGUI = app2.activationPolicy != .prohibited
-                if app1IsGUI != app2IsGUI {
-                    return app1IsGUI // GUI apps come first
-                }
+        self.logger.error("Application not found: \(identifier, privacy: .public)")
+        throw PeekabooError.appNotFound(identifier)
+    }
 
-                // Second priority: Has bundle identifier
-                let app1HasBundle = app1.bundleIdentifier != nil
-                let app2HasBundle = app2.bundleIdentifier != nil
-                if app1HasBundle != app2HasBundle {
-                    return app1HasBundle
-                }
-
-                // Third priority: Active state
-                if app1.isActive != app2.isActive {
-                    return app1.isActive
-                }
-
-                return false // Keep original order if all else equal
-            }
-
-            self.logger
-                .debug(
-                    "Multiple matches found for '\(identifier, privacy: .public)': \(matches.compactMap(\.localizedName), privacy: .public)")
-            let selected = sortedMatches[0]
-            let selectedName = selected.localizedName ?? "Unknown"
-            let selectedBundle = selected.bundleIdentifier ?? "none"
-            let selectedPID = selected.processIdentifier
-            let selectedPolicy = selected.activationPolicy.rawValue
-
-            // Break up the expression to help the compiler
-            let message = "Selected: \(selectedName) (PID: \(selectedPID), Bundle: \(selectedBundle), Policy: \(selectedPolicy))"
-            self.logger.debug("\(message, privacy: .public)")
-
-            return self.createApplicationInfo(from: sortedMatches[0])
-        }
-
-        self.logger.error("Application not found: \(identifier)")
-        throw NotFoundError.application(identifier)
+    private static func parsePID(_ identifier: String) -> Int32? {
+        guard identifier.uppercased().hasPrefix("PID:") else { return nil }
+        return Int32(identifier.dropFirst(4))
     }
 
     public func listWindows(
@@ -296,234 +223,16 @@ public final class ApplicationService: ApplicationServiceProtocol {
         let startTime = Date()
         self.logger.info("Listing windows for application: \(appIdentifier)")
         let app = try await findApplication(identifier: appIdentifier)
-
-        // Use provided timeout or default
-        let axTimeout = timeout ?? Self.axTimeout
-
-        // Check if we have screen recording permission
         let hasScreenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
 
-        // First, try CGWindowList for fast window discovery (if we have permission)
-        var cgWindows: [ServiceWindowInfo] = []
-        var cgWindowsByTitle: [String: ServiceWindowInfo] = [:]
-
-        if hasScreenRecording {
-            self.logger.debug("Using hybrid approach: CGWindowList + selective AX enrichment")
-
-            // Get windows using CGWindowList API (fast, doesn't hang)
-            let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
-            if let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] {
-                var windowIndex = 0
-
-                for windowInfo in windowList {
-                    // Check if window belongs to our app
-                    guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
-                          ownerPID == app.processIdentifier
-                    else {
-                        continue
-                    }
-
-                    // Get basic window info from CGWindowList
-                    guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
-                          let x = boundsDict["X"] as? CGFloat,
-                          let y = boundsDict["Y"] as? CGFloat,
-                          let width = boundsDict["Width"] as? CGFloat,
-                          let height = boundsDict["Height"] as? CGFloat
-                    else {
-                        continue
-                    }
-
-                    let bounds = CGRect(x: x, y: y, width: width, height: height)
-                    let windowID = windowInfo[kCGWindowNumber as String] as? Int ?? windowIndex
-                    let windowLevel = windowInfo[kCGWindowLayer as String] as? Int ?? 0
-                    let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
-
-                    // Window title might be missing without screen recording
-                    let windowTitle = windowInfo[kCGWindowName as String] as? String
-
-                    // Skip windows without titles unless we'll enrich them
-                    if windowTitle == nil || windowTitle!.isEmpty {
-                        self.logger.debug("Window \(windowID) has no title in CGWindowList, will need AX enrichment")
-                    }
-
-                    // Determine if minimized based on bounds
-                    let isMinimized = bounds.origin.x < -10000 || bounds.origin.y < -10000
-
-                    // Get space information
-                    let spaceService = SpaceManagementService()
-                    let spaces = spaceService.getSpacesForWindow(windowID: CGWindowID(windowID))
-                    let (spaceID, spaceName) = spaces.first.map { ($0.id, $0.name) } ?? (nil, nil)
-
-                    // Detect which screen this window is on
-                    let screenService = ScreenService()
-                    let screenInfo = screenService.screenContainingWindow(bounds: bounds)
-
-                    let cgWindowInfo = ServiceWindowInfo(
-                        windowID: windowID,
-                        title: windowTitle ?? "", // Empty title if missing
-                        bounds: bounds,
-                        isMinimized: isMinimized,
-                        isMainWindow: windowIndex == 0,
-                        windowLevel: windowLevel,
-                        alpha: alpha,
-                        index: windowIndex,
-                        spaceID: spaceID,
-                        spaceName: spaceName,
-                        screenIndex: screenInfo?.index,
-                        screenName: screenInfo?.name)
-
-                    cgWindows.append(cgWindowInfo)
-                    if let title = windowTitle, !title.isEmpty {
-                        cgWindowsByTitle[title] = cgWindowInfo
-                    }
-                    windowIndex += 1
-                }
-
-                self.logger.debug("CGWindowList found \(cgWindows.count) windows for \(app.name)")
-            }
-        }
-
-        // If we got complete window info from CGWindowList, use it
-        if !cgWindows.isEmpty, cgWindows.allSatisfy({ !$0.title.isEmpty }) {
-            self.logger.debug("All windows have titles from CGWindowList, using fast path")
-            return self.buildWindowListOutput(
-                windows: cgWindows,
-                app: app,
-                startTime: startTime,
-                warnings: [])
-        }
-
-        // Otherwise, we need to use AX API (with timeout protection) to get missing titles
-        self.logger.debug("Need to enrich window data with AX API (missing titles or no screen recording)")
-
-        // Defensive: Check if the app is still running before accessing AX
-        guard NSRunningApplication(processIdentifier: app.processIdentifier)?.isTerminated == false else {
-            self.logger.warning("Application \(app.name) appears to have terminated")
-            return UnifiedToolOutput(
-                data: ServiceWindowListData(windows: [], targetApplication: app),
-                summary: UnifiedToolOutput.Summary(
-                    brief: "Application \(app.name) has no windows (app terminated)",
-                    status: .failed,
-                    counts: ["windows": 0]),
-                metadata: UnifiedToolOutput.Metadata(
-                    duration: Date().timeIntervalSince(startTime),
-                    warnings: ["Application appears to have terminated"]))
-        }
-
-        // Get AX element for the application
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
-
-        // Set timeout for this operation
-        appElement.setMessagingTimeout(axTimeout)
-        defer { appElement.setMessagingTimeout(0) }
-
-        // Get windows with timeout protection
-        let windowStartTime = Date()
-        let allWindows = appElement.windowsWithTimeout(timeout: axTimeout) ?? []
-
-        // Check if operation timed out
-        let timedOut = Date().timeIntervalSince(windowStartTime) >= Double(axTimeout)
-
-        // If we have CGWindowList data, merge it with AX data
-        if !cgWindows.isEmpty {
-            var enrichedWindows: [ServiceWindowInfo] = []
-            var warnings: [String] = []
-
-            // Process AX windows to enrich CGWindowList data
-            for (index, axWindow) in allWindows.enumerated() {
-                // Stop if we're taking too long
-                if Date().timeIntervalSince(startTime) > Double(axTimeout * 2) {
-                    warnings.append("Stopped enrichment after timeout")
-                    break
-                }
-
-                // Get title from AX
-                guard let axTitle = axWindow.title(), !axTitle.isEmpty else {
-                    continue
-                }
-
-                // Try to match with CGWindowList data
-                if let cgWindow = cgWindowsByTitle[axTitle] {
-                    // Already have complete data from CGWindowList
-                    enrichedWindows.append(cgWindow)
-                } else {
-                    // Need to create window info from AX
-                    if let windowInfo = await createWindowInfo(from: axWindow, index: index) {
-                        enrichedWindows.append(windowInfo)
-                    }
-                }
-            }
-
-            // Add any CG windows we didn't match (might have empty titles)
-            for cgWindow in cgWindows {
-                if !enrichedWindows.contains(where: { $0.windowID == cgWindow.windowID }) {
-                    if cgWindow.title.isEmpty {
-                        // Try to find a title from unmatched AX windows
-                        // This is best-effort since we can't reliably match without titles
-                        self.logger.debug("CGWindow \(cgWindow.windowID) has no title, including as-is")
-                    }
-                    enrichedWindows.append(cgWindow)
-                }
-            }
-
-            if timedOut {
-                warnings.append("Window enumeration timed out after \(axTimeout)s, results may be incomplete")
-            }
-
-            return self.buildWindowListOutput(
-                windows: enrichedWindows,
-                app: app,
-                startTime: startTime,
-                warnings: warnings)
-        }
-
-        // Fallback: Pure AX approach (no screen recording permission)
-        self.logger.debug("Using pure AX approach (no screen recording permission)")
-
-        // Limit windows as protection
-        let maxWindowsToProcess = 100
-        let windows = Array(allWindows.prefix(maxWindowsToProcess))
-
-        if allWindows.count > maxWindowsToProcess {
-            self.logger
-                .warning(
-                    "Application \(app.name) has \(allWindows.count) windows, processing only first \(maxWindowsToProcess)")
-        }
-
-        var windowInfos: [ServiceWindowInfo] = []
-        var warnings: [String] = []
-
-        // Process windows with timeout check
-        for (index, window) in windows.enumerated() {
-            // Skip processing if we've exceeded timeout
-            if Date().timeIntervalSince(startTime) > Double(axTimeout) {
-                warnings.append("Stopped processing after \(axTimeout)s timeout")
-                break
-            }
-
-            if let windowInfo = await createWindowInfo(from: window, index: index) {
-                windowInfos.append(windowInfo)
-            }
-        }
-
-        if timedOut {
-            warnings.append("Window enumeration timed out, results may be incomplete")
-        }
-
-        if allWindows.count > maxWindowsToProcess {
-            warnings.append("Only processed first \(maxWindowsToProcess) of \(allWindows.count) windows")
-        }
-
-        if !hasScreenRecording {
-            warnings.append("Screen recording permission not granted - window listing may be slower")
-        }
-
-        return self.buildWindowListOutput(
-            windows: windowInfos,
+        let context = WindowEnumerationContext(
+            service: self,
             app: app,
             startTime: startTime,
-            warnings: warnings)
+            axTimeout: timeout ?? Self.axTimeout,
+            hasScreenRecording: hasScreenRecording,
+            logger: self.logger)
+        return await context.run()
     }
 
     public func getFrontmostApplication() async throws -> ServiceApplicationInfo {
@@ -598,9 +307,9 @@ public final class ApplicationService: ApplicationServiceProtocol {
         // Wait a bit for the app to fully launch
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
 
-        self.logger
-            .info(
-                "Successfully launched: \(runningApp.localizedName ?? "Unknown") (PID: \(runningApp.processIdentifier))")
+        let launchMessage =
+            "Successfully launched: \(runningApp.localizedName ?? "Unknown") (PID: \(runningApp.processIdentifier))"
+        self.logger.info("\(launchMessage)")
         return self.createApplicationInfo(from: runningApp)
     }
 
@@ -772,10 +481,13 @@ public final class ApplicationService: ApplicationServiceProtocol {
         }
     }
 
-    // MARK: - Private Helpers
+}
 
-    @MainActor
-    private func createApplicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {
+// MARK: - Private Helpers
+
+@MainActor
+fileprivate extension ApplicationService {
+    func createApplicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {
         ServiceApplicationInfo(
             processIdentifier: app.processIdentifier,
             bundleIdentifier: app.bundleIdentifier,
@@ -787,101 +499,105 @@ public final class ApplicationService: ApplicationServiceProtocol {
         )
     }
 
-    private func createWindowInfo(from window: Element, index: Int) async -> ServiceWindowInfo? {
+    fileprivate func createWindowInfo(from window: Element, index: Int) async -> ServiceWindowInfo? {
         guard let title = window.title() else { return nil }
 
+        let bounds = windowBounds(for: window)
+        let screen = screenInfo(for: bounds)
+        let windowID = resolveWindowID(for: window, title: title, bounds: bounds, fallbackIndex: index)
+        let spaces = spaceInfo(for: windowID)
+        let level = windowLevel(for: windowID)
+
+        return ServiceWindowInfo(
+            windowID: Int(windowID),
+            title: title,
+            bounds: bounds,
+            isMinimized: window.isMinimized() ?? false,
+            isMainWindow: window.isMain() ?? false,
+            windowLevel: level,
+            index: index,
+            spaceID: spaces.spaceID,
+            spaceName: spaces.spaceName,
+            screenIndex: screen.index,
+            screenName: screen.name)
+    }
+
+    func windowBounds(for window: Element) -> CGRect {
         let position = window.position() ?? .zero
         let size = window.size() ?? .zero
-        let bounds = CGRect(origin: position, size: size)
+        return CGRect(origin: position, size: size)
+    }
 
-        let isMinimized = window.isMinimized() ?? false
-        let isMain = window.isMain() ?? false
-
-        // Detect which screen this window is on
+    func screenInfo(for bounds: CGRect) -> (index: Int?, name: String?) {
         let screenService = ScreenService()
         let screenInfo = screenService.screenContainingWindow(bounds: bounds)
-        let screenIndex = screenInfo?.index
-        let screenName = screenInfo?.name
+        return (screenInfo?.index, screenInfo?.name)
+    }
 
-        // Try to get the actual CGWindowID
+    func resolveWindowID(for window: Element, title: String, bounds: CGRect, fallbackIndex: Int) -> CGWindowID {
         let windowIdentityService = WindowIdentityService()
-        var actualWindowID = windowIdentityService.getWindowID(from: window)
+        if let identifier = windowIdentityService.getWindowID(from: window) {
+            return identifier
+        }
 
-        // If private API fails, try to find window by matching title and bounds
-        if actualWindowID == nil, let pid = window.pid() {
-            // Use CGWindowListCopyWindowInfo to find windows for this PID
-            let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
-            if let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] {
-                for windowInfo in windowList {
-                    // Match by PID, title, and bounds
-                    if let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
-                       ownerPID == pid,
-                       let windowTitle = windowInfo[kCGWindowName as String] as? String,
-                       windowTitle == title,
-                       let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
-                       let x = boundsDict["X"] as? CGFloat,
-                       let y = boundsDict["Y"] as? CGFloat,
-                       let width = boundsDict["Width"] as? CGFloat,
-                       let height = boundsDict["Height"] as? CGFloat
-                    {
-                        let cgBounds = CGRect(x: x, y: y, width: width, height: height)
-                        // Allow small differences due to coordinate system conversions
-                        if abs(cgBounds.origin.x - bounds.origin.x) < 5,
-                           abs(cgBounds.origin.y - bounds.origin.y) < 5,
-                           abs(cgBounds.size.width - bounds.size.width) < 5,
-                           abs(cgBounds.size.height - bounds.size.height) < 5
-                        {
-                            if let windowNumber = windowInfo[kCGWindowNumber as String] as? Int {
-                                actualWindowID = CGWindowID(windowNumber)
-                                self.logger.debug("Found window ID \(windowNumber) via CGWindowList for '\(title)'")
-                                break
-                            }
-                        }
-                    }
-                }
+        if let pid = window.pid(), let matched = matchWindowID(pid: pid, title: title, bounds: bounds) {
+            return matched
+        }
+
+        let missingIdentifierMessage =
+            "Failed to get actual window ID for window '\(title)', using index \(fallbackIndex) as fallback"
+        self.logger.warning("\(missingIdentifierMessage)")
+        return CGWindowID(fallbackIndex)
+    }
+
+    func matchWindowID(pid: pid_t, title: String, bounds: CGRect) -> CGWindowID? {
+        let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return nil
+        }
+
+        for windowInfo in windowList {
+            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
+                  ownerPID == pid,
+                  let windowTitle = windowInfo[kCGWindowName as String] as? String,
+                  windowTitle == title,
+                  let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+                  let x = boundsDict["X"] as? CGFloat,
+                  let y = boundsDict["Y"] as? CGFloat,
+                  let width = boundsDict["Width"] as? CGFloat,
+                  let height = boundsDict["Height"] as? CGFloat
+            else {
+                continue
+            }
+
+            let cgBounds = CGRect(x: x, y: y, width: width, height: height)
+
+            let withinTolerance = abs(cgBounds.origin.x - bounds.origin.x) < 5 &&
+                abs(cgBounds.origin.y - bounds.origin.y) < 5 &&
+                abs(cgBounds.size.width - bounds.size.width) < 5 &&
+                abs(cgBounds.size.height - bounds.size.height) < 5
+
+            if withinTolerance, let windowNumber = windowInfo[kCGWindowNumber as String] as? Int {
+                self.logger.debug("Found window ID \(windowNumber) via CGWindowList for '\(title)'")
+                return CGWindowID(windowNumber)
             }
         }
 
-        // Use actual window ID if available, otherwise use index
-        let windowID = actualWindowID ?? CGWindowID(index)
-
-        // Debug logging
-        if actualWindowID == nil {
-            self.logger
-                .warning("Failed to get actual window ID for window '\(title)', using index \(index) as fallback")
-        }
-
-        // Get space information for the window
-        let (spaceID, spaceName) = self.getSpaceInfo(for: windowID)
-
-        // Get window level (z-order) from CGS
-        let spaceService = SpaceManagementService()
-        let windowLevel = spaceService.getWindowLevel(windowID: windowID).map { Int($0) } ?? 0
-
-        return ServiceWindowInfo(
-            windowID: Int(windowID), // Convert CGWindowID to Int
-            title: title,
-            bounds: bounds,
-            isMinimized: isMinimized,
-            isMainWindow: isMain,
-            windowLevel: windowLevel,
-            index: index,
-            spaceID: spaceID,
-            spaceName: spaceName,
-            screenIndex: screenIndex,
-            screenName: screenName)
+        return nil
     }
 
-    private func getSpaceInfo(for windowID: CGWindowID) -> (spaceID: UInt64?, spaceName: String?) {
+    func spaceInfo(for windowID: CGWindowID) -> (spaceID: UInt64?, spaceName: String?) {
         let spaceService = SpaceManagementService()
         let spaces = spaceService.getSpacesForWindow(windowID: windowID)
-
-        // Return the first space the window is on (windows can technically be on multiple spaces)
-        if let firstSpace = spaces.first {
-            return (firstSpace.id, firstSpace.name)
+        guard let firstSpace = spaces.first else {
+            return (nil, nil)
         }
+        return (firstSpace.id, firstSpace.name)
+    }
 
-        return (nil, nil)
+    func windowLevel(for windowID: CGWindowID) -> Int {
+        let spaceService = SpaceManagementService()
+        return spaceService.getWindowLevel(windowID: windowID).map { Int($0) } ?? 0
     }
 
     @MainActor
@@ -945,108 +661,13 @@ public final class ApplicationService: ApplicationServiceProtocol {
     }
 
     @MainActor
-    private func searchApplicationWithSpotlight(_ name: String) -> URL? {
-        self.logger.debug("Using Spotlight to search for: \(name)")
-
-        // Create metadata query for applications
-        let query = NSMetadataQuery()
-        query.predicate = NSPredicate(
-            format: "(kMDItemContentType == 'com.apple.application-bundle' || kMDItemContentType == 'com.apple.application') && (kMDItemDisplayName CONTAINS[cd] %@ || kMDItemFSName CONTAINS[cd] %@)",
-            name, name)
-        query.searchScopes = [
-            NSMetadataQueryIndexedLocalComputerScope,
-            NSMetadataQueryIndexedNetworkScope,
-        ]
-
-        // Start query synchronously
-        query.start()
-
-        // Wait for results (with timeout)
-        let startTime = Date()
-        while query.isGathering, Date().timeIntervalSince(startTime) < 2.0 {
-            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
-        }
-
-        query.stop()
-
-        self.logger.debug("Spotlight query completed with \(query.resultCount) results")
-
-        // Process results
-        var bestMatch: URL?
-        var bestScore = 0
-
-        for i in 0..<query.resultCount {
-            guard let item = query.result(at: i) as? NSMetadataItem,
-                  let path = item.value(forAttribute: NSMetadataItemPathKey) as? String
-            else {
-                continue
-            }
-
-            let appURL = URL(fileURLWithPath: path)
-            let displayName = (item.value(forAttribute: NSMetadataItemDisplayNameKey) as? String) ?? ""
-            let fsName = appURL.lastPathComponent
-
-            self.logger.debug("Spotlight found: \(path), displayName: '\(displayName)', fsName: '\(fsName)'")
-
-            // Score based on match quality
-            var score = 0
-
-            // Remove .app extension for comparison
-            let fsNameNoExt = fsName.hasSuffix(".app") ? String(fsName.dropLast(4)) : fsName
-
-            // Exact match (case insensitive)
-            if displayName.lowercased() == name.lowercased() ||
-                fsNameNoExt.lowercased() == name.lowercased() ||
-                fsName.lowercased() == "\(name.lowercased()).app"
-            {
-                score = 100
-            }
-            // Starts with search term
-            else if displayName.lowercased().hasPrefix(name.lowercased()) ||
-                fsNameNoExt.lowercased().hasPrefix(name.lowercased())
-            {
-                score = 80
-            }
-            // Contains search term
-            else if displayName.lowercased().contains(name.lowercased()) ||
-                fsNameNoExt.lowercased().contains(name.lowercased())
-            {
-                score = 50
-            }
-
-            // Prefer apps in standard locations
-            if path.hasPrefix("/Applications/") {
-                score += 10
-            } else if path.hasPrefix("/System/Applications/") {
-                score += 5
-            }
-
-            // Prefer apps in DerivedData for debug builds
-            if path.contains("/DerivedData/"), path.contains("/Debug/") {
-                score += 15 // Higher priority for debug builds when explicitly searching
-            }
-
-            if score > bestScore {
-                bestScore = score
-                bestMatch = appURL
-            }
-
-            // If we found an exact match, we can stop
-            if score >= 100 {
-                break
-            }
-        }
-
-        if let match = bestMatch {
-            self.logger.debug("Spotlight found app: \(match.path) (score: \(bestScore))")
-        }
-
-        return bestMatch
+    func searchApplicationWithSpotlight(_ name: String) -> URL? {
+        SpotlightApplicationSearcher(logger: self.logger, name: name).search()
     }
 
     // MARK: - Helper for building window list output
 
-    private func buildWindowListOutput(
+fileprivate func buildWindowListOutput(
         windows: [ServiceWindowInfo],
         app: ServiceApplicationInfo,
         startTime: Date,
@@ -1088,5 +709,374 @@ public final class ApplicationService: ApplicationServiceProtocol {
                 duration: Date().timeIntervalSince(startTime),
                 warnings: warnings,
                 hints: ["Use window title or index to target specific window"]))
+    }
+}
+
+// MARK: - Window enumeration support
+
+@MainActor
+private struct WindowEnumerationContext {
+    struct CGSnapshot {
+        let windows: [ServiceWindowInfo]
+        let windowsByTitle: [String: ServiceWindowInfo]
+    }
+
+    struct AXWindowResult {
+        let windows: [Element]
+        let timedOut: Bool
+    }
+
+    unowned let service: ApplicationService
+    let app: ServiceApplicationInfo
+    let startTime: Date
+    let axTimeout: Float
+    let hasScreenRecording: Bool
+    let logger: Logger
+
+    func run() async -> UnifiedToolOutput<ServiceWindowListData> {
+        let snapshot = hasScreenRecording ? collectCGSnapshot() : nil
+        if let snapshot, let fast = fastPath(using: snapshot) {
+            return fast
+        }
+
+        guard isApplicationRunning else {
+            return terminatedOutput()
+        }
+
+        let axWindows = fetchAXWindows()
+        if let snapshot {
+            return await mergeWithSnapshot(snapshot, axResult: axWindows)
+        }
+
+        return await buildAXOnlyResult(from: axWindows)
+    }
+
+    private var isApplicationRunning: Bool {
+        NSRunningApplication(processIdentifier: app.processIdentifier)?.isTerminated == false
+    }
+
+    private func collectCGSnapshot() -> CGSnapshot? {
+        logger.debug("Using hybrid approach: CGWindowList + selective AX enrichment")
+        let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return nil
+        }
+
+        var windowIndex = 0
+        var windows: [ServiceWindowInfo] = []
+        var windowsByTitle: [String: ServiceWindowInfo] = [:]
+        let screenService = ScreenService()
+        let spaceService = SpaceManagementService()
+
+        for windowInfo in windowList {
+            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
+                  ownerPID == app.processIdentifier
+            else {
+                continue
+            }
+
+            guard let windowInfo = snapshotWindowInfo(
+                from: windowInfo,
+                index: windowIndex,
+                screenService: screenService,
+                spaceService: spaceService)
+            else {
+                continue
+            }
+
+            windows.append(windowInfo)
+            if !windowInfo.title.isEmpty {
+                windowsByTitle[windowInfo.title] = windowInfo
+            } else {
+                let missingTitleMessage =
+                    "Window \(windowInfo.windowID) has no title in CGWindowList, will need AX enrichment"
+                logger.debug("\(missingTitleMessage)")
+            }
+            windowIndex += 1
+        }
+
+        guard !windows.isEmpty else {
+            return nil
+        }
+
+        logger.debug("CGWindowList found \(windows.count) windows for \(app.name)")
+        return CGSnapshot(windows: windows, windowsByTitle: windowsByTitle)
+    }
+
+    private func snapshotWindowInfo(
+        from windowInfo: [String: Any],
+        index: Int,
+        screenService: ScreenService,
+        spaceService: SpaceManagementService) -> ServiceWindowInfo?
+    {
+        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+              let x = boundsDict["X"] as? CGFloat,
+              let y = boundsDict["Y"] as? CGFloat,
+              let width = boundsDict["Width"] as? CGFloat,
+              let height = boundsDict["Height"] as? CGFloat
+        else {
+            return nil
+        }
+
+        let bounds = CGRect(x: x, y: y, width: width, height: height)
+        let windowID = windowInfo[kCGWindowNumber as String] as? Int ?? index
+        let windowLevel = windowInfo[kCGWindowLayer as String] as? Int ?? 0
+        let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+        let windowTitle = (windowInfo[kCGWindowName as String] as? String) ?? ""
+        let isMinimized = bounds.origin.x < -10000 || bounds.origin.y < -10000
+        let spaces = spaceService.getSpacesForWindow(windowID: CGWindowID(windowID))
+        let (spaceID, spaceName) = spaces.first.map { ($0.id, $0.name) } ?? (nil, nil)
+        let screenInfo = screenService.screenContainingWindow(bounds: bounds)
+
+        return ServiceWindowInfo(
+            windowID: windowID,
+            title: windowTitle,
+            bounds: bounds,
+            isMinimized: isMinimized,
+            isMainWindow: index == 0,
+            windowLevel: windowLevel,
+            alpha: alpha,
+            index: index,
+            spaceID: spaceID,
+            spaceName: spaceName,
+            screenIndex: screenInfo?.index,
+            screenName: screenInfo?.name)
+    }
+
+    private func fastPath(using snapshot: CGSnapshot) -> UnifiedToolOutput<ServiceWindowListData>? {
+        guard snapshot.windows.allSatisfy({ !$0.title.isEmpty }) else {
+            return nil
+        }
+
+        logger.debug("All windows have titles from CGWindowList, using fast path")
+        return service.buildWindowListOutput(
+            windows: snapshot.windows,
+            app: app,
+            startTime: startTime,
+            warnings: [])
+    }
+
+    private func terminatedOutput() -> UnifiedToolOutput<ServiceWindowListData> {
+        logger.warning("Application \(app.name) appears to have terminated")
+        return UnifiedToolOutput(
+            data: ServiceWindowListData(windows: [], targetApplication: app),
+            summary: UnifiedToolOutput.Summary(
+                brief: "Application \(app.name) has no windows (app terminated)",
+                status: .failed,
+                counts: ["windows": 0]),
+            metadata: UnifiedToolOutput.Metadata(
+                duration: Date().timeIntervalSince(startTime),
+                warnings: ["Application appears to have terminated"]))
+    }
+
+    private func fetchAXWindows() -> AXWindowResult {
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        appElement.setMessagingTimeout(axTimeout)
+        defer { appElement.setMessagingTimeout(0) }
+
+        let windowStartTime = Date()
+        let windows = appElement.windowsWithTimeout(timeout: axTimeout) ?? []
+        let timedOut = Date().timeIntervalSince(windowStartTime) >= Double(axTimeout)
+        return AXWindowResult(windows: windows, timedOut: timedOut)
+    }
+
+    private func mergeWithSnapshot(
+        _ snapshot: CGSnapshot,
+        axResult: AXWindowResult) async -> UnifiedToolOutput<ServiceWindowListData>
+    {
+        var enrichedWindows: [ServiceWindowInfo] = []
+        var warnings: [String] = []
+
+        for (index, axWindow) in axResult.windows.enumerated() {
+            if Date().timeIntervalSince(startTime) > Double(axTimeout * 2) {
+                warnings.append("Stopped enrichment after timeout")
+                break
+            }
+
+            guard let axTitle = axWindow.title(), !axTitle.isEmpty else {
+                continue
+            }
+
+            if let cgWindow = snapshot.windowsByTitle[axTitle] {
+                enrichedWindows.append(cgWindow)
+            } else if let windowInfo = await service.createWindowInfo(from: axWindow, index: index) {
+                enrichedWindows.append(windowInfo)
+            }
+        }
+
+        for cgWindow in snapshot.windows where !enrichedWindows.contains(where: { $0.windowID == cgWindow.windowID }) {
+            if cgWindow.title.isEmpty {
+                logger.debug("CGWindow \(cgWindow.windowID) has no title, including as-is")
+            }
+            enrichedWindows.append(cgWindow)
+        }
+
+        if axResult.timedOut {
+            warnings.append("Window enumeration timed out after \(axTimeout)s, results may be incomplete")
+        }
+
+        return service.buildWindowListOutput(
+            windows: enrichedWindows,
+            app: app,
+            startTime: startTime,
+            warnings: warnings)
+    }
+
+    private func buildAXOnlyResult(from axResult: AXWindowResult) async -> UnifiedToolOutput<ServiceWindowListData> {
+        logger.debug("Using pure AX approach (no screen recording permission)")
+        var warnings: [String] = []
+        var windowInfos: [ServiceWindowInfo] = []
+        let maxWindowsToProcess = 100
+        let limitedWindows = Array(axResult.windows.prefix(maxWindowsToProcess))
+
+        if axResult.windows.count > maxWindowsToProcess {
+            let warning =
+                "Application \(app.name) has \(axResult.windows.count) windows, " +
+                "processing only first \(maxWindowsToProcess)"
+            logger.warning("\(warning)")
+        }
+
+        for (index, window) in limitedWindows.enumerated() {
+            if Date().timeIntervalSince(startTime) > Double(axTimeout) {
+                warnings.append("Stopped processing after \(axTimeout)s timeout")
+                break
+            }
+
+            if let windowInfo = await service.createWindowInfo(from: window, index: index) {
+                windowInfos.append(windowInfo)
+            }
+        }
+
+        if axResult.timedOut {
+            warnings.append("Window enumeration timed out, results may be incomplete")
+        }
+
+        if axResult.windows.count > maxWindowsToProcess {
+            let processedWarning =
+                "Only processed first \(maxWindowsToProcess) of \(axResult.windows.count) windows"
+            warnings.append(processedWarning)
+        }
+
+        if !hasScreenRecording {
+            warnings.append("Screen recording permission not granted - window listing may be slower")
+        }
+
+        return service.buildWindowListOutput(
+            windows: windowInfos,
+            app: app,
+            startTime: startTime,
+            warnings: warnings)
+    }
+}
+
+// MARK: - Spotlight search helper
+
+@MainActor
+private struct SpotlightApplicationSearcher {
+    let logger: Logger
+    let name: String
+
+    func search() -> URL? {
+        logger.debug("Using Spotlight to search for: \(name)")
+        let query = makeQuery()
+        query.start()
+        waitForResults(query)
+        query.stop()
+        logger.debug("Spotlight query completed with \(query.resultCount) results")
+
+        guard let match = bestMatch(in: query) else {
+            return nil
+        }
+
+        let resultMessage = "Spotlight found app: \(match.url.path) (score: \(match.score))"
+        logger.debug("\(resultMessage)")
+        return match.url
+    }
+
+    private func makeQuery() -> NSMetadataQuery {
+        let query = NSMetadataQuery()
+        let predicateFormat =
+            "(kMDItemContentType == 'com.apple.application-bundle' || kMDItemContentType == 'com.apple.application')" +
+            " && (kMDItemDisplayName CONTAINS[cd] %@ || kMDItemFSName CONTAINS[cd] %@)"
+        query.predicate = NSPredicate(format: predicateFormat, name, name)
+        query.searchScopes = [
+            NSMetadataQueryIndexedLocalComputerScope,
+            NSMetadataQueryIndexedNetworkScope,
+        ]
+        return query
+    }
+
+    private func waitForResults(_ query: NSMetadataQuery) {
+        let startTime = Date()
+        while query.isGathering, Date().timeIntervalSince(startTime) < 2.0 {
+            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
+        }
+    }
+
+    private func bestMatch(in query: NSMetadataQuery) -> (url: URL, score: Int)? {
+        var bestMatch: (url: URL, score: Int)?
+        let searchTerm = name.lowercased()
+
+        for index in 0..<query.resultCount {
+            guard let item = query.result(at: index) as? NSMetadataItem,
+                  let path = item.value(forAttribute: NSMetadataItemPathKey) as? String
+            else {
+                continue
+            }
+
+            let appURL = URL(fileURLWithPath: path)
+            let displayName = (item.value(forAttribute: NSMetadataItemDisplayNameKey) as? String) ?? ""
+            let fsName = appURL.lastPathComponent
+
+            let spotlightMessage =
+                "Spotlight found: \(path), displayName: '\(displayName)', fsName: '\(fsName)'"
+            logger.debug("\(spotlightMessage)")
+
+            let score = score(for: displayName, fsName: fsName, path: path, searchTerm: searchTerm)
+            if score > (bestMatch?.score ?? 0) {
+                bestMatch = (appURL, score)
+            }
+
+            if score >= 100 {
+                break
+            }
+        }
+
+        return bestMatch
+    }
+
+    private func score(
+        for displayName: String,
+        fsName: String,
+        path: String,
+        searchTerm: String) -> Int
+    {
+        var score = 0
+        let fsNameNoExt = fsName.hasSuffix(".app") ? String(fsName.dropLast(4)) : fsName
+        let displayLower = displayName.lowercased()
+        let fsLower = fsNameNoExt.lowercased()
+
+        if displayLower == searchTerm ||
+            fsLower == searchTerm ||
+            fsName.lowercased() == "\(searchTerm).app" {
+            score = 100
+        } else if displayLower.hasPrefix(searchTerm) || fsLower.hasPrefix(searchTerm) {
+            score = 80
+        } else if displayLower.contains(searchTerm) || fsLower.contains(searchTerm) {
+            score = 50
+        }
+
+        if path.hasPrefix("/Applications/") {
+            score += 10
+        } else if path.hasPrefix("/System/Applications/") {
+            score += 5
+        }
+
+        if path.contains("/DerivedData/"), path.contains("/Debug/") {
+            score += 15
+        }
+
+        return score
     }
 }
