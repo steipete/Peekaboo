@@ -8,14 +8,6 @@ import PeekabooCore
 import Spinner
 import Tachikoma
 
-// Import shared helpers
-@_exported import struct PeekabooCLI.TerminalColor
-@_exported import func PeekabooCLI.formatDuration
-@_exported import func PeekabooCLI.formatJSON
-@_exported import func PeekabooCLI.parseArguments
-@_exported import func PeekabooCLI.parseResult
-@_exported import func PeekabooCLI.updateTerminalTitle
-
 /// Handles agent output formatting and display for different output modes
 @available(macOS 14.0, *)
 final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
@@ -100,7 +92,7 @@ extension AgentOutputDelegate {
         self.toolStartTimes[name] = Date()
         self.toolCallCount += 1
 
-        let args = self.parseArguments(arguments)
+        let args = parseArguments(arguments)
         let (formatter, toolType) = self.toolFormatter(for: name)
 
         var displayName = toolType?.displayName ?? name.replacingOccurrences(of: "_", with: " ").capitalized
@@ -110,7 +102,7 @@ extension AgentOutputDelegate {
         }
 
         let titleSummary = formatter.formatForTitle(arguments: args)
-        self.updateTerminalTitle("\(displayName): \(titleSummary) - \(self.task?.prefix(30) ?? "")")
+        updateTerminalTitle("\(displayName): \(titleSummary) - \(self.task?.prefix(30) ?? "")")
 
         guard self.outputMode != .quiet else { return }
 
@@ -138,7 +130,7 @@ extension AgentOutputDelegate {
         let durationString = self.durationString(for: name)
 
         guard self.outputMode != .quiet else { return }
-        guard let json = self.parseResult(result) else {
+        guard let json = parseResult(result) else {
             self.printInvalidResult(rawResult: result, durationString: durationString)
             return
         }
@@ -363,7 +355,7 @@ extension AgentOutputDelegate {
     }
 
     private func completionSummaryLine(totalElapsed: TimeInterval, toolsText: String, tokenInfo: String) -> String {
-        let summaryPrefix = "\(TerminalColor.gray)Task completed in \(self.formatDuration(totalElapsed))"
+        let summaryPrefix = "\(TerminalColor.gray)Task completed in \(formatDuration(totalElapsed))"
         return [
             "\n",
             summaryPrefix,
@@ -376,7 +368,7 @@ extension AgentOutputDelegate {
         if let startTime = self.toolStartTimes[toolName] {
             self.toolStartTimes.removeValue(forKey: toolName)
             let elapsed = Date().timeIntervalSince(startTime)
-            return " \(TerminalColor.gray)(\(self.formatDuration(elapsed)))\(TerminalColor.reset)"
+            return " \(TerminalColor.gray)(\(formatDuration(elapsed)))\(TerminalColor.reset)"
         }
         return ""
     }

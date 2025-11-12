@@ -9,11 +9,6 @@ import Spinner
 import Tachikoma
 import TachikomaMCP
 
-// Import shared helpers
-@_exported import struct PeekabooCLI.TerminalColor
-@_exported import func PeekabooCLI.updateTerminalTitle
-@_exported import func PeekabooCLI.formatTimeAgo
-
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working
 struct AgentSessionInfo: Codable {
@@ -589,7 +584,7 @@ extension AgentCommand {
     }
 
     private func printSessionLine(index: Int, session: AgentSessionInfo, dateFormatter: DateFormatter) {
-        let timeAgo = self.formatTimeAgo(session.lastModified)
+        let timeAgo = formatTimeAgo(session.lastModified)
         let sessionLine = [
             "\(TerminalColor.blue)\(index + 1).\(TerminalColor.reset)",
             " ",
