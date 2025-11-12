@@ -1,41 +1,19 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import MCP
 import os.log
 import TachikomaMCP
 
-/// MCP tool for controlling applications
+/// MCP tool for controlling applications (launch/quit/focus/etc.)
 public struct AppTool: MCPTool {
-    private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "AppTool")
+    private let logger = Logger(subsystem: "boo.peekaboo.mcp", category: "AppTool")
 
     public let name = "app"
 
     public var description: String {
         """
-        Control applications - launch, quit, relaunch, focus, hide, unhide, and switch between apps.
-
-        Actions:
-        - launch: Start an application (e.g., Calculator for calculations, Notes for writing)
-        - quit: Quit an application (with optional force flag)
-        - relaunch: Quit and restart an application (with configurable wait time)
-        - focus/switch: Bring an application to the foreground
-        - hide: Hide an application
-        - unhide: Show a hidden application
-        - list: List all running applications
-
-        Target applications by name (e.g., "Safari", "Calculator"), bundle ID (e.g., "com.apple.Safari"),
-        or process ID (e.g., "PID:663"). Fuzzy matching is supported for application names.
-
-        Common apps: Calculator, Safari, Chrome, Firefox, TextEdit, Notes, Terminal, Finder, 
-        System Settings, Activity Monitor, Mail, Calendar, Messages, Music, Photos, Preview
-
-        Examples:
-        - Launch Calculator for math: { "action": "launch", "name": "Calculator" }
-        - Launch Safari: { "action": "launch", "name": "Safari" }
-        - Quit TextEdit: { "action": "quit", "name": "TextEdit" }
-        - Relaunch Chrome: { "action": "relaunch", "name": "Google Chrome", "wait": 3 }
-        - Focus Terminal: { "action": "focus", "name": "Terminal" }
-        - List running apps: { "action": "list" }
+        Control applications - launch, quit, relaunch, focus, hide, unhide, switch, and list running apps.
         """
     }
 
@@ -43,30 +21,29 @@ public struct AppTool: MCPTool {
         SchemaBuilder.object(
             properties: [
                 "action": SchemaBuilder.string(
-                    description: "The action to perform on the application",
+                    description: "Action to perform",
                     enum: ["launch", "quit", "relaunch", "focus", "hide", "unhide", "switch", "list"]),
                 "name": SchemaBuilder.string(
-                    description: "Application name, bundle ID, or process ID (e.g., 'Safari', 'com.apple.Safari', 'PID:663')"),
+                    description: "App name/bundle ID/PID (e.g., 'Safari', 'com.apple.Safari', 'PID:663')"),
                 "bundleId": SchemaBuilder.string(
-                    description: "Launch by bundle identifier instead of name (for 'launch' action)"),
+                    description: "Bundle identifier when launching"),
                 "force": SchemaBuilder.boolean(
-                    description: "Force quit the application (for 'quit' and 'relaunch' actions)",
+                    description: "Force quit application",
                     default: false),
                 "wait": SchemaBuilder.number(
-                    description: "Wait time in seconds between quit and launch (for 'relaunch' action, default: 2)",
+                    description: "Wait time (seconds) between quit/launch for relaunch",
                     default: 2.0),
                 "waitUntilReady": SchemaBuilder.boolean(
-                    description: "Wait for the application to be ready (for 'launch' and 'relaunch' actions)",
+                    description: "Wait until the launched app is ready",
                     default: false),
                 "all": SchemaBuilder.boolean(
-                    description: "Quit all applications (for 'quit' action)",
+                    description: "Quit all applications",
                     default: false),
                 "except": SchemaBuilder.string(
-                    description: "Comma-separated list of apps to exclude when using --all (for 'quit' action)"),
-                "to": SchemaBuilder.string(
-                    description: "Application to switch to (for 'switch' action)"),
+                    description: "Comma-separated list of apps to exclude when quitting all"),
+                "to": SchemaBuilder.string(description: "Target application when switching"),
                 "cycle": SchemaBuilder.boolean(
-                    description: "Cycle to next application like Cmd+Tab (for 'switch' action)",
+                    description: "Cycle to the next application (like Cmd+Tab)",
                     default: false),
             ],
             required: ["action"])
@@ -80,427 +57,427 @@ public struct AppTool: MCPTool {
             return ToolResponse.error("Missing required parameter: action")
         }
 
-        let name = arguments.getString("name")
-        let bundleId = arguments.getString("bundleId")
-        let force = arguments.getBool("force") ?? false
-        let wait = arguments.getNumber("wait") ?? 2.0
-        let waitUntilReady = arguments.getBool("waitUntilReady") ?? false
-        let all = arguments.getBool("all") ?? false
-        let except = arguments.getString("except")
-        let to = arguments.getString("to")
-        let cycle = arguments.getBool("cycle") ?? false
-
-        let applicationService = PeekabooServices.shared.applications
+        let request = AppToolRequest(
+            name: arguments.getString("name"),
+            bundleId: arguments.getString("bundleId"),
+            force: arguments.getBool("force") ?? false,
+            wait: arguments.getNumber("wait") ?? 2.0,
+            waitUntilReady: arguments.getBool("waitUntilReady") ?? false,
+            all: arguments.getBool("all") ?? false,
+            except: arguments.getString("except"),
+            switchTarget: arguments.getString("to"),
+            cycle: arguments.getBool("cycle") ?? false,
+            startTime: Date()
+        )
 
         do {
-            let startTime = Date()
-
-            switch action {
-            case "launch":
-                return try await self.handleLaunch(
-                    service: applicationService,
-                    name: name,
-                    bundleId: bundleId,
-                    waitUntilReady: waitUntilReady,
-                    startTime: startTime)
-
-            case "quit":
-                return try await self.handleQuit(
-                    service: applicationService,
-                    name: name,
-                    force: force,
-                    all: all,
-                    except: except,
-                    startTime: startTime)
-
-            case "relaunch":
-                return try await self.handleRelaunch(
-                    service: applicationService,
-                    name: name,
-                    force: force,
-                    wait: wait,
-                    waitUntilReady: waitUntilReady,
-                    startTime: startTime)
-
-            case "focus", "switch":
-                return try await self.handleFocus(
-                    service: applicationService,
-                    name: name,
-                    to: to,
-                    cycle: cycle,
-                    startTime: startTime)
-
-            case "hide":
-                return try await self.handleHide(
-                    service: applicationService,
-                    name: name,
-                    startTime: startTime)
-
-            case "unhide":
-                return try await self.handleUnhide(
-                    service: applicationService,
-                    name: name,
-                    startTime: startTime)
-
-            case "list":
-                return try await self.handleList(
-                    service: applicationService,
-                    startTime: startTime)
-
-            default:
-                return ToolResponse
-                    .error(
-                        "Unknown action: \(action). Supported actions: launch, quit, relaunch, focus, hide, unhide, switch, list")
-            }
-
+            let actions = AppToolActions(
+                service: PeekabooServices.shared.applications,
+                logger: self.logger)
+            return try await actions.perform(action: action, request: request)
         } catch {
-            self.logger.error("App control execution failed: \(error)")
+            self.logger.error("App control execution failed: \(error, privacy: .public)")
             return ToolResponse.error("Failed to \(action) application: \(error.localizedDescription)")
         }
     }
+}
 
-    // MARK: - Action Handlers
+// MARK: - Request & Helpers
 
-    private func handleLaunch(
-        service: any ApplicationServiceProtocol,
-        name: String?,
-        bundleId: String?,
-        waitUntilReady: Bool,
-        startTime: Date) async throws -> ToolResponse
-    {
-        let identifier = bundleId ?? name
+private struct AppToolRequest {
+    let name: String?
+    let bundleId: String?
+    let force: Bool
+    let wait: Double
+    let waitUntilReady: Bool
+    let all: Bool
+    let except: String?
+    let switchTarget: String?
+    let cycle: Bool
+    let startTime: Date
+}
+
+@MainActor
+private struct AppToolActions {
+    enum FocusMode {
+        case focus
+        case appSwitch
+    }
+
+    let service: any ApplicationServiceProtocol
+    let logger: Logger
+
+    func perform(action: String, request: AppToolRequest) async throws -> ToolResponse {
+        switch action {
+        case "launch":
+            return try await self.handleLaunch(request: request)
+        case "quit":
+            return try await self.handleQuit(request: request)
+        case "relaunch":
+            return try await self.handleRelaunch(request: request)
+        case "focus":
+            return try await self.handleFocus(request: request, mode: .focus)
+        case "switch":
+            return try await self.handleFocus(request: request, mode: .appSwitch)
+        case "hide":
+            return try await self.handleHide(request: request)
+        case "unhide":
+            return try await self.handleUnhide(request: request)
+        case "list":
+            return try await self.handleList(request: request)
+        default:
+            let supported = "launch, quit, relaunch, focus, hide, unhide, switch, list"
+            return ToolResponse.error("Unknown action: \(action). Supported actions: \(supported)")
+        }
+    }
+
+    // MARK: Action handlers
+
+    func handleLaunch(request: AppToolRequest) async throws -> ToolResponse {
+        let identifier = request.bundleId ?? request.name
         guard let identifier else {
             return ToolResponse.error("Must specify either 'name' or 'bundleId' for launch action")
         }
 
-        let app = try await service.launchApplication(identifier: identifier)
-
-        if waitUntilReady {
-            // Wait a bit for the app to fully launch
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        let app = try await self.service.launchApplication(identifier: identifier)
+        if request.waitUntilReady {
+            try await Task.sleep(nanoseconds: 1_000_000_000)
         }
 
-        let executionTime = Date().timeIntervalSince(startTime)
+        let timing = self.executionTimeString(since: request.startTime)
+        let message = "\(AgentDisplayTokens.Status.success) Launched \(app.name) "
+            + "(PID: \(app.processIdentifier)) in \(timing)"
+        return self.buildResponse(
+            message: message,
+            app: app,
+            startTime: request.startTime)
+    }
+
+    func handleQuit(request: AppToolRequest) async throws -> ToolResponse {
+        if request.all {
+            return try await self.handleQuitAll(request: request)
+        }
+
+        guard let name = request.name else {
+            return ToolResponse.error("Must specify 'name' for quit action (or set 'all': true)")
+        }
+
+        let appInfo = try await self.service.findApplication(identifier: name)
+        let success = try await self.service.quitApplication(identifier: name, force: request.force)
+
+        guard success else {
+            return ToolResponse.error("Failed to quit \(appInfo.name). The application may have refused to quit.")
+        }
+
+        let timing = self.executionTimeString(since: request.startTime)
+        let suffix = request.force ? " (force quit)" : ""
+        let message = "\(AgentDisplayTokens.Status.success) Quit \(appInfo.name)\(suffix) in \(timing)"
+        return self.buildResponse(
+            message: message,
+            app: appInfo,
+            startTime: request.startTime,
+            extraMeta: ["force_quit": .bool(request.force)])
+    }
+
+    func handleRelaunch(request: AppToolRequest) async throws -> ToolResponse {
+        guard let identifier = request.name ?? request.bundleId else {
+            return ToolResponse.error("Must specify 'name' (or 'bundleId') for relaunch action")
+        }
+
+        let appInfo = try await self.service.findApplication(identifier: identifier)
+        guard let runningApp = self.runningApplication(for: appInfo.processIdentifier) else {
+            return ToolResponse.error("Application \(appInfo.name) is not currently running")
+        }
+
+        let quitSuccess = request.force ? runningApp.forceTerminate() : runningApp.terminate()
+        if !quitSuccess {
+            return ToolResponse.error("Failed to quit \(appInfo.name). It may have unsaved changes." )
+        }
+
+        let terminated = await self.waitForTermination(of: runningApp, timeout: 5.0)
+        if !terminated {
+            return ToolResponse.error("App \(appInfo.name) did not terminate within 5 seconds")
+        }
+
+        if request.wait > 0 {
+            try await Task.sleep(nanoseconds: UInt64(request.wait * 1_000_000_000))
+        }
+
+        let relaunchedApp = try await self.launchApplication(for: appInfo)
+
+        if request.waitUntilReady {
+            await self.waitForLaunchCompletion(of: relaunchedApp, timeout: 10.0)
+        }
+
+        // Refresh app info using new PID
+        let refreshedInfo = try await self.service.findApplication(identifier: "PID:\(relaunchedApp.processIdentifier)")
+        let timing = self.executionTimeString(since: request.startTime)
+        let message = "\(AgentDisplayTokens.Status.success) Relaunched \(refreshedInfo.name) "
+            + "(PID: \(refreshedInfo.processIdentifier)) in \(timing)"
+
+        return self.buildResponse(
+            message: message,
+            app: refreshedInfo,
+            startTime: request.startTime,
+            extraMeta: [
+                "previous_pid": .double(Double(appInfo.processIdentifier)),
+                "wait": .double(request.wait),
+                "wait_until_ready": .bool(request.waitUntilReady),
+                "force": .bool(request.force),
+            ])
+    }
+
+    func handleFocus(request: AppToolRequest, mode: FocusMode) async throws -> ToolResponse {
+        switch mode {
+        case .appSwitch where request.cycle:
+            self.cycleApplications()
+            return ToolResponse(
+                content: [.text("\(AgentDisplayTokens.Status.success) Switched to next application")],
+                meta: self.executionMeta(from: request.startTime))
+
+        case .appSwitch:
+            guard let identifier = request.switchTarget else {
+                return ToolResponse.error("Must specify 'to' for switch action")
+            }
+            let app = try await self.service.findApplication(identifier: identifier)
+            guard self.activateApplication(app) else {
+                return ToolResponse.error("Failed to focus \(app.name). Application may not be running.")
+            }
+            return self.focusResponse(app: app, startTime: request.startTime, verb: "Switched")
+
+        case .focus:
+            guard let identifier = request.name else {
+                return ToolResponse.error("Must specify 'name' for focus action")
+            }
+            let app = try await self.service.findApplication(identifier: identifier)
+            guard self.activateApplication(app) else {
+                return ToolResponse.error("Failed to focus \(app.name). Application may not be running.")
+            }
+            return self.focusResponse(app: app, startTime: request.startTime, verb: "Focused")
+        }
+    }
+
+    func handleHide(request: AppToolRequest) async throws -> ToolResponse {
+        guard let name = request.name else {
+            return ToolResponse.error("Must specify 'name' for hide action")
+        }
+        let app = try await self.service.findApplication(identifier: name)
+        try await self.service.hideApplication(identifier: name)
+        let message = "\(AgentDisplayTokens.Status.success) Hid \(app.name) "
+            + "(PID: \(app.processIdentifier)) in \(self.executionTimeString(since: request.startTime))"
+        return self.buildResponse(
+            message: message,
+            app: app,
+            startTime: request.startTime)
+    }
+
+    func handleUnhide(request: AppToolRequest) async throws -> ToolResponse {
+        guard let name = request.name else {
+            return ToolResponse.error("Must specify 'name' for unhide action")
+        }
+        let app = try await self.service.findApplication(identifier: name)
+        try await self.service.unhideApplication(identifier: name)
+        let message = "\(AgentDisplayTokens.Status.success) Unhid \(app.name) "
+            + "(PID: \(app.processIdentifier)) in \(self.executionTimeString(since: request.startTime))"
+        return self.buildResponse(
+            message: message,
+            app: app,
+            startTime: request.startTime)
+    }
+
+    func handleList(request: AppToolRequest) async throws -> ToolResponse {
+        let appsOutput = try await self.service.listApplications()
+        let apps = appsOutput.data.applications
+        let executionTime = self.executionTime(since: request.startTime)
+
+        let summary = apps
+            .sorted { $0.isActive && !$1.isActive }
+            .map { app in
+                let prefix = app.isActive ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.info
+                return "\(prefix) \(app.name) (PID: \(app.processIdentifier))"
+            }
+            .joined(separator: "\n")
+        let countLine = "\(AgentDisplayTokens.Status.info) Found \(apps.count) running applications "
+            + "in \(self.executionTimeString(from: executionTime))"
 
         return ToolResponse(
             content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Launched \(app.name) (PID: \(app.processIdentifier)) in \(String(format: "%.2f", executionTime))s"),
+                .text(summary),
+                .text(countLine),
             ],
             meta: .object([
-                "app_name": .string(app.name),
-                "process_id": .double(Double(app.processIdentifier)),
-                "bundle_id": app.bundleIdentifier != nil ? .string(app.bundleIdentifier!) : .null,
+                "apps": .array(
+                    apps.map { app in
+                        .object([
+                            "name": .string(app.name),
+                            "bundle_id": app.bundleIdentifier != nil ? .string(app.bundleIdentifier!) : .null,
+                            "process_id": .double(Double(app.processIdentifier)),
+                            "is_active": .bool(app.isActive),
+                            "is_hidden": .bool(app.isHidden),
+                        ])
+                    }),
                 "execution_time": .double(executionTime),
             ]))
     }
 
-    private func handleQuit(
-        service: any ApplicationServiceProtocol,
-        name: String?,
-        force: Bool,
-        all: Bool,
-        except: String?,
-        startTime: Date) async throws -> ToolResponse
-    {
-        if all {
-            return try await self.handleQuitAll(
-                service: service,
-                except: except,
-                force: force,
-                startTime: startTime)
+    // MARK: Helpers
+
+    private func handleQuitAll(request: AppToolRequest) async throws -> ToolResponse {
+        let excluded = request.except?
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) } ?? []
+
+        let appsOutput = try await self.service.listApplications()
+        let allApps = appsOutput.data.applications
+        let remaining = allApps.filter { app in
+            excluded.contains { exclusion in exclusion.caseInsensitiveCompare(app.name) == .orderedSame }
         }
-
-        guard let name else {
-            return ToolResponse.error("Must specify 'name' for quit action (or use 'all': true)")
+        let targets = allApps.filter { app in
+            !remaining.contains(where: { $0.processIdentifier == app.processIdentifier })
         }
-
-        let app = try await service.findApplication(identifier: name)
-        let success = try await service.quitApplication(identifier: name, force: force)
-
-        let executionTime = Date().timeIntervalSince(startTime)
-        let forceText = force ? " (force quit)" : ""
-
-        if success {
-            return ToolResponse(
-                content: [
-                    .text(
-                        "\(AgentDisplayTokens.Status.success) Quit \(app.name)\(forceText) in \(String(format: "%.2f", executionTime))s"),
-                ],
-                meta: .object([
-                    "app_name": .string(app.name),
-                    "process_id": .double(Double(app.processIdentifier)),
-                    "force_quit": .bool(force),
-                    "execution_time": .double(executionTime),
-                ]))
-        } else {
-            return ToolResponse.error("Failed to quit \(app.name). The application may have refused to quit.")
-        }
-    }
-
-    private func handleQuitAll(
-        service: any ApplicationServiceProtocol,
-        except: String?,
-        force: Bool,
-        startTime: Date) async throws -> ToolResponse
-    {
-        let allApps = try await service.listApplications()
-        let exceptSet = Set((except ?? "").split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() })
 
         var quitCount = 0
-        var failedApps: [String] = []
-
-        for app in allApps.data.applications {
-            // Skip system apps and apps in the exception list
-            let appNameLower = app.name.lowercased()
-            if exceptSet.contains(appNameLower) ||
-                exceptSet.contains(app.bundleIdentifier?.lowercased() ?? "") ||
-                app.name == "Finder" || // Always preserve Finder
-                app.bundleIdentifier?.starts(with: "com.apple.") == true
-            {
-                continue
-            }
-
+        var failed = [String]()
+        for app in targets {
             do {
-                let success = try await service.quitApplication(identifier: app.name, force: force)
+                let success = try await self.service.quitApplication(identifier: app.name, force: request.force)
                 if success {
                     quitCount += 1
                 } else {
-                    failedApps.append(app.name)
+                    failed.append(app.name)
                 }
             } catch {
-                failedApps.append(app.name)
+                self.logger.error("Failed to quit \(app.name, privacy: .public): \(error, privacy: .public)")
+                failed.append(app.name)
             }
         }
 
-        let executionTime = Date().timeIntervalSince(startTime)
-        let forceText = force ? " (force quit)" : ""
-
-        var message = "\(AgentDisplayTokens.Status.success) Quit \(quitCount) applications\(forceText)"
-        if !failedApps.isEmpty {
-            message += " (failed: \(failedApps.joined(separator: ", ")))"
+        let executionTime = self.executionTime(since: request.startTime)
+        var message = "\(AgentDisplayTokens.Status.success) Quit \(quitCount) applications"
+        if !excluded.isEmpty {
+            message += " (except \(excluded.joined(separator: ", ")))"
         }
-        message += " in \(String(format: "%.2f", executionTime))s"
+        message += " in \(self.executionTimeString(from: executionTime))"
+        if !failed.isEmpty {
+            let failureList = failed.joined(separator: ", ")
+            let warningLine = "\n\(AgentDisplayTokens.Status.warning) Failed to quit: \(failureList)"
+            message += warningLine
+        }
 
         return ToolResponse(
             content: [.text(message)],
             meta: .object([
                 "quit_count": .double(Double(quitCount)),
-                "failed_apps": .array(failedApps.map { .string($0) }),
-                "force_quit": .bool(force),
+                "failed": .array(failed.map(Value.string)),
+                "except": .array(excluded.map(Value.string)),
                 "execution_time": .double(executionTime),
+                "force": .bool(request.force),
             ]))
     }
 
-    private func handleRelaunch(
-        service: any ApplicationServiceProtocol,
-        name: String?,
-        force: Bool,
-        wait: Double,
-        waitUntilReady: Bool,
-        startTime: Date) async throws -> ToolResponse
-    {
-        guard let name else {
-            return ToolResponse.error("Must specify 'name' for relaunch action")
-        }
-
-        // First, get app info before quitting
-        let originalApp = try await service.findApplication(identifier: name)
-
-        // Quit the application
-        let quitSuccess = try await service.quitApplication(identifier: name, force: force)
-        if !quitSuccess {
-            return ToolResponse.error("Failed to quit \(originalApp.name) for relaunch")
-        }
-
-        // Wait the specified time
-        let waitNanoseconds = UInt64(wait * 1_000_000_000)
-        try await Task.sleep(nanoseconds: waitNanoseconds)
-
-        // Relaunch the application
-        let newApp = try await service.launchApplication(identifier: name)
-
-        if waitUntilReady {
-            // Wait a bit for the app to fully launch
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-        }
-
-        let executionTime = Date().timeIntervalSince(startTime)
-        let forceText = force ? " (force quit)" : ""
-
-        return ToolResponse(
-            content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Relaunched \(newApp.name)\(forceText) with \(wait)s wait in \(String(format: "%.2f", executionTime))s"),
-            ],
-            meta: .object([
-                "app_name": .string(newApp.name),
-                "old_process_id": .double(Double(originalApp.processIdentifier)),
-                "new_process_id": .double(Double(newApp.processIdentifier)),
-                "bundle_id": newApp.bundleIdentifier != nil ? .string(newApp.bundleIdentifier!) : .null,
-                "wait_time": .double(wait),
-                "force_quit": .bool(force),
-                "execution_time": .double(executionTime),
-            ]))
-    }
-
-    private func handleFocus(
-        service: any ApplicationServiceProtocol,
-        name: String?,
-        to: String?,
-        cycle: Bool,
-        startTime: Date) async throws -> ToolResponse
-    {
-        if cycle {
-            // Implement Cmd+Tab like cycling functionality
-            // This simulates pressing Cmd+Tab to cycle to the next app
-            let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x30, keyDown: true) // Tab key
-            event?.flags = .maskCommand
-            event?.post(tap: .cghidEventTap)
-
-            // Release the keys
-            let releaseEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0x30, keyDown: false)
-            releaseEvent?.flags = []
-            releaseEvent?.post(tap: .cghidEventTap)
-
-            // Small delay to allow the switch to complete
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-
-            // Get the newly focused app
-            let appsOutput = try await service.listApplications()
-            guard let focusedApp = appsOutput.data.applications.first(where: { $0.isActive }) else {
-                return ToolResponse.error("Failed to determine focused app after cycling")
-            }
-
-            let executionTime = Date().timeIntervalSince(startTime)
-
-            return ToolResponse(
-                content: [
-                    .text(
-                        "\(AgentDisplayTokens.Status.success) Cycled to \(focusedApp.name) in \(String(format: "%.2f", executionTime))s"),
-                ],
-                meta: .object([
-                    "app_name": .string(focusedApp.name),
-                    "process_id": .double(Double(focusedApp.processIdentifier)),
-                    "bundle_id": focusedApp.bundleIdentifier != nil ? .string(focusedApp.bundleIdentifier!) : .null,
-                    "execution_time": .double(executionTime),
-                ]))
-        }
-
-        let targetName = to ?? name
-        guard let targetName else {
-            return ToolResponse.error("Must specify 'name' or 'to' for focus/switch action")
-        }
-
-        let app = try await service.findApplication(identifier: targetName)
-        try await service.activateApplication(identifier: targetName)
-
-        let executionTime = Date().timeIntervalSince(startTime)
-
-        return ToolResponse(
-            content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Focused \(app.name) in \(String(format: "%.2f", executionTime))s"),
-            ],
-            meta: .object([
-                "app_name": .string(app.name),
-                "process_id": .double(Double(app.processIdentifier)),
-                "bundle_id": app.bundleIdentifier != nil ? .string(app.bundleIdentifier!) : .null,
-                "execution_time": .double(executionTime),
-            ]))
-    }
-
-    private func handleHide(
-        service: any ApplicationServiceProtocol,
-        name: String?,
-        startTime: Date) async throws -> ToolResponse
-    {
-        guard let name else {
-            return ToolResponse.error("Must specify 'name' for hide action")
-        }
-
-        let app = try await service.findApplication(identifier: name)
-        try await service.hideApplication(identifier: name)
-
-        let executionTime = Date().timeIntervalSince(startTime)
-
-        return ToolResponse(
-            content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Hidden \(app.name) in \(String(format: "%.2f", executionTime))s"),
-            ],
-            meta: .object([
-                "app_name": .string(app.name),
-                "process_id": .double(Double(app.processIdentifier)),
-                "execution_time": .double(executionTime),
-            ]))
-    }
-
-    private func handleUnhide(
-        service: any ApplicationServiceProtocol,
-        name: String?,
-        startTime: Date) async throws -> ToolResponse
-    {
-        guard let name else {
-            return ToolResponse.error("Must specify 'name' for unhide action")
-        }
-
-        let app = try await service.findApplication(identifier: name)
-        try await service.unhideApplication(identifier: name)
-
-        let executionTime = Date().timeIntervalSince(startTime)
-
-        return ToolResponse(
-            content: [
-                .text(
-                    "\(AgentDisplayTokens.Status.success) Unhidden \(app.name) in \(String(format: "%.2f", executionTime))s"),
-            ],
-            meta: .object([
-                "app_name": .string(app.name),
-                "process_id": .double(Double(app.processIdentifier)),
-                "execution_time": .double(executionTime),
-            ]))
-    }
-
-    private func handleList(
-        service: any ApplicationServiceProtocol,
-        startTime: Date) async throws -> ToolResponse
-    {
-        let apps = try await service.listApplications()
-        let executionTime = Date().timeIntervalSince(startTime)
-
-        let appList = apps.data.applications.map { app in
-            var info = "\(app.name) (PID: \(app.processIdentifier))"
-            if let bundleId = app.bundleIdentifier {
-                info += " [\(bundleId)]"
-            }
-            if app.isActive {
-                info += " [ACTIVE]"
-            }
-            if app.isHidden {
-                info += " [HIDDEN]"
-            }
-            return info
-        }.joined(separator: "\n")
-
-        let message = "[apps] Running Applications (\(apps.data.applications.count) total):\n\(appList)\n\nCompleted in \(String(format: "%.2f", executionTime))s"
+    private func buildResponse(
+        message: String,
+        app: ServiceApplicationInfo,
+        startTime: Date,
+        extraMeta: [String: Value] = [:]
+    ) -> ToolResponse {
+        var meta: [String: Value] = [
+            "app_name": .string(app.name),
+            "process_id": .double(Double(app.processIdentifier)),
+            "bundle_id": app.bundleIdentifier != nil ? .string(app.bundleIdentifier!) : .null,
+            "execution_time": .double(self.executionTime(since: startTime)),
+        ]
+        meta.merge(extraMeta) { $1 }
 
         return ToolResponse(
             content: [.text(message)],
+            meta: .object(meta))
+    }
+
+    private func focusResponse(app: ServiceApplicationInfo, startTime: Date, verb: String) -> ToolResponse {
+        let statusLine = "\(AgentDisplayTokens.Status.success) \(verb) \(app.name) (PID: \(app.processIdentifier))"
+        return ToolResponse(
+            content: [.text(statusLine)],
             meta: .object([
-                "application_count": .double(Double(apps.data.applications.count)),
-                "applications": .array(apps.data.applications.map { app in
-                    .object([
-                        "name": .string(app.name),
-                        "process_id": .double(Double(app.processIdentifier)),
-                        "bundle_id": app.bundleIdentifier != nil ? .string(app.bundleIdentifier!) : .null,
-                        "is_active": .bool(app.isActive),
-                        "is_hidden": .bool(app.isHidden),
-                        "window_count": .double(Double(app.windowCount)),
-                    ])
-                }),
-                "execution_time": .double(executionTime),
+                "app_name": .string(app.name),
+                "process_id": .double(Double(app.processIdentifier)),
+                "execution_time": .double(self.executionTime(since: startTime)),
             ]))
     }
+
+    private func executionMeta(from startTime: Date) -> Value {
+        .object(["execution_time": .double(self.executionTime(since: startTime))])
+    }
+
+    private func executionTime(since startTime: Date) -> Double {
+        Date().timeIntervalSince(startTime)
+    }
+
+    private func executionTimeString(since startTime: Date) -> String {
+        self.executionTimeString(from: self.executionTime(since: startTime))
+    }
+
+    private func executionTimeString(from interval: Double) -> String {
+        "\(String(format: "%.2f", interval))s"
+    }
+
+    private func runningApplication(for pid: Int32) -> NSRunningApplication? {
+        NSWorkspace.shared.runningApplications.first { $0.processIdentifier == pid }
+    }
+
+    private func waitForTermination(of app: NSRunningApplication, timeout: TimeInterval) async -> Bool {
+        var elapsed: TimeInterval = 0
+        while !app.isTerminated && elapsed < timeout {
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            elapsed += 0.1
+        }
+        return app.isTerminated
+    }
+
+    private func waitForLaunchCompletion(of app: NSRunningApplication, timeout: TimeInterval) async {
+        var elapsed: TimeInterval = 0
+        while !app.isFinishedLaunching && elapsed < timeout {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            elapsed += 0.1
+        }
+    }
+
+    private func launchApplication(for appInfo: ServiceApplicationInfo) async throws -> NSRunningApplication {
+        let workspace = NSWorkspace.shared
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = true
+
+        if let bundleId = appInfo.bundleIdentifier,
+           let url = workspace.urlForApplication(withBundleIdentifier: bundleId)
+        {
+            return try await workspace.openApplication(at: url, configuration: config)
+        } else if let bundlePath = appInfo.bundlePath {
+            let url = URL(fileURLWithPath: bundlePath)
+            return try await workspace.openApplication(at: url, configuration: config)
+        }
+
+        throw ToolError(message: "Unable to relaunch \(appInfo.name). Missing bundle information.")
+    }
+
+    private func activateApplication(_ appInfo: ServiceApplicationInfo) -> Bool {
+        guard let runningApp = self.runningApplication(for: appInfo.processIdentifier) else {
+            return false
+        }
+        return runningApp.activate(options: [.activateAllWindows])
+    }
+
+    private func cycleApplications() {
+        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: false)
+        keyDown?.flags = .maskCommand
+        keyUp?.flags = .maskCommand
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
+    }
+}
+
+private struct ToolError: LocalizedError {
+    let message: String
+    var errorDescription: String? { self.message }
 }
