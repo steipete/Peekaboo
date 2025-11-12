@@ -20,8 +20,13 @@ struct PingIntegrationTests {
             arguments: ["--stdin"]
         )
 
-        #expect(result.exitCode == 0, "axorc command failed with status \(result.exitCode). Error: \(result.errorOutput ?? "N/A")")
-        #expect(result.errorOutput?.isEmpty ?? true, "Expected no error output, but got: \(result.errorOutput ?? "N/A")")
+        let stdinFailureMessage = """
+        axorc command failed with status \(result.exitCode).
+        Error: \(result.errorOutput ?? "N/A")
+        """
+        #expect(result.exitCode == 0, stdinFailureMessage)
+        let stdinErrorMessage = "Expected no error output, but got: \(result.errorOutput ?? "N/A")"
+        #expect(result.errorOutput?.isEmpty ?? true, stdinErrorMessage)
 
         guard let outputString = result.output else {
             Issue.record("Output was nil for ping via STDIN")
@@ -57,8 +62,13 @@ struct PingIntegrationTests {
 
         let result = try runAXORCCommand(arguments: ["--file", tempFilePath])
 
-        #expect(result.exitCode == 0, "axorc command failed with status \(result.exitCode). Error: \(result.errorOutput ?? "N/A")")
-        #expect(result.errorOutput?.isEmpty ?? true, "Expected no error output, but got: \(result.errorOutput ?? "N/A")")
+        let fileFailureMessage = """
+        axorc command failed with status \(result.exitCode).
+        Error: \(result.errorOutput ?? "N/A")
+        """
+        #expect(result.exitCode == 0, fileFailureMessage)
+        let fileErrorMessage = "Expected no error output, but got: \(result.errorOutput ?? "N/A")"
+        #expect(result.errorOutput?.isEmpty ?? true, fileErrorMessage)
 
         guard let outputString = result.output else {
             Issue.record("Output was nil for ping via file")
@@ -80,13 +90,19 @@ struct PingIntegrationTests {
     @Test("Ping via direct payload argument", .tags(.safe))
     func pingViaDirectPayload() async throws {
         let payloadMessage = "Hello from testPingViaDirectPayload"
-        let inputJSON =
-            "{\"command_id\":\"test_ping_direct\",\"command\":\"ping\",\"payload\":{\"message\":\"\(payloadMessage)\"}}"
+        let inputJSON = """
+        {"command_id":"test_ping_direct","command":"ping","payload":{"message":"\(payloadMessage)"}}
+        """
 
         let result = try runAXORCCommand(arguments: [inputJSON])
 
-        #expect(result.exitCode == 0, "axorc command failed with status \(result.exitCode). Error: \(result.errorOutput ?? "N/A")")
-        #expect(result.errorOutput?.isEmpty ?? true, "Expected no error output, but got: \(result.errorOutput ?? "N/A")")
+        let directFailureMessage = """
+        axorc command failed with status \(result.exitCode).
+        Error: \(result.errorOutput ?? "N/A")
+        """
+        #expect(result.exitCode == 0, directFailureMessage)
+        let directErrorMessage = "Expected no error output, but got: \(result.errorOutput ?? "N/A")"
+        #expect(result.errorOutput?.isEmpty ?? true, directErrorMessage)
 
         guard let outputString = result.output else {
             Issue.record("Output was nil for ping via direct payload")
@@ -122,7 +138,12 @@ struct PingIntegrationTests {
             arguments: ["--file", tempFilePath]
         )
 
-        #expect(result.exitCode == 0, "axorc command should return 0 with error on stdout. Status: \(result.exitCode). Error STDOUT: \(result.output ?? "nil"). Error STDERR: \(result.errorOutput ?? "nil")")
+        let multiInputMessage = """
+        axorc command should return 0 with error on stdout.
+        Status: \(result.exitCode). Error STDOUT: \(result.output ?? "nil").
+        Error STDERR: \(result.errorOutput ?? "nil")
+        """
+        #expect(result.exitCode == 0, multiInputMessage)
 
         guard let outputString = result.output, !outputString.isEmpty else {
             Issue.record("Output was nil or empty for multiple input methods error test")
@@ -144,7 +165,11 @@ struct PingIntegrationTests {
     func errorNoInputProvidedForPing() async throws {
         let result = try runAXORCCommand(arguments: [])
 
-        #expect(result.exitCode == 0, "axorc should return 0 with error on stdout. Status: \(result.exitCode). Error STDOUT: \(result.output ?? "nil"). Error STDERR: \(result.errorOutput ?? "nil")")
+        let noInputMessage = """
+        axorc should return 0 with error on stdout. Status: \(result.exitCode).
+        Error STDOUT: \(result.output ?? "nil"). Error STDERR: \(result.errorOutput ?? "nil")
+        """
+        #expect(result.exitCode == 0, noInputMessage)
 
         guard let outputString = result.output, !outputString.isEmpty else {
             Issue.record("Output was nil or empty for no input test.")
@@ -156,7 +181,7 @@ struct PingIntegrationTests {
         }
         let errorResponse = try JSONDecoder().decode(ErrorResponse.self, from: responseData)
         #expect(errorResponse.success == false)
-        #expect(errorResponse.commandId == "input_error", "Expected commandId to be input_error, got \(errorResponse.commandId)")
+        let commandIdMessage = "Expected commandId to be input_error, got \(errorResponse.commandId)"
+        #expect(errorResponse.commandId == "input_error", commandIdMessage)
     }
 }
-
