@@ -62,7 +62,7 @@ final class VisualizerEventReceiver {
         visualizerDebugLog("VisualizerEventReceiver: received descriptor \(descriptor)")
         guard let eventID = Self.parseEventID(from: descriptor) else {
             self.logger.error(
-                "Visualizer notification contained invalid identifier: \(descriptor, privacy: .public)"
+                "Visualizer notification contained invalid identifier: \(descriptor)"
             )
             return
         }
@@ -71,9 +71,8 @@ final class VisualizerEventReceiver {
         do {
             event = try VisualizerEventStore.loadEvent(id: eventID)
         } catch {
-            self.logger.error(
-                "Failed to load visualizer event \(eventID.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)"
-            )
+            let failureMessage = "Failed to load visualizer event \(eventID.uuidString)"
+            self.logger.error("\(failureMessage): \(error.localizedDescription)")
             visualizerDebugLog(
                 "VisualizerEventReceiver: failed to load event \(eventID.uuidString) - \(error.localizedDescription)"
             )
@@ -88,9 +87,8 @@ final class VisualizerEventReceiver {
             try VisualizerEventStore.removeEvent(id: eventID)
             visualizerDebugLog("VisualizerEventReceiver: deleted event \(eventID.uuidString)")
         } catch {
-            self.logger.error(
-                "Failed to delete visualizer event \(eventID.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)"
-            )
+            let failureMessage = "Failed to delete visualizer event \(eventID.uuidString)"
+            self.logger.error("\(failureMessage): \(error.localizedDescription)")
             visualizerDebugLog(
                 "VisualizerEventReceiver: failed to delete event \(eventID.uuidString) - \(error.localizedDescription)"
             )
@@ -98,7 +96,7 @@ final class VisualizerEventReceiver {
     }
 
     private func execute(event: VisualizerEvent) async {
-        self.logger.debug("Processing visualizer event \(event.kind.rawValue, privacy: .public)")
+        self.logger.debug("Processing visualizer event \(event.kind.rawValue)")
         let success: Bool
 
         switch event.payload {
@@ -143,7 +141,7 @@ final class VisualizerEventReceiver {
         }
 
         if !success {
-            self.logger.warning("Visualizer event \(event.kind.rawValue, privacy: .public) reported failure")
+            self.logger.warning("Visualizer event \(event.kind.rawValue) reported failure")
         }
     }
 
