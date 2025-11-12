@@ -56,9 +56,8 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
         if let coordString = coordinates {
             let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             guard parts.count == 2,
-                  let _ = Double(parts[0]),
-                  let _ = Double(parts[1])
-            else {
+                  Double(parts[0]) != nil,
+                  Double(parts[1]) != nil else {
                 throw ValidationError("Invalid coordinates format. Use: x,y")
             }
         }

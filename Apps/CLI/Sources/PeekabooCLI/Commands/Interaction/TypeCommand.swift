@@ -52,103 +52,111 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
-        self.runtime = runtime
+        self.prepare(using: runtime)
         let startTime = Date()
-        self.logger.setJsonOutputMode(self.jsonOutput)
-
         do {
-            var actions: [TypeAction] = []
-
-            // Build action sequence
-            if self.clear {
-                actions.append(.clear)
-            }
-
-            if let textToType = text {
-                // Process escape sequences
-                let processedActions = Self.processTextWithEscapes(textToType)
-                actions.append(contentsOf: processedActions)
-            }
-
-            if let tabCount = tab {
-                for _ in 0..<tabCount {
-                    actions.append(.key(.tab))
-                }
-            }
-
-            if self.escape {
-                actions.append(.key(.escape))
-            }
-
-            if self.delete {
-                actions.append(.key(.delete))
-            }
-
-            if self.pressReturn {
-                actions.append(.key(.return))
-            }
-
-            // Validate we have something to do
-            guard !actions.isEmpty else {
-                throw ValidationError("No input specified. Provide text or key flags.")
-            }
-
-            // Get session if available
-            let sessionId: String? = if let providedSession = session {
-                providedSession
-            } else {
-                await self.services.sessions.getMostRecentSession()
-            }
-
-            if self.focusOptions.autoFocus, sessionId == nil, self.app == nil {
-                self.logger.warn(
-                    """
-                    Typing without an associated --app or session. \
-                    We'll inject keys blindly; run 'peekaboo see' or provide --app if you need focus guarantees.
-                    """
-                )
-            }
-
-            // Ensure window is focused before typing
-            try await ensureFocused(
-                sessionId: sessionId,
-                applicationName: self.app,
-                options: self.focusOptions,
-                services: self.services
-            )
-
-            // Execute type actions using the service
-            let typeResult = try await AutomationServiceBridge.typeActions(
-                services: self.services,
-                actions: actions,
-                typingDelay: self.delay,
-                sessionId: sessionId
-            )
-
-            // Output results
-            let result = TypeCommandResult(
-                success: true,
-                typedText: text,
-                keyPresses: typeResult.keyPresses,
-                totalCharacters: typeResult.totalCharacters,
-                executionTime: Date().timeIntervalSince(startTime)
-            )
-
-            output(result) {
-                print("✅ Typing completed")
-                if let typed = text {
-                    print("⌨️  Typed: \"\(typed)\"")
-                }
-                if typeResult.keyPresses > 0 {
-                    print("🔑 Special keys: \(typeResult.keyPresses)")
-                }
-                print("📊 Total characters: \(typeResult.totalCharacters)")
-                print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
-            }
-
+            let actions = try self.buildActions()
+            let sessionId = await self.resolveSessionId()
+            self.warnIfFocusUnknown(sessionId: sessionId)
+            try await self.focusIfNeeded(sessionId: sessionId)
+            let typeResult = try await self.executeTypeActions(actions: actions, sessionId: sessionId)
+            self.renderResult(typeResult, startTime: startTime)
         } catch {
             self.handleError(error)
             throw ExitCode.failure
+        }
+    }
+
+    private mutating func prepare(using runtime: CommandRuntime) {
+        self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
+    }
+
+    private func buildActions() throws -> [TypeAction] {
+        var actions: [TypeAction] = []
+
+        if self.clear {
+            actions.append(.clear)
+        }
+
+        if let textToType = text {
+            actions.append(contentsOf: Self.processTextWithEscapes(textToType))
+        }
+
+        if let tabCount = tab {
+            actions.append(contentsOf: Array(repeating: TypeAction.key(.tab), count: tabCount))
+        }
+
+        if self.escape {
+            actions.append(.key(.escape))
+        }
+
+        if self.delete {
+            actions.append(.key(.delete))
+        }
+
+        if self.pressReturn {
+            actions.append(.key(.return))
+        }
+
+        guard !actions.isEmpty else {
+            throw ValidationError("No input specified. Provide text or key flags.")
+        }
+
+        return actions
+    }
+
+    private func resolveSessionId() async -> String? {
+        if let providedSession = session {
+            providedSession
+        } else {
+            await self.services.sessions.getMostRecentSession()
+        }
+    }
+
+    private func warnIfFocusUnknown(sessionId: String?) {
+        guard self.focusOptions.autoFocus, sessionId == nil, self.app == nil else { return }
+        self.logger.warn(
+            """
+            Typing without an associated --app or session. \
+            We'll inject keys blindly; run 'peekaboo see' or provide --app if you need focus guarantees.
+            """
+        )
+    }
+
+    private func focusIfNeeded(sessionId: String?) async throws {
+        try await ensureFocused(
+            sessionId: sessionId,
+            applicationName: self.app,
+            options: self.focusOptions,
+            services: self.services
+        )
+    }
+
+    private func executeTypeActions(actions: [TypeAction], sessionId: String?) async throws -> TypeResult {
+        let request = TypeActionsRequest(actions: actions, typingDelay: self.delay, sessionId: sessionId)
+        return try await AutomationServiceBridge.typeActions(services: self.services, request: request)
+    }
+
+    private func renderResult(_ typeResult: TypeResult, startTime: Date) {
+        let result = TypeCommandResult(
+            success: true,
+            typedText: text,
+            keyPresses: typeResult.keyPresses,
+            totalCharacters: typeResult.totalCharacters,
+            executionTime: Date().timeIntervalSince(startTime)
+        )
+
+        output(result) {
+            print("✅ Typing completed")
+            if let typed = text {
+                print("⌨️  Typed: \"\(typed)\"")
+            }
+            if typeResult.keyPresses > 0 {
+                print("🔑 Special keys: \(typeResult.keyPresses)")
+            }
+            print("📊 Total characters: \(typeResult.totalCharacters)")
+            print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
         }
     }
 

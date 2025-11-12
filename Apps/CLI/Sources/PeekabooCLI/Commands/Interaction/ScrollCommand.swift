@@ -78,14 +78,17 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             )
 
             // Perform scroll using the service
-            try await AutomationServiceBridge.scroll(
-                services: self.services,
+            let scrollRequest = ScrollRequest(
                 direction: scrollDirection,
                 amount: self.amount,
                 target: self.on,
                 smooth: self.smooth,
                 delay: self.delay,
                 sessionId: sessionId
+            )
+            try await AutomationServiceBridge.scroll(
+                services: self.services,
+                request: scrollRequest
             )
 
             // Calculate total ticks for output

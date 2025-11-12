@@ -87,14 +87,14 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 )
             }
 
-            try await AutomationServiceBridge.drag(
-                services: self.services,
+            let dragRequest = DragRequest(
                 from: startPoint,
                 to: endPoint,
                 duration: self.duration,
                 steps: self.steps,
                 modifiers: self.modifiers
             )
+            try await AutomationServiceBridge.drag(services: self.services, request: dragRequest)
 
             try await Task.sleep(nanoseconds: 100_000_000)
 
