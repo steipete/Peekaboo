@@ -52,94 +52,102 @@ public func createCFTypeRefFromString(
     forElement element: Element,
     attributeName: String
 ) throws -> CFTypeRef? {
-    // rawAttributeValue uses GlobalAXLogger internally if needed
     guard let currentRawValue = element.rawAttributeValue(named: attributeName) else {
-        axErrorLog(
-            "createCFTypeRefFromString: Could not read current value for attribute '\(attributeName)' " +
-                "to determine type.",
-            file: #file,
-            function: #function,
-            line: #line
-        )
+        let detail = """
+        createCFTypeRefFromString: Could not read current value for attribute
+        '\(attributeName)' to determine type.
+        """
+        axErrorLog(detail, file: #file, function: #function, line: #line)
         throw AccessibilityError.attributeNotReadable(
             attribute: attributeName,
             elementDescription: element.briefDescription()
         )
     }
 
-    let typeID = CFGetTypeID(currentRawValue)
+    return try convertStringValue(
+        stringValue,
+        attributeName: attributeName,
+        currentValue: currentRawValue,
+        element: element
+    )
+}
 
-    if typeID == AXValueGetTypeID() {
-        let axValue = currentRawValue as! AXValue
+@MainActor
+private func convertStringValue(
+    _ stringValue: String,
+    attributeName: String,
+    currentValue: CFTypeRef,
+    element: Element
+) throws -> CFTypeRef? {
+    let typeID = CFGetTypeID(currentValue)
+
+    switch typeID {
+    case AXValueGetTypeID():
+        let axValue = currentValue as! AXValue
         let axValueType = AXValueGetType(axValue)
         axDebugLog("Attribute '\(attributeName)' is AXValue of type: \(stringFromAXValueType(axValueType))",
                    file: #file,
                    function: #function,
                    line: #line)
         return try parseStringToAXValue(stringValue: stringValue, targetAXValueType: axValueType)
-    } else if typeID == CFStringGetTypeID() {
+    case CFStringGetTypeID():
         axDebugLog("Attribute '\(attributeName)' is CFString. Returning stringValue as CFString.",
                    file: #file,
                    function: #function,
                    line: #line)
         return stringValue as CFString
-    } else if typeID == CFNumberGetTypeID() {
-        axDebugLog("Attribute '\(attributeName)' is CFNumber. Attempting to parse stringValue.",
-                   file: #file,
-                   function: #function,
-                   line: #line)
-        if let doubleValue = Double(stringValue) {
-            return NSNumber(value: doubleValue)
-        } else if let intValue = Int(stringValue) {
-            return NSNumber(value: intValue)
-        } else {
-            axWarningLog(
-                "Could not parse '\(stringValue)' as Double or Int for CFNumber attribute '\(attributeName)'",
-                file: #file,
-                function: #function,
-                line: #line
-            )
-            throw AccessibilityError.valueParsingFailed(
-                details: "Could not parse '\(stringValue)' as Double or Int for CFNumber attribute '\(attributeName)'",
-                attribute: attributeName
-            )
-        }
-    } else if typeID == CFBooleanGetTypeID() {
-        axDebugLog("Attribute '\(attributeName)' is CFBoolean. Attempting to parse stringValue as Bool.",
-                   file: #file,
-                   function: #function,
-                   line: #line)
-        if stringValue.lowercased() == "true" {
-            return CFConstants.cfBooleanTrue
-        } else if stringValue.lowercased() == "false" {
-            return CFConstants.cfBooleanFalse
-        } else {
-            axWarningLog(
-                "Could not parse '\(stringValue)' as Bool (true/false) for CFBoolean attribute '\(attributeName)'",
-                file: #file,
-                function: #function,
-                line: #line
-            )
-            throw AccessibilityError.valueParsingFailed(
-                details: "Could not parse '\(stringValue)' as Bool (true/false) for CFBoolean attribute '\(attributeName)'",
-                attribute: attributeName
-            )
-        }
+    case CFNumberGetTypeID():
+        return try parseNumberValue(stringValue, attributeName: attributeName)
+    case CFBooleanGetTypeID():
+        return try parseBooleanValue(stringValue, attributeName: attributeName)
+    default:
+        let typeDescription = CFCopyTypeIDDescription(typeID) as String? ?? "Unknown CFType"
+        let detail = """
+        Setting attribute '\(attributeName)' of CFTypeID \(typeID) (\(typeDescription))
+        from string is not supported yet.
+        """
+        axErrorLog(detail, file: #file, function: #function, line: #line)
+        throw AccessibilityError.attributeUnsupported(
+            attribute: detail,
+            elementDescription: element.briefDescription()
+        )
+    }
+}
+
+@MainActor
+private func parseNumberValue(_ stringValue: String, attributeName: String) throws -> CFTypeRef? {
+    axDebugLog("Attribute '\(attributeName)' is CFNumber. Attempting to parse stringValue.",
+               file: #file,
+               function: #function,
+               line: #line)
+    if let doubleValue = Double(stringValue) {
+        return NSNumber(value: doubleValue)
+    }
+    if let intValue = Int(stringValue) {
+        return NSNumber(value: intValue)
     }
 
-    let typeDescription = CFCopyTypeIDDescription(typeID) as String? ?? "Unknown CFType"
-    axErrorLog(
-        "Setting attribute '\(attributeName)' of CFTypeID \(typeID) (\(typeDescription)) " +
-            "from string is not supported yet.",
-        file: #file,
-        function: #function,
-        line: #line
-    )
-    throw AccessibilityError.attributeUnsupported(
-        attribute: "Setting attribute '\(attributeName)' of CFTypeID \(typeID) (\(typeDescription)) " +
-            "from string is not supported yet.",
-        elementDescription: element.briefDescription()
-    )
+    let detail = "Could not parse '\(stringValue)' as Double or Int for CFNumber attribute '\(attributeName)'"
+    axWarningLog(detail, file: #file, function: #function, line: #line)
+    throw AccessibilityError.valueParsingFailed(details: detail, attribute: attributeName)
+}
+
+@MainActor
+private func parseBooleanValue(_ stringValue: String, attributeName: String) throws -> CFTypeRef? {
+    axDebugLog("Attribute '\(attributeName)' is CFBoolean. Attempting to parse stringValue as Bool.",
+               file: #file,
+               function: #function,
+               line: #line)
+    switch stringValue.lowercased() {
+    case "true":
+        return CFConstants.cfBooleanTrue
+    case "false":
+        return CFConstants.cfBooleanFalse
+    default:
+        let detail = "Could not parse '\(stringValue)' as Bool (true/false) for CFBoolean attribute '\(attributeName)'"
+        axWarningLog(detail, file: #file, function: #function, line: #line)
+        throw AccessibilityError.valueParsingFailed(details: detail, attribute: attributeName)
+    }
 }
 
 @MainActor
@@ -147,57 +155,47 @@ private func parseStringToAXValue(
     stringValue: String,
     targetAXValueType: AXValueType
 ) throws -> AXValue? {
-    let valueRef: AXValue?
-    switch targetAXValueType {
-    case .cgPoint:
-        valueRef = try parseCGPoint(from: stringValue)
-    case .cgSize:
-        valueRef = try parseCGSize(from: stringValue)
-    case .cgRect:
-        valueRef = try parseCGRect(from: stringValue)
-    case .cfRange:
-        valueRef = try parseCFRange(from: stringValue)
-    case .illegal:
-        axErrorLog(
-            "parseStringToAXValue: Attempted to parse for .illegal AXValueType.",
-            file: #file,
-            function: #function,
-            line: #line
-        )
-        throw AccessibilityError.attributeUnsupported(
-            attribute: "AXValueType.illegal",
-            elementDescription: nil
-        )
-    case .axError:
-        axErrorLog(
-            "parseStringToAXValue: Attempted to parse for .axError AXValueType.",
-            file: #file,
-            function: #function,
-            line: #line
-        )
-        throw AccessibilityError.attributeUnsupported(
-            attribute: "AXValueType.axError",
-            elementDescription: nil
-        )
-    default:
-        valueRef = try parseDefaultAXValueType(from: stringValue, targetType: targetAXValueType)
-    }
-
-    if valueRef == nil {
-        axErrorLog(
-            "parseStringToAXValue: AXValueCreate failed for type \(stringFromAXValueType(targetAXValueType)) " +
-                "with input '\(stringValue)'",
-            file: #file,
-            function: #function,
-            line: #line
-        )
-        throw AccessibilityError.valueParsingFailed(
-            details: "AXValueCreate failed for type \(stringFromAXValueType(targetAXValueType)) " +
-                "with input '\(stringValue)'",
-            attribute: stringFromAXValueType(targetAXValueType)
-        )
+    guard let valueRef = try makeAXValue(stringValue: stringValue, targetAXValueType: targetAXValueType) else {
+        let typeDescription = stringFromAXValueType(targetAXValueType)
+        let detail = "AXValueCreate failed for type \(typeDescription) with input '\(stringValue)'"
+        axErrorLog("parseStringToAXValue: \(detail)", file: #file, function: #function, line: #line)
+        throw AccessibilityError.valueParsingFailed(details: detail, attribute: typeDescription)
     }
     return valueRef
+}
+
+@MainActor
+private func makeAXValue(
+    stringValue: String,
+    targetAXValueType: AXValueType
+) throws -> AXValue? {
+    switch targetAXValueType {
+    case .cgPoint:
+        return try parseCGPoint(from: stringValue)
+    case .cgSize:
+        return try parseCGSize(from: stringValue)
+    case .cgRect:
+        return try parseCGRect(from: stringValue)
+    case .cfRange:
+        return try parseCFRange(from: stringValue)
+    case .illegal:
+        throw unsupportedValueType("AXValueType.illegal")
+    case .axError:
+        throw unsupportedValueType("AXValueType.axError")
+    default:
+        return try parseDefaultAXValueType(from: stringValue, targetType: targetAXValueType)
+    }
+}
+
+@MainActor
+private func unsupportedValueType(_ description: String) -> AccessibilityError {
+    axErrorLog(
+        "parseStringToAXValue: Attempted to parse unsupported type \(description).",
+        file: #file,
+        function: #function,
+        line: #line
+    )
+    return AccessibilityError.attributeUnsupported(attribute: description, elementDescription: nil)
 }
 
 // MARK: - Helper Functions for AXValue Parsing
