@@ -199,174 +199,35 @@ struct AddCustomProviderView: View {
     }
 
     private var providerSelectionView: some View {
-        VStack(spacing: 24) {
-            // Popular provider templates
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Popular Providers")
-                    .font(.headline)
-
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-                    ForEach(ProviderTemplate.popular, id: \.id) { template in
-                        ProviderTemplateCard(
-                            template: template,
-                            isSelected: self.selectedTemplate?.id == template.id)
-                        {
-                            self.selectedTemplate = template
-                            self.applyTemplate(template)
-                        }
-                    }
-                }
-            }
-
-            Divider()
-
-            // Custom provider option
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Custom Provider")
-                    .font(.headline)
-
-                ProviderTemplateCard(
-                    template: ProviderTemplate.custom,
-                    isSelected: self.selectedTemplate?.id == ProviderTemplate.custom.id)
-                {
-                    self.selectedTemplate = ProviderTemplate.custom
-                    self.applyTemplate(ProviderTemplate.custom)
-                }
-            }
-        }
+        ProviderSelectionStepView(
+            selectedTemplate: self.$selectedTemplate,
+            applyTemplate: self.applyTemplate)
     }
 
     private var configurationView: some View {
-        VStack(spacing: 24) {
-            // Provider preview card
-            if let template = selectedTemplate {
-                ProviderPreviewCard(template: template, name: self.name.isEmpty ? template.name : self.name)
-            }
-
-            // Configuration form
-            VStack(spacing: 20) {
-                // Basic info section
-                SectionCard(title: "Basic Information", icon: "info.circle") {
-                    VStack(spacing: 16) {
-                        FormField(title: "Provider ID", binding: self.$providerId, placeholder: "my-custom-provider") {
-                            Text("Unique identifier for this provider")
-                                .foregroundColor(.secondary)
-                        }
-
-                        FormField(title: "Display Name", binding: self.$name, placeholder: "My Custom Provider") {
-                            Text("Friendly name shown in the UI")
-                                .foregroundColor(.secondary)
-                        }
-
-                        FormField(
-                            title: "Description",
-                            binding: self.$description,
-                            placeholder: "Optional description")
-                        {
-                            Text("Brief description of this provider")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-
-                // Connection section
-                SectionCard(title: "Connection", icon: "network") {
-                    VStack(spacing: 16) {
-                        // Provider type picker
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Provider Type")
-                                .font(.headline)
-
-                            Picker("Type", selection: self.$type) {
-                                ForEach(
-                                    Configuration.CustomProvider.ProviderType.allCases,
-                                    id: \.self)
-                                { providerType in
-                                    Label(providerType.displayName, systemImage: providerType.icon)
-                                        .tag(providerType)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                        }
-
-                        FormField(
-                            title: "Base URL",
-                            binding: self.$baseURL,
-                            placeholder: "https://api.provider.com/v1")
-                        {
-                            Text("API endpoint URL for this provider")
-                                .foregroundColor(.secondary)
-                        }
-
-                        SecureFormField(
-                            title: "API Key",
-                            binding: self.$apiKey,
-                            placeholder: "sk-... or {env:API_KEY}")
-                        {
-                            Text("Your API key or environment variable reference")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-
-                // Advanced section (collapsible)
-                DisclosureGroup("Advanced Settings", isExpanded: self.$isAdvancedMode) {
-                    VStack(spacing: 16) {
-                        FormField(
-                            title: "Custom Headers",
-                            binding: self.$headers,
-                            placeholder: "Authorization:Bearer token,X-Custom:value")
-                        {
-                            Text("Additional headers in key:value,key:value format")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(.top, 16)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color(.controlBackgroundColor))
-                .cornerRadius(12)
-            }
-        }
+        ProviderConfigurationStepView(
+            selectedTemplate: self.selectedTemplate,
+            providerId: self.$providerId,
+            name: self.$name,
+            description: self.$description,
+            type: self.$type,
+            baseURL: self.$baseURL,
+            apiKey: self.$apiKey,
+            headers: self.$headers,
+            isAdvancedMode: self.$isAdvancedMode
+        )
     }
 
     private var testView: some View {
-        VStack(spacing: 32) {
-            // Provider summary
-            if let template = selectedTemplate {
-                ProviderSummaryCard(
-                    template: template,
-                    name: self.name,
-                    baseURL: self.baseURL,
-                    type: self.type)
-            }
-
-            // Test connection section
-            VStack(spacing: 20) {
-                Text("Test Connection")
-                    .font(.title2.bold())
-
-                if let result = testResult {
-                    TestResultCard(result: result)
-                } else if self.isTestingConnection {
-                    TestingCard()
-                } else {
-                    Button(action: self.testConnection) {
-                        Label("Test Connection", systemImage: "bolt.fill")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(.blue)
-                            .cornerRadius(12)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            Spacer()
-        }
+        ProviderTestStepView(
+            selectedTemplate: self.selectedTemplate,
+            name: self.name,
+            baseURL: self.baseURL,
+            type: self.type,
+            testResult: self.testResult,
+            isTestingConnection: self.isTestingConnection,
+            testAction: self.testConnection
+        )
     }
 
     private var navigationButton: some View {
@@ -483,6 +344,195 @@ struct AddCustomProviderView: View {
 }
 
 // MARK: - Supporting Views
+
+private struct ProviderSelectionStepView: View {
+    @Binding var selectedTemplate: ProviderTemplate?
+    let applyTemplate: (ProviderTemplate) -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Popular Providers")
+                    .font(.headline)
+
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
+                    ForEach(ProviderTemplate.popular, id: \.id) { template in
+                        ProviderTemplateCard(
+                            template: template,
+                            isSelected: self.selectedTemplate?.id == template.id)
+                        {
+                            self.selectedTemplate = template
+                            self.applyTemplate(template)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Custom Provider")
+                    .font(.headline)
+
+                ProviderTemplateCard(
+                    template: ProviderTemplate.custom,
+                    isSelected: self.selectedTemplate?.id == ProviderTemplate.custom.id)
+                {
+                    let template = ProviderTemplate.custom
+                    self.selectedTemplate = template
+                    self.applyTemplate(template)
+                }
+            }
+        }
+    }
+}
+
+private struct ProviderConfigurationStepView: View {
+    let selectedTemplate: ProviderTemplate?
+    @Binding var providerId: String
+    @Binding var name: String
+    @Binding var description: String
+    @Binding var type: Configuration.CustomProvider.ProviderType
+    @Binding var baseURL: String
+    @Binding var apiKey: String
+    @Binding var headers: String
+    @Binding var isAdvancedMode: Bool
+
+    var body: some View {
+        VStack(spacing: 24) {
+            if let template = self.selectedTemplate {
+                ProviderPreviewCard(template: template, name: self.name.isEmpty ? template.name : self.name)
+            }
+
+            VStack(spacing: 20) {
+                SectionCard(title: "Basic Information", icon: "info.circle") {
+                    VStack(spacing: 16) {
+                        FormField(title: "Provider ID", binding: self.$providerId, placeholder: "my-custom-provider") {
+                            Text("Unique identifier for this provider")
+                                .foregroundColor(.secondary)
+                        }
+
+                        FormField(title: "Display Name", binding: self.$name, placeholder: "My Custom Provider") {
+                            Text("Friendly name shown in the UI")
+                                .foregroundColor(.secondary)
+                        }
+
+                        FormField(
+                            title: "Description",
+                            binding: self.$description,
+                            placeholder: "Optional description")
+                        {
+                            Text("Brief description of this provider")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                SectionCard(title: "Connection", icon: "network") {
+                    VStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Provider Type")
+                                .font(.headline)
+
+                            Picker("Type", selection: self.$type) {
+                                ForEach(
+                                    Configuration.CustomProvider.ProviderType.allCases,
+                                    id: \.self)
+                                { providerType in
+                                    Label(providerType.displayName, systemImage: providerType.icon)
+                                        .tag(providerType)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+
+                        FormField(
+                            title: "Base URL",
+                            binding: self.$baseURL,
+                            placeholder: "https://api.provider.com/v1")
+                        {
+                            Text("API endpoint URL for this provider")
+                                .foregroundColor(.secondary)
+                        }
+
+                        SecureFormField(
+                            title: "API Key",
+                            binding: self.$apiKey,
+                            placeholder: "sk-... or {env:API_KEY}")
+                        {
+                            Text("Your API key or environment variable reference")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                DisclosureGroup("Advanced Settings", isExpanded: self.$isAdvancedMode) {
+                    VStack(spacing: 16) {
+                        FormField(
+                            title: "Custom Headers",
+                            binding: self.$headers,
+                            placeholder: "Authorization:Bearer token,X-Custom:value")
+                        {
+                            Text("Additional headers in key:value,key:value format")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.top, 16)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.controlBackgroundColor))
+                .cornerRadius(12)
+            }
+        }
+    }
+}
+
+private struct ProviderTestStepView: View {
+    let selectedTemplate: ProviderTemplate?
+    let name: String
+    let baseURL: String
+    let type: Configuration.CustomProvider.ProviderType
+    let testResult: AddCustomProviderView.TestResult?
+    let isTestingConnection: Bool
+    let testAction: () -> Void
+
+    var body: some View {
+        VStack(spacing: 32) {
+            if let template = self.selectedTemplate {
+                ProviderSummaryCard(
+                    template: template,
+                    name: self.name,
+                    baseURL: self.baseURL,
+                    type: self.type)
+            }
+
+            VStack(spacing: 20) {
+                Text("Test Connection")
+                    .font(.title2.bold())
+
+                if let result = self.testResult {
+                    TestResultCard(result: result)
+                } else if self.isTestingConnection {
+                    TestingCard()
+                } else {
+                    Button(action: self.testAction) {
+                        Label("Test Connection", systemImage: "bolt.fill")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(.blue)
+                            .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Spacer()
+        }
+    }
+}
 
 struct ProviderTemplateCard: View {
     let template: ProviderTemplate

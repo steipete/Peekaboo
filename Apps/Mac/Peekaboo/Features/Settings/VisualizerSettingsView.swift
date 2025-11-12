@@ -260,99 +260,150 @@ struct AnimationToggleRow: View {
         self.isPreviewRunning = true
         defer { self.isPreviewRunning = false }
 
-        // Get screen for consistent positioning
         let screen = NSScreen.mouseScreen
         let centerPoint = CGPoint(x: screen.frame.midX, y: screen.frame.midY)
 
-        // Run the appropriate preview animation
+        await self.performPreview(on: screen, centerPoint: centerPoint)
+        // Keep button in running state for a moment to show feedback
+        try? await Task.sleep(for: .milliseconds(500))
+    }
+
+    @MainActor
+    private func performPreview(on screen: NSScreen, centerPoint: CGPoint) async {
         switch self.animationType {
         case "screenshot":
-            let rect = CGRect(
-                x: screen.frame.midX - 200,
-                y: screen.frame.midY - 150,
-                width: 400,
-                height: 300)
-            _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
-
+            await self.previewScreenshot(on: screen)
         case "click":
-            _ = await self.visualizerCoordinator.showClickFeedback(at: centerPoint, type: .single)
-
+            await self.previewClick(at: centerPoint)
         case "type":
-            let sampleKeys = ["H", "e", "l", "l", "o"]
-            _ = await self.visualizerCoordinator.showTypingFeedback(keys: sampleKeys, duration: 2.0)
-
+            await self.previewTyping()
         case "scroll":
-            _ = await self.visualizerCoordinator.showScrollFeedback(at: centerPoint, direction: .down, amount: 3)
-
+            await self.previewScroll(at: centerPoint)
         case "trail":
-            let from = CGPoint(x: screen.frame.midX - 150, y: screen.frame.midY - 50)
-            let to = CGPoint(x: screen.frame.midX + 150, y: screen.frame.midY + 50)
-            _ = await self.visualizerCoordinator.showMouseMovement(from: from, to: to, duration: 1.5)
-
+            await self.previewTrail(on: screen)
         case "swipe":
-            let swipeFrom = CGPoint(x: screen.frame.midX - 100, y: screen.frame.midY)
-            let swipeTo = CGPoint(x: screen.frame.midX + 100, y: screen.frame.midY)
-            _ = await self.visualizerCoordinator.showSwipeGesture(from: swipeFrom, to: swipeTo, duration: 1.0)
-
+            await self.previewSwipe(on: screen)
         case "hotkey":
-            let sampleKeys = ["⌘", "⇧", "P"]
-            _ = await self.visualizerCoordinator.showHotkeyDisplay(keys: sampleKeys, duration: 2.0)
-
+            await self.previewHotkey()
         case "app_launch":
-            // Alternate between launch and quit for App Lifecycle
-            if Bool.random() {
-                _ = await self.visualizerCoordinator.showAppLaunch(appName: "Peekaboo", iconPath: nil as String?)
-            } else {
-                _ = await self.visualizerCoordinator.showAppQuit(appName: "TextEdit", iconPath: nil as String?)
-            }
-
+            await self.previewAppLifecycle()
         case "window":
-            let windowRect = CGRect(
-                x: screen.frame.midX - 150,
-                y: screen.frame.midY - 100,
-                width: 300,
-                height: 200)
-            _ = await self.visualizerCoordinator.showWindowOperation(.move, windowRect: windowRect, duration: 1.0)
-
+            await self.previewWindowMovement(on: screen)
         case "menu":
-            let menuPath = ["File", "Export", "PNG Image"]
-            _ = await self.visualizerCoordinator.showMenuNavigation(menuPath: menuPath)
-
+            await self.previewMenuNavigation()
         case "dialog":
-            let dialogRect = CGRect(
-                x: screen.frame.midX - 100,
-                y: screen.frame.midY - 25,
-                width: 200,
-                height: 50)
-            _ = await self.visualizerCoordinator.showDialogInteraction(
-                element: .button,
-                elementRect: dialogRect,
-                action: .clickButton)
-
+            await self.previewDialog(on: screen)
         case "space":
-            _ = await self.visualizerCoordinator.showSpaceSwitch(from: 1, to: 2, direction: .right)
-
+            await self.previewSpaceSwitch()
         case "ghost":
-            // For ghost easter egg, use the settings window itself for the flash
-            if let window = NSApp.keyWindow {
-                let windowFrame = window.frame
-                _ = await self.visualizerCoordinator.showScreenshotFlash(in: windowFrame)
-            } else {
-                // Fallback to center screen if no key window
-                let rect = CGRect(
-                    x: screen.frame.midX - 200,
-                    y: screen.frame.midY - 150,
-                    width: 400,
-                    height: 300)
-                _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
-            }
-
+            await self.previewGhostFlash(on: screen)
         default:
             break
         }
+    }
 
-        // Keep button in running state for a moment to show feedback
-        try? await Task.sleep(for: .milliseconds(500))
+    @MainActor
+    private func previewScreenshot(on screen: NSScreen) async {
+        let rect = CGRect(
+            x: screen.frame.midX - 200,
+            y: screen.frame.midY - 150,
+            width: 400,
+            height: 300)
+        _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
+    }
+
+    @MainActor
+    private func previewClick(at point: CGPoint) async {
+        _ = await self.visualizerCoordinator.showClickFeedback(at: point, type: .single)
+    }
+
+    @MainActor
+    private func previewTyping() async {
+        let sampleKeys = ["H", "e", "l", "l", "o"]
+        _ = await self.visualizerCoordinator.showTypingFeedback(keys: sampleKeys, duration: 2.0)
+    }
+
+    @MainActor
+    private func previewScroll(at point: CGPoint) async {
+        _ = await self.visualizerCoordinator.showScrollFeedback(at: point, direction: .down, amount: 3)
+    }
+
+    @MainActor
+    private func previewTrail(on screen: NSScreen) async {
+        let from = CGPoint(x: screen.frame.midX - 150, y: screen.frame.midY - 50)
+        let to = CGPoint(x: screen.frame.midX + 150, y: screen.frame.midY + 50)
+        _ = await self.visualizerCoordinator.showMouseMovement(from: from, to: to, duration: 1.5)
+    }
+
+    @MainActor
+    private func previewSwipe(on screen: NSScreen) async {
+        let swipeFrom = CGPoint(x: screen.frame.midX - 100, y: screen.frame.midY)
+        let swipeTo = CGPoint(x: screen.frame.midX + 100, y: screen.frame.midY)
+        _ = await self.visualizerCoordinator.showSwipeGesture(from: swipeFrom, to: swipeTo, duration: 1.0)
+    }
+
+    @MainActor
+    private func previewHotkey() async {
+        let sampleKeys = ["⌘", "⇧", "P"]
+        _ = await self.visualizerCoordinator.showHotkeyDisplay(keys: sampleKeys, duration: 2.0)
+    }
+
+    @MainActor
+    private func previewAppLifecycle() async {
+        if Bool.random() {
+            _ = await self.visualizerCoordinator.showAppLaunch(appName: "Peekaboo", iconPath: nil as String?)
+        } else {
+            _ = await self.visualizerCoordinator.showAppQuit(appName: "TextEdit", iconPath: nil as String?)
+        }
+    }
+
+    @MainActor
+    private func previewWindowMovement(on screen: NSScreen) async {
+        let windowRect = CGRect(
+            x: screen.frame.midX - 150,
+            y: screen.frame.midY - 100,
+            width: 300,
+            height: 200)
+        _ = await self.visualizerCoordinator.showWindowOperation(.move, windowRect: windowRect, duration: 1.0)
+    }
+
+    @MainActor
+    private func previewMenuNavigation() async {
+        let menuPath = ["File", "Export", "PNG Image"]
+        _ = await self.visualizerCoordinator.showMenuNavigation(menuPath: menuPath)
+    }
+
+    @MainActor
+    private func previewDialog(on screen: NSScreen) async {
+        let dialogRect = CGRect(
+            x: screen.frame.midX - 100,
+            y: screen.frame.midY - 25,
+            width: 200,
+            height: 50)
+        _ = await self.visualizerCoordinator.showDialogInteraction(
+            element: .button,
+            elementRect: dialogRect,
+            action: .clickButton)
+    }
+
+    @MainActor
+    private func previewSpaceSwitch() async {
+        _ = await self.visualizerCoordinator.showSpaceSwitch(from: 1, to: 2, direction: .right)
+    }
+
+    @MainActor
+    private func previewGhostFlash(on screen: NSScreen) async {
+        if let window = NSApp.keyWindow {
+            _ = await self.visualizerCoordinator.showScreenshotFlash(in: window.frame)
+            return
+        }
+
+        let rect = CGRect(
+            x: screen.frame.midX - 200,
+            y: screen.frame.midY - 150,
+            width: 400,
+            height: 300)
+        _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
     }
 }
 

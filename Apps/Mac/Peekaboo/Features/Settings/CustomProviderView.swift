@@ -38,7 +38,8 @@ struct CustomProviderView: View {
                         .foregroundColor(.secondary)
 
                     Text(
-                        "Add custom AI providers to connect to additional endpoints like OpenRouter, Groq, or self-hosted models.")
+                        "Add custom AI providers to connect to additional endpoints like OpenRouter, " +
+                            "Groq, or self-hosted models.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
