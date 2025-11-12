@@ -163,10 +163,12 @@ struct ControlsView: View {
                             let formatter = DateFormatter()
                             formatter.dateStyle = .medium
                             formatter.timeStyle = .short
+                            let oldString = formatter.string(from: oldValue)
+                            let newString = formatter.string(from: newValue)
                             self.actionLogger.log(
                                 .control,
                                 "Date changed",
-                                details: "From: \(formatter.string(from: oldValue)) To: \(formatter.string(from: newValue))")
+                                details: "From: \(oldString) To: \(newString)")
                         }
                 }
 

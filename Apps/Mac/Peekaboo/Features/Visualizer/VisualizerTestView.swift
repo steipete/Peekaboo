@@ -365,7 +365,7 @@ struct AnimationButton: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-        }
+        })
         .buttonStyle(PlainButtonStyle())
         .background(self.isRunning ? Color.accentColor.opacity(0.1) : Color.clear)
         .cornerRadius(6)
