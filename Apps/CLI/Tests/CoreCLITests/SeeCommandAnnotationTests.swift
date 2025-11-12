@@ -159,86 +159,41 @@ struct SeeCommandAnnotationTests {
 
     @Test("Enhanced detection uses window context")
     func enhancedDetectionWindowContext() async throws {
-        // This test verifies the window context is properly used in detection
-        // In actual implementation, this would be tested with a mock service
-
         let imageData = Data(repeating: 0xAB, count: 4)
         let sessionId = "test-session-123"
         let appName = "Safari"
         let windowTitle = "Start Page"
         let windowBounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
-        // Create detection metadata
-        let metadata = DetectionMetadata(
-            detectionTime: 0.5,
-            elementCount: 10,
-            method: "AXorcist",
-            warnings: []
-        )
-
-        let applicationInfo = ServiceApplicationInfo(
-            processIdentifier: 1234,
-            bundleIdentifier: "com.apple.Safari",
-            name: appName,
-            bundlePath: "/Applications/Safari.app",
-            isActive: true,
-            isHidden: false,
-            windowCount: 1
-        )
-
-        let windowInfo = ServiceWindowInfo(
-            windowID: 42,
-            title: windowTitle,
-            bounds: windowBounds,
-            isMinimized: false,
-            isMainWindow: true
-        )
-
-        let captureMetadata = CaptureMetadata(
-            size: windowBounds.size,
-            mode: .window,
-            applicationInfo: applicationInfo,
-            windowInfo: windowInfo,
-            displayInfo: nil,
-            timestamp: Date(timeIntervalSince1970: 0)
-        )
-
-        let captureResult = CaptureResult(
+        let metadata = Self.detectionMetadata()
+        let captureResult = Self.makeCaptureResult(
             imageData: imageData,
-            metadata: captureMetadata
+            appName: appName,
+            windowTitle: windowTitle,
+            windowBounds: windowBounds
         )
 
-        // Verify the metadata is properly created
-        #expect(metadata.detectionTime == 0.5)
-        #expect(metadata.elementCount == 10)
-        #expect(metadata.method == "AXorcist")
-
-        // In actual usage, window context would be available from CaptureMetadata
-        // which is passed separately to annotation functions
-        #expect(captureResult.imageData == imageData)
-        #expect(captureResult.metadata.applicationInfo?.name == appName)
-        #expect(captureResult.metadata.windowInfo?.bounds == windowBounds)
-
-        let seeResult = SeeResult(
-            session_id: sessionId,
-            screenshot_raw: "raw.png",
-            screenshot_annotated: "raw_annotated.png",
-            ui_map: "map.json",
-            application_name: appName,
-            window_title: windowTitle,
-            is_dialog: false,
-            element_count: metadata.elementCount,
-            interactable_count: metadata.elementCount,
-            capture_mode: captureMetadata.mode.rawValue,
-            analysis: nil,
-            execution_time: metadata.detectionTime,
-            ui_elements: [],
-            menu_bar: nil
+        Self.expectDetectionMetadata(metadata)
+        Self.expectCaptureResult(
+            captureResult,
+            imageData: imageData,
+            appName: appName,
+            windowBounds: windowBounds
         )
 
-        #expect(seeResult.session_id == sessionId)
-        #expect(seeResult.application_name == appName)
-        #expect(seeResult.window_title == windowTitle)
+        let seeResult = Self.makeSeeResult(
+            sessionId: sessionId,
+            metadata: metadata,
+            captureMetadata: captureResult.metadata,
+            appName: appName,
+            windowTitle: windowTitle
+        )
+        Self.expectSeeResult(
+            seeResult,
+            sessionId: sessionId,
+            appName: appName,
+            windowTitle: windowTitle
+        )
     }
 
     @Test("Annotation excludes disabled elements")
@@ -316,6 +271,121 @@ struct SeeCommandAnnotationTests {
             #expect(color.g == expectedColor.g)
             #expect(color.b == expectedColor.b)
         }
+    }
+}
+
+private extension SeeCommandAnnotationTests {
+    static func detectionMetadata() -> DetectionMetadata {
+        DetectionMetadata(
+            detectionTime: 0.5,
+            elementCount: 10,
+            method: "AXorcist",
+            warnings: []
+        )
+    }
+
+    static func makeCaptureResult(
+        imageData: Data,
+        appName: String,
+        windowTitle: String,
+        windowBounds: CGRect
+    ) -> CaptureResult {
+        let captureMetadata = Self.makeCaptureMetadata(
+            appName: appName,
+            windowTitle: windowTitle,
+            windowBounds: windowBounds
+        )
+        return CaptureResult(imageData: imageData, metadata: captureMetadata)
+    }
+
+    static func expectDetectionMetadata(_ metadata: DetectionMetadata) {
+        #expect(metadata.detectionTime == 0.5)
+        #expect(metadata.elementCount == 10)
+        #expect(metadata.method == "AXorcist")
+    }
+
+    static func expectCaptureResult(
+        _ result: CaptureResult,
+        imageData: Data,
+        appName: String,
+        windowBounds: CGRect
+    ) {
+        #expect(result.imageData == imageData)
+        #expect(result.metadata.applicationInfo?.name == appName)
+        #expect(result.metadata.windowInfo?.bounds == windowBounds)
+    }
+
+    static func makeSeeResult(
+        sessionId: String,
+        metadata: DetectionMetadata,
+        captureMetadata: CaptureMetadata,
+        appName: String,
+        windowTitle: String
+    ) -> SeeResult {
+        SeeResult(
+            session_id: sessionId,
+            screenshot_raw: "raw.png",
+            screenshot_annotated: "raw_annotated.png",
+            ui_map: "map.json",
+            application_name: appName,
+            window_title: windowTitle,
+            is_dialog: false,
+            element_count: metadata.elementCount,
+            interactable_count: metadata.elementCount,
+            capture_mode: captureMetadata.mode.rawValue,
+            analysis: nil,
+            execution_time: metadata.detectionTime,
+            ui_elements: [],
+            menu_bar: nil
+        )
+    }
+
+    static func expectSeeResult(
+        _ result: SeeResult,
+        sessionId: String,
+        appName: String,
+        windowTitle: String
+    ) {
+        #expect(result.session_id == sessionId)
+        #expect(result.application_name == appName)
+        #expect(result.window_title == windowTitle)
+    }
+
+    static func makeCaptureMetadata(
+        appName: String,
+        windowTitle: String,
+        windowBounds: CGRect
+    ) -> CaptureMetadata {
+        CaptureMetadata(
+            size: windowBounds.size,
+            mode: .window,
+            applicationInfo: Self.makeApplicationInfo(appName: appName),
+            windowInfo: Self.makeWindowInfo(windowTitle: windowTitle, windowBounds: windowBounds),
+            displayInfo: nil,
+            timestamp: Date(timeIntervalSince1970: 0)
+        )
+    }
+
+    static func makeApplicationInfo(appName: String) -> ServiceApplicationInfo {
+        ServiceApplicationInfo(
+            processIdentifier: 1234,
+            bundleIdentifier: "com.apple.Safari",
+            name: appName,
+            bundlePath: "/Applications/Safari.app",
+            isActive: true,
+            isHidden: false,
+            windowCount: 1
+        )
+    }
+
+    static func makeWindowInfo(windowTitle: String, windowBounds: CGRect) -> ServiceWindowInfo {
+        ServiceWindowInfo(
+            windowID: 42,
+            title: windowTitle,
+            bounds: windowBounds,
+            isMinimized: false,
+            isMainWindow: true
+        )
     }
 }
 
