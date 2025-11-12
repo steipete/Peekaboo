@@ -163,6 +163,7 @@ struct MCPToolRegistryTests {
 }
 
 @Suite("MCPToolRegistry Integration Tests", .tags(.integration))
+@MainActor
 struct MCPToolRegistryIntegrationTests {
     @Test("Register all Peekaboo tools")
     func registerAllPeekabooTools() async {

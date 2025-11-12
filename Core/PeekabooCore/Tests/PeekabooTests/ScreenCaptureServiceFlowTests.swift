@@ -140,7 +140,8 @@ struct ScreenCaptureServiceFlowTests {
 
         _ = try await service.captureScreen(displayIndex: nil)
 
-        #expect(permission.callCount == 1)
+        let recordedCalls = await permission.callCount
+        #expect(recordedCalls == 1)
     }
 }
 
@@ -152,8 +153,7 @@ private final class StubVisualizationClient: VisualizationClientProtocol, @unche
     func showScreenshotFlash(in rect: CGRect) async -> Bool { false }
 }
 
-@MainActor
-private final class CountingPermissionEvaluator: ScreenRecordingPermissionEvaluating, @unchecked Sendable {
+private actor CountingPermissionEvaluator: ScreenRecordingPermissionEvaluating {
     private(set) var callCount = 0
     func hasPermission(logger: CategoryLogger) async -> Bool {
         self.callCount += 1
@@ -234,7 +234,7 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
     func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
         let width = max(1, Int(rect.width.rounded()))
         let height = max(1, Int(rect.height.rounded()))
-        let imageData = ScreenCaptureService.TestFixtures.makeImage(width: width, height: height, color: .systemGray)
+        let imageData = self.fixtures.displays.first?.imageData ?? Data(count: width * height * 4)
         let metadata = CaptureMetadata(
             size: CGSize(width: rect.width, height: rect.height),
             mode: .area,

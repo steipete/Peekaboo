@@ -123,7 +123,7 @@ struct ElementDetectionServiceTests {
                 elementCount: mockElements.count,
                 method: "AXorcist"))
 
-        sessionManager.mockDetectionResult = detectionResult
+        await sessionManager.primeDetectionResult(detectionResult)
 
         _ = ElementDetectionService(sessionManager: sessionManager)
 
@@ -309,10 +309,13 @@ struct ElementDetectionServiceTests {
 
 // MARK: - Mock Session Manager
 
-@MainActor
-private final class MockSessionManager: SessionManagerProtocol {
-    var mockDetectionResult: ElementDetectionResult?
-    var storedResults: [String: ElementDetectionResult] = [:]
+private actor MockSessionManager: SessionManagerProtocol {
+    private var mockDetectionResult: ElementDetectionResult?
+    private var storedResults: [String: ElementDetectionResult] = [:]
+
+    func primeDetectionResult(_ result: ElementDetectionResult?) {
+        self.mockDetectionResult = result
+    }
 
     func createSession() async throws -> String {
         "test-session-\(UUID().uuidString)"

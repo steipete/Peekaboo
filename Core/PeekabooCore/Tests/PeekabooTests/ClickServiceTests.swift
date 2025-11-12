@@ -70,7 +70,7 @@ struct ClickServiceTests {
                     elementCount: 1,
                     method: "AXorcist"))
 
-            sessionManager.mockDetectionResult = detectionResult
+            await sessionManager.primeDetectionResult(detectionResult)
 
             let service = ClickService(sessionManager: sessionManager)
 
@@ -154,7 +154,7 @@ struct ClickServiceTests {
                 elementCount: 1,
                 method: "AXorcist"))
 
-        sessionManager.mockDetectionResult = detectionResult
+        await sessionManager.primeDetectionResult(detectionResult)
 
         let service = ClickService(sessionManager: sessionManager)
 
@@ -168,9 +168,12 @@ struct ClickServiceTests {
 
 // MARK: - Mock Session Manager
 
-@MainActor
-private final class MockSessionManager: SessionManagerProtocol {
-    var mockDetectionResult: ElementDetectionResult?
+private actor MockSessionManager: SessionManagerProtocol {
+    private var mockDetectionResult: ElementDetectionResult?
+
+    func primeDetectionResult(_ result: ElementDetectionResult?) {
+        self.mockDetectionResult = result
+    }
 
     func createSession() async throws -> String {
         "test-session-\(UUID().uuidString)"

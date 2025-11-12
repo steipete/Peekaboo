@@ -9,6 +9,7 @@ import Testing
 @testable import PeekabooCore
 
 @Suite("ScreenCaptureService planning helpers")
+@MainActor
 struct ScreenCaptureServicePlanTests {
     @Test("Resolver defaults to legacy APIs when flag is unset")
     func resolverDefaultsToLegacy() {

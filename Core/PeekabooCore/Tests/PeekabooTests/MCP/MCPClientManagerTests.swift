@@ -5,12 +5,9 @@ import Testing
 /// Tests for MCPClientManager functionality
 @Suite("MCP Client Manager Tests")
 struct MCPClientManagerTests {
-    private static let disableAutoConnectOnce: Void = {
-        MCPClientManager._setAutoConnectOverrideForTesting(false)
-    }()
-
+    @MainActor
     private func ensureAutoConnectDisabled() {
-        _ = Self.disableAutoConnectOnce
+        MCPClientManager._setAutoConnectOverrideForTesting(false)
     }
 
     private func uniqueServerName(_ base: String) -> String {
