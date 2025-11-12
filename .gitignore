@@ -248,3 +248,4 @@ test-fixes-summary.md
 
 # Vendored build caches
 Vendor/swift-argument-parser/.build/
+/info
