@@ -21,11 +21,15 @@ public enum DialogError: Error {
 @MainActor
 public final class DialogService: DialogServiceProtocol {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "DialogService")
+    private let dialogTitleHints = ["open", "save", "export", "import", "choose", "replace"]
+    private let applicationService: any ApplicationServiceProtocol
+    private let focusService = FocusManagementService()
 
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
 
-    public init() {
+    public init(applicationService: (any ApplicationServiceProtocol)? = nil) {
+        self.applicationService = applicationService ?? ApplicationService()
         self.logger.debug("DialogService initialized")
         // Connect to visualizer if available
         // Only connect to visualizer if we're not running inside the Mac app
@@ -45,7 +49,7 @@ public final class DialogService: DialogServiceProtocol {
             self.logger.debug("Looking for window with title: \(title)")
         }
 
-        let element = try findDialogElement(withTitle: windowTitle)
+        let element = try await self.resolveDialogElement(windowTitle: windowTitle)
 
         let title = element.title() ?? "Untitled Dialog"
         let role = element.role() ?? "Unknown"
@@ -76,10 +80,10 @@ public final class DialogService: DialogServiceProtocol {
             self.logger.debug("In window: \(title)")
         }
 
-        let dialog = try findDialogElement(withTitle: windowTitle)
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
 
         // Find buttons
-        let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+        let buttons = self.collectButtons(from: dialog)
         self.logger.debug("Found \(buttons.count) buttons in dialog")
 
         // Find target button (exact match or contains)
@@ -134,7 +138,7 @@ public final class DialogService: DialogServiceProtocol {
             self.logger.debug("Target field: \(identifier)")
         }
 
-        let dialog = try findDialogElement(withTitle: windowTitle)
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
 
         // Find text fields
         let textFields = self.collectTextFields(from: dialog)
@@ -242,6 +246,7 @@ public final class DialogService: DialogServiceProtocol {
         }
         self.logger.debug("Action button: \(actionButton)")
 
+        await self.ensureDialogVisibility(windowTitle: nil)
         let dialog = try findFileDialogElement()
         var details: [String: String] = [:]
 
@@ -302,7 +307,7 @@ public final class DialogService: DialogServiceProtocol {
         }
 
         // Click the action button
-        let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+        let buttons = self.collectButtons(from: dialog)
         self.logger.debug("Found \(buttons.count) buttons, looking for: \(actionButton)")
 
         if let button = buttons.first(where: { $0.title() == actionButton }) {
@@ -339,7 +344,7 @@ public final class DialogService: DialogServiceProtocol {
             self.logger.debug("Looking for dismiss button")
 
             // Find and click dismiss button
-            let dialog = try findDialogElement(withTitle: windowTitle)
+            let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
             let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
             self.logger.debug("Found \(buttons.count) buttons in dialog")
 
@@ -378,10 +383,10 @@ public final class DialogService: DialogServiceProtocol {
         let dialogInfo = try await findActiveDialog(windowTitle: windowTitle)
 
         // Collect all elements
-        let dialog = try findDialogElement(withTitle: windowTitle)
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle)
 
         // Collect buttons
-        let axButtons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+        let axButtons = self.collectButtons(from: dialog)
         self.logger.debug("Found \(axButtons.count) buttons")
 
         let buttons = axButtons.compactMap { btn -> DialogButton? in
@@ -447,65 +452,139 @@ public final class DialogService: DialogServiceProtocol {
     private func findDialogElement(withTitle title: String?) throws -> Element {
         self.logger.debug("Finding dialog element")
 
-        // Get frontmost application
         let systemWide = Element.systemWide()
+
+        if let focusedElement = systemWide.attribute(Attribute<Element>("AXFocusedUIElement")),
+           let hostingWindow = focusedElement.attribute(Attribute<Element>("AXWindow")),
+           let candidate = self.resolveDialogCandidate(in: hostingWindow, matching: title)
+        {
+            return candidate
+        }
+
+        if let focusedWindow = systemWide.attribute(Attribute<Element>("AXFocusedWindow")),
+           let focusedCandidate = self.resolveDialogCandidate(in: focusedWindow, matching: title)
+        {
+            return focusedCandidate
+        }
+
         guard let focusedApp = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) else {
             self.logger.error("No focused application found")
             throw PeekabooError.operationError(message: "No active dialog window found.")
         }
 
-        // Look for windows that are likely dialogs
-        let windows = focusedApp.windows() ?? []
+        let windows = focusedApp.windowsWithTimeout() ?? []
         self.logger.debug("Checking \(windows.count) windows for dialogs")
 
         for window in windows {
-            let role = window.role() ?? ""
-            let subrole = window.subrole() ?? ""
-
-            // Check if it's a dialog-like window
-            if role == "AXWindow", subrole == "AXDialog" || subrole == "AXSystemDialog" {
-                if let targetTitle = title {
-                    if window.title() == targetTitle {
-                        self.logger.debug("Found dialog with title: \(targetTitle)")
-                        return window
-                    }
-                } else {
-                    self.logger.debug("Found dialog: \(window.title() ?? "Untitled")")
-                    return window
-                }
+            if let candidate = self.resolveDialogCandidate(in: window, matching: title) {
+                return candidate
             }
+        }
 
-            // Check for sheets
-            if let sheet = window.children()?.first(where: { $0.role() == "AXSheet" }) {
-                if let targetTitle = title {
-                    if sheet.title() == targetTitle {
-                        return sheet
-                    }
-                } else {
-                    return sheet
+        if let globalWindows: [AXUIElement] = systemWide.attribute(Attribute<[AXUIElement]>("AXWindows")) {
+            for rawWindow in globalWindows {
+                let element = Element(rawWindow)
+                if let candidate = self.resolveDialogCandidate(in: element, matching: title) {
+                    return candidate
                 }
             }
         }
 
-        // Also check for floating panels
-        for window in windows {
-            if window.subrole() == "AXFloatingWindow" || window.subrole() == "AXSystemFloatingWindow" {
-                if let targetTitle = title {
-                    if window.title() == targetTitle {
-                        return window
-                    }
-                } else {
-                    return window
+        for app in NSWorkspace.shared.runningApplications {
+            let axApp = Element(AXUIElementCreateApplication(app.processIdentifier))
+            let appWindows = axApp.windowsWithTimeout() ?? []
+            for window in appWindows {
+                if let candidate = self.resolveDialogCandidate(in: window, matching: title) {
+                    return candidate
                 }
             }
+        }
+
+        if let cgCandidate = self.findDialogUsingCGWindowList(title: title) {
+            return cgCandidate
         }
 
         throw DialogError.noActiveDialog
     }
 
+    private func resolveDialogElement(windowTitle: String?) async throws -> Element {
+        if let element = try? self.findDialogElement(withTitle: windowTitle) {
+            return element
+        }
+
+        await self.ensureDialogVisibility(windowTitle: windowTitle)
+
+        if let element = try? self.findDialogElement(withTitle: windowTitle) {
+            return element
+        }
+
+        if let element = await self.findDialogViaApplicationService(windowTitle: windowTitle) {
+            return element
+        }
+
+        throw DialogError.noActiveDialog
+    }
+
+    private func ensureDialogVisibility(windowTitle: String?) async {
+        do {
+            let applications = try await self.applicationService.listApplications()
+            for app in applications.data.applications {
+                let windowsOutput = try await self.applicationService.listWindows(for: app.name, timeout: nil)
+                if let window = windowsOutput.data.windows.first(where: {
+                    self.matchesDialogWindowTitle($0.title, expectedTitle: windowTitle)
+                }) {
+                    self.logger.info("Focusing dialog candidate '\(window.title)' from \(app.name)")
+                    try await self.focusService.focusWindow(
+                        windowID: CGWindowID(window.windowID),
+                        options: FocusManagementService.FocusOptions(
+                            timeout: 1.0,
+                            retryCount: 1,
+                            switchSpace: true,
+                            bringToCurrentSpace: true)
+                    )
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                    return
+                }
+            }
+        } catch {
+            self.logger.debug("Dialog visibility assist failed: \(String(describing: error))")
+        }
+    }
+
+    @MainActor
+    private func findDialogViaApplicationService(windowTitle: String?) async -> Element? {
+        guard let applications = try? await self.applicationService.listApplications() else {
+            return nil
+        }
+
+        for app in applications.data.applications {
+            guard let windowsOutput = try? await self.applicationService.listWindows(for: app.name, timeout: nil) else {
+                continue
+            }
+
+            guard let windowInfo = windowsOutput.data.windows.first(where: {
+                self.matchesDialogWindowTitle($0.title, expectedTitle: windowTitle)
+            }) else {
+                continue
+            }
+
+            let axApp = Element(AXUIElementCreateApplication(app.processIdentifier))
+            guard let appWindows = axApp.windowsWithTimeout() else { continue }
+
+            if let match = appWindows.first(where: {
+                let title = $0.title() ?? ""
+                return title == windowInfo.title ||
+                    self.matchesDialogWindowTitle(title, expectedTitle: windowTitle)
+            }) {
+                return match
+            }
+        }
+
+        return nil
+    }
+
     @MainActor
     private func findFileDialogElement() throws -> Element {
-        // File dialogs often have specific subroles
         let systemWide = Element.systemWide()
         guard let focusedApp = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) else {
             throw PeekabooError.operationError(message: "No active dialog window found.")
@@ -514,15 +593,17 @@ public final class DialogService: DialogServiceProtocol {
         let windows = focusedApp.windows() ?? []
 
         for window in windows {
-            // Check for save/open panels
-            if window.role() == "AXWindow" {
-                let title = window.title() ?? ""
-                if title.contains("Save") || title.contains("Open") ||
-                    title.contains("Export") || title.contains("Import")
-                {
-                    return window
-                }
+            if let candidate = self.resolveDialogCandidate(in: window, matching: nil),
+               self.isFileDialogElement(candidate)
+            {
+                return candidate
             }
+        }
+
+        if let focusedWindow = systemWide.attribute(Attribute<Element>("AXFocusedWindow")),
+           self.isFileDialogElement(focusedWindow)
+        {
+            return focusedWindow
         }
 
         throw PeekabooError.operationError(message: "No file dialog (Save/Open) found.")
@@ -546,6 +627,159 @@ public final class DialogService: DialogServiceProtocol {
 
         collectFields(from: element)
         return fields
+    }
+
+    @MainActor
+    private func collectButtons(from element: Element) -> [Element] {
+        var buttons: [Element] = []
+
+        func collect(from el: Element) {
+            if el.role() == "AXButton" {
+                buttons.append(el)
+            }
+
+            if let children = el.children() {
+                for child in children {
+                    collect(from: child)
+                }
+            }
+        }
+
+        collect(from: element)
+        return buttons
+    }
+
+    private func matchesDialogWindowTitle(_ title: String, expectedTitle: String?) -> Bool {
+        if let expectedTitle, !expectedTitle.isEmpty {
+            return title.localizedCaseInsensitiveContains(expectedTitle)
+        }
+        return self.dialogTitleHints.contains { title.localizedCaseInsensitiveContains($0) }
+    }
+
+    @MainActor
+    private func findDialogUsingCGWindowList(title: String?) -> Element? {
+        guard let cgWindows = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]]
+        else {
+            return nil
+        }
+
+        for info in cgWindows {
+            guard let ownerPid = info[kCGWindowOwnerPID as String] as? NSNumber else { continue }
+            let windowTitle = (info[kCGWindowName as String] as? String) ?? ""
+
+            if let expectedTitle = title,
+               !windowTitle.localizedCaseInsensitiveContains(expectedTitle)
+            {
+                continue
+            }
+
+            if title == nil,
+               !self.dialogTitleHints.contains(where: { windowTitle.localizedCaseInsensitiveContains($0) })
+            {
+                continue
+            }
+
+            let appElement = Element(AXUIElementCreateApplication(pid_t(ownerPid.intValue)))
+            guard let windows = appElement.windowsWithTimeout() else { continue }
+
+            if let matchingWindow = windows.first(where: {
+                let axTitle = $0.title() ?? ""
+                return axTitle == windowTitle || self.isDialogElement($0, matching: title)
+            }) {
+                return matchingWindow
+            }
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private func resolveDialogCandidate(in element: Element, matching title: String?) -> Element? {
+        if self.isDialogElement(element, matching: title) {
+            return element
+        }
+
+        for sheet in self.sheetElements(for: element) {
+            if let candidate = self.resolveDialogCandidate(in: sheet, matching: title) {
+                return candidate
+            }
+        }
+
+        if let children = element.children() {
+            for child in children {
+                if let candidate = self.resolveDialogCandidate(in: child, matching: title) {
+                    return candidate
+                }
+            }
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private func sheetElements(for element: Element) -> [Element] {
+        var sheets: [Element] = []
+        if let children = element.children() {
+            sheets.append(contentsOf: children.filter { $0.role() == "AXSheet" })
+        }
+        if let axSheets: [AXUIElement] = element.attribute(Attribute<[AXUIElement]>("AXSheets")) {
+            sheets.append(contentsOf: axSheets.map(Element.init))
+        }
+        return sheets
+    }
+
+    @MainActor
+    private func isDialogElement(_ element: Element, matching title: String?) -> Bool {
+        let role = element.role() ?? ""
+        let subrole = element.subrole() ?? ""
+        let roleDescription = element.attribute(Attribute<String>("AXRoleDescription")) ?? ""
+        let identifier = element.attribute(Attribute<String>("AXIdentifier")) ?? ""
+        let windowTitle = element.title() ?? ""
+
+        if let expectedTitle = title, !windowTitle.elementsEqual(expectedTitle) {
+            return false
+        }
+
+        if role == "AXSheet" || role == "AXDialog" {
+            return true
+        }
+
+        if subrole == "AXDialog" || subrole == "AXSystemDialog" || subrole == "AXAlert" ||
+            subrole == "AXUnknown"
+        {
+            return true
+        }
+
+        if roleDescription.localizedCaseInsensitiveContains("dialog") {
+            return true
+        }
+
+        if identifier.contains("NSOpenPanel") || identifier.contains("NSSavePanel") {
+            return true
+        }
+
+        if self.dialogTitleHints.contains(where: { windowTitle.localizedCaseInsensitiveContains($0) }) {
+            return true
+        }
+
+        return false
+    }
+
+    @MainActor
+    private func isFileDialogElement(_ element: Element) -> Bool {
+        let identifier = element.attribute(Attribute<String>("AXIdentifier")) ?? ""
+        let windowTitle = element.title() ?? ""
+
+        if identifier.contains("NSOpenPanel") || identifier.contains("NSSavePanel") {
+            return true
+        }
+
+        return self.dialogTitleHints.contains {
+            windowTitle.localizedCaseInsensitiveContains($0)
+        }
     }
 
     @MainActor

@@ -309,24 +309,28 @@ public final class DockService: DockServiceProtocol {
     }
 
     public func hideDock() async throws {
-        // Use AppleScript to set Dock auto-hide preference
-        let script = "tell application \"System Events\" to set autohide of dock preferences to true"
-        _ = try await self.runAppleScript(script)
+        if await self.isDockAutoHidden() {
+            return
+        }
+        try await self.setDockAutohide(true)
     }
 
     public func showDock() async throws {
-        // Use AppleScript to disable Dock auto-hide preference
-        let script = "tell application \"System Events\" to set autohide of dock preferences to false"
-        _ = try await self.runAppleScript(script)
+        if !(await self.isDockAutoHidden()) {
+            return
+        }
+        try await self.setDockAutohide(false)
     }
 
     public func isDockAutoHidden() async -> Bool {
-        // Check Dock auto-hide preference using AppleScript
-        let script = "tell application \"System Events\" to get autohide of dock preferences"
-
         do {
-            let result = try await runAppleScript(script, captureOutput: true)
-            return result.trimmingCharacters(in: .whitespacesAndNewlines) == "true"
+            let output = try await self.runCommand(
+                "/usr/bin/defaults",
+                arguments: ["read", "com.apple.dock", "autohide"],
+                captureOutput: true
+            )
+            let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return trimmed == "1" || trimmed == "true"
         } catch {
             // Default to false if we can't determine the state
             return false
@@ -445,12 +449,25 @@ public final class DockService: DockServiceProtocol {
         return nil
     }
 
-    private func runAppleScript(_ script: String, captureOutput: Bool = false) async throws -> String {
+    private func setDockAutohide(_ enabled: Bool) async throws {
+        let boolFlag = enabled ? "true" : "false"
+        _ = try await self.runCommand(
+            "/usr/bin/defaults",
+            arguments: ["write", "com.apple.dock", "autohide", "-bool", boolFlag]
+        )
+        _ = try await self.runCommand("/usr/bin/killall", arguments: ["Dock"])
+    }
+
+    private func runCommand(
+        _ launchPath: String,
+        arguments: [String],
+        captureOutput: Bool = false
+    ) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             Task {
                 let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-                process.arguments = ["-e", script]
+                process.executableURL = URL(fileURLWithPath: launchPath)
+                process.arguments = arguments
 
                 let pipe = Pipe()
                 if captureOutput {
@@ -467,7 +484,7 @@ public final class DockService: DockServiceProtocol {
                         let error = String(data: data, encoding: .utf8) ?? "Unknown error"
                         continuation
                             .resume(throwing: PeekabooError
-                                .operationError(message: "AppleScript execution failed: \(error)"))
+                                .operationError(message: "Command execution failed: \(error)"))
                         return
                     } else if captureOutput {
                         let data = pipe.fileHandleForReading.readDataToEndOfFile()
