@@ -41,7 +41,41 @@ func ensureFocused(
         bringToCurrentSpace: options.bringToCurrentSpace
     )
 
-    try await focusService.focusWindow(windowID: windowID, options: focusOptions)
+    do {
+        try await focusService.focusWindow(windowID: windowID, options: focusOptions)
+    } catch let error as FocusError {
+        switch error {
+        case .windowNotFound, .axElementNotFound:
+            var fallbackErrors: [Error] = []
+            var fallbackTargets: [WindowTarget] = [.windowId(Int(windowID))]
+            if let applicationName {
+                fallbackTargets.append(.application(applicationName))
+            }
+            fallbackTargets.append(.frontmost)
+
+            for target in fallbackTargets {
+                do {
+                    try await WindowServiceBridge.focusWindow(services: services, target: target)
+                    return
+                } catch {
+                    fallbackErrors.append(error)
+                }
+            }
+
+            if let appName = applicationName {
+                do {
+                    try await PeekabooServices.shared.applications.activateApplication(identifier: appName)
+                    return
+                } catch {
+                    fallbackErrors.append(error)
+                }
+            }
+
+            throw fallbackErrors.last ?? error
+        default:
+            throw error
+        }
+    }
 }
 
 @MainActor
