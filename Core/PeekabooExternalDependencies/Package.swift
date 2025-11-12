@@ -21,7 +21,7 @@ let package = Package(
     ],
     dependencies: [
         // External dependencies centralized here
-        .package(path: "../AXorcist"),
+        .package(path: "../../AXorcist"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.4"),
         .package(path: "../../Commander"),
         .package(url: "https://github.com/apple/swift-log", from: "1.6.4"),

@@ -17,7 +17,7 @@ let package = Package(
             targets: ["PeekabooInspector"]),
     ],
     dependencies: [
-        .package(path: "../../Core/AXorcist"),
+        .package(path: "../../AXorcist"),
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Core/PeekabooUICore"),
     ],

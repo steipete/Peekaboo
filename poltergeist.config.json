@@ -13,7 +13,7 @@
       "icon": "./assets/icon_512x512@2x.png",
       "watchPaths": [
         "Core/PeekabooCore/**/*.swift",
-        "Core/AXorcist/**/*.swift",
+        "AXorcist/**/*.swift",
         "Apps/CLI/**/*.swift"
       ]
     },
@@ -33,7 +33,7 @@
         "Apps/Mac/Peekaboo/**/*.storyboard",
         "Apps/Mac/Peekaboo/**/*.xib",
         "Core/PeekabooCore/**/*.swift",
-        "Core/AXorcist/**/*.swift"
+        "AXorcist/**/*.swift"
       ]
     }
   ],

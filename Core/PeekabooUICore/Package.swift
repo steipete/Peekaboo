@@ -18,7 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../PeekabooCore"),
-        .package(path: "../AXorcist"),
+        .package(path: "../../AXorcist"),
     ],
     targets: [
         .target(

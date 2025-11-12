@@ -107,7 +107,7 @@
 			mainGroup = 7814F0FD2E1BD4C8000995F8;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				782555002E1CA0ED00F1D8DF /* XCLocalSwiftPackageReference "../../Core/AXorcist" */,
+				782555002E1CA0ED00F1D8DF /* XCLocalSwiftPackageReference "../../AXorcist" */,
 				782555032E1CA10900F1D8DF /* XCLocalSwiftPackageReference "../../Core/PeekabooCore" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -371,9 +371,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		782555002E1CA0ED00F1D8DF /* XCLocalSwiftPackageReference "../../Core/AXorcist" */ = {
+		782555002E1CA0ED00F1D8DF /* XCLocalSwiftPackageReference "../../AXorcist" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Core/AXorcist;
+			relativePath = ../../AXorcist;
 		};
 		782555032E1CA10900F1D8DF /* XCLocalSwiftPackageReference "../../Core/PeekabooCore" */ = {
 			isa = XCLocalSwiftPackageReference;
