@@ -96,6 +96,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
                 waitResult = WaitForElementResult(found: true, element: nil, waitTime: 0)
                 activeSessionId = "" // Not needed for coordinate clicks
+                try await self.focusApplicationIfNeeded(sessionId: nil)
 
             } else {
                 // For element-based clicks, try to get a session but allow fallback
@@ -107,21 +108,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 // Use session if available, otherwise use empty string to indicate no session
                 activeSessionId = sessionId ?? ""
 
-                // If app is specified, focus it first
-                if let appName = app {
-                    // Focus the specified app
-                    try await WindowServiceBridge.focusWindow(services: self.services, target: .application(appName))
-                    // Brief delay to ensure focus is complete
-                    try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                }
-
-                // Ensure window is focused before clicking (if auto-focus is enabled)
-                try await ensureFocused(
-                    sessionId: activeSessionId,
-                    applicationName: self.app,
-                    options: self.focusOptions,
-                    services: self.services
-                )
+                try await self.focusApplicationIfNeeded(sessionId: activeSessionId.isEmpty ? nil : activeSessionId)
 
                 // Use whichever element ID parameter was provided
                 let elementId = self.on ?? self.id
@@ -264,6 +251,26 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
         let roleDescription = element.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
         let label = element.label ?? element.value ?? element.id
         return "\(roleDescription): \(label)"
+    }
+
+    private func focusApplicationIfNeeded(sessionId: String?) async throws {
+        guard self.focusOptions.autoFocus else {
+            return
+        }
+
+        if sessionId == nil, self.app == nil {
+            return
+        }
+
+        try await ensureFocused(
+            sessionId: sessionId,
+            applicationName: self.app,
+            options: self.focusOptions,
+            services: self.services
+        )
+
+        // Brief delay to ensure focus is complete before interacting
+        try await Task.sleep(nanoseconds: 100_000_000)
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol

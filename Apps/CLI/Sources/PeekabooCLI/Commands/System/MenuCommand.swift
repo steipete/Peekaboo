@@ -229,7 +229,8 @@ extension MenuCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                try await MenuServiceBridge.clickMenuExtra(services: self.services, title: self.title)
+                let clickResult = try await MenuServiceBridge
+                    .clickMenuBarItem(named: self.title, services: self.services)
 
                 if self.item != nil {
                     try await Task.sleep(nanoseconds: 200_000_000)
@@ -240,13 +241,18 @@ extension MenuCommand {
                     let data = MenuExtraClickResult(
                         action: "menu_extra_click",
                         menu_extra: title,
-                        clicked_item: item ?? self.title
+                        clicked_item: item ?? self.title,
+                        location: clickResult.location.map { ["x": $0.x, "y": $0.y] }
                     )
                     outputSuccessCodable(data: data, logger: self.outputLogger)
                 } else if let clickedItem = item {
                     print("✓ Clicked '\(clickedItem)' in \(self.title) menu")
                 } else {
-                    print("✓ Clicked menu extra: \(self.title)")
+                    if let location = clickResult.location {
+                        print("✓ Clicked menu extra: \(self.title) at (\(Int(location.x)), \(Int(location.y)))")
+                    } else {
+                        print("✓ Clicked menu extra: \(self.title)")
+                    }
                 }
 
             } catch let error as MenuError {
@@ -661,6 +667,8 @@ extension MenuCommand {
             menus.map { menu in
                 MenuData(
                     title: menu.title,
+                    bundle_id: menu.bundleIdentifier,
+                    owner_name: menu.ownerName,
                     enabled: menu.isEnabled,
                     items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
                 )
@@ -671,6 +679,8 @@ extension MenuCommand {
             items.map { item in
                 MenuItemData(
                     title: item.title,
+                    bundle_id: item.bundleIdentifier,
+                    owner_name: item.ownerName,
                     enabled: item.isEnabled,
                     shortcut: item.keyboardShortcut?.displayString,
                     checked: item.isChecked ? true : nil,
@@ -893,6 +903,7 @@ struct MenuExtraClickResult: Codable {
     let action: String
     let menu_extra: String
     let clicked_item: String
+    let location: [String: Double]?
 }
 
 // Typed menu structures for JSON output

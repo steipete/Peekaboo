@@ -100,6 +100,15 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
                 await self.services.sessions.getMostRecentSession()
             }
 
+            if self.focusOptions.autoFocus, sessionId == nil, self.app == nil {
+                self.logger.warn(
+                    """
+                    Typing without an associated --app or session. \
+                    We'll inject keys blindly; run 'peekaboo see' or provide --app if you need focus guarantees.
+                    """
+                )
+            }
+
             // Ensure window is focused before typing
             try await ensureFocused(
                 sessionId: sessionId,
