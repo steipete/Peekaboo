@@ -195,64 +195,24 @@ public struct SpaceTool: MCPTool {
             return ToolResponse.error("No matching window found for app '\(request.appName)'")
         }
 
-        let windowID = UInt32(windowInfo.windowID)
+        guard let windowID = windowInfo.window_id else {
+            return ToolResponse.error("Window '\(windowInfo.window_title)' is missing an identifier")
+        }
 
         if request.toCurrent {
-            // Move to current space
-            try service.moveWindowToCurrentSpace(windowID: windowID)
-
-            let executionTime = Date().timeIntervalSince(startTime)
-            let message = self.successMessage(
-                "Moved window '\(windowInfo.title)' to current Space",
-                duration: executionTime)
-
-            return ToolResponse(
-                content: [
-                    .text(message),
-                ],
-                meta: .object([
-                    "window_title": .string(windowInfo.title),
-                    "window_id": .double(Double(windowInfo.windowID)),
-                    "moved_to_current": .bool(true),
-                    "execution_time": .double(executionTime),
-                ]))
-        } else {
-            // Move to specific space
-            guard let targetSpaceNumber = request.targetSpaceNumber else {
-                return ToolResponse.error("Internal error: targetSpaceNumber is nil")
-            }
-
-            let spaces = service.getAllSpaces()
-
-            guard targetSpaceNumber > 0, targetSpaceNumber <= spaces.count else {
-                return ToolResponse.error("Invalid space number. Available spaces: 1-\(spaces.count)")
-            }
-
-            let targetSpace = spaces[targetSpaceNumber - 1]
-
-            try service.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
-
-            // If follow is true, switch to the target space
-            if request.follow {
-                try await service.switchToSpace(targetSpace.id)
-            }
-
-            let executionTime = Date().timeIntervalSince(startTime)
-            let followText = request.follow ? " and switched to Space \(targetSpaceNumber)" : ""
-            let body = "Moved window '\(windowInfo.title)' to Space \(targetSpaceNumber)\(followText)"
-            let message = self.successMessage(body, duration: executionTime)
-
-            return ToolResponse(
-                content: [.text(message)],
-                meta: .object([
-                    "window_title": .string(windowInfo.title),
-                    "window_id": .double(Double(windowInfo.windowID)),
-                    "target_space_number": .double(Double(targetSpaceNumber)),
-                    "target_space_id": .double(Double(targetSpace.id)),
-                    "followed": .bool(request.follow),
-                    "execution_time": .double(executionTime),
-                ]))
+            return try self.moveWindowToCurrentSpace(
+                service: service,
+                windowInfo: windowInfo,
+                windowID: windowID,
+                startTime: startTime)
         }
+
+        return try await self.moveWindowToSpecificSpace(
+            service: service,
+            request: request,
+            windowInfo: windowInfo,
+            windowID: windowID,
+            startTime: startTime)
     }
 
     // MARK: - Helper Methods
@@ -373,4 +333,72 @@ private struct SpaceActionValidationError: Error {
     let message: String
 
     init(_ message: String) { self.message = message }
+}
+
+private extension SpaceTool {
+
+    @MainActor
+    func moveWindowToCurrentSpace(
+        service: SpaceManagementService,
+        windowInfo: WindowInfo,
+        windowID: UInt32,
+        startTime: Date) throws -> ToolResponse
+    {
+        try service.moveWindowToCurrentSpace(windowID: windowID)
+
+        let executionTime = Date().timeIntervalSince(startTime)
+        let message = self.successMessage(
+            "Moved window '\(windowInfo.window_title)' to current Space",
+            duration: executionTime)
+
+        return ToolResponse(
+            content: [.text(message)],
+            meta: .object([
+                "window_title": .string(windowInfo.window_title),
+                "window_id": .double(Double(windowID)),
+                "moved_to_current": .bool(true),
+                "execution_time": .double(executionTime),
+            ]))
+    }
+
+    @MainActor
+    func moveWindowToSpecificSpace(
+        service: SpaceManagementService,
+        request: MoveWindowRequest,
+        windowInfo: WindowInfo,
+        windowID: UInt32,
+        startTime: Date) async throws -> ToolResponse
+    {
+        guard let targetSpaceNumber = request.targetSpaceNumber else {
+            return ToolResponse.error("Internal error: targetSpaceNumber is nil")
+        }
+
+        let spaces = service.getAllSpaces()
+        guard targetSpaceNumber > 0, targetSpaceNumber <= spaces.count else {
+            return ToolResponse.error("Invalid space number. Available spaces: 1-\(spaces.count)")
+        }
+
+        let targetSpace = spaces[targetSpaceNumber - 1]
+        try service.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
+
+        if request.follow {
+            try await service.switchToSpace(targetSpace.id)
+        }
+
+        let executionTime = Date().timeIntervalSince(startTime)
+        let followText = request.follow ? " and switched to Space \(targetSpaceNumber)" : ""
+        let body = "Moved window '\(windowInfo.window_title)' to Space \(targetSpaceNumber)\(followText)"
+        let message = self.successMessage(body, duration: executionTime)
+
+        return ToolResponse(
+            content: [.text(message)],
+            meta: .object([
+                "window_title": .string(windowInfo.window_title),
+                "window_id": .double(Double(windowID)),
+                "target_space_number": .double(Double(targetSpaceNumber)),
+                "target_space_id": .double(Double(targetSpace.id)),
+                "followed": .bool(request.follow),
+                "execution_time": .double(executionTime),
+            ]))
+    }
 }
