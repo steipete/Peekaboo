@@ -387,7 +387,6 @@ extension PeekabooAgentService {
     // MARK: - Helper Functions
 
     private func convertMCPSchemaToAgentSchema(_ mcpSchema: Value) -> AgentToolParameters {
-        // Convert MCP Value schema to AgentToolParameters
         guard case let .object(schemaDict) = mcpSchema,
               let propertiesValue = schemaDict["properties"],
               case let .object(properties) = propertiesValue
@@ -396,88 +395,79 @@ extension PeekabooAgentService {
         }
 
         var agentProperties: [String: AgentToolParameterProperty] = [:]
-        var required: [String] = []
-
-        // Get required fields
-        if let requiredValue = schemaDict["required"],
-           case let .array(requiredArray) = requiredValue
-        {
-            required = requiredArray.compactMap { value in
-                if case let .string(str) = value {
-                    return str
-                }
-                return nil
-            }
-        }
-
-        // Convert properties
         for (key, value) in properties {
-            guard case let .object(propDict) = value else { continue }
-
-            let description = propDict["description"].flatMap { value in
-                if case let .string(desc) = value {
-                    return desc
-                }
-                return nil
-            } ?? ""
-
-            guard let typeValue = propDict["type"],
-                  case let .string(typeStr) = typeValue
-            else {
-                continue
-            }
-
-            let paramType = AgentToolParameterProperty.ParameterType(rawValue: typeStr) ?? .string
-
-            var enumValues: [String]?
-            if let enumValue = propDict["enum"],
-               case let .array(enumArray) = enumValue
-            {
-                enumValues = enumArray.compactMap { value in
-                    if case let .string(str) = value {
-                        return str
-                    }
-                    return nil
-                }
-            }
-
-            var items: AgentToolParameterItems?
-            if paramType == .array {
-                if let itemsValue = propDict["items"],
-                   case let .object(itemsDict) = itemsValue
-                {
-                    var itemType: AgentToolParameterProperty.ParameterType = .string
-
-                    if let itemTypeValue = itemsDict["type"],
-                       case let .string(itemTypeStr) = itemTypeValue
-                    {
-                        itemType = AgentToolParameterProperty.ParameterType(rawValue: itemTypeStr) ?? .string
-                    }
-
-                    items = AgentToolParameterItems(
-                        type: itemType.rawValue,
-                        description: itemsDict["description"].flatMap { value in
-                            if case let .string(desc) = value {
-                                return desc
-                            }
-                            return nil
-                        })
-                    // Note: enum values on items are not currently supported by AgentToolParameterItems
-                } else {
-                    items = AgentToolParameterItems(
-                        type: AgentToolParameterProperty.ParameterType.string.rawValue)
-                }
-            }
-
-            agentProperties[key] = AgentToolParameterProperty(
-                name: key,
-                type: paramType,
-                description: description,
-                enumValues: enumValues,
-                items: items)
+            guard let property = self.makeAgentToolProperty(name: key, value: value) else { continue }
+            agentProperties[key] = property
         }
 
-        return AgentToolParameters(properties: agentProperties, required: required)
+        return AgentToolParameters(
+            properties: agentProperties,
+            required: self.requiredFields(from: schemaDict))
+    }
+
+    private func requiredFields(from schemaDict: [String: Value]) -> [String] {
+        guard case let .array(requiredValues) = schemaDict["required"] else { return [] }
+        return requiredValues.compactMap { value in
+            if case let .string(str) = value { str } else { nil }
+        }
+    }
+
+    private func makeAgentToolProperty(name: String, value: Value) -> AgentToolParameterProperty? {
+        guard case let .object(propDict) = value,
+              let typeValue = propDict["type"],
+              case let .string(typeStr) = typeValue
+        else {
+            return nil
+        }
+
+        let paramType = AgentToolParameterProperty.ParameterType(rawValue: typeStr) ?? .string
+        let description = self.descriptionValue(from: propDict["description"])
+        let enumValues = self.enumValues(from: propDict["enum"])
+        let items = self.itemsDefinition(for: paramType, itemsValue: propDict["items"])
+
+        return AgentToolParameterProperty(
+            name: name,
+            type: paramType,
+            description: description,
+            enumValues: enumValues,
+            items: items)
+    }
+
+    private func descriptionValue(from value: Value?) -> String {
+        guard case let .string(description) = value else { return "" }
+        return description
+    }
+
+    private func enumValues(from value: Value?) -> [String]? {
+        guard case let .array(enumArray) = value else { return nil }
+        let values = enumArray.compactMap { element -> String? in
+            if case let .string(str) = element { str } else { nil }
+        }
+        return values.isEmpty ? nil : values
+    }
+
+    private func itemsDefinition(
+        for parameterType: AgentToolParameterProperty.ParameterType,
+        itemsValue: Value?
+    ) -> AgentToolParameterItems? {
+        guard parameterType == .array else { return nil }
+
+        guard case let .object(itemsDict) = itemsValue else {
+            return AgentToolParameterItems(type: AgentToolParameterProperty.ParameterType.string.rawValue)
+        }
+
+        let itemType: AgentToolParameterProperty.ParameterType
+        if case let .string(typeString) = itemsDict["type"],
+           let resolved = AgentToolParameterProperty.ParameterType(rawValue: typeString)
+        {
+            itemType = resolved
+        } else {
+            itemType = .string
+        }
+
+        return AgentToolParameterItems(
+            type: itemType.rawValue,
+            description: self.descriptionValue(from: itemsDict["description"]))
     }
 }
 
@@ -491,9 +481,8 @@ extension ToolArguments {
         // Convert AgentToolArguments to [String: Any]
         var dict: [String: Any] = [:]
         for key in arguments.keys {
-            if let value = arguments[key] {
-                dict[key] = try! value.toJSON() // AnyAgentToolValue has toJSON()
-            }
+            guard let value = arguments[key], let json = try? value.toJSON() else { continue }
+            dict[key] = json
         }
         self.init(raw: dict)
     }
