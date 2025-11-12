@@ -98,7 +98,7 @@ public func findTargetElement(
             return (nil, noCriteriaError)
         }
         logger.info(
-            formatLogSegments(
+            logSegments(
                 "FTE: PH only -> \(currentSearchElement.briefDescription(option: .smart))"
             )
         )
@@ -130,7 +130,7 @@ private func performPathNavigation(
 
     guard let jsonPathComponents = locator.rootElementPathHint, !jsonPathComponents.isEmpty else {
         logger.debug(
-            formatLogSegments(
+            logSegments(
                 "FTE: No PH",
                 "search from \(searchStartingPointDescription)"
             )
@@ -139,7 +139,7 @@ private func performPathNavigation(
     }
 
     logger.debug(
-        formatLogSegments(
+        logSegments(
             "FTE: PH=\(jsonPathComponents.count)",
             "from \(searchStartingPointDescription)"
         )
@@ -163,7 +163,7 @@ private func performPathNavigation(
         debugSearch: locator.debugPathSearch ?? false
     ) {
         logger.info(
-            formatLogSegments(
+            logSegments(
                 "FTE: Path nav OK -> \(navigatedElement.briefDescription(option: ValueFormatOption.smart))"
             )
         )
@@ -173,7 +173,7 @@ private func performPathNavigation(
         return (element, description, nil)
     }
 
-    let pathFailedError = formatLogSegments(
+    let pathFailedError = logSegments(
         "FTE: Path nav failed",
         "at: [\(pathHintDebugString)]"
     )
@@ -191,7 +191,7 @@ private func applyCriteriaSearch(
     let matchAll = locator.matchAll ?? true
     let matchType = locator.criteria.first?.matchType?.rawValue ?? "default/exact"
     logger.debug(
-        formatLogSegments(
+        logSegments(
             "FTE: Apply C=\(criteriaCount) from \(searchStartingPointDescription)",
             "MA=\(matchAll)",
             "MT=\(matchType)"
@@ -219,7 +219,7 @@ private func applyCriteriaSearch(
     if let foundMatch = searchVisitor.foundElement {
         let foundDescription = foundMatch.briefDescription(option: .smart)
         logger.info(
-            formatLogSegments(
+            logSegments(
                 "FindTargetEl: Found final descendant matching criteria: \(foundDescription)",
                 "Nodes visited = \(traversalNodeCounter)"
             )
@@ -228,7 +228,7 @@ private func applyCriteriaSearch(
     }
 
     let criteriaDesc = locator.criteria.map { "\($0.attribute):\($0.value)" }.joined(separator: ", ")
-    let finalSearchError = formatLogSegments(
+    let finalSearchError = logSegments(
         "FTE: Not found C=[\(criteriaDesc)] from \(searchStartingPointDescription)",
         "Max depth visited = \(searchVisitor.deepestDepthReached) of \(maxDepthForSearch)",
         "Nodes visited = \(traversalNodeCounter)"
@@ -247,7 +247,7 @@ private func logFindTargetSetup(
         .joined(separator: "\n    -> ") ?? "nil"
     let criteria = describeCriteria(locator.criteria)
     logger.info(
-        formatLogSegments(
+        logSegments(
             "FTE: App='\(appIdentifier)'",
             "D=\(maxDepth)",
             "C=\(criteria)",
@@ -276,7 +276,7 @@ public func collectAllElements(
         .joined(separator: ", ")
         ?? "all"
     logger.info(
-        formatLogSegments(
+        logSegments(
             "CA: From [\(startElement.briefDescription(option: ValueFormatOption.smart))]",
             "C=[\(criteriaDebugString)]",
             "D=\(maxDepth)",
@@ -363,7 +363,7 @@ public func traverseAndSearch(
                searchVisitor.stopAtFirstMatchInternal,
                searchVisitor.foundElement != nil {
                 logger.debug(
-                    formatLogSegments(
+                    logSegments(
                         "Traverse: SearchVisitor found match and stopAtFirstMatch is true",
                         "Stopping traversal early"
                     )
@@ -376,7 +376,7 @@ public func traverseAndSearch(
 
 private func logTraversalDepthExceeded(_ maxDepth: Int, _ elementDescription: String) {
     logger.debug(
-        formatLogSegments(
+        logSegments(
             "Traverse: Max depth \(maxDepth) reached at [\(elementDescription)]",
             "Stopping this branch"
         )
@@ -428,7 +428,7 @@ public class SearchVisitor: ElementVisitor {
 
         let criteriaDesc = describeCriteria(self.criteria)
         logger.debug(
-            formatLogSegments(
+            logSegments(
                 "SearchVisitor Init: Criteria: \(criteriaDesc)",
                 "StopAtFirst: \(stopAtFirstMatchInternal)",
                 "MaxDepth: \(maxDepth)",
@@ -445,7 +445,7 @@ public class SearchVisitor: ElementVisitor {
 
         if depth > maxDepth {
             logger.debug(
-                formatLogSegments(
+                logSegments(
                     "SearchVisitor: Max depth \(maxDepth) reached internally at [\(elementDesc)]",
                     "Skipping"
                 )
@@ -584,11 +584,3 @@ nonisolated(unsafe) public var axorcScanAll: Bool = false
 /// Controls whether SearchVisitor should stop at the first element that satisfies the final locator criteria.
 /// CLI flag `--no-stop-first` sets this to `false`.
 nonisolated(unsafe) public var axorcStopAtFirstMatch: Bool = true
-
-private func formatLogSegmentsFromArray(_ parts: [String]) -> String {
-    parts.joined(separator: " | ")
-}
-
-private func formatLogSegments(_ parts: String...) -> String {
-    parts.joined(separator: " | ")
-}
