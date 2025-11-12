@@ -106,6 +106,14 @@ struct CleanCommand: OutputFormattable {
                 self.printResults(result, executionTime: executionTime)
             }
 
+        } catch let error as ValidationError {
+            if self.jsonOutput {
+                outputError(message: error.localizedDescription, code: .VALIDATION_ERROR, logger: self.outputLogger)
+            } else {
+                var stderrStream = FileHandleTextOutputStream(FileHandle.standardError)
+                print("Error: \(error.localizedDescription)", to: &stderrStream)
+            }
+            throw ExitCode.failure
         } catch let error as FileServiceError {
             handleFileServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
             throw ExitCode(1)

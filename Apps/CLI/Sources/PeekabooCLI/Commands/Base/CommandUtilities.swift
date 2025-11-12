@@ -47,21 +47,25 @@ extension ErrorHandlingCommand {
     private func mapErrorToCode(_ error: any Error) -> ErrorCode {
         // Map various error types to error codes
         switch error {
+        // FocusError mappings
+        case let focusError as FocusError:
+            return self.mapFocusErrorToCode(focusError)
+
         // PeekabooError mappings
         case let peekabooError as PeekabooError:
-            self.mapPeekabooErrorToCode(peekabooError)
+            return self.mapPeekabooErrorToCode(peekabooError)
 
         // CaptureError mappings
         case let captureError as CaptureError:
-            self.mapCaptureErrorToCode(captureError)
+            return self.mapCaptureErrorToCode(captureError)
 
         // Commander ValidationError
         case is Commander.ValidationError:
-            .VALIDATION_ERROR
+            return .VALIDATION_ERROR
 
         // Default
         default:
-            .INTERNAL_SWIFT_ERROR
+            return .INTERNAL_SWIFT_ERROR
         }
     }
 
@@ -153,6 +157,21 @@ extension ErrorHandlingCommand {
         case .imageConversionFailed:
             .CAPTURE_FAILED
         }
+    }
+
+    private func mapFocusErrorToCode(_ error: FocusError) -> ErrorCode {
+        errorCode(for: error)
+    }
+}
+
+internal func errorCode(for focusError: FocusError) -> ErrorCode {
+    switch focusError {
+    case .applicationNotRunning:
+        return .APP_NOT_FOUND
+    case .focusVerificationTimeout, .timeoutWaitingForCondition:
+        return .TIMEOUT
+    default:
+        return .WINDOW_NOT_FOUND
     }
 }
 

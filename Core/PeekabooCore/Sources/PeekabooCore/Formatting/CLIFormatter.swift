@@ -48,6 +48,10 @@ public enum CLIFormatter {
             }
         }
 
+        let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return "\(AgentDisplayTokens.Status.info)  No output available."
+        }
         return result
     }
 
@@ -99,7 +103,10 @@ public enum CLIFormatter {
     }
 
     private static func formatWindowList(_ data: ServiceWindowListData) -> String {
-        guard !data.windows.isEmpty else { return "" }
+        guard !data.windows.isEmpty else {
+            let appName = data.targetApplication?.name ?? "the requested application"
+            return "\n\n\(AgentDisplayTokens.Status.warning)  No windows found for \(appName)"
+        }
 
         var result = "\n\nWindows:"
         for (index, window) in data.windows.enumerated() {
