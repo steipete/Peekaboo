@@ -128,3 +128,24 @@ read_when:
 ### Resolution — Nov 12, 2025
 - `ErrorHandlingCommand.mapErrorToCode` now intercepts `FocusError` and defers to `errorCode(for:)`, ensuring `WINDOW_NOT_FOUND`, `APP_NOT_FOUND`, or `TIMEOUT` as appropriate.
 - Added `FocusErrorMappingTests` to lock in the mapping (including `axElementNotFound` → `WINDOW_NOT_FOUND` and `focusVerificationTimeout` → `TIMEOUT`).
+
+## `type` silently succeeds without a focused field
+- **Command**: `polter peekaboo type "Hello"` (no `--app`, no active session)
+- **Observed**: CLI prints `✅ Typing completed`, but no characters arrive in TextEdit because nothing ensured the insertion point was active.
+- **Expected**: Typing should still be possible for advanced users who deliberately inject keystrokes, but the CLI should warn when it cannot guarantee focus.
+### Resolution — Nov 12, 2025
+- `TypeCommand` now keeps “blind typing” available yet logs a warning when neither `--app` nor `--session` is supplied under auto-focus. Users still get their keystrokes, but the CLI explicitly suggests running `peekaboo see` or specifying `--app` first so the experience is less confusing.
+
+## Dialog commands ignore macOS Open/Save panels
+- **Command**: `polter peekaboo dialog click --button "New Document"`
+- **Observed**: `No active dialog window found` even while an `NSOpenPanel` sheet is frontmost (TextEdit’s “New Document / Open” panel).
+- **Expected**: Dialog service should treat `NSOpenPanel`/`NSSavePanel` sheets as dialogs so button clicks and file selection work.
+### Resolution — Nov 12, 2025
+- `DialogService` now inspects `AXFocusedWindow`, recurses through `AXSheets`, checks `AXIdentifier` for `NSOpenPanel`/`NSSavePanel`, and matches titles like “Open”, “Save”, “Export”, or “Import”. Both `dialog list` and `dialog click` successfully locate the TextEdit open panel.
+
+## `dock hide` never returns
+- **Command**: `polter peekaboo dock hide`
+- **Observed**: Command times out after ~10 s because the AppleScript call to System Events waits for automation approval.
+- **Expected**: Dock hide/show should complete quickly without extra permissions.
+### Resolution — Nov 12, 2025
+- DockService now toggles `com.apple.dock autohide` via `defaults` and restarts the Dock process instead of driving System Events. We also skip the write entirely if the Dock is already in the requested state, so `dock hide`/`dock show` finish in <1 s.
