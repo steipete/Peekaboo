@@ -167,27 +167,16 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 "success": true,
             ])
 
-            if self.jsonOutput {
-                await self.outputJSONResults(
-                    sessionId: captureResult.sessionId,
-                    screenshotPath: captureResult.screenshotPath,
-                    annotatedPath: annotatedPath,
-                    metadata: captureResult.metadata,
-                    elements: captureResult.elements,
-                    analysis: analysisResult,
-                    executionTime: executionTime
-                )
-            } else {
-                await self.outputTextResults(
-                    sessionId: captureResult.sessionId,
-                    screenshotPath: captureResult.screenshotPath,
-                    annotatedPath: annotatedPath,
-                    metadata: captureResult.metadata,
-                    elements: captureResult.elements,
-                    analysis: analysisResult,
-                    executionTime: executionTime
-                )
-            }
+            let context = SeeCommandRenderContext(
+                sessionId: captureResult.sessionId,
+                screenshotPath: captureResult.screenshotPath,
+                annotatedPath: annotatedPath,
+                metadata: captureResult.metadata,
+                elements: captureResult.elements,
+                analysis: analysisResult,
+                executionTime: executionTime
+            )
+            await self.renderResults(context: context)
 
         } catch {
             logger.operationComplete("see_command", success: false, metadata: [
@@ -200,6 +189,14 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     private func getFileSize(_ path: String) -> Int? {
         try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int
+    }
+
+    private func renderResults(context: SeeCommandRenderContext) async {
+        if self.jsonOutput {
+            await self.outputJSONResults(context: context)
+        } else {
+            await self.outputTextResults(context: context)
+        }
     }
 
     private func performCaptureWithDetection() async throws -> CaptureAndDetectionResult {
@@ -414,6 +411,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         return outputPath
     }
 
+    // swiftlint:disable function_body_length
     private func generateAnnotatedScreenshot(
         sessionId: String,
         originalPath: String
@@ -638,6 +636,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
         return annotatedPath
     }
+    // swiftlint:enable function_body_length
 
     // [OLD CODE REMOVED - massive cleanup of duplicate placement logic]
 }
@@ -655,6 +654,16 @@ private struct SessionPaths {
     let raw: String
     let annotated: String
     let map: String
+}
+
+private struct SeeCommandRenderContext {
+    let sessionId: String
+    let screenshotPath: String
+    let annotatedPath: String?
+    let metadata: DetectionMetadata
+    let elements: DetectedElements
+    let analysis: SeeAnalysisData?
+    let executionTime: TimeInterval
 }
 
 // MARK: - JSON Output Structure (matching original)
@@ -720,6 +729,11 @@ extension SeeCommand {
         return SeeAnalysisData(provider: res.provider, model: res.model, text: res.text)
     }
 
+    private func buildMenuSummaryIfNeeded() async -> MenuBarSummary? {
+        // Placeholder for future UI summary generation; currently unused.
+        return nil
+    }
+
     private func determineMode() -> PeekabooCore.CaptureMode {
         if let mode = self.mode {
             mode
@@ -734,17 +748,8 @@ extension SeeCommand {
 
     // MARK: - Output Methods
 
-    private func outputJSONResults(
-        sessionId: String,
-        screenshotPath: String,
-        annotatedPath: String?,
-        metadata: DetectionMetadata,
-        elements: DetectedElements,
-        analysis: SeeAnalysisData?,
-        executionTime: TimeInterval
-    ) async {
-        // Build UI element summaries
-        let uiElements: [UIElementSummary] = elements.all.map { element in
+    private func outputJSONResults(context: SeeCommandRenderContext) async {
+        let uiElements: [UIElementSummary] = context.elements.all.map { element in
             UIElementSummary(
                 id: element.id,
                 role: element.type.rawValue,
@@ -756,28 +761,21 @@ extension SeeCommand {
             )
         }
 
-        // Build session paths
-        let sessionPaths = SessionPaths(
-            raw: screenshotPath,
-            annotated: annotatedPath ?? screenshotPath,
-            map: self.services.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
-        )
-
-        // Structured analysis is passed in
+        let sessionPaths = self.sessionPaths(for: context)
 
         let output = await SeeResult(
-            session_id: sessionId,
+            session_id: context.sessionId,
             screenshot_raw: sessionPaths.raw,
             screenshot_annotated: sessionPaths.annotated,
             ui_map: sessionPaths.map,
-            application_name: metadata.windowContext?.applicationName,
-            window_title: metadata.windowContext?.windowTitle,
-            is_dialog: metadata.isDialog,
-            element_count: metadata.elementCount,
-            interactable_count: elements.all.count { $0.isEnabled },
+            application_name: context.metadata.windowContext?.applicationName,
+            window_title: context.metadata.windowContext?.windowTitle,
+            is_dialog: context.metadata.isDialog,
+            element_count: context.metadata.elementCount,
+            interactable_count: context.elements.all.count { $0.isEnabled },
             capture_mode: self.determineMode().rawValue,
-            analysis: analysis,
-            execution_time: executionTime,
+            analysis: context.analysis,
+            execution_time: context.executionTime,
             ui_elements: uiElements,
             menu_bar: self.getMenuBarItemsSummary()
         )
@@ -816,67 +814,66 @@ extension SeeCommand {
         return MenuBarSummary(menus: menus)
     }
 
-    private func outputTextResults(
-        sessionId: String,
-        screenshotPath: String,
-        annotatedPath: String?,
-        metadata: DetectionMetadata,
-        elements: DetectedElements,
-        analysis: SeeAnalysisData?,
-        executionTime: TimeInterval
-    ) async {
-        let sessionPaths = SessionPaths(
-            raw: screenshotPath,
-            annotated: annotatedPath ?? screenshotPath,
-            map: self.services.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
+    private func outputTextResults(context: SeeCommandRenderContext) async {
+        print("🖼️  Screenshot saved to: \(context.screenshotPath)")
+        if let annotatedPath = context.annotatedPath {
+            print("📝 Annotated screenshot: \(annotatedPath)")
+        }
+
+        if let appName = context.metadata.windowContext?.applicationName {
+            print("📱 Application: \(appName)")
+        }
+        if let windowTitle = context.metadata.windowContext?.windowTitle {
+            let windowType = context.metadata.isDialog ? "Dialog" : "Window"
+            let icon = context.metadata.isDialog ? "🗨️" : "[win]"
+            print("\(icon) \(windowType): \(windowTitle)")
+        }
+        print("🧊 Detection method: \(context.metadata.method)")
+        print("📊 UI elements detected: \(context.metadata.elementCount)")
+        print("⚙️  Interactable elements: \(context.elements.all.count { $0.isEnabled })")
+        let formattedDuration = String(format: "%.2f", context.executionTime)
+        print("⏱️  Execution time: \(formattedDuration)s")
+
+        if let analysis = context.analysis {
+            print("\n🤖 AI Analysis\n\(analysis.text)")
+        }
+
+        if context.metadata.elementCount > 0 {
+            print("\n🔍 Element Summary")
+            for element in context.elements.all.prefix(10) {
+                let summaryLabel = element.label ?? element.attributes["title"] ?? element.value ?? "Untitled"
+                print("• \(element.id) (\(element.type.rawValue)) - \(summaryLabel)")
+            }
+
+            if context.metadata.elementCount > 10 {
+                print("  ...and \(context.metadata.elementCount - 10) more elements")
+            }
+        }
+
+        if self.annotate {
+            print("\n📝 Annotated screenshot created")
+        }
+
+        if let menuSummary = await self.buildMenuSummaryIfNeeded() {
+            print("\n🧭 Menu Bar Summary")
+            for menu in menuSummary.menus {
+                print("- \(menu.title) (\(menu.enabled ? "Enabled" : "Disabled"))")
+                for item in menu.items.prefix(5) {
+                    let shortcut = item.keyboard_shortcut.map { " [\($0)]" } ?? ""
+                    print("    • \(item.title)\(shortcut)")
+                }
+            }
+        }
+
+        print("\nSession ID: \(context.sessionId)")
+    }
+
+    private func sessionPaths(for context: SeeCommandRenderContext) -> SessionPaths {
+        SessionPaths(
+            raw: context.screenshotPath,
+            annotated: context.annotatedPath ?? context.screenshotPath,
+            map: self.services.sessions.getSessionStoragePath() + "/\(context.sessionId)/map.json"
         )
-
-        let interactableCount = elements.all.count { $0.isEnabled }
-
-        print("\(AgentDisplayTokens.Status.success) Screenshot captured successfully")
-        print("📍 Session ID: \(sessionId)")
-        print("🖼  Raw screenshot: \(sessionPaths.raw)")
-        if let annotated = annotatedPath {
-            print("[focus] Annotated: \(annotated)")
-        }
-        print("🗺️  UI map: \(sessionPaths.map)")
-        print("🔍 Found \(metadata.elementCount) UI elements (\(interactableCount) interactive)")
-
-        if let app = metadata.windowContext?.applicationName {
-            print("[apps] Application: \(app)")
-        }
-        if let window = metadata.windowContext?.windowTitle {
-            let windowType = metadata.isDialog ? "Dialog" : "Window"
-            let icon = metadata.isDialog ? "🗨️" : "[win]"
-            print("\(icon) \(windowType): \(window)")
-        }
-
-        // Show menu bar items
-        // Get menu bar items from service
-        let menuExtras: [MenuExtraInfo]
-        do {
-            menuExtras = try await self.services.menu.listMenuExtras()
-        } catch {
-            // If there's an error, just return empty array
-            menuExtras = []
-        }
-
-        if !menuExtras.isEmpty {
-            print("\(AgentDisplayTokens.Status.info) Menu Bar Items: \(menuExtras.count)")
-            for item in menuExtras.prefix(10) { // Show first 10
-                print("   • \(item.title)")
-            }
-            if menuExtras.count > 10 {
-                print("   ... and \(menuExtras.count - 10) more")
-            }
-        }
-
-        if let analysis {
-            print("\(AgentDisplayTokens.Status.info) Analysis (\(analysis.provider)/\(analysis.model)):")
-            print(analysis.text)
-        }
-
-        print("\(AgentDisplayTokens.Status.time)  Completed in \(String(format: "%.2f", executionTime))s")
     }
 }
 
@@ -965,7 +962,6 @@ extension SeeCommand {
                 } else {
                     // First screen will be saved by the normal flow, just show info
                     if let displayInfo = result.metadata.displayInfo {
-                        let bounds = displayInfo.bounds
                         self.printScreenDisplayInfo(
                             index: index,
                             displayInfo: displayInfo,

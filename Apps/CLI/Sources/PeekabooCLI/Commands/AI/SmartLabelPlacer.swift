@@ -164,7 +164,10 @@ final class SmartLabelPlacer {
 
         if self.debugMode {
             self.logger.verbose(
-                "Best position for \(element.id): type \(best.type) with score \(best.score) (higher = better, 1.0 = clear area, 0.0 = text/edges)",
+                """
+                Best position for \(element.id): type \(best.type) with score \(best.score) \
+                (higher = better, 1.0 = clear area, 0.0 = text/edges)
+                """,
                 category: "LabelPlacement",
                 metadata: [
                     "elementId": element.id,
@@ -362,20 +365,18 @@ final class SmartLabelPlacer {
             }
 
             // Check overlap with existing labels
-            for (existingLabel, labelElement) in existingLabels {
-                if candidate.rect.intersects(existingLabel) {
-                    if logRejections {
-                        self.logger.verbose(
-                            "Position \(candidate.type) rejected: overlaps with label for \(labelElement.id)",
-                            category: "LabelPlacement",
-                            metadata: [
-                                "candidateRect": "\(candidate.rect)",
-                                "existingLabelRect": "\(existingLabel)"
-                            ]
-                        )
-                    }
-                    return false
+            for (existingLabel, labelElement) in existingLabels where candidate.rect.intersects(existingLabel) {
+                if logRejections {
+                    self.logger.verbose(
+                        "Position \(candidate.type) rejected: overlaps with label for \(labelElement.id)",
+                        category: "LabelPlacement",
+                        metadata: [
+                            "candidateRect": "\(candidate.rect)",
+                            "existingLabelRect": "\(existingLabel)"
+                        ]
+                    )
                 }
+                return false
             }
 
             return true
@@ -464,22 +465,20 @@ final class SmartLabelPlacer {
         }
 
         // Find first position that fits
-        for candidateRect in insidePositions {
-            if elementRect.contains(candidateRect) {
-                // Score this internal position
-                let imageRect = NSRect(
-                    x: candidateRect.origin.x,
-                    y: self.imageSize.height - candidateRect.origin.y - candidateRect.height,
-                    width: candidateRect.width,
-                    height: candidateRect.height
-                )
+        for candidateRect in insidePositions where elementRect.contains(candidateRect) {
+            // Score this internal position
+            let imageRect = NSRect(
+                x: candidateRect.origin.x,
+                y: self.imageSize.height - candidateRect.origin.y - candidateRect.height,
+                width: candidateRect.width,
+                height: candidateRect.height
+            )
 
-                let score = self.textDetector.scoreRegionForLabelPlacement(imageRect, in: self.image)
+            let score = self.textDetector.scoreRegionForLabelPlacement(imageRect, in: self.image)
 
-                // Only use if score is acceptable (low edge density)
-                if score > 0.5 {
-                    return (labelRect: candidateRect, connectionPoint: nil)
-                }
+            // Only use if score is acceptable (low edge density)
+            if score > 0.5 {
+                return (labelRect: candidateRect, connectionPoint: nil)
             }
         }
 
