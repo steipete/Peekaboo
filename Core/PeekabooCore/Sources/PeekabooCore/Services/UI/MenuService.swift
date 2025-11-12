@@ -189,7 +189,7 @@ extension MenuService {
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
         let axExtras = self.getMenuBarItemsViaAccessibility()
         let windowExtras = self.getMenuBarItemsViaWindows()
-        return self.mergeMenuExtras(
+        return Self.mergeMenuExtras(
             accessibilityExtras: axExtras,
             fallbackExtras: windowExtras
         )
@@ -485,7 +485,7 @@ extension MenuService {
     }
 
     @MainActor
-    private func mergeMenuExtras(
+    static func mergeMenuExtras(
         accessibilityExtras: [MenuExtraInfo],
         fallbackExtras: [MenuExtraInfo]
     ) -> [MenuExtraInfo] {

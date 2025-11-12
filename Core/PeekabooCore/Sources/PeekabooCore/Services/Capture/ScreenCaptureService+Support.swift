@@ -124,19 +124,8 @@ struct ScreenCaptureFallbackRunner: Sendable {
 
     private func shouldFallback(after error: any Error, api: ScreenCaptureAPI, hasFallback: Bool) -> Bool {
         guard hasFallback, api == .modern else { return false }
-
-        let standardized = ErrorStandardizer.standardize(error)
-        let fallbackCodes: Set<StandardErrorCode> = [.timeout, .captureFailed]
-        if fallbackCodes.contains(standardized.code) {
-            return true
-        }
-
-        let nsError = error as NSError
-        if nsError.domain == SCStreamErrorDomain || nsError.domain == "com.apple.screencapturekit.error" {
-            return true
-        }
-
-        return false
+        // Any modern failure should attempt the legacy stack so agents keep moving even if ScreenCaptureKit flakes.
+        return true
     }
 }
 
