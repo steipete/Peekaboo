@@ -3,47 +3,36 @@
 import AppKit // For NSRunningApplication, NSWorkspace
 import Foundation
 
-private func logSegments(_ parts: String...) -> String {
-    parts.joined(separator: " | ")
-}
-
 // GlobalAXLogger is assumed to be available
 
 public func pid(forAppIdentifier ident: String) -> pid_t? {
     axDebugLog(
-        "ProcessUtils: Attempting to find PID for identifier: '\(ident)'",
+        logSegments(
+            "ProcessUtils: Attempting to find PID for identifier: '\(ident)'"
+        ),
         file: #file,
         function: #function,
         line: #line
     )
 
-    // Check if identifier is "focused"
-    if let pid = pidForFocusedApp(ident) {
-        return pid
-    }
+    let strategies: [() -> pid_t?] = [
+        { pidForFocusedApp(ident) },
+        { pidByBundleIdentifier(ident) },
+        { pidByLocalizedName(ident) },
+        { pidByPath(ident) },
+        { pidByPIDString(ident) }
+    ]
 
-    // Try by bundle identifier
-    if let pid = pidByBundleIdentifier(ident) {
-        return pid
-    }
-
-    // Try by localized name
-    if let pid = pidByLocalizedName(ident) {
-        return pid
-    }
-
-    // Try by path
-    if let pid = pidByPath(ident) {
-        return pid
-    }
-
-    // Try interpreting as PID string
-    if let pid = pidByPIDString(ident) {
-        return pid
+    for strategy in strategies {
+        if let pid = strategy() {
+            return pid
+        }
     }
 
     axWarningLog(
-        "ProcessUtils: PID not found for identifier: '\(ident)'",
+        logSegments(
+            "ProcessUtils: PID not found for identifier: '\(ident)'"
+        ),
         file: #file,
         function: #function,
         line: #line
@@ -124,8 +113,10 @@ private func pidByBundleIdentifier(_ ident: String) -> pid_t? {
 
     if let app = appsByBundleID.first(where: { !$0.isTerminated }) {
         axDebugLog(
-            "ProcessUtils: Using first non-terminated app found by bundle ID: " +
-                "'\(app.localizedName ?? "nil")' (PID: \(app.processIdentifier))",
+            logSegments(
+                "ProcessUtils: Using first non-terminated app found by bundle ID",
+                "'\(app.localizedName ?? "nil")' (PID: \(app.processIdentifier))"
+            ),
             file: #file,
             function: #function,
             line: #line
@@ -133,7 +124,9 @@ private func pidByBundleIdentifier(_ ident: String) -> pid_t? {
         return app.processIdentifier
     } else {
         axDebugLog(
-            "ProcessUtils: All apps found by bundle ID '\(ident)' are terminated.",
+            logSegments(
+                "ProcessUtils: All apps found by bundle ID '\(ident)' are terminated."
+            ),
             file: #file,
             function: #function,
             line: #line
@@ -144,30 +137,43 @@ private func pidByBundleIdentifier(_ ident: String) -> pid_t? {
 
 private func pidByLocalizedName(_ ident: String) -> pid_t? {
     axDebugLog(
-        "ProcessUtils: Trying by localized name (case-insensitive) '\(ident)'.",
+        logSegments(
+            "ProcessUtils: Trying by localized name (case-insensitive) '\(ident)'."
+        ),
         file: #file,
         function: #function,
         line: #line
     )
 
     let allApps = NSWorkspace.shared.runningApplications
-    axDebugLog(
-        "ProcessUtils: pidByLocalizedName - NSWorkspace.shared.runningApplications returned \(allApps.count) total apps.",
-        file: #file, function: #function, line: #line
-    )
+        axDebugLog(
+            logSegments(
+                "ProcessUtils: pidByLocalizedName - NSWorkspace.shared.runningApplications returned",
+                "\(allApps.count) total apps."
+            ),
+            file: #file,
+            function: #function,
+            line: #line
+        )
 
     for (idx, app) in allApps.enumerated() {
         axDebugLog(
-            "ProcessUtils: pidByLocalizedName - Checking app [\(idx)]: " +
-                "'\(app.localizedName ?? "NIL_NAME")' (Terminated: \(app.isTerminated), " +
-                "BundleID: \(app.bundleIdentifier ?? "NIL_BID")) against target '\(ident)'.",
-            file: #file, function: #function, line: #line
+            logSegments(
+                "ProcessUtils: pidByLocalizedName - Checking app [\(idx)]",
+                "'\(app.localizedName ?? "NIL_NAME")' (Terminated: \(app.isTerminated))",
+                "BundleID: \(app.bundleIdentifier ?? "NIL_BID") against target '\(ident)'"
+            ),
+            file: #file,
+            function: #function,
+            line: #line
         )
         if !app.isTerminated, app.localizedName?.lowercased() == ident.lowercased() {
             axDebugLog(
-                "ProcessUtils: Found non-terminated app by localized name (in loop): " +
-                    "'\(app.localizedName ?? "nil")' (PID: \(app.processIdentifier), " +
-                    "BundleID: '\(app.bundleIdentifier ?? "nil")')",
+                logSegments(
+                    "ProcessUtils: Found non-terminated app by localized name (in loop)",
+                    "'\(app.localizedName ?? "nil")' (PID: \(app.processIdentifier))",
+                    "BundleID: '\(app.bundleIdentifier ?? "nil")'"
+                ),
                 file: #file,
                 function: #function,
                 line: #line
@@ -176,18 +182,23 @@ private func pidByLocalizedName(_ ident: String) -> pid_t? {
         }
     }
 
-    axDebugLog(
-        "ProcessUtils: No non-terminated app found matching localized name '\(ident)' in the loop. Original filter logic will be skipped as redundant.",
-        file: #file,
-        function: #function,
-        line: #line
-    )
+        axDebugLog(
+            logSegments(
+                "ProcessUtils: No non-terminated app found matching localized name '\(ident)'",
+                "Original filter logic skipped as redundant"
+            ),
+            file: #file,
+            function: #function,
+            line: #line
+        )
     return nil
 }
 
 private func pidByPath(_ ident: String) -> pid_t? {
     axDebugLog(
-        "ProcessUtils: Trying by path '\(ident)'.",
+        logSegments(
+            "ProcessUtils: Trying by path '\(ident)'."
+        ),
         file: #file,
         function: #function,
         line: #line
@@ -199,7 +210,10 @@ private func pidByPath(_ ident: String) -> pid_t? {
           let bundleId = bundle.bundleIdentifier
     else {
         axDebugLog(
-            "ProcessUtils: Identifier '\(ident)' is not a valid file path or bundle info could not be read.",
+            logSegments(
+                "ProcessUtils: Identifier '\(ident)' is not a valid file path",
+                "Bundle info could not be read"
+            ),
             file: #file,
             function: #function,
             line: #line
@@ -208,8 +222,10 @@ private func pidByPath(_ ident: String) -> pid_t? {
     }
 
     axDebugLog(
-        "ProcessUtils: Path '\(potentialPath)' resolved to bundle '\(bundleId)'. " +
-            "Looking up running apps with this bundle ID.",
+        logSegments(
+            "ProcessUtils: Path '\(potentialPath)' resolved to bundle '\(bundleId)'",
+            "Looking up running apps with this bundle ID"
+        ),
         file: #file,
         function: #function,
         line: #line
@@ -242,9 +258,10 @@ private func pidForResolvedBundleID(_ bundleId: String, fromPath path: String) -
 
     if let app = appsByResolvedBundleID.first(where: { !$0.isTerminated }) {
         axDebugLog(
-            "ProcessUtils: Using first non-terminated app found by path " +
-                "(via bundle ID '\(bundleId)'): '\(app.localizedName ?? "nil")' " +
-                "(PID: \(app.processIdentifier))",
+            logSegments(
+                "ProcessUtils: Using first non-terminated app found by path (via bundle ID '\(bundleId)')",
+                "'\(app.localizedName ?? "nil")' (PID: \(app.processIdentifier))"
+            ),
             file: #file,
             function: #function,
             line: #line
@@ -252,7 +269,9 @@ private func pidForResolvedBundleID(_ bundleId: String, fromPath path: String) -
         return app.processIdentifier
     } else {
         axDebugLog(
-            "ProcessUtils: All apps for bundle ID '\(bundleId)' (from path) are terminated.",
+            logSegments(
+                "ProcessUtils: All apps for bundle ID '\(bundleId)' (from path) are terminated."
+            ),
             file: #file,
             function: #function,
             line: #line
@@ -275,23 +294,33 @@ private func pidByPIDString(_ ident: String) -> pid_t? {
        !appByPid.isTerminated
     {
         axDebugLog(
-            "ProcessUtils: Found non-terminated app by PID string '\(ident)': " +
-                "'\(appByPid.localizedName ?? "nil")' " +
-                "(PID: \(appByPid.processIdentifier), " +
-                "BundleID: '\(appByPid.bundleIdentifier ?? "nil")')",
-            file: #file, function: #function, line: #line
+            logSegments(
+                "ProcessUtils: Found non-terminated app by PID string '\(ident)'",
+                "'\(appByPid.localizedName ?? "nil")'",
+                "PID: \(appByPid.processIdentifier)",
+                "BundleID: '\(appByPid.bundleIdentifier ?? "nil")'"
+            ),
+            file: #file,
+            function: #function,
+            line: #line
         )
         return pidInt
     } else {
         if NSRunningApplication(processIdentifier: pidInt)?.isTerminated == true {
             axDebugLog(
-                "ProcessUtils: String '\(ident)' is a PID, but the app is terminated.",
-                file: #file, function: #function, line: #line
+                logSegments(
+                    "ProcessUtils: String '\(ident)' is a PID, but the app is terminated."
+                ),
+                file: #file,
+                function: #function,
+                line: #line
             )
         } else {
             axDebugLog(
-                "ProcessUtils: String '\(ident)' looked like a PID but " +
-                    "no running application found for it.",
+                logSegments(
+                    "ProcessUtils: String '\(ident)' looked like a PID",
+                    "but no running application found for it."
+                ),
                 file: #file,
                 function: #function,
                 line: #line

@@ -4,10 +4,6 @@ import ApplicationServices
 import Foundation
 import Logging
 
-// Import shared logging helpers
-@_exported import func AXorcist.logSegments
-@_exported import func AXorcist.describePid
-
 private let logger = Logger(label: "AXorcist.ElementSearch")
 
 // MARK: - Main Element Finding Orchestration

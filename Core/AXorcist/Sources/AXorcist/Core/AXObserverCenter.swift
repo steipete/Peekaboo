@@ -8,10 +8,6 @@
 import ApplicationServices
 import Foundation
 
-// Import shared logging helpers
-@_exported import func AXorcist.logSegments
-@_exported import func AXorcist.describePid
-
 /// Centralized manager for AXObserver instances that coordinates accessibility notifications.
 ///
 /// AXObserverCenter provides:

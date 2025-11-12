@@ -5,9 +5,6 @@ import AXorcist
 import CoreFoundation
 import Foundation
 
-// Import shared logging helpers
-@_exported import func AXorcist.logSegments
-
 @main
 struct AXORCCommand: ParsableCommand {
     @preconcurrency nonisolated static var commandDescription: CommandDescription {
@@ -337,34 +334,29 @@ struct AXORCCommand: ParsableCommand {
     }
     private func commandShouldPrintLogsAtEnd() -> Bool {
         MainActor.assumeIsolated {
-            // This is a simplified check. A more robust way would be to check
-            // the actual command type if it's available here.
-            // For now, if stdin is true or json is provided, assume it might be an observe command.
-            // This is imperfect.
             let parsedInput = InputHandler.parseInput(
                 stdin: stdin,
                 file: file,
                 json: json,
                 directPayload: directPayload
             )
-            if
+            guard
                 let jsonString = parsedInput.jsonString,
                 let inputData = jsonString.data(using: .utf8)
+            else {
+                return true
+            }
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            if let commands = try? decoder.decode([CommandEnvelope].self, from: inputData),
+               commands.first?.command == .observe
             {
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                if
-                    let commands = try? decoder.decode([CommandEnvelope].self, from: inputData),
-                    commands.first?.command == .observe
-                {
-                    return false
-                }
-                if
-                    let command = try? decoder.decode(CommandEnvelope.self, from: inputData),
-                    command.command == .observe
-                {
-                    return false
-                }
+                return false
+            }
+            if let command = try? decoder.decode(CommandEnvelope.self, from: inputData),
+               command.command == .observe
+            {
+                return false
             }
             return true
         }
