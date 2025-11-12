@@ -365,129 +365,98 @@ final class PeekabooSettings {
         self.loadFromPeekabooConfig()
         self.migrateSettingsIfNeeded()
     }
+}
 
+extension PeekabooSettings {
     private func load() {
-        // Set loading flag to prevent recursive saves
         self.isLoading = true
         defer { self.isLoading = false }
 
-        self.selectedProvider = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedProvider") ?? "anthropic"
-        self.openAIAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)openAIAPIKey") ?? ""
-        self.anthropicAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)anthropicAPIKey") ?? ""
-        self.ollamaBaseURL = self.userDefaults.string(forKey: "\(self.keyPrefix)ollamaBaseURL") ?? "http://localhost:11434"
+        self.loadProviderSettings()
+        self.loadUIPreferences()
+        self.loadVisualizerSettings()
+        self.loadAnimationPreferences()
+        self.loadRealtimeVoiceSettings()
+    }
 
-        // Set default model based on provider
-        let defaultProvider = self.selectedProvider
-        let defaultModel = if defaultProvider == "openai" {
-            "gpt-5-mini"
-        } else if defaultProvider == "anthropic" {
-            "claude-sonnet-4-5-20250929"
-        } else {
-            "llava:latest"
-        }
-        self.selectedModel = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedModel") ?? defaultModel
-        self.useCustomVisionModel = self.userDefaults.bool(forKey: "\(self.keyPrefix)useCustomVisionModel")
-        self.customVisionModel = self.userDefaults.string(forKey: "\(self.keyPrefix)customVisionModel") ?? "gpt-5"
-        self.temperature = self.userDefaults.double(forKey: "\(self.keyPrefix)temperature")
-        if self.temperature == 0 { self.temperature = 0.7 } // Default if not set
-        self.maxTokens = self.userDefaults.integer(forKey: "\(self.keyPrefix)maxTokens")
-        if self.maxTokens == 0 { self.maxTokens = 16384 } // Default if not set
+    private func loadProviderSettings() {
+        self.selectedProvider = self.userDefaults.string(forKey: self.namespaced("selectedProvider")) ?? "anthropic"
+        self.openAIAPIKey = self.userDefaults.string(forKey: self.namespaced("openAIAPIKey")) ?? ""
+        self.anthropicAPIKey = self.userDefaults.string(forKey: self.namespaced("anthropicAPIKey")) ?? ""
+        self.ollamaBaseURL = self.userDefaults.string(forKey: self.namespaced("ollamaBaseURL")) ?? "http://localhost:11434"
 
-        self.alwaysOnTop = self.userDefaults.bool(forKey: "\(self.keyPrefix)alwaysOnTop")
-        // Default showInDock to true if not previously set
-        if self.userDefaults.object(forKey: "\(self.keyPrefix)showInDock") == nil {
+        let defaultModel = self.defaultModel(for: self.selectedProvider)
+        self.selectedModel = self.userDefaults.string(forKey: self.namespaced("selectedModel")) ?? defaultModel
+        self.useCustomVisionModel = self.userDefaults.bool(forKey: self.namespaced("useCustomVisionModel"))
+        self.customVisionModel = self.userDefaults.string(forKey: self.namespaced("customVisionModel")) ?? "gpt-5"
+
+        self.temperature = self.nonZeroDouble(forKey: "temperature", fallback: 0.7)
+        self.maxTokens = self.nonZeroInt(forKey: "maxTokens", fallback: 16_384)
+    }
+
+    private func loadUIPreferences() {
+        self.alwaysOnTop = self.userDefaults.bool(forKey: self.namespaced("alwaysOnTop"))
+
+        let showInDockKey = self.namespaced("showInDock")
+        if self.userDefaults.object(forKey: showInDockKey) == nil {
             self.showInDock = true
-            self.userDefaults.set(true, forKey: "\(self.keyPrefix)showInDock")
+            self.userDefaults.set(true, forKey: showInDockKey)
         } else {
-            self.showInDock = self.userDefaults.bool(forKey: "\(self.keyPrefix)showInDock")
+            self.showInDock = self.userDefaults.bool(forKey: showInDockKey)
         }
-        // Check actual launch at login status
+
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
-        self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
+        self.userDefaults.set(self.launchAtLogin, forKey: self.namespaced("launchAtLogin"))
 
-        // Keyboard shortcuts are automatically loaded by the KeyboardShortcuts library
+        self.voiceActivationEnabled = self.valueOrDefault(key: "voiceActivationEnabled", defaultValue: true)
+        self.hapticFeedbackEnabled = self.userDefaults.bool(forKey: self.namespaced("hapticFeedbackEnabled"))
+        self.soundEffectsEnabled = self.userDefaults.bool(forKey: self.namespaced("soundEffectsEnabled"))
 
-        // Default voiceActivationEnabled to true if not previously set
-        if self.userDefaults.object(forKey: "\(self.keyPrefix)voiceActivationEnabled") == nil {
-            self.voiceActivationEnabled = true
-            self.userDefaults.set(true, forKey: "\(self.keyPrefix)voiceActivationEnabled")
-        } else {
-            self.voiceActivationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)voiceActivationEnabled")
-        }
-        self.hapticFeedbackEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)hapticFeedbackEnabled")
-        self.soundEffectsEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)soundEffectsEnabled")
+        self.ensureTrueFlag(markerKey: "hapticFeedbackEnabledSet", value: &self.hapticFeedbackEnabled)
+        self.ensureTrueFlag(markerKey: "soundEffectsEnabledSet", value: &self.soundEffectsEnabled)
+    }
 
-        // Set defaults for bools that should be true by default
-        if !self.userDefaults.bool(forKey: "\(self.keyPrefix)hapticFeedbackEnabledSet") {
-            self.hapticFeedbackEnabled = true
-            self.userDefaults.set(true, forKey: "\(self.keyPrefix)hapticFeedbackEnabledSet")
-        }
-        if !self.userDefaults.bool(forKey: "\(self.keyPrefix)soundEffectsEnabledSet") {
-            self.soundEffectsEnabled = true
-            self.userDefaults.set(true, forKey: "\(self.keyPrefix)soundEffectsEnabledSet")
-        }
+    private func loadVisualizerSettings() {
+        self.visualizerEnabled = self.valueOrDefault(key: "visualizerEnabled", defaultValue: true)
 
-        // Load visualizer settings
-        if self.userDefaults.object(forKey: "\(self.keyPrefix)visualizerEnabled") == nil {
-            self.visualizerEnabled = true
-        } else {
-            self.visualizerEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)visualizerEnabled")
-        }
+        self.visualizerAnimationSpeed = self.nonZeroDouble(
+            forKey: "visualizerAnimationSpeed",
+            fallback: PeekabooSettings.defaultVisualizerAnimationSpeed
+        )
+        self.visualizerEffectIntensity = self.nonZeroDouble(forKey: "visualizerEffectIntensity", fallback: 1.0)
+        self.visualizerSoundEnabled = self.valueOrDefault(key: "visualizerSoundEnabled", defaultValue: true)
 
-        self.visualizerAnimationSpeed = self.userDefaults.double(forKey: "\(self.keyPrefix)visualizerAnimationSpeed")
-        if self.visualizerAnimationSpeed == 0 {
-            self.visualizerAnimationSpeed = PeekabooSettings.defaultVisualizerAnimationSpeed
-        }
+        let keyboardThemeKey = self.namespaced("visualizerKeyboardTheme")
+        self.visualizerKeyboardTheme = self.userDefaults.string(forKey: keyboardThemeKey) ?? "modern"
+    }
 
-        self.visualizerEffectIntensity = self.userDefaults.double(forKey: "\(self.keyPrefix)visualizerEffectIntensity")
-        if self.visualizerEffectIntensity == 0 { self.visualizerEffectIntensity = 1.0 }
-
-        if self.userDefaults.object(forKey: "\(self.keyPrefix)visualizerSoundEnabled") == nil {
-            self.visualizerSoundEnabled = true
-        } else {
-            self.visualizerSoundEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)visualizerSoundEnabled")
-        }
-
-        self.visualizerKeyboardTheme = self.userDefaults.string(forKey: "\(self.keyPrefix)visualizerKeyboardTheme") ?? "modern"
-
-        // Load individual animation toggles with defaults to true
-        let animationKeys = [
-            "screenshotFlashEnabled", "clickAnimationEnabled", "typeAnimationEnabled",
-            "scrollAnimationEnabled", "mouseTrailEnabled", "swipePathEnabled",
-            "hotkeyOverlayEnabled", "appLifecycleEnabled", "windowOperationEnabled",
-            "menuNavigationEnabled", "dialogInteractionEnabled", "spaceTransitionEnabled",
-            "ghostEasterEggEnabled",
-        ]
-
-        for key in animationKeys {
-            let fullKey = "\(self.keyPrefix)\(key)"
-            if self.userDefaults.object(forKey: fullKey) == nil {
-                self.userDefaults.set(true, forKey: fullKey)
+    private func loadAnimationPreferences() {
+        for key in PeekabooSettings.animationKeys {
+            let namespacedKey = self.namespaced(key)
+            if self.userDefaults.object(forKey: namespacedKey) == nil {
+                self.userDefaults.set(true, forKey: namespacedKey)
             }
         }
 
-        self.screenshotFlashEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)screenshotFlashEnabled")
-        self.clickAnimationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)clickAnimationEnabled")
-        self.typeAnimationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)typeAnimationEnabled")
-        self.scrollAnimationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)scrollAnimationEnabled")
-        self.mouseTrailEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)mouseTrailEnabled")
-        self.swipePathEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)swipePathEnabled")
-        self.hotkeyOverlayEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)hotkeyOverlayEnabled")
-        self.appLifecycleEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)appLifecycleEnabled")
-        self.windowOperationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)windowOperationEnabled")
-        self.menuNavigationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)menuNavigationEnabled")
-        self.dialogInteractionEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)dialogInteractionEnabled")
-        self.spaceTransitionEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)spaceTransitionEnabled")
-        self.ghostEasterEggEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)ghostEasterEggEnabled")
+        self.screenshotFlashEnabled = self.userDefaults.bool(forKey: self.namespaced("screenshotFlashEnabled"))
+        self.clickAnimationEnabled = self.userDefaults.bool(forKey: self.namespaced("clickAnimationEnabled"))
+        self.typeAnimationEnabled = self.userDefaults.bool(forKey: self.namespaced("typeAnimationEnabled"))
+        self.scrollAnimationEnabled = self.userDefaults.bool(forKey: self.namespaced("scrollAnimationEnabled"))
+        self.mouseTrailEnabled = self.userDefaults.bool(forKey: self.namespaced("mouseTrailEnabled"))
+        self.swipePathEnabled = self.userDefaults.bool(forKey: self.namespaced("swipePathEnabled"))
+        self.hotkeyOverlayEnabled = self.userDefaults.bool(forKey: self.namespaced("hotkeyOverlayEnabled"))
+        self.appLifecycleEnabled = self.userDefaults.bool(forKey: self.namespaced("appLifecycleEnabled"))
+        self.windowOperationEnabled = self.userDefaults.bool(forKey: self.namespaced("windowOperationEnabled"))
+        self.menuNavigationEnabled = self.userDefaults.bool(forKey: self.namespaced("menuNavigationEnabled"))
+        self.dialogInteractionEnabled = self.userDefaults.bool(forKey: self.namespaced("dialogInteractionEnabled"))
+        self.spaceTransitionEnabled = self.userDefaults.bool(forKey: self.namespaced("spaceTransitionEnabled"))
+        self.ghostEasterEggEnabled = self.userDefaults.bool(forKey: self.namespaced("ghostEasterEggEnabled"))
+    }
 
-        // Load Realtime Voice settings
-        self.realtimeVoice = self.userDefaults.string(forKey: "\(self.keyPrefix)realtimeVoice")
-        self.realtimeInstructions = self.userDefaults.string(forKey: "\(self.keyPrefix)realtimeInstructions")
-        if self.userDefaults.object(forKey: "\(self.keyPrefix)realtimeVAD") == nil {
-            self.realtimeVAD = true
-        } else {
-            self.realtimeVAD = self.userDefaults.bool(forKey: "\(self.keyPrefix)realtimeVAD")
-        }
+    private func loadRealtimeVoiceSettings() {
+        self.realtimeVoice = self.userDefaults.string(forKey: self.namespaced("realtimeVoice"))
+        self.realtimeInstructions = self.userDefaults.string(forKey: self.namespaced("realtimeInstructions"))
+        self.realtimeVAD = self.valueOrDefault(key: "realtimeVAD", defaultValue: true)
     }
 
     private func save() {
@@ -756,4 +725,54 @@ final class PeekabooSettings {
     func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
         await self.configManager.discoverModelsForCustomProvider(id: id)
     }
+
+    private func namespaced(_ key: String) -> String {
+        "\(self.keyPrefix)\(key)"
+    }
+
+    private func nonZeroDouble(forKey key: String, fallback: Double) -> Double {
+        let value = self.userDefaults.double(forKey: self.namespaced(key))
+        return value == 0 ? fallback : value
+    }
+
+    private func nonZeroInt(forKey key: String, fallback: Int) -> Int {
+        let value = self.userDefaults.integer(forKey: self.namespaced(key))
+        return value == 0 ? fallback : value
+    }
+
+    private func valueOrDefault(key: String, defaultValue: Bool) -> Bool {
+        let namespacedKey = self.namespaced(key)
+        if self.userDefaults.object(forKey: namespacedKey) == nil {
+            self.userDefaults.set(defaultValue, forKey: namespacedKey)
+            return defaultValue
+        }
+        return self.userDefaults.bool(forKey: namespacedKey)
+    }
+
+    private func ensureTrueFlag(markerKey: String, value: inout Bool) {
+        let namespacedKey = self.namespaced(markerKey)
+        if !self.userDefaults.bool(forKey: namespacedKey) {
+            value = true
+            self.userDefaults.set(true, forKey: namespacedKey)
+        }
+    }
+
+    private func defaultModel(for provider: String) -> String {
+        switch provider {
+        case "openai":
+            return "gpt-5-mini"
+        case "anthropic":
+            return "claude-sonnet-4-5-20250929"
+        default:
+            return "llava:latest"
+        }
+    }
+
+    private static let animationKeys: [String] = [
+        "screenshotFlashEnabled", "clickAnimationEnabled", "typeAnimationEnabled",
+        "scrollAnimationEnabled", "mouseTrailEnabled", "swipePathEnabled",
+        "hotkeyOverlayEnabled", "appLifecycleEnabled", "windowOperationEnabled",
+        "menuNavigationEnabled", "dialogInteractionEnabled", "spaceTransitionEnabled",
+        "ghostEasterEggEnabled",
+    ]
 }
