@@ -134,7 +134,7 @@ public enum PeekabooError: Error, Sendable {
 // Core/PeekabooCore/Package.swift
 dependencies: [
     .package(path: "../PeekabooModels"),  // Add this
-    .package(path: "../AXorcist"),
+    .package(path: "../../AXorcist"),
     // ... other deps
 ]
 

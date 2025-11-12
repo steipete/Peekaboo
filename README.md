@@ -62,6 +62,18 @@ Peekaboo uses a modern service-based architecture:
 
 All components share the same core services, ensuring consistent behavior and optimal performance. See [Service API Reference](docs/service-api-reference.md) for detailed documentation.
 
+### Git Submodules
+
+Peekaboo vendors three shared dependencies as top-level git submodules:
+
+| Path        | Purpose                               |
+|-------------|---------------------------------------|
+| `AXorcist/` | Accessibility automation primitives   |
+| `Commander/`| Swift command parser used by the CLI  |
+| `Tachikoma/`| AI provider + MCP integrations        |
+
+Clone with `git clone --recursive` or run `git submodule update --init --recursive` after pulling to ensure all three are present.
+
 ## 🚀 Quick Start: CLI Tool
 
 ### Installation
@@ -1731,7 +1743,7 @@ npm run poltergeist:rest
 
 Poltergeist monitors:
 - `Core/PeekabooCore/**/*.swift`
-- `Core/AXorcist/**/*.swift`
+- `AXorcist/**/*.swift`
 - `Apps/CLI/**/*.swift`
 - All `Package.swift` and `Package.resolved` files
 

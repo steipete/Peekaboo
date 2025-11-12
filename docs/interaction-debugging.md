@@ -32,13 +32,33 @@ read_when:
 - **Impact**: Grindr automation is stalled again—we can’t obtain element IDs or session IDs even though Chrome’s window is visible and focusable.
 - **Status — Nov 12, 2025 13:07**: Reproducible immediately after navigating to the login page; need to trace why `CaptureWindowWorkflow` thinks Chrome has zero windows while the capture step succeeds.
 
+## Screen capture fallback never reached legacy API
+- **Command**: `polter peekaboo -- see --app "Google Chrome"` while ScreenCaptureKit returns `Failed to start stream due to audio/video capture failure`.
+- **Observed**: The error surfaced immediately and the command aborted without ever trying the CGWindowList code path, even though `PEEKABOO_USE_MODERN_CAPTURE` is unset and legacy capture should be available.
+- **Expected**: When ScreenCaptureKit flakes, the CLI should automatically retry with the legacy backend so automation keeps moving.
+- **Impact**: Every `see` request in high-security workspaces fails outright, blocking screenshots, window metadata, and downstream menu/dialog commands.
+### Resolution — Nov 12, 2025
+- `ScreenCaptureFallbackRunner.shouldFallback` now retries with the legacy API for **any** modern failure (as long as a fallback API exists). Added inline logging so debuggers can find the correlation ID instantly.
+- `ScreenCaptureServicePlanTests` now cover timeout errors, unknown errors, and the “all APIs failed” case so we don’t regress the fallback sequencing again.
+- Result: `polter peekaboo -- see …` immediately switches to the legacy pipeline when ScreenCaptureKit raises the audio/video failure, and Grindr automation proceeds with fresh session IDs.
+
+## `dialog input` subcommand had no window targeting
+- **Command**: `polter peekaboo -- dialog input --text "..." --window "Save"`  
+- **Observed**: Commander failed with `Unknown option --window` because the `input` subcommand never advertised a `--window` option, so agents could only type into whichever dialog happened to be focused.
+- **Expected**: `dialog input` should accept the same `--window` hints as `dialog click` so we can target sheets reliably.
+- **Impact**: CLI workflows that need to fill fields in secondary dialogs (TextEdit’s Save panel, Chrome permission sheets, etc.) were impossible to automate.
+### Resolution — Nov 12, 2025
+- Added the `window` option to `DialogCommand.InputSubcommand` metadata, plumbed it through the command implementation, and documented the behavior with inline comments for future maintainers.
+- Commander binder tests now cover the `--window` flag so we catch regressions the moment metadata drifts.
+- Verified via `polter peekaboo -- dialog input …` that the command now focuses the requested sheet before typing, even when multiple dialogs are stacked.
+
 ## AXorcist logging broke every CLI build
 - **Command**: `polter peekaboo -- type "Hello"` (or any other subcommand)
 - **Observed**: Poltergeist failed the build instantly with `cannot convert value of type 'String' to expected argument type 'Logger.Message'` coming from `ElementSearch`/`AXObserverCenter`. Even a bare `./runner swift build --package-path Apps/CLI` tripped on the same diagnostics, so no CLI binary could launch.
 - **Expected**: Logger helper strings should compile cleanly; CLI builds should succeed without `--force`.
 - **Impact**: All automation flows regressed—`polter peekaboo …` crashed before executing, preventing us from driving TextEdit or debugging dialog flows.
 ### Resolution — Nov 12, 2025
-- Added a `Logging.Logger` convenience shim in `Core/AXorcist/Sources/AXorcist/Logging/GlobalAXLogger.swift` so dynamic `String` messages are emitted as proper `Logger.Message` values.
+- Added a `Logging.Logger` convenience shim in `AXorcist/Sources/AXorcist/Logging/GlobalAXLogger.swift` so dynamic `String` messages are emitted as proper `Logger.Message` values.
 - Updated `ElementSearch` logging helpers (`logSegments([String])`) and the `SearchVisitor` initializer to avoid illegal variadic splats and `let` reassignments.
 - Fixed `AXObserverCenter`’s observer callback to call `center.logSegments/describePid` explicitly, preventing implicit `self` captures.
 - Verified the end-to-end fix by running `./runner swift build --package-path Apps/CLI` and `./runner polter peekaboo -- type "Hello from CLI" --app TextEdit --json-output`, both of which now succeed without `--force`.
@@ -361,7 +381,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 
 ## AXorcist action handlers drifted from real APIs (Nov 12, 2025)
 - **Command**: `./runner ./scripts/build-mac-debug.sh`
-- **Observed**: `Core/AXorcist/Sources/AXorcist/Core/AXorcist+ActionHandlers.swift` failed with “value of type 'AXorcist' has no member 'locateElement'” plus type mismatches because the helper extension used a `private extension` (hiding methods from the rest of the file) and assumed `PerformActionCommand.action` was an `AXActionNames` enum instead of a `String`.
+- **Observed**: `AXorcist/Sources/AXorcist/Core (AXorcist+ActionHandlers.swift)` failed with “value of type 'AXorcist' has no member 'locateElement'” plus type mismatches because the helper extension used a `private extension` (hiding methods from the rest of the file) and assumed `PerformActionCommand.action` was an `AXActionNames` enum instead of a `String`.
 - **Expected**: AXorcist’s perform-action and set-focused-value handlers should compile under Swift 6 and drive element lookups directly.
 - **Resolution — Nov 12, 2025**: Rewrote the handlers to call `findTargetElement` just like the query commands, switched validation/execute helpers to take raw `String` action names, and removed the `Result<Element, AXResponse>` helper that tried to use `AXResponse` as `Error`. Action logging now consistently uses `ValueFormatOption.smart`, so AXorcist builds again.
 
@@ -377,11 +397,11 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 
 ## AXObserverManager helpers missing during mac build (Nov 12, 2025)
 - **Command**: `./runner ./scripts/build-mac-debug.sh`
-- **Observed**: `SwiftCompile ... AXObserverManager.swift` still crashes with `value of type 'AXObserverManager' has no member 'attachNotification'` even though the helpers exist. Local `swift build --package-path Core/AXorcist` succeeds, so the failure is specific to the Xcode workspace build.
+- **Observed**: `SwiftCompile ... AXObserverManager.swift` still crashes with `value of type 'AXObserverManager' has no member 'attachNotification'` even though the helpers exist. Local `swift build --package-path AXorcist` succeeds, so the failure is specific to the Xcode workspace build.
 - **Hypothesis**: The mac app’s build graph seems to use a stale SwiftPM artifact or a parallel copy of AXorcist that wasn’t updated when we rewrote the helpers. Nuking `.build/DerivedData` and rebuilding didn’t help; Xcode still reports the missing methods while the standalone package compiles fine.
 - **Next steps**:
   1. Inspect the generated `AXorcist.SwiftFileList`/`axPackage.build` inside `.build/DerivedData` to see which copy of `AXObserverManager.swift` the workspace references.
-  2. If the workspace vendored an older checkout, re-point the dependency to the in-tree `Core/AXorcist` path or refresh the workspace’s SwiftPM pins.
+  2. If the workspace vendored an older checkout, re-point the dependency to the in-tree `AXorcist` path or refresh the workspace’s SwiftPM pins.
   3. As a fallback, move the helper logic entirely inline inside `addObserver` so even the stale copy compiles.
 
 ## SpaceTool + formatter fallout blocking mac build (Nov 12, 2025)

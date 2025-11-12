@@ -53,7 +53,7 @@ read_when:
    - Replace uses of `ArgumentParser.ValidationError`/`CleanExit` with Commander equivalents.
    - Remove Apple-specific extensions such as `MainActorParsableCommand` since Commander handles main-actor dispatch natively.
 3. **Update other packages**
-   - Point AXorcist CLI (`Core/AXorcist/Sources/axorc/AXORCMain.swift`) and Tachikoma example CLIs at Commander; ensure they keep their current UX.
+   - Point AXorcist CLI (`AXorcist/Sources/axorc/AXORCMain.swift`) and Tachikoma example CLIs at Commander; ensure they keep their current UX.
    - Delete `Vendor/swift-argument-parser` and remove the dependency from every affected `Package.swift` (Peekaboo, AXorcist, Tachikoma, Examples).
 4. **Testing**
    - Add Swift Testing target `CommanderTests` for the module itself (unit tests for option parsing, error cases, help rendering).

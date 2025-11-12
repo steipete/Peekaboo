@@ -8,13 +8,13 @@
 ## Pilot Scope (Tests First)
 - Focus the first integration on the now-retired CLI runner (`Apps/CLI/Tests/CLIAutomationTests/Support/CommandRunner.swift`). All “safe” suites run via `InProcessCommandRunner`, and historical references to `PeekabooCLITestRunner` have been removed.
 - Audit additional hot spots once the pilot lands:
-  - `AXorcist` test helpers (`Core/AXorcist/Tests/AXorcistTests/CommonTestHelpers.swift`) when invoking the `axorc` binary.
+  - `AXorcist` test helpers (`AXorcist/Tests/AXorcistTests/CommonTestHelpers.swift`) when invoking the `axorc` binary.
   - CLI automation tests that manually stand up `Process` instances for menu/window focus helpers (`Apps/CLI/Tests/CLIAutomationTests/*.swift`, see `rg "Pipe()"` output). These can eventually share a common helper that wraps Subprocess.
 - Production code paths (e.g. `ShellTool`, `DockService`) remain untouched until the test pilot proves stable and we design a broader façade for long-lived services.
 
 ## Integration Plan
 1. **Add the dependency**  
-   - Declare `swift-subprocess` in the relevant package manifests: start with `Apps/CLI/Package.swift` and `Core/AXorcist/Package.swift` test targets only. Keep it test-only until we validate behavior.
+  - Declare `swift-subprocess` in the relevant package manifests: start with `Apps/CLI/Package.swift` and `AXorcist/Package.swift` test targets only. Keep it test-only until we validate behavior.
    - Pin to an explicit minor version (`from: "0.2.1"`) and enable exact revisions in `Package.resolved` to avoid silent API shifts.
 2. **Wrap Subprocess behind a helper**  
    - Introduce a small internal type (e.g. `TestChildProcess`) that mirrors the subset of features we rely on (arguments, environment, streaming stdout/stderr, timeout). This wrapper will call into Subprocess’ `ChildProcess.spawn(...)`, surface async iteration of `process.stdout.lines`, and return collected output on success/failure.

@@ -30,7 +30,7 @@ read_when:
 - If you start focusing on the app again, drop the delay back down or set the CLI’s `settlingDelay` higher temporarily—the knob lives directly on each target entry.
 
 ## Rebuild Triggers & Watch Paths
-- Both CLI and mac targets currently watch `Core/PeekabooCore/**/*.swift` and `Core/AXorcist/**/*.swift`, so *any* core edit triggers *both* builders.
+- Both CLI and mac targets currently watch `Core/PeekabooCore/**/*.swift` and `AXorcist/**/*.swift`, so *any* core edit triggers *both* builders.
 - Action items:
   - Tighten the mac target's `watchPaths` to files it really needs, or split Core globs (e.g., `Core/PeekabooCore/CLI/**` vs. `Core/PeekabooCore/App/**`).
   - Consider a dedicated target for shared libraries if you need separate rebuild policies.
