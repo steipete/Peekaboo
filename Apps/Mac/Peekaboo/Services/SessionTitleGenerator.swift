@@ -11,80 +11,30 @@ final class SessionTitleGenerator {
     /// - Parameter task: The user's task description
     /// - Returns: A 2-4 word title summarizing the task
     func generateTitle(for task: String) async -> String {
-        let providers = self.configuration.getAIProviders()
+        let providerTokens = self.configuration
+            .getAIProviders()
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
         let hasOpenAI = self.configuration.getOpenAIAPIKey() != nil
         let hasAnthropic = self.configuration.getAnthropicAPIKey() != nil
 
-        // Use race between timeout and title generation
         return await withTaskGroup(of: String.self) { group in
-            // Add timeout task
+            group.addTask { await Self.timeoutTitle() }
+
             group.addTask {
-                do {
-                    try await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-                    return "New Session"
-                } catch {
-                    return "New Session"
-                }
+                await self.generateTitleCandidate(
+                    for: task,
+                    providers: providerTokens,
+                    hasOpenAI: hasOpenAI,
+                    hasAnthropic: hasAnthropic)
             }
 
-            // Add generation task
-            group.addTask {
-                do {
-                    // Get the default model from configuration
-                    // Determine the model to use
-                    let model: LanguageModel = if providers.contains("anthropic"), hasAnthropic {
-                        .anthropic(.opus4)
-                    } else if providers.contains("openai"), hasOpenAI {
-                        .openai(.gpt41)
-                    } else if providers.contains("ollama") {
-                        .ollama(.llama33)
-                    } else {
-                        .anthropic(.opus4) // Default fallback
-                    }
-
-                    // Create a simple prompt for title generation
-                    let prompt = """
-                    Generate a 2-4 word title for this task. Be concise and descriptive.
-                    Only respond with the title, nothing else.
-
-                    Task: \(task)
-                    """
-
-                    // Use the new Tachikoma API
-                    let result = try await generateText(
-                        model: model,
-                        messages: [.user(prompt)],
-                        settings: GenerationSettings(
-                            maxTokens: 20,
-                            temperature: 0.3))
-
-                    let generatedTitle = result.text
-
-                    // Clean up the generated title
-                    let cleaned = generatedTitle
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                        .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-
-                    // Validate it's reasonable length (2-6 words)
-                    let wordCount = cleaned.split(separator: " ").count
-                    if wordCount >= 2, wordCount <= 6 {
-                        return cleaned
-                    } else {
-                        return "New Session"
-                    }
-
-                } catch {
-                    return "New Session"
-                }
-            }
-
-            // Return the first result (either timeout or generated)
             for await result in group {
                 group.cancelAll()
                 return result
             }
 
-            return "New Session"
+            return Self.fallbackTitle
         }
     }
 
@@ -93,5 +43,78 @@ final class SessionTitleGenerator {
         // Truncate very long messages
         let truncated = String(message.prefix(200))
         return await self.generateTitle(for: truncated)
+    }
+
+    private static let fallbackTitle = "New Session"
+
+    private static func timeoutTitle() async -> String {
+        do {
+            try await Task.sleep(nanoseconds: 3_000_000_000)
+        } catch {
+            return Self.fallbackTitle
+        }
+        return Self.fallbackTitle
+    }
+
+    private func generateTitleCandidate(
+        for task: String,
+        providers: [String],
+        hasOpenAI: Bool,
+        hasAnthropic: Bool) async -> String
+    {
+        do {
+            let model = self.selectModel(
+                providers: providers,
+                hasOpenAI: hasOpenAI,
+                hasAnthropic: hasAnthropic)
+            let prompt = self.buildPrompt(for: task)
+
+            let result = try await generateText(
+                model: model,
+                messages: [.user(prompt)],
+                settings: GenerationSettings(maxTokens: 20, temperature: 0.3))
+
+            return self.validatedTitle(result.text)
+        } catch {
+            return Self.fallbackTitle
+        }
+    }
+
+    private func selectModel(
+        providers: [String],
+        hasOpenAI: Bool,
+        hasAnthropic: Bool) -> LanguageModel
+    {
+        if providers.contains("anthropic"), hasAnthropic {
+            return .anthropic(.opus4)
+        }
+        if providers.contains("openai"), hasOpenAI {
+            return .openai(.gpt41)
+        }
+        if providers.contains("ollama") {
+            return .ollama(.llama33)
+        }
+        return .anthropic(.opus4)
+    }
+
+    private func buildPrompt(for task: String) -> String {
+        """
+        Generate a 2-4 word title for this task. Be concise and descriptive.
+        Only respond with the title, nothing else.
+
+        Task: \(task)
+        """
+    }
+
+    private func validatedTitle(_ rawTitle: String) -> String {
+        let cleaned = rawTitle
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+
+        let wordCount = cleaned.split(separator: " ").count
+        if wordCount >= 2, wordCount <= 6 {
+            return cleaned
+        }
+        return Self.fallbackTitle
     }
 }

@@ -99,12 +99,11 @@ public struct AIAssistantWindow: View {
             .frame(minWidth: 250, maxWidth: 300)
         } detail: {
             // Main chat area
-            let tools: [String]? = nil // Can be extended with Peekaboo automation tools
             PeekabooChatView(
                 model: self.selectedModel,
                 system: self.systemPrompt.isEmpty ? nil : self.systemPrompt,
                 settings: .default,
-                tools: tools
+                tools: nil
             )
         }
         .navigationTitle("AI Assistant")
@@ -126,8 +125,8 @@ public struct CompactAIAssistant: View {
     @State private var model: Model = .openai(.gpt5)
     let systemPrompt: String
 
-    public init(systemPrompt: String = AIAssistantPrompts.compactDefault) {
-        self.systemPrompt = systemPrompt
+    public init(systemPrompt: String? = nil) {
+        self.systemPrompt = systemPrompt ?? AIAssistantPrompts.compactDefault
     }
 
     public var body: some View {
