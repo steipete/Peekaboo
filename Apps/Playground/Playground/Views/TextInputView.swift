@@ -117,10 +117,10 @@ struct TextInputView: View {
                             Button(action: {
                                 self.searchText = ""
                                 self.actionLogger.log(.text, "Search cleared")
-                            }) {
+                            }, label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.secondary)
-                            }
+                            })
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("clear-search-button")
                         }

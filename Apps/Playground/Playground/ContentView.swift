@@ -87,21 +87,21 @@ struct HeaderView: View {
                 HStack(spacing: 12) {
                     Button(action: {
                         self.actionLogger.showingLogViewer.toggle()
-                    }) {
+                    }, label: {
                         Label("View Logs", systemImage: "doc.text.magnifyingglass")
-                    }
+                    })
 
                     Button(action: {
                         self.actionLogger.copyLogsToClipboard()
-                    }) {
+                    }, label: {
                         Label("Copy Logs", systemImage: "doc.on.clipboard")
-                    }
+                    })
 
                     Button(action: {
                         self.actionLogger.clearLogs()
-                    }) {
+                    }, label: {
                         Label("Clear", systemImage: "trash")
-                    }
+                    })
                     .foregroundColor(.red)
                 }
             }

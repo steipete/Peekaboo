@@ -63,10 +63,10 @@ struct LogViewerWindow: View {
                     TextField("Search logs...", text: self.$searchText)
                         .textFieldStyle(.plain)
                     if !self.searchText.isEmpty {
-                        Button(action: { self.searchText = "" }) {
+                        Button(action: { self.searchText = "" }, label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.secondary)
-                        }
+                        })
                         .buttonStyle(.plain)
                     }
                 }
@@ -77,15 +77,15 @@ struct LogViewerWindow: View {
                 Spacer()
 
                 // Actions
-                Button(action: { self.actionLogger.copyLogsToClipboard() }) {
+                Button(action: { self.actionLogger.copyLogsToClipboard() }, label: {
                     Label("Copy All", systemImage: "doc.on.clipboard")
-                }
+                })
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
-                Button(action: { self.actionLogger.clearLogs() }) {
+                Button(action: { self.actionLogger.clearLogs() }, label: {
                     Label("Clear", systemImage: "trash")
-                }
+                })
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .foregroundColor(.red)
@@ -119,7 +119,7 @@ struct LogViewerWindow: View {
                 HStack(spacing: 15) {
                     ForEach(ActionCategory.allCases, id: \.self) { category in
                         let count = self.actionLogger.entries.count(where: { $0.category == category })
-                        if count > 0 { // swiftlint:disable:this empty_count
+                        if count > 0 {
                             HStack(spacing: 4) {
                                 Circle()
                                     .fill(category.color)
@@ -134,9 +134,9 @@ struct LogViewerWindow: View {
 
                 Spacer()
 
-                Button("Export...") {
-                    self.exportLogs()
-                }
+                Button(action: { self.exportLogs() }, label: {
+                    Text("Export...")
+                })
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
@@ -198,10 +198,10 @@ struct LogEntryRow: View {
 
                 // Expand button if there are details
                 if self.entry.details != nil {
-                    Button(action: { self.isExpanded.toggle() }) {
+                    Button(action: { self.isExpanded.toggle() }, label: {
                         Image(systemName: self.isExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption)
-                    }
+                    })
                     .buttonStyle(.plain)
                 }
             }
