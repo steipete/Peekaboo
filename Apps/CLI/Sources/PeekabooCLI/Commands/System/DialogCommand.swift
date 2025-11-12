@@ -71,6 +71,7 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
+                // Provide both app and window hints so dialog detection can focus nested sheets.
                 await DialogCommand.focusDialogAppIfNeeded(
                     appName: self.app,
                     windowTitle: self.window,
@@ -130,6 +131,9 @@ struct DialogCommand: ParsableCommand {
         @Option(help: "Field index (0-based) if multiple fields")
         var index: Int?
 
+        @Option(help: "Window or sheet title to target")
+        var window: String?
+
         @Flag(help: "Clear existing text first")
         var clear = false
 
@@ -157,7 +161,7 @@ struct DialogCommand: ParsableCommand {
             do {
                 await DialogCommand.focusDialogAppIfNeeded(
                     appName: self.app,
-                    windowTitle: nil,
+                    windowTitle: self.window,
                     services: self.services,
                     logger: self.logger
                 )
@@ -170,7 +174,7 @@ struct DialogCommand: ParsableCommand {
                     text: self.text,
                     fieldIdentifier: fieldIdentifier,
                     clearExisting: self.clear,
-                    windowTitle: nil
+                    windowTitle: self.window
                 )
 
                 // Output result

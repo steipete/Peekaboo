@@ -297,14 +297,14 @@ public enum CLIInstrumentation {
 extension LogLevel {
     static func parse(raw: String) -> LogLevel? {
         switch raw.lowercased() {
-        case "trace": return .trace
-        case "verbose": return .verbose
-        case "debug": return .debug
-        case "info": return .info
-        case "warning", "warn": return .warning
-        case "error": return .error
-        case "critical": return .critical
-        default: return nil
+        case "trace": .trace
+        case "verbose": .verbose
+        case "debug": .debug
+        case "info": .info
+        case "warning", "warn": .warning
+        case "error": .error
+        case "critical": .critical
+        default: nil
         }
     }
 }

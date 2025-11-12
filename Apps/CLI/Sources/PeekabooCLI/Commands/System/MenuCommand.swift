@@ -357,12 +357,12 @@ extension MenuCommand {
                     .filterDisabledMenus(menuStructure.menus)
 
                 if self.jsonOutput {
-                let data = MenuListData(
-                    app: menuStructure.application.name,
-                    owner_name: menuStructure.application.name,
-                    bundle_id: menuStructure.application.bundleIdentifier,
-                    menu_structure: self.convertMenusToTyped(filteredMenus)
-                )
+                    let data = MenuListData(
+                        app: menuStructure.application.name,
+                        owner_name: menuStructure.application.name,
+                        bundle_id: menuStructure.application.bundleIdentifier,
+                        menu_structure: self.convertMenusToTyped(filteredMenus)
+                    )
                     outputSuccessCodable(data: data, logger: self.outputLogger)
                 } else {
                     print("Menu structure for \(menuStructure.application.name):")
@@ -407,32 +407,32 @@ extension MenuCommand {
             }
         }
 
-    private func convertMenusToTyped(_ menus: [Menu]) -> [MenuData] {
-        menus.map { menu in
-            MenuData(
-                title: menu.title,
-                bundle_id: menu.bundleIdentifier,
-                owner_name: menu.ownerName,
-                enabled: menu.isEnabled,
-                items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
-            )
+        private func convertMenusToTyped(_ menus: [Menu]) -> [MenuData] {
+            menus.map { menu in
+                MenuData(
+                    title: menu.title,
+                    bundle_id: menu.bundleIdentifier,
+                    owner_name: menu.ownerName,
+                    enabled: menu.isEnabled,
+                    items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
+                )
+            }
         }
-    }
 
-    private func convertMenuItemsToTyped(_ items: [MenuItem]) -> [MenuItemData] {
-        items.map { item in
-            MenuItemData(
-                title: item.title,
-                bundle_id: item.bundleIdentifier,
-                owner_name: item.ownerName,
-                enabled: item.isEnabled,
-                shortcut: item.keyboardShortcut?.displayString,
-                checked: item.isChecked ? true : nil,
-                separator: item.isSeparator ? true : nil,
-                items: item.submenu.isEmpty ? nil : self.convertMenuItemsToTyped(item.submenu)
-            )
+        private func convertMenuItemsToTyped(_ items: [MenuItem]) -> [MenuItemData] {
+            items.map { item in
+                MenuItemData(
+                    title: item.title,
+                    bundle_id: item.bundleIdentifier,
+                    owner_name: item.ownerName,
+                    enabled: item.isEnabled,
+                    shortcut: item.keyboardShortcut?.displayString,
+                    checked: item.isChecked ? true : nil,
+                    separator: item.isSeparator ? true : nil,
+                    items: item.submenu.isEmpty ? nil : self.convertMenuItemsToTyped(item.submenu)
+                )
+            }
         }
-    }
 
         private func printMenu(_ menu: Menu, indent: Int) {
             let spacing = String(repeating: "  ", count: indent)
@@ -768,7 +768,6 @@ extension MenuCommand {
             }
         }
     }
-
 }
 
 // MARK: - Focus Helpers

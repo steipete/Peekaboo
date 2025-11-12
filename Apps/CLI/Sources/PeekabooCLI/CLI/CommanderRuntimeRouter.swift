@@ -92,7 +92,8 @@ enum CommanderRuntimeRouter {
     private static func printRootHelp(descriptors: [CommanderCommandDescriptor]) {
         print("Peekaboo CLI Commands:\n")
         for descriptor in descriptors.sorted(by: { $0.metadata.name < $1.metadata.name }) {
-            let abstract = descriptor.metadata.abstract.isEmpty ? "No description provided." : descriptor.metadata.abstract
+            let abstract = descriptor.metadata.abstract.isEmpty ? "No description provided." : descriptor.metadata
+                .abstract
             print("  \(descriptor.metadata.name)\t\(abstract)")
         }
         print("\nUse `peekaboo help <command>` or `peekaboo <command> --help` for detailed options.")

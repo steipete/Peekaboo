@@ -149,7 +149,6 @@ struct AgentCommand: RuntimeOptionsConfigurable {
 
 @available(macOS 14.0, *)
 extension AgentCommand {
-
     @MainActor
     mutating func run() async throws {
         let runtime = CommandRuntime(options: CommandRuntimeOptions())
@@ -447,6 +446,7 @@ extension AgentCommand {
             print(audioErrorMessage)
         }
     }
+
     /// Render the agent execution result using either JSON output or a rich CLI transcript.
     @MainActor
     func displayResult(_ result: AgentExecutionResult) {
@@ -594,6 +594,7 @@ extension AgentCommand {
         print("   Messages: \(session.messageCount)")
         print("   Last activity: \(timeAgo)")
     }
+
     func resumeAgentSession(_ agentService: any AgentServiceProtocol, sessionId: String, task: String) async throws {
         if !self.jsonOutput {
             let resumingLine = [
@@ -658,7 +659,6 @@ extension AgentCommand {
             throw error
         }
     }
-
 
     private func printCapabilityFlag(_ label: String, supported: Bool, detail: String? = nil) {
         let status = supported ? AgentDisplayTokens.Status.success : AgentDisplayTokens.Status.failure

@@ -60,13 +60,12 @@ struct CommandRuntime {
             self.logger.resetMinimumLogLevel()
         }
 
-        let visualizerConsoleLevel: PeekabooCore.LogLevel?
-        if let explicitLevel {
-            visualizerConsoleLevel = explicitLevel.coreLogLevel
+        let visualizerConsoleLevel: PeekabooCore.LogLevel? = if let explicitLevel {
+            explicitLevel.coreLogLevel
         } else if shouldEnableVerbose {
-            visualizerConsoleLevel = .debug
+            .debug
         } else {
-            visualizerConsoleLevel = nil
+            nil
         }
 
         VisualizationClient.shared.setConsoleLogLevelOverride(visualizerConsoleLevel)
@@ -116,16 +115,16 @@ extension RuntimeStorage: Codable where Value: ExpressibleByNilLiteral {
 
 extension RuntimeStorage: Sendable where Value: Sendable {}
 
-private extension LogLevel {
-    var coreLogLevel: PeekabooCore.LogLevel {
+extension LogLevel {
+    fileprivate var coreLogLevel: PeekabooCore.LogLevel {
         switch self {
-        case .trace: return .trace
-        case .verbose: return .debug
-        case .debug: return .debug
-        case .info: return .info
-        case .warning: return .warning
-        case .error: return .error
-        case .critical: return .critical
+        case .trace: .trace
+        case .verbose: .debug
+        case .debug: .debug
+        case .info: .info
+        case .warning: .warning
+        case .error: .error
+        case .critical: .critical
         }
     }
 }

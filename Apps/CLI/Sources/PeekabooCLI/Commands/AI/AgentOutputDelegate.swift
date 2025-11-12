@@ -41,10 +41,9 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
 
 @available(macOS 14.0, *)
 extension AgentOutputDelegate {
-
     // MARK: - AgentEventDelegate
 
-    public func agentDidEmitEvent(_ event: PeekabooCore.AgentEvent) {
+    func agentDidEmitEvent(_ event: PeekabooCore.AgentEvent) {
         guard !self.jsonOutput else { return }
 
         switch event {
@@ -123,7 +122,8 @@ extension AgentOutputDelegate {
             icon: icon,
             args: args,
             rawArguments: arguments,
-            formatter: formatter)
+            formatter: formatter
+        )
     }
 
     private func handleToolCallCompleted(name: String, result: String) {
@@ -238,7 +238,8 @@ extension AgentOutputDelegate {
         print(self.completionSummaryLine(
             totalElapsed: totalElapsed,
             toolsText: toolsText,
-            tokenInfo: tokenInfo))
+            tokenInfo: tokenInfo
+        ))
         self.hasShownFinalSummary = true
     }
 
@@ -262,7 +263,8 @@ extension AgentOutputDelegate {
         print(self.completionSummaryLine(
             totalElapsed: totalElapsed,
             toolsText: toolsText,
-            tokenInfo: tokenInfo))
+            tokenInfo: tokenInfo
+        ))
         self.hasShownFinalSummary = true
     }
 
@@ -278,8 +280,8 @@ extension AgentOutputDelegate {
         icon: String,
         args: [String: Any],
         rawArguments: String,
-        formatter: any ToolFormatter)
-    {
+        formatter: any ToolFormatter
+    ) {
         switch self.outputMode {
         case .minimal:
             print(displayName, terminator: "")
@@ -372,7 +374,6 @@ extension AgentOutputDelegate {
         }
         return ""
     }
-
 
     private func printInvalidResult(rawResult: String, durationString: String) {
         if self.outputMode == .verbose {
@@ -480,7 +481,6 @@ extension AgentOutputDelegate {
         }
         self.displayEnhancedError(tool: tool, json: json)
     }
-
 
     private func handleCommunicationToolComplete(name: String, toolType: ToolType) {
         if self.outputMode == .verbose {

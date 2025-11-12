@@ -264,7 +264,8 @@ struct ConfigCommand: ParsableCommand {
                     print()
                     print("Files:")
                     let configFilePath = FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND"
-                    let credentialsFilePath = FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND"
+                    let credentialsFilePath = FileManager.default
+                        .fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND"
 
                     print("  Config File: \(configFilePath)")
                     print("  Credentials: \(credentialsFilePath)")

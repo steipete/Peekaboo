@@ -114,8 +114,7 @@ private func checkFileModificationStaleness() {
 
         // Check each modified file's modification time
         for filePath in modifiedFiles where
-            isFileNewerThanBuild(filePath: filePath, buildDate: buildDate, gitRoot: gitRoot)
-        {
+            isFileNewerThanBuild(filePath: filePath, buildDate: buildDate, gitRoot: gitRoot) {
             logError("❌ CLI binary is outdated and needs to be rebuilt!")
             logError("   Build time:     \(Version.buildDate)")
             logError("   Modified file:  \(filePath)")

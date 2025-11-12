@@ -49,23 +49,23 @@ extension ErrorHandlingCommand {
         switch error {
         // FocusError mappings
         case let focusError as FocusError:
-            return self.mapFocusErrorToCode(focusError)
+            self.mapFocusErrorToCode(focusError)
 
         // PeekabooError mappings
         case let peekabooError as PeekabooError:
-            return self.mapPeekabooErrorToCode(peekabooError)
+            self.mapPeekabooErrorToCode(peekabooError)
 
         // CaptureError mappings
         case let captureError as CaptureError:
-            return self.mapCaptureErrorToCode(captureError)
+            self.mapCaptureErrorToCode(captureError)
 
         // Commander ValidationError
         case is Commander.ValidationError:
-            return .VALIDATION_ERROR
+            .VALIDATION_ERROR
 
         // Default
         default:
-            return .INTERNAL_SWIFT_ERROR
+            .INTERNAL_SWIFT_ERROR
         }
     }
 
@@ -164,14 +164,14 @@ extension ErrorHandlingCommand {
     }
 }
 
-internal func errorCode(for focusError: FocusError) -> ErrorCode {
+func errorCode(for focusError: FocusError) -> ErrorCode {
     switch focusError {
     case .applicationNotRunning:
-        return .APP_NOT_FOUND
+        .APP_NOT_FOUND
     case .focusVerificationTimeout, .timeoutWaitingForCondition:
-        return .TIMEOUT
+        .TIMEOUT
     default:
-        return .WINDOW_NOT_FOUND
+        .WINDOW_NOT_FOUND
     }
 }
 
@@ -283,7 +283,8 @@ enum AutomationServiceBridge {
                 target: target,
                 smooth: smooth,
                 delay: delay,
-                sessionId: sessionId)
+                sessionId: sessionId
+            )
             try await services.automation.scroll(request)
         }.value
     }

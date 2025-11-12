@@ -19,6 +19,7 @@ extension DialogCommand.InputSubcommand: CommanderSignatureProviding {
                 .commandOption("text", help: "Text to enter", long: "text"),
                 .commandOption("field", help: "Field label or placeholder", long: "field"),
                 .commandOption("index", help: "Field index (0-based)", long: "index"),
+                .commandOption("window", help: "Window/sheet title to target", long: "window"),
                 .commandOption("app", help: "Application hosting the dialog", long: "app"),
             ],
             flags: [

@@ -55,7 +55,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     @Option(
         names: [.automatic, .customLong("save"), .customLong("output"), .customShort("o", allowingJoined: false)],
-        help: "Output path for screenshot (aliases: --save, --output, -o)")
+        help: "Output path for screenshot (aliases: --save, --output, -o)"
+    )
     var path: String?
 
     @Option(
@@ -1077,20 +1078,20 @@ extension SeeCommand: CommanderBindableCommand {
     }
 }
 
-private extension SeeCommand {
-    func screenDisplayBaseText(index: Int, displayInfo: DisplayInfo) -> String {
+extension SeeCommand {
+    private func screenDisplayBaseText(index: Int, displayInfo: DisplayInfo) -> String {
         let displayName = displayInfo.name ?? "Display \(index)"
         let bounds = displayInfo.bounds
         let resolution = "(\(Int(bounds.width))×\(Int(bounds.height)))"
         return "[scrn]️  Display \(index): \(displayName) \(resolution)"
     }
 
-    func printScreenDisplayInfo(
+    private func printScreenDisplayInfo(
         index: Int,
         displayInfo: DisplayInfo,
         indent: String = "",
-        suffix: String? = nil)
-    {
+        suffix: String? = nil
+    ) {
         var line = self.screenDisplayBaseText(index: index, displayInfo: displayInfo)
         if let suffix {
             line += " → \(suffix)"
