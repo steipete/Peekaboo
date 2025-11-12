@@ -119,11 +119,19 @@ struct ScreenCaptureFallbackRunner: Sendable {
     }
 
     private func shouldFallback(after error: any Error, api: ScreenCaptureAPI, hasFallback: Bool) -> Bool {
-        guard hasFallback else { return false }
-        guard api == .modern else { return false }
-        if case OperationError.timeout = error {
+        guard hasFallback, api == .modern else { return false }
+
+        let standardized = ErrorStandardizer.standardize(error)
+        let fallbackCodes: Set<StandardErrorCode> = [.timeout, .captureFailed]
+        if fallbackCodes.contains(standardized.code) {
             return true
         }
+
+        let nsError = error as NSError
+        if nsError.domain == SCStreamErrorDomain || nsError.domain == "com.apple.screencapturekit.error" {
+            return true
+        }
+
         return false
     }
 }

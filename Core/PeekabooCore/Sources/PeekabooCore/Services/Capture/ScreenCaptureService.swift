@@ -279,8 +279,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         { api in
             switch api {
             case .modern:
-                self.logger.debug("Using modern ScreenCaptureKit API", correlationId: correlationId)
-                return try await self.modernOperator.captureWindow(
+                self.logger.debug(
+                    "Bypassing modern ScreenCaptureKit path; using legacy fallback",
+                    correlationId: correlationId)
+                return try await self.legacyOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
                     correlationId: correlationId)
@@ -509,16 +511,32 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 throw NotFoundError.window(app: app.name)
             }
 
-            let targetWindow: SCWindow
-            if let index = windowIndex {
-                guard index >= 0, index < appWindows.count else {
-                    throw PeekabooError.invalidInput(
-                        "windowIndex: Index \(index) is out of range. Available windows: 0-\(appWindows.count - 1)")
+            let resolvedIndex: Int
+            if let requestedIndex = windowIndex {
+                guard requestedIndex >= 0, requestedIndex < appWindows.count else {
+                    let message = Self.windowIndexError(
+                        requestedIndex: requestedIndex,
+                        totalWindows: appWindows.count)
+                    throw PeekabooError.invalidInput(message)
                 }
-                targetWindow = appWindows[index]
+                resolvedIndex = requestedIndex
+            } else if let candidateIndex = Self.firstRenderableWindowIndex(in: appWindows) {
+                if candidateIndex != 0 {
+                    self.logger.debug(
+                        "Auto-selected visible SCWindow",
+                        metadata: ["index": candidateIndex],
+                        correlationId: correlationId)
+                }
+                resolvedIndex = candidateIndex
             } else {
-                targetWindow = appWindows.first!
+                self.logger.warning(
+                    "Falling back to first SCWindow; no renderable windows detected",
+                    metadata: ["app": app.name],
+                    correlationId: correlationId)
+                resolvedIndex = 0
             }
+
+            let targetWindow = appWindows[resolvedIndex]
 
             self.logger.debug(
                 "Capturing window",
@@ -560,12 +578,32 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     isMainWindow: targetWindow.isOnScreen,
                     windowLevel: 0,
                     alpha: 1.0,
-                    index: windowIndex ?? 0))
+                    index: resolvedIndex))
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
 
         // swiftlint:enable function_body_length
+
+        nonisolated private static func firstRenderableWindowIndex(in windows: [SCWindow]) -> Int? {
+            for (index, window) in windows.enumerated() {
+                guard Self.isRenderable(window) else { continue }
+                return index
+            }
+            return nil
+        }
+
+        nonisolated private static func isRenderable(_ window: SCWindow) -> Bool {
+            if window.frame.width < 10 || window.frame.height < 10 {
+                return false
+            }
+
+            if !window.isOnScreen {
+                return false
+            }
+
+            return true
+        }
 
         func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
             self.logger.debug("Finding display containing rect", correlationId: correlationId)
@@ -643,7 +681,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             let stream = SCStream(filter: filter, configuration: configuration, delegate: streamDelegate)
             let output = CaptureOutput()
             try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: nil)
-            try await stream.startCapture()
+            do {
+                try await stream.startCapture()
+            } catch {
+                try? await stream.stopCapture()
+                throw OperationError.captureFailed(reason: error.localizedDescription)
+            }
 
             let image: CGImage
             do {
@@ -655,6 +698,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
             try await stream.stopCapture()
             return image
+        }
+
+        nonisolated private static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
+            let lastIndex = max(totalWindows - 1, 0)
+            return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
         }
     }
 
@@ -693,16 +741,32 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 throw NotFoundError.window(app: app.name)
             }
 
-            let targetWindow: [String: Any]
-            if let index = windowIndex {
-                guard index >= 0, index < appWindows.count else {
-                    throw PeekabooError.invalidInput(
-                        "windowIndex: Index \(index) is out of range. Available windows: 0-\(appWindows.count - 1)")
+            let resolvedIndex: Int
+            if let requestedIndex = windowIndex {
+                guard requestedIndex >= 0, requestedIndex < appWindows.count else {
+                    let message = Self.windowIndexError(
+                        requestedIndex: requestedIndex,
+                        totalWindows: appWindows.count)
+                    throw PeekabooError.invalidInput(message)
                 }
-                targetWindow = appWindows[index]
+                resolvedIndex = requestedIndex
+            } else if let candidateIndex = Self.firstRenderableWindowIndex(in: appWindows) {
+                if candidateIndex != 0 {
+                    self.logger.debug(
+                        "Auto-selected visible CGWindow",
+                        metadata: ["index": candidateIndex],
+                        correlationId: correlationId)
+                }
+                resolvedIndex = candidateIndex
             } else {
-                targetWindow = appWindows.first!
+                self.logger.warning(
+                    "Falling back to first CGWindow; no renderable windows detected",
+                    metadata: ["app": app.name],
+                    correlationId: correlationId)
+                resolvedIndex = 0
             }
+
+            let targetWindow = appWindows[resolvedIndex]
 
             guard let windowID = targetWindow[kCGWindowNumber as String] as? CGWindowID else {
                 throw OperationError.captureFailed(reason: "Failed to get window ID")
@@ -717,9 +781,22 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 ],
                 correlationId: correlationId)
 
-            let image = try await self.captureWindowWithScreenshotManager(
-                windowID: windowID,
-                correlationId: correlationId)
+            let image: CGImage
+            do {
+                image = try await self.captureWindowWithCGWindowList(windowID: windowID)
+                self.logger.debug(
+                    "Captured window via CGWindowList",
+                    metadata: ["windowID": String(windowID)],
+                    correlationId: correlationId)
+            } catch {
+                self.logger.warning(
+                    "CGWindowList capture failed, falling back to SCScreenshotManager",
+                    metadata: ["error": String(describing: error)],
+                    correlationId: correlationId)
+                image = try await self.captureWindowWithScreenshotManager(
+                    windowID: windowID,
+                    correlationId: correlationId)
+            }
 
             let imageData: Data
             do {
@@ -763,7 +840,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     isMainWindow: true,
                     windowLevel: 0,
                     alpha: 1.0,
-                    index: windowIndex ?? 0))
+                    index: resolvedIndex))
 
             return CaptureResult(
                 imageData: imageData,
@@ -895,6 +972,67 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 configuration: self.makeScreenshotConfiguration())
         }
 
+        @MainActor
+        private func captureWindowWithCGWindowList(windowID: CGWindowID) throws -> CGImage {
+            let imageOptions: CGWindowImageOption = [
+                .boundsIgnoreFraming,
+                .bestResolution,
+            ]
+            guard
+                let image = CGWindowListCreateImage(
+                    .infinite,
+                    [.optionIncludingWindow],
+                    windowID,
+                    imageOptions)
+            else {
+                throw OperationError.captureFailed(reason: "CGWindowListCreateImage returned nil")
+            }
+            return image
+        }
+
+        nonisolated private static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
+            let lastIndex = max(totalWindows - 1, 0)
+            return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
+        }
+
+        nonisolated private static func firstRenderableWindowIndex(
+            in windows: [[String: Any]]) -> Int?
+        {
+            for (index, window) in windows.enumerated() {
+                guard Self.isRenderable(window) else { continue }
+                return index
+            }
+            return nil
+        }
+
+        nonisolated private static func isRenderable(_ window: [String: Any]) -> Bool {
+            guard
+                let boundsDict = window[kCGWindowBounds as String] as? [String: Any],
+                let width = boundsDict["Width"] as? CGFloat,
+                let height = boundsDict["Height"] as? CGFloat
+            else {
+                return false
+            }
+
+            if width < 10 || height < 10 {
+                return false
+            }
+
+            if let alpha = window[kCGWindowAlpha as String] as? CGFloat, alpha <= 0 {
+                return false
+            }
+
+            if let isOnScreen = window[kCGWindowIsOnscreen as String] as? Bool, !isOnScreen {
+                return false
+            }
+
+            if let layer = window[kCGWindowLayer as String] as? Int, layer != 0 {
+                return false
+            }
+
+            return true
+        }
+
         private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
             let key = NSDeviceDescriptionKey("NSScreenNumber")
             guard let number = screen.deviceDescription[key] as? NSNumber else {
@@ -968,7 +1106,11 @@ private final class CaptureOutput: NSObject, @unchecked Sendable {
     }
 
     /// Feed new screen samples into the pending continuation, delivering captured frames.
-    nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
+    nonisolated func stream(
+        _ stream: SCStream,
+        didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
+        of type: SCStreamOutputType)
+    {
         guard type == .screen else { return }
 
         guard let imageBuffer = sampleBuffer.imageBuffer else {
