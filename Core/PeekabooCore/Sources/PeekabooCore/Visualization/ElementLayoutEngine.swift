@@ -181,10 +181,9 @@ public final class ElementLayoutEngine {
         var overlaps: [(VisualizableElement, VisualizableElement)] = []
 
         for i in 0..<elements.count {
-            for j in (i + 1)..<elements.count {
-                if self.elementsOverlap(elements[i], elements[j]) {
-                    overlaps.append((elements[i], elements[j]))
-                }
+            for j in (i + 1)..<elements.count
+            where self.elementsOverlap(elements[i], elements[j]) {
+                overlaps.append((elements[i], elements[j]))
             }
         }
 

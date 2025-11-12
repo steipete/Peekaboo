@@ -113,67 +113,85 @@ public struct DefaultElementStyleProvider: ElementStyleProvider {
 
         switch state {
         case .normal:
-            return ElementStyle(
-                primaryColor: baseColor,
-                fillOpacity: self.baseOpacity,
-                strokeWidth: 2.0,
-                strokeOpacity: 1.0,
-                cornerRadius: 4.0,
-                shadow: nil,
-                labelStyle: .default)
-
+            return self.normalStyle(baseColor: baseColor)
         case .hovered:
-            return ElementStyle(
-                primaryColor: baseColor,
-                fillOpacity: self.hoverOpacity,
-                strokeWidth: 2.5,
-                strokeOpacity: 1.0,
-                cornerRadius: 4.0,
-                shadow: ShadowStyle(
-                    color: CGColor(gray: 0, alpha: 0.3),
-                    radius: 4,
-                    offsetX: 0,
-                    offsetY: 2),
-                labelStyle: LabelStyle(
-                    fontSize: 12,
-                    fontWeight: .bold,
-                    backgroundColor: baseColor,
-                    textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
-
+            return self.hoverStyle(baseColor: baseColor)
         case .selected:
-            return ElementStyle(
-                primaryColor: baseColor,
-                fillOpacity: 0.4,
-                strokeWidth: 3.0,
-                strokeOpacity: 1.0,
-                cornerRadius: 4.0,
-                shadow: ShadowStyle(
-                    color: baseColor.copy(alpha: 0.5)!,
-                    radius: 8,
-                    offsetX: 0,
-                    offsetY: 2),
-                labelStyle: LabelStyle(
-                    fontSize: 12,
-                    fontWeight: .bold,
-                    backgroundColor: baseColor,
-                    textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
-
+            return self.selectedStyle(baseColor: baseColor)
         case .disabled:
-            return ElementStyle(
-                primaryColor: PeekabooColorPalette.control,
-                fillOpacity: 0.1,
-                strokeWidth: 1.5,
-                strokeOpacity: 0.5,
-                cornerRadius: 4.0,
-                shadow: nil,
-                labelStyle: LabelStyle(
-                    fontSize: 11,
-                    fontWeight: .regular,
-                    backgroundColor: CGColor(gray: 0.5, alpha: 0.7),
-                    textColor: CGColor(gray: 1, alpha: 0.8),
-                    padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
+            return self.disabledStyle()
         }
+    }
+}
+
+// Temporary typealias for legacy references during migration.
+typealias ElementStyleProviderImpl = DefaultElementStyleProvider
+
+private extension DefaultElementStyleProvider {
+    func normalStyle(baseColor: CGColor) -> ElementStyle {
+        ElementStyle(
+            primaryColor: baseColor,
+            fillOpacity: self.baseOpacity,
+            strokeWidth: 2.0,
+            strokeOpacity: 1.0,
+            cornerRadius: 4.0,
+            shadow: nil,
+            labelStyle: .default)
+    }
+
+    func hoverStyle(baseColor: CGColor) -> ElementStyle {
+        ElementStyle(
+            primaryColor: baseColor,
+            fillOpacity: self.hoverOpacity,
+            strokeWidth: 2.5,
+            strokeOpacity: 1.0,
+            cornerRadius: 4.0,
+            shadow: ShadowStyle(
+                color: CGColor(gray: 0, alpha: 0.3),
+                radius: 4,
+                offsetX: 0,
+                offsetY: 2),
+            labelStyle: LabelStyle(
+                fontSize: 12,
+                fontWeight: .bold,
+                backgroundColor: baseColor,
+                textColor: CGColor(gray: 1, alpha: 1),
+                padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
+    }
+
+    func selectedStyle(baseColor: CGColor) -> ElementStyle {
+        ElementStyle(
+            primaryColor: baseColor,
+            fillOpacity: 0.4,
+            strokeWidth: 3.0,
+            strokeOpacity: 1.0,
+            cornerRadius: 4.0,
+            shadow: ShadowStyle(
+                color: baseColor.copy(alpha: 0.5)!,
+                radius: 8,
+                offsetX: 0,
+                offsetY: 2),
+            labelStyle: LabelStyle(
+                fontSize: 12,
+                fontWeight: .bold,
+                backgroundColor: baseColor,
+                textColor: CGColor(gray: 1, alpha: 1),
+                padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
+    }
+
+    func disabledStyle() -> ElementStyle {
+        ElementStyle(
+            primaryColor: PeekabooColorPalette.control,
+            fillOpacity: 0.1,
+            strokeWidth: 1.5,
+            strokeOpacity: 0.5,
+            cornerRadius: 4.0,
+            shadow: nil,
+            labelStyle: LabelStyle(
+                fontSize: 11,
+                fontWeight: .regular,
+                backgroundColor: CGColor(gray: 0.5, alpha: 0.7),
+                textColor: CGColor(gray: 1, alpha: 0.8),
+                padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
     }
 }
