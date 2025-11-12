@@ -20,99 +20,103 @@ public final class ScrollService {
 
     /// Perform scroll operation
     @MainActor
-    public func scroll(
-        direction: PeekabooFoundation.ScrollDirection,
-        amount: Int,
-        target: String?,
-        smooth: Bool,
-        delay: Int,
-        sessionId: String?) async throws
-    {
-        self.logger.debug("Scroll requested - direction: \(direction), amount: \(amount), smooth: \(smooth)")
+    public func scroll(_ request: ScrollRequest) async throws {
+        self.logger.debug(
+            "Scroll requested - direction: \(request.direction), " +
+            "amount: \(request.amount), smooth: \(request.smooth)"
+        )
 
-        let scrollPoint: CGPoint
+        let scrollPoint = try await self.resolveScrollPoint(request)
+        let (deltaX, deltaY) = self.getScrollDeltas(for: request.direction)
+        let context = ScrollExecutionContext(
+            startingPoint: scrollPoint,
+            deltas: (deltaX, deltaY),
+            amount: request.amount,
+            smooth: request.smooth,
+            delay: request.delay
+        )
 
-        // If target specified, scroll on that element
-        if let target {
-            var elementFrame: CGRect?
+        try await self.performScroll(context)
+        self.logger.debug("Scroll completed")
+    }
 
-            // Try to find element by ID first
-            if let sessionId,
-               let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId),
-               let element = detectionResult.elements.findById(target)
-            {
-                elementFrame = element.bounds
-            }
-
-            // If not found by ID, search by query
-            if elementFrame == nil {
-                elementFrame = try await self.findElementFrame(query: target, sessionId: sessionId)
-            }
-
-            guard let frame = elementFrame else {
-                throw NotFoundError.element(target)
-            }
-
-            // Use center of element as scroll point
-            scrollPoint = CGPoint(x: frame.midX, y: frame.midY)
-            self.logger.debug("Scrolling on element at (\(scrollPoint.x), \(scrollPoint.y))")
-
-            // Move mouse to element first
-            try await self.moveMouseToPoint(scrollPoint)
-        } else {
-            // Use current mouse location
-            scrollPoint = self.getCurrentMouseLocation()
-            self.logger.debug("Scrolling at current location: (\(scrollPoint.x), \(scrollPoint.y))")
+    private func resolveScrollPoint(_ request: ScrollRequest) async throws -> CGPoint {
+        guard let target = request.target else {
+            let location = self.getCurrentMouseLocation()
+            self.logger.debug("Scrolling at current location: (\(location.x), \(location.y))")
+            return location
         }
 
-        // Perform scroll
-        let (deltaX, deltaY) = self.getScrollDeltas(for: direction)
-
-        // Ensure amount is positive
-        let absoluteAmount = abs(amount)
-
-        // Calculate ticks based on smoothness
-        let (tickCount, tickSize): (Int, Int) = if smooth {
-            // Smooth scroll with many small ticks
-            (absoluteAmount * 10, 1)
-        } else {
-            // Normal scroll with fewer larger ticks
-            (absoluteAmount, 10)
+        if let sessionPoint = try await self.lookupElementCenter(target: target, sessionId: request.sessionId) {
+            try await self.moveMouseToPoint(sessionPoint)
+            return sessionPoint
         }
 
+        guard let frame = try await self.findElementFrame(query: target, sessionId: request.sessionId) else {
+            throw NotFoundError.element(target)
+        }
+
+        let point = CGPoint(x: frame.midX, y: frame.midY)
+        try await self.moveMouseToPoint(point)
+        self.logger.debug("Scrolling on element at (\(point.x), \(point.y))")
+        return point
+    }
+
+    private func lookupElementCenter(target: String, sessionId: String?) async throws -> CGPoint? {
+        guard let sessionId,
+              let detectionResult = try? await self.sessionManager.getDetectionResult(sessionId: sessionId),
+              let element = detectionResult.elements.findById(target)
+        else {
+            return nil
+        }
+
+        return CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+    }
+
+    private func performScroll(_ context: ScrollExecutionContext) async throws {
+        let absoluteAmount = abs(context.amount)
+        let (tickCount, tickSize) = self.tickConfiguration(amount: absoluteAmount, smooth: context.smooth)
         self.logger.debug("Scrolling \(tickCount) ticks of size \(tickSize)")
 
-        // Perform scroll events
-        for i in 0..<tickCount {
-            guard let scrollEvent = CGEvent(
-                scrollWheelEvent2Source: nil,
-                units: .pixel,
-                wheelCount: 2,
-                wheel1: Int32(deltaY * tickSize),
-                wheel2: Int32(deltaX * tickSize),
-                wheel3: 0)
-            else {
-                throw PeekabooError.operationError(message: "Failed to create scroll event")
-            }
-
-            scrollEvent.location = scrollPoint
-            scrollEvent.post(tap: .cghidEventTap)
-
-            // Delay between scroll ticks
-            if delay > 0 {
-                try await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000)
-            } else if smooth {
-                // Small delay for smooth scrolling
-                try await Task.sleep(nanoseconds: 10_000_000) // 10ms
-            }
-
-            // Log progress periodically
-            if i % 10 == 0 {
-                self.logger.debug("Scroll progress: \(i)/\(tickCount)")
+        for tick in 0..<tickCount {
+            try await self.postScrollTick(context: context, tickSize: tickSize)
+            try await self.sleepBetweenTicks(context: context)
+            if tick % 10 == 0 {
+                self.logger.debug("Scroll progress: \(tick)/\(tickCount)")
             }
         }
+    }
 
-        self.logger.debug("Scroll completed")
+    private func postScrollTick(context: ScrollExecutionContext, tickSize: Int) throws {
+        guard let event = CGEvent(
+            scrollWheelEvent2Source: nil,
+            units: .pixel,
+            wheelCount: 2,
+            wheel1: Int32(context.deltas.deltaY * tickSize),
+            wheel2: Int32(context.deltas.deltaX * tickSize),
+            wheel3: 0)
+        else {
+            throw PeekabooError.operationError(message: "Failed to create scroll event")
+        }
+
+        event.location = context.startingPoint
+        event.post(tap: .cghidEventTap)
+    }
+
+    private func sleepBetweenTicks(context: ScrollExecutionContext) async throws {
+        if context.delay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(context.delay) * 1_000_000)
+        } else if context.smooth {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
+    private func tickConfiguration(amount: Int, smooth: Bool) -> (count: Int, size: Int) {
+        if smooth {
+            return (amount * 10, 1)
+        }
+
+        return (amount, 10)
     }
 
     // MARK: - Private Methods
@@ -201,21 +205,29 @@ public final class ScrollService {
         CGEvent(source: nil)?.location ?? CGPoint.zero
     }
 
-    private func moveMouseToPoint(_ point: CGPoint) async throws {
-        guard let moveEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .mouseMoved,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create move event")
-        }
-
-        moveEvent.post(tap: .cghidEventTap)
-
-        // Small delay after move
-        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+private func moveMouseToPoint(_ point: CGPoint) async throws {
+    guard let moveEvent = CGEvent(
+        mouseEventSource: nil,
+        mouseType: .mouseMoved,
+        mouseCursorPosition: point,
+        mouseButton: .left)
+    else {
+        throw PeekabooError.operationError(message: "Failed to create move event")
     }
+
+    moveEvent.post(tap: .cghidEventTap)
+
+    // Small delay after move
+    try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+}
+}
+
+private struct ScrollExecutionContext {
+    let startingPoint: CGPoint
+    let deltas: (deltaX: Int, deltaY: Int)
+    let amount: Int
+    let smooth: Bool
+    let delay: Int
 }
 
 // MARK: - Extensions

@@ -122,6 +122,9 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             self.logger.debug("Skipping visualizer connection (running inside Mac app)")
         }
     }
+}
+
+extension UIAutomationService {
 
     // MARK: - Element Detection
 
@@ -392,49 +395,32 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     /**
      * Perform smooth scrolling operations with visual feedback.
      *
-     * - Parameters:
-     *   - direction: Scroll direction (.up, .down, .left, .right)
-     *   - amount: Number of scroll units/lines to scroll (1-100 typical range)
-     *   - target: Optional element ID to scroll within (scrolls at mouse position if nil)
-     *   - smooth: Whether to use smooth scrolling with smaller increments
-     *   - delay: Delay in milliseconds between scroll increments (1-50ms typical)
-     *   - sessionId: Session ID for element resolution if target is specified
-     * - Throws: `PeekabooError` if target element cannot be found
+     * - Parameter request: Scroll configuration including direction, amount, target, style, and session context.
+     * - Throws: `PeekabooError` if target element cannot be found.
      *
      * ## Example
      * ```swift
-     * // Scroll down 5 units smoothly
-     * try await automation.scroll(
-     *     direction: .down,
-     *     amount: 5,
-     *     target: nil,
-     *     smooth: true,
-     *     delay: 10,
-     *     sessionId: nil
-     * )
+     * let request = ScrollRequest(direction: .down, amount: 5, smooth: true, delay: 10)
+     * try await automation.scroll(request)
      * ```
      */
-    public func scroll(
-        direction: PeekabooFoundation.ScrollDirection,
-        amount: Int,
-        target: String?,
-        smooth: Bool,
-        delay: Int,
-        sessionId: String?) async throws
-    {
+    public func scroll(_ request: ScrollRequest) async throws {
         self.logger.debug("Delegating scroll to ScrollService")
         try await self.scrollService.scroll(
-            direction: direction,
-            amount: amount,
-            target: target,
-            smooth: smooth,
-            delay: delay,
-            sessionId: sessionId)
+            direction: request.direction,
+            amount: request.amount,
+            target: request.target,
+            smooth: request.smooth,
+            delay: request.delay,
+            sessionId: request.sessionId)
 
         // Show visual feedback if available
         // Get current mouse location for scroll indicator
         let mouseLocation = NSEvent.mouseLocation
-        _ = await self.visualizerClient.showScrollFeedback(at: mouseLocation, direction: direction, amount: amount)
+        _ = await self.visualizerClient.showScrollFeedback(
+            at: mouseLocation,
+            direction: request.direction,
+            amount: request.amount)
     }
 
     // MARK: - Hotkey Operations
@@ -591,7 +577,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             return nil
         }
 
-        let axElement = element as! AXUIElement
+        guard let axElement = element as? AXUIElement else {
+            self.logger.error("Focused element is not an AXUIElement instance")
+            return nil
+        }
         let wrappedElement = Element(axElement)
 
         // Get element properties
@@ -663,77 +652,77 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     {
         self.logger.debug("Waiting for element - target: \(String(describing: target)), timeout: \(timeout)s")
 
+        if case .coordinates = target {
+            let waitTime = 0.0
+            return WaitForElementResult(found: true, element: nil, waitTime: waitTime)
+        }
+
         let startTime = Date()
         let deadline = startTime.addingTimeInterval(timeout)
-        let retryInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
+        let retryInterval: UInt64 = 100_000_000 // 100ms
 
         while Date() < deadline {
-            // Check if element exists
-            switch target {
-            case let .elementId(id):
-                if let sessionId,
-                   let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId),
-                   let element = detectionResult.elements.findById(id)
-                {
-                    let waitTime = Date().timeIntervalSince(startTime)
-                    self.logger.debug("Found element \(id) after \(waitTime)s")
-                    return WaitForElementResult(found: true, element: element, waitTime: waitTime)
-                }
-
-            case let .query(query):
-                // Try to find in session first
-                if let sessionId,
-                   let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
-                {
-                    let queryLower = query.lowercased()
-                    for element in detectionResult.elements.all {
-                        let matches = element.label?.lowercased().contains(queryLower) ?? false ||
-                            element.value?.lowercased().contains(queryLower) ?? false
-
-                        if matches, element.isEnabled {
-                            let waitTime = Date().timeIntervalSince(startTime)
-                            self.logger.debug("Found element matching '\(query)' after \(waitTime)s")
-                            return WaitForElementResult(found: true, element: element, waitTime: waitTime)
-                        }
-                    }
-                }
-
-                // Try direct AX search
-                let elementInfo = self.findElementByAccessibility(matching: query)
-
-                if elementInfo != nil {
-                    let waitTime = Date().timeIntervalSince(startTime)
-                    let detectedElement = DetectedElement(
-                        id: "wait_found",
-                        type: .other,
-                        label: elementInfo?.label ?? query,
-                        value: nil,
-                        bounds: elementInfo?.frame ?? .zero,
-                        isEnabled: true,
-                        isSelected: nil,
-                        attributes: [:])
-
-                    self.logger.debug("Found element via AX matching '\(query)' after \(waitTime)s")
-                    return WaitForElementResult(found: true, element: detectedElement, waitTime: waitTime)
-                }
-
-            case .coordinates:
-                // Coordinates don't need waiting
+            if let element = await self.locateElementForWait(target: target, sessionId: sessionId) {
                 let waitTime = Date().timeIntervalSince(startTime)
-                return WaitForElementResult(found: true, element: nil, waitTime: waitTime)
+                self.logger.debug("Found element for target \(String(describing: target)) after \(waitTime)s")
+                return WaitForElementResult(found: true, element: element, waitTime: waitTime)
             }
 
-            // Wait before retry
             try await Task.sleep(nanoseconds: retryInterval)
         }
 
-        // Timeout reached
-        let waitTime = timeout
-        self.logger.debug("Element not found after \(waitTime)s timeout")
-        return WaitForElementResult(found: false, element: nil, waitTime: waitTime)
+        self.logger.debug("Element not found after \(timeout)s timeout")
+        return WaitForElementResult(found: false, element: nil, waitTime: timeout)
     }
 
     // MARK: - Private Helpers
+
+    private func locateElementForWait(
+        target: ClickTarget,
+        sessionId: String?
+    ) async -> DetectedElement? {
+        switch target {
+        case let .elementId(id):
+            guard let sessionId,
+                  let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId) else {
+                return nil
+            }
+            return detectionResult.elements.findById(id)
+
+        case let .query(query):
+            if let element = await self.findElementInSession(query: query, sessionId: sessionId) {
+                return element
+            }
+            guard let info = self.findElementByAccessibility(matching: query) else {
+                return nil
+            }
+            return DetectedElement(
+                id: "wait_found",
+                type: .other,
+                label: info.label ?? query,
+                value: nil,
+                bounds: info.frame,
+                isEnabled: true
+            )
+
+        case .coordinates:
+            return nil
+        }
+    }
+
+    private func findElementInSession(query: String, sessionId: String?) async -> DetectedElement? {
+        guard let sessionId,
+              let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId) else {
+            return nil
+        }
+
+        let queryLower = query.lowercased()
+        return detectionResult.elements.all.first { element in
+            let matches = element.label?.lowercased().contains(queryLower) ?? false ||
+                element.value?.lowercased().contains(queryLower) ?? false
+            return matches && element.isEnabled
+        }
+    }
 
     @MainActor
     private func findElementByAccessibility(matching query: String)
@@ -848,6 +837,33 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         }
 
         throw PeekabooError.elementNotFound("element \(description) in \(appName ?? "screen")")
+    }
+}
+
+// MARK: - Scroll Helpers
+
+public struct ScrollRequest {
+    public var direction: PeekabooFoundation.ScrollDirection
+    public var amount: Int
+    public var target: String?
+    public var smooth: Bool
+    public var delay: Int
+    public var sessionId: String?
+
+    public init(
+        direction: PeekabooFoundation.ScrollDirection,
+        amount: Int,
+        target: String? = nil,
+        smooth: Bool = false,
+        delay: Int = 10,
+        sessionId: String? = nil
+    ) {
+        self.direction = direction
+        self.amount = amount
+        self.target = target
+        self.smooth = smooth
+        self.delay = delay
+        self.sessionId = sessionId
     }
 }
 

@@ -277,14 +277,14 @@ enum AutomationServiceBridge {
         sessionId: String?
     ) async throws {
         try await Task { @MainActor in
-            try await services.automation.scroll(
+            let request = ScrollRequest(
                 direction: direction,
                 amount: amount,
                 target: target,
                 smooth: smooth,
                 delay: delay,
-                sessionId: sessionId
-            )
+                sessionId: sessionId)
+            try await services.automation.scroll(request)
         }.value
     }
 
@@ -560,7 +560,11 @@ extension WindowIdentificationOptions {
         } else if let index = windowIndex, index < windows.count {
             windows[index]
         } else {
-            windows.first
+            windows.first(where: { window in
+                window.bounds.width >= 50 &&
+                    window.bounds.height >= 50 &&
+                    window.windowLevel == 0
+            }) ?? windows.first
         }
     }
 }

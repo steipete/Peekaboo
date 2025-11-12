@@ -92,12 +92,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     }
 
     struct ScrollCall: Sendable {
-        let direction: ScrollDirection
-        let amount: Int
-        let target: String?
-        let smooth: Bool
-        let delay: Int
-        let sessionId: String?
+        let request: ScrollRequest
     }
 
     struct SwipeCall: Sendable {
@@ -230,24 +225,9 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         return TypeResult(totalCharacters: totals.characters, keyPresses: totals.keyPresses)
     }
 
-    // swiftlint:disable:next function_parameter_count
-    func scroll(
-        direction: ScrollDirection,
-        amount: Int,
-        target: String?,
-        smooth: Bool,
-        delay: Int,
-        sessionId: String?
-    ) async throws {
+    func scroll(_ request: ScrollRequest) async throws {
         self.scrollCalls.append(
-            ScrollCall(
-                direction: direction,
-                amount: amount,
-                target: target,
-                smooth: smooth,
-                delay: delay,
-                sessionId: sessionId
-            )
+            ScrollCall(request: request)
         )
     }
 

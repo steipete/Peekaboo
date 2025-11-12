@@ -55,12 +55,12 @@ struct ScrollCommandTests {
 
         let scrollCalls = await self.automationState(context) { $0.scrollCalls }
         let call = try #require(scrollCalls.first)
-        #expect(call.direction == .down)
-        #expect(call.amount == 5)
-        #expect(call.delay == 10)
-        #expect(call.smooth == true)
-        #expect(call.target == "B1")
-        #expect(call.sessionId == "session-42")
+        #expect(call.request.direction == .down)
+        #expect(call.request.amount == 5)
+        #expect(call.request.delay == 10)
+        #expect(call.request.smooth == true)
+        #expect(call.request.target == "B1")
+        #expect(call.request.sessionId == "session-42")
 
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
         let payload = try JSONDecoder().decode(ScrollResult.self, from: payloadData)
@@ -81,8 +81,8 @@ struct ScrollCommandTests {
         let scrollCalls = await self.automationState(context) { $0.scrollCalls }
         #expect(scrollCalls.count == 1)
         let call = try #require(scrollCalls.first)
-        #expect(call.sessionId == nil)
-        #expect(call.amount == 2)
+        #expect(call.request.sessionId == nil)
+        #expect(call.request.amount == 2)
     }
 
     @Test("Smooth scrolling adjusts total ticks in JSON output")

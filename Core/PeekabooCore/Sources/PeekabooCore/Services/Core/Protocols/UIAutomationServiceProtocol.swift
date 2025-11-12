@@ -37,21 +37,9 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - sessionId: Session ID for element resolution
     func typeActions(_ actions: [TypeAction], typingDelay: Int, sessionId: String?) async throws -> TypeResult
 
-    /// Scroll in a specific direction
-    /// - Parameters:
-    ///   - direction: Scroll direction
-    ///   - amount: Number of scroll ticks
-    ///   - target: Optional target element
-    ///   - smooth: Whether to use smooth scrolling
-    ///   - delay: Delay between scroll ticks in milliseconds
-    ///   - sessionId: Session ID for element resolution
-    func scroll(
-        direction: ScrollDirection,
-        amount: Int,
-        target: String?,
-        smooth: Bool,
-        delay: Int,
-        sessionId: String?) async throws
+    /// Scroll in a specific direction with the supplied configuration.
+    /// - Parameter request: Scroll configuration including direction, amount, options, and session context.
+    func scroll(_ request: ScrollRequest) async throws
 
     /// Press a hotkey combination
     /// - Parameters:
