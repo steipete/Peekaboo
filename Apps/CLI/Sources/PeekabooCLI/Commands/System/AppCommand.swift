@@ -88,64 +88,75 @@ struct AppCommand: ParsableCommand {
         /// Resolve the requested app target, launch it, optionally wait until ready, and emit output.
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
-            self.runtime = runtime
-            let logger = self.logger
-            logger.verbose("Launching application: \(self.app)")
-
+            self.prepare(using: runtime)
             do {
-                let launchedApp: NSRunningApplication
-
-                if let bundleId {
-                    // Launch by bundle ID
-                    guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else {
-                        throw NotFoundError.application("Bundle ID: \(bundleId)")
-                    }
-                    launchedApp = try await self.launchApplication(at: url, name: bundleId)
-                } else {
-                    // Try to find app by name
-                    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) {
-                        // It's actually a bundle ID
-                        launchedApp = try await self.launchApplication(at: url, name: self.app)
-                    } else if let url = findApplicationByName(app) {
-                        // Found by name
-                        launchedApp = try await self.launchApplication(at: url, name: self.app)
-                    } else if self.app.contains("/") {
-                        // It's a path
-                        let url = URL(fileURLWithPath: app)
-                        launchedApp = try await self.launchApplication(at: url, name: self.app)
-                    } else {
-                        throw NotFoundError.application(self.app)
-                    }
-                }
-
-                // Wait until ready if requested
-                if self.waitUntilReady {
-                    try await self.waitForApplicationReady(launchedApp)
-                }
-
-                struct LaunchResult: Codable {
-                    let action: String
-                    let app_name: String
-                    let bundle_id: String
-                    let pid: Int32
-                    let is_ready: Bool
-                }
-
-                let data = LaunchResult(
-                    action: "launch",
-                    app_name: launchedApp.localizedName ?? self.app,
-                    bundle_id: launchedApp.bundleIdentifier ?? "unknown",
-                    pid: launchedApp.processIdentifier,
-                    is_ready: launchedApp.isFinishedLaunching
-                )
-
-                output(data) {
-                    print("✓ Launched \(launchedApp.localizedName ?? self.app) (PID: \(launchedApp.processIdentifier))")
-                }
-
+                let url = try self.resolveApplicationURL()
+                let launchedApp = try await self.launchApplication(at: url, name: self.displayName(for: url))
+                try await self.waitIfNeeded(for: launchedApp)
+                self.renderLaunchSuccess(app: launchedApp)
             } catch {
-                handleError(error)
+                self.handleError(error)
                 throw ExitCode(1)
+            }
+        }
+
+        private mutating func prepare(using runtime: CommandRuntime) {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+            self.logger.verbose("Launching application: \(self.app)")
+        }
+
+        private func resolveApplicationURL() throws -> URL {
+            if let bundleId {
+                guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else {
+                    throw NotFoundError.application("Bundle ID: \(bundleId)")
+                }
+                return url
+            }
+
+            if let bundleURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) {
+                return bundleURL
+            }
+
+            if let namedURL = findApplicationByName(app) {
+                return namedURL
+            }
+
+            if self.app.contains("/") {
+                return URL(fileURLWithPath: self.app)
+            }
+
+            throw NotFoundError.application(self.app)
+        }
+
+        private func displayName(for url: URL) -> String {
+            (try? url.resourceValues(forKeys: [.localizedNameKey]).localizedName) ?? self.app
+        }
+
+        private func waitIfNeeded(for app: NSRunningApplication) async throws {
+            guard self.waitUntilReady else { return }
+            try await self.waitForApplicationReady(app)
+        }
+
+        private func renderLaunchSuccess(app: NSRunningApplication) {
+            struct LaunchResult: Codable {
+                let action: String
+                let app_name: String
+                let bundle_id: String
+                let pid: Int32
+                let is_ready: Bool
+            }
+
+            let data = LaunchResult(
+                action: "launch",
+                app_name: app.localizedName ?? self.app,
+                bundle_id: app.bundleIdentifier ?? "unknown",
+                pid: app.processIdentifier,
+                is_ready: app.isFinishedLaunching
+            )
+
+            output(data) {
+                print("✓ Launched \(app.localizedName ?? self.app) (PID: \(app.processIdentifier))")
             }
         }
 
@@ -297,12 +308,19 @@ struct AppCommand: ParsableCommand {
                         if !self.force {
                             logger
                                 .debug(
-                                    "Quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may have unsaved changes or be showing a dialog. Try --force to force quit."
+                                    """
+                                    Quit failed for \(name) (PID: \(runningApp.processIdentifier)). \
+                                    The app may have unsaved changes or be showing a dialog. \
+                                    Try --force to force quit.
+                                    """
                                 )
                         } else {
                             logger
                                 .debug(
-                                    "Force quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may be unresponsive or protected."
+                                    """
+                                    Force quit failed for \(name) (PID: \(runningApp.processIdentifier)). \
+                                    The app may be unresponsive or protected.
+                                    """
                                 )
                         }
                     }
@@ -328,7 +346,8 @@ struct AppCommand: ParsableCommand {
                             print("✗ Failed to quit \(result.app_name) (PID: \(result.pid))")
                             if !self.force {
                                 print(
-                                    "  💡 Tip: The app may have unsaved changes or be showing a dialog. Try --force to force quit."
+                                    "  💡 Tip: The app may have unsaved changes or be showing a dialog. " +
+                                        "Try --force to force quit."
                                 )
                             }
                         }

@@ -82,7 +82,8 @@ struct DialogCommand: ParsableCommand {
                 // Click the button using the service
                 let result = try await self.services.dialogs.clickButton(
                     buttonText: self.button,
-                    windowTitle: self.window
+                    windowTitle: self.window,
+                    appName: self.app
                 )
 
                 // Output result
@@ -174,7 +175,8 @@ struct DialogCommand: ParsableCommand {
                     text: self.text,
                     fieldIdentifier: fieldIdentifier,
                     clearExisting: self.clear,
-                    windowTitle: self.window
+                    windowTitle: self.window,
+                    appName: self.app
                 )
 
                 // Output result
@@ -258,7 +260,8 @@ struct DialogCommand: ParsableCommand {
                 let result = try await self.services.dialogs.handleFileDialog(
                     path: self.path,
                     filename: self.name,
-                    actionButton: self.select
+                    actionButton: self.select,
+                    appName: self.app
                 )
 
                 // Output result
@@ -341,7 +344,8 @@ struct DialogCommand: ParsableCommand {
                 // Dismiss dialog using the service
                 let result = try await self.services.dialogs.dismissDialog(
                     force: self.force,
-                    windowTitle: self.window
+                    windowTitle: self.window,
+                    appName: self.app
                 )
 
                 // Output result
@@ -387,6 +391,9 @@ struct DialogCommand: ParsableCommand {
             abstract: "List elements in current dialog using DialogService"
         )
 
+        @Option(help: "Specific window/sheet title to target")
+        var window: String?
+
         @Option(help: "Application hosting the dialog (focus hint)")
         var app: String?
         @RuntimeStorage private var runtime: CommandRuntime?
@@ -412,13 +419,15 @@ struct DialogCommand: ParsableCommand {
             do {
                 await DialogCommand.focusDialogAppIfNeeded(
                     appName: self.app,
-                    windowTitle: nil,
+                    windowTitle: self.window,
                     services: self.services,
                     logger: self.logger
                 )
 
                 // List dialog elements using the service
-                let elements = try await self.services.dialogs.listDialogElements(windowTitle: nil)
+                let elements = try await self.services.dialogs.listDialogElements(
+                    windowTitle: self.window,
+                    appName: self.app)
 
                 // Output result
                 if self.jsonOutput {
@@ -566,6 +575,7 @@ extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 @MainActor
 extension DialogCommand.ListSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.window = values.singleOption("window")
         self.app = values.singleOption("app")
     }
 }

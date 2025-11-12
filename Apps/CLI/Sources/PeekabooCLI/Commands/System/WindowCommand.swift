@@ -546,9 +546,8 @@ extension WindowCommand {
                 )
 
                 output(data) {
-                    print(
-                        "Successfully resized window '\(windowInfo?.title ?? "Untitled")' to \(self.width)x\(self.height)"
-                    )
+                    let title = windowInfo?.title ?? "Untitled"
+                    print("Successfully resized window '\(title)' to \(self.width)x\(self.height)")
                 }
 
             } catch {
@@ -626,9 +625,9 @@ extension WindowCommand {
                 )
 
                 output(data) {
-                    print(
-                        "Successfully set window '\(windowInfo?.title ?? "Untitled")' bounds to (\(self.x), \(self.y)) \(self.width)x\(self.height)"
-                    )
+                    let title = windowInfo?.title ?? "Untitled"
+                    let boundsDescription = "(\(self.x), \(self.y)) \(self.width)x\(self.height)"
+                    print("Successfully set window '\(title)' bounds to \(boundsDescription)")
                 }
 
             } catch {
@@ -741,9 +740,8 @@ extension WindowCommand {
                             for (window, index) in windowsBySpace[spaceID] ?? [] {
                                 let status = window.isMinimized ? " [minimized]" : ""
                                 print("    [\(index)] \"\(window.title)\"\(status)")
-                                print(
-                                    "         Position: (\(Int(window.bounds.origin.x)), \(Int(window.bounds.origin.y)))"
-                                )
+                                let origin = window.bounds.origin
+                                print("         Position: (\(Int(origin.x)), \(Int(origin.y)))")
                                 print(
                                     "         Size: \(Int(window.bounds.size.width))x\(Int(window.bounds.size.height))"
                                 )

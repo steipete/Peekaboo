@@ -60,6 +60,7 @@ extension DialogCommand.ListSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
             options: [
+                .commandOption("window", help: "Specific window/sheet title to target", long: "window"),
                 .commandOption("app", help: "Application hosting the dialog", long: "app"),
             ]
         )
