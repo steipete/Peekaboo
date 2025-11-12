@@ -5,7 +5,7 @@
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS (Sonoma)](https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue.svg)](https://www.apple.com/macos/)
-[![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org/)
+[![Swift](https://img.shields.io/badge/Swift-6.2-orange.svg)](https://swift.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Download for macOS](https://img.shields.io/badge/Download-macOS-black?logo=apple)](https://github.com/steipete/peekaboo/releases/latest)
 [![Homebrew](https://img.shields.io/badge/Homebrew-steipete%2Ftap-tan?logo=homebrew)](https://github.com/steipete/homebrew-tap)
