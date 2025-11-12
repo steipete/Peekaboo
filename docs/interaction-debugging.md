@@ -242,6 +242,29 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 ### Resolution — Nov 12, 2025
 - `DialogService` now inspects `AXFocusedWindow`, recurses through `AXSheets`, checks `AXIdentifier` for `NSOpenPanel`/`NSSavePanel`, and matches titles like “Open”, “Save”, “Export”, or “Import”. Both `dialog list` and `dialog click` successfully locate the TextEdit open panel.
 
+## Mac build blocked by outdated logging APIs
+- **Context**: Swift 6.2 tightened `Logger` usage so interpolations must be literal `OSLogMessage` strings. PeekabooServices, ScrollService, and the visualizer receiver still used legacy `Logger.Message` concatenations, producing errors like `'Logger' is ambiguous` and “argument must be a string interpolation” during `./runner ./scripts/build-mac-debug.sh`.
+- **Resolution — Nov 12, 2025**: Reworked those sites to log with inline interpolations (or `OSLogMessage` where needed) and removed privacy specifiers from plain `String` helpers. With the rewrites the mac target links successfully again.
+
+## SpaceTool used legacy window schema
+- **Command**: building the `space` MCP tool inside `PeekabooCore`
+- **Observed**: Compilation failed (`ServiceWindowInfo` has no member `window_id/window_title`) because the tool still referenced the older CLI `WindowInfo` structure.
+- **Impact**: macOS builds failed before we could run any CLI automation.
+- **Resolution — Nov 12, 2025**: Updated `SpaceTool` to accept the new `ServiceWindowInfo`, convert the integer ID to `UInt32`, and emit the camelCase fields when describing move results. The space MCP command now compiles alongside the CLI again.
+
+## `list screens` broke CLI builds after UnifiedToolOutput migration
+- **Command**: `polter peekaboo list screens --json-output` (or any CLI build invoking `ListCommand`)
+- **Observed**: Swift compiler error `Highlight has no member HighlightKind` because the new `UnifiedToolOutput` nests `HighlightKind` one level higher. The CLI still referenced the legacy type alias, so Poltergeist marked the `peekaboo` target failed and no CLI commands could run.
+- **Resolution — Nov 12, 2025**: Pointed the summary builder at the new `.primary` enum case (instead of the deleted `Highlight.HighlightKind`), restoring the CLI build and allowing screen listings again.
+- **Verification — Nov 12, 2025**: `polter peekaboo -- list screens --json-output` now returns the expected JSON payload (session `LISTSCREENS-20251112T1300Z`) without triggering a rebuild.
+
+## `list apps` reports zero windows for every process
+- **Command**: `polter peekaboo -- list apps --json-output`
+- **Observed**: Every application’s `windowCount` is reported as `0`, and the summary shows `appsWithWindows: 0` / `totalWindows: 0` even though Chrome, Finder, etc., have visible windows (confirmed via `list windows --app "Google Chrome"` which reports 22 windows). This regression appeared right after the UnifiedToolOutput refactor.
+- **Expected**: `list apps` should include accurate per-application window counts so agents can pick an app with open windows.
+- **Impact**: Automation must issue a slow `list windows` call per bundle just to discover if anything is on screen, adding seconds to workflows like the Grindr login flow.
+- **Status — Nov 12, 2025**: Reproducible on main. Need to trace whether `ApplicationService.listApplications()` stopped populating `windowCount` or if the CLI dropped the counts when serializing.
+
 ## `dock hide` never returns
 - **Command**: `polter peekaboo dock hide`
 - **Observed**: Command times out after ~10 s because the AppleScript call to System Events waits for automation approval.
@@ -352,3 +375,12 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
   1. Inspect the generated `AXorcist.SwiftFileList`/`axPackage.build` inside `.build/DerivedData` to see which copy of `AXObserverManager.swift` the workspace references.
   2. If the workspace vendored an older checkout, re-point the dependency to the in-tree `Core/AXorcist` path or refresh the workspace’s SwiftPM pins.
   3. As a fallback, move the helper logic entirely inline inside `addObserver` so even the stale copy compiles.
+
+## SpaceTool + formatter fallout blocking mac build (Nov 12, 2025)
+- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Observed**: After fixing the AX observer + UI formatters, the build now fails deeper in PeekabooCore: `SpaceTool.swift` was still written against the pre-renamed `WindowInfo` fields (`title`, `windowID`) and helper methods defined outside the struct, so Swift 6 complained about missing members and actor isolation. Cleaning that up surfaced the next blocker: `SystemToolFormatter.swift` still had a literal newline in `parts.joined(separator: "\n")` that Swift sees as an unterminated string. Once that’s fixed, the build should advance to whatever is next in the queue.
+- **Impact**: macOS target can’t link yet, so we still can’t run `peekaboo-mac` nor smoke test the CLI end-to-end inside the app bundle.
+- **Next steps**:
+  1. Finish porting `SpaceTool` to the new `WindowInfo` schema (done: helper methods now live inside a `private extension`, using `window_title` / `window_id`).
+  2. Replace the newline separator in `SystemToolFormatter` with an escaped literal (`"\n"`) so Swift’s parser doesn’t choke.
+  3. Re-run `./runner ./scripts/build-mac-debug.sh` to discover the next blocker in the chain.
