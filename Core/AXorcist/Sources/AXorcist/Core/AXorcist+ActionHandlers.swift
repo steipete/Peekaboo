@@ -25,7 +25,11 @@ public extension AXorcist {
         )
 
         guard let element = foundElement else {
-            let fallback = "HandlePerformAction: Element not found for app '\(appIdentifier)' with locator \(command.locator)."
+            let fallback = missingElementMessage(
+                prefix: "HandlePerformAction",
+                appIdentifier: appIdentifier,
+                locatorDescription: String(describing: command.locator)
+            )
             let message = errorMessage ?? fallback
             GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: message))
             return .errorResponse(message: message, code: .elementNotFound)
@@ -50,7 +54,11 @@ public extension AXorcist {
         )
 
         guard let element = foundElement else {
-            let fallback = "HandleSetFocusedValue: Element not found for app '\(appIdentifier)' with locator \(command.locator)."
+            let fallback = missingElementMessage(
+                prefix: "HandleSetFocusedValue",
+                appIdentifier: appIdentifier,
+                locatorDescription: String(describing: command.locator)
+            )
             let message = errorMessage ?? fallback
             GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: message))
             return .errorResponse(message: message, code: .elementNotFound)
@@ -173,9 +181,12 @@ extension AXorcist {
             return true
         }
 
+        let elementDescription = element.briefDescription(option: ValueFormatOption.smart)
         guard element.isActionSupported(AXActionNames.kAXPressAction) else {
-            let focusError = "HandleSetFocusedValue: Element \(element.briefDescription(option: ValueFormatOption.smart)) " +
-                "is not focusable (kAXFocusedAttribute not settable and kAXPressAction not supported)."
+            let focusError = [
+                "HandleSetFocusedValue: Element \(elementDescription) is not focusable",
+                "(kAXFocusedAttribute not settable and kAXPressAction not supported)."
+            ].joined(separator: " ")
             GlobalAXLogger.shared.log(AXLogEntry(level: .warning, message: focusError))
             return false
         }
@@ -192,47 +203,54 @@ extension AXorcist {
                 message: "HandleSetFocusedValue: Successfully pressed element to potentially gain focus."
             ))
         } catch {
-            let pressError = "HandleSetFocusedValue: Element \(element.briefDescription(option: ValueFormatOption.smart)) " +
-                "could not be pressed to potentially gain focus."
+            let pressError = [
+                "HandleSetFocusedValue: Element \(elementDescription) could not be pressed",
+                "to potentially gain focus."
+            ].joined(separator: " ")
             GlobalAXLogger.shared.log(AXLogEntry(level: .warning, message: pressError))
         }
         return false
     }
 
     private func setFocus(on element: Element) {
+        let elementDescription = element.briefDescription(option: ValueFormatOption.smart)
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "HandleSetFocusedValue: Attempting to set kAXFocusedAttribute to true for " +
-                "\(element.briefDescription(option: ValueFormatOption.smart))"
+            message: "HandleSetFocusedValue: Attempting to set kAXFocusedAttribute to true for \(elementDescription)"
         ))
         if element.setValue(true, forAttribute: AXAttributeNames.kAXFocusedAttribute) { return }
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .warning,
-            message: "HandleSetFocusedValue: Failed to set kAXFocusedAttribute for " +
-                "\(element.briefDescription(option: ValueFormatOption.smart)), but proceeding to set value."
+            message: [
+                "HandleSetFocusedValue: Failed to set kAXFocusedAttribute for \(elementDescription),",
+                "but proceeding to set value."
+            ].joined(separator: " ")
         ))
     }
 
     private func setValue(_ value: String, on element: Element) -> AXResponse {
+        let elementDescription = element.briefDescription(option: ValueFormatOption.smart)
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
-            message: "HandleSetFocusedValue: Attempting to set kAXValueAttribute to '\(value)' for " +
-                "\(element.briefDescription(option: ValueFormatOption.smart))"
+            message: "HandleSetFocusedValue: Attempting to set kAXValueAttribute to '\(value)' " +
+                "for \(elementDescription)"
         ))
         if element.setValue(value, forAttribute: AXAttributeNames.kAXValueAttribute) {
             GlobalAXLogger.shared.log(AXLogEntry(
                 level: .info,
-                message: "HandleSetFocusedValue: Successfully set value for " +
-                    "\(element.briefDescription(option: ValueFormatOption.smart))."
+                message: "HandleSetFocusedValue: Successfully set value for \(elementDescription)."
             ))
             return .successResponse(
                 payload: AnyCodable(["message": "Value '\(value)' set successfully on focused element."])
             )
         }
 
-        let setError = "HandleSetFocusedValue: Failed to set kAXValueAttribute for " +
-            "\(element.briefDescription(option: ValueFormatOption.smart))."
+        let setError = "HandleSetFocusedValue: Failed to set kAXValueAttribute for \(elementDescription)."
         GlobalAXLogger.shared.log(AXLogEntry(level: .error, message: setError))
         return .errorResponse(message: setError, code: .actionFailed)
+    }
+
+    private func missingElementMessage(prefix: String, appIdentifier: String, locatorDescription: String) -> String {
+        "\(prefix): Element not found for app '\(appIdentifier)' with locator \(locatorDescription)."
     }
 }

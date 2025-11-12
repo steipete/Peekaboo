@@ -30,25 +30,21 @@ func attributesMatch(
         return false
     }
 
+    return evaluateAttributeMatches(element: element, matchDetails: matchDetails, depth: depth)
+}
+
+@MainActor
+private func evaluateAttributeMatches(
+    element: Element,
+    matchDetails: [String: String],
+    depth: Int
+) -> Bool {
     for (key, expectedValue) in matchDetails {
-        if key == AXMiscConstants.computedNameAttributeKey + "_equals" ||
-            key == AXMiscConstants.computedNameAttributeKey + "_contains"
-        {
+        if shouldSkipComputedCheck(key) || shouldSkipRoleCheck(key) {
             continue
         }
-        if key ==
-            AXAttributeNames.kAXRoleAttribute
-        {
-            continue // Already handled by ElementSearch's role check or not a primary filter here
-        }
 
-        if key == AXAttributeNames.kAXEnabledAttribute ||
-            key == AXAttributeNames.kAXFocusedAttribute ||
-            key == AXAttributeNames.kAXHiddenAttribute ||
-            key == AXAttributeNames.kAXElementBusyAttribute ||
-            key == AXMiscConstants.isIgnoredAttributeKey ||
-            key == AXAttributeNames.kAXMainAttribute
-        {
+        if isBooleanAttribute(key) {
             if !matchBooleanAttribute(
                 element: element,
                 key: key,
@@ -60,10 +56,7 @@ func attributesMatch(
             continue
         }
 
-        if key == AXAttributeNames.kAXActionNamesAttribute ||
-            key == AXAttributeNames.kAXAllowedValuesAttribute ||
-            key == AXAttributeNames.kAXChildrenAttribute
-        {
+        if isArrayAttribute(key) {
             if !matchArrayAttribute(
                 element: element,
                 key: key,
@@ -92,4 +85,34 @@ func attributesMatch(
         line: #line
     )
     return true
+}
+
+private func shouldSkipComputedCheck(_ key: String) -> Bool {
+    key == AXMiscConstants.computedNameAttributeKey + "_equals" ||
+        key == AXMiscConstants.computedNameAttributeKey + "_contains"
+}
+
+private func shouldSkipRoleCheck(_ key: String) -> Bool {
+    key == AXAttributeNames.kAXRoleAttribute
+}
+
+private func isBooleanAttribute(_ key: String) -> Bool {
+    let booleanKeys: Set<String> = [
+        AXAttributeNames.kAXEnabledAttribute,
+        AXAttributeNames.kAXFocusedAttribute,
+        AXAttributeNames.kAXHiddenAttribute,
+        AXAttributeNames.kAXElementBusyAttribute,
+        AXMiscConstants.isIgnoredAttributeKey,
+        AXAttributeNames.kAXMainAttribute
+    ]
+    return booleanKeys.contains(key)
+}
+
+private func isArrayAttribute(_ key: String) -> Bool {
+    let arrayKeys: Set<String> = [
+        AXAttributeNames.kAXActionNamesAttribute,
+        AXAttributeNames.kAXAllowedValuesAttribute,
+        AXAttributeNames.kAXChildrenAttribute
+    ]
+    return arrayKeys.contains(key)
 }

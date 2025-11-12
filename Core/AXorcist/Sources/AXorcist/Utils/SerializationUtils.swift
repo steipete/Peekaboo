@@ -7,41 +7,51 @@ import Foundation
 
 // Recursively sanitize value into JSON-encodable form
 func sanitizeValue(_ val: Any) -> Any {
-    switch val {
-    case let notif as AXNotification: // Assuming AXNotification is accessible
+    if let specialValue = sanitizeSpecialValue(val) {
+        return specialValue
+    }
+    if let dict = val as? [String: Any] {
+        return dict.reduce(into: [String: Any]()) { result, pair in
+            result[pair.key] = sanitizeValue(pair.value)
+        }
+    }
+    if let array = val as? [Any] {
+        return array.map { sanitizeValue($0) }
+    }
+    if isPrimitiveJSONValue(val) {
+        return val
+    }
+    return String(describing: val)
+}
+
+private func sanitizeSpecialValue(_ value: Any) -> Any? {
+    switch value {
+    case let notif as AXNotification:
         return notif.rawValue
     case is AXUIElement:
-        return "<AXUIElement>" // Placeholder for opaque AXUIElementRef
-    case let elem as Element: // Assuming Element is accessible
-        return String(describing: elem) // Or a more specific brief description if safe
-    case let attrStr as NSAttributedString:
-        return attrStr.string
+        return "<AXUIElement>"
+    case let element as Element:
+        return String(describing: element)
+    case let attributed as NSAttributedString:
+        return attributed.string
     case let rect as CGRect:
-        return ["x": rect.origin.x, "y": rect.origin.y, "width": rect.size.width, "height": rect.size.height]
+        return [
+            "x": rect.origin.x,
+            "y": rect.origin.y,
+            "width": rect.size.width,
+            "height": rect.size.height
+        ]
     case let point as CGPoint:
         return ["x": point.x, "y": point.y]
     case let size as CGSize:
         return ["width": size.width, "height": size.height]
-    case let dict as [String: Any]:
-        var newDict: [String: Any] = [:]
-        for (key, value) in dict {
-            newDict[key] = sanitizeValue(value)
-        }
-        return newDict
-    case let arr as [Any]:
-        return arr.map { sanitizeValue($0) }
-    // Consider adding cases for other common non-JSON-friendly types like URL, Date etc.
-    // For Date, you might convert to ISO8601 string or epoch timestamp.
     default:
-        // If it's a simple value type (Int, Double, Bool, String), it's already fine.
-        // For anything else, converting to String is a safe fallback.
-        // However, be mindful that this might not be the desired representation.
-        if val is String || val is Int || val is Double || val is Bool || val is NSNull {
-            return val
-        }
-        // Fallback for unknown complex types
-        return String(describing: val)
+        return nil
     }
+}
+
+private func isPrimitiveJSONValue(_ value: Any) -> Bool {
+    value is String || value is Int || value is Double || value is Bool || value is NSNull
 }
 
 // Ensure all nested values are JSON-serialisable (NSString/NSNumber/NSNull/Array/Dict)

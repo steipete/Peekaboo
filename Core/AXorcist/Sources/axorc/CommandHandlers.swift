@@ -28,65 +28,17 @@ func handlePerformActionCommand(command: CommandEnvelope, axorcist: AXorcist, de
 @MainActor
 func handleBatchCommand(command: CommandEnvelope, axorcist: AXorcist, debugCLI: Bool) -> String {
     guard let batchCmd = command.command.toAXCommand(commandEnvelope: command) else {
-        let errorResponse = BatchQueryResponse(
-            commandId: command.commandId,
-            status: "error",
-            message: "Failed to create AXCommand for Batch"
-        )
-        return encodeToJson(errorResponse) ??
-            "{\"error\": \"Encoding batch response failed\", \"commandId\": \"\(command.commandId)\"}"
+        return encodeBatchConversionFailure(commandId: command.commandId)
     }
 
     let axResponse = axorcist.runCommand(AXCommandEnvelope(commandID: command.commandId, command: batchCmd))
-
-    var finalResponseObject = BatchQueryResponse(commandId: command.commandId, status: "pending")
-    var logsForResponse: [String]?
-
-    if axResponse.status == "success" {
-        if let batchPayload = axResponse.payload?.value as? BatchResponsePayload {
-            finalResponseObject = BatchQueryResponse(
-                commandId: command.commandId,
-                status: "success",
-                data: batchPayload.results,
-                errors: batchPayload.errors,
-                debugLogs: nil
-            )
-        } else {
-            finalResponseObject = BatchQueryResponse(
-                commandId: command.commandId,
-                status: "error",
-                message: "Batch success but payload was not BatchResponsePayload",
-                debugLogs: nil
-            )
-        }
-    } else {
-        let errorMessage = axResponse.error?.message ?? "Batch operation failed with unknown error."
-        if let batchPayload = axResponse.payload?.value as? BatchResponsePayload {
-            finalResponseObject = BatchQueryResponse(
-                commandId: command.commandId,
-                status: "error",
-                message: errorMessage,
-                data: batchPayload.results,
-                errors: batchPayload.errors,
-                debugLogs: nil
-            )
-        } else {
-            finalResponseObject = BatchQueryResponse(
-                commandId: command.commandId,
-                status: "error",
-                message: errorMessage,
-                debugLogs: nil
-            )
-        }
-    }
+    var finalResponseObject = buildBatchResponse(commandId: command.commandId, axResponse: axResponse)
 
     if debugCLI || command.debugLogging {
-        logsForResponse = axGetLogsAsStrings()
-        finalResponseObject.debugLogs = logsForResponse
+        finalResponseObject.debugLogs = axGetLogsAsStrings()
     }
 
-    return encodeToJson(finalResponseObject) ??
-        "{\"error\": \"Encoding batch response failed\", \"commandId\": \"\(command.commandId)\"}"
+    return encodeBatchQueryResponse(finalResponseObject)
 }
 
 @MainActor
@@ -193,4 +145,64 @@ func handleSimpleCommand(
         debugCLI: debugCLI,
         commandDebugLogging: command.debugLogging
     )
+}
+
+@MainActor
+private func encodeBatchConversionFailure(commandId: String) -> String {
+    let response = BatchQueryResponse(
+        commandId: commandId,
+        status: "error",
+        message: "Failed to create AXCommand for Batch"
+    )
+    return encodeBatchQueryResponse(response, commandId: commandId)
+}
+
+private func buildBatchResponse(commandId: String, axResponse: AXCommandResponse) -> BatchQueryResponse {
+    if axResponse.status == "success" {
+        return buildSuccessBatchResponse(commandId: commandId, axResponse: axResponse)
+    }
+
+    let errorMessage = axResponse.error?.message ?? "Batch operation failed with unknown error."
+    guard let payload = axResponse.payload?.value as? BatchResponsePayload else {
+        return BatchQueryResponse(commandId: commandId, status: "error", message: errorMessage, debugLogs: nil)
+    }
+
+    return BatchQueryResponse(
+        commandId: commandId,
+        status: "error",
+        message: errorMessage,
+        data: payload.results,
+        errors: payload.errors,
+        debugLogs: nil
+    )
+}
+
+private func buildSuccessBatchResponse(commandId: String, axResponse: AXCommandResponse) -> BatchQueryResponse {
+    guard let payload = axResponse.payload?.value as? BatchResponsePayload else {
+        return BatchQueryResponse(
+            commandId: commandId,
+            status: "error",
+            message: "Batch success but payload was not BatchResponsePayload",
+            debugLogs: nil
+        )
+    }
+
+    return BatchQueryResponse(
+        commandId: commandId,
+        status: "success",
+        data: payload.results,
+        errors: payload.errors,
+        debugLogs: nil
+    )
+}
+
+private func encodeBatchQueryResponse(
+    _ response: BatchQueryResponse,
+    commandId: String? = nil
+) -> String {
+    if let json = encodeToJson(response) {
+        return json
+    }
+    let identifier = commandId ?? response.commandId
+    return "{\"error\": \"Encoding batch response failed\", \"commandId\": \"\(identifier)\"}"
 }

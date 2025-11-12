@@ -57,9 +57,10 @@ func navigateToElement(
         }
     }
 
+    let finalDescription = currentElement.briefDescription(option: .smart)
     GlobalAXLogger.shared.log(AXLogEntry(
         level: .debug,
-        message: "Navigation successful. Final element: \(currentElement.briefDescription(option: ValueFormatOption.smart))"
+        message: "Navigation successful. Final element: \(finalDescription)"
     ))
     return currentElement
 }

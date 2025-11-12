@@ -255,7 +255,9 @@ private func performGenericAttributeMatch(
         expectedValue,
         matchType,
         caseSensitive: true,
-        attributeName: key,
-        elementDescriptionForLog: elementDescriptionForLog
+        context: StringComparisonContext(
+            attributeName: key,
+            elementDescription: elementDescriptionForLog
+        )
     )
 }

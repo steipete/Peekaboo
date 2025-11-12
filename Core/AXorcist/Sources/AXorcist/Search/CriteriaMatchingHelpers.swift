@@ -54,19 +54,22 @@ public func elementMatchesAnyCriterion(
             matchType: effectiveMatchType,
             elementDescriptionForLog: element.briefDescription(option: ValueFormatOption.raw)
         ) {
+            let description = element.briefDescription(option: .raw)
             GlobalAXLogger.shared.log(AXLogEntry(
                 level: .debug,
-                message: "elementMatchesAnyCriterion: Element '\(element.briefDescription(option: ValueFormatOption.raw))' " +
-                    "MATCHED criterion: \(criterion)."
+                message: "elementMatchesAnyCriterion: Element '\(description)' MATCHED criterion: \(criterion)."
             ))
             // Found one criterion that matches
             return true
         }
     }
+    let description = element.briefDescription(option: .raw)
     GlobalAXLogger.shared.log(AXLogEntry(
         level: .debug,
-        message: "elementMatchesAnyCriterion: Element '\(element.briefDescription(option: ValueFormatOption.raw))' " +
-            "DID NOT MATCH ANY of \(criteria.count) criteria: \(criteria)."
+        message: [
+            "elementMatchesAnyCriterion: Element '\(description)' DID NOT MATCH ANY",
+            "of \(criteria.count) criteria: \(criteria)."
+        ].joined(separator: " ")
     ))
     return false
 }

@@ -67,36 +67,7 @@ public class AXorcist {
             message: "RunCommand: ID '\(commandEnvelope.commandID)', Type: \(commandEnvelope.command.type)"
         ))
 
-        let response: AXResponse = switch commandEnvelope.command {
-        case let .query(queryCommand):
-            handleQuery(command: queryCommand, maxDepth: queryCommand.maxDepthForSearch)
-        case let .performAction(actionCommand):
-            handlePerformAction(command: actionCommand)
-        case let .getAttributes(getAttributesCommand):
-            handleGetAttributes(command: getAttributesCommand)
-        case let .describeElement(describeCommand):
-            handleDescribeElement(command: describeCommand)
-        case let .extractText(extractTextCommand):
-            handleExtractText(command: extractTextCommand)
-        case let .batch(batchCommandEnvelope):
-            // The batch command itself is an envelope, pass it directly to handleBatchCommands.
-            handleBatchCommands(command: batchCommandEnvelope)
-        case let .setFocusedValue(setFocusedValueCommand):
-            handleSetFocusedValue(command: setFocusedValueCommand)
-        case let .getElementAtPoint(getElementAtPointCommand):
-            handleGetElementAtPoint(command: getElementAtPointCommand)
-        case let .getFocusedElement(getFocusedElementCommand):
-            handleGetFocusedElement(command: getFocusedElementCommand)
-        case let .observe(observeCommand):
-            handleObserve(command: observeCommand)
-        case let .collectAll(collectAllCommand):
-            handleCollectAll(command: collectAllCommand)
-            // Add other command types here
-            // default:
-            //     let errormsg = "AXorcist/RunCommand: Unknown command type: \(commandEnvelope.command.type)"
-            //     logger.log(AXLogEntry(level: .error, message: errormsg))
-            //     response = .errorResponse(message: errormsg, code: .unknownCommand)
-        }
+        let response = execute(commandEnvelope: commandEnvelope)
 
         logger.log(AXLogEntry(
             level: .info,
@@ -154,13 +125,16 @@ public class AXorcist {
         // Collect all elements recursively
         var collectedElements: [AXElementData] = []
         let attributesToFetch = command.attributesToReturn ?? AXMiscConstants.defaultAttributesToFetch
+        let collectionContext = ElementCollectionContext(
+            maxDepth: command.maxDepth,
+            filterCriteria: command.filterCriteria,
+            attributesToFetch: attributesToFetch
+        )
 
         collectElementsRecursively(
             element: rootElement,
             currentDepth: 0,
-            maxDepth: command.maxDepth,
-            filterCriteria: command.filterCriteria,
-            attributesToFetch: attributesToFetch,
+            context: collectionContext,
             collectedElements: &collectedElements
         )
 
@@ -179,26 +153,77 @@ public class AXorcist {
 
     private let logger = GlobalAXLogger.shared // Use the shared logger
 
+    private func execute(commandEnvelope: AXCommandEnvelope) -> AXResponse {
+        if let response = executeQueryRelatedCommands(commandEnvelope) {
+            return response
+        }
+        if let response = executeInteractionCommands(commandEnvelope) {
+            return response
+        }
+        return executeObserverCommands(commandEnvelope)
+    }
+
+    private func executeQueryRelatedCommands(_ envelope: AXCommandEnvelope) -> AXResponse? {
+        switch envelope.command {
+        case let .query(queryCommand):
+            return handleQuery(command: queryCommand, maxDepth: queryCommand.maxDepthForSearch)
+        case let .getAttributes(getAttributesCommand):
+            return handleGetAttributes(command: getAttributesCommand)
+        case let .describeElement(describeCommand):
+            return handleDescribeElement(command: describeCommand)
+        case let .collectAll(collectAllCommand):
+            return handleCollectAll(command: collectAllCommand)
+        default:
+            return nil
+        }
+    }
+
+    private func executeInteractionCommands(_ envelope: AXCommandEnvelope) -> AXResponse? {
+        switch envelope.command {
+        case let .performAction(actionCommand):
+            return handlePerformAction(command: actionCommand)
+        case let .extractText(extractTextCommand):
+            return handleExtractText(command: extractTextCommand)
+        case let .setFocusedValue(setFocusedValueCommand):
+            return handleSetFocusedValue(command: setFocusedValueCommand)
+        default:
+            return nil
+        }
+    }
+
+    private func executeObserverCommands(_ envelope: AXCommandEnvelope) -> AXResponse {
+        switch envelope.command {
+        case let .batch(batchCommandEnvelope):
+            return handleBatchCommands(command: batchCommandEnvelope)
+        case let .getElementAtPoint(getElementAtPointCommand):
+            return handleGetElementAtPoint(command: getElementAtPointCommand)
+        case let .getFocusedElement(getFocusedElementCommand):
+            return handleGetFocusedElement(command: getFocusedElementCommand)
+        case let .observe(observeCommand):
+            return handleObserve(command: observeCommand)
+        default:
+            fatalError("Unsupported command type: \(envelope.command)")
+        }
+    }
+
     private func collectElementsRecursively(
         element: Element,
         currentDepth: Int,
-        maxDepth: Int,
-        filterCriteria: [String: String]?,
-        attributesToFetch: [String],
+        context: ElementCollectionContext,
         collectedElements: inout [AXElementData]
     ) {
         // Check depth limit
-        guard currentDepth <= maxDepth else { return }
+        guard currentDepth <= context.maxDepth else { return }
 
         // Apply filter criteria if provided
-        if let criteria = filterCriteria {
+        if let criteria = context.filterCriteria {
             guard elementMatchesCriteria(element, criteria: criteria) else { return }
         }
 
         // Build element data
         let elementData = buildQueryResponse(
             element: element,
-            attributesToFetch: attributesToFetch,
+            attributesToFetch: context.attributesToFetch,
             includeChildrenBrief: false
         )
         collectedElements.append(elementData)
@@ -209,12 +234,16 @@ public class AXorcist {
                 collectElementsRecursively(
                     element: child,
                     currentDepth: currentDepth + 1,
-                    maxDepth: maxDepth,
-                    filterCriteria: filterCriteria,
-                    attributesToFetch: attributesToFetch,
+                    context: context,
                     collectedElements: &collectedElements
                 )
             }
         }
+    }
+
+    private struct ElementCollectionContext {
+        let maxDepth: Int
+        let filterCriteria: [String: String]?
+        let attributesToFetch: [String]
     }
 }

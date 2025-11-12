@@ -108,6 +108,27 @@ func getComputedAttributes(for element: Element) async -> [String: AttributeData
 private struct AttributeDirectMapping {
     let attributeName: String
     private let strategyProvider: ((Element, OutputFormat) -> Any?)?
+    private static let strategies: [String: (Element, OutputFormat) -> Any?] = [
+        AXAttributeNames.kAXPathHintAttribute: { element, _ in
+            element.attribute(Attribute<String>(AXAttributeNames.kAXPathHintAttribute))
+        },
+        AXAttributeNames.kAXRoleAttribute: { element, _ in element.role() },
+        AXAttributeNames.kAXSubroleAttribute: { element, _ in element.subrole() },
+        AXAttributeNames.kAXTitleAttribute: { element, _ in element.title() },
+        AXAttributeNames.kAXDescriptionAttribute: { element, _ in element.descriptionText() },
+        AXAttributeNames.kAXEnabledAttribute: AttributeDirectMapping.booleanFormatter { $0.isEnabled() },
+        AXAttributeNames.kAXFocusedAttribute: AttributeDirectMapping.booleanFormatter { $0.isFocused() },
+        AXAttributeNames.kAXHiddenAttribute: AttributeDirectMapping.booleanFormatter { $0.isHidden() },
+        AXMiscConstants.isIgnoredAttributeKey: { element, format in
+            let value = element.isIgnored()
+            return format == .textContent ? (value ? "true" : "false") : value
+        },
+        "PID": AttributeDirectMapping.numericFormatter { element in
+            guard let pid = element.pid() else { return nil }
+            return Int(pid)
+        },
+        AXAttributeNames.kAXElementBusyAttribute: AttributeDirectMapping.booleanFormatter { $0.isElementBusy() }
+    ]
 
     init?(attributeName: String) {
         self.attributeName = attributeName
@@ -124,38 +145,7 @@ private struct AttributeDirectMapping {
     }
 
     private static func makeStrategy(for attributeName: String) -> ((Element, OutputFormat) -> Any?)? {
-        switch attributeName {
-        case AXAttributeNames.kAXPathHintAttribute:
-            return { element, _ in element.attribute(Attribute<String>(AXAttributeNames.kAXPathHintAttribute)) }
-        case AXAttributeNames.kAXRoleAttribute:
-            return { element, _ in element.role() }
-        case AXAttributeNames.kAXSubroleAttribute:
-            return { element, _ in element.subrole() }
-        case AXAttributeNames.kAXTitleAttribute:
-            return { element, _ in element.title() }
-        case AXAttributeNames.kAXDescriptionAttribute:
-            return { element, _ in element.descriptionText() }
-        case AXAttributeNames.kAXEnabledAttribute:
-            return AttributeDirectMapping.booleanFormatter { $0.isEnabled() }
-        case AXAttributeNames.kAXFocusedAttribute:
-            return AttributeDirectMapping.booleanFormatter { $0.isFocused() }
-        case AXAttributeNames.kAXHiddenAttribute:
-            return AttributeDirectMapping.booleanFormatter { $0.isHidden() }
-        case AXMiscConstants.isIgnoredAttributeKey:
-            return { element, format in
-                let value = element.isIgnored()
-                return format == .textContent ? (value ? "true" : "false") : value
-            }
-        case "PID":
-            return AttributeDirectMapping.numericFormatter { element in
-                guard let pid = element.pid() else { return nil }
-                return Int(pid)
-            }
-        case AXAttributeNames.kAXElementBusyAttribute:
-            return AttributeDirectMapping.booleanFormatter { $0.isElementBusy() }
-        default:
-            return nil
-        }
+        strategies[attributeName]
     }
 
     private static func booleanFormatter(

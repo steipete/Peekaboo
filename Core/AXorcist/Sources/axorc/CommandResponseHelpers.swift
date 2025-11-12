@@ -50,7 +50,11 @@ func finalizeAndEncodeResponse(
         finalResponseObject.debugLogs = logsForResponse
     }
 
-    return encodeToJson(finalResponseObject) ?? "{\"error\": \"JSON encoding failed\", \"commandId\": \"\(commandId)\"}"
+    if let encoded = encodeToJson(finalResponseObject) {
+        return encoded
+    }
+
+    return "{\"error\": \"JSON encoding failed\", \"commandId\": \"\(commandId)\"}"
 }
 
 func encodeToJson(_ object: some Encodable) -> String? {
@@ -77,7 +81,10 @@ extension EncodingError {
             let pathDescription = MainActor.assumeIsolated {
                 context.codingPath.map { $0.stringValue }.joined(separator: ".")
             }
-            return "InvalidValue: '\(value)' attempting to encode at path '\(pathDescription)'. Debug: \(context.debugDescription)"
+            return [
+                "InvalidValue: '\(value)' attempting to encode at path '\(pathDescription)'.",
+                "Debug: \(context.debugDescription)"
+            ].joined(separator: " ")
         @unknown default:
             return "Unknown encoding error. Localized: \(self.localizedDescription)"
         }

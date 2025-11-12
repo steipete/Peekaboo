@@ -24,8 +24,10 @@ func matchRoleAttribute(
         expectedValue,
         matchType,
         caseSensitive: false,
-        attributeName: AXAttributeNames.kAXRoleAttribute,
-        elementDescriptionForLog: elementDescriptionForLog
+        context: StringComparisonContext(
+            attributeName: AXAttributeNames.kAXRoleAttribute,
+            elementDescription: elementDescriptionForLog
+        )
     )
 }
 
@@ -43,8 +45,10 @@ func matchSubroleAttribute(
         expectedValue,
         matchType,
         caseSensitive: false,
-        attributeName: AXAttributeNames.kAXSubroleAttribute,
-        elementDescriptionForLog: elementDescriptionForLog
+        context: StringComparisonContext(
+            attributeName: AXAttributeNames.kAXSubroleAttribute,
+            elementDescription: elementDescriptionForLog
+        )
     )
 }
 
@@ -62,8 +66,10 @@ func matchIdentifierAttribute(
         expectedValue,
         matchType,
         caseSensitive: true,
-        attributeName: AXAttributeNames.kAXIdentifierAttribute,
-        elementDescriptionForLog: elementDescriptionForLog
+        context: StringComparisonContext(
+            attributeName: AXAttributeNames.kAXIdentifierAttribute,
+            elementDescription: elementDescriptionForLog
+        )
     )
 }
 
@@ -141,8 +147,10 @@ func matchComputedNameAttributes(
                 combinedName,
                 expectedValue,
                 matchType,
-                attributeName: attributeName,
-                elementDescriptionForLog: elementDescriptionForLog
+                context: StringComparisonContext(
+                    attributeName: attributeName,
+                    elementDescription: elementDescriptionForLog
+                )
             )
         }
     }
@@ -151,7 +159,9 @@ func matchComputedNameAttributes(
         computedName,
         expectedValue,
         matchType,
-        attributeName: attributeName,
-        elementDescriptionForLog: elementDescriptionForLog
+        context: StringComparisonContext(
+            attributeName: attributeName,
+            elementDescription: elementDescriptionForLog
+        )
     )
 }
