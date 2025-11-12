@@ -1,0 +1,376 @@
+import Commander
+import Testing
+@testable import PeekabooCLI
+
+@Suite("Commander Binder Command Binding")
+struct CommanderBinderCommandBindingTests {
+    @Test("Sleep command duration binding")
+    func bindSleepCommand() throws {
+        let parsed = ParsedValues(positional: ["2500"], options: [:], flags: [])
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: SleepCommand.self, parsedValues: parsed)
+        #expect(command.duration == 2500)
+    }
+
+    @Test("Sleep command binding errors")
+    func bindSleepCommandErrors() {
+        let missing = ParsedValues(positional: [], options: [:], flags: [])
+        #expect(throws: CommanderBindingError.missingArgument(label: "duration")) {
+            _ = try CommanderCLIBinder.instantiateCommand(ofType: SleepCommand.self, parsedValues: missing)
+        }
+
+        let invalid = ParsedValues(positional: ["abc"], options: [:], flags: [])
+        #expect(throws: CommanderBindingError.invalidArgument(
+            label: "duration",
+            value: "abc",
+            reason: "Unable to parse Int"
+        )) {
+            _ = try CommanderCLIBinder.instantiateCommand(ofType: SleepCommand.self, parsedValues: invalid)
+        }
+    }
+
+    @Test("Clean command option + flag binding")
+    func bindCleanCommand() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: ["olderThan": ["48"], "session": ["ignored"]],
+            flags: ["dryRun"]
+        )
+        var command = try CommanderCLIBinder.instantiateCommand(ofType: CleanCommand.self, parsedValues: parsed)
+        #expect(command.dryRun == true)
+        #expect(command.olderThan == 48)
+        #expect(command.session == "ignored")
+
+        let allSessions = ParsedValues(positional: [], options: [:], flags: ["allSessions"])
+        command = try CommanderCLIBinder.instantiateCommand(ofType: CleanCommand.self, parsedValues: allSessions)
+        #expect(command.allSessions == true)
+    }
+
+    @Test("Run command binding")
+    func bindRunCommand() throws {
+        let parsed = ParsedValues(
+            positional: ["/tmp/demo.peekaboo.json"],
+            options: ["output": ["/tmp/result.json"]],
+            flags: ["noFailFast"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: RunCommand.self, parsedValues: parsed)
+        #expect(command.scriptPath == "/tmp/demo.peekaboo.json")
+        #expect(command.output == "/tmp/result.json")
+        #expect(command.noFailFast == true)
+    }
+
+    @Test("Run command requires script path")
+    func bindRunCommandErrors() {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        #expect(throws: CommanderBindingError.missingArgument(label: "scriptPath")) {
+            _ = try CommanderCLIBinder.instantiateCommand(ofType: RunCommand.self, parsedValues: parsed)
+        }
+    }
+
+    @Test("Image command binding")
+    func bindImageCommand() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "app": ["Safari"],
+                "pid": ["123"],
+                "path": ["/tmp/out.png"],
+                "mode": ["screen"],
+                "windowTitle": ["Inbox"],
+                "windowIndex": ["2"],
+                "screenIndex": ["1"],
+                "format": ["jpg"],
+                "captureFocus": ["foreground"],
+                "analyze": ["describe"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: ImageCommand.self, parsedValues: parsed)
+        #expect(command.app == "Safari")
+        #expect(command.pid == 123)
+        #expect(command.path == "/tmp/out.png")
+        #expect(command.mode == .screen)
+        #expect(command.windowTitle == "Inbox")
+        #expect(command.windowIndex == 2)
+        #expect(command.screenIndex == 1)
+        #expect(command.format == .jpg)
+        #expect(command.captureFocus == .foreground)
+        #expect(command.analyze == "describe")
+    }
+
+    @Test("Image command invalid mode")
+    func bindImageCommandErrors() {
+        let parsed = ParsedValues(positional: [], options: ["mode": ["banana"]], flags: [])
+        #expect(throws: CommanderBindingError.invalidArgument(
+            label: "mode",
+            value: "banana",
+            reason: "Unknown value for CaptureMode"
+        )) {
+            _ = try CommanderCLIBinder.instantiateCommand(ofType: ImageCommand.self, parsedValues: parsed)
+        }
+    }
+
+    @Test("See command binding")
+    func bindSeeCommand() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "app": ["Safari"],
+                "pid": ["4321"],
+                "windowTitle": ["Inbox"],
+                "mode": ["screen"],
+                "path": ["/tmp/see.png"],
+                "screenIndex": ["2"],
+                "analyze": ["describe"]
+            ],
+            flags: ["annotate"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: SeeCommand.self, parsedValues: parsed)
+        #expect(command.app == "Safari")
+        #expect(command.pid == 4321)
+        #expect(command.windowTitle == "Inbox")
+        #expect(command.mode == .screen)
+        #expect(command.path == "/tmp/see.png")
+        #expect(command.screenIndex == 2)
+        #expect(command.annotate == true)
+        #expect(command.analyze == "describe")
+    }
+
+    @Test("Tools command binding")
+    func bindToolsCommand() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: ["mcp": ["github"]],
+            flags: ["nativeOnly", "includeDisabled", "noSort", "groupByServer"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: ToolsCommand.self, parsedValues: parsed)
+        #expect(command.nativeOnly == true)
+        #expect(command.mcpOnly == false)
+        #expect(command.includeDisabled == true)
+        #expect(command.noSort == true)
+        #expect(command.groupByServer == true)
+        #expect(command.mcp == "github")
+    }
+
+    @Test("List menubar binding")
+    func bindListMenubarCommand() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        _ = try CommanderCLIBinder.instantiateCommand(ofType: ListCommand.MenuBarSubcommand.self, parsedValues: parsed)
+    }
+
+    @Test("List windows binding")
+    func bindListWindowsCommand() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "app": ["Safari"],
+                "pid": ["123"],
+                "includeDetails": ["bounds,ids"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: ListCommand.WindowsSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.app == "Safari")
+        #expect(command.pid == 123)
+        #expect(command.includeDetails == "bounds,ids")
+    }
+
+    @Test("List windows requires app")
+    func bindListWindowsCommandError() {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        #expect(throws: CommanderBindingError.missingArgument(label: "app")) {
+            _ = try CommanderCLIBinder.instantiateCommand(
+                ofType: ListCommand.WindowsSubcommand.self,
+                parsedValues: parsed
+            )
+        }
+    }
+
+    @Test("Permissions status binding")
+    func bindPermissionsStatus() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        _ = try CommanderCLIBinder.instantiateCommand(
+            ofType: PermissionsCommand.StatusSubcommand.self,
+            parsedValues: parsed
+        )
+    }
+
+    @Test("Permissions grant binding")
+    func bindPermissionsGrant() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        _ = try CommanderCLIBinder.instantiateCommand(
+            ofType: PermissionsCommand.GrantSubcommand.self,
+            parsedValues: parsed
+        )
+    }
+
+    @Test("Window close binding populates identification options")
+    func bindWindowClose() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "app": ["Safari"],
+                "pid": ["4321"],
+                "windowTitle": ["Inbox"],
+                "windowIndex": ["2"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: WindowCommand.CloseSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.windowOptions.app == "Safari")
+        #expect(command.windowOptions.pid == 4321)
+        #expect(command.windowOptions.windowTitle == "Inbox")
+        #expect(command.windowOptions.windowIndex == 2)
+    }
+
+    @Test("Window move binding handles coordinates")
+    func bindWindowMove() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "app": ["Safari"],
+                "x": ["120"],
+                "y": ["340"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: WindowCommand.MoveSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.windowOptions.app == "Safari")
+        #expect(command.x == 120)
+        #expect(command.y == 340)
+    }
+
+    @Test("Window move requires coordinates")
+    func bindWindowMoveMissingCoordinate() {
+        let parsed = ParsedValues(
+            positional: [],
+            options: ["app": ["Safari"], "x": ["50"]],
+            flags: []
+        )
+        #expect(throws: CommanderBindingError.missingArgument(label: "y")) {
+            _ = try CommanderCLIBinder.instantiateCommand(
+                ofType: WindowCommand.MoveSubcommand.self,
+                parsedValues: parsed
+            )
+        }
+    }
+
+    @Test("Window focus binding maps focus options")
+    func bindWindowFocus() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "app": ["Terminal"],
+                "focusTimeoutSeconds": ["5.5"],
+                "focusRetryCountValue": ["3"]
+            ],
+            flags: ["noAutoFocus", "spaceSwitch", "bringToCurrentSpace"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: WindowCommand.FocusSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.windowOptions.app == "Terminal")
+        #expect(command.focusOptions.noAutoFocus == true)
+        #expect(command.focusOptions.spaceSwitch == true)
+        #expect(command.focusOptions.bringToCurrentSpace == true)
+        #expect(command.focusOptions.focusTimeoutSeconds == 5.5)
+        #expect(command.focusOptions.focusRetryCountValue == 3)
+    }
+
+    @Test("Window list binding")
+    func bindWindowList() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "app": ["Finder"],
+                "pid": ["999"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: WindowCommand.WindowListSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.app == "Finder")
+        #expect(command.pid == 999)
+    }
+
+    @Test("Click command binding")
+    func bindClickCommand() throws {
+        let parsed = ParsedValues(
+            positional: ["Submit"],
+            options: [
+                "session": ["abc"],
+                "on": ["B1"],
+                "app": ["Safari"],
+                "waitFor": ["2500"]
+            ],
+            flags: ["double", "noAutoFocus"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: ClickCommand.self, parsedValues: parsed)
+        #expect(command.query == "Submit")
+        #expect(command.session == "abc")
+        #expect(command.on == "B1")
+        #expect(command.app == "Safari")
+        #expect(command.waitFor == 2500)
+        #expect(command.double == true)
+        #expect(command.focusOptions.noAutoFocus == true)
+    }
+
+    @Test("Type command binding")
+    func bindTypeCommand() throws {
+        let parsed = ParsedValues(
+            positional: ["Hello"],
+            options: [
+                "session": ["xyz"],
+                "delay": ["10"],
+                "tab": ["2"],
+                "app": ["Notes"],
+                "focusTimeoutSeconds": ["3.5"]
+            ],
+            flags: ["pressReturn", "escape", "delete", "clear", "spaceSwitch"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: TypeCommand.self, parsedValues: parsed)
+        #expect(command.text == "Hello")
+        #expect(command.session == "xyz")
+        #expect(command.delay == 10)
+        #expect(command.tab == 2)
+        #expect(command.pressReturn == true)
+        #expect(command.escape == true)
+        #expect(command.delete == true)
+        #expect(command.clear == true)
+        #expect(command.app == "Notes")
+        #expect(command.focusOptions.spaceSwitch == true)
+        #expect(command.focusOptions.focusTimeoutSeconds == 3.5)
+    }
+
+    @Test("Press command binding")
+    func bindPressCommand() throws {
+        let parsed = ParsedValues(
+            positional: ["cmd", "c"],
+            options: [
+                "count": ["3"],
+                "delay": ["25"],
+                "hold": ["75"],
+                "session": ["sess-123"]
+            ],
+            flags: ["noAutoFocus"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: PressCommand.self, parsedValues: parsed)
+        #expect(command.keys == ["cmd", "c"])
+        #expect(command.count == 3)
+        #expect(command.delay == 25)
+        #expect(command.hold == 75)
+        #expect(command.session == "sess-123")
+        #expect(command.focusOptions.noAutoFocus == true)
+    }
+}
