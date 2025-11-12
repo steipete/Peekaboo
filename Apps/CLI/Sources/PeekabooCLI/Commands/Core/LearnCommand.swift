@@ -2,6 +2,8 @@ import Commander
 import Foundation
 import PeekabooCore
 
+typealias PeekabooToolParameter = ParameterDefinition
+
 @MainActor
 
 struct LearnCommand {
@@ -25,6 +27,14 @@ struct LearnCommand {
     }
 
     private func outputComprehensiveGuide(systemPrompt: String, tools: [PeekabooToolDefinition]) {
+        self.printGuideHeader(systemPrompt: systemPrompt)
+        self.printToolCatalog(tools: tools)
+        self.printBestPractices()
+        self.printQuickReference()
+        self.outputCommanderSummary()
+    }
+
+    private func printGuideHeader(systemPrompt: String) {
         print("""
         # Peekaboo Comprehensive Guide
 
@@ -36,52 +46,66 @@ struct LearnCommand {
 
         ## Available Tools
 
-        Peekaboo provides 30+ tools for macOS automation. Each tool is designed for a specific purpose and can be combined to create powerful workflows.
+        Peekaboo provides 30+ tools for macOS automation. Each tool is designed for a specific purpose and can \
+        be combined to create powerful workflows.
         """)
+    }
 
+    private func printToolCatalog(tools: [PeekabooToolDefinition]) {
         let groupedTools = ToolRegistry.toolsByCategory()
         for category in ToolCategory.allCases {
             guard let categoryTools = groupedTools[category], !categoryTools.isEmpty else { continue }
+            self.printToolCategory(category, tools: categoryTools)
+        }
+    }
 
-            print("\n### \(category.icon) \(category.rawValue) Tools\n")
-            for tool in categoryTools.sorted(by: { $0.name < $1.name }) {
-                print("#### `\(tool.name)`\n")
-                print("\(tool.abstract)\n")
+    private func printToolCategory(_ category: ToolCategory, tools: [PeekabooToolDefinition]) {
+        print("\n### \(category.icon) \(category.rawValue) Tools\n")
+        tools.sorted(by: { $0.name < $1.name }).forEach(self.printToolDetails)
+    }
 
-                if let guidance = tool.agentGuidance {
-                    print("**\(guidance)**\n")
-                }
+    private func printToolDetails(_ tool: PeekabooToolDefinition) {
+        print("#### `\(tool.name)`\n")
+        print("\(tool.abstract)\n")
 
-                if !tool.parameters.isEmpty {
-                    print("**Parameters:**")
-                    for param in tool.parameters where param.cliOptions?.argumentType != .argument {
-                        var line = "- `\(param.name)` (\(param.type)"
-                        if param.required {
-                            line += ", **required**"
-                        }
-                        line += "): \(param.description)"
-                        if let defaultValue = param.defaultValue {
-                            line += " Default: `\(defaultValue)`"
-                        }
-                        print(line)
-
-                        if let options = param.options {
-                            print("  - Options: `\(options.joined(separator: "`, `"))`")
-                        }
-                    }
-                    print()
-                }
-
-                if !tool.examples.isEmpty {
-                    print("**Examples:**")
-                    print("```json")
-                    tool.examples.forEach { print($0) }
-                    print("```")
-                }
-                print()
-            }
+        if let guidance = tool.agentGuidance {
+            print("**\(guidance)**\n")
         }
 
+        if !tool.parameters.isEmpty {
+            self.printParameters(tool.parameters)
+        }
+
+        if !tool.examples.isEmpty {
+            print("**Examples:**")
+            print("```json")
+            tool.examples.forEach { print($0) }
+            print("```")
+        }
+        print()
+    }
+
+    private func printParameters(_ parameters: [PeekabooToolParameter]) {
+        print("**Parameters:**")
+        for param in parameters where param.cliOptions?.argumentType != .argument {
+            var line = "- `\(param.name)` (\(param.type)"
+            if param.required {
+                line += ", **required**"
+            }
+            line += "): \(param.description)"
+            if let defaultValue = param.defaultValue {
+                line += " Default: `\(defaultValue)`"
+            }
+            print(line)
+
+            if let options = param.options {
+                print("  - Options: `\(options.joined(separator: "`, `"))`")
+            }
+        }
+        print()
+    }
+
+    private func printBestPractices() {
         print("""
         ## Usage Best Practices
 
@@ -95,7 +119,11 @@ struct LearnCommand {
            - Typing: `click` the field, then `type` the text.
            - Menus: `menu click --path ...`.
            - Keyboard shortcuts: `hotkey`.
+        """)
+    }
 
+    private func printQuickReference() {
+        print("""
         ## Quick Reference
         - **Vision**: see, screenshot, window_capture
         - **UI Automation**: click, type, scroll, hotkey, swipe, drag
@@ -108,8 +136,6 @@ struct LearnCommand {
         Remember: You are Peekaboo, an AI-powered screen automation assistant.
         Be confident, be helpful, and get things done!
         """)
-
-        self.outputCommanderSummary()
     }
 
     @MainActor
@@ -160,7 +186,8 @@ extension LearnCommand: ParsableCommand {
                 abstract: "Display comprehensive usage guide for AI agents",
                 discussion: """
                 Outputs a complete guide to Peekaboo's automation capabilities in one go.
-                Includes system instructions, tool definitions, and best practices so AI agents can load everything at once.
+                Includes system instructions, tool definitions,
+                and best practices so AI agents can load everything at once.
                 """
             )
         }

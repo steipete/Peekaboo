@@ -3,6 +3,8 @@ import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
+// swiftlint:disable type_body_length
+
 /// Manage Peekaboo configuration files and settings
 @available(macOS 14.0, *)
 @MainActor
@@ -70,61 +72,58 @@ struct ConfigCommand: ParsableCommand {
         }
 
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var io: ConfigCommandOutput {
+            ConfigCommandOutput(logger: self.logger, jsonOutput: self.jsonOutput)
+        }
 
         @MainActor
 
         mutating func run(using runtime: CommandRuntime) async throws {
+            self.prepare(using: runtime)
+            let configPath = ConfigurationManager.configPath
+            try self.ensureWritableConfig(at: configPath)
+            try self.createConfiguration(at: configPath)
+        }
+
+        private mutating func prepare(using runtime: CommandRuntime) {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
+        }
 
-            let configPath = ConfigurationManager.configPath
-            let configExists = FileManager.default.fileExists(atPath: configPath)
+        private func ensureWritableConfig(at path: String) throws {
+            guard FileManager.default.fileExists(atPath: path), !self.force else { return }
+            self.io.error(
+                code: "FILE_IO_ERROR",
+                message: "Configuration file already exists. Use --force to overwrite.",
+                details: "Path: \(path)",
+                textLines: [
+                    "Configuration file already exists at: \(path)",
+                    "Use --force to overwrite."
+                ]
+            )
+            throw ExitCode.failure
+        }
 
-            if configExists, !self.force {
-                if self.jsonOutput {
-                    let errorOutput = ErrorOutput(
-                        error: true,
-                        code: "FILE_IO_ERROR",
-                        message: "Configuration file already exists. Use --force to overwrite.",
-                        details: "Path: \(configPath)"
-                    )
-                    outputJSON(errorOutput, logger: self.logger)
-                } else {
-                    print("Configuration file already exists at: \(configPath)")
-                    print("Use --force to overwrite.")
-                }
-                throw ExitCode.failure
-            }
-
+        private func createConfiguration(at path: String) throws {
             do {
                 try ConfigurationManager.shared.createDefaultConfiguration()
-
-                if self.jsonOutput {
-                    let successOutput = SuccessOutput(
-                        success: true,
-                        data: [
-                            "message": "Configuration file created successfully",
-                            "path": configPath,
-                        ]
-                    )
-                    outputJSON(successOutput, logger: self.logger)
-                } else {
-                    print("✅ Configuration file created at: \(configPath)")
-                    print("\nYou can now edit it to customize your settings.")
-                    print("Use 'peekaboo config edit' to open it in your default editor.")
-                }
+                self.io.success(
+                    message: "Configuration file created successfully",
+                    data: ["path": path],
+                    textLines: [
+                        "✅ Configuration file created at: \(path)",
+                        "",
+                        "You can now edit it to customize your settings.",
+                        "Use 'peekaboo config edit' to open it in your default editor."
+                    ]
+                )
             } catch {
-                if self.jsonOutput {
-                    let errorOutput = ErrorOutput(
-                        error: true,
-                        code: "FILE_IO_ERROR",
-                        message: error.localizedDescription,
-                        details: "Path: \(configPath)"
-                    )
-                    outputJSON(errorOutput, logger: self.logger)
-                } else {
-                    print("❌ Failed to create configuration file: \(error)")
-                }
+                self.io.error(
+                    code: "FILE_IO_ERROR",
+                    message: error.localizedDescription,
+                    details: "Path: \(path)",
+                    textLines: ["❌ Failed to create configuration file: \(error)"]
+                )
                 throw ExitCode.failure
             }
         }
@@ -349,7 +348,7 @@ struct ConfigCommand: ParsableCommand {
                         print("✅ Configuration saved.")
 
                         // Validate the edited configuration
-                        if let _ = manager.loadConfiguration() {
+                        if manager.loadConfiguration() != nil {
                             print("✅ Configuration is valid.")
                         } else {
                             print("⚠️  Warning: Configuration may have errors. Run 'peekaboo config validate' to check.")
@@ -459,7 +458,10 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: "Failed to parse configuration file. Check for syntax errors.",
-                        details: "Path: \(configPath). Common issues: trailing commas, unclosed comments, invalid JSON syntax."
+                        details: """
+                        Path: \(configPath). Common issues: trailing commas, \
+                        unclosed comments, invalid JSON syntax.
+                        """
                     )
                     outputJSON(errorOutput, logger: self.logger)
                 } else {
@@ -1126,60 +1128,6 @@ struct ConfigCommand: ParsableCommand {
     }
 }
 
-// MARK: - JSON Output Helpers
-
-private struct SuccessOutput: Encodable {
-    let success: Bool
-    let data: [String: Any]
-
-    enum CodingKeys: String, CodingKey {
-        case success, data
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.success, forKey: .success)
-        try container.encode(JSONValue(self.data), forKey: .data)
-    }
-}
-
-private struct ErrorOutput: Encodable {
-    let error: Bool
-    let code: String
-    let message: String
-    let details: String?
-}
-
-private struct JSONValue: Encodable {
-    let value: Any
-
-    init(_ value: Any) {
-        self.value = value
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.singleValueContainer()
-
-        if let dict = value as? [String: Any] {
-            try container.encode(dict.mapValues { JSONValue($0) })
-        } else if let array = value as? [Any] {
-            try container.encode(array.map { JSONValue($0) })
-        } else if let string = value as? String {
-            try container.encode(string)
-        } else if let int = value as? Int {
-            try container.encode(int)
-        } else if let double = value as? Double {
-            try container.encode(double)
-        } else if let bool = value as? Bool {
-            try container.encode(bool)
-        } else if self.value is NSNull {
-            try container.encodeNil()
-        } else {
-            try container.encode(String(describing: self.value))
-        }
-    }
-}
-
 private func outputJSON(_ value: some Encodable, logger: Logger) {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -1283,3 +1231,5 @@ extension ConfigCommand.ModelsProviderCommand: CommanderBindableCommand {
         self.discover = values.flag("discover")
     }
 }
+
+// swiftlint:enable type_body_length
