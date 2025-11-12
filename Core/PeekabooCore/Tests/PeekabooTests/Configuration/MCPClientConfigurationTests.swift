@@ -228,8 +228,8 @@ struct MCPClientConfigurationTests {
         let jsonData = try encoder.encode(config)
         let jsonObject = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
         let clients = jsonObject?["mcpClients"] as? [String: Any]
-        #expect(clients?["github"] as? [String: Any] != nil)
-        #expect(clients?["files"] as? [String: Any] != nil)
+        #expect(clients?["github"] is [String: Any])
+        #expect(clients?["files"] is [String: Any])
 
         if let github = clients?["github"] as? [String: Any] {
             let args = github["args"] as? [String]

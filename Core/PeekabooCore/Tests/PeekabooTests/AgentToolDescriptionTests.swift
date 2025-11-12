@@ -139,13 +139,11 @@ struct AgentToolDescriptionTests {
         let allTools = ToolRegistry.allTools
 
         for tool in allTools {
-            for param in tool.parameters {
-                if param.required {
-                    // Required parameters should have clear descriptions
-                    #expect(
-                        !param.description.isEmpty,
-                        "Required parameter '\(param.name)' in tool '\(tool.name)' must have description")
-                }
+            for param in tool.parameters where param.required {
+                // Required parameters should have clear descriptions
+                #expect(
+                    !param.description.isEmpty,
+                    "Required parameter '\(param.name)' in tool '\(tool.name)' must have description")
             }
         }
     }
@@ -267,26 +265,24 @@ struct AgentToolDescriptionTests {
     func toolExampleQuality() {
         let allTools = ToolRegistry.allTools
 
-        for tool in allTools {
-            if tool.discussion.contains("EXAMPLE") {
-                // Examples should reference the tool somehow
-                let toolNameParts = tool.name.split(separator: "_")
-                let hasReference = tool.discussion.contains("peekaboo") ||
-                    tool.discussion.contains(tool.name) ||
-                    toolNameParts.contains { part in
-                        tool.discussion.lowercased().contains(part.lowercased())
-                    }
-                #expect(
-                    hasReference,
-                    "Examples for '\(tool.name)' should reference the tool")
-
-                // Examples should demonstrate various options
-                if tool.parameters.count > 2 {
-                    let hasOptionExample = tool.discussion.contains("--")
-                    #expect(
-                        hasOptionExample,
-                        "Tool '\(tool.name)' with multiple parameters should show option examples")
+        for tool in allTools where tool.discussion.contains("EXAMPLE") {
+            // Examples should reference the tool somehow
+            let toolNameParts = tool.name.split(separator: "_")
+            let hasReference = tool.discussion.contains("peekaboo") ||
+                tool.discussion.contains(tool.name) ||
+                toolNameParts.contains { part in
+                    tool.discussion.lowercased().contains(part.lowercased())
                 }
+            #expect(
+                hasReference,
+                "Examples for '\(tool.name)' should reference the tool")
+
+            // Examples should demonstrate various options
+            if tool.parameters.count > 2 {
+                let hasOptionExample = tool.discussion.contains("--")
+                #expect(
+                    hasOptionExample,
+                    "Tool '\(tool.name)' with multiple parameters should show option examples")
             }
         }
     }
