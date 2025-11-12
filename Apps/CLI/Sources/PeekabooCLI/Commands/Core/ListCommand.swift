@@ -103,6 +103,8 @@ extension ListCommand {
         @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
         var app: String
 
+        var positionalAppIdentifier: String { self.app }
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 

@@ -57,6 +57,8 @@ struct AppCommand: ParsableCommand {
         @Argument(help: "Application name or path")
         var app: String
 
+        var positionalAppIdentifier: String { self.app }
+
         @Option(help: "Launch by bundle identifier instead of name")
         var bundleId: String?
 
@@ -353,6 +355,8 @@ struct AppCommand: ParsableCommand {
         @Option(help: "Application to hide")
         var app: String
 
+        var positionalAppIdentifier: String { self.app }
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
         @RuntimeStorage private var runtime: CommandRuntime?
@@ -420,6 +424,8 @@ struct AppCommand: ParsableCommand {
 
         @Option(help: "Application to unhide")
         var app: String
+
+        var positionalAppIdentifier: String { self.app }
 
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
@@ -707,6 +713,8 @@ struct AppCommand: ParsableCommand {
 
         @Argument(help: "Application name, bundle ID, or 'PID:12345' for process ID")
         var app: String
+
+        var positionalAppIdentifier: String { self.app }
 
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
