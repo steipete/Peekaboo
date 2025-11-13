@@ -211,13 +211,25 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 ### Additional findings — Nov 12, 2025
 - `menu click` behaves the same (totally silent, exit 0). Because both subcommands share the same runtime plumbing, it’s likely that the Commander binder never injects runtime options into `MenuCommand` (so stdout is being swallowed or the program returns before printing). Since `menu list-all` does output correctly, the bug is isolated to `ListSubcommand`/`ClickSubcommand`.
 - **Resolution — Nov 12, 2025**: `ApplicationResolvablePositional` used to override `var app` with `var app: String? { app }`, which immediately recursed and crashed every positional command (menu/app/window, etc.). The protocol now exposes a separate `positionalAppIdentifier` and the subcommands map their `app` argument to it, so the commands run normally (and emit JSON errors when Finder has no visible window instead of segfaulting).
-- **Remaining gap**: Even with the crash fixed, `menu list --app Finder` still fails with “No windows found” whenever Finder has only the menubar showing. We should allow menu enumeration without a target window (Finder’s menus exist even if no browser windows are open).
+- **Remaining gap (Nov 12, 2025)**: Even with the crash fixed, `menu list --app Finder` still fails with “No windows found” whenever Finder has only the menubar showing. We should allow menu enumeration without a target window (Finder’s menus exist even if no browser windows are open).
+### Retest — Nov 13, 2025 00:03 GMT
+- Closed every Finder window so only the menubar remained, then ran `polter peekaboo menu list --app Finder --json-output`.
+- The command now returns the full menu structure (File/Edit/View/etc.), and the JSON payload matches Finder’s menus despite the lack of foreground windows.
+- ✅ This confirms the Nov 12 focus fallbacks persisted; no additional action needed unless a future regression brings back the `WINDOW_NOT_FOUND` error.
 
 ## `menubar list` returns placeholder names
 - **Command**: `polter peekaboo menubar list --json-output`
 - **Observed**: Visible status items like Wi‑Fi or Focus are present, but most entries show `title: "Item-0"` / `description: "Item-0"`, which is meaningless.
 - **Impact**: Agents can’t rely on human-friendly titles to choose items, so they can’t click menu extras deterministically.
 - **Suggestion**: Surface either the accessibility label or the NSStatusItem’s button title instead of the placeholder, and include bundle identifiers for menu extras where possible.
+### Status — Nov 13, 2025
+- Menu extras are now merged with window-derived metadata first, so when CGWindow provides a real title (e.g., Wi‑Fi/Bluetooth) we keep it even if AX later reports `Item-#`.
+- `MenuService` exposes the owning bundle, owner name, and identifier fields through `menubar list --json-output`, giving agents enough context to scope searches (`bundle_id: "com.apple.controlcenter"` makes it obvious which entries come from Control Center).
+- Added `MenuServiceTests` covering the fallback-preference behavior plus a GUID regression (`humanReadableMenuIdentifier` + `makeDebugDisplayName`) so placeholder regressions are caught in CI (swift-testing target `MenuServiceTests`).
+- AXorcist’s CF-type downcasts are now `unsafeDowncast`, so `./runner swift test --package-path Core/PeekabooCore --filter MenuServiceTests` completes cleanly instead of dying in ValueUnwrapper/ValueParser.
+- Control Center GUIDs now flow through a preference-backed lookup (`ControlCenterIdentifierLookup`) and the fallback merge prefers owner names whenever the raw title looks like a GUID/`Item-#`. The new debug-only helper `makeDebugDisplayName` lets tests poke the private formatter directly.
+- When we can’t extract a friendly title (no identifier, placeholder raw title), the CLI now emits `Control Center #N` so list output remains deterministic and agents have a stable handle even before a better label is available. Those synthetic names are accepted by `menubar click` (e.g., `polter peekaboo menubar click "Control Center #3"` focuses the third status icon); the command’s result still surfaces the original description (`Menu bar item [3]: Control Center`).
+- After restarting Poltergeist (`tmux` + `pnpm run poltergeist:haunt`) and letting it rebuild both targets, `polter peekaboo menubar list --json-output` reflects the new formatter in the running CLI (the `#N` suffixes show up immediately instead of the old GUIDs). This confirms the CLI picks up the formatter changes once the daemon rebuilds the targets.
 
 ## `window focus` reports INTERNAL_SWIFT_ERROR instead of WINDOW_NOT_FOUND
 - **Command**: `polter peekaboo window focus --app Finder --json-output`
