@@ -89,8 +89,8 @@ final class MCPStubServer {
 
     private func readHeaders() -> Data? {
         var buffer = Data()
-        let crlfcrlf = "\r\n\r\n".data(using: .utf8)!
-        let lflf = "\n\n".data(using: .utf8)!
+        let crlfcrlf = Data("\r\n\r\n".utf8)
+        let lflf = Data("\n\n".utf8)
 
         while true {
             guard let chunk = try? input.read(upToCount: 1), let chunk, !chunk.isEmpty else {

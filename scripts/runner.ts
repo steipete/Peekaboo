@@ -32,6 +32,8 @@ const WRAPPER_COMMANDS = new Set([
   '/usr/bin/nohup',
 ]);
 
+const ENV_ASSIGNMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*=.*/;
+
 // biome-ignore format: keep each keyword on its own line for grep-friendly diffs.
 const LONG_SCRIPT_KEYWORDS = ['build', 'test:all', 'test:browser', 'vitest.browser', 'vitest.browser.config.ts'];
 const EXTENDED_SCRIPT_KEYWORDS = ['lint', 'test', 'playwright', 'check', 'docker'];
@@ -78,6 +80,8 @@ let cachedTrashCliCommand: string | null | undefined;
     timeoutMs,
   };
 
+  enforcePolterArgumentSeparator(commandArgs);
+
   const interception = await resolveCommandInterception(context);
   if (interception.handled) {
     return;
@@ -121,6 +125,43 @@ function parseArgs(argv: string[]): string[] {
   }
 
   return commandArgs;
+}
+
+function enforcePolterArgumentSeparator(commandArgs: string[]): void {
+  const invocation = findPolterPeekabooInvocation(commandArgs);
+  if (!invocation) {
+    return;
+  }
+
+  const afterPeekaboo = commandArgs.slice(invocation.peekabooIndex + 1);
+  if (afterPeekaboo.length === 0) {
+    return;
+  }
+
+  const separatorPos = afterPeekaboo.indexOf('--');
+  const toInspect = separatorPos === -1 ? afterPeekaboo : afterPeekaboo.slice(0, separatorPos);
+  const flagToken = toInspect.find((token) => token.startsWith('-'));
+  if (flagToken) {
+    console.error(
+      `[runner] polter peekaboo commands must insert '--' before CLI flags so Poltergeist does not consume them. Example: polter peekaboo -- dialog dismiss --force`,
+    );
+    console.error(`[runner] Offending flag: ${flagToken}`);
+    process.exit(1);
+  }
+}
+
+function findPolterPeekabooInvocation(commandArgs: string[]): { polterIndex: number; peekabooIndex: number } | null {
+  for (let i = 0; i < commandArgs.length; i += 1) {
+    const token = commandArgs[i];
+    if (WRAPPER_COMMANDS.has(token) || ENV_ASSIGNMENT_PATTERN.test(token)) {
+      continue;
+    }
+    if (token === 'polter' && i + 1 < commandArgs.length && commandArgs[i + 1] === 'peekaboo') {
+      return { polterIndex: i, peekabooIndex: i + 1 };
+    }
+    break;
+  }
+  return null;
 }
 
 function determineEffectiveTimeoutMs(commandArgs: string[]): number {

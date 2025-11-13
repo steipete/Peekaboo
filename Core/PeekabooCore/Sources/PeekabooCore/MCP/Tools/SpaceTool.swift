@@ -1,11 +1,31 @@
+import CoreGraphics
 import Foundation
 import MCP
 import os.log
 import TachikomaMCP
 
+@MainActor
+protocol SpaceManaging: AnyObject {
+    func getAllSpaces() -> [SpaceInfo]
+    func moveWindowToCurrentSpace(windowID: CGWindowID) throws
+    func moveWindowToSpace(windowID: CGWindowID, spaceID: CGSSpaceID) throws
+    func switchToSpace(_ spaceID: CGSSpaceID) async throws
+}
+
+extension SpaceManagementService: SpaceManaging {}
+
+private final class SpaceServiceBox: @unchecked Sendable {
+    let service: any SpaceManaging
+
+    init(service: any SpaceManaging) {
+        self.service = service
+    }
+}
+
 /// MCP tool for managing macOS Spaces (virtual desktops)
 public struct SpaceTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "SpaceTool")
+    private let spaceServiceOverride: SpaceServiceBox?
 
     public let name = "space"
 
@@ -58,11 +78,17 @@ public struct SpaceTool: MCPTool {
             required: ["action"])
     }
 
-    public init() {}
+    public init() {
+        self.spaceServiceOverride = nil
+    }
+
+    init(testingSpaceService: any SpaceManaging) {
+        self.spaceServiceOverride = SpaceServiceBox(service: testingSpaceService)
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        let spaceService = SpaceManagementService()
+        let spaceService: any SpaceManaging = self.spaceServiceOverride?.service ?? SpaceManagementService()
         let parsedAction: SpaceAction
 
         do {
@@ -83,7 +109,7 @@ public struct SpaceTool: MCPTool {
 
     @MainActor
     private func handleList(
-        service: SpaceManagementService,
+        service: any SpaceManaging,
         detailed: Bool,
         startTime: Date) async throws -> ToolResponse
     {
@@ -137,7 +163,7 @@ public struct SpaceTool: MCPTool {
 
     @MainActor
     private func handleSwitch(
-        service: SpaceManagementService,
+        service: any SpaceManaging,
         spaceNumber: Int,
         startTime: Date) async throws -> ToolResponse
     {
@@ -178,7 +204,7 @@ public struct SpaceTool: MCPTool {
 
     @MainActor
     private func handleMoveWindow(
-        service: SpaceManagementService,
+        service: any SpaceManaging,
         request: MoveWindowRequest,
         startTime: Date) async throws -> ToolResponse
     {
@@ -217,9 +243,10 @@ public struct SpaceTool: MCPTool {
 
     // MARK: - Helper Methods
 
+    @MainActor
     private func perform(
         action: SpaceAction,
-        service: SpaceManagementService,
+        service: any SpaceManaging,
         startTime: Date) async throws -> ToolResponse
     {
         switch action {
@@ -338,7 +365,7 @@ private struct SpaceActionValidationError: Error {
 extension SpaceTool {
     @MainActor
     private func moveWindowToCurrentSpace(
-        service: SpaceManagementService,
+        service: any SpaceManaging,
         windowInfo: ServiceWindowInfo,
         windowID: UInt32,
         startTime: Date) throws -> ToolResponse
@@ -362,7 +389,7 @@ extension SpaceTool {
 
     @MainActor
     private func moveWindowToSpecificSpace(
-        service: SpaceManagementService,
+        service: any SpaceManaging,
         request: MoveWindowRequest,
         windowInfo: ServiceWindowInfo,
         windowID: UInt32,
