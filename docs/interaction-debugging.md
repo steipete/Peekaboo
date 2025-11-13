@@ -13,6 +13,48 @@ read_when:
 > - Assume future user prompts can request any macOS action; keep tightening Peekaboo until every tool path (focus, screenshot, menu, dialog, shell, automation) is battle‑tested.
 > - When in doubt, reopen TextEdit or another stock app, try to automate the workflow end-to-end via Peekaboo, and log the outcome below.
 
+## Open interaction blockers (Nov 13, 2025)
+
+| Area | Current status | Test coverage gap | Next action |
+| --- | --- | --- | --- |
+| Window geometry `new_bounds` | JSON echoes stale rectangles after consecutive `set-bounds` / `resize`. | Only single-move assertions in `WindowCommandTests`/`WindowCommandCLITests`; nothing exercises back-to-back mutations or width/height. | Add CLI test that performs two successive geometry changes and asserts the response matches the latest inputs; fix window service caching bug once reproduced. |
+| Menu list/click stability | `menu list`/`menu click` still drop into `UNKNOWN_ERROR` / `NotFound` after long sessions or in Calculator. | `MenuDialogLocalHarnessTests` now cover TextEdit/Calculator happy paths *and* the `menuStressLoop` 45 s soak, but the stress loop still runs inline (no tmux) and can’t capture multi-minute drifts. | Move the stress runner into tmux so we can loop for minutes, collect logs/screenshots automatically, and keep probing Calculator/TextEdit until the stale window bug repros deterministically. |
+| `dialog list` via polter | Fresh CLI works, but `polter peekaboo …` still ships the old binary and drops `--window`, so TextEdit’s Save sheet can’t be enumerated. | Harness now calls `polter peekaboo -- dialog list --window Save` and asserts the binary timestamp is <10 min old, yet we still aren’t bouncing Poltergeist prior to runs. | Add a harness hook that restarts/rebuilds Poltergeist (or at least checks the build log) before running dialog tests, then port the workflow into tmux so unattended runs can flag stale binaries instantly. |
+| Chrome/login flows | Certain login forms remain invisible to AX/OCR; Chrome location bubble exposes unlabeled buttons. | No tests mention these flows or Chrome permission dialogs. | Create deterministic WebKit test fixture that mimics the web DOM and Chrome permission bubble to drive OCR/AX fallbacks; prioritize image-based hit testing for “Allow/Don’t Allow”. |
+| Mac app StatusBar build | `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, `UnifiedActivityFeed.swift` still fail under Swift 6 logger rules. | `StatusBarControllerTests` only instantiate the controller; no logging/formatter assertions. | Add focused unit tests (or SwiftUI previews under test) that compile these files and verify logging helpers; then fix the offending interpolations so `./runner ./scripts/build-mac-debug.sh` goes green. |
+| AXObserverManager drift | Xcode workspace pulls a stale AXorcist artifact missing `attachNotification`. | No tests reference `AXObserverManager`, so regressions surface only during mac builds. | Write a minimal test in AXorcist (or PeekabooCore) that instantiates `AXObserverManager`, calls `attachNotification`/`addObserver`, and assert callbacks fire, forcing the workspace to pick up current sources. |
+| SpaceTool/SystemToolFormatter schema | Mac build still blocked after tool/schema rename; formatter still has literal newline separator. | Only metadata tests exist (`MCPSpecificToolTests`); they never instantiate SpaceTool or the formatter. | Add unit tests that feed `ServiceWindowInfo` through SpaceTool and ensure the JSON keys + formatter output align with the new schema; patch formatter to escape separators. |
+| `--force` flag via polter | Wrapper swallows `--force`, `--timeout`, etc., unless user inserts an extra `--`. | No automated coverage for the polter shim. | Introduce integration test (or script) that launches `polter peekaboo -- dialog dismiss --force` and verifies the flag is honored; update docs and wrapper to emit a hard error when CLI flags are passed before the separator. |
+
+## Unresolved Bugs & Test Coverage Tracker (Nov 13, 2025)
+
+| Bug | Status | Existing tests | Required coverage / next steps |
+| --- | --- | --- | --- |
+| Menu list/click stability (TextEdit + Calculator) | Still reproducible after long sessions; Calculator click path throws `PeekabooCore.NotFoundError`. | `MenuServiceTests` (stub-only) + `MenuDialogLocalHarnessTests` (`textEditMenuFlow`, `calculatorMenuFlow`, `menuStressLoop`) | Move the new 45 s stress loop into tmux so it can run multi-minute soaks unattended, capture `peekaboo` logs on failure, and keep dumping JSON payloads for Calculator/TextEdit while we chase the stale-window bug. |
+| Dialog list via polter | Runner now enforces the `--` separator, but we lack proof that `polter peekaboo -- dialog list --window …` hits the fresh binary and forwards arguments. | `DialogCommandTests`, `dialogDismissForce`, `MenuDialogLocalHarnessTests.textEditDialogListViaPolter` (with timestamp freshness checks) | Add a Poltergeist restart/build verification step (or log scrape) before the harness runs, then stash dialog screenshots/logs so stale binaries or thrown dialogs are obvious without manual repro. |
+| Chrome/login hidden fields & permission bubble | Real Chrome sessions still expose no AX text fields; heuristics only verified via Playground fixtures. | `SeeCommandPlaygroundTests.hiddenFieldsAreDetected`, `ElementLabelResolverTests` | Build a deterministic WebKit/Playground scene that mirrors the secure-login flow plus the Chrome “Allow/Don’t Allow” bubble, then add a `RUN_LOCAL_TESTS` automation that drives Chrome directly and asserts `see` returns the promoted text fields. |
+| Mac StatusBar SwiftUI build blockers | `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, and `UnifiedActivityFeed.swift` continue to fail `./runner ./scripts/build-mac-debug.sh`. | `StatusBarControllerTests` only instantiate the controller—no coverage for the SwiftUI button style or logging helper. | Finish the Logger/API cleanup in those files and add snapshot/compilation tests (e.g., `StatusBarActionsTests`) so SwiftUI button styles conform to `ButtonStyle` and logging interpolations stay valid. |
+| AXObserverManager drift | Workspace build still links against a stale AXorcist artifact missing `attachNotification`. | None | Add an AXorcist unit test (`AXObserverManagerTests`) that instantiates the manager, attaches notifications, and validates callbacks so both SwiftPM and the workspace must ingest the updated sources. |
+| Finder window focus error classification | Fix now maps `FocusError` to `WINDOW_NOT_FOUND`, but there’s no regression test for Finder’s menubar-only state. | `FocusErrorMappingTests` (unit-only) | Add CLI-level coverage (stub service or automation harness) that simulates Finder with no renderable windows and asserts `window focus --app Finder` emits `WINDOW_NOT_FOUND` instead of `INTERNAL_SWIFT_ERROR`. |
+| `SessionManager.storeScreenshot` guardrails | Copy/annotation guardrails remain untested. | None | Add tests that exercise relative paths, missing destination directories, and annotated captures so screenshot copying stays safe. |
+| `list windows` empty-output warning | Formatter now emits a warning when no windows exist, but there’s no regression test to keep it working. | `WindowCommandCLITests` (happy-path only) | Add CLI tests asserting the warning + JSON payload appear when the window list is empty. |
+| `clean --dry-run` validation | The command now emits `VALIDATION_ERROR`, yet no test ensures the mapping stays intact. | `CleanCommandTests` (success only) | Add a test that runs `clean --dry-run` without selectors and asserts `VALIDATION_ERROR` plus the guidance text. |
+| Command help surface | Commander now intercepts `help`/`--help`, but we have no tests proving the new router behavior. | None | Add CLI tests for `polter peekaboo -- help window` and `polter peekaboo -- window --help` (stubbed) to ensure help text prints even when routed through Poltergeist. |
+
+### Execution plan (Nov 13, 2025)
+1. **Menu + dialog automation harness** — The `MenuDialogLocalHarnessTests` suite now launches TextEdit/Calculator via Poltergeist, runs `menuStressLoop` for 45 s, and exercises the TextEdit Save sheet end-to-end. Next step: move those loops into tmux so they can soak for minutes, capture logs/screenshots, and restart automatically on failure.
+2. **Chrome/login fixture** — Once the harness lands, extend the Playground/WebKit scene to mirror the Chrome secure-login flow and permission bubble, then add integration coverage that drives Chrome directly.
+3. **Mac build unblockers** — After the automation harness is in motion, fix the StatusBar SwiftUI files and add the missing AXObserverManager test so `./runner ./scripts/build-mac-debug.sh` goes green again. With the build stable, backfill the screenshot/help/clean/list-windows tests listed above.
+
+Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdit + Calculator menu flows and the TextEdit Save dialog via `polter peekaboo -- …` under `RUN_LOCAL_TESTS=true`, so we can build the tmux-backed stress suite on top of that foundation. Use `./runner tmux new-session -- ./scripts/menu-dialog-soak.sh` (optionally override `MENU_DIALOG_SOAK_ITERATIONS`/`MENU_DIALOG_SOAK_FILTER`) to spin up the stress loop in tmux, keep logs under `/tmp/menu-dialog-soak/`, and avoid blocking the guardrail watchdog.
+
+### Implementation roadmap
+1. **Reproduce & test guardrails** – Land the regression tests outlined above (window geometry, real menu automation, polter argument forwarding, StatusBar logger compile tests, AXObserverManager, SpaceTool schema). These should fail today and document the gaps.
+2. **Fix highest-impact blockers** – Prioritize menu/window/dialog reliability so secure login/Chrome scenarios unblock. Tackle polter flag forwarding and SessionManager caching while tests are red.
+3. **Expand secure login/Chrome coverage** – Build a deterministic fixture (WebKit host or recorded session) so we can iterate on OCR/AX fallbacks without live credentials; add XCT/unittest coverage to prevent regressions once solved.
+4. **Stabilize mac build** – Address StatusBar logger rewrites, AXObserverManager linkage, and SpaceTool formatter so `./runner ./scripts/build-mac-debug.sh` passes; keep the new tests in place to enforce it.
+5. **Document progress** – Update this section as each issue lands (note fix date + test name) so future agents know which paths are safe.
+
 ## `see` command can’t finalize captures
 - **Command**: `polter peekaboo -- see --app TextEdit --path /tmp/textedit-see.png --annotate --json-output`
 - **Observed**: Logger reports a successful capture, saves `/tmp/textedit-see.png`, then throws `INTERNAL_SWIFT_ERROR` with message `The file “textedit-see.png” doesn’t exist.` The file *does* exist immediately after the failure (checked via `ls -l /tmp/textedit-see.png`).
@@ -28,8 +70,8 @@ read_when:
 - **Command**: `polter peekaboo -- see --app "Google Chrome" --json-output`
 - **Observed**: The capture pipeline runs, `peekaboo_see_1762952828.png` lands on the Desktop, but the CLI exits with `{ "code": "WINDOW_NOT_FOUND", "message": "App 'Google Chrome' is running but has no windows or dialogs" }`. Debug logs confirm ScreenCaptureKit grabbed the window (duration 171 ms) before the error fires.
 - **Variant**: Adding `--window-title "New Tab"` now fails even earlier with `WINDOW_NOT_FOUND` while the window search logs “Found windows {count=6}” right before it bails—so the heuristic sees Chrome’s windows but insists none match.
-- **Expected**: Once a screenshot is on disk, the command should return success and emit the session/element list so agents can interact with Grindr’s UI.
-- **Impact**: Grindr automation is stalled again—we can’t obtain element IDs or session IDs even though Chrome’s window is visible and focusable.
+- **Expected**: Once a screenshot is on disk, the command should return success and emit the session/element list so agents can interact with secure login’s UI.
+- **Impact**: secure login automation is stalled again—we can’t obtain element IDs or session IDs even though Chrome’s window is visible and focusable.
 - **Status — Nov 12, 2025 13:07**: Reproducible immediately after navigating to the login page; need to trace why `CaptureWindowWorkflow` thinks Chrome has zero windows while the capture step succeeds.
 ### Resolution — Nov 12, 2025 (evening)
 - `ElementDetectionService` now calls `windowsWithTimeout()` when enumerating AX windows for the target application, ensuring we wait for Chrome’s helper processes to surface their windows before bailing. This removed the `WINDOW_NOT_FOUND` spurious error and the CLI now returns the normal session payload (tested with `polter peekaboo -- see --app "Google Chrome" --json-output`).
@@ -42,7 +84,7 @@ read_when:
 ### Resolution — Nov 12, 2025
 - `ScreenCaptureFallbackRunner.shouldFallback` now retries with the legacy API for **any** modern failure (as long as a fallback API exists). Added inline logging so debuggers can find the correlation ID instantly.
 - `ScreenCaptureServicePlanTests` now cover timeout errors, unknown errors, and the “all APIs failed” case so we don’t regress the fallback sequencing again.
-- Result: `polter peekaboo -- see …` immediately switches to the legacy pipeline when ScreenCaptureKit raises the audio/video failure, and Grindr automation proceeds with fresh session IDs.
+- Result: `polter peekaboo -- see …` immediately switches to the legacy pipeline when ScreenCaptureKit raises the audio/video failure, and secure login automation proceeds with fresh session IDs.
 
 ## CLI smoke tests — Nov 12, 2025 (afternoon)
 - `polter peekaboo -- list apps --json-output`: Enumerated 50 running processes (9 with windows) in ~2 s, populated bundle IDs and window counts, and produced no warnings—list command output remains reliable for automation targeting.
@@ -83,7 +125,7 @@ read_when:
 ## Element formatter missing focus/list helpers broke every build
 - **Command**: `polter peekaboo -- type "ping"` (any CLI entry point)
 - **Observed**: Poltergeist builds errored with `value of type 'ElementToolFormatter' has no member 'formatFocusedElementResult'` plus `missing argument for parameter #2 in call` (Swift tried to call libc `truncate`). The formatter file had an extra closing brace, so the helper functions lived outside the class and the compiler couldn’t find them.
-- **Impact**: CLI binary never compiled, so none of the interaction commands (menu, Grindr automation, etc.) could run.
+- **Impact**: CLI binary never compiled, so none of the interaction commands (menu, secure login automation, etc.) could run.
 ### Resolution — Nov 12, 2025
 - Restored `formatResultSummary` to actually return strings, reimplemented `formatFocusedElementResult`, and moved the list helper methods back inside `ElementToolFormatter`.
 - Added a shared numeric coercion helper so frame dictionaries that report `Double`s still print their coordinates, and disambiguated `truncate` by calling `self.truncate`.
@@ -92,7 +134,7 @@ read_when:
 ## `see` command exploded: `AnnotatedScreenshotRenderer` missing
 - **Command**: `polter peekaboo -- see --app "Google Chrome" --json-output`
 - **Observed**: Every run failed to build with `cannot find 'AnnotatedScreenshotRenderer' in scope` after the renderer struct was moved below the `SeeTool` definition.
-- **Impact**: Without a working `see` build, no automation session could even start, so the Grindr flow was blocked at the very first step.
+- **Impact**: Without a working `see` build, no automation session could even start, so the secure login flow was blocked at the very first step.
 ### Resolution — Nov 12, 2025
 - Hoisted `AnnotatedScreenshotRenderer` above `SeeTool` so Swift sees it before use and removed the duplicate definition at the bottom of the file.
 
@@ -117,11 +159,14 @@ read_when:
 ### Next steps
 1. Inspect `WindowCommand.SetBoundsSubcommand` and `WindowCommand.ResizeSubcommand` (or the shared window service) so success responses include the freshly applied bounds instead of cached state.
 2. Add CLI regression tests asserting `new_bounds` equals the requested rectangle for both `set-bounds` and `resize`.
+### Resolution — Nov 13, 2025
+- `window resize` / `window set-bounds` now re-query the window list after each mutation before formatting JSON, so `new_bounds` reflects the rectangle that actually landed on screen. The CLI logger records refetch failures instead of silently returning stale caches.
+- Added hermetic tests (`windowSetBoundsReportsFreshBounds`, `windowResizeReportsFreshBounds`) that run the commands against stub window services and assert the reported `new_bounds` matches the requested coordinates, preventing future regressions.
 
 ## Window focus builds died due to raw `Logger` strings
 - **Command**: `polter peekaboo -- click --on elem_153 --session <id> --json-output`
 - **Observed**: Poltergeist reported `WindowManagementService.swift:589:30: error: cannot convert value of type 'String' to expected argument type 'OSLogMessage'` whenever we ran any CLI command that touched windows. The new `Logger` API refuses runtime strings.
-- **Impact**: Every automation attempt triggered a rebuild failure before the command ran, so the Grindr login flow (and anything else) couldn’t even begin.
+- **Impact**: Every automation attempt triggered a rebuild failure before the command ran, so the secure login login flow (and anything else) couldn’t even begin.
 ### Resolution — Nov 12, 2025
 - Wrapped the dynamic summary in string interpolation (`self.logger.info("\(message, privacy: .public)")`) so OSLog receives a literal and the compiler is satisfied.
 
@@ -164,7 +209,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Command**: `polter peekaboo -- menu list --app "Google Chrome" --json-output`
 - **Observed**: The command hangs for ~16 s and then fails with `Timeout while verifying focus for window ID 1528`. `window list --app "Google Chrome"` shows ID 1528 is a 642×22 toolbar shim (window index 7), yet the menu code keeps waiting for it to become the focused window instead of choosing the actual tab window (ID 1520).
 - **Expected**: Menu tooling should apply the same “renderable window” heuristics as capture/focus (ignore windows with width/height < 10, alpha 0, or off-screen) before attempting to focus.
-- **Impact**: All Chrome menu operations fail before producing output, so the Grindr flow can’t drive menus (e.g., `Chrome > Hide Others`) at all.
+- **Impact**: All Chrome menu operations fail before producing output, so the secure login flow can’t drive menus (e.g., `Chrome > Hide Others`) at all.
 - **Next steps**: Reuse `FocusUtilities`’ renderable-window logic (or share `ScreenCaptureService.firstRenderableWindowIndex`) in `MenuCommand` so helper/status windows never become the focus target.
 ### Resolution — Nov 12, 2025
 - Updated `WindowIdentityInfo.isRenderable` to treat windows smaller than 50 px in either dimension as non-renderable, so focus/menu logic now skips Chrome’s 22 px toolbar shims. `menu list --app "Google Chrome" --json-output` completes again and returns the full menu tree.
@@ -177,6 +222,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Impact**: Agents can’t inspect dialog contents before attempting clicks/inputs, so complex sheets remain blind spots.
 - **Next steps**: Instrument `DialogService.resolveDialogElement` to log every fallback attempt, ensure `ensureDialogVisibility` respects the `app` hint, and add a regression test that opens TextEdit’s Save panel via AX/AppleScript and runs `dialog list`.
 - **Update — Nov 12, 2025 16:25**: Running a freshly built CLI (`swift run --package-path Apps/CLI peekaboo dialog list --app TextEdit --window Save --json-output`) returns the Save dialog metadata (buttons array contains “Save”). `polter peekaboo …` still uses the old binary and doesn’t recognize `--window` yet, so we’ll need to bounce Poltergeist once the CLI changes land.
+- **Resolution — Nov 13, 2025**: The runner now enforces the `polter peekaboo -- …` separator and errors if CLI flags (like `--window` or `--force`) appear before it, so Poltergeist can’t swallow dialog options anymore. `DialogCommandTests` already cover the `--window` JSON path, and the new `dialogDismissForce` test keeps the forced-dismiss output verified in CI.
 - **Investigation — Nov 12, 2025 16:10**: Plumbed `--app` hints through the CLI into `DialogService` and added window-identity fallbacks, but `AXFocusedApplication` still returns `nil` even after focusing TextEdit. Logs show repeated “No focused application found,” so the service needs an alternative path (e.g., resolve via `WindowManagementService`/`WindowIdentityService` without relying on the global AX focused app).
 
 ## Window focus reports INTERNAL_SWIFT_ERROR instead of WINDOW_NOT_FOUND
@@ -333,7 +379,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Command**: `polter peekaboo -- list apps --json-output`
 - **Observed**: Every application’s `windowCount` is reported as `0`, and the summary shows `appsWithWindows: 0` / `totalWindows: 0` even though Chrome, Finder, etc., have visible windows (confirmed via `list windows --app "Google Chrome"` which reports 22 windows). This regression appeared right after the UnifiedToolOutput refactor.
 - **Expected**: `list apps` should include accurate per-application window counts so agents can pick an app with open windows.
-- **Impact**: Automation must issue a slow `list windows` call per bundle just to discover if anything is on screen, adding seconds to workflows like the Grindr login flow.
+- **Impact**: Automation must issue a slow `list windows` call per bundle just to discover if anything is on screen, adding seconds to workflows like the secure login login flow.
 - **Resolution — Nov 12, 2025**: `ApplicationService` now counts windows per process (AX first, falling back to CG-renderable windows) before returning `ServiceApplicationInfo`, so the CLI reports accurate numbers. Verified via `polter peekaboo -- list apps --json-output` (run at 13:25) which listed 7 apps with 22 total windows instead of all zeros.
 
 ## `dock hide` never returns
@@ -368,11 +414,11 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 ## `menu click` still throws APP_NOT_FOUND unless `--no-auto-focus` is set
 - **Command**: `polter peekaboo -- menu click --app "TextEdit" --path "File > Open…" --json-output`
 - **Observed**: After the new focus fallbacks landed, every menu subcommand now fails with `APP_NOT_FOUND`/`Failed to activate application: Application failed to activate`. `ensureFocused` skips the AX-based window focus (because `FocusManagementService` still bails on window ID lookups) and ends up calling `PeekabooServices.shared.applications.activateApplication`, which returns `.operationError` even though TextEdit is already running. The error is rethrown before `MenuServiceBridge` ever attempts the click.
-- **Impact**: Menu automation regressed to 0 % success—agents have to add `--no-auto-focus` and manually run `window focus` before every menu command, otherwise Grindr’s Chrome menus are unreachable.
+- **Impact**: Menu automation regressed to 0 % success—agents have to add `--no-auto-focus` and manually run `window focus` before every menu command, otherwise secure login’s Chrome menus are unreachable.
 - **Workaround — Nov 12, 2025**: `polter peekaboo -- window focus --app <App>` followed by `menu … --no-auto-focus` works because it bypasses the failing activation path.
 - **Resolution — Nov 12, 2025 (afternoon)**: `ApplicationService.activateApplication` no longer throws when `NSRunningApplication.activate` returns false, so the focus cascade doesn’t abort menu commands. Default `menu click/list` now succeed again without `--no-auto-focus`.
 
-## Grindr login form is invisible to Peekaboo
+## Hidden login form is invisible to Peekaboo
 - **Command sequence** (all via Peekaboo CLI):
   1. `polter peekaboo -- app launch "Google Chrome" --wait-until-ready`
   2. `polter peekaboo -- hotkey --keys "cmd,l"` → `type "<login URL>" --return`
@@ -381,23 +427,20 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
   5. `polter peekaboo -- type "<test email>"`, `--tab`, `type "<test password>"`, `type --return`
 - **Observed**:
   - Every `see` session (`38D6B591-…`, `810AA6D6-…`, `021107B0-…`, `9ADE4207-…`) reports **zero** `AXTextField` nodes. The UI map only contains `AXGroup`/`AXUnknown` entries with empty labels, so neither `click --id` nor text queries can reach the email/password inputs.
-  - OCR of the captured screenshots (e.g. `~/Desktop/Screenshots/peekaboo_see_1762929688.png`) only shows the 1Password prompt plus “Return to this browser to keep using Grindr. Log in.” There is no detectable “Email” copy in the bitmap, explaining why the automation never finds a field to focus.
+  - OCR of the captured screenshots (e.g. `~/Desktop/Screenshots/peekaboo_see_1762929688.png`) only shows the 1Password prompt plus “Return to this browser to keep using secure login. Log in.” There is no detectable “Email” copy in the bitmap, explaining why the automation never finds a field to focus.
   - Attempting scripted fallbacks—typing JavaScript into devtools and `javascript:(...)` URLs via Peekaboo—still leaves the page untouched because `document.querySelector('input[type="email"]')` returns `null` in this environment.
-- **Impact**: We can open Chrome, navigate to `web.grindr.com`, and click “Sign In With Email”, but we can’t populate the form or detect success, so the user-requested Grindr login remains blocked.
+- **Impact**: We can open Chrome, navigate to the hosted login form, and click “Sign In With Email”, but we can’t populate the fields or detect success, so the requested automation remains blocked.
 - **Ideas**:
   1. Detect when `see` only finds opaque `AXGroup` nodes and fall back to image-based hit-testing or WebKit’s accessibility snapshot.
-  2. Auto-dismiss the 1Password overlay (which currently steals focus) before capturing so the underlying form becomes visible.
-  3. If Grindr truly relies on passwordless links, document that flow and teach Peekaboo how to parse the follow-up dialog so agents can continue.
+2. Auto-dismiss the 1Password overlay (which currently steals focus) before capturing so the underlying form becomes visible.
+3. If secure login truly relies on passwordless links, document that flow and teach Peekaboo how to parse the follow-up dialog so agents can continue.
+- **Progress — Nov 13, 2025**: `ElementDetectionService` now promotes editable `AXGroup`s (or ones whose role description mentions “text field”) to `textField` results. This gives us a fighting chance once secure login’s web view actually exposes editable descendants, and the same heuristics help other hybrid UIs that wrap inputs inside groups.
+- **Progress — Nov 13, 2025 (late)**: Playground now ships a deterministic “Hidden Web-style Text Fields” fixture (see `HiddenFieldsView`) and `SeeCommandPlaygroundTests.hiddenFieldsAreDetected` (run with `RUN_LOCAL_TESTS=true`) verifies `peekaboo see --app Playground --json-output` keeps returning those promoted `.textField` entries. Next: script the Chrome permission bubble the same way.
 - **Status — Nov 12, 2025**: Repeated scroll attempts (`peekaboo scroll --session … --direction down --amount 8`) do not reveal any additional accessibility nodes; every capture still lacks text fields, so we remain blocked on discovering a tabbable input.
-- **Update — Nov 12, 2025 (evening)**: Quitting `1Password` removes the save-login modal, but the Grindr web app still displays “Return to this browser to keep using Grindr. Log in.” with no text fields or form controls exposed through AX (or visible via OCR). The flow appears to require a magic-link email that we can’t access, so we remain blocked on entering the provided password.
+- **Update — Nov 12, 2025 (evening)**: Quitting `1Password` removes the save-login modal, but the secure login web app still displays “Return to this browser to keep using secure login. Log in.” with no text fields or form controls exposed through AX (or visible via OCR). The flow appears to require a magic-link email that we can’t access, so we remain blocked on entering the provided password.
 
-## Chrome location bubble has no actionable labels
-- **Command**: `polter peekaboo -- see --app "Google Chrome" --json-output` (right after logging in)
-- **Observed**: Chrome showed its native “web.grindr.com wants to know your location” bubble, but the element map only contained the paragraph text (`elem_93`). Neither “Allow” nor “Don’t Allow” appeared as buttons—everything in that region came back as blank `AXButton`s.
-- **Impact**: We had to guess pixel coordinates (`click --coords "1025,520"`) to hit the Allow button, which is brittle and scary for a security prompt. If the bubble moves, automation will mis-click.
-### Next steps
-1. Capture Chrome’s permission bubble via AX (it’s a real accessibility tree) so we can give the buttons names.
-2. As a fallback, teach the CV pipeline to OCR the button labels (“Allow”/“Don’t Allow”) so `click "Allow"` works even when AX fails.
+- `SeeCommandPlaygroundTests.hiddenFieldsAreDetected` also asserts that the Playground “Permission Bubble Simulation” fixture exposes “Allow”/“Don’t Allow” button labels, so the fallback heuristics are exercised in automation.
+- `ElementLabelResolverTests` keep the heuristic locked in—if we ever regress to the old “button” placeholder (or lose the child-text fallback), CI will fail.
 
 ## `dialog` commands log focus errors even when they succeed
 - **Command**: `polter peekaboo dialog list --app TextEdit --json-output`
@@ -455,3 +498,31 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
   1. Finish porting `SpaceTool` to the new `WindowInfo` schema (done: helper methods now live inside a `private extension`, using `window_title` / `window_id`).
   2. Replace the newline separator in `SystemToolFormatter` with an escaped literal (`"\n"`) so Swift’s parser doesn’t choke.
   3. Re-run `./runner ./scripts/build-mac-debug.sh` to discover the next blocker in the chain.
+### Resolution — Nov 13, 2025
+- `SpaceTool` now depends on a `SpaceManaging` abstraction, letting tests inject a fake CGS service while production keeps using `SpaceManagementService`. Its move-window paths re-query `ServiceWindowInfo` so metadata returns `window_title`, `window_id`, `target_space_number`, etc., matching the new schema.
+- Added `SpaceToolMoveWindowTests` (CLI test target) that run the tool under stubbed `PeekabooServices` and assert both metadata and CGS calls for `--to_current` and `--follow` flows, so regressions surface in CI before mac builds break again.
+
+## `menu click` rejected nested paths when passed via --item
+- **Command**: `polter peekaboo menu click --app Finder --item "View > Show View Options"`
+- **Observed**: The CLI treated the entire string as a flat menu title, so Finder returned `MENU_ITEM_NOT_FOUND` even though the user clearly provided a nested path. Only `--path` worked, which tripped up agents/autoscripts that default to `--item`.
+- **Impact**: Any automation that copied menu paths directly (with `>` separators) silently failed unless engineers rewrote the command by hand.
+- **Resolution — Nov 13, 2025**: `menu click` now normalizes inputs: if `--item` contains `>`, it’s transparently treated as a path and logged (info-level) so users see `Interpreting --item value as menu path: …`. JSON output includes the same log via debug entries. Regression covered by `MenuCommandSelectionNormalizationTests` in `Apps/CLI/Tests/CoreCLITests/MenuCommandTests.swift`.
+
+## `dialog list` pretended success when no dialog was present
+- **Command**: `polter peekaboo dialog list --app TextEdit --json-output` with no sheet open.
+- **Observed**: The CLI returned `{ role: "AXWindow", title: "" }` and reported success, so automations had to manually inspect the payload (which was empty) to realize nothing was on screen.
+- **Impact**: Scripts built guardrails around the command, defeating the point of having structured error codes (`NO_ACTIVE_DIALOG`). The MCP dialog tool inherited the same silent-success behavior, confusing agents that depend on Peekaboo’s diagnostics.
+- **Resolution — Nov 13, 2025**: `DialogService.listDialogElements` now inspects the resolved AX window: if the role/subrole pair looks like a normal window and there are no dialog-specific controls (buttons/text fields/accessory controls), it throws `DialogError.noActiveDialog`. The CLI propagates that error as `NO_ACTIVE_DIALOG`, matching the rest of the dialog command family.
+- **Tests**: `DialogServiceTests.testListDialogElements` now expects the method to throw when no dialog is showing, so future regressions get caught immediately.
+
+## `--force` flag swallowed by polter wrapper
+- **Command**: `polter peekaboo dialog dismiss --app TextEdit --force --json-output`
+- **Observed**: Poltergeist treated `--force` as its own “run stale build” flag, so the peekaboo CLI never saw it. The command proceeded as a non-force dismiss, searched for buttons, and failed with `{ code: "UNKNOWN_ERROR", message: "No dismiss button found in dialog." }`, which made it look like the dialog API was broken.
+- **Impact**: Any CLI option that overlaps with polter’s global flags (`--force`, `--timeout`, etc.) silently disappears unless users remember to insert `--` between polter arguments and CLI arguments. This catches even experienced engineers during quick smoke tests.
+- **Reminder (Nov 13, 2025)**: When running peekaboo via polter and you need CLI flags that begin with `-`/`--`, pass them after a double dash:
+  - `polter peekaboo -- dialog dismiss --force ...`
+  - `polter peekaboo -- menu click --item "View > Show View Options"`
+  This pushes everything after `--` directly to the CLI binary, preserving flags exactly.
+### Resolution — Nov 13, 2025
+- `./runner` now enforces the separator: `./runner polter peekaboo dialog dismiss --force` exits immediately with an instructional error so engineers can’t accidentally run polter without the required `--` barrier.
+- Added `DialogCommandTests.dialogDismissForce` to verify the CLI path handles `--force` (and reports the `escape` method) whenever the flag reaches us. Together, the guard + test prevent future regressions in both tooling and CLI behavior.

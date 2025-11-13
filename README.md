@@ -75,9 +75,9 @@ Peekaboo vendors three shared dependencies as top-level git submodules:
 Clone with `git clone --recursive` or run `git submodule update --init --recursive` after pulling to ensure all three are present.
 
 #### Submodule Details
-- `AXorcist` is our accessibility engine: it wraps the macOS AX APIs with type-safe Swift helpers so every command (and agent) can discover UI elements, grant permissions, and drive buttons/text fields without reinventing accessibility plumbing.
-- `Commander` is the shared parser/runtime that replaces Swift Argument Parser across Peekaboo. It provides property-wrapper metadata, a central router, standard CLI flags, and binders that hydrate existing command structs while keeping the runtime @MainActor-friendly.
-- `Tachikoma` is the AI provider SDK plus MCP adapters. It defines model enums, capability tables, request/response abstractions, and tool execution so the CLI and agents can swap between OpenAI, Anthropic, Groq, Ollama, etc. using one set of services.
+- `AXorcist` is our accessibility engine: it wraps the macOS AX APIs with type-safe Swift helpers so every command (and agent) can discover UI elements, grant permissions, and drive buttons/text fields without reinventing accessibility plumbing. Because the underlying APIs are macOS-only we keep AXorcist’s CI and release targets scoped to macOS 14+.
+- `Commander` is the shared parser/runtime that replaces Swift Argument Parser across Peekaboo. It provides property-wrapper metadata, a central router, standard CLI flags, and binders that hydrate existing command structs while keeping the runtime @MainActor-friendly. Commander’s CI now spans every Swift-supported OS (macOS, Linux, Windows, iOS/tvOS/watchOS/visionOS simulator destinations, plus Android via `--swift-sdk android`) so the parser stays portable.
+- `Tachikoma` is the AI provider SDK plus MCP adapters. It defines model enums, capability tables, request/response abstractions, and tool execution so the CLI and agents can swap between OpenAI, Anthropic, Groq, Ollama, etc. using one set of services. Tachikoma mirrors Commander’s platform matrix: macOS for local development plus Linux/Windows/Apple simulators/Android cross-compiles to ensure every provider build path remains healthy.
 
 ## 🧩 Platform Support
 
@@ -1623,7 +1623,7 @@ Created by [Peter Steinberger](https://steipete.com) - [@steipete](https://githu
 
 | Date       | Command                                                            | Scope                                  | Line Coverage |
 | ---------- | ------------------------------------------------------------------ | -------------------------------------- | ------------- |
-| 2025-11-13 | `./runner swift test --package-path Apps/CLI --enable-code-coverage -Xswiftc -DPEEKABOO_SKIP_AUTOMATION` | Entire workspace (Peekaboo + subrepos) | 8.40 %        |
+| 2025-11-13 | ``cd Apps/CLI && swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION --enable-code-coverage && xcrun llvm-profdata merge -sparse .build/arm64-apple-macosx/debug/codecov/*.profraw -o .build/arm64-apple-macosx/debug/codecov/default.profdata && xcrun llvm-cov report .build/arm64-apple-macosx/debug/peekabooPackageTests.xctest/Contents/MacOS/peekabooPackageTests -instr-profile .build/arm64-apple-macosx/debug/codecov/default.profdata`` | CLI + Core services under `PEEKABOO_SKIP_AUTOMATION` (non-interactive subset) | 9.82 %        |
 | 2025-11-12 | `./runner swift test --package-path Apps/CLI --enable-code-coverage` | Entire workspace (Peekaboo + subrepos) | 8.38 %        |
 
-> Coverage generated via `xcrun llvm-cov report Apps/CLI/.build/debug/peekabooPackageTests.xctest/Contents/MacOS/peekabooPackageTests -instr-profile Apps/CLI/.build/debug/codecov/default.profdata`. Because the CLI target depends on AXorcist, Commander, and Tachikoma, the figure reflects the aggregate workspace.
+> Coverage generated via `xcrun llvm-cov report Apps/CLI/.build/arm64-apple-macosx/debug/peekabooPackageTests.xctest/Contents/MacOS/peekabooPackageTests -instr-profile Apps/CLI/.build/arm64-apple-macosx/debug/codecov/default.profdata`. Because the CLI target depends on AXorcist, Commander, and Tachikoma, the figure reflects the aggregate workspace, even though automation-heavy suites remain disabled during headless runs.
