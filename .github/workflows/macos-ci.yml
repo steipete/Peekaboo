@@ -25,18 +25,9 @@ jobs:
       RUN_LOCAL_TESTS: "false"
     steps:
       - uses: actions/checkout@v4
-
-      - name: Checkout Tachikoma subrepo
-        uses: actions/checkout@v4
         with:
-          repository: steipete/Tachikoma
-          ref: main
-          path: Tachikoma
-
-      - name: Remove phantom submodule metadata
-        run: |
-          rm -f .gitmodules
-          git config --local --remove-section submodule.Tachikoma || true
+          submodules: recursive
+          fetch-depth: 1
 
       - name: Prepare Swift Argument Parser fork
         run: |
@@ -110,18 +101,9 @@ jobs:
       PEEKABOO_SKIP_AUTOMATION: "1"
     steps:
       - uses: actions/checkout@v4
-
-      - name: Checkout Tachikoma subrepo
-        uses: actions/checkout@v4
         with:
-          repository: steipete/Tachikoma
-          ref: main
-          path: Tachikoma
-
-      - name: Remove phantom submodule metadata
-        run: |
-          rm -f .gitmodules
-          git config --local --remove-section submodule.Tachikoma || true
+          submodules: recursive
+          fetch-depth: 1
 
       - name: Prepare Swift Argument Parser fork
         run: |
@@ -195,13 +177,9 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Checkout Tachikoma
-        uses: actions/checkout@v4
         with:
-          repository: steipete/Tachikoma
-          ref: main
-          path: Tachikoma
+          submodules: recursive
+          fetch-depth: 1
 
       - name: Remove phantom submodule metadata
         run: |
