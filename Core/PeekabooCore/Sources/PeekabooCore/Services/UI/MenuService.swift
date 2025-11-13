@@ -566,6 +566,123 @@ extension MenuService {
         return resolved
     }
 
+}
+
+fileprivate extension MenuExtraInfo {
+    func merging(with candidate: MenuExtraInfo) -> MenuExtraInfo {
+        MenuExtraInfo(
+            title: Self.preferredTitle(primary: self, secondary: candidate),
+            rawTitle: self.rawTitle ?? candidate.rawTitle,
+            bundleIdentifier: self.bundleIdentifier ?? candidate.bundleIdentifier,
+            ownerName: self.ownerName ?? candidate.ownerName,
+            position: self.preferredPosition(comparedTo: candidate),
+            isVisible: self.isVisible || candidate.isVisible,
+            identifier: self.identifier ?? candidate.identifier)
+    }
+
+    private static func preferredTitle(primary: MenuExtraInfo, secondary: MenuExtraInfo) -> String? {
+        let primaryTitle = sanitizedMenuText(primary.title) ?? sanitizedMenuText(primary.rawTitle)
+        let secondaryTitle = sanitizedMenuText(secondary.title) ?? sanitizedMenuText(secondary.rawTitle)
+
+        let primaryQuality = Self.titleQuality(for: primaryTitle)
+        let secondaryQuality = Self.titleQuality(for: secondaryTitle)
+
+        if secondaryQuality > primaryQuality {
+            return secondaryTitle ?? primaryTitle
+        } else if primaryQuality > secondaryQuality {
+            return primaryTitle ?? secondaryTitle
+        } else {
+            return primaryTitle ?? secondaryTitle
+        }
+    }
+
+    private static func titleQuality(for title: String?) -> Int {
+        guard let title else { return 0 }
+        if isPlaceholderMenuTitle(title) { return 0 }
+        if title.count <= 2 { return 1 }
+        if title.rangeOfCharacter(from: .whitespacesAndNewlines) == nil {
+            return 2
+        }
+        return 3
+    }
+
+    private func preferredPosition(comparedTo candidate: MenuExtraInfo) -> CGPoint {
+        if self.position.distance(to: candidate.position) <= 1 {
+            return self.position
+        }
+        return self.position.x <= candidate.position.x ? self.position : candidate.position
+    }
+}
+
+fileprivate func sanitizedMenuText(_ value: String?) -> String? {
+    guard let value else { return nil }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
+}
+
+fileprivate func isPlaceholderMenuTitle(_ title: String) -> Bool {
+    guard let sanitized = sanitizedMenuText(title) else { return true }
+    let lower = sanitized.lowercased()
+    if lower == "unknown" || lower == "item" || lower == "menu item" {
+        return true
+    }
+    if lower.hasPrefix("item-") || lower.hasPrefix("item ") {
+        return true
+    }
+    if lower.hasPrefix("bentobox") || lower.hasPrefix("menubaritem") {
+        return true
+    }
+    if sanitized.range(of: #"^[0-9]+$"#, options: .regularExpression) != nil {
+        return true
+    }
+    if sanitized.range(of: #"^[0-9a-fA-F\-]{8,}$"#, options: .regularExpression) != nil,
+       (UUID(uuidString: sanitized) != nil || sanitized.rangeOfCharacter(from: .letters) == nil) {
+        return true
+    }
+    return false
+}
+
+fileprivate func humanReadableMenuIdentifier(_ identifier: String?) -> String? {
+    guard let identifier = sanitizedMenuText(identifier) else { return nil }
+    let separators = CharacterSet(charactersIn: "._-:/")
+    let tokens = identifier.split { character in
+        character.unicodeScalars.contains { separators.contains($0) }
+    }
+    guard let rawToken = tokens.last else { return nil }
+    let candidate = String(rawToken)
+    guard !isPlaceholderMenuTitle(candidate) else { return nil }
+    let spaced = camelCaseToWords(candidate)
+    return spaced.isEmpty ? nil : spaced
+}
+
+fileprivate func camelCaseToWords(_ token: String) -> String {
+    var result = ""
+    var previousWasUppercase = false
+
+    for character in token {
+        if character == "_" || character == "-" {
+            if !result.hasSuffix(" ") {
+                result.append(" ")
+            }
+            previousWasUppercase = false
+            continue
+        }
+
+        if character.isUppercase, !previousWasUppercase, !result.isEmpty {
+            result.append(" ")
+        }
+
+        result.append(character)
+        previousWasUppercase = character.isUppercase
+    }
+
+    return result
+        .replacingOccurrences(of: "  ", with: " ")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .capitalized
+}
+
+extension MenuService {
 fileprivate extension MenuExtraInfo {
     func merging(with candidate: MenuExtraInfo) -> MenuExtraInfo {
         MenuExtraInfo(
