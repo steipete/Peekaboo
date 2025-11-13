@@ -59,7 +59,7 @@ public final class ElementDetectionService {
         self.logger.debug("Found \(windowResolution.windowTypeDescription): \(windowName)")
 
         var elementIdMap: [String: DetectedElement] = [:]
-        var detectedElements = self.collectElements(
+        let detectedElements = self.collectElements(
             window: windowResolution.window,
             appElement: windowResolution.appElement,
             appIsActive: targetApp.isActive,
@@ -108,6 +108,15 @@ public final class ElementDetectionService {
 }
 
 extension ElementDetectionService {
+    private static let textualRoles: Set<String> = [
+        "axstatictext",
+        "axtext",
+        "axbutton",
+        "axlink",
+        "axdescription",
+        "axunknown",
+    ]
+
     // MARK: - Helper Methods
 
     private func mapRoleToElementType(_ role: String) -> ElementType {
@@ -187,7 +196,7 @@ extension ElementDetectionService {
         let candidateWindows = renderableWindows.isEmpty ? axWindows : renderableWindows
         self.logger.notice("Renderable AX windows: \(renderableWindows.count) / \(axWindows.count)")
 
-        var initialWindow = self.selectWindow(allWindows: candidateWindows, title: context?.windowTitle)
+        let initialWindow = self.selectWindow(allWindows: candidateWindows, title: context?.windowTitle)
         let dialogResolution = self.detectDialogWindow(in: candidateWindows, targetWindow: initialWindow)
 
         var finalWindow = dialogResolution.window ??
@@ -429,10 +438,11 @@ extension ElementDetectionService {
         self.logButtonDebugInfoIfNeeded(descriptor)
 
         let elementId = "elem_\(detectedElements.count)"
-        let elementType = self.mapRoleToElementType(descriptor.role)
+        let baseType = self.mapRoleToElementType(descriptor.role)
+        let elementType = self.adjustedElementType(element: element, descriptor: descriptor, baseType: baseType)
         let isActionable = self.isElementActionable(element, role: descriptor.role)
         let keyboardShortcut = self.extractKeyboardShortcut(element)
-        let label = self.effectiveLabel(for: descriptor)
+        let label = self.effectiveLabel(for: element, descriptor: descriptor)
 
         let attributes = self.createElementAttributes(
             ElementAttributeInput(
@@ -511,19 +521,51 @@ extension ElementDetectionService {
         self.logger.debug("🔍 Button debug - \(parts.joined(separator: ", "))")
     }
 
-    private func effectiveLabel(for descriptor: ElementDescriptor) -> String? {
-        var label = descriptor.label ?? descriptor.title ?? descriptor.value ?? descriptor.roleDescription
-        guard descriptor.role.lowercased() == "axbutton", label == "button" else { return label }
+    private func effectiveLabel(for element: Element, descriptor: ElementDescriptor) -> String? {
+        let info = ElementLabelInfo(
+            role: descriptor.role,
+            label: descriptor.label,
+            title: descriptor.title,
+            value: descriptor.value,
+            roleDescription: descriptor.roleDescription,
+            description: descriptor.description,
+            identifier: descriptor.identifier)
 
-        if let description = descriptor.description, !description.isEmpty, description != "button" {
-            return description
+        let childTexts = self.textualDescendants(of: element)
+        return ElementLabelResolver.resolve(
+            info: info,
+            childTexts: childTexts,
+            identifierCleaner: self.cleanedIdentifier)
+    }
+
+    private func textualDescendants(of element: Element, depth: Int = 0, limit: Int = 4) -> [String] {
+        guard depth < 3, limit > 0, let children = element.children(), !children.isEmpty else {
+            return []
         }
 
-        if let identifier = descriptor.identifier, !identifier.isEmpty {
-            return self.cleanedIdentifier(identifier)
+        var results: [String] = []
+        for child in children {
+            if let role = child.role()?.lowercased(),
+               Self.textualRoles.contains(role)
+            {
+                if let candidate = child.title() ?? child.label() ?? child.stringValue() ?? child.descriptionText() {
+                    let normalized = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !normalized.isEmpty {
+                        results.append(normalized)
+                        if results.count >= limit { break }
+                    }
+                }
+            }
+
+            if results.count >= limit { break }
+
+            let remaining = limit - results.count
+            let nested = self.textualDescendants(of: child, depth: depth + 1, limit: remaining)
+            results.append(contentsOf: nested)
+            if results.count >= limit { break }
         }
 
-        return label
+        return results
     }
 
     private func cleanedIdentifier(_ identifier: String) -> String {
@@ -532,6 +574,19 @@ extension ElementDetectionService {
             .split(separator: " ")
             .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
             .joined(separator: " ")
+    }
+
+    private func adjustedElementType(
+        element: Element,
+        descriptor: ElementDescriptor,
+        baseType: ElementType
+    ) -> ElementType {
+        let roleInfo = ElementRoleInfo(
+            role: descriptor.role,
+            roleDescription: descriptor.roleDescription,
+            isEditable: element.isEditable() ?? false
+        )
+        return ElementRoleResolver.resolveType(baseType: baseType, info: roleInfo)
     }
 
     private func isElementActionable(_ element: Element, role: String) -> Bool {
