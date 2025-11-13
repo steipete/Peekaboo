@@ -74,6 +74,11 @@ Peekaboo vendors three shared dependencies as top-level git submodules:
 
 Clone with `git clone --recursive` or run `git submodule update --init --recursive` after pulling to ensure all three are present.
 
+#### Submodule Details
+- `AXorcist` is our accessibility engine: it wraps the macOS AX APIs with type-safe Swift helpers so every command (and agent) can discover UI elements, grant permissions, and drive buttons/text fields without reinventing accessibility plumbing.
+- `Commander` is the shared parser/runtime that replaces Swift Argument Parser across Peekaboo. It provides property-wrapper metadata, a central router, standard CLI flags, and binders that hydrate existing command structs while keeping the runtime @MainActor-friendly.
+- `Tachikoma` is the AI provider SDK plus MCP adapters. It defines model enums, capability tables, request/response abstractions, and tool execution so the CLI and agents can swap between OpenAI, Anthropic, Groq, Ollama, etc. using one set of services.
+
 ## 🧩 Platform Support
 
 | Component | Supported OS targets | Notes |
