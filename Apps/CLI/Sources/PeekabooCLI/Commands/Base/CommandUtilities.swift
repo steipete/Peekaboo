@@ -614,6 +614,30 @@ extension WindowIdentificationOptions {
             }) ?? windows.first
         }
     }
+
+    /// Re-fetch the window info after a mutation so callers report fresh bounds.
+    @MainActor
+    func refetchWindowInfo(
+        services: PeekabooServices,
+        logger: Logger,
+        context: StaticString
+    ) async -> ServiceWindowInfo? {
+        guard let target = try? self.toWindowTarget() else {
+            logger.warn("Failed to refetch window info (\(context)): invalid target")
+            return nil
+        }
+
+        do {
+            let refreshedWindows = try await WindowServiceBridge.listWindows(
+                services: services,
+                target: target
+            )
+            return self.selectWindow(from: refreshedWindows)
+        } catch {
+            logger.warn("Failed to refetch window info (\(context)): \(error.localizedDescription)")
+            return nil
+        }
+    }
 }
 
 // MARK: - Common Command Base Classes

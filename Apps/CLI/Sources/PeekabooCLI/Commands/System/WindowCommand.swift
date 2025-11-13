@@ -535,18 +535,22 @@ extension WindowCommand {
                 let newSize = CGSize(width: width, height: height)
                 try await WindowServiceBridge.resizeWindow(services: self.services, target: target, to: newSize)
 
-                // We'll pass the original windowInfo as-is since window service would have updated it
-                // (In a real implementation, we'd refetch window info after resize)
+                let refreshedWindowInfo = await self.windowOptions.refetchWindowInfo(
+                    services: self.services,
+                    logger: self.logger,
+                    context: "window-resize"
+                )
+                let finalWindowInfo = refreshedWindowInfo ?? windowInfo
 
                 let data = createWindowActionResult(
                     action: "resize",
                     success: true,
-                    windowInfo: windowInfo,
+                    windowInfo: finalWindowInfo,
                     appName: appName
                 )
 
                 output(data) {
-                    let title = windowInfo?.title ?? "Untitled"
+                    let title = finalWindowInfo?.title ?? "Untitled"
                     print("Successfully resized window '\(title)' to \(self.width)x\(self.height)")
                 }
 
@@ -614,18 +618,22 @@ extension WindowCommand {
                     bounds: newBounds
                 )
 
-                // We'll pass the original windowInfo as-is since window service would have updated it
-                // (In a real implementation, we'd refetch window info after set-bounds)
+                let refreshedWindowInfo = await self.windowOptions.refetchWindowInfo(
+                    services: self.services,
+                    logger: self.logger,
+                    context: "window-set-bounds"
+                )
+                let finalWindowInfo = refreshedWindowInfo ?? windowInfo
 
                 let data = createWindowActionResult(
                     action: "set-bounds",
                     success: true,
-                    windowInfo: windowInfo,
+                    windowInfo: finalWindowInfo,
                     appName: appName
                 )
 
                 output(data) {
-                    let title = windowInfo?.title ?? "Untitled"
+                    let title = finalWindowInfo?.title ?? "Untitled"
                     let boundsDescription = "(\(self.x), \(self.y)) \(self.width)x\(self.height)"
                     print("Successfully set window '\(title)' bounds to \(boundsDescription)")
                 }
