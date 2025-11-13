@@ -55,4 +55,12 @@ struct CLIRuntimeSmokeTests {
         #expect(result.status == .exited(0))
         #expect(result.standardOutput.contains("Agent service not available"))
     }
+
+    @Test("peekaboo learn prints comprehensive guide")
+    func commanderLearnGuide() async throws {
+        let result = try await TestChildProcess.runPeekaboo(["learn"])
+        #expect(result.status == .exited(0))
+        #expect(result.standardOutput.contains("# Peekaboo Comprehensive Guide"))
+        #expect(result.standardOutput.contains("## Commander Command Signatures"))
+    }
 }
