@@ -238,7 +238,7 @@ private struct CommandFailure: Error {
 
 private func runAppCommand(
     _ args: [String],
-    configure: (@MainActor (StubApplicationService) -> ())? = nil
+    configure: (@MainActor (StubApplicationService) -> Void)? = nil
 ) async throws -> String {
     let (output, _) = try await runAppCommandWithService(args, configure: configure)
     return output
@@ -246,7 +246,7 @@ private func runAppCommand(
 
 private func runAppCommandWithService(
     _ args: [String],
-    configure: (@MainActor (StubApplicationService) -> ())? = nil
+    configure: (@MainActor (StubApplicationService) -> Void)? = nil
 ) async throws -> (String, StubApplicationService) {
     let context = await makeAppCommandContext()
     if let configure {

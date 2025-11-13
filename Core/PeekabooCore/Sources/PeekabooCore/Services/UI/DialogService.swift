@@ -288,6 +288,30 @@ extension DialogService {
         let staticTexts = self.dialogStaticTexts(from: dialog)
         let otherElements = self.dialogOtherElements(from: dialog)
 
+        let accessoryRoles: Set<String> = [
+            "AXCheckBox", "AXRadioButton", "AXPopUpButton", "AXComboBox", "AXSlider", "AXDisclosureTriangle",
+        ]
+        let hasAccessoryElements = otherElements.contains { accessoryRoles.contains($0.role) }
+        let looksLikeDialog = self.isDialogElement(dialog, matching: windowTitle)
+        let hasContent = !buttons.isEmpty ||
+            !textFields.isEmpty ||
+            !staticTexts.isEmpty ||
+            hasAccessoryElements
+
+        let isSuspiciousUnknown = dialogInfo.role == "AXWindow" && dialogInfo.subrole == "AXUnknown"
+        if !hasContent, !looksLikeDialog || isSuspiciousUnknown {
+            // We landed on a normal window (Finder, Chrome, etc.) and didn't find any dialog-specific
+            // controls. Instead of returning an empty payload (which CLI users mistake for success),
+            // throw so callers can prompt the user to open the desired sheet first.
+            self.logger.error(
+                """
+                Active window '\(dialogInfo.title)' (role: \(dialogInfo.role)) is not a dialog and \
+                contains no interactive elements
+                """
+            )
+            throw DialogError.noActiveDialog
+        }
+
         let elements = DialogElements(
             dialogInfo: dialogInfo,
             buttons: buttons,

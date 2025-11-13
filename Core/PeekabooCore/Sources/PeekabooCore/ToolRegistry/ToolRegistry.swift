@@ -78,7 +78,8 @@ public enum ToolRegistry {
             peekaboo type --text \"Press\\tescape\" --delay 50
 
             TROUBLESHOOTING
-            If the text appears in the wrong place, focus the application with `peekaboo window focus` or `peekaboo click` first.
+            If the text appears in the wrong place, focus the application with
+            `peekaboo window focus` or run a quick `peekaboo click` first.
             """,
             examples: [
                 "peekaboo type \"Hello\\nWorld\"",

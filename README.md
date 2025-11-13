@@ -1888,7 +1888,7 @@ Created by [Peter Steinberger](https://steipete.com) - [@steipete](https://githu
 
 | Date       | Command                                                            | Scope                                  | Line Coverage |
 | ---------- | ------------------------------------------------------------------ | -------------------------------------- | ------------- |
-| 2025-11-13 | `./runner swift test --package-path Apps/CLI --enable-code-coverage -Xswiftc -DPEEKABOO_SKIP_AUTOMATION` | Entire workspace (Peekaboo + subrepos) | 8.38 %        |
+| 2025-11-13 | `./runner swift test --package-path Apps/CLI --enable-code-coverage -Xswiftc -DPEEKABOO_SKIP_AUTOMATION` | Entire workspace (Peekaboo + subrepos) | 8.40 %        |
 | 2025-11-12 | `./runner swift test --package-path Apps/CLI --enable-code-coverage` | Entire workspace (Peekaboo + subrepos) | 8.38 %        |
 
 > Coverage generated via `xcrun llvm-cov report Apps/CLI/.build/debug/peekabooPackageTests.xctest/Contents/MacOS/peekabooPackageTests -instr-profile Apps/CLI/.build/debug/codecov/default.profdata`. Because the CLI target depends on AXorcist, Commander, and Tachikoma, the figure reflects the aggregate workspace.

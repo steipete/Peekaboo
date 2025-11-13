@@ -271,8 +271,8 @@ private struct WindowListFormatter {
 
     private func headerLines() -> [String] {
         var lines: [String] = []
-        let countLine =
-            "\(AgentDisplayTokens.Status.success) Found \(self.windows.count) window\(self.windows.count == 1 ? "" : "s")"
+        let windowLabel = self.windows.count == 1 ? "window" : "windows"
+        let countLine = "\(AgentDisplayTokens.Status.success) Found \(self.windows.count) \(windowLabel)"
         if let info = appInfo {
             var line = countLine + " for \(info.name)"
             if let bundleID = info.bundleIdentifier, !bundleID.isEmpty {
