@@ -30,7 +30,7 @@ public final class MenuService: MenuServiceProtocol {
 }
 
 @MainActor
-extension MenuService {
+private extension MenuService {
     public func listMenus(for appIdentifier: String) async throws -> MenuStructure {
         let appInfo = try await applicationService.findApplication(identifier: appIdentifier)
 
