@@ -98,4 +98,44 @@ struct MenuServiceTests {
         #expect(merged[1].title == "Bluetooth")
         #expect(merged[0].position.x < merged[1].position.x)
     }
+
+    @Test("Control Center identifier mapping overrides placeholder labels")
+    func identifierMappingOverridesPlaceholder() {
+        let lookup = ControlCenterIdentifierLookup(mapping: [
+            "2D61E17B-1FC1-41CA-945C-975B98812617": "Stage Manager",
+        ])
+
+        #expect(humanReadableMenuIdentifier("2d61e17b-1fc1-41ca-945c-975b98812617", lookup: lookup) == "Stage Manager")
+        #expect(humanReadableMenuIdentifier("bb3cc23c-6950-4e96-8b40-850e09f46934", lookup: lookup) == nil)
+    }
+
+    @Test("Fallback display names prefer owner names when raw title is a GUID")
+    @MainActor
+    func fallbackFriendlyTitleUsesOwner() async {
+        let service = MenuService()
+        let owner = "Control Center"
+        let guid = "bb3cc23c-6950-4e96-8b40-850e09f46934"
+        let friendly = await service.makeDebugDisplayName(
+            rawTitle: guid,
+            ownerName: owner,
+            bundleIdentifier: "com.apple.controlcenter")
+        #expect(friendly == owner)
+    }
+
+    @Test("Menu bar display titles append index when fallback uses owner")
+    @MainActor
+    func displayTitleAppendsIndexForOwnerFallback() async {
+        let service = MenuService()
+        let placeholderExtra = MenuExtraInfo(
+            title: "Control Center",
+            rawTitle: "Item-0",
+            bundleIdentifier: "com.apple.controlcenter",
+            ownerName: "Control Center",
+            position: .zero,
+            isVisible: true,
+            identifier: nil)
+
+        let displayTitle = service.resolvedMenuBarTitle(for: placeholderExtra, index: 5)
+        #expect(displayTitle == "Control Center #5")
+    }
 }
