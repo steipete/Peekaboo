@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AudioInputService` now uses Swift observation (`@Observable`) and structured `Task.sleep` polling instead of Combine timers so Swift 6.2 buildings avoid dependency on legacy publishers.
 - CLI `tools` output adopts stable ordering using `OrderedDictionary` for consistent rendering and JSON responses.
 
+## [3.0.0] - 2025-11-13
+
+### Added
+- Full GUI automation commands—`see`, `click`, `type`, `press`, `scroll`, `hotkey`, and `swipe`—now ship in the CLI with multi-screen capture so you can identify elements on any display and act on them without leaving the terminal.
+- Natural-language AI agent flows (`peekaboo agent "…"` or simply `peekaboo "…"`) let you describe multi-step tasks in prose; the agent chains native tools, emits verbose traces, and supports low-level hotkeys when you need to fall back to precise control.
+- Dedicated window management, multi-screen, and Spaces commands (`window`, `space`) give you scripted control over closing, moving, resizing, and re-homing macOS apps, including presets like left/right halves and cross-display moves.
+- Menu tooling now enumerates every application menu plus system menu extras, enabling zero-click discovery of keyboard shortcuts and scripted menu activation via `menu list`, `menu list-all`, `menu click`, and `menu click-extra`.
+- Automation sessions remember the most recent `see` run automatically, but you can also pin explicit session IDs and run `.peekaboo.json` scripts via `peekaboo run` to reproduce complex workflows with one command.
+
+### Integrations
+- Peekaboo runs as both an MCP server and client: it still exposes its native tools to Claude/Cursor, but v3 also ships BrowserMCP by default and lets you add or toggle external MCP servers (`peekaboo mcp list/add/test/enable/disable`), so the agent can mix native Mac automation with remote browser, GitHub, or filesystem tools in a single session.
+
 ## [2.0.3] - 2025-07-03
 
 ### Fixed
