@@ -489,7 +489,7 @@ See [docs/mcp-client.md](docs/mcp-client.md) for complete documentation.
 
 ## 📟 CLI Command Reference
 
-Peekaboo’s CLI mirrors everything the agent can do. Each command below is available directly in the terminal, supports `--json-output` for scripting, and honors the shared session cache so you can mix-and-match tasks.
+Peekaboo’s CLI mirrors everything the agent can do. Each command below runs directly in the terminal, honors the shared session cache, and (where applicable) supports `--json-output` for scripting.
 
 ### Capture & Core Utilities
 - `image` – Capture screens, windows, frontmost apps, or specific regions with `--mode`/`--app` and optionally run inline AI analysis via `--analyze`.
