@@ -74,6 +74,15 @@ Peekaboo vendors three shared dependencies as top-level git submodules:
 
 Clone with `git clone --recursive` or run `git submodule update --init --recursive` after pulling to ensure all three are present.
 
+## 🧩 Platform Support
+
+| Component | Supported OS targets | Notes |
+| --- | --- | --- |
+| Peekaboo CLI + Mac app | macOS 14.0+ | Everything ships as a native macOS product; CI only runs on macOS runners so we can exercise ScreenCaptureKit and Accessibility APIs. |
+| AXorcist | macOS 14.0+ | Accessibility frameworks are macOS-only, so both the library and its CLI stay scoped to macOS. |
+| Commander | macOS, Linux, Windows, Apple simulators (iOS/tvOS/watchOS/visionOS), Android (aarch64) | New CI jobs install Swift toolchains via Swiftly/WinGet, run `xcodebuild` against each simulator platform, and cross-compile with `--swift-sdk android` so Commander stays portable anywhere Swift builds. |
+| Tachikoma | macOS, Linux, Windows, Apple simulators (iOS/tvOS/watchOS/visionOS), Android (aarch64) | Matches Commander’s matrix and additionally runs the Android cross-compilation plus the Apple destination builds for provider SDK validation. |
+
 ## 🚀 Quick Start: CLI Tool
 
 ### Installation
@@ -1879,8 +1888,7 @@ Created by [Peter Steinberger](https://steipete.com) - [@steipete](https://githu
 
 | Date       | Command                                                            | Scope                                  | Line Coverage |
 | ---------- | ------------------------------------------------------------------ | -------------------------------------- | ------------- |
+| 2025-11-13 | `./runner swift test --package-path Apps/CLI --enable-code-coverage -Xswiftc -DPEEKABOO_SKIP_AUTOMATION` | Entire workspace (Peekaboo + subrepos) | 8.38 %        |
 | 2025-11-12 | `./runner swift test --package-path Apps/CLI --enable-code-coverage` | Entire workspace (Peekaboo + subrepos) | 8.38 %        |
 
 > Coverage generated via `xcrun llvm-cov report Apps/CLI/.build/debug/peekabooPackageTests.xctest/Contents/MacOS/peekabooPackageTests -instr-profile Apps/CLI/.build/debug/codecov/default.profdata`. Because the CLI target depends on AXorcist, Commander, and Tachikoma, the figure reflects the aggregate workspace.
-
----# CI Test
