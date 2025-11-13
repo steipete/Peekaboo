@@ -482,33 +482,21 @@ extension MenuService {
         fallbackExtras: [MenuExtraInfo]) -> [MenuExtraInfo]
     {
         var merged = [MenuExtraInfo]()
-        var seen = Set<MenuExtraIdentifier>()
 
-        func appendIfNew(_ extra: MenuExtraInfo) {
-            if merged.contains(where: { $0.position.distance(to: extra.position) < 5 }) {
-                return
+        func upsert(_ extra: MenuExtraInfo) {
+            if let index = merged.firstIndex(where: { $0.position.distance(to: extra.position) < 5 }) {
+                merged[index] = merged[index].merging(with: extra)
+            } else {
+                merged.append(extra)
             }
-            let identifier = MenuExtraIdentifier(extra: extra)
-            guard !seen.contains(identifier) else { return }
-            seen.insert(identifier)
-            merged.append(extra)
         }
 
-        accessibilityExtras.forEach(appendIfNew)
-        fallbackExtras.forEach(appendIfNew)
+        // Prefer fallback/window extras because they tend to have richer titles.
+        fallbackExtras.forEach(upsert)
+        accessibilityExtras.forEach(upsert)
 
         merged.sort { $0.position.x < $1.position.x }
         return merged
-    }
-
-    private struct MenuExtraIdentifier: Hashable {
-        let bundleIdentifier: String?
-        let normalizedTitle: String
-
-        init(extra: MenuExtraInfo) {
-            self.bundleIdentifier = extra.bundleIdentifier
-            self.normalizedTitle = (extra.rawTitle ?? extra.title).lowercased()
-        }
     }
 
     private func makeMenuExtraDisplayName(
@@ -546,6 +534,80 @@ extension MenuService {
             return "Passwords"
         case .other:
             return fallback
+        }
+    }
+
+    fileprivate extension MenuExtraInfo {
+        func merging(with candidate: MenuExtraInfo) -> MenuExtraInfo {
+            MenuExtraInfo(
+                title: Self.preferredTitle(primary: self, secondary: candidate),
+                rawTitle: self.rawTitle ?? candidate.rawTitle,
+                bundleIdentifier: self.bundleIdentifier ?? candidate.bundleIdentifier,
+                ownerName: self.ownerName ?? candidate.ownerName,
+                position: self.preferredPosition(comparedTo: candidate),
+                isVisible: self.isVisible || candidate.isVisible)
+        }
+
+        private static func preferredTitle(primary: MenuExtraInfo, secondary: MenuExtraInfo) -> String? {
+            let primaryTitle = Self.sanitized(primary.title) ?? Self.sanitized(primary.rawTitle)
+            let secondaryTitle = Self.sanitized(secondary.title) ?? Self.sanitized(secondary.rawTitle)
+
+            let primaryQuality = Self.titleQuality(for: primaryTitle)
+            let secondaryQuality = Self.titleQuality(for: secondaryTitle)
+
+            if secondaryQuality > primaryQuality {
+                return secondaryTitle ?? primaryTitle
+            } else if primaryQuality > secondaryQuality {
+                return primaryTitle ?? secondaryTitle
+            } else {
+                return primaryTitle ?? secondaryTitle
+            }
+        }
+
+        private static func titleQuality(for title: String?) -> Int {
+            guard let title else { return 0 }
+            if Self.isPlaceholderTitle(title) { return 0 }
+            if title.count <= 2 { return 1 }
+            if title.rangeOfCharacter(from: .whitespacesAndNewlines) == nil {
+                return 2
+            }
+            return 3
+        }
+
+        private static func sanitized(_ value: String?) -> String? {
+            guard let value else { return nil }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+
+        private static func isPlaceholderTitle(_ title: String) -> Bool {
+            let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return true }
+            let lower = trimmed.lowercased()
+            if lower == "unknown" || lower == "item" || lower == "menu item" {
+                return true
+            }
+            if lower.hasPrefix("item-") || lower.hasPrefix("item ") {
+                return true
+            }
+            if lower.hasPrefix("bentobox") || lower.hasPrefix("menubaritem") {
+                return true
+            }
+            if trimmed.range(of: #"^[0-9]+$"#, options: .regularExpression) != nil {
+                return true
+            }
+            if trimmed.range(of: #"^[0-9a-fA-F\-]{8,}$"#, options: .regularExpression) != nil,
+               (UUID(uuidString: trimmed) != nil || trimmed.rangeOfCharacter(from: .letters) == nil) {
+                return true
+            }
+            return false
+        }
+
+        private func preferredPosition(comparedTo candidate: MenuExtraInfo) -> CGPoint {
+            if self.position.distance(to: candidate.position) <= 1 {
+                return self.position
+            }
+            return self.position.x <= candidate.position.x ? self.position : candidate.position
         }
     }
 
