@@ -88,11 +88,29 @@ extension MenuCommand {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
 
-            guard self.item != nil || self.path != nil else {
+            var normalizedItem = self.item
+            var normalizedPath = self.path
+            // Convert legacy --item inputs (containing '>') into proper paths so we accept
+            // the shape agents typically copy out of menu list output without requiring
+            // them to learn about --path vs --item flag differences.
+            let normalization = normalizeMenuSelection(item: normalizedItem, path: normalizedPath)
+            normalizedItem = normalization.item
+            normalizedPath = normalization.path
+
+            if normalization.convertedFromItem, let resolvedPath = normalizedPath {
+                let note = "Interpreting --item value as menu path: \(resolvedPath)"
+                if self.jsonOutput {
+                    self.logger.info(note)
+                } else {
+                    print("ℹ️ \(note)")
+                }
+            }
+
+            guard normalizedItem != nil || normalizedPath != nil else {
                 throw ValidationError("Must specify either --item or --path")
             }
 
-            guard self.item == nil || self.path == nil else {
+            guard normalizedItem == nil || normalizedPath == nil else {
                 throw ValidationError("Cannot specify both --item and --path")
             }
 
@@ -105,13 +123,13 @@ extension MenuCommand {
                     logger: self.logger
                 )
 
-                if let itemName = self.item {
+                if let itemName = normalizedItem {
                     try await MenuServiceBridge.clickMenuItemByName(
                         services: self.services,
                         appIdentifier: appIdentifier,
                         itemName: itemName
                     )
-                } else if let path {
+                } else if let path = normalizedPath {
                     try await MenuServiceBridge.clickMenuItem(
                         services: self.services,
                         appIdentifier: appIdentifier,
@@ -120,7 +138,7 @@ extension MenuCommand {
                 }
 
                 let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
-                let clickedPath = self.path ?? self.item!
+                let clickedPath = normalizedPath ?? normalizedItem!
 
                 if self.jsonOutput {
                     let data = MenuClickResult(
@@ -786,12 +804,26 @@ private func ensureFocusIgnoringMissingWindows(
             services: services
         )
     } catch let focusError as FocusError {
-        if case .noWindowsFound = focusError {
+        switch focusError {
+        case .noWindowsFound:
             logger.debug("Skipping focus: no windows found for '\(applicationName)'")
-        } else {
+        case .windowNotFound, .axElementNotFound:
+            logger.debug("Skipping focus: window lookup failed for '\(applicationName)': \(focusError)")
+        default:
             throw focusError
         }
     }
+}
+
+@MainActor
+func normalizeMenuSelection(item: String?, path: String?) -> (item: String?, path: String?, convertedFromItem: Bool) {
+    // Agents historically passed menu paths via --item (e.g. "File > New"), which Commander
+    // happily accepts but the runtime interpreted as a literal button title. Auto-detect and
+    // reinterpret those inputs so legacy scripts keep working without special casing.
+    guard path == nil, let item, item.contains(">") else {
+        return (item, path, false)
+    }
+    return (nil, item, true)
 }
 
 // MARK: - Subcommand Conformances

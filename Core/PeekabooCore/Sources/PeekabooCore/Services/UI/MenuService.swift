@@ -553,7 +553,7 @@ extension MenuService {
 
         let identifierSource = identifier ?? rawTitle
         if let identifierName = humanReadableMenuIdentifier(identifierSource),
-            isPlaceholderMenuTitle(resolved)
+           isPlaceholderMenuTitle(resolved)
         {
             self.logger.debug("MenuService replacing placeholder '\(resolved)' with identifier '\(identifierName)'")
             return identifierName
@@ -770,6 +770,8 @@ extension MenuService {
     }
 
     func resolvedMenuBarTitle(for extra: MenuExtraInfo, index: Int) -> String {
+        // Resolve the user-facing label in a deterministic way so automation can always refer
+        // back to a name even when AX only reports GUIDs or "Item-0" placeholders.
         let title = extra.title
         let titleIsPlaceholder = isPlaceholderMenuTitle(title) ||
             (isPlaceholderMenuTitle(extra.rawTitle) && title == extra.ownerName)
@@ -796,7 +798,7 @@ extension MenuService {
         return "Menu Bar Item #\(index)"
     }
 
-#if DEBUG
+    #if DEBUG
     func makeDebugDisplayName(
         rawTitle: String?,
         ownerName: String?,
@@ -808,7 +810,7 @@ extension MenuService {
             bundleIdentifier: bundleIdentifier,
             identifier: rawTitle)
     }
-#endif
+    #endif
 }
 
 // MARK: - Menu Traversal Support
@@ -978,8 +980,8 @@ struct ControlCenterIdentifierLookup {
     }
 }
 
-fileprivate extension MenuExtraInfo {
-    func merging(with candidate: MenuExtraInfo) -> MenuExtraInfo {
+extension MenuExtraInfo {
+    fileprivate func merging(with candidate: MenuExtraInfo) -> MenuExtraInfo {
         MenuExtraInfo(
             title: Self.preferredTitle(primary: self, secondary: candidate) ?? self.title,
             rawTitle: self.rawTitle ?? candidate.rawTitle,

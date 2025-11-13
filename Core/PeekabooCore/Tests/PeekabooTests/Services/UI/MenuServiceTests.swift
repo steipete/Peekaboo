@@ -16,7 +16,7 @@ struct MenuServiceTests {
             MenuExtraInfo(
                 title: "Item-0",
                 rawTitle: "Item-0",
-                position: CGPoint(x: 120, y: 0))
+                position: CGPoint(x: 120, y: 0)),
         ]
         let fallback = [
             MenuExtraInfo(
@@ -24,7 +24,7 @@ struct MenuServiceTests {
                 rawTitle: "Control Center",
                 bundleIdentifier: "com.apple.controlcenter",
                 ownerName: "Control Center",
-                position: CGPoint(x: 121, y: 0))
+                position: CGPoint(x: 121, y: 0)),
         ]
 
         let merged = MenuService.mergeMenuExtras(accessibilityExtras: accessible, fallbackExtras: fallback)
@@ -41,13 +41,13 @@ struct MenuServiceTests {
             MenuExtraInfo(
                 title: "Wi-Fi",
                 rawTitle: "WiFi",
-                position: CGPoint(x: 50, y: 0))
+                position: CGPoint(x: 50, y: 0)),
         ]
         let fallback = [
             MenuExtraInfo(
                 title: "Item-0",
                 rawTitle: "Item-0",
-                position: CGPoint(x: 49.5, y: 0))
+                position: CGPoint(x: 49.5, y: 0)),
         ]
 
         let merged = MenuService.mergeMenuExtras(accessibilityExtras: accessible, fallbackExtras: fallback)
@@ -65,13 +65,13 @@ struct MenuServiceTests {
                 rawTitle: "Item-2",
                 bundleIdentifier: "com.apple.controlcenter",
                 ownerName: "Control Center",
-                position: CGPoint(x: 200, y: 0))
+                position: CGPoint(x: 200, y: 0)),
         ]
         let fallback = [
             MenuExtraInfo(
                 title: "Battery",
                 rawTitle: "Battery",
-                position: CGPoint(x: 200.8, y: 0))
+                position: CGPoint(x: 200.8, y: 0)),
         ]
 
         let merged = MenuService.mergeMenuExtras(accessibilityExtras: accessible, fallbackExtras: fallback)
@@ -137,5 +137,22 @@ struct MenuServiceTests {
 
         let displayTitle = service.resolvedMenuBarTitle(for: placeholderExtra, index: 5)
         #expect(displayTitle == "Control Center #5")
+    }
+
+    @Test("Fallback uses generic label when owner/title unavailable")
+    @MainActor
+    func genericIndexFallback() async {
+        let service = MenuService()
+        let placeholderExtra = MenuExtraInfo(
+            title: "",
+            rawTitle: "",
+            bundleIdentifier: nil,
+            ownerName: nil,
+            position: .zero,
+            isVisible: true,
+            identifier: nil)
+
+        let displayTitle = service.resolvedMenuBarTitle(for: placeholderExtra, index: 2)
+        #expect(displayTitle == "Menu Bar Item #2")
     }
 }
