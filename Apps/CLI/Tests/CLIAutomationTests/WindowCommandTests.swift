@@ -1,6 +1,8 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import PeekabooCLI
+@testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("WindowCommand Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
@@ -105,6 +107,123 @@ struct WindowCommandTests {
         }
     }
 
+    @Test("set-bounds reports refreshed bounds")
+    func windowSetBoundsReportsFreshBounds() async throws {
+        let appName = "TextEdit"
+        let bundleID = "com.apple.TextEdit"
+        let initialBounds = CGRect(x: 10, y: 20, width: 320, height: 240)
+        let updatedBounds = CGRect(x: 400, y: 500, width: 640, height: 480)
+
+        let context = await self.makeWindowContext(
+            appInfo: ServiceApplicationInfo(
+                processIdentifier: 42,
+                bundleIdentifier: bundleID,
+                name: appName
+            ),
+            windows: [
+                appName: [
+                    ServiceWindowInfo(
+                        windowID: 101,
+                        title: "Untitled",
+                        bounds: initialBounds,
+                        isMinimized: false,
+                        isMainWindow: true,
+                        windowLevel: 0,
+                        alpha: 1.0,
+                        index: 0
+                    ),
+                ],
+            ]
+        )
+
+        let args = [
+            "window", "set-bounds",
+            "--app", appName,
+            "--x", String(Int(updatedBounds.origin.x)),
+            "--y", String(Int(updatedBounds.origin.y)),
+            "--width", String(Int(updatedBounds.size.width)),
+            "--height", String(Int(updatedBounds.size.height)),
+            "--json-output",
+        ]
+
+        let result = try await self.runWindowCommand(args, context: context)
+        #expect(result.exitStatus == 0)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        let response = try JSONDecoder().decode(
+            CodableJSONResponse<WindowActionResult>.self,
+            from: output.data(using: .utf8)!
+        )
+
+        #expect(response.success == true)
+        let bounds = try #require(response.data.new_bounds)
+        #expect(bounds.x == Int(updatedBounds.origin.x))
+        #expect(bounds.y == Int(updatedBounds.origin.y))
+        #expect(bounds.width == Int(updatedBounds.size.width))
+        #expect(bounds.height == Int(updatedBounds.size.height))
+
+        let storedBounds = await MainActor.run {
+            context.windowService.windowsByApp[appName]?.first?.bounds
+        }
+        let refreshed = try #require(storedBounds)
+        #expect(Int(refreshed.origin.x) == Int(updatedBounds.origin.x))
+        #expect(Int(refreshed.origin.y) == Int(updatedBounds.origin.y))
+        #expect(Int(refreshed.size.width) == Int(updatedBounds.size.width))
+        #expect(Int(refreshed.size.height) == Int(updatedBounds.size.height))
+    }
+
+    @Test("resize reports refreshed bounds")
+    func windowResizeReportsFreshBounds() async throws {
+        let appName = "TextEdit"
+        let bundleID = "com.apple.TextEdit"
+        let initialBounds = CGRect(x: 50, y: 60, width: 200, height: 150)
+        let updatedSize = CGSize(width: 880, height: 540)
+
+        let context = await self.makeWindowContext(
+            appInfo: ServiceApplicationInfo(
+                processIdentifier: 99,
+                bundleIdentifier: bundleID,
+                name: appName
+            ),
+            windows: [
+                appName: [
+                    ServiceWindowInfo(
+                        windowID: 202,
+                        title: "Draft",
+                        bounds: initialBounds,
+                        isMinimized: false,
+                        isMainWindow: true,
+                        windowLevel: 0,
+                        alpha: 1.0,
+                        index: 0
+                    ),
+                ],
+            ]
+        )
+
+        let args = [
+            "window", "resize",
+            "--app", appName,
+            "--width", String(Int(updatedSize.width)),
+            "--height", String(Int(updatedSize.height)),
+            "--json-output",
+        ]
+
+        let result = try await self.runWindowCommand(args, context: context)
+        #expect(result.exitStatus == 0)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        let response = try JSONDecoder().decode(
+            CodableJSONResponse<WindowActionResult>.self,
+            from: output.data(using: .utf8)!
+        )
+
+        #expect(response.success == true)
+        let bounds = try #require(response.data.new_bounds)
+        #expect(bounds.x == Int(initialBounds.origin.x))
+        #expect(bounds.y == Int(initialBounds.origin.y))
+        #expect(bounds.width == Int(updatedSize.width))
+        #expect(bounds.height == Int(updatedSize.height))
+    }
+
     // Helper function to run peekaboo commands
     private func runPeekabooCommand(
         _ arguments: [String],
@@ -134,6 +253,40 @@ struct WindowCommandTests {
                 "Peekaboo binary missing"
             }
         }
+    }
+
+    private func runWindowCommand(
+        _ arguments: [String],
+        context: WindowHarnessContext,
+        allowedExitStatuses: Set<Int32> = [0]
+    ) async throws -> CommandRunResult {
+        let result = try await InProcessCommandRunner.run(arguments, services: context.services)
+        try result.validateExitStatus(allowedExitCodes: allowedExitStatuses, arguments: arguments)
+        return result
+    }
+
+    @MainActor
+    private func makeWindowContext(
+        appInfo: ServiceApplicationInfo,
+        windows: [String: [ServiceWindowInfo]]
+    ) -> WindowHarnessContext {
+        let applicationService = StubApplicationService(applications: [appInfo], windowsByApp: windows)
+        let windowService = StubWindowService(windowsByApp: windows)
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: applicationService,
+            windows: windowService
+        )
+        return WindowHarnessContext(
+            services: services,
+            windowService: windowService,
+            applicationService: applicationService
+        )
+    }
+
+    private struct WindowHarnessContext {
+        let services: PeekabooServices
+        let windowService: StubWindowService
+        let applicationService: StubApplicationService
     }
 }
 

@@ -902,6 +902,7 @@ final class StubDialogService: DialogServiceProtocol {
 @MainActor
 final class StubWindowService: WindowManagementServiceProtocol {
     var windowsByApp: [String: [ServiceWindowInfo]]
+    var focusCalls: [WindowTarget] = []
 
     init(windowsByApp: [String: [ServiceWindowInfo]]) {
         self.windowsByApp = windowsByApp
@@ -920,19 +921,27 @@ final class StubWindowService: WindowManagementServiceProtocol {
     }
 
     func moveWindow(target: WindowTarget, to position: CGPoint) async throws {
-        throw TestStubError.unimplemented(#function)
+        try self.updateWindow(target: target) { info in
+            let newBounds = CGRect(origin: position, size: info.bounds.size)
+            return info.withBounds(newBounds)
+        }
     }
 
     func resizeWindow(target: WindowTarget, to size: CGSize) async throws {
-        throw TestStubError.unimplemented(#function)
+        try self.updateWindow(target: target) { info in
+            let newBounds = CGRect(origin: info.bounds.origin, size: size)
+            return info.withBounds(newBounds)
+        }
     }
 
     func setWindowBounds(target: WindowTarget, bounds: CGRect) async throws {
-        throw TestStubError.unimplemented(#function)
+        try self.updateWindow(target: target) { info in
+            info.withBounds(bounds)
+        }
     }
 
     func focusWindow(target: WindowTarget) async throws {
-        throw TestStubError.unimplemented(#function)
+        self.focusCalls.append(target)
     }
 
     func listWindows(target: WindowTarget) async throws -> [ServiceWindowInfo] {
@@ -955,6 +964,81 @@ final class StubWindowService: WindowManagementServiceProtocol {
 
     func getFocusedWindow() async throws -> ServiceWindowInfo? {
         nil
+    }
+
+    private func updateWindow(
+        target: WindowTarget,
+        transform: (ServiceWindowInfo) -> ServiceWindowInfo
+    ) throws {
+        let selection = try self.resolveWindowLocation(target: target)
+        var windows = self.windowsByApp[selection.app] ?? []
+        guard selection.index < windows.count else {
+            throw PeekabooError.windowNotFound(criteria: selection.app)
+        }
+        let updated = transform(windows[selection.index])
+        windows[selection.index] = updated
+        self.windowsByApp[selection.app] = windows
+    }
+
+    private func resolveWindowLocation(target: WindowTarget) throws -> (app: String, index: Int) {
+        switch target {
+        case let .application(app):
+            guard let windows = self.windowsByApp[app], !windows.isEmpty else {
+                throw PeekabooError.windowNotFound(criteria: app)
+            }
+            return (app, 0)
+        case let .applicationAndTitle(app, title):
+            guard
+                let windows = self.windowsByApp[app],
+                let index = windows.firstIndex(where: { $0.title.localizedCaseInsensitiveContains(title) })
+            else {
+                throw PeekabooError.windowNotFound(criteria: "title contains \(title)")
+            }
+            return (app, index)
+        case .frontmost:
+            if let entry = self.windowsByApp.first(where: { !$0.value.isEmpty }) {
+                return (entry.key, 0)
+            }
+            throw PeekabooError.windowNotFound(criteria: "frontmost")
+        case let .windowId(id):
+            for (app, windows) in self.windowsByApp {
+                if let index = windows.firstIndex(where: { $0.windowID == id }) {
+                    return (app, index)
+                }
+            }
+            throw PeekabooError.windowNotFound(criteria: "windowId \(id)")
+        case let .title(title):
+            for (app, windows) in self.windowsByApp {
+                if let index = windows.firstIndex(where: { $0.title.localizedCaseInsensitiveContains(title) }) {
+                    return (app, index)
+                }
+            }
+            throw PeekabooError.windowNotFound(criteria: "title contains \(title)")
+        case let .index(app, index):
+            guard let windows = self.windowsByApp[app], index < windows.count else {
+                throw PeekabooError.windowNotFound(criteria: "index \(index) in \(app)")
+            }
+            return (app, index)
+        }
+    }
+}
+
+private extension ServiceWindowInfo {
+    func withBounds(_ bounds: CGRect) -> ServiceWindowInfo {
+        ServiceWindowInfo(
+            windowID: self.windowID,
+            title: self.title,
+            bounds: bounds,
+            isMinimized: self.isMinimized,
+            isMainWindow: self.isMainWindow,
+            windowLevel: self.windowLevel,
+            alpha: self.alpha,
+            index: self.index,
+            spaceID: self.spaceID,
+            spaceName: self.spaceName,
+            screenIndex: self.screenIndex,
+            screenName: self.screenName
+        )
     }
 }
 

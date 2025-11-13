@@ -98,14 +98,8 @@ struct DialogServiceTests {
     func testListDialogElements() async throws {
         let service = DialogService()
 
-        // Test that the method exists
-        do {
-            let elements = try await service.listDialogElements(windowTitle: nil)
-            // Without a real dialog, this should return empty or throw
-            #expect(elements.buttons.isEmpty || elements.textFields.isEmpty)
-        } catch {
-            // Expected to fail without a real dialog
-            #expect(error != nil)
+        await #expect(throws: DialogError.self) {
+            _ = try await service.listDialogElements(windowTitle: nil)
         }
     }
 

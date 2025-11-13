@@ -80,6 +80,35 @@ struct DialogCommandTests {
         #expect(output.contains("--window"))
     }
 
+    @Test("dialog dismiss uses force flag")
+    func dialogDismissForce() async throws {
+        let dialogService = await MainActor.run { StubDialogService() }
+        dialogService.dismissResult = DialogActionResult(
+            success: true,
+            action: .dismiss,
+            details: ["method": "escape"]
+        )
+
+        let services = await self.makeTestServices(dialogs: dialogService)
+        let (output, status) = try await self.runCommand(
+            ["dialog", "dismiss", "--force", "--json-output"],
+            services: services
+        )
+
+        #expect(status == 0)
+        struct Payload: Codable {
+            let success: Bool
+            let data: DialogDismissResult
+        }
+        struct DialogDismissResult: Codable {
+            let method: String
+        }
+
+        let response = try JSONDecoder().decode(Payload.self, from: output.data(using: .utf8)!)
+        #expect(response.success == true)
+        #expect(response.data.method == "escape")
+    }
+
     @Test("Dialog  list command help")
     func dialogListHelp() async throws {
         let result = try await runCommand(["dialog", "list", "--help"])
