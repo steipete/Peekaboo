@@ -216,6 +216,9 @@ public struct MenuBarItemInfo: Sendable, Codable {
     /// Bounding rectangle in screen coordinates, if available
     public let frame: CGRect?
 
+    /// Accessibility identifier or other stable identifier if available.
+    public let identifier: String?
+
     public init(
         title: String?,
         index: Int,
@@ -224,7 +227,8 @@ public struct MenuBarItemInfo: Sendable, Codable {
         rawTitle: String? = nil,
         bundleIdentifier: String? = nil,
         ownerName: String? = nil,
-        frame: CGRect? = nil)
+        frame: CGRect? = nil,
+        identifier: String? = nil)
     {
         self.title = title
         self.rawTitle = rawTitle
@@ -234,6 +238,7 @@ public struct MenuBarItemInfo: Sendable, Codable {
         self.isVisible = isVisible
         self.description = description
         self.frame = frame
+        self.identifier = identifier
     }
 }
 
@@ -257,13 +262,17 @@ public struct MenuExtraInfo: Sendable {
     /// Whether it's currently visible
     public let isVisible: Bool
 
+    /// Optional accessibility identifier for the extra, if known.
+    public let identifier: String?
+
     public init(
         title: String,
         rawTitle: String? = nil,
         bundleIdentifier: String? = nil,
         ownerName: String? = nil,
         position: CGPoint,
-        isVisible: Bool = true)
+        isVisible: Bool = true,
+        identifier: String? = nil)
     {
         self.title = title
         self.rawTitle = rawTitle
@@ -271,5 +280,6 @@ public struct MenuExtraInfo: Sendable {
         self.ownerName = ownerName
         self.position = position
         self.isVisible = isVisible
+        self.identifier = identifier
     }
 }
