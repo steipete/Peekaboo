@@ -5,7 +5,7 @@ private let logger = Logger(subsystem: "boo.peekaboo.playground", category: "Cli
 
 struct ContentView: View {
     @EnvironmentObject var actionLogger: ActionLogger
-    @State private var selectedTab = "click"
+    @State private var selectedTab = "text"
 
     var body: some View {
         VStack(spacing: 0) {

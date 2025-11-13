@@ -25,6 +25,7 @@ Peekaboo Playground is a macOS app designed to test and demonstrate all automati
 - Multiline text editors
 - Special character input
 - Focus control
+- Hidden web-style fields (AXGroup-wrapped inputs) for hidden-field repros
 
 ### 3. **UI Controls**
 - Continuous and discrete sliders

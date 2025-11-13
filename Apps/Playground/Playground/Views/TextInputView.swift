@@ -97,6 +97,14 @@ struct TextInputView: View {
                     }
                 }
 
+                // Hidden fixtures
+
+                HiddenFieldsView()
+                    .environmentObject(self.actionLogger)
+
+                PermissionBubbleView()
+                    .environmentObject(self.actionLogger)
+
                 // Search field
                 GroupBox("Search Field") {
                     HStack {
