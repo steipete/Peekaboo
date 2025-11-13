@@ -489,42 +489,7 @@ See [docs/mcp-client.md](docs/mcp-client.md) for complete documentation.
 
 ## 📟 CLI Command Reference
 
-Peekaboo’s CLI mirrors everything the agent can do. Each command below runs directly in the terminal, honors the shared session cache, and (where applicable) supports `--json-output` for scripting.
-
-### Capture & Core Utilities
-- `image` – Capture screens, windows, frontmost apps, or specific regions with `--mode`/`--app` and optionally run inline AI analysis via `--analyze`.
-- `see` – Build an annotated UI map (with Peekaboo element IDs), capture multiple displays, and optionally generate overlay screenshots with `--annotate`.
-- `list` – Enumerate applications, windows, sessions, and server status (`--apps`, `--windows`, `--sessions`, etc.) to discover targets before acting.
-- `tools` – Show every native and external MCP tool, filter by server, and group/JSON-export the catalog so you know what the agent will call.
-- `config` – Initialize, inspect, and edit `~/.peekaboo` config/credential files, including secure `set-credential` helpers and schema validation.
-- `permissions` – Probe screen recording, accessibility, and automation entitlements, guiding you to System Settings when something is missing.
-- `learn` – Print condensed, command-aware onboarding material so new users (or agents) learn flags without opening docs.
-- `run` – Execute declarative `.peekaboo.json` automation scripts with optional `--no-fail-fast` and `--output` for reproducible workflows.
-- `sleep` – Pause for milliseconds between steps (`peekaboo sleep 1500`) without shelling out to `sleep`.
-- `clean` – Remove cached sessions via `--all-sessions`, `--older-than <hours>`, or `--session <id>`; supports `--dry-run` previews.
-
-### Interaction Commands
-- `click` – Resolve elements by ID/label, coordinates, or session to perform reliable clicks (plus focus helpers so the right window is active).
-- `type` – Send text, escape sequences, and credential-safe payloads into the current or targeted focus point.
-- `press` – Trigger key presses (Return, Esc, arrows) singly or via `--count` to repeat.
-- `hotkey` – Issue modifier shortcuts like `cmd,c` or multi-key combos without reaching for the keyboard.
-- `scroll` – Move content in any direction with step counts; supports targeted elements or absolute coordinates.
-- `swipe` – Perform gesture-style drags with direction and distance controls for touchpad-like flows.
-- `drag` – Drag between elements/coordinates/apps, hold modifiers, and control duration/step smoothing for precise drop targets.
-- `move` – Move the mouse cursor (or the automation anchor) to element IDs or raw coordinates, useful for hover states.
-
-### Window & System Management
-- `window` – Focus, move, resize, minimize, maximize, snap to presets, and query metadata for any macOS window.
-- `space` – List Spaces (virtual desktops), switch between them, or move windows across Spaces/Displays (`--to`, `--to-current`).
-- `menu` – Traverse application menus by `--item` or hierarchical `--path`, click submenu items, and interact with menu extras exposed by the app.
-- `menubar` – List and click macOS status bar icons (Wi-Fi, Bluetooth, third-party extras) by name or index, distinct from app menus.
-- `app` – Launch, quit, relaunch, hide/unhide, and cycle through applications; supports bundle IDs and `--wait-until-ready`.
-- `dock` – Launch apps from the Dock, right-click Dock icons, and show/hide the Dock itself.
-- `dialog` – Locate modal dialogs, click buttons, input text, drive file pickers, or dismiss alerts—with app/window hints when needed.
-
-### Automation & AI Bridges
-- `agent` – Natural-language automation that chains every command above (plus external MCP tools) with verbose tracing, dry runs, and session resume.
-- `mcp` – Manage Peekaboo’s MCP persona: serve tools to external clients, list/add/enable/disable other MCP servers, and inspect health checks.
+Full command descriptions now live in [docs/cli-command-reference.md](docs/cli-command-reference.md).
 
 ## 🚀 GUI Automation with Peekaboo v3
 
@@ -1521,117 +1486,7 @@ See [docs/pblog-guide.md](docs/pblog-guide.md) and [docs/logging-profiles/README
 
 ## 🔧 Configuration
 
-### Configuration Precedence
-
-Settings follow this precedence (highest to lowest):
-1. Command-line arguments
-2. Environment variables
-3. Credentials file (`~/.peekaboo/credentials`)
-4. Configuration file (`~/.peekaboo/config.json`)
-5. Built-in defaults
-
-### Available Options
-
-| Setting | Config File | Environment Variable | Description |
-|---------|-------------|---------------------|-------------|
-| AI Providers | `aiProviders.providers` | `PEEKABOO_AI_PROVIDERS` | Comma-separated list (e.g., "openai/gpt-4.1,anthropic/claude,grok/grok-4,ollama/llava:latest") |
-| OpenAI API Key | Use `credentials` file | `OPENAI_API_KEY` | Required for OpenAI provider |
-| Anthropic API Key | Use `credentials` file | `ANTHROPIC_API_KEY` | Required for Claude models |
-| Grok API Key | Use `credentials` file | `X_AI_API_KEY` or `XAI_API_KEY` | Required for Grok (xAI) models |
-| Ollama URL | `aiProviders.ollamaBaseUrl` | `PEEKABOO_OLLAMA_BASE_URL` | Default: http://localhost:11434 |
-| Default Save Path | `defaults.savePath` | `PEEKABOO_DEFAULT_SAVE_PATH` | Where screenshots are saved (default: current directory) |
-| Log Level | `logging.level` | `PEEKABOO_LOG_LEVEL` | trace, debug, info, warn, error, fatal |
-| Log Path | `logging.path` | `PEEKABOO_LOG_FILE` | Log file location |
-| CLI Binary Path | - | `PEEKABOO_CLI_PATH` | Override bundled Swift CLI path (advanced usage) |
-
-### Environment Variable Details
-
-#### API Key Storage Best Practices
-
-For security, Peekaboo supports three methods for API key storage (in order of recommendation):
-
-1. **Environment Variables** (Most secure for automation)
-   ```bash
-   export OPENAI_API_KEY="sk-..."
-   ```
-
-2. **Credentials File** (Best for interactive use)
-   ```bash
-   peekaboo config set-credential OPENAI_API_KEY sk-...
-   # Stored in ~/.peekaboo/credentials with chmod 600
-   ```
-
-3. **Config File** (Not recommended - use credentials file instead)
-
-#### AI Provider Configuration
-
-- **`PEEKABOO_AI_PROVIDERS`**: Comma-separated list of AI providers to use for image analysis
-  - Format: `provider/model,provider/model`
-  - Example: `"openai/gpt-4.1,anthropic/claude-opus-4,grok/grok-4,ollama/llava:latest"`
-  - The first available provider will be used
-  - Default: `"openai/gpt-4.1,ollama/llava:latest"`
-  - Supported providers: `openai`, `anthropic`, `grok`, `ollama`
-
-- **`OPENAI_API_KEY`**: Your OpenAI API key for GPT-4.1 Vision
-  - Required when using the `openai` provider
-  - Get your key at: https://platform.openai.com/api-keys
-
-- **`ANTHROPIC_API_KEY`**: Your Anthropic API key for Claude models
-  - Required when using the `anthropic` provider
-  - Get your key at: https://console.anthropic.com/
-
-- **`X_AI_API_KEY`** or **`XAI_API_KEY`**: Your xAI API key for Grok models
-  - Required when using the `grok` provider
-  - Get your key at: https://console.x.ai/
-  - Both environment variable names are supported
-
-- **`PEEKABOO_OLLAMA_BASE_URL`**: Base URL for your Ollama server
-  - Default: `http://localhost:11434`
-  - Use for custom Ollama installations or remote servers
-
-#### Default Behavior
-
-- **`PEEKABOO_DEFAULT_SAVE_PATH`**: Default directory for saving screenshots
-  - Default: Current working directory
-  - Supports tilde expansion (e.g., `~/Desktop/Screenshots`)
-  - Created automatically if it doesn't exist
-
-#### Logging and Debugging
-
-- **`PEEKABOO_LOG_LEVEL`**: Control logging verbosity
-  - Options: `trace`, `debug`, `info`, `warn`, `error`, `fatal`
-  - Default: `info`
-  - Use `debug` or `trace` for troubleshooting
-
-- **`PEEKABOO_LOG_FILE`**: Custom log file location
-  - Default: `/tmp/peekaboo-mcp.log` (MCP server)
-  - For CLI, logs are written to stderr by default
-
-#### Advanced Options
-
-- **`PEEKABOO_CLI_PATH`**: Override the bundled Swift CLI binary path
-  - Only needed if using a custom-built CLI binary
-  - Default: Uses the bundled binary
-
-### Using Environment Variables
-
-Environment variables can be set in multiple ways:
-
-```bash
-# For a single command
-PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo image --analyze "What is this?" --path image.png
-
-# Export for the current session
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-export X_AI_API_KEY="xai-..."
-export PEEKABOO_DEFAULT_SAVE_PATH="~/Desktop/Screenshots"
-
-# Add to your shell profile (~/.zshrc or ~/.bash_profile)
-echo 'export OPENAI_API_KEY="sk-..."' >> ~/.zshrc
-echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
-echo 'export X_AI_API_KEY="xai-..."' >> ~/.zshrc
-```
+For full configuration + environment variable tables, see [docs/configuration.md](docs/configuration.md).
 
 ## 🎨 Setting Up Local AI with Ollama
 
@@ -1639,147 +1494,15 @@ Need fully local models or Ultrathink experimentation? Follow the dedicated play
 
 ## 📋 Requirements
 
-- **macOS 14.0+** (Sonoma or later)
-- **Screen Recording Permission** (required)
-- **Accessibility Permission** (optional, for window focus control)
-
-### Granting Permissions
-
-1. **Screen Recording** (Required):
-   - System Settings → Privacy & Security → Screen & System Audio Recording
-   - Enable for Terminal, Claude Desktop, or your IDE
-   - **Performance Benefit**: Enables fast window enumeration using CGWindowList API
-   - Without this permission, window operations may be slower
-
-2. **Accessibility** (Optional):
-   - System Settings → Privacy & Security → Accessibility
-   - Enable for better window focus control and UI automation
-
-Check permissions status:
-```bash
-peekaboo permissions check
-peekaboo permissions request screen-recording
-peekaboo permissions request accessibility
-```
-
-### Performance Optimizations
-
-Peekaboo v3 includes significant performance improvements:
-
-- **Hybrid Window Enumeration**: Automatically uses the faster CGWindowList API when screen recording permission is granted, with seamless fallback to accessibility APIs
-- **Built-in Timeout Protection**: All window and menu operations have configurable timeouts (default 2s) to prevent hangs
-- **Smart API Selection**: Automatically chooses the fastest available API based on your permissions
-- **Parallel Processing**: Window data is fetched concurrently when possible
-
-These optimizations ensure that operations that previously could hang for 2+ minutes now complete in seconds.
+Peekaboo needs macOS 14.0+, Screen Recording permission, and (ideally) Accessibility access. Follow [docs/permissions.md](docs/permissions.md) for step-by-step instructions plus performance tips.
 
 ## 🏗️ Building from Source
 
-### Prerequisites
+See [docs/building.md](docs/building.md) for prerequisites, pnpm build commands, and release script pointers.
 
-- macOS 14.0+ (Sonoma or later)
-- Node.js 20.0+ and npm
-- Xcode 16.4+ with Command Line Tools (`xcode-select --install`)
-- Swift 6.0+ (included with Xcode 16.4+)
+## 👻 Poltergeist
 
-### Build Commands
-
-```bash
-# Clone the repository
-git clone https://github.com/steipete/peekaboo.git
-cd peekaboo
-
-# Install dependencies
-npm install
-
-# Build everything (CLI + MCP server)
-npm run build:all
-
-# Build options:
-npm run build         # TypeScript only
-npm run build:swift   # Swift CLI only (universal binary)
-./scripts/build-cli-standalone.sh         # Quick CLI build
-./scripts/build-cli-standalone.sh --install # Build and install to /usr/local/bin
-```
-
-### Creating Release Binaries
-
-```bash
-# Run all pre-release checks and create release artifacts
-./scripts/release-binaries.sh
-
-# Skip checks (if you've already run them)
-./scripts/release-binaries.sh --skip-checks
-
-# Create GitHub release draft
-./scripts/release-binaries.sh --create-github-release
-
-# Full release with npm publish
-./scripts/release-binaries.sh --create-github-release --publish-npm
-```
-
-The release script creates:
-- `peekaboo-macos-universal.tar.gz` - Standalone CLI binary (universal)
-- `@steipete-peekaboo-mcp-{version}.tgz` - npm package
-- `checksums.txt` - SHA256 checksums for verification
-
-### Debug Build Staleness Detection
-
-For development, enable automatic staleness detection to ensure you're always using the latest built CLI version: `git config peekaboo.check-build-staleness true`. This is recommended when working with AI assistants that frequently modify source code, as it prevents using outdated binaries.
-
-## 👻 Poltergeist - Swift CLI Auto-rebuild Watcher
-
-Poltergeist is a helpful ghost that watches your Swift files and automatically rebuilds the CLI when they change. Perfect for development workflows!
-
-### Installation
-
-First, install Watchman (required):
-```bash
-brew install watchman
-```
-
-### Usage
-
-Run these commands from the project root:
-
-```bash
-# Start the watcher
-npm run poltergeist:start
-# or the more thematic:
-npm run poltergeist:haunt
-
-# Check status
-npm run poltergeist:status
-
-# View activity logs
-npm run poltergeist:logs
-
-# Stop watching
-npm run poltergeist:stop
-# or the more thematic:
-npm run poltergeist:rest
-```
-
-### What It Does
-
-Poltergeist monitors:
-- `Core/PeekabooCore/**/*.swift`
-- `AXorcist/**/*.swift`
-- `Apps/CLI/**/*.swift`
-- All `Package.swift` and `Package.resolved` files
-
-When changes are detected, it automatically:
-1. Rebuilds the Swift CLI using `npm run build:swift`
-2. Copies the binary to the project root for easy access
-3. Logs all activity to `.poltergeist.log`
-
-### Features
-
-- 👻 **Smart Rebuilding** - Only rebuilds when Swift files actually change
-- 🔒 **Single Instance** - Prevents multiple concurrent builds
-- 📝 **Activity Logging** - Track all rebuild activity with timestamps
-- ⚡ **Native Performance** - Uses macOS FSEvents for minimal overhead
-- 🎯 **Persistent Watches** - Survives terminal sessions
+Use the watcher by following [docs/poltergeist.md](docs/poltergeist.md); it covers start/stop commands, tuning, and queue behavior.
 
 ## 🧪 Testing
 
