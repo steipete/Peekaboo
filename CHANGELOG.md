@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dedicated window management, multi-screen, and Spaces commands (`window`, `space`) give you scripted control over closing, moving, resizing, and re-homing macOS apps, including presets like left/right halves and cross-display moves.
 - Menu tooling now enumerates every application menu plus system menu extras, enabling zero-click discovery of keyboard shortcuts and scripted menu activation via `menu list`, `menu list-all`, `menu click`, and `menu click-extra`.
 - Automation sessions remember the most recent `see` run automatically, but you can also pin explicit session IDs and run `.peekaboo.json` scripts via `peekaboo run` to reproduce complex workflows with one command.
+- Rounded out the CLI command surface so every capture, interaction, and maintenance workflow is first-class: `image`, `list`, `tools`, `config`, `permissions`, `learn`, `run`, `sleep`, and `clean` cover capture/config glue, while `window`, `app`, `dock`, `dialog`, `space`, `menu`, and `menubar` provide window, app, and UI chrome management alongside the previously mentioned automation commands.
 
 ### Integrations
 - Peekaboo runs as both an MCP server and client: it still exposes its native tools to Claude/Cursor, but v3 also ships BrowserMCP by default and lets you add or toggle external MCP servers (`peekaboo mcp list/add/test/enable/disable`), so the agent can mix native Mac automation with remote browser, GitHub, or filesystem tools in a single session.

@@ -487,6 +487,45 @@ See [docs/mcp-client.md](docs/mcp-client.md) for complete documentation.
 22. **`permissions`** - Check system permissions (screen recording, accessibility)
 23. **`agent`** - Execute complex automation tasks using AI
 
+## 📟 CLI Command Reference
+
+Peekaboo’s CLI mirrors everything the agent can do. Each command below is available directly in the terminal, supports `--json-output` for scripting, and honors the shared session cache so you can mix-and-match tasks.
+
+### Capture & Core Utilities
+- `image` – Capture screens, windows, frontmost apps, or specific regions with `--mode`/`--app` and optionally run inline AI analysis via `--analyze`.
+- `see` – Build an annotated UI map (with Peekaboo element IDs), capture multiple displays, and optionally generate overlay screenshots with `--annotate`.
+- `list` – Enumerate applications, windows, sessions, and server status (`--apps`, `--windows`, `--sessions`, etc.) to discover targets before acting.
+- `tools` – Show every native and external MCP tool, filter by server, and group/JSON-export the catalog so you know what the agent will call.
+- `config` – Initialize, inspect, and edit `~/.peekaboo` config/credential files, including secure `set-credential` helpers and schema validation.
+- `permissions` – Probe screen recording, accessibility, and automation entitlements, guiding you to System Settings when something is missing.
+- `learn` – Print condensed, command-aware onboarding material so new users (or agents) learn flags without opening docs.
+- `run` – Execute declarative `.peekaboo.json` automation scripts with optional `--no-fail-fast` and `--output` for reproducible workflows.
+- `sleep` – Pause for milliseconds between steps (`peekaboo sleep 1500`) without shelling out to `sleep`.
+- `clean` – Remove cached sessions via `--all-sessions`, `--older-than <hours>`, or `--session <id>`; supports `--dry-run` previews.
+
+### Interaction Commands
+- `click` – Resolve elements by ID/label, coordinates, or session to perform reliable clicks (plus focus helpers so the right window is active).
+- `type` – Send text, escape sequences, and credential-safe payloads into the current or targeted focus point.
+- `press` – Trigger key presses (Return, Esc, arrows) singly or via `--count` to repeat.
+- `hotkey` – Issue modifier shortcuts like `cmd,c` or multi-key combos without reaching for the keyboard.
+- `scroll` – Move content in any direction with step counts; supports targeted elements or absolute coordinates.
+- `swipe` – Perform gesture-style drags with direction and distance controls for touchpad-like flows.
+- `drag` – Drag between elements/coordinates/apps, hold modifiers, and control duration/step smoothing for precise drop targets.
+- `move` – Move the mouse cursor (or the automation anchor) to element IDs or raw coordinates, useful for hover states.
+
+### Window & System Management
+- `window` – Focus, move, resize, minimize, maximize, snap to presets, and query metadata for any macOS window.
+- `space` – List Spaces (virtual desktops), switch between them, or move windows across Spaces/Displays (`--to`, `--to-current`).
+- `menu` – Traverse application menus by `--item` or hierarchical `--path`, click submenu items, and interact with menu extras exposed by the app.
+- `menubar` – List and click macOS status bar icons (Wi-Fi, Bluetooth, third-party extras) by name or index, distinct from app menus.
+- `app` – Launch, quit, relaunch, hide/unhide, and cycle through applications; supports bundle IDs and `--wait-until-ready`.
+- `dock` – Launch apps from the Dock, right-click Dock icons, and show/hide the Dock itself.
+- `dialog` – Locate modal dialogs, click buttons, input text, drive file pickers, or dismiss alerts—with app/window hints when needed.
+
+### Automation & AI Bridges
+- `agent` – Natural-language automation that chains every command above (plus external MCP tools) with verbose tracing, dry runs, and session resume.
+- `mcp` – Manage Peekaboo’s MCP persona: serve tools to external clients, list/add/enable/disable other MCP servers, and inspect health checks.
+
 ## 🚀 GUI Automation with Peekaboo v3
 
 Peekaboo v3 introduces powerful GUI automation capabilities, transforming it from a screenshot tool into a complete UI automation framework for macOS. This enables AI assistants to interact with any application through natural language commands.
