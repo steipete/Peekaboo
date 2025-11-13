@@ -214,11 +214,19 @@ extension AgentCommand {
             throw PeekabooError.commandFailed("Agent service not properly initialized")
         }
 
-        guard try await self.ensureAgentHasCredentials(peekabooAgent) else {
+        let requestedModel: LanguageModel?
+        do {
+            requestedModel = try self.validatedModelSelection()
+        } catch {
+            self.printAgentExecutionError(error.localizedDescription)
             return
         }
 
-        if try await self.handleSessionResumption(agentService) {
+        guard await self.ensureAgentHasCredentials(peekabooAgent, requestedModel: requestedModel) else {
+            return
+        }
+
+        if try await self.handleSessionResumption(peekabooAgent, requestedModel: requestedModel) {
             return
         }
 
@@ -226,7 +234,12 @@ extension AgentCommand {
             return
         }
 
-        try await self.executeAgentTask(agentService, task: executionTask, maxSteps: self.maxSteps ?? 20)
+        try await self.executeAgentTask(
+            peekabooAgent,
+            task: executionTask,
+            requestedModel: requestedModel,
+            maxSteps: self.maxSteps ?? 20
+        )
     }
 
     private func isAgentDisabled() -> Bool {
@@ -251,21 +264,39 @@ extension AgentCommand {
     }
 
     private func initializeMCP() async {
-        let defaultBrowser = TachikomaMCP.MCPServerConfig(
-            transport: "stdio",
-            command: "npx",
-            args: ["-y", "@agent-infra/mcp-server-browser@latest"],
-            env: [:],
-            enabled: true,
-            timeout: 15.0,
-            autoReconnect: true,
-            description: "Browser automation via BrowserMCP"
-        )
-        TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+        if ProcessInfo.processInfo.environment["PEEKABOO_ENABLE_BROWSER_MCP"] == "1" {
+            let defaultBrowser = TachikomaMCP.MCPServerConfig(
+                transport: "stdio-pty",
+                command: "npx",
+                args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+                env: [:],
+                enabled: true,
+                timeout: 60.0,
+                autoReconnect: true,
+                description: "Browser automation via BrowserMCP"
+            )
+            TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+        }
         await TachikomaMCPClientManager.shared.initializeFromProfile()
     }
 
-    private func ensureAgentHasCredentials(_ peekabooAgent: PeekabooAgentService) async throws -> Bool {
+    private func ensureAgentHasCredentials(
+        _ peekabooAgent: PeekabooAgentService,
+        requestedModel: LanguageModel?
+    ) async -> Bool {
+        if let requestedModel {
+            if self.hasCredentials(for: requestedModel) {
+                return true
+            }
+
+            let providerName = self.providerDisplayName(for: requestedModel)
+            let envVar = self.providerEnvironmentVariable(for: requestedModel)
+            self.printAgentExecutionError(
+                "Missing API key for \(providerName). Set \(envVar) and retry."
+            )
+            return false
+        }
+
         let hasCredential = await peekabooAgent.maskedApiKey != nil
         if !hasCredential {
             self.emitAgentUnavailableMessage()
@@ -273,7 +304,10 @@ extension AgentCommand {
         return hasCredential
     }
 
-    private func handleSessionResumption(_ agentService: any AgentServiceProtocol) async throws -> Bool {
+    private func handleSessionResumption(
+        _ agentService: PeekabooAgentService,
+        requestedModel: LanguageModel?
+    ) async throws -> Bool {
         if let sessionId = self.resumeSession {
             guard let continuationTask = self.task else {
                 self.printMissingTaskError(
@@ -282,7 +316,12 @@ extension AgentCommand {
                 )
                 return true
             }
-            try await self.resumeAgentSession(agentService, sessionId: sessionId, task: continuationTask)
+            try await self.resumeAgentSession(
+                agentService,
+                sessionId: sessionId,
+                task: continuationTask,
+                requestedModel: requestedModel
+            )
             return true
         }
 
@@ -295,14 +334,15 @@ extension AgentCommand {
                 return true
             }
 
-            guard let peekabooService = agentService as? PeekabooAgentService else {
-                throw PeekabooError.commandFailed("Agent service not properly initialized")
-            }
-
-            let sessions = try await peekabooService.listSessions()
+            let sessions = try await agentService.listSessions()
 
             if let mostRecent = sessions.first {
-                try await self.resumeAgentSession(agentService, sessionId: mostRecent.id, task: continuationTask)
+                try await self.resumeAgentSession(
+                    agentService,
+                    sessionId: mostRecent.id,
+                    task: continuationTask,
+                    requestedModel: requestedModel
+                )
             } else {
                 if self.jsonOutput {
                     let error = ["success": false, "error": "No sessions found to resume"] as [String: Any]
@@ -595,7 +635,12 @@ extension AgentCommand {
         print("   Last activity: \(timeAgo)")
     }
 
-    func resumeAgentSession(_ agentService: any AgentServiceProtocol, sessionId: String, task: String) async throws {
+    func resumeAgentSession(
+        _ agentService: PeekabooAgentService,
+        sessionId: String,
+        task: String,
+        requestedModel: LanguageModel?
+    ) async throws {
         if !self.jsonOutput {
             let resumingLine = [
                 "\(TerminalColor.cyan)\(TerminalColor.bold)",
@@ -607,13 +652,13 @@ extension AgentCommand {
             print(resumingLine)
         }
 
-        guard let peekabooService = agentService as? PeekabooAgentService else {
-            throw PeekabooError.commandFailed("Agent service not properly initialized")
-        }
-
         let delegate = self.makeEventDelegate(for: task)
         do {
-            let result = try await peekabooService.resumeSession(sessionId: sessionId, eventDelegate: delegate)
+            let result = try await agentService.resumeSession(
+                sessionId: sessionId,
+                model: requestedModel,
+                eventDelegate: delegate
+            )
             self.displayResult(result)
         } catch {
             self.printAgentExecutionError("Failed to resume session: \(error.localizedDescription)")
@@ -641,8 +686,9 @@ extension AgentCommand {
     }
 
     private func executeAgentTask(
-        _ agentService: any AgentServiceProtocol,
+        _ agentService: PeekabooAgentService,
         task: String,
+        requestedModel: LanguageModel?,
         maxSteps: Int
     ) async throws {
         let delegate = self.makeEventDelegate(for: task)
@@ -650,8 +696,11 @@ extension AgentCommand {
             let result = try await agentService.executeTask(
                 task,
                 maxSteps: maxSteps,
+                sessionId: nil,
+                model: requestedModel,
                 dryRun: self.dryRun,
-                eventDelegate: delegate
+                eventDelegate: delegate,
+                verbose: self.verbose
             )
             self.displayResult(result)
         } catch {
@@ -780,6 +829,16 @@ extension AgentCommand {
         return nil
     }
 
+    func validatedModelSelection() throws -> LanguageModel? {
+        guard let modelString = self.model else { return nil }
+        guard let parsed = self.parseModelString(modelString) else {
+            throw PeekabooError.invalidInput(
+                "Unsupported model '\(modelString)'. Allowed values: \(Self.allowedModelList)"
+            )
+        }
+        return parsed
+    }
+
     private static let supportedOpenAIInputs: Set<LanguageModel.OpenAI> = [
         .gpt5,
         .gpt5Pro,
@@ -802,6 +861,47 @@ extension AgentCommand {
         .opus4,
         .opus4Thinking,
     ]
+
+    private static var allowedModelList: String {
+        let openAIModels = Self.supportedOpenAIInputs.map(\.modelId)
+        let anthropicModels = Self.supportedAnthropicInputs.map(\.modelId)
+        return (openAIModels + anthropicModels).sorted().joined(separator: ", ")
+    }
+
+    @MainActor
+    private func hasCredentials(for model: LanguageModel) -> Bool {
+        let configuration = self.services.configuration
+        switch model {
+        case .openai:
+            return configuration.getOpenAIAPIKey()?.isEmpty == false
+        case .anthropic:
+            return configuration.getAnthropicAPIKey()?.isEmpty == false
+        default:
+            return false
+        }
+    }
+
+    private func providerDisplayName(for model: LanguageModel) -> String {
+        switch model {
+        case .openai:
+            "OpenAI"
+        case .anthropic:
+            "Anthropic"
+        default:
+            "the selected provider"
+        }
+    }
+
+    private func providerEnvironmentVariable(for model: LanguageModel) -> String {
+        switch model {
+        case .openai:
+            "OPENAI_API_KEY"
+        case .anthropic:
+            "ANTHROPIC_API_KEY"
+        default:
+            "provider API key"
+        }
+    }
 }
 
 extension AgentCommand: ParsableCommand {}

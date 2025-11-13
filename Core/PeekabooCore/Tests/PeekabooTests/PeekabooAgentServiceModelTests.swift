@@ -137,6 +137,26 @@ struct PeekabooAgentServiceTests {
             #expect(!error.localizedDescription.isEmpty)
         }
     }
+
+    @Test("Dry run execution reports requested model")
+    @MainActor
+    func dryRunExecutionUsesRequestedModel() async throws {
+        let mockServices = PeekabooServices.shared
+        let agentService = try PeekabooAgentService(
+            services: mockServices,
+            defaultModel: .anthropic(.sonnet45))
+
+        let result = try await agentService.executeTask(
+            "describe state",
+            maxSteps: 1,
+            sessionId: nil,
+            model: .openai(.gpt5),
+            dryRun: true,
+            eventDelegate: nil)
+
+        #expect(result.metadata.modelName == LanguageModel.openai(.gpt5).description)
+        #expect(result.content.contains("Dry run"))
+    }
 }
 
 /// Mock event delegate for testing

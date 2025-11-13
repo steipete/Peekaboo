@@ -1,3 +1,4 @@
+import PeekabooFoundation
 import Tachikoma
 import Testing
 @testable import PeekabooCLI
@@ -79,6 +80,32 @@ struct ModelSelectionIntegrationTests {
             let parsed = command.parseModelString(input)
             #expect(parsed == expected)
             #expect(!expected.description.isEmpty)
+        }
+    }
+
+    @Test("Validated model selection handles optional input")
+    func validatedModelSelectionOptional() async throws {
+        var command = try AgentCommand.parse([])
+        #expect(try command.validatedModelSelection() == nil)
+
+        command.model = "gpt-5"
+        let parsed = try command.validatedModelSelection()
+        #expect(parsed == .openai(.gpt5))
+    }
+
+    @Test("Invalid model option surfaces user-friendly error")
+    func invalidModelSelectionThrows() async throws {
+        var command = try AgentCommand.parse([])
+        command.model = "llama-3.2"
+
+        let error = #expect(throws: PeekabooError.self) {
+            try command.validatedModelSelection()
+        }
+
+        if case let .invalidInput(message) = error {
+            #expect(message.contains("Unsupported model"))
+        } else {
+            Issue.record("Expected invalidInput error")
         }
     }
 }

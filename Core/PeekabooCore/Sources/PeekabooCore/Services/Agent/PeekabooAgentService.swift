@@ -131,76 +131,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         dryRun: Bool = false,
         eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
     {
-        // For dry run, just return a simulated result
-        if dryRun {
-            return AgentExecutionResult(
-                content: "Dry run completed. Task would be: \(task)",
-                messages: [],
-                sessionId: UUID().uuidString,
-                usage: nil,
-                metadata: AgentMetadata(
-                    executionTime: 0,
-                    toolCallCount: 0,
-                    modelName: self.defaultLanguageModel.description,
-                    startTime: Date(),
-                    endTime: Date()))
-        }
-
-        // Note: In the new API, we don't need to create agents - we use direct functions
-
-        // Execute with streaming if we have an event delegate
-        if eventDelegate != nil {
-            // SAFETY: We ensure that the delegate is only accessed on MainActor
-            // This is a legacy API pattern that predates Swift's strict concurrency
-            let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate!)
-
-            // Create event stream infrastructure
-            let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
-
-            // Start processing events on MainActor
-            let eventTask = Task { @MainActor in
-                let delegate = unsafeDelegate.wrappedValue
-                for await event in eventStream {
-                    delegate.agentDidEmitEvent(event)
-                }
-            }
-
-            // Create the event handler
-            let eventHandler = EventHandler { event in
-                eventContinuation.yield(event)
-            }
-
-            defer {
-                eventContinuation.finish()
-                eventTask.cancel()
-            }
-
-            // Run the agent with streaming
-            let selectedModel = self.defaultLanguageModel
-
-            // Create event delegate wrapper for streaming
-            let streamingDelegate = await MainActor.run {
-                StreamingEventDelegate { chunk in
-                    await eventHandler.send(.assistantMessage(content: chunk))
-                }
-            }
-
-            let result = try await self.executeWithStreaming(
-                task,
-                model: selectedModel,
-                maxSteps: maxSteps,
-                streamingDelegate: streamingDelegate,
-                eventHandler: eventHandler)
-
-            // Send completion event with usage information
-            await eventHandler.send(.completed(summary: result.content, usage: result.usage))
-
-            return result
-        } else {
-            // Execute without streaming
-            let selectedModel = self.defaultLanguageModel
-            return try await self.executeWithoutStreaming(task, model: selectedModel, maxSteps: maxSteps)
-        }
+        try await self.executeTask(
+            task,
+            maxSteps: maxSteps,
+            sessionId: nil,
+            model: nil,
+            dryRun: dryRun,
+            eventDelegate: eventDelegate,
+            verbose: self.isVerbose)
     }
 
     /// Execute a task with audio content
@@ -252,6 +190,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         maxSteps: Int = 20,
         sessionId: String? = nil,
         model: LanguageModel? = nil,
+        dryRun: Bool = false,
         eventDelegate: (any AgentEventDelegate)? = nil,
         verbose: Bool = false) async throws -> AgentExecutionResult
     {
@@ -263,6 +202,22 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
         // Set verbose mode in Tachikoma configuration
         TachikomaConfiguration.current.setVerbose(verbose)
+
+        let selectedModel = self.resolveModel(model)
+
+        if dryRun {
+            return AgentExecutionResult(
+                content: "Dry run completed. Task would be: \(task)",
+                messages: [],
+                sessionId: sessionId ?? UUID().uuidString,
+                usage: nil,
+                metadata: AgentMetadata(
+                    executionTime: 0,
+                    toolCallCount: 0,
+                    modelName: selectedModel.description,
+                    startTime: Date(),
+                    endTime: Date()))
+        }
 
         // If we have an event delegate, use streaming
         if eventDelegate != nil {
@@ -295,9 +250,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 eventTask.cancel()
             }
 
-            // Run the agent with streaming
-            let selectedModel = self.resolveModel(model)
-
             // Create event delegate wrapper for streaming
             let streamingDelegate = StreamingEventDelegate { chunk in
                 await eventHandler.send(.assistantMessage(content: chunk))
@@ -316,7 +268,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             return result
         } else {
             // Non-streaming execution
-            let selectedModel = self.resolveModel(model)
             return try await self.executeWithoutStreaming(task, model: selectedModel, maxSteps: maxSteps)
         }
     }
