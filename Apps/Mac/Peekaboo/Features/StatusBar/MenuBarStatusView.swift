@@ -1,3 +1,4 @@
+import AppKit
 import os.log
 import PeekabooCore
 import SwiftUI
@@ -17,27 +18,17 @@ struct MenuBarStatusView: View {
     @State private var refreshTrigger = UUID()
     @FocusState private var isInputFocused: Bool
 
+    private let popoverCornerRadius: CGFloat = 30
+
     var body: some View {
-        Group {
-            if #available(macOS 26.0, *) {
-                GlassEffectContainer {
-                    self.contentStack
-                }
-                .padding(18)
-                .glassBackground(
-                    cornerRadius: 28,
-                    tintColor: NSColor(calibratedWhite: 0.04, alpha: 0.75))
-                .overlay(StatusBarChromeOverlay(cornerRadius: 28))
-            } else {
-                self.contentStack
-                    .padding(18)
-                    .modernBackground(style: .popover, cornerRadius: 28)
-                    .overlay(StatusBarChromeOverlay(cornerRadius: 28))
-            }
-        }
-        .frame(width: 420)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 8)
+        self.contentStack
+            .padding(20)
+            .background(self.popoverBackground)
+            .clipShape(RoundedRectangle(cornerRadius: self.popoverCornerRadius, style: .continuous))
+            .preferredColorScheme(.dark)
+            .frame(width: 420)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 8)
         .onAppear {
             self.setupViewOnAppear()
         }
@@ -49,6 +40,21 @@ struct MenuBarStatusView: View {
         }
         .onChange(of: self.agent.toolExecutionHistory.count) { _, _ in
             self.refreshTrigger = UUID()
+        }
+    }
+
+    @ViewBuilder
+    private var popoverBackground: some View {
+        if #available(macOS 26.0, *) {
+            Color.clear
+                .glassBackground(
+                    cornerRadius: self.popoverCornerRadius,
+                    tintColor: NSColor(calibratedWhite: 0.07, alpha: 0.9))
+                .shadow(color: Color.black.opacity(0.35), radius: 28, y: 18)
+        } else {
+            RoundedRectangle(cornerRadius: self.popoverCornerRadius, style: .continuous)
+                .fill(Color.black.opacity(0.75))
+                .shadow(color: Color.black.opacity(0.28), radius: 24, y: 16)
         }
     }
 
@@ -147,13 +153,13 @@ extension MenuBarStatusView {
         StatusBarHeaderView(isVoiceMode: self.$isVoiceMode)
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
-            .glassSurface(style: .toolbar, cornerRadius: 22)
+            .statusPanelBackground(cornerRadius: 22, fillOpacity: 0.12)
     }
 
     private var timelineSection: some View {
         StatusBarContentView()
             .frame(maxHeight: 440)
-            .glassSurface(style: .content, cornerRadius: 24)
+            .statusPanelBackground(cornerRadius: 24, fillOpacity: 0.08)
     }
 
     @ViewBuilder
@@ -172,45 +178,34 @@ extension MenuBarStatusView {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .glassSurface(style: .content, cornerRadius: 20)
+        .statusPanelBackground(cornerRadius: 20, fillOpacity: 0.1)
     }
 
     private var actionsSection: some View {
         ActionButtonsView()
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .glassSurface(style: .toolbar, cornerRadius: 18)
+            .statusPanelBackground(cornerRadius: 18, fillOpacity: 0.12)
     }
 }
 
-// MARK: - Chrome Overlay
+// MARK: - Section Styling Helpers
 
-private struct StatusBarChromeOverlay: View {
-    let cornerRadius: CGFloat
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: self.cornerRadius, style: .continuous)
-            .strokeBorder(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.35),
-                        Color.white.opacity(0.05),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing),
-                lineWidth: 0.8)
-            .overlay {
-                RoundedRectangle(cornerRadius: self.cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.08),
-                                Color.black.opacity(0.2),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom))
-                    .blendMode(.softLight)
-            }
-            .allowsHitTesting(false)
+private extension View {
+    func statusPanelBackground(
+        cornerRadius: CGFloat,
+        fillOpacity: Double,
+        strokeOpacity: Double = 0) -> some View
+    {
+        background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color.white.opacity(fillOpacity))
+                .overlay {
+                    if strokeOpacity > 0 {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(Color.white.opacity(strokeOpacity), lineWidth: 0.8)
+                    }
+                }
+        )
     }
 }
