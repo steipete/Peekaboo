@@ -1,8 +1,50 @@
+---
+summary: 'Configure Peekaboo to use local Ollama models (llama3, llava, Ultrathink) and track the remaining implementation work.'
+read_when:
+  - 'running Peekaboo with local models'
+  - 'debugging or extending the Ollama provider'
+---
+
 # Ollama Ultrathink Integration Plan for Peekaboo
 
 ## Overview
 
 This document outlines the plan for completing Ollama support in Peekaboo and adding the Ultrathink model. Currently, Ollama has basic provider infrastructure but lacks full implementation, particularly for the agent command and streaming responses.
+
+## Quick Start (Local Only)
+
+For privacy-focused automation runs you can aim Peekaboo at a local Ollama daemon:
+
+```bash
+# Install and start Ollama
+brew install ollama
+ollama serve
+
+# Grab recommended models
+ollama pull llama3.3      # ✅ Supports tool calling
+ollama pull llava:latest  # Vision-only (no tools)
+
+# Point Peekaboo at the server
+PEEKABOO_AI_PROVIDERS="ollama/llama3.3" peekaboo agent "Click the Submit button"
+PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo image --analyze "Describe this UI"
+
+# Persist in config (optional)
+peekaboo config set aiProviders.providers "ollama/llama3.3"
+peekaboo config set aiProviders.ollamaBaseUrl "http://localhost:11434"
+```
+
+### Recommended Models
+
+- **Automation (tool calling):** `llama3.3` (best) or `llama3.2`. These understand tool metadata and can drive GUI automation.
+- **Vision-only:** `llava:latest`, `bakllava` – use for `image --analyze`, but they cannot execute tools.
+- **Ultrathink / other heavy models:** follow the implementation plan below to ensure streaming + tool calling support before enabling by default.
+
+**Environment variables**
+
+- `PEEKABOO_AI_PROVIDERS="ollama/<model>`" – enables Ollama providers globally.
+- `PEEKABOO_OLLAMA_BASE_URL` – override the default `http://localhost:11434` when your daemon runs on another host.
+
+> Note: The CLI only accepts models that advertise tool support when you run `peekaboo agent`. If a model is vision-only you can still use `peekaboo image --analyze` via the same provider string.
 
 ## Current State
 

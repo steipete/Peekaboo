@@ -1635,39 +1635,7 @@ echo 'export X_AI_API_KEY="xai-..."' >> ~/.zshrc
 
 ## 🎨 Setting Up Local AI with Ollama
 
-For privacy-focused local AI analysis:
-
-```bash
-# Install Ollama
-brew install ollama
-ollama serve
-
-# Download recommended models
-ollama pull llama3.3           # RECOMMENDED for agent tasks (supports tool calling)
-ollama pull llava:latest       # Vision model (no tool support)
-ollama pull qwen2-vl:7b        # Lighter vision alternative
-
-# Use with Peekaboo
-PEEKABOO_AI_PROVIDERS="ollama/llama3.3" peekaboo agent "Click the Submit button"
-PEEKABOO_AI_PROVIDERS="ollama/llama" peekaboo agent "Take a screenshot"  # Defaults to llama3.3
-
-# Configure Peekaboo (optional)
-peekaboo config edit
-# Set providers to: "ollama/llama3.3" for agent tasks
-# Or: "ollama/llava:latest" for image analysis only
-```
-
-### Ollama Model Support
-
-**Models with Tool Calling** (✅ Recommended for automation):
-- `llama3.3` - Best overall for agent tasks
-- `llama3.2` - Good alternative
-
-**Vision Models** (❌ No tool calling):
-- `llava` - Image analysis only
-- `bakllava` - Alternative vision model
-
-**Note**: For agent automation tasks, use `llama3.3`. Vision models like `llava` can analyze images but cannot perform GUI automation.
+Need fully local models or Ultrathink experimentation? Follow the dedicated playbook in [docs/ollama.md](docs/ollama.md) for installation, recommended models, environment variables, and troubleshooting tips. At runtime you can point Peekaboo at your Ollama server with `PEEKABOO_AI_PROVIDERS="ollama/llama3.3" peekaboo agent "…"`.
 
 ## 📋 Requirements
 
