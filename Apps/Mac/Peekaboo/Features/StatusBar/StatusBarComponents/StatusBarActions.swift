@@ -113,28 +113,30 @@ struct QuickActionsView: View {
 
 // MARK: - Shared Styling
 
-private struct MenuActionButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(.white.opacity(0.92))
-            .padding(.vertical, 10)
-            .padding(.horizontal, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(configuration.isPressed ? 0.24 : 0.16))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.white.opacity(0.2))
-                    )
-            )
-            .shadow(color: Color.black.opacity(configuration.isPressed ? 0.1 : 0.18), radius: 12, y: 8)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+struct MenuActionButtonStyle: ButtonStyle {
+    typealias Body = AnyView
+
+    func makeBody(configuration: Configuration) -> AnyView {
+        AnyView(
+            configuration.label
+                .foregroundStyle(.white.opacity(0.92))
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.white.opacity(configuration.isPressed ? 0.24 : 0.16))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.white.opacity(0.2))))
+                .shadow(color: Color.black.opacity(configuration.isPressed ? 0.1 : 0.18), radius: 12, y: 8)
+                .scaleEffect(configuration.isPressed ? 0.98 : 1)
+                .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+        )
     }
 }
 
-private extension View {
-    func menuActionCapsule(fillOpacity: Double) -> some View {
+extension View {
+    fileprivate func menuActionCapsule(fillOpacity: Double) -> some View {
         self
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
@@ -143,8 +145,6 @@ private extension View {
                     .fill(Color.white.opacity(fillOpacity))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.white.opacity(0.15))
-                    )
-            )
+                            .stroke(Color.white.opacity(0.15))))
     }
 }

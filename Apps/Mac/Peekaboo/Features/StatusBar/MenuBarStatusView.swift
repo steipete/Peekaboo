@@ -29,18 +29,18 @@ struct MenuBarStatusView: View {
             .frame(width: 420)
             .padding(.horizontal, 6)
             .padding(.vertical, 8)
-        .onAppear {
-            self.setupViewOnAppear()
-        }
-        .onChange(of: self.agent.isProcessing) { _, _ in
-            self.refreshTrigger = UUID()
-        }
-        .onChange(of: self.sessionStore.currentSession?.messages.count ?? 0) { _, _ in
-            self.refreshTrigger = UUID()
-        }
-        .onChange(of: self.agent.toolExecutionHistory.count) { _, _ in
-            self.refreshTrigger = UUID()
-        }
+            .onAppear {
+                self.setupViewOnAppear()
+            }
+            .onChange(of: self.agent.isProcessing) { _, _ in
+                self.refreshTrigger = UUID()
+            }
+            .onChange(of: self.sessionStore.currentSession?.messages.count ?? 0) { _, _ in
+                self.refreshTrigger = UUID()
+            }
+            .onChange(of: self.agent.toolExecutionHistory.count) { _, _ in
+                self.refreshTrigger = UUID()
+            }
     }
 
     @ViewBuilder
@@ -191,8 +191,8 @@ extension MenuBarStatusView {
 
 // MARK: - Section Styling Helpers
 
-private extension View {
-    func statusPanelBackground(
+extension View {
+    fileprivate func statusPanelBackground(
         cornerRadius: CGFloat,
         fillOpacity: Double,
         strokeOpacity: Double = 0) -> some View
@@ -205,7 +205,6 @@ private extension View {
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                             .stroke(Color.white.opacity(strokeOpacity), lineWidth: 0.8)
                     }
-                }
-        )
+                })
     }
 }
