@@ -5,6 +5,19 @@ import MCP
 import PeekabooCore
 import TachikomaMCP
 
+// MARK: - Shared MCP client abstraction
+
+protocol MCPClientManaging: AnyObject {
+    func registerDefaultServers(_ defaults: [String: TachikomaMCP.MCPServerConfig])
+    func initializeFromProfile(connect: Bool) async
+    func getServerInfo(name: String) async -> (config: TachikomaMCP.MCPServerConfig, connected: Bool)?
+    func probeServer(name: String, timeoutMs: Int) async -> ServerProbeResult
+    func probeAllServers(timeoutMs: Int) async -> [String: ServerProbeResult]
+    func executeTool(serverName: String, toolName: String, arguments: [String: Any]) async throws -> ToolResponse
+}
+
+extension TachikomaMCPClientManager: MCPClientManaging {}
+
 /// Command for Model Context Protocol server operations
 @MainActor
 struct MCPCommand: ParsableCommand {
@@ -110,6 +123,8 @@ extension MCPCommand {
             """
         )
 
+        private static let connectionTimeoutSeconds: TimeInterval = 15
+
         @Argument(help: "MCP server to connect to")
         var server: String
 
@@ -118,9 +133,9 @@ extension MCPCommand {
 
         @Option(help: "Tool arguments as JSON")
         var args: String = "{}"
-        @RuntimeStorage private var runtime: CommandRuntime?
 
-        private var logger: Logger { self.resolvedRuntime.logger }
+        @RuntimeStorage private var runtime: CommandRuntime?
+        var clientManager: any MCPClientManaging = TachikomaMCPClientManager.shared
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -129,11 +144,299 @@ extension MCPCommand {
             return runtime
         }
 
+        private var logger: Logger { self.resolvedRuntime.logger }
+        private var wantsJSON: Bool { self.resolvedRuntime.configuration.jsonOutput }
+
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
-            self.logger.error("MCP client functionality not yet implemented")
-            throw ExitCode.failure
+
+            do {
+            let arguments = try self.parseArguments()
+            try await self.ensureServerReady()
+
+                let response = try await self.clientManager.executeTool(
+                    serverName: self.server,
+                    toolName: self.tool,
+                    arguments: arguments
+                )
+
+                if self.wantsJSON {
+                    self.outputJSON(response: response)
+                } else {
+                    self.outputHumanReadable(response: response)
+                }
+
+                if response.isError {
+                    throw ExitCode.failure
+                }
+            } catch let error as CallError {
+                self.emitError(message: error.localizedDescription ?? "Unknown MCP error", code: error.errorCode)
+                throw ExitCode.failure
+            } catch let exit as ExitCode {
+                throw exit
+            } catch {
+                self.emitError(message: "Failed to call MCP tool: \(error.localizedDescription)", code: .UNKNOWN_ERROR)
+                throw ExitCode.failure
+            }
+        }
+
+        private func parseArguments() throws -> [String: Any] {
+            let trimmed = self.args.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                return [:]
+            }
+
+            guard let data = trimmed.data(using: .utf8) else {
+                throw CallError.invalidArguments("Arguments must be valid UTF-8 text")
+            }
+
+            let json = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
+
+            if let dict = json as? [String: Any] {
+                return dict
+            }
+
+            if json is NSNull {
+                return [:]
+            }
+
+            throw CallError.invalidArguments("MCP tool arguments must be a JSON object")
+        }
+
+        private func registerDefaultServers() {
+            let defaultBrowser = TachikomaMCP.MCPServerConfig(
+                transport: "stdio",
+                command: "npx",
+                args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+                env: [:],
+                enabled: true,
+                timeout: 15.0,
+                autoReconnect: true,
+                description: "Browser automation via BrowserMCP"
+            )
+
+            self.clientManager.registerDefaultServers(["browser": defaultBrowser])
+        }
+
+        private func ensureServerReady() async throws {
+            await self.prepareClientManager()
+
+            guard let info = await self.clientManager.getServerInfo(name: self.server) else {
+                throw CallError.serverNotConfigured(self.server)
+            }
+
+            guard info.config.enabled else {
+                throw CallError.serverDisabled(self.server)
+            }
+
+            let probe = await self.clientManager.probeServer(
+                name: self.server,
+                timeoutMs: Int(Self.connectionTimeoutSeconds * 1000)
+            )
+
+            guard probe.isConnected else {
+                throw CallError.connectionFailed(server: self.server, reason: probe.error)
+            }
+        }
+
+        private func prepareClientManager() async {
+            self.registerDefaultServers()
+            await self.clientManager.initializeFromProfile(connect: false)
+        }
+
+        private func outputHumanReadable(response: ToolResponse) {
+            print("MCP server: \(self.server)")
+            print("Tool: \(self.tool)")
+
+            if response.content.isEmpty {
+                print("Response: (no content)")
+            } else if response.content.count == 1 {
+                print("Response: \(self.describe(content: response.content[0]))")
+            } else {
+                print("Response:")
+                for (index, content) in response.content.enumerated() {
+                    print("  \(index + 1). \(self.describe(content: content))")
+                }
+            }
+
+            if let metaDescription = self.describe(meta: response.meta) {
+                print("Meta: \(metaDescription)")
+            }
+
+            if response.isError {
+                print("Tool reported an error.")
+            } else {
+                print("Tool completed successfully.")
+            }
+        }
+
+        private func outputJSON(response: ToolResponse) {
+            let payload = self.makeJSONPayload(for: response)
+            outputJSONCodable(payload, logger: self.logger)
+        }
+
+        private func makeJSONPayload(for response: ToolResponse) -> CallJSONPayload {
+            let contents = response.content.map(SerializableContent.init)
+            return CallJSONPayload(
+                success: !response.isError,
+                server: self.server,
+                tool: self.tool,
+                response: .init(isError: response.isError, content: contents, meta: response.meta),
+                errorMessage: self.extractErrorMessage(from: response)
+            )
+        }
+
+        private func describe(content: MCP.Tool.Content) -> String {
+            switch content {
+            case let .text(text):
+                return text
+            case let .image(_, mimeType, _):
+                return "Image response (\(mimeType))"
+            case let .resource(uri, _, text):
+                if let text, !text.isEmpty {
+                    return "Resource: \(uri) — \(text)"
+                } else {
+                    return "Resource: \(uri)"
+                }
+            case let .audio(_, mimeType):
+                return "Audio response (\(mimeType))"
+            }
+        }
+
+        private func describe(meta: Value?) -> String? {
+            guard let meta else { return nil }
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            guard let data = try? encoder.encode(meta), let string = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+            return string
+        }
+
+        private func extractErrorMessage(from response: ToolResponse) -> String? {
+            guard response.isError else { return nil }
+            for content in response.content {
+                if case let .text(text) = content {
+                    return text
+                }
+            }
+            return nil
+        }
+
+        private func emitError(message: String, code: ErrorCode) {
+            if self.wantsJSON {
+                let debugLogs = self.logger.getDebugLogs()
+                let response = JSONResponse(success: false, messages: nil, debugLogs: debugLogs, error: ErrorInfo(message: message, code: code))
+                PeekabooCLI.outputJSON(response, logger: self.logger)
+            } else {
+                print("❌ \(message)")
+            }
+        }
+    }
+
+    private enum CallError: LocalizedError {
+        case invalidArguments(String)
+        case serverNotConfigured(String)
+        case serverDisabled(String)
+        case connectionFailed(server: String, reason: String?)
+
+        var errorDescription: String? {
+            switch self {
+            case let .invalidArguments(message):
+                return message
+            case let .serverNotConfigured(server):
+                return "MCP server '\(server)' is not configured. Use 'peekaboo mcp add' to register it."
+            case let .serverDisabled(server):
+                return "MCP server '\(server)' is disabled. Run 'peekaboo mcp enable \(server)' before calling tools."
+            case let .connectionFailed(server, reason):
+                if let reason, !reason.isEmpty {
+                    return "Failed to connect to MCP server '\(server)' (\(reason))."
+                } else {
+                    return "Failed to connect to MCP server '\(server)'."
+                }
+            }
+        }
+
+        var errorCode: ErrorCode {
+            switch self {
+            case .invalidArguments, .serverNotConfigured, .serverDisabled:
+                .INVALID_ARGUMENT
+            case .connectionFailed:
+                .UNKNOWN_ERROR
+            }
+        }
+    }
+
+    private struct CallJSONPayload: Encodable {
+        struct Response: Encodable {
+            let isError: Bool
+            let content: [SerializableContent]
+            let meta: Value?
+        }
+
+        let success: Bool
+        let server: String
+        let tool: String
+        let response: Response
+        let errorMessage: String?
+    }
+
+    private struct SerializableContent: Encodable {
+        enum ContentType: String, Encodable {
+            case text
+            case image
+            case resource
+            case audio
+        }
+
+        let type: ContentType
+        let text: String?
+        let mimeType: String?
+        let data: String?
+        let uri: String?
+        let metadata: Value?
+
+        init(content: MCP.Tool.Content) {
+            switch content {
+            case let .text(text):
+                self.type = .text
+                self.text = text
+                self.mimeType = nil
+                self.data = nil
+                self.uri = nil
+                self.metadata = nil
+            case let .image(data, mimeType, metadata):
+                self.type = .image
+                self.text = nil
+                self.mimeType = mimeType
+                self.data = data
+                self.uri = nil
+                self.metadata = Self.valueMetadata(from: metadata)
+            case let .resource(uri, mimeType, text):
+                self.type = .resource
+                self.text = text
+                self.mimeType = mimeType
+                self.data = nil
+                self.uri = uri
+                self.metadata = nil
+            case let .audio(data, mimeType):
+                self.type = .audio
+                self.text = nil
+                self.mimeType = mimeType
+                self.data = data
+                self.uri = nil
+                self.metadata = nil
+            }
+        }
+
+        private static func valueMetadata(from metadata: [String: String]?) -> Value? {
+            guard let metadata else { return nil }
+            var object: [String: Value] = [:]
+            for (key, value) in metadata {
+                object[key] = .string(value)
+            }
+            return .object(object)
         }
     }
 
@@ -221,9 +524,9 @@ extension MCPCommand {
             // Get health status for all servers (5 second timeout should be sufficient)
             let probes = await TachikomaMCPClientManager.shared.probeAllServers(timeoutMs: 5000)
             var healthResults: [String: MCPServerHealth] = [:]
-            for (name, (ok, count, rt, err)) in probes {
-                healthResults[name] = ok ? .connected(toolCount: count, responseTime: rt) :
-                    .disconnected(error: err ?? "unknown error")
+            for (name, probe) in probes {
+                healthResults[name] = probe.isConnected ? .connected(toolCount: probe.toolCount, responseTime: probe.responseTime) :
+                    .disconnected(error: probe.error ?? "unknown error")
             }
 
             // Restore stderr after health checks
@@ -492,14 +795,14 @@ extension MCPCommand {
 
                 if !self.disabled {
                     print("Testing connection (\(Int(self.timeout))s timeout)...")
-                    let (ok, count, rt, err) = await TachikomaMCPClientManager.shared.probeServer(
+                    let probe = await TachikomaMCPClientManager.shared.probeServer(
                         name: self.name,
                         timeoutMs: Int(self.timeout * 1000)
                     )
-                    if ok {
-                        print("✓ Connected in \(Int(rt * 1000))ms (\(count) tools)")
+                    if probe.isConnected {
+                        print("✓ Connected in \(Int(probe.responseTime * 1000))ms (\(probe.toolCount) tools)")
                     } else {
-                        print("✗ Failed: \(err ?? "unknown error")")
+                        print("✗ Failed: \(probe.error ?? "unknown error")")
                     }
                 }
             } catch {

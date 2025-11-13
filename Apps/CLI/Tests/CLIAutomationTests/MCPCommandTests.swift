@@ -1,5 +1,8 @@
+import Darwin
 import Foundation
+import MCP
 import PeekabooCore
+import TachikomaMCP
 import Testing
 @testable import PeekabooCLI
 
@@ -175,20 +178,214 @@ struct MCPCommandIntegrationTests {
 struct MCPCommandErrorHandlingTests {
     @Test("Unimplemented commands return appropriate exit codes")
     func unimplementedCommands() async throws {
-        // These commands are marked as not implemented
-        // They should fail with appropriate error messages
-
-        var call = try MCPCommand.Call.parse(["test", "--tool", "echo"])
-        await #expect(throws: ExitCode.self) {
-            try await call.run()
-        }
-
         let inspect = try CLIOutputCapture.suppressStderr {
             try MCPCommand.Inspect.parse([])
         }
         await #expect(throws: ExitCode.self) {
             try await inspect.run()
         }
+    }
+}
+
+@Suite("MCP Call Command Runtime Tests", .tags(.fast))
+@MainActor
+struct MCPCallCommandRuntimeTests {
+    @Test("Call command executes MCP tool and prints response")
+    func callCommandPrintsResponse() async throws {
+        var command = try MCPCommand.Call.parse(["browser", "--tool", "echo", "--args", "{\"message\":\"ping\"}"])
+        let mockManager = MockMCPClientManager()
+        mockManager.setServer(name: "browser")
+        mockManager.executeResponse = .text("pong")
+        command.clientManager = mockManager
+
+        let result = await captureCommandOutput {
+            try await executeCall(command: &command, jsonOutput: false)
+        }
+
+        #expect(result.error == nil)
+        #expect(result.stdout.contains("pong"))
+        #expect(result.stdout.contains("Tool completed successfully."))
+        #expect(mockManager.probeCallCount == 1)
+        #expect(mockManager.executeCallCount == 1)
+    }
+
+    @Test("Call command emits JSON output when requested")
+    func callCommandOutputsJSON() async throws {
+        var command = try MCPCommand.Call.parse(["browser", "--tool", "status"])
+        let mockManager = MockMCPClientManager()
+        mockManager.setServer(name: "browser")
+        let meta = Value.object(["duration": .double(1.25)])
+        mockManager.executeResponse = ToolResponse.multiContent([.text("ok")], meta: meta)
+        command.clientManager = mockManager
+
+        let result = await captureCommandOutput {
+            try await executeCall(command: &command, jsonOutput: true)
+        }
+
+        #expect(result.error == nil)
+
+        let data = Data(result.stdout.utf8)
+        let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        #expect(jsonObject?["success"] as? Bool == true)
+        #expect(jsonObject?["server"] as? String == "browser")
+        if
+            let response = jsonObject?["response"] as? [String: Any],
+            let content = response["content"] as? [[String: Any]]
+        {
+            #expect(content.count == 1)
+            #expect(content.first?["type"] as? String == "text")
+        } else {
+            Issue.record("Missing response content in JSON payload")
+        }
+    }
+
+    @Test("Call command reports missing server errors")
+    func callCommandFailsWhenServerMissing() async throws {
+        var command = try MCPCommand.Call.parse(["missing", "--tool", "echo"])
+        let mockManager = MockMCPClientManager()
+        command.clientManager = mockManager
+
+        let result = await captureCommandOutput {
+            try await executeCall(command: &command, jsonOutput: false)
+        }
+
+        guard let exit = result.error as? ExitCode else {
+            Issue.record("Expected ExitCode failure when server is missing")
+            return
+        }
+        #expect(exit.rawValue == EXIT_FAILURE)
+        #expect(result.stdout.contains("not configured"))
+    }
+
+    @Test("Call command surfaces tool-level errors")
+    func callCommandFailsForToolError() async throws {
+        var command = try MCPCommand.Call.parse(["browser", "--tool", "unstable"])
+        let mockManager = MockMCPClientManager()
+        mockManager.setServer(name: "browser")
+        mockManager.executeResponse = .error("boom")
+        command.clientManager = mockManager
+
+        let result = await captureCommandOutput {
+            try await executeCall(command: &command, jsonOutput: false)
+        }
+
+        guard let exit = result.error as? ExitCode else {
+            Issue.record("Expected ExitCode failure when MCP tool reports error")
+            return
+        }
+        #expect(exit.rawValue == EXIT_FAILURE)
+        #expect(result.stdout.contains("Tool reported an error."))
+    }
+}
+
+// MARK: - Test Helpers
+
+@MainActor
+private func executeCall(command: inout MCPCommand.Call, jsonOutput: Bool) async throws {
+    let services = TestServicesFactory.makePeekabooServices()
+    try await PeekabooServices.withTestServices(services) {
+        let configuration = CommandRuntime.Configuration(verbose: false, jsonOutput: jsonOutput, logLevel: nil)
+        let runtime = CommandRuntime(configuration: configuration)
+        try await command.run(using: runtime)
+    }
+}
+
+@MainActor
+private func captureCommandOutput(
+    _ body: () async throws -> Void
+) async -> (stdout: String, stderr: String, error: Error?) {
+    let stdoutPipe = Pipe()
+    let stderrPipe = Pipe()
+    let originalStdout = dup(STDOUT_FILENO)
+    let originalStderr = dup(STDERR_FILENO)
+
+    dup2(stdoutPipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO)
+    dup2(stderrPipe.fileHandleForWriting.fileDescriptor, STDERR_FILENO)
+
+    stdoutPipe.fileHandleForWriting.closeFile()
+    stderrPipe.fileHandleForWriting.closeFile()
+
+    var capturedError: Error?
+    do {
+        try await body()
+    } catch {
+        capturedError = error
+    }
+
+    fflush(stdout)
+    fflush(stderr)
+
+    let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+    let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+    stdoutPipe.fileHandleForReading.closeFile()
+    stderrPipe.fileHandleForReading.closeFile()
+
+    dup2(originalStdout, STDOUT_FILENO)
+    dup2(originalStderr, STDERR_FILENO)
+    close(originalStdout)
+    close(originalStderr)
+
+    let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
+    let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+    return (stdout, stderr, capturedError)
+}
+
+@MainActor
+final class MockMCPClientManager: MCPClientManaging {
+    private(set) var registeredDefaults: [String: TachikomaMCP.MCPServerConfig] = [:]
+    private(set) var initializeCallCount = 0
+    private(set) var storedServers: [String: TachikomaMCP.MCPServerConfig] = [:]
+    private(set) var connectedServers: Set<String> = []
+    var probeResult: (Bool, Int, TimeInterval, String?) = (true, 0, 0.01, nil)
+    var executeResponse: ToolResponse = .text("ok")
+    var executeError: Error?
+    private(set) var executeCallCount = 0
+    private(set) var probeCallCount = 0
+
+    func registerDefaultServers(_ defaults: [String: TachikomaMCP.MCPServerConfig]) {
+        self.registeredDefaults = defaults
+    }
+
+    func initializeFromProfile(connect _: Bool) async {
+        self.initializeCallCount += 1
+    }
+
+    func getServerInfo(name: String) async -> (config: TachikomaMCP.MCPServerConfig, connected: Bool)? {
+        guard let config = self.storedServers[name] else { return nil }
+        return (config, self.connectedServers.contains(name))
+    }
+
+    func probeServer(name: String, timeoutMs _: Int) async -> (Bool, Int, TimeInterval, String?) {
+        self.probeCallCount += 1
+        if self.probeResult.0 {
+            self.connectedServers.insert(name)
+        }
+        return self.probeResult
+    }
+
+    func executeTool(serverName: String, toolName _: String, arguments _: [String: Any]) async throws -> ToolResponse {
+        self.executeCallCount += 1
+        if let executeError {
+            throw executeError
+        }
+        guard self.connectedServers.contains(serverName) else {
+            throw MCPError.notConnected
+        }
+        return self.executeResponse
+    }
+
+    func setServer(name: String, enabled: Bool = true) {
+        let config = TachikomaMCP.MCPServerConfig(
+            transport: "stdio",
+            command: "mock",
+            args: [],
+            env: [:],
+            enabled: enabled,
+            timeout: 5,
+            autoReconnect: true,
+            description: "mock server"
+        )
+        self.storedServers[name] = config
     }
 }
 
@@ -219,5 +416,65 @@ struct MCPServerBehaviorTests {
 
         // When run() is called, it should default to stdio for invalid types
         // This behavior is implemented in the run() method
+    }
+}
+
+@Suite("MCP Command End-to-End Tests", .serialized, .tags(.integration))
+@MainActor
+struct MCPCommandEndToEndTests {
+    @Test("Add/list/test with stub MCP server")
+    func addListAndTestStubServer() async throws {
+        let harness = try MCPStubTestHarness()
+        do {
+            try await harness.addStubServer()
+
+            let listResult = try await harness.run(["mcp", "list"])
+            #expect(listResult.stdout.contains(harness.serverName))
+
+            let testResult = try await harness.run([
+                "mcp", "test", harness.serverName,
+                "--timeout", "5",
+                "--show-tools",
+            ])
+            #expect(testResult.stdout.contains("echo"))
+            #expect(testResult.stdout.contains("add"))
+            await harness.cleanup()
+        } catch {
+            await harness.cleanup()
+            throw error
+        }
+    }
+
+    @Test("Call stub MCP tools for success and failure")
+    func callStubTools() async throws {
+        let harness = try MCPStubTestHarness()
+        do {
+            try await harness.addStubServer()
+
+            let success = try await harness.run([
+                "mcp", "call", harness.serverName,
+                "--tool", "echo",
+                "--args", "{\"message\":\"hello world\"}",
+            ])
+            #expect(success.stdout.contains("hello world"))
+
+            let sum = try await harness.run([
+                "mcp", "call", harness.serverName,
+                "--tool", "add",
+                "--args", "{\"a\":2,\"b\":3}",
+            ])
+            #expect(sum.stdout.contains("sum: 5"))
+
+            let failure = try await harness.run([
+                "mcp", "call", harness.serverName,
+                "--tool", "fail",
+                "--args", "{\"message\":\"boom\"}",
+            ], allowedExitCodes: Set<Int32>([0, 1]))
+            #expect(failure.stdout.contains("boom"))
+            await harness.cleanup()
+        } catch {
+            await harness.cleanup()
+            throw error
+        }
     }
 }
