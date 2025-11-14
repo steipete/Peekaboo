@@ -15,6 +15,12 @@ public struct AppTool: MCPTool {
     public var description: String {
         """
         Control applications - launch, quit, relaunch, focus, hide, unhide, switch, and list running apps.
+
+        Always include the `action` field in your JSON payload. Examples:
+        - { "action": "launch", "name": "Finder" }
+        - { "action": "switch", "to": "Safari" }
+        - { "action": "focus", "name": "Google Chrome" }
+        - { "action": "quit", "name": "Slack", "force": false }
         """
     }
 
