@@ -116,10 +116,8 @@ extension AgentOutputDelegate {
             self.hasReceivedContent = false
         }
 
-        let icon = toolType?.icon ?? "⚙️"
         self.printToolCallStart(
             displayName: displayName,
-            icon: icon,
             args: args,
             rawArguments: arguments,
             formatter: formatter
@@ -283,17 +281,17 @@ extension AgentOutputDelegate {
 
     private func printToolCallStart(
         displayName: String,
-        icon: String,
         args: [String: Any],
         rawArguments: String,
         formatter: any ToolFormatter
     ) {
+        let sanitizedName = self.cleanToolPrefix(displayName)
         switch self.outputMode {
         case .minimal:
-            print(displayName, terminator: "")
+            print(sanitizedName, terminator: "")
 
         case .verbose:
-            print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)")
+            print("\(TerminalColor.blue)\(TerminalColor.bold)\(sanitizedName)\(TerminalColor.reset)")
             if rawArguments.isEmpty || rawArguments == "{}" {
                 print("\(TerminalColor.gray)Arguments: (none)\(TerminalColor.reset)")
             } else if let formatted = formatJSON(rawArguments) {
@@ -302,15 +300,15 @@ extension AgentOutputDelegate {
             }
 
         case .enhanced:
-            let startMessage = formatter.formatStarting(arguments: args)
+            let startMessage = self.cleanToolPrefix(formatter.formatStarting(arguments: args))
             print(
-                "\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(startMessage)\(TerminalColor.reset)",
+                "\(TerminalColor.blue)\(TerminalColor.bold)\(startMessage)\(TerminalColor.reset)",
                 terminator: ""
             )
 
         default: // .normal, .compact
             print(
-                "\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(displayName)\(TerminalColor.reset)",
+                "\(TerminalColor.blue)\(TerminalColor.bold)\(sanitizedName)\(TerminalColor.reset)",
                 terminator: ""
             )
             let summary = formatter.formatCompactSummary(arguments: args)
@@ -320,6 +318,17 @@ extension AgentOutputDelegate {
         }
 
         fflush(stdout)
+    }
+
+    /// Remove leading glyph tokens like "[sh]" from tool narration so agent output reads naturally.
+    private func cleanToolPrefix(_ text: String) -> String {
+        var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        while result.hasPrefix("[") {
+            guard let closing = result.firstIndex(of: "]") else { break }
+            let next = result.index(after: closing)
+            result = String(result[next...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return result
     }
 
     private func successStatusLine(resultSummary: String, durationString: String) -> String {
