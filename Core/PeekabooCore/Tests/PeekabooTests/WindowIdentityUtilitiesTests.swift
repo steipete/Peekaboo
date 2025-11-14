@@ -2,9 +2,9 @@ import AppKit
 import AXorcist
 import CoreGraphics
 import Testing
-@testable import PeekabooCore
-@testable import PeekabooAutomation
 @testable import PeekabooAgentRuntime
+@testable import PeekabooAutomation
+@testable import PeekabooCore
 @testable import PeekabooVisualizer
 
 @Suite("Window Identity Utilities Tests", .enabled(if: TestEnvironment.runAutomationScenarios))

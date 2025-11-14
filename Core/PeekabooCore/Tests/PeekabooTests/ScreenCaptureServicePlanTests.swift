@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import PeekabooAutomation
 import PeekabooFoundation
 import Testing
 @testable import PeekabooAutomation

@@ -1,7 +1,7 @@
 import Foundation
-import PeekabooVisualizer
 import PeekabooFoundation
 import PeekabooProtocols
+import PeekabooVisualizer
 import Testing
 
 @Suite("Visualizer event contract")
@@ -11,7 +11,13 @@ struct VisualizerEventStoreContractTests {
     func annotatedScreenshotPayload() throws {
         let payload = VisualizerEvent.Payload.annotatedScreenshot(
             imageData: Data([0x89, 0x50]),
-            elements: [DetectedElement(id: "A1", type: .button, bounds: .zero, label: nil, value: nil, isEnabled: true)],
+            elements: [DetectedElement(
+                id: "A1",
+                type: .button,
+                bounds: .zero,
+                label: nil,
+                value: nil,
+                isEnabled: true)],
             windowBounds: .zero,
             duration: 1.0)
 

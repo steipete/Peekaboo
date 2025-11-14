@@ -1,8 +1,8 @@
 import Tachikoma
 import Testing
-@testable import PeekabooCore
-@testable import PeekabooAutomation
 @testable import PeekabooAgentRuntime
+@testable import PeekabooAutomation
+@testable import PeekabooCore
 @testable import PeekabooVisualizer
 
 /// Tests for PeekabooAgentService model selection functionality
@@ -197,7 +197,7 @@ struct ModelSelectionExecutionPathTests {
             let result = try await agentService.executeTask(
                 "test streaming execution",
                 maxSteps: 1,
-                sessionId: (nil as String?),
+                sessionId: nil as String?,
                 model: customModel,
                 eventDelegate: eventDelegate)
 
@@ -222,9 +222,9 @@ struct ModelSelectionExecutionPathTests {
             let result = try await agentService.executeTask(
                 "test non-streaming execution",
                 maxSteps: 1,
-                sessionId: (nil as String?),
+                sessionId: nil as String?,
                 model: customModel,
-                eventDelegate: (nil as (any AgentEventDelegate)?))
+                eventDelegate: nil as (any AgentEventDelegate)?)
 
             #expect(result.metadata.modelName == customModel.description)
         } catch {

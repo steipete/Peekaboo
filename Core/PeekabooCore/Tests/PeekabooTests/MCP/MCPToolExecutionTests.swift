@@ -3,9 +3,9 @@ import MCP
 import PeekabooFoundation
 import TachikomaMCP
 import Testing
-@testable import PeekabooCore
-@testable import PeekabooAutomation
 @testable import PeekabooAgentRuntime
+@testable import PeekabooAutomation
+@testable import PeekabooCore
 @testable import PeekabooVisualizer
 
 @Suite("MCP Tool Execution Tests")
@@ -74,14 +74,14 @@ struct MCPToolExecutionTests {
     func listToolApps() async throws {
         let mockApplications = await MainActor.run {
             MockApplicationService(
-            applications: [
-                ServiceApplicationInfo(
-                    processIdentifier: 1,
-                    bundleIdentifier: "com.apple.finder",
-                    name: "Finder",
-                    isActive: true,
-                    windowCount: 1),
-            ])
+                applications: [
+                    ServiceApplicationInfo(
+                        processIdentifier: 1,
+                        bundleIdentifier: "com.apple.finder",
+                        name: "Finder",
+                        isActive: true,
+                        windowCount: 1),
+                ])
         }
         let context = await MCPToolTestHelpers.makeContext(applications: mockApplications)
         let tool = ListTool(context: context)
@@ -205,7 +205,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
     func click(target _: ClickTarget, clickType _: ClickType, sessionId _: String?) async throws {}
 
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, sessionId _: String?) async
-        throws {}
+    throws {}
 
     func typeActions(_: [TypeAction], typingDelay _: Int, sessionId _: String?) async throws -> TypeResult {
         TypeResult(totalCharacters: 0, keyPresses: 0)
@@ -338,13 +338,13 @@ struct MCPToolErrorHandlingTests {
         try await MCPToolTestHelpers.withContext {
             let tool = TypeTool()
 
-        // Pass number where string expected
-        let args = ToolArguments(raw: ["text": 12345])
+            // Pass number where string expected
+            let args = ToolArguments(raw: ["text": 12345])
 
             let response = try await tool.execute(arguments: args)
 
-        // Tool should either convert or error gracefully
-        // TypeTool should convert number to string
+            // Tool should either convert or error gracefully
+            // TypeTool should convert number to string
             #expect(response.isError == false)
         }
     }
@@ -354,16 +354,16 @@ struct MCPToolErrorHandlingTests {
         try await MCPToolTestHelpers.withContext {
             let tool = ClickTool()
 
-        // ClickTool actually has no required parameters - it will error if no valid input is provided
-        let args = ToolArguments(raw: [:])
+            // ClickTool actually has no required parameters - it will error if no valid input is provided
+            let args = ToolArguments(raw: [:])
 
             let response = try await tool.execute(arguments: args)
-        #expect(response.isError == true)
+            #expect(response.isError == true)
 
             if case let .text(error) = response.content.first {
-            // Should mention that it needs some input like query, on, or coords
-            #expect(error.lowercased().contains("specify") || error.lowercased().contains("provide") || error
-                .lowercased().contains("must"))
+                // Should mention that it needs some input like query, on, or coords
+                #expect(error.lowercased().contains("specify") || error.lowercased().contains("provide") || error
+                    .lowercased().contains("must"))
             }
         }
     }
@@ -395,21 +395,22 @@ struct MCPToolIntegrationTests {
         try await MCPToolTestHelpers.withContext(
             automation: automation,
             screenCapture: screenCapture,
-            applications: appService) {
-                let sleepTool = SleepTool()
-                let permissionsTool = PermissionsTool()
-                let listTool = ListTool()
+            applications: appService)
+        {
+            let sleepTool = SleepTool()
+            let permissionsTool = PermissionsTool()
+            let listTool = ListTool()
 
-                async let sleep = sleepTool.execute(arguments: ToolArguments(raw: ["duration": 0.1]))
-                async let permissions = permissionsTool.execute(arguments: ToolArguments(raw: [:]))
-                async let list = listTool.execute(arguments: ToolArguments(raw: ["type": "apps"]))
+            async let sleep = sleepTool.execute(arguments: ToolArguments(raw: ["duration": 0.1]))
+            async let permissions = permissionsTool.execute(arguments: ToolArguments(raw: [:]))
+            async let list = listTool.execute(arguments: ToolArguments(raw: ["type": "apps"]))
 
-                let results = try await (sleep, permissions, list)
+            let results = try await (sleep, permissions, list)
 
-                #expect(results.0.isError == false)
-                #expect(results.1.isError == false)
-                #expect(results.2.isError == false)
-            }
+            #expect(results.0.isError == false)
+            #expect(results.1.isError == false)
+            #expect(results.2.isError == false)
+        }
     }
 
     @Test("Tool execution with complex arguments")

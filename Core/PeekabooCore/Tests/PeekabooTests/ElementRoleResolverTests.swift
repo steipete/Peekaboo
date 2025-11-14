@@ -1,8 +1,8 @@
 import PeekabooFoundation
 import Testing
-@testable import PeekabooCore
-@testable import PeekabooAutomation
 @testable import PeekabooAgentRuntime
+@testable import PeekabooAutomation
+@testable import PeekabooCore
 @testable import PeekabooVisualizer
 
 @Suite("Element Role Resolver", .tags(.fast))
@@ -12,8 +12,7 @@ struct ElementRoleResolverTests {
         let info = ElementRoleInfo(
             role: "AXGroup",
             roleDescription: nil,
-            isEditable: true
-        )
+            isEditable: true)
 
         let resolved = ElementRoleResolver.resolveType(baseType: .group, info: info)
         #expect(resolved == .textField)
@@ -24,8 +23,7 @@ struct ElementRoleResolverTests {
         let info = ElementRoleInfo(
             role: "AXGroup",
             roleDescription: "text field",
-            isEditable: false
-        )
+            isEditable: false)
 
         let resolved = ElementRoleResolver.resolveType(baseType: .group, info: info)
         #expect(resolved == .textField)
@@ -36,8 +34,7 @@ struct ElementRoleResolverTests {
         let info = ElementRoleInfo(
             role: "AXGroup",
             roleDescription: "group",
-            isEditable: false
-        )
+            isEditable: false)
 
         let resolved = ElementRoleResolver.resolveType(baseType: .group, info: info)
         #expect(resolved == .group)

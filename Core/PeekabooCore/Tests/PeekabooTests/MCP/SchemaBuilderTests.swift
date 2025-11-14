@@ -2,9 +2,9 @@ import Foundation
 import MCP
 import TachikomaMCP
 import Testing
-@testable import PeekabooCore
-@testable import PeekabooAutomation
 @testable import PeekabooAgentRuntime
+@testable import PeekabooAutomation
+@testable import PeekabooCore
 @testable import PeekabooVisualizer
 
 @Suite("SchemaBuilder Tests")

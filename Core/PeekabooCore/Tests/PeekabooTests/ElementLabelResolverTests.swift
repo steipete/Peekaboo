@@ -1,7 +1,7 @@
 import Testing
-@testable import PeekabooCore
-@testable import PeekabooAutomation
 @testable import PeekabooAgentRuntime
+@testable import PeekabooAutomation
+@testable import PeekabooCore
 @testable import PeekabooVisualizer
 
 @Suite("Element Label Resolver", .tags(.fast))
@@ -15,8 +15,7 @@ struct ElementLabelResolverTests {
             value: nil,
             roleDescription: nil,
             description: nil,
-            identifier: nil
-        )
+            identifier: nil)
 
         let resolved = ElementLabelResolver.resolve(info: info, childTexts: [], identifierCleaner: { $0 })
         #expect(resolved == "Submit")
@@ -31,8 +30,7 @@ struct ElementLabelResolverTests {
             value: nil,
             roleDescription: nil,
             description: nil,
-            identifier: nil
-        )
+            identifier: nil)
 
         let resolved = ElementLabelResolver.resolve(info: info, childTexts: ["Allow"], identifierCleaner: { $0 })
         #expect(resolved == "Allow")
@@ -47,8 +45,7 @@ struct ElementLabelResolverTests {
             value: nil,
             roleDescription: nil,
             description: nil,
-            identifier: "bubble-allow-button"
-        )
+            identifier: "bubble-allow-button")
 
         let resolved = ElementLabelResolver.resolve(info: info, childTexts: [], identifierCleaner: { _ in "Allow" })
         #expect(resolved == "Allow")
