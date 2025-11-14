@@ -32,6 +32,7 @@
     "poltergeist:stop": "./scripts/poltergeist-wrapper.sh stop",
     "poltergeist:rest": "./scripts/poltergeist-wrapper.sh rest",
     "poltergeist:status": "./scripts/poltergeist-wrapper.sh status",
+    "poltergeist:panel": "./scripts/poltergeist-wrapper.sh status panel",
     "poltergeist:logs": "./scripts/poltergeist-wrapper.sh logs"
   },
   "repository": {
