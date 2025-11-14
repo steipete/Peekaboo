@@ -7,6 +7,11 @@ import PeekabooFoundation
 @available(macOS 14.0, *)
 @MainActor
 struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, RuntimeOptionsConfigurable {
+    @MainActor
+    static var launcher: any ApplicationLaunching = ApplicationLaunchEnvironment.launcher
+    @MainActor
+    static var resolver: any ApplicationURLResolving = ApplicationURLResolverEnvironment.resolver
+
     nonisolated(unsafe) static var commandDescription: CommandDescription {
         MainActorCommandDescription.describe {
             CommandDescription(
@@ -101,55 +106,26 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
 
     private func resolveHandlerApplication() throws -> URL? {
         if let bundleId {
-            guard let bundleURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else {
-                throw NotFoundError.application("Bundle ID: \(bundleId)")
-            }
-            return bundleURL
+            return try Self.resolver.resolveBundleIdentifier(bundleId)
         }
 
-        guard let app else { return nil }
-
-        if let bundleURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) {
-            return bundleURL
+        if let app {
+            return try Self.resolver.resolveApplication(appIdentifier: app, bundleId: nil)
         }
 
-        let expandedPath = NSString(string: app).expandingTildeInPath
-        if expandedPath.hasSuffix(".app"), FileManager.default.fileExists(atPath: expandedPath) {
-            return URL(fileURLWithPath: expandedPath)
-        }
-
-        if let namedURL = self.findApplicationByName(app) {
-            return namedURL
-        }
-
-        if expandedPath.contains("/") {
-            return URL(fileURLWithPath: expandedPath)
-        }
-
-        throw NotFoundError.application(app)
+        return nil
     }
 
-    private func openTarget(targetURL: URL, handlerURL: URL?) async throws -> NSRunningApplication {
-        let config = NSWorkspace.OpenConfiguration()
-        config.activates = self.shouldFocus
-
-        if let handlerURL {
-            return try await NSWorkspace.shared.open(
-                [targetURL],
-                withApplicationAt: handlerURL,
-                configuration: config
-            )
-        } else {
-            return try await NSWorkspace.shared.open(targetURL, configuration: config)
-        }
+    private func openTarget(targetURL: URL, handlerURL: URL?) async throws -> any RunningApplicationHandle {
+        try await Self.launcher.openTarget(targetURL, handlerURL: handlerURL, activates: self.shouldFocus)
     }
 
-    private func waitIfNeeded(for app: NSRunningApplication) async throws {
+    private func waitIfNeeded(for app: any RunningApplicationHandle) async throws {
         guard self.waitUntilReady else { return }
         try await self.waitForApplicationReady(app)
     }
 
-    private func activateIfNeeded(_ app: NSRunningApplication) -> Bool {
+    private func activateIfNeeded(_ app: any RunningApplicationHandle) -> Bool {
         guard self.shouldFocus else { return false }
 
         if app.isActive {
@@ -163,7 +139,7 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
         return activated
     }
 
-    private func renderSuccess(app: NSRunningApplication, targetURL: URL, didFocus: Bool) {
+    private func renderSuccess(app: any RunningApplicationHandle, targetURL: URL, didFocus: Bool) {
         let result = OpenResult(
             success: true,
             action: "open",
@@ -182,7 +158,7 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
         }
     }
 
-    private func waitForApplicationReady(_ app: NSRunningApplication, timeout: TimeInterval = 10) async throws {
+    private func waitForApplicationReady(_ app: any RunningApplicationHandle, timeout: TimeInterval = 10) async throws {
         let start = Date()
         while !app.isFinishedLaunching {
             if Date().timeIntervalSince(start) > timeout {
@@ -194,24 +170,6 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
 
     private func normalizedTargetString(for url: URL) -> String {
         url.isFileURL ? url.path : url.absoluteString
-    }
-
-    private func findApplicationByName(_ name: String) -> URL? {
-        let searchPaths = [
-            "/Applications",
-            "/System/Applications",
-            "~/Applications",
-            "/Applications/Utilities"
-        ].map { NSString(string: $0).expandingTildeInPath }
-
-        for path in searchPaths {
-            let appPath = "\(path)/\(name).app"
-            if FileManager.default.fileExists(atPath: appPath) {
-                return URL(fileURLWithPath: appPath)
-            }
-        }
-
-        return nil
     }
 }
 

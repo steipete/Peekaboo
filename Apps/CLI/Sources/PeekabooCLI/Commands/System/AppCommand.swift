@@ -17,6 +17,7 @@ struct AppCommand: ParsableCommand {
           # Launch an application
           peekaboo app launch "Visual Studio Code"
           peekaboo app launch --bundle-id com.microsoft.VSCode --wait-until-ready
+          peekaboo app launch "Safari" --open https://example.com --open ~/Desktop/notes.txt --no-focus
 
           # Quit applications
           peekaboo app quit --app Safari
@@ -49,6 +50,11 @@ struct AppCommand: ParsableCommand {
 
     @MainActor
     struct LaunchSubcommand {
+        @MainActor
+        static var launcher: any ApplicationLaunching = ApplicationLaunchEnvironment.launcher
+        @MainActor
+        static var resolver: any ApplicationURLResolving = ApplicationURLResolverEnvironment.resolver
+
         static let commandDescription = CommandDescription(
             commandName: "launch",
             abstract: "Launch an application"
@@ -115,45 +121,26 @@ struct AppCommand: ParsableCommand {
         }
 
         private func resolveApplicationURL() throws -> URL {
-            if let bundleId {
-                guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else {
-                    throw NotFoundError.application("Bundle ID: \(bundleId)")
-                }
-                return url
-            }
-
-            if let bundleURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) {
-                return bundleURL
-            }
-
-            if let namedURL = findApplicationByName(app) {
-                return namedURL
-            }
-
-            if self.app.contains("/") {
-                return URL(fileURLWithPath: self.app)
-            }
-
-            throw NotFoundError.application(self.app)
+            try Self.resolver.resolveApplication(appIdentifier: self.app, bundleId: self.bundleId)
         }
 
         private func displayName(for url: URL) -> String {
             (try? url.resourceValues(forKeys: [.localizedNameKey]).localizedName) ?? self.app
         }
 
-        private func waitIfNeeded(for app: NSRunningApplication) async throws {
+        private func waitIfNeeded(for app: any RunningApplicationHandle) async throws {
             guard self.waitUntilReady else { return }
             try await self.waitForApplicationReady(app)
         }
 
-        private func activateIfNeeded(_ app: NSRunningApplication) {
+        private func activateIfNeeded(_ app: any RunningApplicationHandle) {
             guard self.shouldFocusAfterLaunch else { return }
             if !app.activate(options: []) {
                 self.logger.error("Launch succeeded but failed to focus \(app.localizedName ?? self.app)")
             }
         }
 
-        private func renderLaunchSuccess(app: NSRunningApplication) {
+        private func renderLaunchSuccess(app: any RunningApplicationHandle) {
             struct LaunchResult: Codable {
                 let action: String
                 let app_name: String
@@ -175,55 +162,16 @@ struct AppCommand: ParsableCommand {
             }
         }
 
-        private func findApplicationByName(_ name: String) -> URL? {
-            _ = NSWorkspace.shared
-            // Check common application directories
-            let searchPaths = [
-                "/Applications",
-                "/System/Applications",
-                "~/Applications",
-                "/Applications/Utilities"
-            ].map { NSString(string: $0).expandingTildeInPath }
-
-            for path in searchPaths {
-                let appPath = "\(path)/\(name).app"
-                if FileManager.default.fileExists(atPath: appPath) {
-                    return URL(fileURLWithPath: appPath)
-                }
-            }
-            return nil
-        }
-
-        private func launchApplication(at url: URL, name: String) async throws -> NSRunningApplication {
+        private func launchApplication(at url: URL, name: String) async throws -> any RunningApplicationHandle {
             if self.openTargets.isEmpty {
-                let configuration = NSWorkspace.OpenConfiguration()
-                configuration.activates = true
-
-                do {
-                    let app = try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
-                    return app
-                } catch {
-                    throw PeekabooError.commandFailed("Failed to launch \(name): \(error.localizedDescription)")
-                }
+                return try await Self.launcher.launchApplication(at: url, activates: true)
             } else {
-                let configuration = NSWorkspace.OpenConfiguration()
-                configuration.activates = self.shouldFocusAfterLaunch
-
                 let urls = try self.openTargets.map { try Self.resolveOpenTarget($0) }
-
-                do {
-                    let app = try await NSWorkspace.shared.open(
-                        urls,
-                        withApplicationAt: url,
-                        configuration: configuration)
-                    return app
-                } catch {
-                    throw PeekabooError.commandFailed("Failed to launch \(name) with open targets: \(error.localizedDescription)")
-                }
+                return try await Self.launcher.launchApplication(url, opening: urls, activates: self.shouldFocusAfterLaunch)
             }
         }
 
-        private func waitForApplicationReady(_ app: NSRunningApplication, timeout: TimeInterval = 10) async throws {
+        private func waitForApplicationReady(_ app: any RunningApplicationHandle, timeout: TimeInterval = 10) async throws {
             let startTime = Date()
             while !app.isFinishedLaunching {
                 if Date().timeIntervalSince(startTime) > timeout {
