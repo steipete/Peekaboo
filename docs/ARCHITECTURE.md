@@ -68,7 +68,7 @@ let model = try provider.getModel("gpt-4.1")
 PeekabooCore uses a service locator pattern with specialized service delegation:
 
 ```swift
-let services = PeekabooServices.shared
+let services = PeekabooServices()
 let automation = services.automation  // UIAutomationService
 let screenCapture = services.screenCapture  // ScreenCaptureService
 let applications = services.applications  // ApplicationService
@@ -116,7 +116,7 @@ PeekabooCore integrates with Tachikoma through `PeekabooAgentService`:
 ```swift
 let modelProvider = try AIConfiguration.fromEnvironment()
 let agent = PeekabooAgentService(
-    services: PeekabooServices.shared,
+    services: PeekabooServices(),
     modelProvider: modelProvider
 )
 ```

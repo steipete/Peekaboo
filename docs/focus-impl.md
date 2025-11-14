@@ -663,8 +663,8 @@ public extension AsyncParsableCommand {
     }
     
     private func findTargetWindow(_ context: FocusContext) async throws -> WindowReference {
-        let windowService = PeekabooServices.shared.windows
-        let appService = PeekabooServices.shared.applications
+        let windowService = PeekabooServices().windows
+        let appService = PeekabooServices().applications
         
         // 1. Try windowID first (most reliable)
         if let windowID = context.windowID {
@@ -1024,7 +1024,7 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
             )
             
             // Get final window info
-            let windows = try await PeekabooServices.shared.windows.listWindows(
+            let windows = try await PeekabooServices().windows.listWindows(
                 target: self.windowOptions.toWindowTarget()
             )
             let windowInfo = self.windowOptions.selectWindow(from: windows)
@@ -1357,7 +1357,7 @@ struct SpaceCommand: AsyncParsableCommand {
             
             do {
                 // Find target window
-                let windows = try await PeekabooServices.shared.windows.listWindows(
+                let windows = try await PeekabooServices().windows.listWindows(
                     target: .application(self.app)
                 )
                 
@@ -1430,7 +1430,7 @@ struct SpaceCommand: AsyncParsableCommand {
             
             do {
                 // Find window
-                let windows = try await PeekabooServices.shared.windows.listWindows(
+                let windows = try await PeekabooServices().windows.listWindows(
                     target: .application(self.app)
                 )
                 

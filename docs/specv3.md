@@ -1302,7 +1302,7 @@ The native macOS application includes:
 
 2. **Service Architecture**
    ```
-   PeekabooServices.shared
+   PeekabooServices()
    ├── screenCapture
    ├── applications
    ├── automation
