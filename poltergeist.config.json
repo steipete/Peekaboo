@@ -14,6 +14,8 @@
       "watchPaths": [
         "Core/PeekabooCore/**/*.swift",
         "AXorcist/**/*.swift",
+        "Commander/**/*.swift",
+        "Tachikoma/**/*.swift",
         "Apps/CLI/**/*.swift"
       ]
     },
@@ -33,7 +35,9 @@
         "Apps/Mac/Peekaboo/**/*.storyboard",
         "Apps/Mac/Peekaboo/**/*.xib",
         "Core/PeekabooCore/**/*.swift",
-        "AXorcist/**/*.swift"
+        "AXorcist/**/*.swift",
+        "Commander/**/*.swift",
+        "Tachikoma/**/*.swift"
       ]
     }
   ],
