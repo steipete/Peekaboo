@@ -36,10 +36,21 @@ print('\n'.join(lines))
 PY
 )
 
-if [ $? -eq 0 ]; then
+python_status=$?
+
+if [ $python_status -eq 0 ]; then
   echo "$SUMMARY"
+  counts_line=$(printf '%s\n' "$SUMMARY" | head -n 1)
+  errors=$(echo "$counts_line" | awk '{print $1}')
+  warnings=$(echo "$counts_line" | awk '{print $4}')
   rm -f "$TMP_JSON"
-  exit 0
+  if [ "$errors" -gt 0 ]; then
+    exit 2
+  elif [ "$warnings" -gt 0 ]; then
+    exit 1
+  else
+    exit 0
+  fi
 fi
 
 echo "failed (exit $SWIFTLINT_STATUS)"
