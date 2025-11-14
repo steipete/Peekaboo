@@ -62,6 +62,20 @@ Peekaboo uses a modern service-based architecture:
 
 All components share the same core services, ensuring consistent behavior and optimal performance. See [Service API Reference](docs/service-api-reference.md) for detailed documentation.
 
+#### Embedding Peekaboo services
+
+The legacy singleton is gone—if you construct `PeekabooServices()` yourself (e.g., tests, daemon, or a new host), call `services.installAgentRuntimeDefaults()` **once** after initialization so MCP tools, the ToolRegistry, and `PeekabooAgentService` share that instance:
+
+```swift
+@MainActor
+let services = PeekabooServices()
+services.installAgentRuntimeDefaults()
+
+let agent = try PeekabooAgentService(services: services)
+```
+
+Skipping the install step will cause MCP/ToolRegistry APIs to fatal with “default factory not configured” because there’s no hidden global anymore.
+
 ### Git Submodules
 
 Peekaboo vendors three shared dependencies as top-level git submodules:
