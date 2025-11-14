@@ -97,7 +97,7 @@ public struct PathResolver: Sendable {
     /// Truncate string to valid UTF-8 sequence
     private static func truncateToValidUTF8(_ string: String, maxLength: Int) -> String {
         // Truncate string to valid UTF-8 sequence
-        let data = string.data(using: .utf8)!
+        let data = Data(string.utf8)
         var truncatedData = data.prefix(maxLength)
 
         // Try to create a string from the truncated data

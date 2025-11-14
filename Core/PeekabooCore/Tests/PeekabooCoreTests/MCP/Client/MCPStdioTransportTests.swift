@@ -50,7 +50,7 @@ struct MCPStdioTransportTests {
 
         // Send a test message
         let testMessage = #"{"jsonrpc":"2.0","method":"test","id":1}"#
-        let messageData = testMessage.data(using: .utf8)!
+        let messageData = Data(testMessage.utf8)
         try await transport.send(messageData)
 
         // Receive the echoed message
