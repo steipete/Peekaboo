@@ -54,6 +54,7 @@ enum CommandRegistry {
         .init(type: MenuCommand.self, category: .system),
         .init(type: MenuBarCommand.self, category: .system),
         .init(type: AppCommand.self, category: .system),
+        .init(type: OpenCommand.self, category: .system),
         .init(type: DockCommand.self, category: .system),
         .init(type: DialogCommand.self, category: .system),
         .init(type: SpaceCommand.self, category: .system),

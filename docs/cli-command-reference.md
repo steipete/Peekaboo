@@ -39,7 +39,8 @@ Peekaboo’s CLI mirrors everything the agent can do. Commands share the same se
 - `space` – List Spaces, switch desktops, or move windows across displays/Spaces.
 - `menu` – Traverse application menus via `--item` or `--path`, including menu extras.
 - `menubar` – List + click macOS status-bar icons by name or index.
-- `app` – Launch/quit/hide/show apps; launches now focus the target by default, and `--no-focus` keeps launches in the background when needed (still supports bundle IDs + `--wait-until-ready`).
+- `app` – Launch/quit/hide/show apps; launches now focus the target by default, `--no-focus` keeps them backgrounded, `--open <url|path>` hands initial documents/URLs to the app, and bundle IDs + `--wait-until-ready` still apply.
+- `open` – macOS `open` on steroids: hand a URL or path to its default handler (or force an app via `--app/--bundle-id`), and reuse Peekaboo’s `--wait-until-ready`, `--no-focus`, and JSON output switches.
 - `dock` – Launch from the Dock, right-click Dock items, show/hide the Dock.
 - `dialog` – Handle system dialogs (click buttons, input text, select files, dismiss).
 

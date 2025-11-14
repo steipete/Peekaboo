@@ -67,6 +67,9 @@ struct AppCommand: ParsableCommand {
 
         @Flag(name: .customLong("no-focus"), help: "Do not bring the app to the foreground after launching")
         var noFocus = false
+
+        @Option(name: .customLong("open"), help: "Document or URL to open immediately after launch", parsing: .upToNextOption)
+        var openTargets: [String] = []
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -192,14 +195,31 @@ struct AppCommand: ParsableCommand {
         }
 
         private func launchApplication(at url: URL, name: String) async throws -> NSRunningApplication {
-            let configuration = NSWorkspace.OpenConfiguration()
-            configuration.activates = true
+            if self.openTargets.isEmpty {
+                let configuration = NSWorkspace.OpenConfiguration()
+                configuration.activates = true
 
-            do {
-                let app = try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
-                return app
-            } catch {
-                throw PeekabooError.commandFailed("Failed to launch \(name): \(error.localizedDescription)")
+                do {
+                    let app = try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+                    return app
+                } catch {
+                    throw PeekabooError.commandFailed("Failed to launch \(name): \(error.localizedDescription)")
+                }
+            } else {
+                let configuration = NSWorkspace.OpenConfiguration()
+                configuration.activates = self.shouldFocusAfterLaunch
+
+                let urls = try self.openTargets.map { try self.resolveOpenTarget($0) }
+
+                do {
+                    let app = try await NSWorkspace.shared.open(
+                        urls,
+                        withApplicationAt: url,
+                        configuration: configuration)
+                    return app
+                } catch {
+                    throw PeekabooError.commandFailed("Failed to launch \(name) with open targets: \(error.localizedDescription)")
+                }
             }
         }
 
@@ -211,6 +231,28 @@ struct AppCommand: ParsableCommand {
                 }
                 try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
             }
+        }
+
+        private func resolveOpenTarget(_ value: String) throws -> URL {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                throw ValidationError("Open target must not be empty")
+            }
+
+            if let url = URL(string: trimmed), let scheme = url.scheme, !scheme.isEmpty {
+                return url
+            }
+
+            let expanded = NSString(string: trimmed).expandingTildeInPath
+            let absolutePath: String
+            if expanded.hasPrefix("/") {
+                absolutePath = expanded
+            } else {
+                absolutePath = NSString(string: FileManager.default.currentDirectoryPath)
+                    .appendingPathComponent(expanded)
+            }
+
+            return URL(fileURLWithPath: absolutePath)
         }
     }
 
@@ -902,6 +944,7 @@ extension AppCommand.LaunchSubcommand: CommanderBindableCommand {
         self.bundleId = values.singleOption("bundleId")
         self.waitUntilReady = values.flag("waitUntilReady")
         self.noFocus = values.flag("noFocus")
+        self.openTargets = values.optionValues("open")
     }
 }
 

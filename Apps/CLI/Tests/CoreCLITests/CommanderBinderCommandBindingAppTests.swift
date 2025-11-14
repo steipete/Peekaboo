@@ -38,6 +38,58 @@ struct CommanderBinderAppConfigTests {
         #expect(command.noFocus == true)
     }
 
+    @Test("App launch binding with open targets")
+    func bindAppLaunchWithOpenTargets() throws {
+        let parsed = ParsedValues(
+            positional: ["Safari"],
+            options: [
+                "open": ["https://example.com", "~/Documents/report.pdf"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: AppCommand.LaunchSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.app == "Safari")
+        #expect(command.openTargets == ["https://example.com", "~/Documents/report.pdf"])
+    }
+
+    @Test("Open command binding with overrides")
+    func bindOpenCommandWithOverrides() throws {
+        let parsed = ParsedValues(
+            positional: ["https://example.com"],
+            options: [
+                "app": ["Safari"],
+                "bundleId": ["com.apple.Safari"]
+            ],
+            flags: ["waitUntilReady", "noFocus"]
+        )
+
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: OpenCommand.self, parsedValues: parsed)
+        #expect(command.target == "https://example.com")
+        #expect(command.app == "Safari")
+        #expect(command.bundleId == "com.apple.Safari")
+        #expect(command.waitUntilReady == true)
+        #expect(command.noFocus == true)
+    }
+
+    @Test("Open command binding minimal")
+    func bindOpenCommandMinimal() throws {
+        let parsed = ParsedValues(
+            positional: ["~/Desktop"],
+            options: [:],
+            flags: []
+        )
+
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: OpenCommand.self, parsedValues: parsed)
+        #expect(command.target == "~/Desktop")
+        #expect(command.app == nil)
+        #expect(command.bundleId == nil)
+        #expect(command.waitUntilReady == false)
+        #expect(command.noFocus == false)
+    }
+
     @Test("App quit binding")
     func bindAppQuit() throws {
         let parsed = ParsedValues(
