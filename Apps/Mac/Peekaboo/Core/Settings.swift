@@ -765,7 +765,7 @@ extension PeekabooSettings {
     private func defaultModel(for provider: String) -> String {
         switch provider {
         case "openai":
-            "gpt-5.1-mini"
+            "gpt-5.1"
         case "anthropic":
             "claude-sonnet-4-5-20250929"
         default:

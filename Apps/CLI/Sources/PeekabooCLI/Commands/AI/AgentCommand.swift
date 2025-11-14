@@ -958,7 +958,7 @@ extension AgentCommand {
     }
 
     private func describeModel(_ requestedModel: LanguageModel?) -> String {
-        requestedModel?.description ?? "default (gpt-5.1-mini)"
+        requestedModel?.description ?? "default (gpt-5.1)"
     }
 
     private func printChatWelcome(sessionId: String?, modelDescription: String) {
