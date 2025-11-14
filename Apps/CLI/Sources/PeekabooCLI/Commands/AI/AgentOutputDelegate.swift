@@ -185,28 +185,22 @@ extension AgentOutputDelegate {
         self.hasReceivedContent = true
         if self.outputMode == .verbose {
             print("\n\(AgentDisplayTokens.Status.planning) Thinking: \(content)")
-        } else if self.outputMode == .compact || self.outputMode == .enhanced {
-            if self.spinner != nil {
-                self.spinner?.stop()
-                self.spinner = nil
-                print()
-            }
-
-            if !self.isThinking {
-                self.isThinking = true
-                print("\n\(TerminalColor.gray)💭 ", terminator: "")
-            }
-
-            print(content, terminator: "")
-            fflush(stdout)
-        } else if self.outputMode == .minimal {
-            if !self.isThinking {
-                self.isThinking = true
-                print("Thinking: ", terminator: "")
-            }
-            print(content, terminator: "")
-            fflush(stdout)
+            return
         }
+
+        if self.spinner != nil {
+            self.spinner?.stop()
+            self.spinner = nil
+            print()
+        }
+
+        if !self.isThinking {
+            self.isThinking = true
+            print("\n\(TerminalColor.gray)", terminator: "")
+        }
+
+        print(content)
+        fflush(stdout)
     }
 
     private func handleError(_ message: String) {
