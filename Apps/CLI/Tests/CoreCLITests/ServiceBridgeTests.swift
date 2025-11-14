@@ -124,7 +124,7 @@ final class MockAutomationService: UIAutomationServiceProtocol {
         sessionId _: String?
     ) async throws {}
 
-    func typeActions(_ actions: [TypeAction], typingDelay _: Int, sessionId _: String?) async throws -> TypeResult {
+    func typeActions(_ actions: [TypeAction], cadence _: TypingCadence, sessionId _: String?) async throws -> TypeResult {
         TypeResult(totalCharacters: actions.count, keyPresses: actions.count)
     }
 
@@ -132,7 +132,7 @@ final class MockAutomationService: UIAutomationServiceProtocol {
 
     func hotkey(keys _: String, holdDuration _: Int) async throws {}
 
-    func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int) async throws {}
+    func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
 
     func hasAccessibilityPermission() async -> Bool { true }
 
@@ -145,7 +145,7 @@ final class MockAutomationService: UIAutomationServiceProtocol {
         return self.waitResult
     }
 
-    func drag(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, modifiers _: String?) async throws {}
+    func drag(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, modifiers _: String?, profile _: MouseMovementProfile) async throws {}
 
     func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
 

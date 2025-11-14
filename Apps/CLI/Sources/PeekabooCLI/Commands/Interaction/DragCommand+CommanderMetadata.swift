@@ -49,6 +49,11 @@ extension DragCommand: CommanderSignatureProviding {
                     help: "Modifier keys to hold during drag",
                     long: "modifiers"
                 ),
+                .commandOption(
+                    "profile",
+                    help: "Movement profile (linear or human)",
+                    long: "profile"
+                ),
             ],
             optionGroups: [
                 FocusCommandOptions.commanderSignature(),

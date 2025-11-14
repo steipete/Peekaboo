@@ -26,10 +26,13 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
     var session: String?
 
     @Option(help: "Duration of the swipe in milliseconds")
-    var duration: Int = 500
+    var duration: Int?
 
     @Option(help: "Number of intermediate points for smooth movement")
-    var steps: Int = 20
+    var steps: Int?
+
+    @Option(help: "Movement profile (linear or human)")
+    var profile: String?
 
     @Flag(help: "Use right mouse button for drag")
     var rightButton = false
@@ -70,6 +73,12 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 )
             }
 
+            if let profileName = self.profile?.lowercased(),
+               CursorMovementProfileSelection(rawValue: profileName) == nil
+            {
+                throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
+            }
+
             // Determine session ID - use provided or get most recent
             let sessionId: String? = if let providedSession = session {
                 providedSession
@@ -94,17 +103,29 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 waitTimeout: 5.0
             )
 
+            let distance = hypot(destPoint.x - sourcePoint.x, destPoint.y - sourcePoint.y)
+            let profileSelection = CursorMovementProfileSelection(
+                rawValue: (self.profile ?? "linear").lowercased()
+            ) ?? .linear
+            let movement = CursorMovementResolver.resolve(
+                selection: profileSelection,
+                durationOverride: self.duration,
+                stepsOverride: self.steps,
+                baseSmooth: true,
+                distance: distance,
+                defaultDuration: 500,
+                defaultSteps: 20
+            )
+
             // Perform swipe using UIAutomationService
             try await AutomationServiceBridge.swipe(
                 automation: self.services.automation,
                 from: sourcePoint,
                 to: destPoint,
-                duration: self.duration,
-                steps: self.steps
+                duration: movement.duration,
+                steps: movement.steps,
+                profile: movement.profile
             )
-
-            // Calculate distance for output
-            let distance = sqrt(pow(destPoint.x - sourcePoint.x, 2) + pow(destPoint.y - sourcePoint.y, 2))
 
             // Small delay to ensure swipe is processed
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
@@ -114,7 +135,9 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 fromLocation: ["x": sourcePoint.x, "y": sourcePoint.y],
                 toLocation: ["x": destPoint.x, "y": destPoint.y],
                 distance: distance,
-                duration: self.duration,
+                duration: movement.duration,
+                steps: movement.steps,
+                profile: movement.profileName,
                 executionTime: Date().timeIntervalSince(startTime)
             )
             output(outputPayload) {
@@ -122,7 +145,8 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 print("📍 From: (\(Int(sourcePoint.x)), \(Int(sourcePoint.y)))")
                 print("📍 To: (\(Int(destPoint.x)), \(Int(destPoint.y)))")
                 print("📏 Distance: \(Int(distance)) pixels")
-                print("⏱️  Duration: \(self.duration)ms")
+                print("🧭 Profile: \(movement.profileName.capitalized)")
+                print("⏱️  Duration: \(movement.duration)ms with \(movement.steps) steps")
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
@@ -188,6 +212,8 @@ struct SwipeResult: Codable {
     let toLocation: [String: Double]
     let distance: Double
     let duration: Int
+    let steps: Int
+    let profile: String
     let executionTime: TimeInterval
 }
 
@@ -248,6 +274,7 @@ extension SwipeCommand: CommanderBindableCommand {
         if let steps: Int = try values.decodeOption("steps", as: Int.self) {
             self.steps = steps
         }
+        self.profile = values.singleOption("profile")
         self.rightButton = values.flag("rightButton")
     }
 }

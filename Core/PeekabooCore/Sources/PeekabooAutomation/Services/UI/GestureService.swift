@@ -12,7 +12,13 @@ public final class GestureService {
     public init() {}
 
     /// Perform a swipe gesture
-    public func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int) async throws {
+    public func swipe(
+        from: CGPoint,
+        to: CGPoint,
+        duration: Int,
+        steps: Int,
+        profile: MouseMovementProfile
+    ) async throws {
         let gestureDescription = self.describeGesture(
             name: "Swipe requested",
             details: [
@@ -20,14 +26,20 @@ public final class GestureService {
                 "to: (\(to.x), \(to.y))",
                 "duration: \(duration)ms",
                 "steps: \(steps)",
+                "profile: \(profile.logDescription)",
             ])
         self.logger.debug("\(gestureDescription)")
 
         try self.ensurePositiveSteps(steps, action: "Swipe")
 
-        let context = GesturePathContext(start: from, end: to, steps: steps)
-        let stepDelayNanos = self.stepDelay(duration: duration, steps: steps)
-        try await self.performSwipe(context: context, stepDelayNanos: stepDelayNanos)
+        let path = self.buildGesturePath(
+            from: from,
+            to: to,
+            duration: duration,
+            steps: steps,
+            profile: profile
+        )
+        try await self.performSwipe(path: path, start: from, button: .left, eventFlags: [])
 
         self.logger.debug("Swipe completed")
     }
@@ -38,7 +50,8 @@ public final class GestureService {
         to: CGPoint,
         duration: Int,
         steps: Int,
-        modifiers: String?) async throws
+        modifiers: String?,
+        profile: MouseMovementProfile) async throws
     {
         // Perform a drag operation with optional modifiers
         let gestureDescription = self.describeGesture(
@@ -48,19 +61,21 @@ public final class GestureService {
                 "to: (\(to.x), \(to.y))",
                 "duration: \(duration)ms",
                 "modifiers: \(modifiers ?? "none")",
+                "profile: \(profile.logDescription)",
             ])
         self.logger.debug("\(gestureDescription)")
 
         try self.ensurePositiveSteps(steps, action: "Drag")
 
         let eventFlags = self.parseModifierKeys(modifiers)
-        let stepDelayNanos = self.stepDelay(duration: duration, steps: steps)
-        try await self.executeDrag(
+        let path = self.buildGesturePath(
             from: from,
             to: to,
+            duration: duration,
             steps: steps,
-            eventFlags: eventFlags,
-            stepDelayNanos: stepDelayNanos)
+            profile: profile
+        )
+        try await self.performDrag(path: path, start: from, eventFlags: eventFlags)
 
         self.logger.debug("Drag completed")
     }
@@ -163,35 +178,41 @@ public final class GestureService {
         return UInt64(secondsPerStep * 1_000_000_000)
     }
 
-    private func performSwipe(context: GesturePathContext, stepDelayNanos: UInt64) async throws {
-        try await self.moveMouseToPoint(context.start)
-        try self.postMouseEvent(type: .leftMouseDown, at: context.start)
+    private func performSwipe(
+        path: HumanMousePath,
+        start: CGPoint,
+        button: CGMouseButton,
+        eventFlags: CGEventFlags
+    ) async throws {
+        try await self.moveMouseToPoint(start)
+        try self.postMouseEvent(type: .leftMouseDown, at: start, button: button, flags: eventFlags)
 
-        for index in 1...context.steps {
-            try self.postMouseEvent(type: .leftMouseDragged, at: context.point(at: index))
-            try await self.sleepIfNeeded(stepDelayNanos)
+        let delay = self.stepDelay(duration: path.duration, steps: path.points.count)
+        for point in path.points {
+            try self.postMouseEvent(type: .leftMouseDragged, at: point, button: button, flags: eventFlags)
+            try await self.sleepIfNeeded(delay)
         }
 
-        try self.postMouseEvent(type: .leftMouseUp, at: context.end)
+        let endPoint = path.points.last ?? start
+        try self.postMouseEvent(type: .leftMouseUp, at: endPoint, button: button, flags: eventFlags)
     }
 
-    private func executeDrag(
-        from: CGPoint,
-        to: CGPoint,
-        steps: Int,
-        eventFlags: CGEventFlags,
-        stepDelayNanos: UInt64) async throws
-    {
-        try await self.moveMouseToPoint(from)
-        try self.postMouseEvent(type: .leftMouseDown, at: from, flags: eventFlags)
+    private func performDrag(
+        path: HumanMousePath,
+        start: CGPoint,
+        eventFlags: CGEventFlags
+    ) async throws {
+        try await self.moveMouseToPoint(start)
+        try self.postMouseEvent(type: .leftMouseDown, at: start, flags: eventFlags)
 
-        let context = GesturePathContext(start: from, end: to, steps: steps)
-        for index in 1...context.steps {
-            try self.postMouseEvent(type: .leftMouseDragged, at: context.point(at: index), flags: eventFlags)
-            try await self.sleepIfNeeded(stepDelayNanos)
+        let delay = self.stepDelay(duration: path.duration, steps: path.points.count)
+        for point in path.points {
+            try self.postMouseEvent(type: .leftMouseDragged, at: point, flags: eventFlags)
+            try await self.sleepIfNeeded(delay)
         }
 
-        try self.postMouseEvent(type: .leftMouseUp, at: to, flags: eventFlags)
+        let endPoint = path.points.last ?? start
+        try self.postMouseEvent(type: .leftMouseUp, at: endPoint, flags: eventFlags)
     }
 
     private func postMouseEvent(
@@ -235,6 +256,30 @@ public final class GestureService {
             let x = start.x + ((end.x - start.x) * progress)
             let y = start.y + ((end.y - start.y) * progress)
             return CGPoint(x: x, y: y)
+        }
+    }
+
+    private func buildGesturePath(
+        from start: CGPoint,
+        to end: CGPoint,
+        duration: Int,
+        steps: Int,
+        profile: MouseMovementProfile
+    ) -> HumanMousePath {
+        let distance = hypot(end.x - start.x, end.y - start.y)
+        switch profile {
+        case .linear:
+            return HumanMousePath(points: self.linearPath(from: start, to: end, steps: steps), duration: duration)
+        case let .human(configuration):
+            let generator = HumanMousePathGenerator(
+                start: start,
+                target: end,
+                distance: distance,
+                duration: duration,
+                stepsHint: steps,
+                configuration: configuration
+            )
+            return generator.generate()
         }
     }
 
@@ -429,31 +474,5 @@ private struct SeededGenerator: RandomNumberGenerator {
         z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
         z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
         return z ^ (z >> 31)
-    }
-}
-
-private struct GesturePathContext {
-    let start: CGPoint
-    let end: CGPoint
-    let steps: Int
-
-    init(start: CGPoint, end: CGPoint, steps: Int) {
-        self.start = start
-        self.end = end
-        self.steps = steps
-    }
-
-    var deltaX: CGFloat {
-        (self.end.x - self.start.x) / CGFloat(self.steps)
-    }
-
-    var deltaY: CGFloat {
-        (self.end.y - self.start.y) / CGFloat(self.steps)
-    }
-
-    func point(at index: Int) -> CGPoint {
-        CGPoint(
-            x: self.start.x + (self.deltaX * CGFloat(index)),
-            y: self.start.y + (self.deltaY * CGFloat(index)))
     }
 }

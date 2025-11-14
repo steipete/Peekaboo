@@ -18,6 +18,7 @@ read_when:
 | `--duration <ms>` | Drag length (default 500 ms). |
 | `--steps <count>` | Number of interpolation points (default 20) to control smoothness. |
 | `--modifiers cmd,shift,…` | Comma-separated list of modifier keys held during the drag. |
+| `--profile <linear\|human>` | `human` enables natural-looking arcs and jitter; defaults to `linear`. |
 | Focus flags | `FocusCommandOptions` ensure the correct window is frontmost before the drag starts. |
 
 ## Implementation notes
@@ -25,6 +26,7 @@ read_when:
 - When you pass `--to-app`, the command resolves the app’s focused window via AX and drags to its midpoint; `Trash` is handled specially by scraping the Dock’s accessibility hierarchy.
 - Element IDs are resolved through `AutomationServiceBridge.waitForElement` (5 s timeout) and use the element’s bounds midpoint as the drag point.
 - Modifier strings are forwarded verbatim to `DragRequest`, so `--modifiers cmd,shift` behaves like holding Cmd+Shift while dragging.
+- `--profile human` automatically chooses adaptive durations/steps and feeds the motion through the same humanized generator described in `docs/human-mouse-move.md`.
 - Results are logged in both human-readable form and JSON (`DragResult`) with start/end coordinates, duration, steps, modifiers, and execution time.
 
 ## Examples
@@ -34,6 +36,9 @@ polter peekaboo -- drag --from file_tile_3 --to-app Trash
 
 # Coordinate → coordinate drag with longer duration
 polter peekaboo -- drag --from-coords "120,880" --to-coords "480,220" --duration 1200 --steps 40
+
+# Human-style drag with adaptive timing
+polter peekaboo -- drag --from-coords "80,80" --to-coords "420,260" --profile human
 
 # Range-select items by holding Shift
 polter peekaboo -- drag --from row_1 --to row_5 --modifiers shift

@@ -39,6 +39,11 @@ extension SwipeCommand: CommanderSignatureProviding {
                     help: "Number of intermediate points for smooth movement",
                     long: "steps"
                 ),
+                .commandOption(
+                    "profile",
+                    help: "Movement profile (linear or human)",
+                    long: "profile"
+                ),
             ],
             flags: [
                 .commandFlag(

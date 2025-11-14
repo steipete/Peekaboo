@@ -107,6 +107,7 @@ struct DragCommandTests {
         #expect(call.duration == 750)
         #expect(call.steps == 5)
         #expect(call.modifiers == "cmd,option")
+        #expect(call.profile == .linear)
     }
 
     @Test("Drag between coordinates scenario")
@@ -121,8 +122,10 @@ struct DragCommandTests {
         ]
         let (result, context) = try await self.runDragCommandWithContext(arguments)
         #expect(result.exitStatus == 0)
-        let payload = try JSONDecoder().decode(DragResult.self, from: self.output(from: Data(result).utf8))
+        let payloadData = Data(self.output(from: result).utf8)
+        let payload = try JSONDecoder().decode(DragResult.self, from: payloadData)
         #expect(payload.success)
+        #expect(payload.profile == "linear")
         let dragCalls = await self.automationState(context) { $0.dragCalls }
         let call = try #require(dragCalls.first)
         #expect(Int(call.from.x) == 100)
@@ -130,6 +133,7 @@ struct DragCommandTests {
         #expect(Int(call.to.x) == 300)
         #expect(Int(call.to.y) == 300)
         #expect(call.duration == 500)
+        #expect(call.profile == .linear)
     }
 
     @Test("Drag from element to coordinates scenario")
@@ -234,6 +238,28 @@ struct DragCommandTests {
         let dragCalls = await self.automationState(context) { $0.dragCalls }
         let call = try #require(dragCalls.first)
         #expect(call.duration == 2000)
+        #expect(call.profile == .linear)
+    }
+
+    @Test("Human profile enables natural drag")
+    func dragHumanProfileScenario() async throws {
+        let arguments = [
+            "drag",
+            "--from-coords", "0,0",
+            "--to-coords", "400,200",
+            "--profile", "human",
+            "--json-output",
+            "--no-auto-focus",
+        ]
+        let (result, context) = try await self.runDragCommandWithContext(arguments)
+        #expect(result.exitStatus == 0)
+        let dragCalls = await self.automationState(context) { $0.dragCalls }
+        let call = try #require(dragCalls.first)
+        #expect(call.profile == .human())
+        #expect(call.steps >= 40)
+        let payloadData = Data(self.output(from: result).utf8)
+        let payload = try JSONDecoder().decode(DragResult.self, from: payloadData)
+        #expect(payload.profile == "human")
     }
 }
 

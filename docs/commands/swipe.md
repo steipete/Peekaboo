@@ -18,6 +18,7 @@ read_when:
 | `--duration <ms>` | Default 500 ms; controls how long the swipe lasts. |
 | `--steps <count>` | Number of intermediate points for smoothing (default 20). |
 | `--right-button` | Currently rejected — the implementation throws a validation error because right-button drags are not yet wired up. |
+| `--profile <linear\|human>` | Use `human` for gesture traces that look like real pointer motion. |
 
 ## Implementation notes
 - The command validates that both ends are provided (mixing IDs and coordinates is fine) before doing any work.
@@ -25,6 +26,7 @@ read_when:
 - Coordinate parsing accepts `"x,y"` with optional whitespace; invalid strings result in immediate validation errors.
 - After issuing the swipe it waits ~0.1 s before reporting success to give AppKit time to settle (matching what integration tests expect).
 - JSON output surfaces both endpoints and the computed Euclidean distance, which is handy when you need to assert coverage in tests.
+- `--profile human` enables adaptive durations/steps plus jittery arcs; see `docs/human-mouse-move.md` for the generator’s behavior.
 
 ## Examples
 ```bash
@@ -33,6 +35,9 @@ polter peekaboo -- swipe --from card_1 --to card_2 --duration 650 --steps 30
 
 # Drag from coordinates (x1,y1) to (x2,y2)
 polter peekaboo -- swipe --from-coords 120,880 --to-coords 120,200
+
+# Human-style swipe with adaptive easing
+polter peekaboo -- swipe --from-coords 80,640 --to-coords 820,320 --profile human
 
 # Mix coordinate → element drag using the most recent session
 polter peekaboo -- swipe --from-coords 400,400 --to drawer_toggle

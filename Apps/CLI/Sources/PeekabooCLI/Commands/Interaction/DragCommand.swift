@@ -29,13 +29,16 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
     var session: String?
 
     @Option(help: "Duration of drag in milliseconds (default: 500)")
-    var duration: Int = 500
+    var duration: Int?
 
     @Option(help: "Number of intermediate steps (default: 20)")
-    var steps: Int = 20
+    var steps: Int?
 
     @Option(help: "Modifier keys to hold during drag (comma-separated: cmd,shift,option,ctrl)")
     var modifiers: String?
+
+    @Option(help: "Movement profile (linear or human)")
+    var profile: String?
     @OptionGroup var focusOptions: FocusCommandOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
@@ -87,12 +90,27 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 )
             }
 
+            let distance = hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y)
+            let profileSelection = CursorMovementProfileSelection(
+                rawValue: (self.profile ?? "linear").lowercased()
+            ) ?? .linear
+            let movement = CursorMovementResolver.resolve(
+                selection: profileSelection,
+                durationOverride: self.duration,
+                stepsOverride: self.steps,
+                baseSmooth: true,
+                distance: distance,
+                defaultDuration: 500,
+                defaultSteps: 20
+            )
+
             let dragRequest = DragRequest(
                 from: startPoint,
                 to: endPoint,
-                duration: self.duration,
-                steps: self.steps,
-                modifiers: self.modifiers
+                duration: movement.duration,
+                steps: movement.steps,
+                modifiers: self.modifiers,
+                profile: movement.profile
             )
             try await AutomationServiceBridge.drag(automation: self.services.automation, request: dragRequest)
 
@@ -102,8 +120,9 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 success: true,
                 from: ["x": Int(startPoint.x), "y": Int(startPoint.y)],
                 to: ["x": Int(endPoint.x), "y": Int(endPoint.y)],
-                duration: self.duration,
-                steps: self.steps,
+                duration: movement.duration,
+                steps: movement.steps,
+                profile: movement.profileName,
                 modifiers: self.modifiers ?? "none",
                 executionTime: Date().timeIntervalSince(startTime)
             )
@@ -112,7 +131,8 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 print("✅ Drag successful")
                 print("📍 From: (\(Int(startPoint.x)), \(Int(startPoint.y)))")
                 print("📍 To: (\(Int(endPoint.x)), \(Int(endPoint.y)))")
-                print("⏱️  Duration: \(self.duration)ms with \(self.steps) steps")
+                print("🧭 Profile: \(movement.profileName.capitalized)")
+                print("⏱️  Duration: \(movement.duration)ms with \(movement.steps) steps")
                 if let mods = modifiers {
                     print("⌨️  Modifiers: \(mods)")
                 }
@@ -142,6 +162,12 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
 
         if self.from != nil && self.fromCoords != nil {
             throw ValidationError("Specify only one of --from or --from-coords")
+        }
+
+        if let profileName = self.profile?.lowercased(),
+           CursorMovementProfileSelection(rawValue: profileName) == nil
+        {
+            throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
         }
     }
 
@@ -256,6 +282,7 @@ private struct DragResult: Codable {
     let to: [String: Int]
     let duration: Int
     let steps: Int
+    let profile: String
     let modifiers: String
     let executionTime: TimeInterval
 }
@@ -303,6 +330,7 @@ extension DragCommand: CommanderBindableCommand {
             self.steps = steps
         }
         self.modifiers = values.singleOption("modifiers")
+        self.profile = values.singleOption("profile")
         self.focusOptions = try values.makeFocusOptions()
     }
 }

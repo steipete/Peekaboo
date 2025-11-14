@@ -15,8 +15,8 @@ Peekaboo's `human` profile makes cursor motion look hand-driven without forcing 
 
 ## Using the profile
 
-- **CLI**: add `--profile human` to `peekaboo move ...`. Smooth animation toggles on automatically, and duration/step counts pick sensible defaults per distance. You can still override `--duration` or `--steps` when you need deterministic timings; the profile treats those as hard caps.
-- **Agents / MCP**: include `"profile": "human"` in the move tool arguments. Optional `duration` and `steps` fields work the same way as in the CLI-omit them to keep adaptive defaults.
+- **CLI**: add `--profile human` to `peekaboo move`, `peekaboo drag`, or `peekaboo swipe`. Smooth animation toggles on automatically, and duration/step counts pick sensible defaults per distance. You can still override `--duration` or `--steps` when you need deterministic timings; the profile treats those as hard caps.
+- **Agents / MCP**: include `"profile": "human"` in the move/drag/swipe tool arguments. Optional `duration` and `steps` fields work the same way as in the CLI-you only need them when you want to clamp the adaptive heuristics.
 
 ## Defaults at a glance
 
@@ -36,4 +36,4 @@ Additional details:
 - Use **`--profile linear`** (or omit `--profile`) for pixel-perfect hops, screenshots that need straight edges, or performance-critical test loops.
 - Pair **`--profile human`** with screenshots, menu explorations, or demos where observers expect a believable pointer trace.
 
-For implementation details or to tweak the heuristics, see `GestureService.moveMouse` in `PeekabooAutomation`. Most adjustments boil down to the duration curve, overshoot probability, or jitter amplitude constants described above.***
+For implementation details or to tweak the heuristics, see `GestureService.moveMouse` in `PeekabooAutomation`. Most adjustments boil down to the duration curve, overshoot probability, or jitter amplitude constants described above.

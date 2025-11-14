@@ -132,7 +132,7 @@ public struct MoveTool: MCPTool {
         let target = try self.parseTarget(from: arguments)
         let sessionId = arguments.getString("session")
         let profileName = (arguments.getString("profile") ?? "linear").lowercased()
-        guard let profile = MoveProfileOption(rawValue: profileName) else {
+        guard let profile = MovementProfileOption(rawValue: profileName) else {
             throw MoveToolValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
         }
         let smooth = profile == .human ? true : (arguments.getBool("smooth") ?? false)
@@ -278,31 +278,14 @@ public struct MoveTool: MCPTool {
     }
 
     private func resolveMovementParameters(for request: MoveRequest, distance: CGFloat) -> MovementParameters {
-        switch request.profile {
-        case .linear:
-            let duration = request.durationOverride ?? (request.smooth ? 500 : 0)
-            let steps = request.smooth ? max(request.stepsOverride ?? 10, 1) : 1
-            return MovementParameters(
-                profile: .linear,
-                duration: duration,
-                steps: steps,
-                smooth: request.smooth,
-                profileName: request.profile.rawValue
-            )
-        case .human:
-            let duration = request.durationOverride ?? HumanizedMovementDefaults.duration(for: distance)
-            let steps = max(
-                request.stepsOverride ?? HumanizedMovementDefaults.defaultSteps,
-                HumanizedMovementDefaults.steps(for: distance)
-            )
-            return MovementParameters(
-                profile: .human(),
-                duration: duration,
-                steps: steps,
-                smooth: true,
-                profileName: request.profile.rawValue
-            )
-        }
+        request.profile.resolveParameters(
+            smooth: request.smooth,
+            durationOverride: request.durationOverride,
+            stepsOverride: request.stepsOverride,
+            defaultDuration: 500,
+            defaultSteps: 10,
+            distance: distance
+        )
     }
 }
 
@@ -318,37 +301,7 @@ private struct MoveRequest {
     let smooth: Bool
     let durationOverride: Int?
     let stepsOverride: Int?
-    let profile: MoveProfileOption
-}
-
-private enum MoveProfileOption: String {
-    case linear
-    case human
-}
-
-private struct MovementParameters {
-    let profile: MouseMovementProfile
-    let duration: Int
-    let steps: Int
-    let smooth: Bool
-    let profileName: String
-}
-
-private enum HumanizedMovementDefaults {
-    static let defaultSteps = 60
-    static let defaultDuration = 650
-
-    static func duration(for distance: CGFloat) -> Int {
-        let distanceFactor = log2(Double(distance) + 1) * 90
-        let perPixel = Double(distance) * 0.45
-        let estimate = 280 + distanceFactor + perPixel
-        return min(max(Int(estimate), 300), 1700)
-    }
-
-    static func steps(for distance: CGFloat) -> Int {
-        let scaled = Int(distance * 0.35)
-        return min(max(scaled, 30), 140)
-    }
+    let profile: MovementProfileOption
 }
 
 private struct ResolvedMoveTarget {

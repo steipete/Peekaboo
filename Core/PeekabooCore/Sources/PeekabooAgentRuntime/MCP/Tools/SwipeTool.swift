@@ -33,6 +33,10 @@ public struct SwipeTool: MCPTool {
                 "steps": SchemaBuilder.number(
                     description: "Optional. Number of intermediate steps for smooth movement. Default: 10.",
                     default: 10),
+                "profile": SchemaBuilder.string(
+                    description: "Optional. Movement profile. Use 'linear' (default) or 'human'.",
+                    enum: ["linear", "human"],
+                    default: "linear"),
             ],
             required: ["from", "to"])
     }
@@ -52,34 +56,41 @@ public struct SwipeTool: MCPTool {
             return ToolResponse.error("'to' parameter is required")
         }
 
-        // Parse optional parameters
-        let duration = Int(arguments.getNumber("duration") ?? 500)
-        let steps = Int(arguments.getNumber("steps") ?? 10)
-
-        // Validate duration
-        guard duration > 0 else {
-            return ToolResponse.error("Duration must be greater than 0")
+        let profileName = (arguments.getString("profile") ?? "linear").lowercased()
+        guard let profile = MovementProfileOption(rawValue: profileName) else {
+            return ToolResponse.error("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
         }
 
-        guard duration <= 30000 else {
-            return ToolResponse.error("Duration must be 30 seconds or less to prevent excessive delays")
+        let durationProvided = arguments.getValue(for: "duration") != nil
+        let stepsProvided = arguments.getValue(for: "steps") != nil
+        let durationOverride = durationProvided ? arguments.getNumber("duration").map(Int.init) : nil
+        let stepsOverride = stepsProvided ? arguments.getNumber("steps").map(Int.init) : nil
+
+        if let duration = durationOverride {
+            guard duration > 0 else {
+                return ToolResponse.error("Duration must be greater than 0")
+            }
+            guard duration <= 30000 else {
+                return ToolResponse.error("Duration must be 30 seconds or less to prevent excessive delays")
+            }
         }
 
-        // Validate steps
-        guard steps > 0 else {
-            return ToolResponse.error("Steps must be greater than 0")
-        }
-
-        guard steps <= 100 else {
-            return ToolResponse.error("Steps must be 100 or less to prevent excessive processing")
+        if let steps = stepsOverride {
+            guard steps > 0 else {
+                return ToolResponse.error("Steps must be greater than 0")
+            }
+            guard steps <= 100 else {
+                return ToolResponse.error("Steps must be 100 or less to prevent excessive processing")
+            }
         }
 
         do {
             return try await self.performSwipe(
                 fromString: fromString,
                 toString: toString,
-                duration: duration,
-                steps: steps)
+                durationOverride: durationOverride,
+                stepsOverride: stepsOverride,
+                profile: profile)
         } catch let coordinateError as CoordinateParseError {
             return ToolResponse.error(coordinateError.message)
         } catch {
@@ -97,8 +108,9 @@ public struct SwipeTool: MCPTool {
     private func performSwipe(
         fromString: String,
         toString: String,
-        duration: Int,
-        steps: Int) async throws -> ToolResponse
+        durationOverride: Int?,
+        stepsOverride: Int?,
+        profile: MovementProfileOption) async throws -> ToolResponse
     {
         let startTime = Date()
         let fromPoint = try self.parseCoordinates(fromString, parameterName: "from")
@@ -108,15 +120,30 @@ public struct SwipeTool: MCPTool {
             throw CoordinateParseError(message: "'from' and 'to' coordinates must be different")
         }
 
+        let distance = hypot(toPoint.x - fromPoint.x, toPoint.y - fromPoint.y)
+        let movement = profile.resolveParameters(
+            smooth: true,
+            durationOverride: durationOverride,
+            stepsOverride: stepsOverride,
+            defaultDuration: 500,
+            defaultSteps: 10,
+            distance: distance
+        )
+
         let automation = self.context.automation
-        try await automation.drag(from: fromPoint, to: toPoint, duration: duration, steps: steps, modifiers: nil)
+        try await automation.drag(
+            from: fromPoint,
+            to: toPoint,
+            duration: movement.duration,
+            steps: movement.steps,
+            modifiers: nil,
+            profile: movement.profile)
 
         let executionTime = Date().timeIntervalSince(startTime)
         let response = self.buildResponse(
             from: fromPoint,
             to: toPoint,
-            duration: duration,
-            steps: steps,
+            movement: movement,
             executionTime: executionTime)
         return response
     }
@@ -124,8 +151,7 @@ public struct SwipeTool: MCPTool {
     private func buildResponse(
         from fromPoint: CGPoint,
         to toPoint: CGPoint,
-        duration: Int,
-        steps: Int,
+        movement: MovementParameters,
         executionTime: TimeInterval) -> ToolResponse
     {
         let deltaX = toPoint.x - fromPoint.x
@@ -137,8 +163,8 @@ public struct SwipeTool: MCPTool {
         let message = """
         \(AgentDisplayTokens.Status.success) Performed swipe from
         (\(Int(fromPoint.x)), \(Int(fromPoint.y))) to
-        (\(Int(toPoint.x)), \(Int(toPoint.y))) over \(duration)ms
-        with \(steps) steps (distance: \(distanceText)px) in \(durationText)s
+        (\(Int(toPoint.x)), \(Int(toPoint.y))) over \(movement.duration)ms
+        with \(movement.steps) steps (\(movement.profileName) profile, distance: \(distanceText)px) in \(durationText)s
         """
 
         return ToolResponse(
@@ -152,8 +178,9 @@ public struct SwipeTool: MCPTool {
                     "x": .double(Double(toPoint.x)),
                     "y": .double(Double(toPoint.y)),
                 ]),
-                "duration": .double(Double(duration)),
-                "steps": .double(Double(steps)),
+                "duration": .double(Double(movement.duration)),
+                "steps": .double(Double(movement.steps)),
+                "profile": .string(movement.profileName),
                 "distance": .double(distance),
                 "execution_time": .double(executionTime),
             ]))

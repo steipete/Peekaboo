@@ -54,11 +54,13 @@ struct SwipeCommandTests {
         #expect(call.to == CGPoint(x: 300, y: 450))
         #expect(call.duration == 1200)
         #expect(call.steps == 40)
+        #expect(call.profile == .linear)
 
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
         let payload = try JSONDecoder().decode(SwipeResult.self, from: payloadData)
         #expect(payload.success)
         #expect(payload.distance > 0)
+        #expect(payload.profile == "linear")
     }
 
     @Test("Element based swipe resolves using waitForElement")
@@ -100,7 +102,8 @@ struct SwipeCommandTests {
         let waitCalls = await self.automationState(context) { $0.waitForElementCalls }
         #expect(waitCalls.count == 2)
         let swipeCalls = await self.automationState(context) { $0.swipeCalls }
-        #expect(swipeCalls.count == 1)
+        let call = try #require(swipeCalls.first)
+        #expect(call.profile == .linear)
     }
 
     @Test("Right button option is rejected")
@@ -119,6 +122,29 @@ struct SwipeCommandTests {
         #expect(self.output(from: result).contains("Right-button swipe"))
         let swipeCalls = await self.automationState(context) { $0.swipeCalls }
         #expect(swipeCalls.isEmpty)
+    }
+
+    @Test("Human profile swipe adjusts motion")
+    func swipeHumanProfile() async throws {
+        let context = await self.makeContext()
+        let result = try await self.runSwipe(
+            arguments: [
+                "--from-coords", "50,50",
+                "--to-coords", "450,250",
+                "--profile", "human",
+                "--json-output",
+            ],
+            context: context
+        )
+
+        #expect(result.exitStatus == 0)
+        let swipeCalls = await self.automationState(context) { $0.swipeCalls }
+        let call = try #require(swipeCalls.first)
+        #expect(call.profile == .human())
+        #expect(call.steps >= 40)
+        let payloadData = try #require(self.output(from: result).data(using: .utf8))
+        let payload = try JSONDecoder().decode(SwipeResult.self, from: payloadData)
+        #expect(payload.profile == "human")
     }
 
     // MARK: - Helpers

@@ -41,6 +41,10 @@ public struct DragTool: MCPTool {
                 "steps": SchemaBuilder.number(
                     description: "Optional. Number of intermediate steps (default: 10)",
                     default: 10),
+                "profile": SchemaBuilder.string(
+                    description: "Optional. Movement profile. Use 'linear' (default) or 'human'.",
+                    enum: ["linear", "human"],
+                    default: "linear"),
                 "modifiers": SchemaBuilder.string(
                     description: "Optional. Comma-separated modifiers (cmd, shift, alt, ctrl)"),
                 "auto_focus": SchemaBuilder.boolean(
@@ -87,17 +91,29 @@ public struct DragTool: MCPTool {
             try await self.focusTargetAppIfNeeded(request: request)
             self.logSpaceIntentIfNeeded(request: request)
 
+            let distance = hypot(toPoint.x - fromPoint.x, toPoint.y - fromPoint.y)
+            let movement = request.profile.resolveParameters(
+                smooth: true,
+                durationOverride: request.durationOverride,
+                stepsOverride: request.stepsOverride,
+                defaultDuration: 500,
+                defaultSteps: 20,
+                distance: distance
+            )
+
             try await self.context.automation.drag(
                 from: fromPoint,
                 to: toPoint,
-                duration: request.duration,
-                steps: request.steps,
-                modifiers: request.modifiers)
+                duration: movement.duration,
+                steps: movement.steps,
+                modifiers: request.modifiers,
+                profile: movement.profile)
 
             let executionTime = Date().timeIntervalSince(startTime)
             return self.buildResponse(
                 from: DragPointDescription(point: fromPoint, description: fromDescription),
                 to: DragPointDescription(point: toPoint, description: toDescription),
+                movement: movement,
                 executionTime: executionTime,
                 request: request)
         } catch let error as CoordinateParseError {
@@ -205,6 +221,7 @@ public struct DragTool: MCPTool {
     private func buildResponse(
         from: DragPointDescription,
         to: DragPointDescription,
+        movement: MovementParameters,
         executionTime: TimeInterval,
         request: DragRequest) -> ToolResponse
     {
@@ -215,10 +232,11 @@ public struct DragTool: MCPTool {
         var message = """
         \(AgentDisplayTokens.Status.success) Performed drag and drop from \(from.description) to \(to.description)
         """
+        message += " using \(movement.profileName) profile"
         if let modifiers = request.modifiers, !modifiers.isEmpty {
             message += " with modifiers (\(modifiers))"
         }
-        message += " over \(request.duration)ms with \(request.steps) steps"
+        message += " over \(movement.duration)ms with \(movement.steps) steps"
         message += " (distance: \(String(format: "%.1f", distance))px)"
         message += " in \(String(format: "%.2f", executionTime))s"
 
@@ -233,8 +251,9 @@ public struct DragTool: MCPTool {
                 "y": .double(Double(to.point.y)),
                 "description": .string(to.description),
             ]),
-            "duration": .double(Double(request.duration)),
-            "steps": .double(Double(request.steps)),
+            "duration": .double(Double(movement.duration)),
+            "steps": .double(Double(movement.steps)),
+            "profile": .string(movement.profileName),
             "distance": .double(distance),
             "execution_time": .double(executionTime),
         ]
@@ -262,12 +281,13 @@ private struct DragRequest {
     let toTarget: DragLocationInput
     let sessionId: String?
     let targetApp: String?
-    let duration: Int
-    let steps: Int
+    let durationOverride: Int?
+    let stepsOverride: Int?
     let modifiers: String?
     let autoFocus: Bool
     let bringToCurrentSpace: Bool
     let spaceSwitch: Bool
+    let profile: MovementProfileOption
 
     init(arguments: ToolArguments) throws {
         let fromElement = arguments.getString("from")
@@ -282,32 +302,45 @@ private struct DragRequest {
             throw DragToolError("Must specify either 'to' or 'to_coords' for the end point.")
         }
 
-        let durationValue = Int(arguments.getNumber("duration") ?? 500)
-        guard durationValue > 0 else {
-            throw DragToolError("Duration must be greater than 0.")
-        }
-        guard durationValue <= 30000 else {
-            throw DragToolError("Duration must be 30 seconds or less to prevent excessive delays.")
+        let profileName = (arguments.getString("profile") ?? "linear").lowercased()
+        guard let profile = MovementProfileOption(rawValue: profileName) else {
+            throw DragToolError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
         }
 
-        let stepsValue = Int(arguments.getNumber("steps") ?? 10)
-        guard stepsValue > 0 else {
-            throw DragToolError("Steps must be greater than 0.")
+        let durationProvided = arguments.getValue(for: "duration") != nil
+        let stepsProvided = arguments.getValue(for: "steps") != nil
+        let durationOverride = durationProvided ? arguments.getNumber("duration").map(Int.init) : nil
+        let stepsOverride = stepsProvided ? arguments.getNumber("steps").map(Int.init) : nil
+
+        if let override = durationOverride {
+            guard override > 0 else {
+                throw DragToolError("Duration must be greater than 0.")
+            }
+            guard override <= 30000 else {
+                throw DragToolError("Duration must be 30 seconds or less to prevent excessive delays.")
+            }
         }
-        guard stepsValue <= 100 else {
-            throw DragToolError("Steps must be 100 or less to prevent excessive processing.")
+
+        if let override = stepsOverride {
+            guard override > 0 else {
+                throw DragToolError("Steps must be greater than 0.")
+            }
+            guard override <= 100 else {
+                throw DragToolError("Steps must be 100 or less to prevent excessive processing.")
+            }
         }
 
         self.fromTarget = fromTarget
         self.toTarget = toTarget
         self.sessionId = arguments.getString("session")
         self.targetApp = arguments.getString("to_app")
-        self.duration = durationValue
-        self.steps = stepsValue
+        self.durationOverride = durationOverride
+        self.stepsOverride = stepsOverride
         self.modifiers = arguments.getString("modifiers")
         self.autoFocus = arguments.getBool("auto_focus") ?? true
         self.bringToCurrentSpace = arguments.getBool("bring_to_current_space") ?? false
         self.spaceSwitch = arguments.getBool("space_switch") ?? false
+        self.profile = profile
     }
 }
 
