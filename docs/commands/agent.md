@@ -15,7 +15,7 @@ read_when:
 | `[task]` | Optional free-form task description. Required unless you pass `--resume`/`--resume-session`. |
 | `--chat` | Force the interactive chat loop even when stdin/stdout are not TTYs. |
 | `--dry-run` | Emit the planned steps without actually invoking tools. |
-| `--max-steps <n>` | Cap how many tool invocations the agent may issue before aborting. |
+| `--max-steps <n>` | Cap how many tool invocations the agent may issue before aborting (default: 100). |
 | `--model gpt-5.1|claude-sonnet-4.5` | Override the default model (`gpt-5.1-mini`). Input is validated against the allowed list. |
 | `--resume` / `--resume-session <id>` | Continue the most recent session or a specific session ID. |
 | `--list-sessions` | Print cached sessions (id, task, timestamps, message count) instead of running anything. |

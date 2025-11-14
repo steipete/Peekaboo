@@ -146,7 +146,12 @@ extension AgentOutputDelegate {
 
         if success {
             let resultSummary = self.resultSummary(for: name, json: json, formatter: formatter)
-            self.handleSuccess(resultSummary: resultSummary, durationString: durationString, result: result)
+            self.handleSuccess(
+                resultSummary: resultSummary,
+                durationString: durationString,
+                result: result,
+                json: json
+            )
         } else {
             let errorMessage = (json["error"] as? String) ?? "Failed"
             self.handleFailure(message: errorMessage, durationString: durationString, json: json, tool: name)
@@ -179,6 +184,7 @@ extension AgentOutputDelegate {
     }
 
     private func handleThinkingMessage(_ content: String) {
+        self.hasReceivedContent = true
         if self.outputMode == .verbose {
             print("\n\(AgentDisplayTokens.Status.planning) Thinking: \(content)")
         } else if self.outputMode == .compact || self.outputMode == .enhanced {
@@ -450,7 +456,12 @@ extension AgentOutputDelegate {
         return summary
     }
 
-    private func handleSuccess(resultSummary: String, durationString: String, result: String) {
+    private func handleSuccess(
+        resultSummary: String,
+        durationString: String,
+        result: String,
+        json: [String: Any]
+    ) {
         switch self.outputMode {
         case .minimal:
             if !resultSummary.isEmpty {
@@ -470,6 +481,7 @@ extension AgentOutputDelegate {
 
         default:
             print(self.successStatusLine(resultSummary: resultSummary, durationString: durationString))
+            self.printResultDetails(from: json)
         }
     }
 
@@ -509,6 +521,37 @@ extension AgentOutputDelegate {
             print("   \(TerminalColor.gray)Details:\(TerminalColor.reset)")
             print(detailsStr)
         }
+    }
+
+    private func printResultDetails(from json: [String: Any]) {
+        guard self.outputMode != .minimal && self.outputMode != .quiet else { return }
+        guard let detail = self.primaryResultMessage(from: json) else { return }
+        let snippet = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !snippet.isEmpty else { return }
+        print("\n   \(TerminalColor.gray)\(snippet.prefix(240))\(TerminalColor.reset)")
+    }
+
+    private func primaryResultMessage(from json: [String: Any]) -> String? {
+        if let message = json["message"] as? String, !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return message
+        }
+
+        if let content = json["content"] as? [[String: Any]] {
+            for item in content {
+                if let text = item["text"] as? String,
+                   !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return text
+                }
+            }
+        }
+
+        if let meta = json["meta"] as? [String: Any],
+           let message = meta["message"] as? String,
+           !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return message
+        }
+
+        return nil
     }
 }
 

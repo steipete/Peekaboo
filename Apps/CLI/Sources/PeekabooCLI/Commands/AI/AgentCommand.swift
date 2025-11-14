@@ -531,7 +531,7 @@ extension AgentCommand {
 
     /// Render the agent execution result using either JSON output or a rich CLI transcript.
     @MainActor
-    func displayResult(_ result: AgentExecutionResult) {
+    func displayResult(_ result: AgentExecutionResult, delegate: AgentOutputDelegate? = nil) {
         if self.jsonOutput {
             let response = [
                 "success": true,
@@ -570,10 +570,9 @@ extension AgentCommand {
         } else if self.outputMode == .quiet {
             // Quiet mode - only show final result
             print(result.content)
-        } else {
-            // Don't print the content here - it was already shown by the event delegate
-            // This prevents duplicate output of the assistant's message
         }
+
+        delegate?.showFinalSummaryIfNeeded(result)
     }
 
     // MARK: - Session Management
@@ -701,7 +700,7 @@ extension AgentCommand {
                 model: requestedModel,
                 eventDelegate: delegate
             )
-            self.displayResult(result)
+            self.displayResult(result, delegate: delegate)
         } catch {
             self.printAgentExecutionError("Failed to resume session: \(error.localizedDescription)")
             throw error
@@ -744,7 +743,7 @@ extension AgentCommand {
                 eventDelegate: delegate,
                 verbose: self.verbose
             )
-            self.displayResult(result)
+            self.displayResult(result, delegate: delegate)
             return result
         } catch {
             self.printAgentExecutionError("Agent execution failed: \(error.localizedDescription)")
@@ -851,7 +850,7 @@ extension AgentCommand {
         }
 
         while true {
-            guard let line = self.readChatLine(prompt: "chat> ", capabilities: capabilities) else {
+            guard let line = self.readChatLine(prompt: "> ", capabilities: capabilities) else {
                 if capabilities.isInteractive {
                     print()
                 }
@@ -925,7 +924,7 @@ extension AgentCommand {
                 dryRun: self.dryRun,
                 eventDelegate: delegate,
                 verbose: self.verbose)
-            self.displayResult(result)
+            self.displayResult(result, delegate: delegate)
         } else {
             result = try await self.executeAgentTask(
                 agentService,
