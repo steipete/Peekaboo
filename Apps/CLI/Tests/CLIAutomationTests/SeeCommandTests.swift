@@ -82,6 +82,9 @@ struct SeeCommandTests {
             role: "AXButton",
             title: "Save",
             label: nil,
+            description: nil,
+            role_description: nil,
+            help: nil,
             identifier: nil,
             is_actionable: true,
             keyboard_shortcut: nil
@@ -178,6 +181,61 @@ struct SeeCommandRuntimeTests {
         #expect(storedScreenshots.first?.path == outputURL.path)
         #expect(storedScreenshots.first?.applicationName == fixture.applicationInfo.name)
         #expect(storedScreenshots.first?.windowTitle == fixture.windowInfo.title)
+    }
+
+    @Test("See command JSON includes accessibility metadata fields")
+    func seeCommandJsonIncludesAccessibilityMetadata() async throws {
+        let fixture = Self.makeSeeCommandRuntimeFixture()
+        let automation = StubAutomationService()
+
+        let enrichedElement = DetectedElement(
+            id: "B42",
+            type: .button,
+            label: nil,
+            value: nil,
+            bounds: CGRect(x: 50, y: 60, width: 34, height: 34),
+            isEnabled: true,
+            isSelected: nil,
+            attributes: [
+                "description": "Wingman Grindr Session Helper",
+                "roleDescription": "Pop Up Button",
+                "help": "Pinned extension button",
+                "identifier": "wingman-session-helper"
+            ]
+        )
+
+        let detectionResult = ElementDetectionResult(
+            sessionId: fixture.sessionId,
+            screenshotPath: fixture.detectionResult.screenshotPath,
+            elements: DetectedElements(buttons: [enrichedElement]),
+            metadata: fixture.detectionResult.metadata
+        )
+        automation.nextDetectionResult = detectionResult
+
+        let (context, outputURL) = Self.makeSeeCommandRuntimeContext(
+            automation: automation,
+            screenCapture: fixture.screenCapture
+        )
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        let result = try await InProcessCommandRunner.run(
+            [
+                "see",
+                "--mode", "frontmost",
+                "--path", outputURL.path,
+                "--json-output",
+            ],
+            services: context.services
+        )
+
+        let data = try #require(result.stdout.data(using: .utf8))
+        let seeResult = try JSONDecoder().decode(SeeResult.self, from: data)
+        let element = try #require(seeResult.ui_elements.first)
+
+        #expect(element.description == "Wingman Grindr Session Helper")
+        #expect(element.role_description == "Pop Up Button")
+        #expect(element.help == "Pinned extension button")
+        #expect(element.identifier == "wingman-session-helper")
     }
 }
 

@@ -52,12 +52,17 @@ When `--json-output` is supplied, the CLI prints:
 - `ui_map` – path to the persisted element map (`~/.peekaboo/session/<id>/map.json`).
 - `ui_elements` – flattened list of actionable nodes (buttons, text fields, links, etc.).
 - `interactable_count`, `element_count`, `capture_mode`, and performance metadata for debugging.
+- Each `ui_elements[n]` entry now mirrors the raw AX metadata we capture—`title`, `label`, **`description`**, `role_description`, `help`, `identifier`, and the keyboard shortcut if one exists. That makes Chrome toolbar icons (which frequently hide their name in `AXDescription`) searchable without relying on coordinates.
 
 Use `jq` or any JSON parser to find elements:
 
 ```bash
 polter peekaboo -- see --app "Safari" --json-output \
   | jq '.data.ui_elements[] | select(.label | test("Sign in"; "i"))'
+
+# Toolbar buttons that only expose AXDescription:
+polter peekaboo -- see --app "Google Chrome" --json-output \
+  | jq '.data.ui_elements[] | select((.description // "") | test("Wingman"; "i"))'
 ```
 
 ## Troubleshooting tips
