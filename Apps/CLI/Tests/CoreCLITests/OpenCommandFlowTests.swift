@@ -23,7 +23,10 @@ struct OpenCommandFlowTests {
 
         var command = OpenCommand()
         command.target = "https://example.com"
-        let runtime = CommandRuntime(configuration: .init(verbose: false, jsonOutput: true, logLevel: nil), services: PeekabooServices())
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: PeekabooServices()
+        )
         try await command.run(using: runtime)
 
         #expect(launcher.openCalls.count == 1)
@@ -53,7 +56,10 @@ struct OpenCommandFlowTests {
         command.target = "~/Desktop/test.txt"
         command.app = "Notes"
         command.noFocus = true
-        let runtime = CommandRuntime(configuration: .init(verbose: false, jsonOutput: true, logLevel: nil), services: PeekabooServices())
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: PeekabooServices()
+        )
         try await command.run(using: runtime)
 
         let call = try #require(launcher.openCalls.first)
@@ -84,7 +90,10 @@ struct AppCommandLaunchFlowTests {
 
         var command = AppCommand.LaunchSubcommand()
         command.app = "Finder"
-        let runtime = CommandRuntime(configuration: .init(verbose: false, jsonOutput: true, logLevel: nil), services: PeekabooServices())
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: PeekabooServices()
+        )
         try await command.run(using: runtime)
 
         let call = try #require(launcher.launchCalls.first)
@@ -112,7 +121,10 @@ struct AppCommandLaunchFlowTests {
         command.app = "Preview"
         command.noFocus = true
         command.openTargets = ["~/Desktop/file1.pdf", "https://example.com"]
-        let runtime = CommandRuntime(configuration: .init(verbose: false, jsonOutput: true, logLevel: nil), services: PeekabooServices())
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: PeekabooServices()
+        )
         try await command.run(using: runtime)
 
         let call = try #require(launcher.launchWithDocsCalls.first)

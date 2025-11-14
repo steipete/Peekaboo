@@ -94,11 +94,10 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
         }
 
         let expanded = NSString(string: trimmed).expandingTildeInPath
-        let absolutePath: String
-        if expanded.hasPrefix("/") {
-            absolutePath = expanded
+        let absolutePath: String = if expanded.hasPrefix("/") {
+            expanded
         } else {
-            absolutePath = NSString(string: cwd).appendingPathComponent(expanded)
+            NSString(string: cwd).appendingPathComponent(expanded)
         }
 
         return URL(fileURLWithPath: absolutePath)

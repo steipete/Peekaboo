@@ -56,7 +56,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         if let primary = text, !primary.isEmpty {
             return primary
         }
-        return textOption
+        return self.textOption
     }
 
     @MainActor

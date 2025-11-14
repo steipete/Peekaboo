@@ -289,7 +289,7 @@ private func executeCall(command: inout MCPCommand.Call, jsonOutput: Bool) async
 
 @MainActor
 private func captureCommandOutput(
-    _ body: () async throws -> Void
+    _ body: () async throws -> ()
 ) async -> (stdout: String, stderr: String, error: Error?) {
     let stdoutPipe = Pipe()
     let stderrPipe = Pipe()

@@ -74,7 +74,11 @@ struct AppCommand: ParsableCommand {
         @Flag(name: .customLong("no-focus"), help: "Do not bring the app to the foreground after launching")
         var noFocus = false
 
-        @Option(name: .customLong("open"), help: "Document or URL to open immediately after launch", parsing: .upToNextOption)
+        @Option(
+            name: .customLong("open"),
+            help: "Document or URL to open immediately after launch",
+            parsing: .upToNextOption
+        )
         var openTargets: [String] = []
         @RuntimeStorage private var runtime: CommandRuntime?
 
@@ -167,11 +171,18 @@ struct AppCommand: ParsableCommand {
                 return try await Self.launcher.launchApplication(at: url, activates: true)
             } else {
                 let urls = try self.openTargets.map { try Self.resolveOpenTarget($0) }
-                return try await Self.launcher.launchApplication(url, opening: urls, activates: self.shouldFocusAfterLaunch)
+                return try await Self.launcher.launchApplication(
+                    url,
+                    opening: urls,
+                    activates: self.shouldFocusAfterLaunch
+                )
             }
         }
 
-        private func waitForApplicationReady(_ app: any RunningApplicationHandle, timeout: TimeInterval = 10) async throws {
+        private func waitForApplicationReady(
+            _ app: any RunningApplicationHandle,
+            timeout: TimeInterval = 10
+        ) async throws {
             let startTime = Date()
             while !app.isFinishedLaunching {
                 if Date().timeIntervalSince(startTime) > timeout {
@@ -195,11 +206,10 @@ struct AppCommand: ParsableCommand {
             }
 
             let expanded = NSString(string: trimmed).expandingTildeInPath
-            let absolutePath: String
-            if expanded.hasPrefix("/") {
-                absolutePath = expanded
+            let absolutePath: String = if expanded.hasPrefix("/") {
+                expanded
             } else {
-                absolutePath = NSString(string: cwd)
+                NSString(string: cwd)
                     .appendingPathComponent(expanded)
             }
 

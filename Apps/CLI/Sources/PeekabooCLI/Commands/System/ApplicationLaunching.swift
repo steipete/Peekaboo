@@ -24,7 +24,8 @@ extension NSRunningApplication: RunningApplicationHandle {}
 @MainActor
 protocol ApplicationLaunching {
     func launchApplication(at url: URL, activates: Bool) async throws -> any RunningApplicationHandle
-    func launchApplication(_ url: URL, opening documents: [URL], activates: Bool) async throws -> any RunningApplicationHandle
+    func launchApplication(_ url: URL, opening documents: [URL], activates: Bool) async throws
+        -> any RunningApplicationHandle
     func openTarget(_ targetURL: URL, handlerURL: URL?, activates: Bool) async throws -> any RunningApplicationHandle
 }
 
@@ -41,7 +42,11 @@ final class NSWorkspaceApplicationLauncher: ApplicationLaunching {
         return try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 
-    func launchApplication(_ url: URL, opening documents: [URL], activates: Bool) async throws -> any RunningApplicationHandle {
+    func launchApplication(
+        _ url: URL,
+        opening documents: [URL],
+        activates: Bool
+    ) async throws -> any RunningApplicationHandle {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = activates
         return try await NSWorkspace.shared.open(documents, withApplicationAt: url, configuration: configuration)
