@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `peekaboo agent --model` now understands the GPT-5.1 identifiers and defaults to `gpt-5.1-mini`, matching the latest OpenAI release while keeping backward-compatible aliases for GPT-5 and GPT-4o inputs.
+
 ## [2.0.2] - 2025-07-03
 
 ### Fixed
