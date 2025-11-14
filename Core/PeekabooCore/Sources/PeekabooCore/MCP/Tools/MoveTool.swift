@@ -10,6 +10,7 @@ import AppKit
 /// MCP tool for moving the mouse cursor
 public struct MoveTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "MoveTool")
+    private let context: MCPToolContext
 
     public let name = "move"
 
@@ -50,7 +51,9 @@ public struct MoveTool: MCPTool {
             required: [])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -196,7 +199,7 @@ public struct MoveTool: MCPTool {
     }
 
     private func performMovement(to location: CGPoint, request: MoveRequest) async throws {
-        let automation = PeekabooServices.shared.automation
+        let automation = self.context.automation
         if request.smooth {
             try await automation.moveMouse(to: location, duration: request.duration, steps: request.steps)
         } else {

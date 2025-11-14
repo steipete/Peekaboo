@@ -6,6 +6,7 @@ import TachikomaMCP
 /// MCP tool for interacting with the macOS Dock
 public struct DockTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "DockTool")
+    private let context: MCPToolContext
 
     public let name = "dock"
 
@@ -36,7 +37,9 @@ public struct DockTool: MCPTool {
             required: ["action"])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -48,7 +51,7 @@ public struct DockTool: MCPTool {
         let select = arguments.getString("select")
         let includeAll = arguments.getBool("include_all") ?? false
 
-        let dockService = PeekabooServices.shared.dock
+        let dockService = self.context.dock
 
         do {
             let startTime = Date()

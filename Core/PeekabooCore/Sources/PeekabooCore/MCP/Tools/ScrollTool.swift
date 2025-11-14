@@ -9,6 +9,7 @@ private typealias ToolScrollDirection = PeekabooFoundation.ScrollDirection
 /// MCP tool for scrolling UI elements or at current mouse position
 public struct ScrollTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "ScrollTool")
+    private let context: MCPToolContext
 
     public let name = "scroll"
 
@@ -46,7 +47,9 @@ public struct ScrollTool: MCPTool {
             required: ["direction"])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -116,7 +119,7 @@ public struct ScrollTool: MCPTool {
 
     @MainActor
     private func performScroll(request: ScrollToolRequest) async throws -> ToolResponse {
-        let automation = PeekabooServices.shared.automation
+        let automation = self.context.automation
         let startTime = Date()
 
         let target = try await self.resolveTargetDescription(request: request)

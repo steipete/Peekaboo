@@ -6,6 +6,7 @@ import TachikomaMCP
 /// MCP tool for pressing keyboard shortcuts and key combinations
 public struct HotkeyTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "HotkeyTool")
+    private let context: MCPToolContext
 
     public let name = "hotkey"
 
@@ -36,7 +37,9 @@ public struct HotkeyTool: MCPTool {
             required: ["keys"])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -68,7 +71,7 @@ public struct HotkeyTool: MCPTool {
             let startTime = Date()
 
             // Execute hotkey using PeekabooServices
-            let hotkeyService = PeekabooServices.shared.automation
+            let hotkeyService = self.context.automation
             try await hotkeyService.hotkey(keys: keys, holdDuration: holdDurationMs)
 
             let executionTime = Date().timeIntervalSince(startTime)

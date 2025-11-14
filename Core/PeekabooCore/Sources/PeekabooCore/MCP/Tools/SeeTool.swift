@@ -130,6 +130,7 @@ private struct AnnotatedScreenshotRenderer {
 /// MCP tool for capturing UI state and element detection
 public struct SeeTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "SeeTool")
+    private let context: MCPToolContext
 
     public let name = "see"
 
@@ -174,7 +175,9 @@ public struct SeeTool: MCPTool {
             required: [])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -284,12 +287,12 @@ public struct SeeTool: MCPTool {
     private func captureResult(for target: CaptureTarget) async throws -> CaptureResult {
         switch target {
         case let .screen(index):
-            return try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
+            return try await self.context.screenCapture.captureScreen(displayIndex: index)
         case .frontmost:
-            return try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            return try await self.context.screenCapture.captureFrontmost()
         case let .window(identifier, _):
             try await self.validateWindowsExist(for: identifier)
-            return try await PeekabooServices.shared.screenCapture.captureWindow(
+            return try await self.context.screenCapture.captureWindow(
                 appIdentifier: identifier,
                 windowIndex: 0)
         case .area:
@@ -298,7 +301,7 @@ public struct SeeTool: MCPTool {
     }
 
     private func validateWindowsExist(for identifier: String) async throws {
-        let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(identifier))
+        let windows = try await self.context.windows.listWindows(target: .application(identifier))
         guard !windows.isEmpty else {
             throw PeekabooError.windowNotFound(criteria: "No windows found for application: \(identifier)")
         }
@@ -317,7 +320,7 @@ public struct SeeTool: MCPTool {
         let imageData = try Data(contentsOf: URL(fileURLWithPath: screenshotPath))
         let windowContext = try await self.windowContext(for: target)
 
-        let detectionResult = try await PeekabooServices.shared.automation.detectElements(
+        let detectionResult = try await self.context.automation.detectElements(
             in: imageData,
             sessionId: session.id,
             windowContext: windowContext)
@@ -332,10 +335,10 @@ public struct SeeTool: MCPTool {
     private func windowContext(for target: CaptureTarget) async throws -> WindowContext? {
         switch target {
         case .frontmost:
-            let appInfo = try await PeekabooServices.shared.applications.getFrontmostApplication()
+            let appInfo = try await self.context.applications.getFrontmostApplication()
             return WindowContext(applicationName: appInfo.name, windowTitle: nil, windowBounds: nil)
         case let .window(appIdentifier, _):
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(appIdentifier))
+            let windows = try await self.context.windows.listWindows(target: .application(appIdentifier))
             if let firstWindow = windows.first {
                 return WindowContext(
                     applicationName: appIdentifier,

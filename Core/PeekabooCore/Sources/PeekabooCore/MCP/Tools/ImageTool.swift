@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 
 /// MCP tool for capturing screenshots
 public struct ImageTool: MCPTool {
+    private let context: MCPToolContext
+
     public let name = "image"
 
     public var description: String {
@@ -40,7 +42,9 @@ public struct ImageTool: MCPTool {
             required: ["path", "format"])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -68,10 +72,10 @@ extension ImageTool {
     private func captureImages(for request: ImageRequest) async throws -> [CaptureResult] {
         switch request.target {
         case let .screen(index):
-            let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
+            let result = try await self.context.screenCapture.captureScreen(displayIndex: index)
             return [result]
         case .frontmost:
-            let result = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            let result = try await self.context.screenCapture.captureFrontmost()
             return [result]
         case let .application(identifier, windowIndex):
             return try await self.captureApplication(
@@ -79,7 +83,7 @@ extension ImageTool {
                 windowIndex: windowIndex,
                 focus: request.captureFocus)
         case .menubar:
-            return try await [captureMenuBar()]
+            return try await [self.captureMenuBar()]
         }
     }
 
@@ -89,22 +93,22 @@ extension ImageTool {
         focus: CaptureFocus) async throws -> [CaptureResult]
     {
         if focus == .foreground {
-            try await PeekabooServices.shared.applications.activateApplication(identifier: identifier)
+            try await self.context.applications.activateApplication(identifier: identifier)
             try await Task.sleep(nanoseconds: 50_000_000)
         }
 
         if let windowIndex {
-            let result = try await PeekabooServices.shared.screenCapture.captureWindow(
+            let result = try await self.context.screenCapture.captureWindow(
                 appIdentifier: identifier,
                 windowIndex: windowIndex)
             return [result]
         }
 
-        let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(identifier))
+        let windows = try await self.context.windows.listWindows(target: .application(identifier))
         var results: [CaptureResult] = []
 
         for index in windows.indices {
-            let result = try await PeekabooServices.shared.screenCapture.captureWindow(
+            let result = try await self.context.screenCapture.captureWindow(
                 appIdentifier: identifier,
                 windowIndex: index)
             results.append(result)
@@ -262,20 +266,21 @@ private func parseCaptureTarget(_ appTarget: String?) throws -> ImageCaptureTarg
     }
 }
 
-private func captureMenuBar() async throws -> CaptureResult {
-    // Get main screen bounds
-    guard let mainScreen = NSScreen.main else {
-        throw OperationError.captureFailed(reason: "No main screen available")
+extension ImageTool {
+    private func captureMenuBar() async throws -> CaptureResult {
+        guard let mainScreen = NSScreen.main else {
+            throw OperationError.captureFailed(reason: "No main screen available")
+        }
+
+        let screenBounds = mainScreen.frame
+        let menuBarRect = CGRect(
+            x: screenBounds.minX,
+            y: screenBounds.maxY - 24,
+            width: screenBounds.width,
+            height: 24)
+
+        return try await self.context.screenCapture.captureArea(menuBarRect)
     }
-
-    let screenBounds = mainScreen.frame
-    let menuBarRect = CGRect(
-        x: screenBounds.minX,
-        y: screenBounds.maxY - 24, // Menu bar is 24px high
-        width: screenBounds.width,
-        height: 24)
-
-    return try await PeekabooServices.shared.screenCapture.captureArea(menuBarRect)
 }
 
 private func saveImageData(_ data: Data, to path: String, format: ImageFormatOption) throws {

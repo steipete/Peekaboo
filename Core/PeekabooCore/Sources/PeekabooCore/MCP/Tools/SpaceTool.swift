@@ -26,6 +26,7 @@ private final class SpaceServiceBox: @unchecked Sendable {
 public struct SpaceTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "SpaceTool")
     private let spaceServiceOverride: SpaceServiceBox?
+    private let context: MCPToolContext
 
     public let name = "space"
 
@@ -78,12 +79,14 @@ public struct SpaceTool: MCPTool {
             required: ["action"])
     }
 
-    public init() {
+    public init(context: MCPToolContext = .shared) {
         self.spaceServiceOverride = nil
+        self.context = context
     }
 
-    init(testingSpaceService: any SpaceManaging) {
+    init(testingSpaceService: any SpaceManaging, context: MCPToolContext = .shared) {
         self.spaceServiceOverride = SpaceServiceBox(service: testingSpaceService)
+        self.context = context
     }
 
     @MainActor
@@ -208,7 +211,7 @@ public struct SpaceTool: MCPTool {
         request: MoveWindowRequest,
         startTime: Date) async throws -> ToolResponse
     {
-        let windowService = PeekabooServices.shared.windows
+        let windowService = self.context.windows
 
         // Find the target window
         let windowTarget = try self.createWindowTarget(

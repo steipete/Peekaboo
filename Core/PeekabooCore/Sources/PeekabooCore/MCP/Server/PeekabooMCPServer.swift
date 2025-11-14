@@ -23,12 +23,14 @@ public actor PeekabooMCPServer {
     private let server: Server
     private let toolRegistry: MCPToolRegistry
     private let logger: os.Logger
+    private let toolContext: MCPToolContext
     private let serverName = "peekaboo-mcp"
     private let serverVersion = "3.0.0-beta.2"
 
     public init() async throws {
         self.logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "server")
         self.toolRegistry = await MCPToolRegistry()
+        self.toolContext = await MainActor.run { MCPToolContext.makeDefault() }
 
         // Initialize the official MCP Server
         self.server = Server(
@@ -121,38 +123,40 @@ public actor PeekabooMCPServer {
 
     private func registerAllTools() async {
         // Register all Peekaboo tools
+        let context = self.toolContext
+
         await self.toolRegistry.register([
             // Core tools
-            ImageTool(),
+            ImageTool(context: context),
             AnalyzeTool(),
-            ListTool(),
-            PermissionsTool(),
+            ListTool(context: context),
+            PermissionsTool(context: context),
             SleepTool(),
 
             // UI automation tools
-            SeeTool(),
-            ClickTool(),
-            TypeTool(),
-            ScrollTool(),
-            HotkeyTool(),
-            SwipeTool(),
-            DragTool(),
-            MoveTool(),
+            SeeTool(context: context),
+            ClickTool(context: context),
+            TypeTool(context: context),
+            ScrollTool(context: context),
+            HotkeyTool(context: context),
+            SwipeTool(context: context),
+            DragTool(context: context),
+            MoveTool(context: context),
 
             // App management tools
-            AppTool(),
-            WindowTool(),
-            MenuTool(),
+            AppTool(context: context),
+            WindowTool(context: context),
+            MenuTool(context: context),
 
             // System tools
             // RunTool(), // Removed: Security risk - allows arbitrary script execution
             // CleanTool(), // Removed: Internal maintenance tool, not for external use
 
             // Advanced tools
-            MCPAgentTool(),
-            DockTool(),
-            DialogTool(),
-            SpaceTool(),
+            MCPAgentTool(context: context),
+            DockTool(context: context),
+            DialogTool(context: context),
+            SpaceTool(context: context),
         ])
 
         let toolCount = await self.toolRegistry.allTools().count

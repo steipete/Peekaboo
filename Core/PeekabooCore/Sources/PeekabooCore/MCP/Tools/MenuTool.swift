@@ -5,6 +5,7 @@ import TachikomaMCP
 /// MCP tool for interacting with application menu bars
 public struct MenuTool: MCPTool {
     public let name = "menu"
+    private let context: MCPToolContext
 
     public var description: String {
         """
@@ -51,8 +52,10 @@ public struct MenuTool: MCPTool {
             ],
             required: ["action"])
     }
-
-    public init() {}
+    
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -83,7 +86,7 @@ public struct MenuTool: MCPTool {
         }
 
         do {
-            let menuStructure = try await PeekabooServices.shared.menu.listMenus(for: app)
+            let menuStructure = try await self.context.menu.listMenus(for: app)
             let formattedOutput = self.formatMenuStructure(menuStructure)
 
             return ToolResponse.text(
@@ -101,12 +104,12 @@ public struct MenuTool: MCPTool {
     private func handleListAllAction() async throws -> ToolResponse {
         // This is a debugging feature - we'll list menus for all running applications
         do {
-            let apps = try await PeekabooServices.shared.applications.listApplications()
+            let apps = try await self.context.applications.listApplications()
             var allMenus: [(app: String, menuCount: Int, itemCount: Int)] = []
 
             for app in apps.data.applications {
                 do {
-                    let menuStructure = try await PeekabooServices.shared.menu.listMenus(for: app.name)
+                    let menuStructure = try await self.context.menu.listMenus(for: app.name)
                     allMenus.append((
                         app: app.name,
                         menuCount: menuStructure.menus.count,
@@ -145,7 +148,7 @@ public struct MenuTool: MCPTool {
         // Try path first, then item
         if let path = arguments.getString("path") {
             do {
-                try await PeekabooServices.shared.menu.clickMenuItem(app: app, itemPath: path)
+                try await self.context.menu.clickMenuItem(app: app, itemPath: path)
                 return ToolResponse.text("\(AgentDisplayTokens.Status.success) Successfully clicked menu item: \(path)")
             } catch {
                 return ToolResponse
@@ -153,7 +156,7 @@ public struct MenuTool: MCPTool {
             }
         } else if let item = arguments.getString("item") {
             do {
-                try await PeekabooServices.shared.menu.clickMenuItemByName(app: app, itemName: item)
+                try await self.context.menu.clickMenuItemByName(app: app, itemName: item)
                 return ToolResponse.text("\(AgentDisplayTokens.Status.success) Successfully clicked menu item: \(item)")
             } catch {
                 return ToolResponse
@@ -171,7 +174,7 @@ public struct MenuTool: MCPTool {
         }
 
         do {
-            try await PeekabooServices.shared.menu.clickMenuExtra(title: title)
+            try await self.context.menu.clickMenuExtra(title: title)
             return ToolResponse
                 .text("\(AgentDisplayTokens.Status.success) Successfully clicked system menu extra: \(title)")
         } catch {

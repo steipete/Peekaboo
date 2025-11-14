@@ -7,6 +7,7 @@ import TachikomaMCP
 /// MCP tool for executing complex automation tasks using an AI agent
 public struct MCPAgentTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "AgentTool")
+    private let context: MCPToolContext
 
     public let name = "agent"
 
@@ -79,7 +80,9 @@ public struct MCPAgentTool: MCPTool {
             required: [])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -108,7 +111,7 @@ public struct MCPAgentTool: MCPTool {
     // MARK: - Execution Helpers
 
     private func listSessionsResponse() async throws -> ToolResponse {
-        guard let agent = PeekabooServices.shared.agent as? PeekabooAgentService else {
+        guard let agent = self.context.agent as? PeekabooAgentService else {
             throw AgentToolError("Agent service not available")
         }
 
@@ -149,7 +152,7 @@ public struct MCPAgentTool: MCPTool {
 
     @MainActor
     private func runAgentTask(task: String, input: AgentInput) async throws -> AgentExecutionResult {
-        guard let agent = PeekabooServices.shared.agent as? PeekabooAgentService else {
+        guard let agent = self.context.agent as? PeekabooAgentService else {
             throw AgentToolError("Agent service not available")
         }
 

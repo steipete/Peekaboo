@@ -6,6 +6,7 @@ import TachikomaMCP
 /// MCP tool for performing swipe/drag gestures
 public struct SwipeTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "SwipeTool")
+    private let context: MCPToolContext
 
     public let name = "swipe"
 
@@ -35,7 +36,9 @@ public struct SwipeTool: MCPTool {
             required: ["from", "to"])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -104,7 +107,7 @@ public struct SwipeTool: MCPTool {
             throw CoordinateParseError(message: "'from' and 'to' coordinates must be different")
         }
 
-        let automation = PeekabooServices.shared.automation
+        let automation = self.context.automation
         try await automation.drag(from: fromPoint, to: toPoint, duration: duration, steps: steps, modifiers: nil)
 
         let executionTime = Date().timeIntervalSince(startTime)

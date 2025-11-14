@@ -6,6 +6,7 @@ import TachikomaMCP
 /// MCP tool for interacting with system dialogs and alerts
 public struct DialogTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "DialogTool")
+    private let context: MCPToolContext
 
     public let name = "dialog"
 
@@ -70,7 +71,9 @@ public struct DialogTool: MCPTool {
             required: ["action"])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -84,7 +87,7 @@ public struct DialogTool: MCPTool {
         }
 
         let inputs = DialogInputs(arguments: arguments)
-        let dialogService = PeekabooServices.shared.dialogs
+        let dialogService = self.context.dialogs
         let startTime = Date()
 
         do {

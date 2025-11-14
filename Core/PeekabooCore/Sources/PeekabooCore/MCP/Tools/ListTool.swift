@@ -5,6 +5,8 @@ import TachikomaMCP
 
 /// MCP tool for listing various system items
 public struct ListTool: MCPTool {
+    private let context: MCPToolContext
+
     public let name = "list"
     public let description = """
     Lists system information so agents know what is running.
@@ -51,7 +53,9 @@ public struct ListTool: MCPTool {
             required: [])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -74,7 +78,7 @@ public struct ListTool: MCPTool {
 
     private func listRunningApplications() async throws -> ToolResponse {
         do {
-            let output = try await PeekabooServices.shared.applications.listApplications()
+            let output = try await self.context.applications.listApplications()
             let apps = output.data.applications
             var lines: [String] = []
             let countSuffix = apps.count == 1 ? "" : "s"
@@ -113,7 +117,7 @@ public struct ListTool: MCPTool {
     private func listApplicationWindows(request: ListRequest) async throws -> ToolResponse {
         do {
             let identifier = request.app ?? ""
-            let output = try await PeekabooServices.shared.applications.listWindows(for: identifier, timeout: nil)
+            let output = try await self.context.applications.listWindows(for: identifier, timeout: nil)
             let formatter = WindowListFormatter(
                 appInfo: output.data.targetApplication,
                 identifier: identifier,
@@ -138,8 +142,8 @@ public struct ListTool: MCPTool {
         // 2. System Permissions
         sections.append("## System Permissions")
 
-        let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-        let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
+        let screenRecording = await self.context.screenCapture.hasScreenRecordingPermission()
+        let accessibility = await self.context.automation.hasAccessibilityPermission()
 
         let screenStatus = screenRecording
             ? "\(AgentDisplayTokens.Status.success) Granted"

@@ -6,6 +6,7 @@ import TachikomaMCP
 /// MCP tool for typing text
 public struct TypeTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "TypeTool")
+    private let context: MCPToolContext
 
     public let name = "type"
 
@@ -50,7 +51,9 @@ public struct TypeTool: MCPTool {
             required: [])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -98,7 +101,7 @@ public struct TypeTool: MCPTool {
 
     @MainActor
     private func performType(request: TypeRequest) async throws -> ToolResponse {
-        let automation = PeekabooServices.shared.automation
+        let automation = self.context.automation
         let startTime = Date()
 
         try await self.focusIfNeeded(request: request, automation: automation)

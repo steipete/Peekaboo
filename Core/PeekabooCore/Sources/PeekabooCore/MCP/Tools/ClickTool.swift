@@ -7,6 +7,7 @@ import TachikomaMCP
 /// MCP tool for clicking UI elements
 public struct ClickTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "ClickTool")
+    private let context: MCPToolContext
 
     public let name = "click"
 
@@ -53,7 +54,9 @@ public struct ClickTool: MCPTool {
             required: [])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -119,8 +122,7 @@ public struct ClickTool: MCPTool {
     }
 
     private func performClick(at location: CGPoint, sessionId: String?, intent: ClickIntent) async throws {
-        let service = PeekabooServices.shared.automation
-        try await service.click(
+        try await self.context.automation.click(
             target: .coordinates(location),
             clickType: intent.automationType,
             sessionId: sessionId)

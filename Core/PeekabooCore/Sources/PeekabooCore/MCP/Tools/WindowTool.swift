@@ -7,6 +7,7 @@ import TachikomaMCP
 /// MCP tool for manipulating application windows
 public struct WindowTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "WindowTool")
+    private let context: MCPToolContext
 
     public let name = "window"
 
@@ -58,7 +59,9 @@ public struct WindowTool: MCPTool {
             required: ["action"])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -87,7 +90,7 @@ public struct WindowTool: MCPTool {
             y: y,
             width: width,
             height: height)
-        let windowService = PeekabooServices.shared.windows
+        let windowService = self.context.windows
         let startTime = Date()
 
         do {

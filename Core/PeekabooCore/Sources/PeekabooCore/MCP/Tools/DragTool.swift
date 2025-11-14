@@ -6,6 +6,7 @@ import TachikomaMCP
 /// MCP tool for performing drag and drop operations between UI elements or coordinates
 public struct DragTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "DragTool")
+    private let context: MCPToolContext
 
     public let name = "drag"
 
@@ -54,7 +55,9 @@ public struct DragTool: MCPTool {
             required: [])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -83,7 +86,7 @@ public struct DragTool: MCPTool {
             try await self.focusTargetAppIfNeeded(request: request)
             self.logSpaceIntentIfNeeded(request: request)
 
-            try await PeekabooServices.shared.automation.drag(
+            try await self.context.automation.drag(
                 from: fromPoint,
                 to: toPoint,
                 duration: request.duration,
@@ -182,7 +185,7 @@ public struct DragTool: MCPTool {
     private func focusTargetAppIfNeeded(request: DragRequest) async throws {
         guard request.autoFocus, let toApp = request.targetApp else { return }
         do {
-            try await PeekabooServices.shared.windows.focusWindow(target: .application(toApp))
+            try await self.context.windows.focusWindow(target: .application(toApp))
             try await Task.sleep(nanoseconds: 100_000_000)
         } catch {
             self.logger.warning("Failed to focus target app '\(toApp)': \(error.localizedDescription)")

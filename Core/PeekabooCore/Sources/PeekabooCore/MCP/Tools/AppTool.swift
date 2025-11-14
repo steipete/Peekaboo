@@ -1,4 +1,3 @@
-import AppKit
 import CoreGraphics
 import Foundation
 import MCP
@@ -8,6 +7,7 @@ import TachikomaMCP
 /// MCP tool for controlling applications (launch/quit/focus/etc.)
 public struct AppTool: MCPTool {
     private let logger = Logger(subsystem: "boo.peekaboo.mcp", category: "AppTool")
+    private let context: MCPToolContext
 
     public let name = "app"
 
@@ -49,7 +49,9 @@ public struct AppTool: MCPTool {
             required: ["action"])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -71,7 +73,7 @@ public struct AppTool: MCPTool {
 
         do {
             let actions = AppToolActions(
-                service: PeekabooServices.shared.applications,
+                service: self.context.applications,
                 logger: self.logger)
             return try await actions.perform(action: action, request: request)
         } catch {
@@ -184,16 +186,14 @@ private struct AppToolActions {
         }
 
         let appInfo = try await self.service.findApplication(identifier: identifier)
-        guard let runningApp = self.runningApplication(for: appInfo.processIdentifier) else {
-            return ToolResponse.error("Application \(appInfo.name) is not currently running")
-        }
+        let descriptor = self.identifier(for: appInfo)
 
-        let quitSuccess = request.force ? runningApp.forceTerminate() : runningApp.terminate()
+        let quitSuccess = try await self.service.quitApplication(identifier: descriptor, force: request.force)
         if !quitSuccess {
             return ToolResponse.error("Failed to quit \(appInfo.name). It may have unsaved changes.")
         }
 
-        let terminated = await self.waitForTermination(of: runningApp, timeout: 5.0)
+        let terminated = await self.waitForRunningState(identifier: descriptor, desiredState: false, timeout: 5.0)
         if !terminated {
             return ToolResponse.error("App \(appInfo.name) did not terminate within 5 seconds")
         }
@@ -202,14 +202,13 @@ private struct AppToolActions {
             try await Task.sleep(nanoseconds: UInt64(request.wait * 1_000_000_000))
         }
 
-        let relaunchedApp = try await self.launchApplication(for: appInfo)
+        _ = try await self.service.launchApplication(identifier: descriptor)
 
         if request.waitUntilReady {
-            await self.waitForLaunchCompletion(of: relaunchedApp, timeout: 10.0)
+            _ = await self.waitForRunningState(identifier: descriptor, desiredState: true, timeout: 10.0)
         }
 
-        // Refresh app info using new PID
-        let refreshedInfo = try await self.service.findApplication(identifier: "PID:\(relaunchedApp.processIdentifier)")
+        let refreshedInfo = try await self.service.findApplication(identifier: descriptor)
         let timing = self.executionTimeString(since: request.startTime)
         let message = "\(AgentDisplayTokens.Status.success) Relaunched \(refreshedInfo.name) "
             + "(PID: \(refreshedInfo.processIdentifier)) in \(timing)"
@@ -239,7 +238,7 @@ private struct AppToolActions {
                 return ToolResponse.error("Must specify 'to' for switch action")
             }
             let app = try await self.service.findApplication(identifier: identifier)
-            guard self.activateApplication(app) else {
+            guard await self.activateApplication(app) else {
                 return ToolResponse.error("Failed to focus \(app.name). Application may not be running.")
             }
             return self.focusResponse(app: app, startTime: request.startTime, verb: "Switched")
@@ -249,7 +248,7 @@ private struct AppToolActions {
                 return ToolResponse.error("Must specify 'name' for focus action")
             }
             let app = try await self.service.findApplication(identifier: identifier)
-            guard self.activateApplication(app) else {
+            guard await self.activateApplication(app) else {
                 return ToolResponse.error("Failed to focus \(app.name). Application may not be running.")
             }
             return self.focusResponse(app: app, startTime: request.startTime, verb: "Focused")
@@ -339,7 +338,9 @@ private struct AppToolActions {
         var failed = [String]()
         for app in targets {
             do {
-                let success = try await self.service.quitApplication(identifier: app.name, force: request.force)
+                let success = try await self.service.quitApplication(
+                    identifier: self.identifier(for: app),
+                    force: request.force)
                 if success {
                     quitCount += 1
                 } else {
@@ -420,49 +421,46 @@ private struct AppToolActions {
         "\(String(format: "%.2f", interval))s"
     }
 
-    private func runningApplication(for pid: Int32) -> NSRunningApplication? {
-        NSWorkspace.shared.runningApplications.first { $0.processIdentifier == pid }
+    private func identifier(for app: ServiceApplicationInfo) -> String {
+        if let bundleId = app.bundleIdentifier, !bundleId.isEmpty {
+            return bundleId
+        }
+        if !app.name.isEmpty {
+            return app.name
+        }
+        return "PID:\(app.processIdentifier)"
     }
 
-    private func waitForTermination(of app: NSRunningApplication, timeout: TimeInterval) async -> Bool {
+    private func waitForRunningState(
+        identifier: String,
+        desiredState: Bool,
+        timeout: TimeInterval) async -> Bool
+    {
+        let interval: TimeInterval = 0.1
         var elapsed: TimeInterval = 0
-        while !app.isTerminated, elapsed < timeout {
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
-            elapsed += 0.1
-        }
-        return app.isTerminated
-    }
 
-    private func waitForLaunchCompletion(of app: NSRunningApplication, timeout: TimeInterval) async {
-        var elapsed: TimeInterval = 0
-        while !app.isFinishedLaunching, elapsed < timeout {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            elapsed += 0.1
-        }
-    }
-
-    private func launchApplication(for appInfo: ServiceApplicationInfo) async throws -> NSRunningApplication {
-        let workspace = NSWorkspace.shared
-        let config = NSWorkspace.OpenConfiguration()
-        config.activates = true
-
-        if let bundleId = appInfo.bundleIdentifier,
-           let url = workspace.urlForApplication(withBundleIdentifier: bundleId)
-        {
-            return try await workspace.openApplication(at: url, configuration: config)
-        } else if let bundlePath = appInfo.bundlePath {
-            let url = URL(fileURLWithPath: bundlePath)
-            return try await workspace.openApplication(at: url, configuration: config)
+        while elapsed < timeout {
+            let isRunning = await self.service.isApplicationRunning(identifier: identifier)
+            if isRunning == desiredState {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            elapsed += interval
         }
 
-        throw ToolError(message: "Unable to relaunch \(appInfo.name). Missing bundle information.")
+        let finalState = await self.service.isApplicationRunning(identifier: identifier)
+        return finalState == desiredState
     }
 
-    private func activateApplication(_ appInfo: ServiceApplicationInfo) -> Bool {
-        guard let runningApp = self.runningApplication(for: appInfo.processIdentifier) else {
+    private func activateApplication(_ appInfo: ServiceApplicationInfo) async -> Bool {
+        let identifier = self.identifier(for: appInfo)
+        do {
+            try await self.service.activateApplication(identifier: identifier)
+            return true
+        } catch {
+            self.logger.error("Failed to activate \(appInfo.name, privacy: .public): \(error, privacy: .public)")
             return false
         }
-        return runningApp.activate(options: [.activateAllWindows])
     }
 
     private func cycleApplications() {
@@ -474,9 +472,4 @@ private struct AppToolActions {
         keyDown?.post(tap: .cghidEventTap)
         keyUp?.post(tap: .cghidEventTap)
     }
-}
-
-private struct ToolError: LocalizedError {
-    let message: String
-    var errorDescription: String? { self.message }
 }

@@ -4,6 +4,8 @@ import TachikomaMCP
 
 /// MCP tool for checking macOS system permissions
 public struct PermissionsTool: MCPTool {
+    private let context: MCPToolContext
+
     public let name = "permissions"
     public let description = """
     Check macOS system permissions required for automation.
@@ -18,13 +20,15 @@ public struct PermissionsTool: MCPTool {
             required: [])
     }
 
-    public init() {}
+    public init(context: MCPToolContext = .shared) {
+        self.context = context
+    }
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
         // Get permissions from PeekabooCore services
-        let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-        let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
+        let screenRecording = await self.context.screenCapture.hasScreenRecordingPermission()
+        let accessibility = await self.context.automation.hasAccessibilityPermission()
 
         // Build response text
         var lines: [String] = []
