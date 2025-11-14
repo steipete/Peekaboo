@@ -4,7 +4,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-RAW_OUTPUT="$(swiftlint lint --reporter json 2>&1)"
+RAW_OUTPUT="$(swiftlint lint --reporter json --quiet)"
 SWIFTLINT_STATUS=$?
 
 SUMMARY=$(
@@ -12,11 +12,12 @@ printf '%s' "$RAW_OUTPUT" | python3 <<'PY'
 import json, sys
 raw = sys.stdin.read().strip()
 if not raw:
-    raise SystemExit(1)
-try:
-    data = json.loads(raw)
-except json.JSONDecodeError:
-    raise SystemExit(1)
+    data = []
+else:
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        raise SystemExit(1)
 errors = sum(1 for item in data if item.get('severity', '').lower() == 'error')
 warnings = sum(1 for item in data if item.get('severity', '').lower() == 'warning')
 lines = [f"{errors} errors / {warnings} warnings"]
@@ -32,13 +33,9 @@ PY
 
 if [ $? -eq 0 ]; then
   echo "$SUMMARY"
-else
-  if [ $SWIFTLINT_STATUS -eq 0 ]; then
-    echo "0 errors / 0 warnings"
-  else
-    echo "failed (exit $SWIFTLINT_STATUS)"
-    echo "$RAW_OUTPUT" | head -n 5
-  fi
+  exit 0
 fi
 
+echo "failed (exit $SWIFTLINT_STATUS)"
+echo "$RAW_OUTPUT" | head -n 5
 exit 0
