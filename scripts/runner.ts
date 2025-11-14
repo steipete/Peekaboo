@@ -576,6 +576,7 @@ function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
 
 async function resolveCommandInterception(context: RunnerExecutionContext): Promise<CommandInterceptionResult> {
   const interceptors: Array<(ctx: RunnerExecutionContext) => Promise<boolean>> = [
+    maybeInjectSwiftPackagePath,
     maybeHandleFindInvocation,
     maybeHandleRmInvocation,
   ];
@@ -662,6 +663,28 @@ async function maybeHandleFindInvocation(context: RunnerExecutionContext): Promi
   return true;
 }
 
+async function maybeInjectSwiftPackagePath(context: RunnerExecutionContext): Promise<boolean> {
+  if (!findSwiftInvocation(context.commandArgs)) {
+    return false;
+  }
+
+  const currentHasPackage = existsSync(join(context.workspaceDir, 'Package.swift'));
+  if (currentHasPackage) {
+    return false;
+  }
+
+  const packagePath = determineSwiftPackagePath(context.workspaceDir);
+  if (!packagePath) {
+    return false;
+  }
+
+  context.workspaceDir = packagePath;
+  if (ENABLE_DEBUG_LOGS) {
+    console.error(`[runner] Redirecting swift invocation to ${packagePath}.`);
+  }
+  return false;
+}
+
 async function maybeHandleRmInvocation(context: RunnerExecutionContext): Promise<boolean> {
   const rmInvocation = extractRmInvocation(context.commandArgs);
   if (!rmInvocation) {
@@ -739,17 +762,6 @@ function extractRmInvocation(commandArgs: string[]): GitInvocation | null {
     return null;
   }
 
-  const wrappers = new Set([
-    'sudo',
-    '/usr/bin/sudo',
-    'env',
-    '/usr/bin/env',
-    'command',
-    '/bin/command',
-    'nohup',
-    '/usr/bin/nohup',
-  ]);
-
   let index = 0;
   while (index < commandArgs.length) {
     const token = commandArgs[index];
@@ -760,7 +772,7 @@ function extractRmInvocation(commandArgs: string[]): GitInvocation | null {
       index += 1;
       continue;
     }
-    if (wrappers.has(token)) {
+    if (WRAPPER_COMMANDS.has(token)) {
       index += 1;
       continue;
     }
@@ -783,6 +795,60 @@ function extractRmInvocation(commandArgs: string[]): GitInvocation | null {
   }
 
   return { index, argv: commandArgs.slice(index) };
+}
+
+function findSwiftInvocation(commandArgs: string[]): GitInvocation | null {
+  if (commandArgs.length === 0) {
+    return null;
+  }
+
+  let index = 0;
+  while (index < commandArgs.length) {
+    const token = commandArgs[index];
+    if (!token) {
+      break;
+    }
+    if (ENV_ASSIGNMENT_PATTERN.test(token)) {
+      index += 1;
+      continue;
+    }
+    if (WRAPPER_COMMANDS.has(token)) {
+      index += 1;
+      continue;
+    }
+    break;
+  }
+
+  const commandToken = commandArgs[index];
+  if (!commandToken) {
+    return null;
+  }
+
+  const isSwiftCommand = commandToken === 'swift' || commandToken.endsWith('/swift') || commandToken.endsWith('swift.exe');
+  if (!isSwiftCommand) {
+    return null;
+  }
+
+  return { index, argv: commandArgs.slice(index) };
+}
+
+function determineSwiftPackagePath(workspaceDir: string): string | null {
+  const override = process.env.RUNNER_SWIFT_PACKAGE?.trim();
+  if (override && override.length > 0) {
+    const resolved = isAbsolute(override) ? override : resolve(workspaceDir, override);
+    if (existsSync(join(resolved, 'Package.swift'))) {
+      return resolved;
+    }
+  }
+
+  const candidates = ['Apps/CLI'];
+  for (const relativePath of candidates) {
+    const candidate = join(workspaceDir, relativePath);
+    if (existsSync(join(candidate, 'Package.swift'))) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 async function buildFindDeletePlan(findArgs: string[], workspaceDir: string): Promise<{ paths: string[] } | null> {
