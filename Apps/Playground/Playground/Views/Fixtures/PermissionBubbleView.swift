@@ -32,10 +32,9 @@ struct PermissionBubbleView: View {
                     .padding(.vertical, 8)
                     .background(Color.accentColor.opacity(0.15))
                     .cornerRadius(8)
-            }
-        )
-        .accessibilityLabel("button")
-        .accessibilityIdentifier(identifier)
-        .buttonStyle(.plain)
+            })
+            .accessibilityLabel("button")
+            .accessibilityIdentifier(identifier)
+            .buttonStyle(.plain)
     }
 }

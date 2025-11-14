@@ -15,8 +15,7 @@ struct HiddenFieldsView: View {
                     text: self.$firstField,
                     placeholder: "name@example.com",
                     identifier: "hidden-email-field",
-                    logger: self.actionLogger
-                )
+                    logger: self.actionLogger)
 
                 HiddenProxyField(
                     label: "Password",
@@ -24,8 +23,7 @@ struct HiddenFieldsView: View {
                     placeholder: "••••••••",
                     identifier: "hidden-password-field",
                     logger: self.actionLogger,
-                    secure: true
-                )
+                    secure: true)
             }
         }
         .padding(.vertical)

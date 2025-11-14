@@ -130,8 +130,7 @@ struct MenuActionButtonStyle: ButtonStyle {
                                 .stroke(Color.white.opacity(0.2))))
                 .shadow(color: Color.black.opacity(configuration.isPressed ? 0.1 : 0.18), radius: 12, y: 8)
                 .scaleEffect(configuration.isPressed ? 0.98 : 1)
-                .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-        )
+                .animation(.easeOut(duration: 0.12), value: configuration.isPressed))
     }
 }
 
