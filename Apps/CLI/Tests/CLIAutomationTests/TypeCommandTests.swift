@@ -60,9 +60,26 @@ struct TypeCommandTests {
         try command.validate()
     }
 
+    @Test("Type command with linear profile")
+    func typeWithLinearProfile() throws {
+        var command = try TypeCommand.parse(["Hello", "--profile", "linear", "--delay", "15"])
+        #expect(command.profileOption?.lowercased() == "linear")
+        #expect(command.delay == 15)
+        #expect(command.wordsPerMinute == nil)
+        try command.validate()
+    }
+
     @Test("Type command rejects invalid WPM")
     func typeWithInvalidWPM() throws {
         var command = try TypeCommand.parse(["Hello", "--wpm", "20"])
+        #expect(throws: ValidationError.self) {
+            try command.validate()
+        }
+    }
+
+    @Test("Type command rejects WPM with linear profile")
+    func typeRejectsWPMWithLinearProfile() throws {
+        var command = try TypeCommand.parse(["Hello", "--profile", "linear", "--wpm", "140"])
         #expect(throws: ValidationError.self) {
             try command.validate()
         }

@@ -35,14 +35,15 @@ Implementation: derive base delay from the formula, then apply ±20 % jitter p
 ## Implementation Plan
 
 ### CLI & Commander layer
-- Add `@Option(name: .customLong("wpm"), help: ...) var wpm: Int?` to `TypeCommand`, treating it as mutually exclusive with `--delay`.
+- Surface `--profile human|linear` so WPM is only relevant when profile == human, with human as the default profile. Linear continues to honor `--delay` for deterministic pacing.
+- Add `@Option(name: .customLong("wpm"), help: ...) var wpm: Int?` to `TypeCommand`, treating it as mutually exclusive with `--delay` when `--profile linear` is selected.
 - Validate acceptable range (80–220) and warn when users mix both knobs (“WPM takes precedence over --delay”).
 - Emit the chosen cadence inside `TypeCommandResult` so downstream log parsing shows whether human mode was active.
 
 ### Shared cadence model
 - Introduce `TypingCadence` in PeekabooFoundation: `.fixed(milliseconds: Int)` and `.human(wordsPerMinute: Int)`.
 - Extend `TypeActionsRequest`, `AutomationServiceBridge.typeActions`, and `UIAutomationServiceProtocol` to pass the cadence instead of a bare `typingDelay`.
-- Mirror the new schema in the MCP `type` tool (`wpm`, optional `delay`), giving precedence rules identical to the CLI.
+- Mirror the new schema in the MCP `type` tool (`profile`, `wpm`, `delay`), giving precedence rules identical to the CLI.
 
 ### TypeService algorithm
 - When cadence == `.human`, compute the base delay from WPM, then:

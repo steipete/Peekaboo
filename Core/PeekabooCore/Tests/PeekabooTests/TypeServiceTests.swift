@@ -325,7 +325,6 @@ struct TypeServiceTests {
 }
 #endif
 
-@MainActor
 final class DeterministicTypingRandomSource: TypingCadenceRandomSource {
     private let values: [Double]
     private var index = 0

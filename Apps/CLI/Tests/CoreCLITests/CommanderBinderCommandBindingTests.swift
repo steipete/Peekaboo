@@ -344,6 +344,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.text == "Hello")
         #expect(command.session == "xyz")
         #expect(command.delay == 10)
+        #expect(command.profileOption?.lowercased() == "human")
         #expect(command.wordsPerMinute == 150)
         #expect(command.tab == 2)
         #expect(command.pressReturn == true)

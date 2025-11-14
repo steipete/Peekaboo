@@ -22,6 +22,9 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     @Option(name: .customLong("wpm"), help: "Approximate human typing speed (words per minute)")
     var wordsPerMinute: Int?
 
+    @Option(name: .customLong("profile"), help: "Typing profile: human (default) or linear")
+    var profileOption: String?
+
     @Flag(names: [.customLong("return"), .long], help: "Press return/enter after typing")
     var pressReturn = false
 
@@ -62,11 +65,33 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         return self.textOption
     }
 
-    private var typingCadence: TypingCadence {
-        if let wordsPerMinute {
-            return .human(wordsPerMinute: wordsPerMinute)
+    private static let defaultHumanWPM = 140
+
+    private enum TypingProfileSelection: String {
+        case human
+        case linear
+    }
+
+    private var resolvedProfile: TypingProfileSelection {
+        if let profileOption,
+           let selection = TypingProfileSelection(rawValue: profileOption.lowercased())
+        {
+            return selection
         }
-        return .fixed(milliseconds: self.delay)
+        return .human
+    }
+
+    private var resolvedWordsPerMinute: Int {
+        self.wordsPerMinute ?? Self.defaultHumanWPM
+    }
+
+    private var typingCadence: TypingCadence {
+        switch self.resolvedProfile {
+        case .human:
+            return .human(wordsPerMinute: self.resolvedWordsPerMinute)
+        case .linear:
+            return .fixed(milliseconds: self.delay)
+        }
     }
 
     @MainActor
@@ -135,9 +160,18 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     }
 
     mutating func validate() throws {
+        if let option = self.profileOption,
+           TypingProfileSelection(rawValue: option.lowercased()) == nil
+        {
+            throw ValidationError("--profile must be either 'human' or 'linear'")
+        }
+
         if let wpm = self.wordsPerMinute {
             guard (80...220).contains(wpm) else {
                 throw ValidationError("--wpm must be between 80 and 220 to stay believable")
+            }
+            guard self.resolvedProfile == .human else {
+                throw ValidationError("--wpm is only valid when --profile human")
             }
         }
     }
@@ -173,7 +207,8 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
             keyPresses: typeResult.keyPresses,
             totalCharacters: typeResult.totalCharacters,
             executionTime: Date().timeIntervalSince(startTime),
-            wordsPerMinute: self.wordsPerMinute
+            wordsPerMinute: self.resolvedProfile == .human ? self.resolvedWordsPerMinute : nil,
+            profile: self.resolvedProfile.rawValue
         )
 
         output(result) {
@@ -186,9 +221,10 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
                 print("🔑 Special keys: \(specialKeys)")
             }
             print("📊 Total characters: \(typeResult.totalCharacters)")
-            if let wpm = self.wordsPerMinute {
-                print("🏃‍♀️ Human cadence: \(wpm) WPM")
-            } else {
+            switch self.resolvedProfile {
+            case .human:
+                print("🏃‍♀️ Human cadence: \(self.resolvedWordsPerMinute) WPM")
+            case .linear:
                 print("⚙️  Fixed delay: \(self.delay)ms between keys")
             }
             print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
@@ -293,6 +329,7 @@ extension TypeCommand: CommanderBindableCommand {
         if let wpm: Int = try values.decodeOption("wpm", as: Int.self) {
             self.wordsPerMinute = wpm
         }
+        self.profileOption = values.singleOption("profile")
         self.tab = try values.decodeOption("tab", as: Int.self)
         self.pressReturn = values.flag("pressReturn")
         self.escape = values.flag("escape")
@@ -312,6 +349,7 @@ struct TypeCommandResult: Codable {
     let totalCharacters: Int
     let executionTime: TimeInterval
     let wordsPerMinute: Int?
+    let profile: String
 }
 
 // MARK: - Conformances
@@ -333,6 +371,7 @@ extension TypeCommand: ParsableCommand {
                       peekaboo type "text" --delay 0        # Type at maximum speed
                       peekaboo type "text" --delay 50       # Type slower (50ms between keys)
                       peekaboo type "text" --wpm 150       # Type like a fast human (150 WPM)
+                      peekaboo type "text" --profile linear # Force deterministic linear cadence
                       peekaboo type "password" --return     # Type and press return
                       peekaboo type --tab 3                 # Press tab 3 times
                       peekaboo type "text" --clear          # Clear field first
@@ -361,8 +400,8 @@ extension TypeCommand: ParsableCommand {
                       Use 'click' to focus an input field first.
 
                     HUMAN TYPING:
-                      Use --wpm to enable human-like cadence (80-220 WPM).
-                      When unset, --delay controls the fixed millisecond spacing.
+                      Use --profile human (default) for realistic cadence; override speed with --wpm (80-220).
+                      Use --profile linear for deterministic timing via --delay.
                 """
             )
         }

@@ -33,8 +33,10 @@ public struct TypeTool: MCPTool {
                 "session": SchemaBuilder.string(
                     description: "Optional. Session ID from see command. Uses latest session if not specified."),
                 "delay": SchemaBuilder.number(
-                    description: "Optional. Delay between keystrokes in milliseconds. Default: 5.",
+                    description: "Optional. Delay between keystrokes in milliseconds (linear profile). Default: 5.",
                     default: 5),
+                "profile": SchemaBuilder.string(
+                    description: "Optional. Typing profile: human (default) or linear."),
                 "wpm": SchemaBuilder.number(
                     description: "Optional. Human typing speed (80-220 WPM). Overrides delay when set."),
                 "clear": SchemaBuilder.boolean(
@@ -85,11 +87,13 @@ public struct TypeTool: MCPTool {
     }
 
     private func parseRequest(arguments: ToolArguments) throws -> TypeRequest {
+        let profile = try self.parseProfile(arguments.getString("profile"))
         let request = TypeRequest(
             text: arguments.getString("text"),
             elementId: arguments.getString("on"),
             sessionId: arguments.getString("session"),
             delay: Int(arguments.getNumber("delay") ?? 5),
+            profile: profile,
             wordsPerMinute: arguments.getNumber("wpm").map { Int($0) },
             clearField: arguments.getBool("clear") ?? false,
             pressReturn: arguments.getBool("press_return") ?? false,
@@ -105,7 +109,19 @@ public struct TypeTool: MCPTool {
             throw TypeToolValidationError("wpm must be between 80 and 220")
         }
 
+        if request.wordsPerMinute != nil && request.profile != .human {
+            throw TypeToolValidationError("wpm is only supported with the human profile")
+        }
+
         return request
+    }
+
+    private func parseProfile(_ raw: String?) throws -> TypingProfile {
+        guard let raw else { return .human }
+        guard let profile = TypingProfile(rawValue: raw.lowercased()) else {
+            throw TypeToolValidationError("profile must be 'human' or 'linear'")
+        }
+        return profile
     }
 
     @MainActor
@@ -226,6 +242,14 @@ public struct TypeTool: MCPTool {
             actions.append("Fixed delay: \(request.delay)ms")
         }
 
+        actions.append("Profile: \(request.profile.rawValue)")
+        if let wpm = request.wordsPerMinute ?? (request.profile == .human ? TypeRequest.defaultHumanWPM : nil) {
+            if request.profile == .human {
+                actions.append("WPM: \(wpm)")
+            }
+        } else {
+            actions.append("Delay: \(request.delay)ms")
+        }
         actions.append("Chars: \(result.totalCharacters)")
         let specialKeys = max(result.keyPresses - result.totalCharacters, 0)
         actions.append("Special keys: \(specialKeys)")
@@ -241,6 +265,7 @@ private struct TypeRequest {
     let elementId: String?
     let sessionId: String?
     let delay: Int
+    let profile: TypingProfile
     let wordsPerMinute: Int?
     let clearField: Bool
     let pressReturn: Bool
@@ -248,19 +273,29 @@ private struct TypeRequest {
     let pressEscape: Bool
     let pressDelete: Bool
 
+    static let defaultHumanWPM = 140
+
     var hasActions: Bool {
         self.text != nil || self.tabCount != nil || self.pressEscape || self.pressDelete || self.pressReturn || self.clearField
     }
 
     var cadence: TypingCadence {
-        if let wordsPerMinute {
-            return .human(wordsPerMinute: wordsPerMinute)
+        switch self.profile {
+        case .human:
+            let wpm = self.wordsPerMinute ?? Self.defaultHumanWPM
+            return .human(wordsPerMinute: wpm)
+        case .linear:
+            return .fixed(milliseconds: self.delay)
         }
-        return .fixed(milliseconds: self.delay)
     }
 }
 
 private struct TypeToolValidationError: Error {
     let message: String
     init(_ message: String) { self.message = message }
+}
+
+private enum TypingProfile: String {
+    case human
+    case linear
 }

@@ -22,6 +22,11 @@ extension TypeCommand: CommanderSignatureProviding {
                     long: "delay"
                 ),
                 .commandOption(
+                    "profile",
+                    help: "Typing profile: human (default) or linear",
+                    long: "profile"
+                ),
+                .commandOption(
                     "wpm",
                     help: "Approximate human typing speed (words per minute)",
                     long: "wpm"

@@ -447,7 +447,6 @@ private extension Character {
         self.isWhitespace || self == "\n" || self == "\t"
     }
 }
-}
 
 // MARK: - Key codes from Carbon
 
