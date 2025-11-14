@@ -879,6 +879,11 @@ extension SeeCommand {
         }
 
         print("\nSession ID: \(context.sessionId)")
+
+        let terminalCapabilities = TerminalDetector.detectCapabilities()
+        if terminalCapabilities.recommendedOutputMode == .minimal {
+            print("Agent: Use a tool like view_image to inspect it.")
+        }
     }
 
     private func sessionPaths(for context: SeeCommandRenderContext) -> SessionPaths {
