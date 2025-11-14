@@ -4,6 +4,30 @@ import os.log
 import PeekabooFoundation
 import Tachikoma
 
+// MARK: - Service Provider Protocol
+
+@MainActor
+public protocol PeekabooServiceProviding: AnyObject {
+    var logging: any LoggingServiceProtocol { get }
+    var screenCapture: any ScreenCaptureServiceProtocol { get }
+    var applications: any ApplicationServiceProtocol { get }
+    var automation: any UIAutomationServiceProtocol { get }
+    var windows: any WindowManagementServiceProtocol { get }
+    var menu: any MenuServiceProtocol { get }
+    var dock: any DockServiceProtocol { get }
+    var dialogs: any DialogServiceProtocol { get }
+    var sessions: any SessionManagerProtocol { get }
+    var files: any FileServiceProtocol { get }
+    var configuration: ConfigurationManager { get }
+    var process: any ProcessServiceProtocol { get }
+    var permissions: PermissionsService { get }
+    var audioInput: AudioInputService { get }
+    var screens: any ScreenServiceProtocol { get }
+    var agent: (any AgentServiceProtocol)? { get }
+
+    func ensureVisualizerConnection()
+}
+
 /**
  * Central service registry and coordination hub for all Peekaboo functionality.
  *
@@ -27,8 +51,8 @@ import Tachikoma
  *
  * ## Usage Example
  * ```swift
- * // Access the shared instance
- * let services = PeekabooServices.shared
+ * // Access a default instance
+ * let services = PeekabooServices()
  *
  * // Capture a screenshot
  * let screenshot = try await services.screenCapture.captureScreen()
@@ -56,30 +80,8 @@ import Tachikoma
  * - Note: The shared instance is automatically configured with production services
  * - Since: PeekabooCore 1.0.0
  */
-public final class PeekabooServices: @unchecked Sendable {
-    @TaskLocal
-    private static var taskOverride: PeekabooServices?
-
-    /// Shared instance for convenient access in typical usage scenarios.
-    /// Tests can inject custom service collections via `withTestServices`.
-    private static let defaultShared: PeekabooServices = MainActor.assumeIsolated {
-        PeekabooServices.createShared()
-    }
-
-    public static var shared: PeekabooServices {
-        self.taskOverride ?? self.defaultShared
-    }
-
-    /// Execute the supplied async operation with a temporary override for `PeekabooServices.shared`.
-    public static func withTestServices<T>(
-        _ services: PeekabooServices,
-        perform operation: () async throws -> T) async rethrows -> T
-    {
-        try await self.$taskOverride.withValue(services) {
-            try await operation()
-        }
-    }
-
+@MainActor
+public final class PeekabooServices {
     /// Internal logger for debugging service initialization and coordination
     private let logger = SystemLogger(subsystem: "boo.peekaboo.core", category: "Services")
 
@@ -212,6 +214,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.agent = nil
 
         self.logger.debug("✨ PeekabooServices initialization complete")
+        self.refreshAgentService()
     }
 
     /// Initialize with custom service implementations (for testing)
@@ -295,147 +298,6 @@ public final class PeekabooServices: @unchecked Sendable {
     }
 
     /// Create the shared instance with proper initialization order
-    @MainActor
-    private static func createShared() -> PeekabooServices {
-        let logger = SystemLogger(subsystem: "boo.peekaboo.core", category: "Services")
-        logger.debug("🚀 Creating shared PeekabooServices instance")
-
-        let dependencies = self.buildServiceDependencies(logger: logger)
-        let services = self.makeServices(from: dependencies, agent: nil)
-
-        services.agent = self.resolveAgentIfAvailable(
-            for: services,
-            dependencies: dependencies,
-            logger: logger)
-
-        return services
-    }
-
-    @MainActor
-    private static func buildServiceDependencies(logger: SystemLogger) -> ServiceDependencies {
-        let logging = LoggingService()
-        let applications = ApplicationService()
-        let sessions = SessionManager()
-        let screenCapture = ScreenCaptureService(loggingService: logging)
-        let automation = UIAutomationService(sessionManager: sessions, loggingService: logging)
-        let windows = WindowManagementService(applicationService: applications)
-        let menuService = MenuService(applicationService: applications)
-        let dockService = DockService()
-        let dialogs = DialogService()
-        let files = FileService()
-        let configuration = ConfigurationManager.shared
-        let permissions = PermissionsService()
-
-        TachikomaConfiguration.profileDirectoryName = ".peekaboo"
-        CustomProviderRegistry.shared.loadFromProfile()
-
-        let aiService = PeekabooAIService()
-        logger.debug("\(AgentDisplayTokens.Status.success) AI service initialized for Tachikoma providers")
-        let audioInput = AudioInputService(aiService: aiService)
-        let screens = ScreenService()
-        let process = ProcessService(
-            applicationService: applications,
-            screenCaptureService: screenCapture,
-            sessionManager: sessions,
-            uiAutomationService: automation,
-            windowManagementService: windows,
-            menuService: menuService,
-            dockService: dockService)
-
-        return ServiceDependencies(
-            logging: logging,
-            applications: applications,
-            sessions: sessions,
-            screenCapture: screenCapture,
-            automation: automation,
-            windows: windows,
-            menu: menuService,
-            dock: dockService,
-            dialogs: dialogs,
-            files: files,
-            configuration: configuration,
-            permissions: permissions,
-            audioInput: audioInput,
-            screens: screens,
-            process: process)
-    }
-
-    @MainActor
-    private static func makeServices(
-        from dependencies: ServiceDependencies,
-        agent: (any AgentServiceProtocol)?) -> PeekabooServices
-    {
-        PeekabooServices(
-            logging: dependencies.logging,
-            screenCapture: dependencies.screenCapture,
-            applications: dependencies.applications,
-            automation: dependencies.automation,
-            windows: dependencies.windows,
-            menu: dependencies.menu,
-            dock: dependencies.dock,
-            dialogs: dependencies.dialogs,
-            sessions: dependencies.sessions,
-            files: dependencies.files,
-            process: dependencies.process,
-            permissions: dependencies.permissions,
-            audioInput: dependencies.audioInput,
-            agent: agent,
-            configuration: dependencies.configuration,
-            screens: dependencies.screens)
-    }
-
-    @MainActor
-    private static func resolveAgentIfAvailable(
-        for services: PeekabooServices,
-        dependencies: ServiceDependencies,
-        logger: SystemLogger) -> (any AgentServiceProtocol)?
-    {
-        let config = dependencies.configuration
-        let hasOpenAI = config.getOpenAIAPIKey().map { !$0.isEmpty } ?? false
-        let hasAnthropic = config.getAnthropicAPIKey().map { !$0.isEmpty } ?? false
-        let hasOllama = false
-
-        guard hasOpenAI || hasAnthropic || hasOllama else {
-            logger.debug(
-                "\(AgentDisplayTokens.Status.warning) PeekabooAgentService skipped - no API keys available")
-            return nil
-        }
-
-        let providers = config.getAIProviders()
-        let environmentProviders = EnvironmentVariables.value(for: "PEEKABOO_AI_PROVIDERS")
-
-        logger.debug("🔍 AI Providers from config: '\(providers)'")
-        logger.debug("🔍 Environment PEEKABOO_AI_PROVIDERS: '\(environmentProviders ?? "not set")'")
-        logger.debug("🔍 Has OpenAI: \(hasOpenAI), Has Anthropic: \(hasAnthropic)")
-
-        let sources = ModelSources(
-            providers: providers,
-            hasOpenAI: hasOpenAI,
-            hasAnthropic: hasAnthropic,
-            hasOllama: hasOllama,
-            configuredDefault: config.getConfiguration()?.agent?.defaultModel,
-            isEnvironmentProvided: environmentProviders != nil)
-
-        let determination = services.determineDefaultModelWithConflict(sources)
-        logger.debug("🔍 Determined default model: '\(determination.model)'")
-
-        if determination.hasConflict {
-            self.logModelConflict(determination, logger: logger)
-        }
-
-        do {
-            let defaultModel = parseModelStringForAgent(determination.model)
-            logger.debug("\(AgentDisplayTokens.Status.info) Using AI model: \(defaultModel)")
-            let agent = try PeekabooAgentService(services: services, defaultModel: defaultModel)
-            logger.debug(
-                "\(AgentDisplayTokens.Status.success) PeekabooAgentService initialized with available providers")
-            return agent
-        } catch {
-            logger.error("Failed to initialize PeekabooAgentService: \(error)")
-            return nil
-        }
-    }
-
     private static func logModelConflict(_ determination: ModelDetermination, logger: SystemLogger) {
         logger.warning("\(AgentDisplayTokens.Status.warning) Model configuration conflict detected.")
         logger.warning("   Config file specifies: \(determination.configModel ?? "none")")
@@ -468,27 +330,26 @@ public final class PeekabooServices: @unchecked Sendable {
         if hasOpenAI || hasAnthropic || hasOllama {
             let agentConfig = self.configuration.getConfiguration()
             let providers = self.configuration.getAIProviders()
+            let environmentProviders = EnvironmentVariables.value(for: "PEEKABOO_AI_PROVIDERS")
 
-            // Determine default model based on first available provider
-            var defaultModel = agentConfig?.agent?.defaultModel
-            if defaultModel == nil {
-                if providers.contains("openai"), hasOpenAI {
-                    defaultModel = "gpt-5"
-                } else if providers.contains("anthropic"), hasAnthropic {
-                    defaultModel = "claude-sonnet-4.5"
-                } else if hasAnthropic {
-                    defaultModel = "claude-sonnet-4.5"
-                } else if hasOpenAI {
-                    defaultModel = "gpt-5"
-                }
+            let sources = ModelSources(
+                providers: providers,
+                hasOpenAI: hasOpenAI,
+                hasAnthropic: hasAnthropic,
+                hasOllama: hasOllama,
+                configuredDefault: agentConfig?.agent?.defaultModel,
+                isEnvironmentProvided: environmentProviders != nil)
+
+            let determination = self.determineDefaultModelWithConflict(sources)
+            if determination.hasConflict {
+                Self.logModelConflict(determination, logger: self.logger)
             }
 
             self.agentLock.lock()
             defer { agentLock.unlock() }
 
             do {
-                // Convert model string to LanguageModel enum using same parser
-                let languageModel = Self.parseModelStringForAgent(defaultModel ?? "gpt-5")
+                let languageModel = Self.parseModelStringForAgent(determination.model)
                 self.agent = try PeekabooAgentService(
                     services: self,
                     defaultModel: languageModel)
@@ -507,6 +368,8 @@ public final class PeekabooServices: @unchecked Sendable {
         }
     }
 }
+
+extension PeekabooServices: PeekabooServiceProviding {}
 
 private enum EnvironmentVariables {
     static func value(for key: String) -> String? {
@@ -702,24 +565,6 @@ private struct ModelSources {
 private struct AutomationPreparation {
     let sessionId: String
     let initialScreenshot: String?
-}
-
-private struct ServiceDependencies {
-    let logging: LoggingService
-    let applications: ApplicationService
-    let sessions: SessionManager
-    let screenCapture: ScreenCaptureService
-    let automation: UIAutomationService
-    let windows: WindowManagementService
-    let menu: MenuService
-    let dock: DockService
-    let dialogs: DialogService
-    let files: FileService
-    let configuration: ConfigurationManager
-    let permissions: PermissionsService
-    let audioInput: AudioInputService
-    let screens: ScreenService
-    let process: ProcessService
 }
 
 /// Target for capture operations

@@ -1,6 +1,7 @@
 import Foundation
 
 /// Protocol defining session management operations
+@MainActor
 public protocol SessionManagerProtocol: Sendable {
     /// Create a new session
     /// - Returns: Unique session identifier

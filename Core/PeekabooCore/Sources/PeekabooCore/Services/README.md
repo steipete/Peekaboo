@@ -16,7 +16,7 @@ Services are organized by domain:
 The `PeekabooServices` class in `Support/` acts as a dependency injection container:
 
 ```swift
-let services = PeekabooServices.shared
+let services = PeekabooServices()
 let screenshot = try await services.screenCapture.captureScreen()
 ```
 

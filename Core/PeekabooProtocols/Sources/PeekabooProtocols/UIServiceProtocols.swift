@@ -54,6 +54,7 @@ public struct ScreenInfo: Sendable {
 }
 
 /// Protocol for session manager operations
+@MainActor
 public protocol SessionManagerProtocol: Sendable {
     func createSession(id: String?) async -> String
     func getSession(id: String) async -> SessionData?

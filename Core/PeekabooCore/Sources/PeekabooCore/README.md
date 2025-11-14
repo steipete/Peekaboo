@@ -96,7 +96,7 @@ The agent system uses a modular tool-based approach, where each tool encapsulate
 
 ```swift
 // Initialize services
-let services = PeekabooServices.shared
+let services = PeekabooServices()
 
 // Take a screenshot
 let result = try await services.screenCapture.captureScreen()
