@@ -5,6 +5,7 @@
 
 import Foundation
 import PeekabooCore
+import PeekabooProtocols
 import PeekabooFoundation
 
 /// Shared options that control logging and output behavior.
@@ -46,6 +47,8 @@ struct CommandRuntime {
         self.services = services
         self.logger = Logger.shared
 
+        services.installAgentRuntimeDefaults()
+
         self.logger.setJsonOutputMode(configuration.jsonOutput)
         let explicitLevel = configuration.logLevel
         var shouldEnableVerbose = configuration.verbose
@@ -66,7 +69,7 @@ struct CommandRuntime {
             self.logger.resetMinimumLogLevel()
         }
 
-        let visualizerConsoleLevel: PeekabooCore.LogLevel? = if let explicitLevel {
+        let visualizerConsoleLevel: PeekabooProtocols.LogLevel? = if let explicitLevel {
             explicitLevel.coreLogLevel
         } else if shouldEnableVerbose {
             .debug
@@ -146,7 +149,7 @@ extension RuntimeStorage: Codable where Value: ExpressibleByNilLiteral {
 extension RuntimeStorage: Sendable where Value: Sendable {}
 
 extension LogLevel {
-    fileprivate var coreLogLevel: PeekabooCore.LogLevel {
+    fileprivate var coreLogLevel: PeekabooProtocols.LogLevel {
         switch self {
         case .trace: .trace
         case .verbose: .debug

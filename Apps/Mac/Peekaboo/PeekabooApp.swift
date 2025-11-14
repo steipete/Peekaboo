@@ -56,6 +56,7 @@ struct PeekabooApp: App {
         WindowGroup("HiddenWindow") {
             HiddenWindowView()
                 .task {
+                    self.services.installAgentRuntimeDefaults()
                     self.settings.connectServices(self.services)
 
                     // Initialize dependencies if needed

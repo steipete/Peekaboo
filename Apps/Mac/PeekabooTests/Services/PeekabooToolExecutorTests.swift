@@ -8,6 +8,7 @@ import Testing
 struct ToolRegistryTests {
     @Test("All expected tools are registered")
     func allToolsAreRegistered() {
+        self.installDefaults()
         let allTools = ToolRegistry.allTools()
         #expect(!allTools.isEmpty)
 
@@ -38,6 +39,7 @@ struct ToolRegistryTests {
 
     @Test("Tool definitions are valid")
     func toolDefinitionsAreValid() {
+        self.installDefaults()
         let allTools = ToolRegistry.allTools()
 
         for tool in allTools {
@@ -53,6 +55,7 @@ struct ToolRegistryTests {
 
     @Test("Can retrieve a tool by name")
     func getToolByName() {
+        self.installDefaults()
         let tool = ToolRegistry.tool(named: "see")
         #expect(tool != nil)
         #expect(tool?.name == "see")
@@ -60,10 +63,17 @@ struct ToolRegistryTests {
 
     @Test("Tools are grouped by category")
     func toolsAreGroupedByCategory() {
+        self.installDefaults()
         let categorizedTools = ToolRegistry.toolsByCategory()
         #expect(!categorizedTools.isEmpty)
         #expect(categorizedTools[.vision] != nil)
         #expect(categorizedTools[.ui] != nil)
         #expect(categorizedTools[.application] != nil)
+    }
+
+    @MainActor
+    private func installDefaults() {
+        let services = PeekabooServices()
+        services.installAgentRuntimeDefaults()
     }
 }

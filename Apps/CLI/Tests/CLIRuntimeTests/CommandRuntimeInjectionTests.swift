@@ -14,6 +14,22 @@ struct CommandRuntimeInjectionTests {
         #expect(services.ensureVisualizerConnectionCallCount == 1)
         #expect(runtime.services is RecordingPeekabooServices)
     }
+
+    @Test("installs MCP/tool defaults when constructed")
+    @MainActor
+    func installsAgentRuntimeDefaults() {
+        let services = RecordingPeekabooServices()
+        _ = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: false, logLevel: nil),
+            services: services)
+
+        let context = MCPToolContext.shared
+        #expect(ObjectIdentifier(context.sessions as AnyObject) ==
+            ObjectIdentifier(services.sessions as AnyObject))
+
+        let tools = ToolRegistry.allTools()
+        #expect(!tools.isEmpty)
+    }
 }
 
 @MainActor
