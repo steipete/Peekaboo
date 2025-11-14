@@ -15,6 +15,7 @@ read_when:
 - Still missing:
   - **CLI help/doc polish:** Update `help open`, `help app launch`, and CLI docs once behavior is locked.
   - **Full CLI docs/examples:** ensure README/tutorials demonstrate `peekaboo open` + `app launch --open`.
+  - **In-Process CLI tests:** Previous attempt to drive the full CLI via `executePeekabooCLI` hung because it always instantiates real `PeekabooServices()` (which in turn waits on UI automation entitlements). Need either a way to inject stub services into `CommandRuntime.makeDefault` or a lighter-weight CLI harness before we can add true end-to-end tests.
 
 ## Proposed approach
 
@@ -37,3 +38,4 @@ read_when:
 
 1. Update CLI help text (`help open`, `help app launch`) and command reference docs with examples for `peekaboo open` and repeated `--open`.
 2. Refresh higher-level docs/README snippets so users see the new behavior outside the reference file.
+3. Investigate adding a test-only hook to `CommandRuntime.withInjectedServices`/`CommanderRuntimeExecutor` so we can run `executePeekabooCLI` with stub services (or document why it’s unsafe).
