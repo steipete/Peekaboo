@@ -20,6 +20,22 @@ struct CommanderBinderAppConfigTests {
         #expect(command.app == "Visual Studio Code")
         #expect(command.bundleId == "com.microsoft.VSCode")
         #expect(command.waitUntilReady == true)
+        #expect(command.noFocus == false)
+    }
+
+    @Test("App launch binding with --no-focus")
+    func bindAppLaunchNoFocus() throws {
+        let parsed = ParsedValues(
+            positional: ["Calendar"],
+            options: [:],
+            flags: ["noFocus"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: AppCommand.LaunchSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.app == "Calendar")
+        #expect(command.noFocus == true)
     }
 
     @Test("App quit binding")

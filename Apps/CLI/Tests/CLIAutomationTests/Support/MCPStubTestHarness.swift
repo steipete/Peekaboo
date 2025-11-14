@@ -13,7 +13,10 @@ enum MCPStubFixtures {
             .deletingLastPathComponent() // CLIAutomationTests
             .deletingLastPathComponent() // Tests
         let url = cliRoot.appendingPathComponent("TestFixtures/MCPStubServer.swift", isDirectory: false)
-        precondition(FileManager.default.fileExists(atPath: url.path), "Stub MCP server script not found at \(url.path)")
+        precondition(
+            FileManager.default.fileExists(atPath: url.path),
+            "Stub MCP server script not found at \(url.path)"
+        )
         return url.standardizedFileURL
     }()
 }
@@ -29,49 +32,49 @@ struct MCPStubTestHarness {
         let fm = FileManager.default
         let uuid = UUID().uuidString
         self.homeURL = fm.temporaryDirectory.appendingPathComponent("peekaboo-mcp-tests-\(uuid)", isDirectory: true)
-        try fm.createDirectory(at: homeURL, withIntermediateDirectories: true)
+        try fm.createDirectory(at: self.homeURL, withIntermediateDirectories: true)
         self.serverName = serverName
         self.profileDirectoryName = ".peekaboo-mcp-tests-\(uuid)"
         self.stubScriptPath = MCPStubFixtures.scriptURL.path
     }
 
     func addStubServer() async throws {
-        _ = try await run([
-            "mcp", "add", serverName,
+        _ = try await self.run([
+            "mcp", "add", self.serverName,
             "--timeout", "5",
             "--description", "Stub MCP server used for CLI tests",
             "--",
             "swift",
-            stubScriptPath,
+            self.stubScriptPath,
         ])
     }
 
     func run(_ arguments: [String], allowedExitCodes: Set<Int32> = Set<Int32>([0])) async throws -> CommandRunResult {
-        try await withOverriddenEnvironment {
+        try await self.withOverriddenEnvironment {
             try await InProcessCommandRunner.runShared(arguments, allowedExitCodes: allowedExitCodes)
         }
     }
 
     func cleanup() async {
-        await withOverriddenEnvironment {
+        await self.withOverriddenEnvironment {
             let manager = TachikomaMCPClientManager.shared
             let names = manager.getServerNames()
-            for name in names where name == serverName {
+            for name in names where name == self.serverName {
                 await manager.removeServer(name: name)
             }
             return ()
         }
-        try? FileManager.default.removeItem(at: homeURL)
+        try? FileManager.default.removeItem(at: self.homeURL)
     }
 
     private func withOverriddenEnvironment<T>(
         _ body: () async throws -> T
     ) async rethrows -> T {
         let originalHome = getenv("HOME").map { String(cString: $0) }
-        setenv("HOME", homeURL.path, 1)
+        setenv("HOME", self.homeURL.path, 1)
         let previousProfileDir = TachikomaConfiguration.profileDirectoryName
-        TachikomaConfiguration.profileDirectoryName = profileDirectoryName
-        TachikomaMCPClientManager.shared.profileDirectoryName = profileDirectoryName
+        TachikomaConfiguration.profileDirectoryName = self.profileDirectoryName
+        TachikomaMCPClientManager.shared.profileDirectoryName = self.profileDirectoryName
 
         return try await {
             defer {

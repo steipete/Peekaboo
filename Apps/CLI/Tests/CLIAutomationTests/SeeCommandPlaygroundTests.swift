@@ -32,7 +32,7 @@ struct SeeCommandPlaygroundTests {
         let data = try #require(output.data(using: .utf8))
         let result = try JSONDecoder().decode(SeeResult.self, from: data)
 
-        let identifiers = Set(result.ui_elements.compactMap { $0.identifier })
+        let identifiers = Set(result.ui_elements.compactMap(\.identifier))
         #expect(identifiers.contains("hidden-email-field"))
         #expect(identifiers.contains("hidden-password-field"))
 

@@ -142,9 +142,9 @@ enum ExternalCommandRunner {
         var errorDescription: String? {
             switch self {
             case let .executableNotFound(path):
-                return "Unable to find executable at \(path)"
+                "Unable to find executable at \(path)"
             case let .jsonPayloadMissing(output):
-                return "Expected JSON payload was not found in command output:\n\(output)"
+                "Expected JSON payload was not found in command output:\n\(output)"
             }
         }
     }
@@ -195,13 +195,12 @@ enum ExternalCommandRunner {
         from result: CommandRunResult,
         as type: T.Type
     ) throws -> T {
-        let combinedOutput: String
-        if result.stdout.isEmpty {
-            combinedOutput = result.stderr
+        let combinedOutput: String = if result.stdout.isEmpty {
+            result.stderr
         } else if result.stderr.isEmpty {
-            combinedOutput = result.stdout
+            result.stdout
         } else {
-            combinedOutput = result.stdout + "\n" + result.stderr
+            result.stdout + "\n" + result.stderr
         }
 
         guard let jsonString = Self.extractFirstJSONObject(from: combinedOutput),

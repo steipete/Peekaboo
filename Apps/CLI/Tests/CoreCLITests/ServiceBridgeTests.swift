@@ -14,7 +14,8 @@ struct ServiceBridgeTests {
             automation: automation,
             target: .coordinates(CGPoint(x: 10, y: 20)),
             clickType: .double,
-            sessionId: "session-123")
+            sessionId: "session-123"
+        )
 
         #expect(automation.clickCalls.count == 1)
         #expect(automation.clickCalls.first?.sessionId == "session-123")
@@ -29,14 +30,16 @@ struct ServiceBridgeTests {
             bounds: CGRect(x: 0, y: 0, width: 44, height: 20),
             isEnabled: true,
             isSelected: nil,
-            attributes: [:])
+            attributes: [:]
+        )
         let mock = MockAutomationService(waitResult: .init(found: true, element: element, waitTime: 0.25))
 
         let result = try await AutomationServiceBridge.waitForElement(
             automation: mock,
             target: .elementId("B1"),
             timeout: 1,
-            sessionId: "S42")
+            sessionId: "S42"
+        )
 
         #expect(result.found)
         #expect(mock.waitCalls.count == 1)
@@ -46,10 +49,12 @@ struct ServiceBridgeTests {
         let window = ServiceWindowInfo(
             windowID: 101,
             title: "Main",
-            bounds: CGRect(x: 0, y: 0, width: 800, height: 600))
+            bounds: CGRect(x: 0, y: 0, width: 800, height: 600)
+        )
         let windows = try await WindowServiceBridge.listWindows(
             windows: MockWindowService(result: [window]),
-            target: .frontmost)
+            target: .frontmost
+        )
         #expect(windows == [window])
     }
 
@@ -63,17 +68,27 @@ struct ServiceBridgeTests {
             bundleIdentifier: "com.test",
             ownerName: "Test",
             frame: nil,
-            identifier: "com.test.item")]
+            identifier: "com.test.item"
+        )]
         let items = try await MenuServiceBridge.listMenuBarItems(menu: MockMenuService(barItems: menuItems))
         #expect(items.count == 1)
         #expect(items.first?.title == "Item")
     }
 
     @Test func dockBridgeListsItems() async throws {
-        let dockItems = [DockItem(index: 0, title: "Peekaboo", itemType: .application, isRunning: true, bundleIdentifier: "boo.peekaboo", position: nil, size: nil)]
+        let dockItems = [DockItem(
+            index: 0,
+            title: "Peekaboo",
+            itemType: .application,
+            isRunning: true,
+            bundleIdentifier: "boo.peekaboo",
+            position: nil,
+            size: nil
+        )]
         let items = try await DockServiceBridge.listDockItems(
             dock: MockDockService(items: dockItems),
-            includeAll: true)
+            includeAll: true
+        )
         #expect(items == dockItems)
     }
 }
@@ -89,7 +104,11 @@ final class MockAutomationService: UIAutomationServiceProtocol {
         self.waitResult = waitResult
     }
 
-    func detectElements(in _: Data, sessionId _: String?, windowContext _: WindowContext?) async throws -> ElementDetectionResult {
+    func detectElements(
+        in _: Data,
+        sessionId _: String?,
+        windowContext _: WindowContext?
+    ) async throws -> ElementDetectionResult {
         throw PeekabooError.notImplemented("mock detectElements")
     }
 
@@ -97,7 +116,13 @@ final class MockAutomationService: UIAutomationServiceProtocol {
         self.clickCalls.append(.init(target: target, clickType: clickType, sessionId: sessionId))
     }
 
-    func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, sessionId _: String?) async throws {}
+    func type(
+        text _: String,
+        target _: String?,
+        clearExisting _: Bool,
+        typingDelay _: Int,
+        sessionId _: String?
+    ) async throws {}
 
     func typeActions(_ actions: [TypeAction], typingDelay _: Int, sessionId _: String?) async throws -> TypeResult {
         TypeResult(totalCharacters: actions.count, keyPresses: actions.count)
@@ -111,7 +136,11 @@ final class MockAutomationService: UIAutomationServiceProtocol {
 
     func hasAccessibilityPermission() async -> Bool { true }
 
-    func waitForElement(target: ClickTarget, timeout _: TimeInterval, sessionId _: String?) async throws -> WaitForElementResult {
+    func waitForElement(
+        target: ClickTarget,
+        timeout _: TimeInterval,
+        sessionId _: String?
+    ) async throws -> WaitForElementResult {
         self.waitCalls.append(target)
         return self.waitResult
     }
@@ -161,13 +190,20 @@ final class MockMenuService: MenuServiceProtocol {
     func clickMenuExtra(title _: String) async throws {}
     func listMenuExtras() async throws -> [MenuExtraInfo] { [] }
     func listMenuBarItems() async throws -> [MenuBarItemInfo] { self.barItems }
-    func clickMenuBarItem(named _: String) async throws -> PeekabooCore.ClickResult { .init(elementDescription: "", location: nil) }
-    func clickMenuBarItem(at _: Int) async throws -> PeekabooCore.ClickResult { .init(elementDescription: "", location: nil) }
+    func clickMenuBarItem(named _: String) async throws -> PeekabooCore.ClickResult { .init(
+        elementDescription: "",
+        location: nil
+    ) }
+    func clickMenuBarItem(at _: Int) async throws -> PeekabooCore.ClickResult { .init(
+        elementDescription: "",
+        location: nil
+    ) }
 
     private var emptyStructure: MenuStructure {
         MenuStructure(
             application: ServiceApplicationInfo(processIdentifier: 1, bundleIdentifier: "test", name: "Test"),
-            menus: [])
+            menus: []
+        )
     }
 }
 

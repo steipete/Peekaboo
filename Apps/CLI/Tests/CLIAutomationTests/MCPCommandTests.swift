@@ -230,8 +230,7 @@ struct MCPCallCommandRuntimeTests {
         #expect(jsonObject?["server"] as? String == "browser")
         if
             let response = jsonObject?["response"] as? [String: Any],
-            let content = response["content"] as? [[String: Any]]
-        {
+            let content = response["content"] as? [[String: Any]] {
             #expect(content.count == 1)
             #expect(content.first?["type"] as? String == "text")
         } else {

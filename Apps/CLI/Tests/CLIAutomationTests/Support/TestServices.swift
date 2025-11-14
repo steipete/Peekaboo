@@ -1023,8 +1023,8 @@ final class StubWindowService: WindowManagementServiceProtocol {
     }
 }
 
-private extension ServiceWindowInfo {
-    func withBounds(_ bounds: CGRect) -> ServiceWindowInfo {
+extension ServiceWindowInfo {
+    fileprivate func withBounds(_ bounds: CGRect) -> ServiceWindowInfo {
         ServiceWindowInfo(
             windowID: self.windowID,
             title: self.title,
