@@ -50,15 +50,18 @@ Peekaboo bridges the gap between visual content on your screen and AI understand
 
 ### 🏗️ Architecture
 
-Peekaboo uses a modern service-based architecture:
+Peekaboo now composes three focused SwiftPM targets plus a thin umbrella:
 
-- **PeekabooCore** - Shared services for screen capture, UI automation, window management, and more
-- **CLI** - Command-line interface that uses PeekabooCore services directly
-- **Mac App** - Native macOS app with 100x+ performance improvement over CLI spawning
-- **MCP Server** - Model Context Protocol server for AI assistants
-- **Commander** (in-repo) - Lightweight Swift 6 parsing helpers used by the CLI runtime (swift-tools-version 6.0, no Swift 6.2+ features)
+- **PeekabooAutomation** – Screen capture, permissions, accessibility services, menu/window helpers, and every strongly typed model shared across apps.
+- **PeekabooAgentRuntime** – Tool registry, MCP server tooling, streaming/agent glue. Nothing here touches AppKit directly; it consumes the automation protocols.
+- **PeekabooVisualizer** – Event serialization and UI feedback for the macOS app + CLI visual overlays.
+- **PeekabooCore** – `_exported` shim that re-exports the three modules so downstream targets can continue to `import PeekabooCore` while opting into narrower modules when desired.
+- **CLI** – Command-line interface that injects a `PeekabooServices()` instance into commander commands and agents.
+- **Mac App** – Native macOS GUI that keeps a long-lived `@State private var services = PeekabooServices()` and passes it through SwiftUI scenes.
+- **MCP Server** – Model Context Protocol server for AI assistants (Claude Desktop, Cursor, etc.) built entirely on `PeekabooAgentRuntime`.
+- **Commander** (in-repo) – Lightweight Swift 6 parsing helpers used by the CLI runtime (swift-tools-version 6.0, no Swift 6.2+ features).
 
-  The CLI command structs remain `@MainActor` so they run on the main thread, but the static `commandDescription` can just be a normal `static let` constant—no `nonisolated(unsafe)` or extra `@MainActor` wrappers are necessary when describing the command metadata.
+The CLI command structs remain `@MainActor` so they run on the main thread, but the static `commandDescription` can just be a normal `static let` constant—no `nonisolated(unsafe)` or extra `@MainActor` wrappers are necessary when describing the command metadata.
 
 All components share the same core services, ensuring consistent behavior and optimal performance. See [Service API Reference](docs/service-api-reference.md) for detailed documentation.
 
@@ -124,74 +127,49 @@ cd peekaboo
 ./scripts/build-cli-standalone.sh --install
 ```
 
-### Basic Usage
+### Command Catalog
 
-```bash
-# Capture screenshots
-peekaboo image --app Safari --path screenshot.png
-peekaboo image --mode frontmost
-peekaboo image --mode screen --screen-index 0
+Peekaboo ships many focused commands. Each entry below links to a short doc in `docs/commands/` with complete flag tables, workflows, and troubleshooting notes.
 
-# List applications, windows, and screens
-peekaboo list apps
-peekaboo list windows --app "Visual Studio Code"
-peekaboo list screens  # List all displays with indices for --screen-index
+#### Vision & Capture
+- [`see`](docs/commands/see.md) – Capture annotated UI maps, produce session IDs, and optionally run inline analysis.
+- [`image`](docs/commands/image.md) – Grab raw PNG/JPG screenshots (screens, windows, menu bar) and feed them into AI with `--analyze`.
 
-# Analyze images with AI (use image command with --analyze)
-peekaboo image --analyze "What error is shown?" --path screenshot.png
-peekaboo image --analyze "Find all buttons" --app Safari
-peekaboo see --analyze "Describe this UI" --app Chrome
+#### Core Utilities
+- [`list`](docs/commands/list.md) – Subcommands: `apps`, `windows`, `screens`, `menubar`, `permissions`.
+- [`tools`](docs/commands/tools.md) – Enumerate native + MCP tools; filter by server/source.
+- [`config`](docs/commands/config.md) – Subcommands: `init`, `show`, `edit`, `validate`, `set-credential`, `add-provider`, `list-providers`, `test-provider`, `remove-provider`, `models`.
+- [`permissions`](docs/commands/permissions.md) – `status` (default) and `grant` helpers for Screen Recording, Accessibility, etc.
+- [`learn`](docs/commands/learn.md) – Emit the full agent guide/system prompt/Commander signature dump.
+- [`run`](docs/commands/run.md) – Execute `.peekaboo.json` automation scripts (`--output`, `--no-fail-fast`).
+- [`sleep`](docs/commands/sleep.md) – Millisecond delays between scripted steps.
+- [`clean`](docs/commands/clean.md) – Prune session caches via `--all-sessions`, `--older-than`, or `--session`.
 
-# GUI Automation (v3)
-peekaboo see --app Safari               # Identify UI elements
-peekaboo see --mode screen              # Capture all screens (multi-screen)
-peekaboo see --mode screen --screen-index 1  # Capture specific screen
-peekaboo click "Submit"                 # Click button by text
-peekaboo type "Hello world"             # Type at current focus
-peekaboo type "Line 1\nLine 2"          # Type with newline (escape sequences)
-peekaboo press return                   # Press Enter key
-peekaboo press tab --count 3            # Press Tab 3 times
-peekaboo scroll --direction down --amount 5  # Scroll down 5 ticks
+#### Interaction
+- [`click`](docs/commands/click.md) – Element IDs, fuzzy queries, or coordinates; built-in wait/focus helpers.
+- [`type`](docs/commands/type.md) – Text + escape sequences, `--clear`, tab/return/escape/delete flags.
+- [`press`](docs/commands/press.md) – Special key sequences with repeat counts.
+- [`hotkey`](docs/commands/hotkey.md) – Modifier combos such as `cmd,shift,t` (terminal-safe parsing).
+- [`scroll`](docs/commands/scroll.md) – Directional scrolls with optional element targets.
+- [`swipe`](docs/commands/swipe.md) – Smooth drags between IDs or coordinates (`--duration`, `--steps`).
+- [`drag`](docs/commands/drag.md) – Drag-and-drop, modifiers, Dock/Trash targets.
+- [`move`](docs/commands/move.md) – Cursor placement (coords, element IDs, queries, or screen center).
 
-# AI Agent - Natural language automation
-peekaboo "Open Safari and search for weather"
-peekaboo agent "Fill out the contact form" --verbose
-peekaboo hotkey cmd,c                   # Press Cmd+C
+#### Windows, Menus, Apps, Spaces
+- [`window`](docs/commands/window.md) – Subcommands: `close`, `minimize`, `maximize`, `move`, `resize`, `set-bounds`, `focus`, `list`.
+- [`menu`](docs/commands/menu.md) – `click`, `click-extra`, `list`, `list-all` for app menus and menu extras.
+- [`menubar`](docs/commands/menubar.md) – `list`/`click` status-bar items by name or index.
+- [`app`](docs/commands/app.md) – `launch`, `quit`, `relaunch`, `hide`, `unhide`, `switch`, `list`.
+- [`open`](docs/commands/open.md) – macOS-style `open` with Peekaboo focus/failure handling.
+- [`dock`](docs/commands/dock.md) – `launch`, `right-click`, `hide`, `show`, `list` for Dock entries.
+- [`dialog`](docs/commands/dialog.md) – `click`, `input`, `file`, `dismiss`, `list` system dialogs.
+- [`space`](docs/commands/space.md) – `list`, `switch`, `move-window` (Spaces/virtual desktops).
 
-# AI Agent Automation (v3) 👻
-peekaboo "Open TextEdit and write Hello World"
-peekaboo agent "Take a screenshot of Safari and email it"
-peekaboo agent --verbose "Find all Finder windows and close them"
+#### Agents & Integrations
+- [`agent`](docs/commands/agent.md) – Natural-language automation (`--dry-run`, `--resume`, `--model`, audio options, session caching).
+- [`mcp`](docs/commands/mcp.md) – `serve`, `list`, `add`, `remove`, `enable`, `disable`, `info`, `test`, `call`, `inspect` (stub) for Model Context Protocol workflows.
 
-# Window Management (v3)
-peekaboo window close --app Safari      # Close Safari window
-peekaboo window minimize --app Finder   # Minimize Finder window
-peekaboo window move --app TextEdit --x 100 --y 100
-peekaboo window resize --app Terminal --width 800 --height 600
-peekaboo window focus --app "Visual Studio Code"
-
-# Multi-Screen Support (v3)
-peekaboo window resize --app Safari --target-screen 1  # Move to screen 1
-peekaboo window move --app Terminal --screen-preset next  # Move to next screen
-peekaboo window resize --app Notes --preset left_half --target-screen 0
-
-# Space (Virtual Desktop) Management
-peekaboo space list                      # List all Spaces
-peekaboo space switch --to 2             # Switch to Space 2
-peekaboo space move-window --app Safari --to 3  # Move Safari to Space 3
-
-# Menu Bar Interaction (v3)
-peekaboo menu list --app Calculator     # List all menus and items
-peekaboo menu list-all                  # List menus for frontmost app
-peekaboo menu click --app Safari --item "New Window"
-peekaboo menu click --app TextEdit --path "Format > Font > Bold"
-peekaboo menu click-extra --title "WiFi" # Click system menu extras
-
-# Configure settings
-peekaboo config init                    # Create config file
-peekaboo config edit                    # Edit in your editor
-peekaboo config show --effective        # Show current settings
-```
+Each doc contains exhaustive flag descriptions and examples; the README only covers intent and grouping. Use `peekaboo <command> --help` for inline summaries.
 
 ### Debugging with Verbose Mode
 
