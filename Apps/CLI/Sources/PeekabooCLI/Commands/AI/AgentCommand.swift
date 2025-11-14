@@ -172,10 +172,10 @@ var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.v
 private final class EscapeKeyMonitor {
     private var source: (any DispatchSourceRead)?
     private var originalTermios = termios()
-    private let handler: () -> Void
+    private let handler: @Sendable () -> Void
     private let queue = DispatchQueue(label: "peekaboo.escape.monitor")
 
-    init(handler: @escaping () -> Void) {
+    init(handler: @escaping @Sendable () -> Void) {
         self.handler = handler
     }
 
@@ -195,7 +195,9 @@ private final class EscapeKeyMonitor {
             let count = read(STDIN_FILENO, &buffer, buffer.count)
             guard count > 0 else { return }
             if buffer[..<count].contains(0x1B) {
-                self.handler()
+                Task { @MainActor in
+                    self.handler()
+                }
             }
         }
         source.setCancelHandler { [original = self.originalTermios] in
