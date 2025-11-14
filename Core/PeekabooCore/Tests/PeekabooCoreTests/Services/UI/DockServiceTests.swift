@@ -7,6 +7,9 @@ import CoreGraphics
 import Foundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("Dock Service Tests")
 struct DockServiceTests {

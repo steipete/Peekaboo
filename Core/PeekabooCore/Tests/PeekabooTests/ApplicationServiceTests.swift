@@ -3,6 +3,9 @@ import Foundation
 import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("ApplicationService Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
 struct ApplicationServiceTests {

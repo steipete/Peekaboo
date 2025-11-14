@@ -1,6 +1,9 @@
 import Foundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 /// Tests for MCP client configuration integration
 @Suite("MCP Client Configuration Tests")

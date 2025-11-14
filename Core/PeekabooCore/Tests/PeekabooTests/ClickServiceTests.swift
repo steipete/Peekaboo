@@ -2,6 +2,9 @@ import CoreGraphics
 import Foundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite(
     "ClickService Tests",
@@ -168,7 +171,8 @@ struct ClickServiceTests {
 
 // MARK: - Mock Session Manager
 
-private actor MockSessionManager: SessionManagerProtocol {
+@MainActor
+private final class MockSessionManager: SessionManagerProtocol {
     private var mockDetectionResult: ElementDetectionResult?
 
     func primeDetectionResult(_ result: ElementDetectionResult?) {

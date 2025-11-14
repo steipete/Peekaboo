@@ -1,5 +1,8 @@
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("Element Label Resolver", .tags(.fast))
 struct ElementLabelResolverTests {

@@ -6,6 +6,7 @@ import Testing
 struct MCPToolContextTests {
     @Test
     func exposesPeekabooServicesByDefault() async {
+        await self.installDefaults()
         let context = MCPToolContext.shared
         #expect(context.automation !== nil)
         #expect(context.menu !== nil)
@@ -25,6 +26,7 @@ struct MCPToolContextTests {
 
     @Test
     func taskLocalOverrideRestoresSharedValue() async throws {
+        await self.installDefaults()
         let baselineContext = MCPToolContext.shared
         let overrideContext = try await MainActor.run {
             MCPToolContext(services: PeekabooServices())
@@ -39,5 +41,11 @@ struct MCPToolContextTests {
         let after = MCPToolContext.shared
         #expect(ObjectIdentifier(after.automation as AnyObject) ==
             ObjectIdentifier(baselineContext.automation as AnyObject))
+    }
+
+    @MainActor
+    private func installDefaults() {
+        let services = PeekabooServices()
+        services.installAgentRuntimeDefaults()
     }
 }

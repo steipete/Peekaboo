@@ -5,6 +5,9 @@ import Foundation
 import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("ElementDetectionService Tests", .tags(.ui, .safe))
 @MainActor
@@ -305,7 +308,8 @@ extension ElementDetectionServiceTests {
 
 // MARK: - Mock Session Manager
 
-private actor MockSessionManager: SessionManagerProtocol {
+@MainActor
+private final class MockSessionManager: SessionManagerProtocol {
     private var mockDetectionResult: ElementDetectionResult?
     private var storedResults: [String: ElementDetectionResult] = [:]
 
