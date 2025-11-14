@@ -204,17 +204,18 @@ extension ImageCommand {
 
     private func captureApplicationWindow(_ identifier: String) async throws -> [SavedFile] {
         try await self.focusIfNeeded(appIdentifier: identifier)
+        let resolvedWindowIndex = try await self.resolveWindowIndex(for: identifier)
         let result = try await ImageCaptureBridge.captureWindow(
             services: self.services,
             appIdentifier: identifier,
-            windowIndex: self.windowIndex
+            windowIndex: resolvedWindowIndex
         )
 
         let saved = try self.saveCaptureResult(
             result,
             preferredName: self.windowTitle ?? identifier,
             index: nil,
-            windowIndex: self.windowIndex
+            windowIndex: resolvedWindowIndex
         )
 
         return [saved]
@@ -228,12 +229,14 @@ extension ImageCommand {
             target: .application(identifier)
         )
 
-        guard !windows.isEmpty else {
-            throw NotFoundError.window(app: identifier)
+        let filtered = self.filterRenderableWindows(windows, appIdentifier: identifier)
+
+        guard !filtered.isEmpty else {
+            throw PeekabooError.windowNotFound(criteria: "No shareable windows for \(identifier)")
         }
 
         var savedFiles: [SavedFile] = []
-        for (ordinal, window) in windows.enumerated() {
+        for (ordinal, window) in filtered.enumerated() {
             let result = try await ImageCaptureBridge.captureWindow(
                 services: self.services,
                 appIdentifier: identifier,
@@ -399,6 +402,145 @@ extension ImageCommand {
                 services: self.services
             )
         }
+    }
+
+    private func resolveWindowIndex(for identifier: String) async throws -> Int? {
+        if let explicitIndex = self.windowIndex {
+            return explicitIndex
+        }
+
+        do {
+            let windows = try await WindowServiceBridge.listWindows(
+                windows: self.services.windows,
+                target: .application(identifier)
+            )
+
+            guard !windows.isEmpty else {
+                return nil
+            }
+
+            return try self.selectWindowIndex(from: windows, appIdentifier: identifier)
+        } catch let error as PeekabooError {
+            switch error {
+            case .permissionDeniedAccessibility, .windowNotFound:
+                self.logger.debug(
+                    "Window enumeration unavailable; falling back to capture heuristics",
+                    metadata: ["reason": error.localizedDescription]
+                )
+                return nil
+            default:
+                throw error
+            }
+        } catch {
+            self.logger.debug(
+                "Window enumeration failed; falling back to capture heuristics",
+                metadata: ["reason": error.localizedDescription]
+            )
+            return nil
+        }
+    }
+
+    private func selectWindowIndex(from windows: [ServiceWindowInfo], appIdentifier: String) throws -> Int? {
+        if let explicitIndex = self.windowIndex {
+            guard let explicitWindow = windows.first(where: { $0.index == explicitIndex }) else {
+                throw PeekabooError.windowNotFound(criteria: "No window at index \(explicitIndex)")
+            }
+            guard WindowFiltering.isRenderable(explicitWindow) else {
+                throw PeekabooError.windowNotFound(criteria: "Window \(explicitIndex) is not shareable")
+            }
+            return explicitIndex
+        }
+
+        let filtered = self.filterRenderableWindows(windows, appIdentifier: appIdentifier)
+
+        guard !filtered.isEmpty else {
+            throw PeekabooError.windowNotFound(criteria: "No shareable windows for \(appIdentifier)")
+        }
+
+        if let title = self.windowTitle {
+            guard let match = filtered.first(where: { window in
+                window.title.localizedCaseInsensitiveContains(title)
+            }) else {
+                throw PeekabooError.windowNotFound(
+                    criteria: "title containing '\(title)' in \(appIdentifier)"
+                )
+            }
+            return match.index
+        }
+
+        if let preferred = Self.preferredWindow(from: filtered) {
+            return preferred.index
+        }
+
+        return filtered.first?.index
+    }
+
+    private func filterRenderableWindows(
+        _ windows: [ServiceWindowInfo],
+        appIdentifier: String
+    ) -> [ServiceWindowInfo] {
+        WindowFilterHelper.filter(
+            windows: windows,
+            appIdentifier: appIdentifier,
+            mode: .capture,
+            logger: self.logger
+        )
+    }
+
+    private static func preferredWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
+        guard !windows.isEmpty else {
+            return nil
+        }
+
+        let visibleWindows = windows.filter { window in
+            window.alpha > 0.05 && !window.isMinimized && !window.isOffScreen
+        }
+
+        if let ranked = visibleWindows.sorted(by: Self.compareWindows).first {
+            return ranked
+        }
+
+        return windows.sorted { $0.index < $1.index }.first
+    }
+
+    private static func compareWindows(_ lhs: ServiceWindowInfo, _ rhs: ServiceWindowInfo) -> Bool {
+        let lhsScore = Self.windowScore(lhs)
+        let rhsScore = Self.windowScore(rhs)
+        if lhsScore == rhsScore {
+            return lhs.index < rhs.index
+        }
+        return lhsScore > rhsScore
+    }
+
+    private static func windowScore(_ window: ServiceWindowInfo) -> Double {
+        var score = 0.0
+
+        if window.isMainWindow {
+            score += 2000
+        }
+
+        if window.windowLevel == 0 {
+            score += 500
+        }
+
+        if !window.isMinimized {
+            score += 300
+        }
+
+        let area = window.bounds.width * window.bounds.height
+        if area > .zero {
+            score += min(Double(area) / 150.0, 4000)
+        }
+
+        score += max(0, 600 - Double(window.index) * 40)
+
+        let minimumWidth: CGFloat = 200
+        let minimumHeight: CGFloat = 150
+        if window.bounds.width < minimumWidth || window.bounds.height < minimumHeight {
+            score -= 400
+        }
+
+        return score
     }
 
     private static let filenameDateFormatter: ISO8601DateFormatter = {

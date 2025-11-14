@@ -582,29 +582,34 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     isMainWindow: targetWindow.isOnScreen,
                     windowLevel: 0,
                     alpha: 1.0,
-                    index: resolvedIndex))
+                    index: resolvedIndex,
+                    layer: 0,
+                    isOnScreen: targetWindow.isOnScreen))
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
 
         private nonisolated static func firstRenderableWindowIndex(in windows: [SCWindow]) -> Int? {
             for (index, window) in windows.enumerated() {
-                guard self.isRenderable(window) else { continue }
+                guard let info = self.makeFilteringInfo(from: window, index: index) else { continue }
+                guard WindowFiltering.isRenderable(info) else { continue }
                 return index
             }
             return nil
         }
 
-        private nonisolated static func isRenderable(_ window: SCWindow) -> Bool {
-            if window.frame.width < 10 || window.frame.height < 10 {
-                return false
-            }
-
-            if !window.isOnScreen {
-                return false
-            }
-
-            return true
+        private nonisolated static func makeFilteringInfo(from window: SCWindow, index: Int) -> ServiceWindowInfo? {
+            ServiceWindowInfo(
+                windowID: Int(window.windowID),
+                title: window.title ?? "",
+                bounds: window.frame,
+                isMinimized: false,
+                isMainWindow: window.isOnScreen,
+                windowLevel: 0,
+                alpha: 1.0,
+                index: index,
+                layer: 0,
+                isOnScreen: window.isOnScreen)
         }
 
         func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
@@ -841,7 +846,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     isMainWindow: true,
                     windowLevel: 0,
                     alpha: 1.0,
-                    index: resolvedIndex))
+                    index: resolvedIndex,
+                    layer: targetWindow[kCGWindowLayer as String] as? Int ?? 0,
+                    isOnScreen: targetWindow[kCGWindowIsOnscreen as String] as? Bool ?? true,
+                    sharingState: (targetWindow[kCGWindowSharingState as String] as? Int).flatMap { WindowSharingState(rawValue: $0) }))
 
             return CaptureResult(
                 imageData: imageData,
@@ -1000,38 +1008,47 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             in windows: [[String: Any]]) -> Int?
         {
             for (index, window) in windows.enumerated() {
-                guard self.isRenderable(window) else { continue }
+                guard let info = self.makeFilteringInfo(from: window, index: index) else { continue }
+                guard WindowFiltering.isRenderable(info) else { continue }
                 return index
             }
             return nil
         }
 
-        private nonisolated static func isRenderable(_ window: [String: Any]) -> Bool {
+        private nonisolated static func makeFilteringInfo(
+            from window: [String: Any],
+            index: Int) -> ServiceWindowInfo?
+        {
             guard
                 let boundsDict = window[kCGWindowBounds as String] as? [String: Any],
                 let width = boundsDict["Width"] as? CGFloat,
-                let height = boundsDict["Height"] as? CGFloat
+                let height = boundsDict["Height"] as? CGFloat,
+                let x = boundsDict["X"] as? CGFloat,
+                let y = boundsDict["Y"] as? CGFloat
             else {
-                return false
+                return nil
             }
 
-            if width < 10 || height < 10 {
-                return false
-            }
+            let bounds = CGRect(x: x, y: y, width: width, height: height)
+            let windowID = window[kCGWindowNumber as String] as? Int ?? index
+            let layer = window[kCGWindowLayer as String] as? Int ?? 0
+            let alpha = window[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+            let isOnScreen = window[kCGWindowIsOnscreen as String] as? Bool ?? true
+            let sharingRaw = window[kCGWindowSharingState as String] as? Int
+            let sharingState = sharingRaw.flatMap { WindowSharingState(rawValue: $0) }
 
-            if let alpha = window[kCGWindowAlpha as String] as? CGFloat, alpha <= 0 {
-                return false
-            }
-
-            if let isOnScreen = window[kCGWindowIsOnscreen as String] as? Bool, !isOnScreen {
-                return false
-            }
-
-            if let layer = window[kCGWindowLayer as String] as? Int, layer != 0 {
-                return false
-            }
-
-            return true
+            return ServiceWindowInfo(
+                windowID: windowID,
+                title: (window[kCGWindowName as String] as? String) ?? "",
+                bounds: bounds,
+                isMinimized: false,
+                isMainWindow: index == 0,
+                windowLevel: layer,
+                alpha: alpha,
+                index: index,
+                layer: layer,
+                isOnScreen: isOnScreen,
+                sharingState: sharingState)
         }
 
         private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
@@ -1151,6 +1168,7 @@ private final class CaptureOutput: NSObject, @unchecked Sendable {
         }
     }
 }
+
 
 extension CaptureOutput: SCStreamOutput {}
 

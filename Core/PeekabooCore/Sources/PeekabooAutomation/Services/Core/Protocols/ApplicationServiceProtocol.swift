@@ -106,6 +106,12 @@ public struct ServiceApplicationInfo: Sendable, Codable, Equatable {
 }
 
 /// Information about a window for service layer
+public enum WindowSharingState: Int, Codable, Sendable {
+    case none = 0
+    case readOnly = 1
+    case readWrite = 2
+}
+
 public struct ServiceWindowInfo: Sendable, Codable, Equatable {
     /// Window identifier
     public let windowID: Int
@@ -146,6 +152,18 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
     /// Whether the window is off-screen
     public let isOffScreen: Bool
 
+    /// CG window layer (0 == standard app window)
+    public let layer: Int
+
+    /// Whether CoreGraphics reports the window as on-screen
+    public let isOnScreen: Bool
+
+    /// Sharing state exposed by AppKit/CoreGraphics
+    public let sharingState: WindowSharingState?
+
+    /// Whether our own NSWindow asked to hide from the Windows menu
+    public let isExcludedFromWindowsMenu: Bool
+
     public init(
         windowID: Int,
         title: String,
@@ -158,7 +176,11 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         spaceID: UInt64? = nil,
         spaceName: String? = nil,
         screenIndex: Int? = nil,
-        screenName: String? = nil)
+        screenName: String? = nil,
+        layer: Int = 0,
+        isOnScreen: Bool = true,
+        sharingState: WindowSharingState? = nil,
+        isExcludedFromWindowsMenu: Bool = false)
     {
         self.windowID = windowID
         self.title = title
@@ -175,5 +197,16 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         self.isOffScreen = !NSScreen.screens.contains { screen in
             screen.frame.intersects(bounds)
         }
+        self.layer = layer
+        self.isOnScreen = isOnScreen
+        self.sharingState = sharingState
+        self.isExcludedFromWindowsMenu = isExcludedFromWindowsMenu
+    }
+
+    public var isShareableWindow: Bool {
+        guard let sharingState else {
+            return true
+        }
+        return sharingState != .none
     }
 }

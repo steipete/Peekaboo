@@ -1,9 +1,11 @@
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
 @Suite("ImageCommand Tests", .serialized, .tags(.imageCapture, .unit))
+@MainActor
 struct ImageCommandTests {
     // MARK: - Test Data & Helpers
 
@@ -374,5 +376,304 @@ struct ImageCommandTests {
         } catch {
             Issue.record("Parsing should succeed even with invalid combinations")
         }
+    }
+
+    // MARK: - Window Selection Tests
+
+    @Test("Prefers the first renderable main window when overlays exist", .tags(.imageCapture))
+    func imageCommandPrefersRenderableWindow() async throws {
+        let appName = "iTerm2"
+        let overlay = ServiceWindowInfo(
+            windowID: 10,
+            title: "Command Palette",
+            bounds: CGRect(x: 0, y: 0, width: 80, height: 80),
+            isMinimized: false,
+            isMainWindow: false,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0
+        )
+        let terminal = ServiceWindowInfo(
+            windowID: 11,
+            title: "zsh — main",
+            bounds: CGRect(x: 50, y: 50, width: 1280, height: 720),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 1
+        )
+        let windows = [overlay, terminal]
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 4242,
+            bundleIdentifier: "com.googlecode.iterm2",
+            name: appName,
+            windowCount: windows.count
+        )
+        let captureResult = Self.makeCaptureResult(app: appInfo, window: terminal)
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedWindowIndex: Int?
+        captureService.captureWindowHandler = { identifier, index in
+            #expect(identifier == appName)
+            recordedWindowIndex = index
+            return captureResult
+        }
+
+        let applications = StubApplicationService(applications: [appInfo], windowsByApp: [appName: windows])
+        let windowService = StubWindowService(windowsByApp: [appName: windows])
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: applications,
+            windows: windowService,
+            screenCapture: captureService
+        )
+
+        let outputPath = Self.makeTempCapturePath("iterm.png")
+        var command = try ImageCommand.parse(["--app", appName, "--path", outputPath])
+        command.captureFocus = .background
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+        let index = try #require(recordedWindowIndex)
+        #expect(index == terminal.index)
+        try? FileManager.default.removeItem(atPath: outputPath)
+    }
+
+    @Test("Honors --window-title when selecting a window", .tags(.imageCapture))
+    func imageCommandMatchesWindowTitle() async throws {
+        let appName = "LogsApp"
+        let inspector = ServiceWindowInfo(
+            windowID: 20,
+            title: "Inspector",
+            bounds: CGRect(x: 0, y: 0, width: 640, height: 480),
+            isMinimized: false,
+            isMainWindow: false,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0
+        )
+        let logs = ServiceWindowInfo(
+            windowID: 21,
+            title: "Server Logs",
+            bounds: CGRect(x: 100, y: 80, width: 1024, height: 768),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 1
+        )
+        let windows = [inspector, logs]
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 5252,
+            bundleIdentifier: "dev.logs.app",
+            name: appName,
+            windowCount: windows.count
+        )
+
+        let captureResult = Self.makeCaptureResult(app: appInfo, window: logs)
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedWindowIndex: Int?
+        captureService.captureWindowHandler = { _, index in
+            recordedWindowIndex = index
+            return captureResult
+        }
+
+        let applications = StubApplicationService(applications: [appInfo], windowsByApp: [appName: windows])
+        let windowService = StubWindowService(windowsByApp: [appName: windows])
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: applications,
+            windows: windowService,
+            screenCapture: captureService
+        )
+
+        let outputPath = Self.makeTempCapturePath("logs.png")
+        var command = try ImageCommand.parse([
+            "--app", appName,
+            "--window-title", "Logs",
+            "--path", outputPath,
+        ])
+        command.captureFocus = .background
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+        let index = try #require(recordedWindowIndex)
+        #expect(index == logs.index)
+        try? FileManager.default.removeItem(atPath: outputPath)
+    }
+
+    @Test("Throws when --window-title does not match any window", .tags(.imageCapture))
+    func imageCommandThrowsWhenWindowTitleMissing() async throws {
+        let appName = "Notes"
+        let notesWindow = ServiceWindowInfo(
+            windowID: 31,
+            title: "All Notes",
+            bounds: CGRect(x: 0, y: 0, width: 900, height: 600),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0
+        )
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 6060,
+            bundleIdentifier: "com.example.notes",
+            name: appName,
+            windowCount: 1
+        )
+
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        let applications = StubApplicationService(applications: [appInfo], windowsByApp: [appName: [notesWindow]])
+        let windowService = StubWindowService(windowsByApp: [appName: [notesWindow]])
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: applications,
+            windows: windowService,
+            screenCapture: captureService
+        )
+
+        var command = try ImageCommand.parse([
+            "--app", appName,
+            "--window-title", "Nonexistent",
+            "--path", Self.makeTempCapturePath("notes.png"),
+        ])
+        command.captureFocus = .background
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        await #expect(throws: PeekabooError.self) {
+            try await command.run(using: runtime)
+        } catch: { error in
+            guard case .windowNotFound = error else {
+                Issue.record("Expected windowNotFound, received: \(error)")
+                return
+            }
+        }
+    }
+
+    @Test("Skips windows marked non-shareable", .tags(.imageCapture))
+    func imageCommandSkipsNonShareableWindows() async throws {
+        let appName = "Console"
+        let hidden = ServiceWindowInfo(
+            windowID: 90,
+            title: "Console Overlay",
+            bounds: CGRect(x: 0, y: 0, width: 400, height: 200),
+            index: 0,
+            sharingState: .none
+        )
+        let visible = ServiceWindowInfo(
+            windowID: 91,
+            title: "Logs",
+            bounds: CGRect(x: 40, y: 40, width: 1400, height: 900),
+            index: 1,
+            sharingState: .readWrite
+        )
+
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 7070,
+            bundleIdentifier: "dev.console",
+            name: appName,
+            windowCount: 2
+        )
+
+        let captureResult = Self.makeCaptureResult(app: appInfo, window: visible)
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedWindowIndex: Int?
+        captureService.captureWindowHandler = { _, index in
+            recordedWindowIndex = index
+            return captureResult
+        }
+
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: StubApplicationService(applications: [appInfo], windowsByApp: [appName: [hidden, visible]]),
+            windows: StubWindowService(windowsByApp: [appName: [hidden, visible]]),
+            screenCapture: captureService
+        )
+
+        let path = Self.makeTempCapturePath("console.png")
+        var command = try ImageCommand.parse(["--app", appName, "--path", path])
+        command.captureFocus = .background
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+        let index = try #require(recordedWindowIndex)
+        #expect(index == visible.index)
+        try? FileManager.default.removeItem(atPath: path)
+    }
+
+    @Test("Errors when only hidden windows remain", .tags(.imageCapture))
+    func imageCommandFailsWhenAllWindowsHidden() async throws {
+        let appName = "OverlayApp"
+        let hidden = ServiceWindowInfo(
+            windowID: 101,
+            title: "Overlay",
+            bounds: CGRect(x: 0, y: 0, width: 500, height: 300),
+            sharingState: .none
+        )
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 9090,
+            bundleIdentifier: "dev.overlay",
+            name: appName,
+            windowCount: 1
+        )
+
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: StubApplicationService(applications: [appInfo], windowsByApp: [appName: [hidden]]),
+            windows: StubWindowService(windowsByApp: [appName: [hidden]]),
+            screenCapture: captureService
+        )
+
+        var command = try ImageCommand.parse(["--app", appName, "--path", Self.makeTempCapturePath("overlay.png")])
+        command.captureFocus = .background
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        await #expect(throws: PeekabooError.self) {
+            try await command.run(using: runtime)
+        } catch: { error in
+            guard case .windowNotFound = error else {
+                Issue.record("Expected windowNotFound, received: \(error)")
+                return
+            }
+        }
+    }
+
+    private static func makeTempCapturePath(_ suffix: String) -> String {
+        FileManager.default
+            .temporaryDirectory
+            .appendingPathComponent("image-command-tests-\(UUID().uuidString)-\(suffix)")
+            .path
+    }
+
+    private static func makeCaptureResult(
+        app: ServiceApplicationInfo,
+        window: ServiceWindowInfo
+    ) -> CaptureResult {
+        let metadata = CaptureMetadata(
+            size: window.bounds.size,
+            mode: .window,
+            applicationInfo: app,
+            windowInfo: window
+        )
+        return CaptureResult(
+            imageData: Data(repeating: 0xAB, count: 32),
+            metadata: metadata
+        )
     }
 }

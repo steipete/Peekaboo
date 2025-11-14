@@ -309,55 +309,20 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                     "windowTitle": self.windowTitle ?? "any",
                 ])
 
-                // Find specific window if title is provided
-                if let title = windowTitle {
-                    self.logger.verbose(
-                        "Searching for window with title",
-                        category: "WindowSearch",
-                        metadata: ["title": title]
-                    )
-                    let windowsOutput = try await self.services.applications.listWindows(
-                        for: appIdentifier,
-                        timeout: nil
-                    )
-                    self.logger.verbose(
-                        "Found windows",
-                        category: "WindowSearch",
-                        metadata: ["count": windowsOutput.data.windows.count]
-                    )
+                let windowIndex = try await self.resolveSeeWindowIndex(
+                    appIdentifier: appIdentifier,
+                    titleFragment: self.windowTitle
+                )
 
-                    if let windowIndex = windowsOutput.data.windows.firstIndex(where: { $0.title.contains(title) }) {
-                        self.logger.verbose(
-                            "Window found at index",
-                            category: "WindowSearch",
-                            metadata: ["index": windowIndex]
-                        )
-                        self.logger.startTimer("window_capture")
-                        let result = try await ScreenCaptureBridge.captureWindow(
-                            services: self.services,
-                            appIdentifier: appIdentifier,
-                            windowIndex: windowIndex
-                        )
-                        self.logger.stopTimer("window_capture")
-                        self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
-                        return result
-                    } else {
-                        self.logger.error(
-                            "Window not found with title",
-                            category: "WindowSearch",
-                            metadata: ["title": title]
-                        )
-                        throw CaptureError.windowNotFound
-                    }
-                } else {
-                    let result = try await ScreenCaptureBridge.captureWindow(
-                        services: self.services,
-                        appIdentifier: appIdentifier,
-                        windowIndex: nil
-                    )
-                    self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
-                    return result
-                }
+                self.logger.startTimer("window_capture")
+                let result = try await ScreenCaptureBridge.captureWindow(
+                    services: self.services,
+                    appIdentifier: appIdentifier,
+                    windowIndex: windowIndex
+                )
+                self.logger.stopTimer("window_capture")
+                self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+                return result
             } else {
                 throw ValidationError("--app or --pid is required for window mode")
             }
@@ -416,6 +381,54 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         self.logger.verbose("Saved screenshot to: \(outputPath)")
 
         return outputPath
+    }
+
+    private func resolveSeeWindowIndex(appIdentifier: String, titleFragment: String?) async throws -> Int? {
+        do {
+            let windows = try await WindowServiceBridge.listWindows(
+                windows: self.services.windows,
+                target: .application(appIdentifier)
+            )
+
+            let filtered = WindowFilterHelper.filter(
+                windows: windows,
+                appIdentifier: appIdentifier,
+                mode: .capture,
+                logger: self.logger
+            )
+
+            guard !filtered.isEmpty else {
+                throw CaptureError.windowNotFound
+            }
+
+            if let fragment = titleFragment {
+                guard let match = filtered.first(where: { window in
+                    window.title.localizedCaseInsensitiveContains(fragment)
+                }) else {
+                    throw CaptureError.windowNotFound
+                }
+                return match.index
+            }
+
+            return filtered.first?.index
+        } catch let error as PeekabooError {
+            switch error {
+            case .permissionDeniedAccessibility, .windowNotFound:
+                self.logger.debug(
+                    "Window enumeration unavailable; falling back",
+                    metadata: ["app": appIdentifier, "reason": error.localizedDescription]
+                )
+                return nil
+            default:
+                throw error
+            }
+        } catch {
+            self.logger.debug(
+                "Window enumeration failed; falling back",
+                metadata: ["app": appIdentifier, "reason": error.localizedDescription]
+            )
+            return nil
+        }
     }
 
     // swiftlint:disable function_body_length

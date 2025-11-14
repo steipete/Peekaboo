@@ -684,21 +684,27 @@ extension WindowCommand {
                 let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
 
                 let target = WindowTarget.application(appIdentifier)
-                let windows = try await WindowServiceBridge.listWindows(windows: self.services.windows, target: target)
+                let rawWindows = try await WindowServiceBridge.listWindows(windows: self.services.windows, target: target)
+                let windows = WindowFilterHelper.filter(
+                    windows: rawWindows,
+                    appIdentifier: appIdentifier,
+                    mode: .list,
+                    logger: self.logger
+                )
 
                 // Convert ServiceWindowInfo to WindowInfo for consistency
-                let windowInfos = windows.enumerated().map { index, window in
+                let windowInfos = windows.map { window in
                     WindowInfo(
                         window_title: window.title,
                         window_id: UInt32(window.windowID),
-                        window_index: index,
+                        window_index: window.index,
                         bounds: WindowBounds(
                             x: Int(window.bounds.origin.x),
                             y: Int(window.bounds.origin.y),
                             width: Int(window.bounds.size.width),
                             height: Int(window.bounds.size.height)
                         ),
-                        is_on_screen: !window.isMinimized
+                        is_on_screen: window.isOnScreen
                     )
                 }
 
@@ -719,12 +725,9 @@ extension WindowCommand {
                         // Group windows by space
                         var windowsBySpace: [UInt64?: [(window: ServiceWindowInfo, index: Int)]] = [:]
 
-                        for (index, window) in windows.enumerated() {
+                        for window in windows {
                             let spaceID = window.spaceID
-                            if windowsBySpace[spaceID] == nil {
-                                windowsBySpace[spaceID] = []
-                            }
-                            windowsBySpace[spaceID]?.append((window, index))
+                            windowsBySpace[spaceID, default: []].append((window, window.index))
                         }
 
                         // Sort spaces by ID (nil first for windows not on any space)

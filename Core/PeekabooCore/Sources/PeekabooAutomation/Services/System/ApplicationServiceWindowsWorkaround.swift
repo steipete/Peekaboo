@@ -104,6 +104,18 @@ extension ApplicationService {
         let (spaceID, spaceName) = spaces.first.map { ($0.id, $0.name) } ?? (nil, nil)
         let screenInfo = screenService.screenContainingWindow(bounds: bounds)
 
+        let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
+        let sharingRaw = windowInfo[kCGWindowSharingState as String] as? Int
+        let sharingState = sharingRaw.flatMap { WindowSharingState(rawValue: $0) }
+        let excludedFromMenu: Bool
+        if ownerPID == getpid(),
+           let window = NSApp.window(withWindowNumber: windowID)
+        {
+            excludedFromMenu = window.isExcludedFromWindowsMenu
+        } else {
+            excludedFromMenu = false
+        }
+
         let info = ServiceWindowInfo(
             windowID: windowID,
             title: windowTitle,
@@ -116,7 +128,11 @@ extension ApplicationService {
             spaceID: spaceID,
             spaceName: spaceName,
             screenIndex: screenInfo?.index,
-            screenName: screenInfo?.name)
+            screenName: screenInfo?.name,
+            layer: windowLevel,
+            isOnScreen: isOnScreen,
+            sharingState: sharingState,
+            isExcludedFromWindowsMenu: excludedFromMenu)
 
         return (info: info, nextIndex: windowIndex + 1)
     }

@@ -517,7 +517,9 @@ extension ApplicationService {
             spaceID: spaces.spaceID,
             spaceName: spaces.spaceName,
             screenIndex: screen.index,
-            screenName: screen.name)
+            screenName: screen.name,
+            layer: 0,
+            isOnScreen: true)
     }
 
     private func windowBounds(for window: Element) -> CGRect {
@@ -838,11 +840,23 @@ private struct WindowEnumerationContext {
         let windowID = windowInfo[kCGWindowNumber as String] as? Int ?? index
         let windowLevel = windowInfo[kCGWindowLayer as String] as? Int ?? 0
         let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+        let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
+        let sharingRaw = windowInfo[kCGWindowSharingState as String] as? Int
+        let sharingState = sharingRaw.flatMap { WindowSharingState(rawValue: $0) }
+        let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t
         let windowTitle = (windowInfo[kCGWindowName as String] as? String) ?? ""
         let isMinimized = bounds.origin.x < -10000 || bounds.origin.y < -10000
         let spaces = spaceService.getSpacesForWindow(windowID: CGWindowID(windowID))
         let (spaceID, spaceName) = spaces.first.map { ($0.id, $0.name) } ?? (nil, nil)
         let screenInfo = screenService.screenContainingWindow(bounds: bounds)
+        let excludedFromMenu: Bool
+        if ownerPID == getpid(),
+           let window = NSApp.window(withWindowNumber: windowID)
+        {
+            excludedFromMenu = window.isExcludedFromWindowsMenu
+        } else {
+            excludedFromMenu = false
+        }
 
         return ServiceWindowInfo(
             windowID: windowID,
@@ -856,7 +870,11 @@ private struct WindowEnumerationContext {
             spaceID: spaceID,
             spaceName: spaceName,
             screenIndex: screenInfo?.index,
-            screenName: screenInfo?.name)
+            screenName: screenInfo?.name,
+            layer: windowLevel,
+            isOnScreen: isOnScreen,
+            sharingState: sharingState,
+            isExcludedFromWindowsMenu: excludedFromMenu)
     }
 
     private func fastPath(using snapshot: CGSnapshot) -> UnifiedToolOutput<ServiceWindowListData>? {

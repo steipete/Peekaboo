@@ -22,6 +22,54 @@ struct WindowCommandTests {
         #expect(output.contains("list"))
     }
 
+    @Test("window list hides non-shareable overlays")
+    func windowListSkipsHiddenWindows() async throws {
+        let appName = "OverlayApp"
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 5555,
+            bundleIdentifier: "dev.overlay",
+            name: appName
+        )
+
+        let overlay = ServiceWindowInfo(
+            windowID: 10,
+            title: "HUD",
+            bounds: CGRect(x: 0, y: 0, width: 200, height: 120),
+            layer: 8,
+            sharingState: .none
+        )
+        let mainWindow = ServiceWindowInfo(
+            windowID: 11,
+            title: "Document",
+            bounds: CGRect(x: 50, y: 50, width: 1200, height: 800),
+            index: 1,
+            sharingState: .readWrite
+        )
+
+        let context = await self.makeWindowContext(
+            appInfo: appInfo,
+            windows: [appName: [overlay, mainWindow]]
+        )
+
+        let result = try await self.runWindowCommand([
+            "window", "list",
+            "--app", appName,
+            "--json-output",
+        ], context: context)
+
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        let response = try JSONDecoder().decode(
+            CodableJSONResponse<WindowListData>.self,
+            from: Data(output.utf8)
+        )
+
+        let windows = response.data.windows
+        #expect(windows.count == 1)
+        let window = try #require(windows.first)
+        #expect(window.window_title == "Document")
+        #expect(window.window_index == mainWindow.index)
+    }
+
     @Test
     func windowCloseHelp() async throws {
         let output = try await runPeekabooCommand(["window", "close", "--help"])
