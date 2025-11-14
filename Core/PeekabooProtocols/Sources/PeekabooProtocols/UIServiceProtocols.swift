@@ -99,7 +99,7 @@ public struct ElementCollection: Sendable {
     }
 }
 
-public struct DetectedElement: Sendable {
+public struct DetectedElement: Sendable, Codable {
     public let id: String
     public let type: ElementType
     public let bounds: CGRect
