@@ -115,7 +115,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     public init(
         services: any PeekabooServiceProviding,
-        defaultModel: LanguageModel = .openai(.gpt5))
+        defaultModel: LanguageModel = .openai(.gpt51))
         throws
     {
         self.services = services
@@ -297,11 +297,11 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
         switch candidate {
         case .openai:
-            return .openai(.gpt5)
+            return .openai(.gpt51)
         case .anthropic:
             return .anthropic(.sonnet45)
         default:
-            return .openai(.gpt5)
+            return .openai(.gpt51)
         }
     }
 
@@ -313,7 +313,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 extension PeekabooAgentService {
     func generationSettings(for model: LanguageModel) -> GenerationSettings {
         switch model {
-        case .openai(.gpt5):
+        case .openai(.gpt51), .openai(.gpt5):
             GenerationSettings(
                 maxTokens: 4096,
                 providerOptions: .init(openai: .init(verbosity: .medium)))

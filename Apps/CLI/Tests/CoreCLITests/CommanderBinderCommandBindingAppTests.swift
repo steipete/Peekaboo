@@ -290,7 +290,7 @@ struct CommanderBinderAppConfigTests {
             positional: ["Open Notes and write summary"],
             options: [
                 "maxSteps": ["7"],
-                "model": ["gpt-5"],
+                "model": ["gpt-5.1"],
                 "resumeSession": ["sess-42"],
                 "audioFile": ["/tmp/input.wav"]
             ],
@@ -313,7 +313,7 @@ struct CommanderBinderAppConfigTests {
         #expect(command.quiet == true)
         #expect(command.dryRun == true)
         #expect(command.maxSteps == 7)
-        #expect(command.model == "gpt-5")
+        #expect(command.model == "gpt-5.1")
         #expect(command.resume == true)
         #expect(command.resumeSession == "sess-42")
         #expect(command.listSessions == true)

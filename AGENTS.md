@@ -5,7 +5,7 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 ## Project Status (November 5, 2025)
 
 - **Dependency refresh**: local `Commander` package (replaces swift-argument-parser), `swift-async-algorithms 1.0.4`, `swift-collections 1.3.0`, `swift-crypto 3.15.1`, `swift-system 1.6.3`, plus `swift-sdk 0.10.2` (official MCP release) across PeekabooCore/Tachikoma/Apps.
-- **Code updates**: centralized `LanguageModel.parse` in Tachikoma, replaced ad-hoc agent glyphs with `AgentDisplayTokens`, removed TermKit TUI hooks from CLI, default agent model now `gpt-5-mini`, emojis toned down in agent output, and Mac icon assets/resources registered for SwiftPM.
+- **Code updates**: centralized `LanguageModel.parse` in Tachikoma, replaced ad-hoc agent glyphs with `AgentDisplayTokens`, removed TermKit TUI hooks from CLI, default agent model now `gpt-5.1-mini`, emojis toned down in agent output, and Mac icon assets/resources registered for SwiftPM.
 - **Verification**: `swift build` clean for Tachikoma, PeekabooCore, peekaboo CLI, and macOS app; `swift test --filter TypeCommandTests` currently hits a Swift frontend signal 5 (compiler bug) even outside tmux—log captured for follow-up. Other large suites remain gated by `RUN_LOCAL_TESTS=true`.
 - **Next steps**: file Swift compiler crash with stack dump, add test subsets so automation suites compile in smaller batches, and revisit `tmux`-logged test strategy once the compiler issue is resolved.
 - **CI note**: when running long Swift test suites use bare `tmux new-session …` invocations (no `while` loops or `tmux wait-for` wrappers). Continuous polling prevents our hang detector from spotting stuck jobs, which defeats the reason we run tests inside tmux. When implementing progress checks or back-off behaviour, cap individual `sleep`/timeout intervals at **≤30s** so the hang detector retains sufficient cadence.
@@ -88,7 +88,7 @@ If you need to introduce a breaking change, add the `!`. Always make sure the ty
 
 **Claude Opus 4.1 Availability**: Claude Opus 4.1 (model ID: `claude-opus-4-1-20250805`) is currently available and working. This is not a future model - it exists and functions properly as of August 2025.
 
-**GPT-5 Availability**: GPT-5 (model ID: `gpt-5`) was released on August 7, 2025. `gpt-5-mini` is now the default OpenAI model for Peekaboo agent tasks. The API offers three sizes: `gpt-5` (best for long-form reasoning, 74.9% on SWE-bench), `gpt-5-mini` (cost-optimized default), and `gpt-5-nano` (ultra-low latency). All models support 400K total context (272K input + 128K output tokens).
+**GPT-5.1 Availability**: GPT-5.1 (model ID: `gpt-5.1`) shipped on November 14, 2025 with upgraded reasoning + tool use. `gpt-5.1-mini` is now the default OpenAI model for Peekaboo agent tasks. The API offers three sizes: `gpt-5.1` (flagship), `gpt-5.1-mini` (cost-optimized default), and `gpt-5.1-nano` (ultra-low latency). All variants retain the 400K total context window (272K input + 128K output). The GPT-5 family remains available for compatibility but is no longer the default.
 
 **GPT-5 Preamble Messages**: When instructed, GPT-5 outputs user-visible preamble messages before and between tool calls to update users on progress during longer agentic tasks. This makes complex operations more transparent by showing the AI's plan and progress at each step.
 

@@ -110,10 +110,10 @@ struct ImageAnalyzeIntegrationTests {
     @Test("Analyze with different AI provider configurations", .tags(.fast))
     func analyzeWithDifferentProviders() throws {
         let providerConfigs = [
-            "openai/gpt-5",
+            "openai/gpt-5.1",
             "anthropic/claude-sonnet-4.5",
-            "openai/gpt-5,anthropic/claude-sonnet-4.5",
-            "anthropic/claude-sonnet-4.5,openai/gpt-5",
+            "openai/gpt-5.1,anthropic/claude-sonnet-4.5",
+            "anthropic/claude-sonnet-4.5,openai/gpt-5.1",
         ]
 
         // Test that commands parse correctly with different provider configurations

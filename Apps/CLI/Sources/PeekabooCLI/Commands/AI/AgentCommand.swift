@@ -76,7 +76,7 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     @Option(name: .long, help: "Maximum number of steps the agent can take")
     var maxSteps: Int?
 
-    @Option(name: .long, help: "AI model to use (allowed: gpt-5 or claude-sonnet-4.5)")
+    @Option(name: .long, help: "AI model to use (allowed: gpt-5.1 or claude-sonnet-4.5)")
     var model: String?
     @Flag(name: .long, help: "Resume the most recent session (use with task argument)")
     var resume = false
@@ -816,7 +816,7 @@ extension AgentCommand {
         switch parsed {
         case let .openai(model):
             if Self.supportedOpenAIInputs.contains(model) {
-                return .openai(.gpt5)
+                return .openai(.gpt51)
             }
         case let .anthropic(model):
             if Self.supportedAnthropicInputs.contains(model) {
@@ -840,6 +840,9 @@ extension AgentCommand {
     }
 
     private static let supportedOpenAIInputs: Set<LanguageModel.OpenAI> = [
+        .gpt51,
+        .gpt51Mini,
+        .gpt51Nano,
         .gpt5,
         .gpt5Pro,
         .gpt5Mini,

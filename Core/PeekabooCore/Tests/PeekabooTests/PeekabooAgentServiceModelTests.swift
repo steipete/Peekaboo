@@ -17,15 +17,15 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        // Should default to GPT-5
-        #expect(agentService.defaultModel == LanguageModel.openai(.gpt5).description)
+        // Should default to GPT-5.1
+        #expect(agentService.defaultModel == LanguageModel.openai(.gpt51).description)
     }
 
     @Test("Custom default model initialization")
     @MainActor
     func customDefaultModelInitialization() async throws {
         let mockServices = self.makeServices()
-        let customModel = LanguageModel.openai(.gpt5)
+        let customModel = LanguageModel.openai(.gpt51)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: customModel)
@@ -46,7 +46,7 @@ struct PeekabooAgentServiceTests {
         let eventDelegate = MockEventDelegate()
 
         // Test with custom model parameter
-        let customModel = LanguageModel.openai(.gpt5)
+        let customModel = LanguageModel.openai(.gpt51)
 
         // This would normally make an API call, but we're testing the model selection logic
         // In a real test, we'd mock the network layer
@@ -102,7 +102,7 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.openai(.gpt5)
+        let customModel = LanguageModel.openai(.gpt51)
         _ = MockEventDelegate()
 
         // Test streaming execution with custom model
@@ -156,11 +156,11 @@ struct PeekabooAgentServiceTests {
             "describe state",
             maxSteps: 1,
             sessionId: nil,
-            model: .openai(.gpt5),
+            model: .openai(.gpt51),
             dryRun: true,
             eventDelegate: nil)
 
-        #expect(result.metadata.modelName == LanguageModel.openai(.gpt5).description)
+        #expect(result.metadata.modelName == LanguageModel.openai(.gpt51).description)
         #expect(result.content.contains("Dry run"))
     }
 }
@@ -190,7 +190,7 @@ struct ModelSelectionExecutionPathTests {
         // Test that the internal executeWithStreaming method would use the provided model
         // This is tested indirectly through the public API since executeWithStreaming is private
 
-        let customModel = LanguageModel.openai(.gpt5)
+        let customModel = LanguageModel.openai(.gpt51)
         let eventDelegate = MockEventDelegate()
 
         do {
@@ -240,7 +240,7 @@ struct ModelSelectionExecutionPathTests {
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let models: [LanguageModel] = [
-            .openai(.gpt5),
+            .openai(.gpt51),
             .anthropic(.sonnet45),
         ]
 
@@ -279,7 +279,7 @@ struct ModelSelectionEdgeCasesTests {
             eventDelegate: nil)
 
         // Dry run uses default model (GPT-5 for tests)
-        #expect(result.metadata.modelName == LanguageModel.openai(.gpt5).description)
+        #expect(result.metadata.modelName == LanguageModel.openai(.gpt51).description)
         #expect(result.content.contains("Dry run completed"))
     }
 
@@ -300,7 +300,7 @@ struct ModelSelectionEdgeCasesTests {
             dryRun: true,
             eventDelegate: nil)
 
-        #expect(result.metadata.modelName == LanguageModel.openai(.gpt5).description)
+        #expect(result.metadata.modelName == LanguageModel.openai(.gpt51).description)
         #expect(result.content.contains("Dry run completed"))
     }
 }

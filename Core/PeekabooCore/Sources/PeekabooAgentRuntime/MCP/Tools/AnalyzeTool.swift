@@ -32,7 +32,7 @@ public struct AnalyzeTool: MCPTool {
         { "image_path": "/tmp/chart.png", "question": "Which category has the highest value in this bar chart?" }
         The AI will analyze the image and attempt to answer your question based on its visual content.
 
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
         """
     }
 
@@ -142,7 +142,7 @@ public struct AnalyzeTool: MCPTool {
         }
 
         // Default fallback
-        return ("gpt-5", "openai")
+        return ("gpt-5.1", "openai")
     }
 
     private func analyzeImageWithAI(
@@ -165,7 +165,7 @@ public struct AnalyzeTool: MCPTool {
             case "anthropic":
                 languageModel = .anthropic(.opus4)
             case "openai":
-                languageModel = .openai(.gpt5)
+                languageModel = .openai(.gpt51)
             case "grok":
                 languageModel = .grok(.grok4)
             case "ollama":
@@ -205,10 +205,10 @@ public struct AnalyzeTool: MCPTool {
 
         // OpenAI models
         if lowercased.contains("gpt") {
-            return .openai(.gpt5)
+            return .openai(.gpt51)
         }
 
         // Default fallback aligns with Peekaboo's supported set
-        return .openai(.gpt5)
+        return .openai(.gpt51)
     }
 }

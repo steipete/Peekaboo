@@ -76,7 +76,7 @@ public enum AIProviderParser {
         for config in configs {
             switch config.provider.lowercased() {
             case "openai":
-                if hasOpenAI { return "gpt-5" }
+                if hasOpenAI { return "gpt-5.1" }
             case "anthropic":
                 if hasAnthropic { return "claude-sonnet-4.5" }
             case "ollama":
@@ -90,9 +90,9 @@ public enum AIProviderParser {
         if hasAnthropic {
             return "claude-sonnet-4.5"
         } else if hasOpenAI {
-            return "gpt-5"
+            return "gpt-5.1"
         } else {
-            return "gpt-5"
+            return "gpt-5.1"
         }
     }
 }

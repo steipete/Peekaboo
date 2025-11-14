@@ -21,7 +21,7 @@ public struct ListTool: MCPTool {
     - { "item_type": "running_applications" }
     - { "item_type": "application_windows", "app": "Notes", "include_window_details": ["ids", "bounds"] }
     - { "item_type": "server_status" }
-    Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5, anthropic/claude-sonnet-4.5
+    Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
     """
 
     public var inputSchema: Value {

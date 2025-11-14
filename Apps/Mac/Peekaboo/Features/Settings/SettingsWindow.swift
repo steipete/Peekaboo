@@ -79,6 +79,9 @@ struct AISettingsView: View {
     private var allModels: [(provider: String, models: [(id: String, name: String)])] {
         var models: [(provider: String, models: [(id: String, name: String)])] = [
             ("openai", [
+                ("gpt-5.1", "GPT-5.1"),
+                ("gpt-5.1-mini", "GPT-5.1 mini"),
+                ("gpt-5.1-nano", "GPT-5.1 nano"),
                 ("gpt-5", "GPT-5"),
                 ("gpt-5-mini", "GPT-5 mini"),
             ]),
@@ -103,6 +106,12 @@ struct AISettingsView: View {
     private var modelDescriptions: [String: String] {
         [
             // OpenAI models
+            "gpt-5.1": "Flagship GPT-5.1 model with 400K context and upgraded tool " +
+                "usage + reasoning.",
+            "gpt-5.1-mini": "Cost-optimized GPT-5.1 Mini with identical tools + 400K context " +
+                "at a friendlier price.",
+            "gpt-5.1-nano": "Ultra-low latency GPT-5.1 Nano tuned for snappy agent runs and " +
+                "tool calling.",
             "gpt-5": "Flagship GPT-5 model with 400K context and best-in-class " +
                 "coding + automation skills.",
             "gpt-5-mini": "Cost-optimized GPT-5 Mini with the same tools + 400K context " +

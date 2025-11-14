@@ -379,7 +379,7 @@ public final class ConfigurationManager: @unchecked Sendable {
             cliValue: cliValue,
             envVar: "PEEKABOO_AI_PROVIDERS",
             configValue: self.configuration?.aiProviders?.providers,
-            defaultValue: "openai/gpt-5,anthropic/claude-sonnet-4.5")
+            defaultValue: "openai/gpt-5.1,anthropic/claude-sonnet-4.5")
     }
 
     /// Get OpenAI API key with proper precedence
@@ -927,7 +927,7 @@ private enum ConfigurationDefaults {
     static let configurationTemplate = """
     {
       "aiProviders": {
-        "providers": "openai/gpt-5,anthropic/claude-sonnet-4.5"
+        "providers": "openai/gpt-5.1,anthropic/claude-sonnet-4.5"
       },
       "mcpClients": {},
       "defaults": {

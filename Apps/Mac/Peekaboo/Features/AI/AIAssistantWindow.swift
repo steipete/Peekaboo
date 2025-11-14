@@ -23,7 +23,7 @@ private enum AIAssistantPrompts {
 @available(macOS 14.0, *)
 public struct AIAssistantWindow: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedModel: Model = .openai(.gpt5)
+    @State private var selectedModel: Model = .openai(.gpt51)
     @State private var systemPrompt: String = AIAssistantPrompts.general
     @State private var showSettings = false
 
@@ -39,7 +39,7 @@ public struct AIAssistantWindow: View {
                         .font(.headline)
 
                     Picker("Model", selection: self.$selectedModel) {
-                        Text("GPT-5").tag(Model.openai(.gpt5))
+                        Text("GPT-5.1").tag(Model.openai(.gpt51))
                         Text("Claude Sonnet 4.5").tag(Model.anthropic(.sonnet45))
                     }
                     .pickerStyle(.menu)
@@ -121,7 +121,7 @@ public struct AIAssistantWindow: View {
 /// A more compact version suitable for smaller windows or panels
 @available(macOS 14.0, *)
 public struct CompactAIAssistant: View {
-    @State private var model: Model = .openai(.gpt5)
+    @State private var model: Model = .openai(.gpt51)
     let systemPrompt: String
 
     public init(systemPrompt: String? = nil) {
@@ -138,7 +138,7 @@ public struct CompactAIAssistant: View {
                 Spacer()
 
                 Picker("Model", selection: self.$model) {
-                    Text("GPT-5").tag(Model.openai(.gpt5))
+                    Text("GPT-5.1").tag(Model.openai(.gpt51))
                     Text("Claude Sonnet 4.5").tag(Model.anthropic(.sonnet45))
                 }
                 .pickerStyle(.menu)

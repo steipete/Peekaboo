@@ -119,7 +119,7 @@ Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdi
 - **Observed**: Build failed with `value of type 'AgentCommand' has no member 'parseModelString'` because the helper that normalizes model aliases was deleted. That broke the CLI tests and meant `peekaboo agent --model ...` no longer validated user input.
 - **Expected**: Human-facing aliases like `gpt`, `gpt-4o`, or `claude-sonnet-4.5` should downcase to the supported defaults (`gpt-5` or `claude-sonnet-4.5`) so both tests and the runtime can enforce safe model choices.
 ### Resolution — Nov 12, 2025
-- Reintroduced `AgentCommand.parseModelString(_:)`, delegating to `LanguageModel.parse` and whitelisting the GPT-5/Claude 4.5 families. GPT variants (gpt/gpt-5-mini/gpt-4o) now map to `.openai(.gpt5)`, Claude variants (opus/sonnet 4.x) map to `.anthropic(.sonnet45)`, and unsupported providers still return `nil`.
+- Reintroduced `AgentCommand.parseModelString(_:)`, delegating to `LanguageModel.parse` and whitelisting the GPT-5+/Claude 4.5 families. GPT variants (gpt/gpt-5.1/gpt-4o) now map to `.openai(.gpt51)`, Claude variants (opus/sonnet 4.x) map to `.anthropic(.sonnet45)`, and unsupported providers still return `nil`.
 - `./runner swift test --package-path Apps/CLI --filter DialogCommandTests` now builds again (the filter currently matches zero tests, but the previous compiler failure is gone), and the helper is ready for the rest of the CLI to consume when we re-enable the `--model` flag.
 
 ## Element formatter missing focus/list helpers broke every build

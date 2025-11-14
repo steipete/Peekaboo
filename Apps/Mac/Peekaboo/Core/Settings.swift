@@ -60,7 +60,7 @@ final class PeekabooSettings {
         }
     }
 
-    var customVisionModel: String = "gpt-5" {
+    var customVisionModel: String = "gpt-5.1" {
         didSet {
             self.save()
             self.updateConfigFile()
@@ -390,7 +390,7 @@ extension PeekabooSettings {
         let defaultModel = self.defaultModel(for: self.selectedProvider)
         self.selectedModel = self.userDefaults.string(forKey: self.namespaced("selectedModel")) ?? defaultModel
         self.useCustomVisionModel = self.userDefaults.bool(forKey: self.namespaced("useCustomVisionModel"))
-        self.customVisionModel = self.userDefaults.string(forKey: self.namespaced("customVisionModel")) ?? "gpt-5"
+        self.customVisionModel = self.userDefaults.string(forKey: self.namespaced("customVisionModel")) ?? "gpt-5.1"
 
         self.temperature = self.nonZeroDouble(forKey: "temperature", fallback: 0.7)
         self.maxTokens = self.nonZeroInt(forKey: "maxTokens", fallback: 16384)
@@ -765,7 +765,7 @@ extension PeekabooSettings {
     private func defaultModel(for provider: String) -> String {
         switch provider {
         case "openai":
-            "gpt-5-mini"
+            "gpt-5.1-mini"
         case "anthropic":
             "claude-sonnet-4-5-20250929"
         default:

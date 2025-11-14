@@ -12,7 +12,7 @@ struct ModelSelectionIntegrationTests {
     @MainActor
     func agentServiceModelParameterHandling() async throws {
         let testCases: [LanguageModel] = [
-            .openai(.gpt5),
+            .openai(.gpt51),
             .anthropic(.sonnet45),
         ]
 
@@ -68,7 +68,7 @@ struct ModelSelectionIntegrationTests {
     @MainActor
     func modelDescriptionsAreConsistent() async throws {
         let testModels: [LanguageModel] = [
-            .openai(.gpt5),
+            .openai(.gpt51),
             .anthropic(.sonnet45),
         ]
 
@@ -108,7 +108,7 @@ struct ModelSelectionIntegrationTests {
             defaultModel: defaultModel)
 
         // Use a different model than the default
-        let overrideModel = LanguageModel.openai(.gpt5)
+        let overrideModel = LanguageModel.openai(.gpt51)
         #expect(overrideModel.description != defaultModel.description)
 
         do {
@@ -193,7 +193,7 @@ struct ModelSelectionRegressionTests {
             services: mockServices,
             defaultModel: defaultModel)
 
-        let customModel = LanguageModel.openai(.gpt5)
+        let customModel = LanguageModel.openai(.gpt51)
         #expect(customModel.description != defaultModel.description)
 
         do {
@@ -226,7 +226,7 @@ struct ModelSelectionRegressionTests {
             services: mockServices,
             defaultModel: defaultModel)
 
-        let customModel = LanguageModel.openai(.gpt5)
+        let customModel = LanguageModel.openai(.gpt51)
         let eventDelegate = MockEventDelegate()
 
         do {

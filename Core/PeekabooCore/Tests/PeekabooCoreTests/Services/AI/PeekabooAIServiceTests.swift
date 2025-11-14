@@ -27,7 +27,7 @@ struct PeekabooAIServiceTests {
         let models = service.availableModels()
 
         #expect(!models.isEmpty)
-        #expect(models == [.openai(.gpt5), .anthropic(.sonnet45)])
+        #expect(models == [.openai(.gpt51), .anthropic(.sonnet45)])
     }
 
     @Test("Generate text with default model")
@@ -108,7 +108,7 @@ struct PeekabooAIServiceTests {
 
         let result = try await service.generateText(
             prompt: "Say 'Model test' and nothing else",
-            model: .openai(.gpt5))
+            model: .openai(.gpt51))
 
         #expect(result.lowercased().contains("model"))
         #expect(result.lowercased().contains("test"))

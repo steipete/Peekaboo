@@ -119,7 +119,7 @@ Common helpers:
 - Lives under `Apps/CLI/Sources/PeekabooCLI/Commands/AI/AgentCommand.swift`.
 - Supports natural-language tasks, `--dry-run`, `--max-steps`, `--resume` / `--resume-session`, `--list-sessions`, `--no-cache`, and audio options.
 - Output modes (`minimal`, `compact`, `enhanced`, `quiet`, `verbose`) adapt to terminal capabilities via `TerminalDetector`.
-- Uses Tachikoma to call GPT‑5 (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`) or Claude Sonnet 4.5. Session metadata is stored via `AgentSessionInfo` for resume flows.
+- Uses Tachikoma to call GPT‑5.1 (`gpt-5.1`, `gpt-5.1-mini`, `gpt-5.1-nano`) or Claude Sonnet 4.5. Session metadata is stored via `AgentSessionInfo` for resume flows.
 
 ### 7.2 MCP (`peekaboo mcp`)
 - `serve` starts `PeekabooMCPServer` over stdio/HTTP/SSE.

@@ -15,7 +15,7 @@ read_when:
 | `[task]` | Optional free-form task description. Required unless you pass `--resume`/`--resume-session`. |
 | `--dry-run` | Emit the planned steps without actually invoking tools. |
 | `--max-steps <n>` | Cap how many tool invocations the agent may issue before aborting. |
-| `--model gpt-5|claude-sonnet-4.5` | Override the default model (`gpt-5-mini`). Input is validated against the allowed list. |
+| `--model gpt-5.1|claude-sonnet-4.5` | Override the default model (`gpt-5.1-mini`). Input is validated against the allowed list. |
 | `--resume` / `--resume-session <id>` | Continue the most recent session or a specific session ID. |
 | `--list-sessions` | Print cached sessions (id, task, timestamps, message count) instead of running anything. |
 | `--no-cache` | Always create a fresh session even if one is already active. |
@@ -31,8 +31,8 @@ read_when:
 
 ## Examples
 ```bash
-# Let the agent sign into Slack using GPT-5 with verbose tracing
-polter peekaboo -- agent "Check Slack mentions" --model gpt-5 --verbose
+# Let the agent sign into Slack using GPT-5.1 with verbose tracing
+polter peekaboo -- agent "Check Slack mentions" --model gpt-5.1 --verbose
 
 # Dry-run the same task without executing any tools
 polter peekaboo -- agent "Install the nightly build" --dry-run

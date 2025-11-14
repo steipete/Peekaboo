@@ -4,7 +4,7 @@ import Tachikoma
 /// AI service for handling model interactions and AI-powered features
 @MainActor
 public final class PeekabooAIService {
-    private let defaultModel: LanguageModel = .openai(.gpt5)
+    private let defaultModel: LanguageModel = .openai(.gpt51)
 
     public init() {
         // Rely on TachikomaConfiguration to load from env/credentials (profile set at startup)
@@ -120,7 +120,7 @@ public final class PeekabooAIService {
     public func availableModels() -> [LanguageModel] {
         // List available models
         [
-            .openai(.gpt5),
+            .openai(.gpt51),
             .anthropic(.sonnet45),
         ]
     }

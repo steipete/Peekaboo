@@ -70,7 +70,7 @@ struct AIProviderParserTests {
             hasOpenAI: true,
             hasAnthropic: true,
             hasOllama: false)
-        #expect(model == "gpt-5")
+        #expect(model == "gpt-5.1")
     }
 
     @Test("Determine default model with limited providers")
@@ -114,13 +114,13 @@ struct AIProviderParserTests {
             from: "",
             hasOpenAI: true,
             hasAnthropic: false)
-        #expect(model2 == "gpt-5")
+        #expect(model2 == "gpt-5.1")
 
         let model3 = AIProviderParser.determineDefaultModel(
             from: "",
             hasOpenAI: false,
             hasAnthropic: false)
-        #expect(model3 == "gpt-5")
+        #expect(model3 == "gpt-5.1")
     }
 
     @Test("Extract provider and model")
