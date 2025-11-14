@@ -383,13 +383,43 @@ extension UIAutomationService {
             sessionId: sessionId)
 
         // Show visual feedback if available
-        let keys = Array(text).map { String($0) }
-        _ = await self.visualizerClient.showTypingFeedback(keys: keys, duration: 2.0)
+        await self.visualizeTyping(keys: Array(text).map { String($0) }, cadence: .fixed(milliseconds: typingDelay))
     }
 
     public func typeActions(_ actions: [TypeAction], cadence: TypingCadence, sessionId: String?) async throws -> TypeResult {
         self.logger.debug("Delegating typeActions to TypeService")
-        return try await self.typeService.typeActions(actions, cadence: cadence, sessionId: sessionId)
+        let result = try await self.typeService.typeActions(actions, cadence: cadence, sessionId: sessionId)
+        await self.visualizeTypeActions(actions, cadence: cadence)
+        return result
+    }
+
+    // MARK: - Typing Visualization Helpers
+
+    private func visualizeTypeActions(_ actions: [TypeAction], cadence: TypingCadence) async {
+        let keys = self.keySequence(from: actions)
+        await self.visualizeTyping(keys: keys, cadence: cadence)
+    }
+
+    private func visualizeTyping(keys: [String], cadence: TypingCadence) async {
+        guard !keys.isEmpty else { return }
+        _ = await self.visualizerClient.showTypingFeedback(keys: keys, duration: 2.0, cadence: cadence)
+    }
+
+    private func keySequence(from actions: [TypeAction]) -> [String] {
+        var sequence: [String] = []
+
+        for action in actions {
+            switch action {
+            case let .text(text):
+                sequence.append(contentsOf: text.map { String($0) })
+            case let .key(key):
+                sequence.append("{\(key.rawValue)}")
+            case .clear:
+                sequence.append(contentsOf: ["{cmd+a}", "{delete}"])
+            }
+        }
+
+        return sequence
     }
 
     // MARK: - Scroll Operations

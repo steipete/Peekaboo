@@ -147,11 +147,11 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showTypingFeedback(keys: [String], duration: TimeInterval) async -> Bool {
+    func showTypingFeedback(keys: [String], duration: TimeInterval, cadence: TypingCadence?) async -> Bool {
         self.logger.info("⌨️ Visualizer: Showing typing feedback for \(keys.count) keys: \(keys.joined())")
 
         return await self.animationQueue.enqueue(priority: .normal) {
-            await self.displayTypingWidget(keys: keys, duration: duration)
+            await self.displayTypingWidget(keys: keys, duration: duration, cadence: cadence)
         }
     }
 
@@ -352,7 +352,7 @@ extension VisualizerCoordinator {
         return true
     }
 
-    private func displayTypingWidget(keys: [String], duration: TimeInterval) async -> Bool {
+    private func displayTypingWidget(keys: [String], duration: TimeInterval, cadence: TypingCadence?) async -> Bool {
         // Check if enabled
         guard self.settings?.visualizerEnabled ?? true,
               self.settings?.typeAnimationEnabled ?? true
@@ -364,6 +364,7 @@ extension VisualizerCoordinator {
         let typingView = TypeAnimationView(
             keys: keys,
             theme: .modern,
+            cadence: cadence,
             animationSpeed: self.animationSpeedScale)
 
         // Position at bottom center of the screen where mouse is located

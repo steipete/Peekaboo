@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
@@ -74,6 +75,42 @@ struct TypeCommandTests {
         var command = try TypeCommand.parse(["Hello", "--wpm", "20"])
         #expect(throws: ValidationError.self) {
             try command.validate()
+        }
+    }
+
+    @Test("Type command rejects WPM with linear profile")
+    func typeRejectsWPMWithLinearProfile() throws {
+        var command = try TypeCommand.parse(["Hello", "--profile", "linear", "--wpm", "140"])
+        #expect(throws: ValidationError.self) {
+            try command.validate()
+        }
+    }
+
+    @Test("Type execution defaults to human cadence")
+    func runTypeCommandHumanProfile() async throws {
+        let context = await self.makeContext()
+        let result = try await self.runType(arguments: ["Hello"], context: context)
+
+        #expect(result.exitStatus == 0)
+        let call = try #require(await self.automationState(context) { $0.typeActionsCalls.first })
+        if case let .human(wordsPerMinute) = call.cadence {
+            #expect(wordsPerMinute == 140)
+        } else {
+            Issue.record("Expected human cadence")
+        }
+    }
+
+    @Test("Type execution honors linear profile and delay")
+    func runTypeCommandLinearProfile() async throws {
+        let context = await self.makeContext()
+        let result = try await self.runType(arguments: ["Hello", "--profile", "linear", "--delay", "15"], context: context)
+
+        #expect(result.exitStatus == 0)
+        let call = try #require(await self.automationState(context) { $0.typeActionsCalls.first })
+        if case let .fixed(milliseconds) = call.cadence {
+            #expect(milliseconds == 15)
+        } else {
+            Issue.record("Expected linear cadence")
         }
     }
 
@@ -204,5 +241,35 @@ struct TypeCommandTests {
 
         #expect(command.text == "Line 1\\nLine 2")
         #expect(command.delay == 50)
+    }
+
+    // MARK: - Helpers
+
+    private func runType(
+        arguments: [String],
+        context: TestServicesFactory.AutomationTestContext
+    ) async throws -> CommandRunResult {
+        try await InProcessCommandRunner.run(["type"] + arguments, services: context.services)
+    }
+
+    @MainActor
+    private func makeContext(
+        configure: ((StubAutomationService, StubSessionManager) -> Void)? = nil
+    ) async -> TestServicesFactory.AutomationTestContext {
+        await MainActor.run {
+            let context = TestServicesFactory.makeAutomationTestContext()
+            configure?(context.automation, context.sessions)
+            return context
+        }
+    }
+
+    @MainActor
+    private func automationState<T: Sendable>(
+        _ context: TestServicesFactory.AutomationTestContext,
+        _ operation: (StubAutomationService) -> T
+    ) async -> T {
+        await MainActor.run {
+            operation(context.automation)
+        }
     }
 }

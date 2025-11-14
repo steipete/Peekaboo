@@ -5,6 +5,7 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
+import PeekabooFoundation
 import SwiftUI
 
 /// A view that displays a floating keyboard widget with typing animations
@@ -17,8 +18,11 @@ struct TypeAnimationView: View {
     /// Visual theme for the keyboard
     let theme: KeyboardTheme
 
+    /// Typing cadence metadata
+    let cadence: TypingCadence?
+
     /// Animation speed multiplier (1.0 = normal, 0.5 = 2x slower, 2.0 = 2x faster)
-    var animationSpeed: Double = 1.0
+    var animationSpeed: Double
 
     /// Current key index being animated
     @State private var currentKeyIndex = 0
@@ -27,7 +31,7 @@ struct TypeAnimationView: View {
     @State private var pressedKeys: Set<String> = []
 
     /// WPM counter
-    @State private var wordsPerMinute: Int = 0
+    @State private var wordsPerMinute: Int
 
     /// Animation timer
     @State private var animationTimer: Timer?
@@ -37,6 +41,17 @@ struct TypeAnimationView: View {
 
     /// Timer for fade out
     @State private var fadeOutTimer: Timer?
+
+    // MARK: - Init
+
+    init(keys: [String], theme: KeyboardTheme, cadence: TypingCadence?, animationSpeed: Double = 1.0) {
+        self.keys = keys
+        self.theme = theme
+        self.cadence = cadence
+        let resolvedSpeed = TypeAnimationView.resolveAnimationSpeed(for: cadence, fallback: animationSpeed)
+        self.animationSpeed = resolvedSpeed
+        _wordsPerMinute = State(initialValue: TypeAnimationView.resolveWordsPerMinute(for: cadence))
+    }
 
     // MARK: - Types
 
@@ -173,7 +188,6 @@ struct TypeAnimationView: View {
         .opacity(self.opacity)
         .onAppear {
             self.startTypingAnimation()
-            self.calculateWPM()
         }
         .onDisappear {
             self.animationTimer?.invalidate()
@@ -231,18 +245,28 @@ struct TypeAnimationView: View {
         }
     }
 
-    private func calculateWPM() {
-        // Simulate WPM calculation
-        let baseWPM = 60
-        let variation = Int.random(in: -10...20)
-        self.wordsPerMinute = baseWPM + variation
+    private static func resolveAnimationSpeed(for cadence: TypingCadence?, fallback: Double) -> Double {
+        guard let cadence else { return fallback }
+        let baselineWPM = 140.0
+        switch cadence {
+        case let .human(wordsPerMinute):
+            return max(0.3, min(3.0, Double(wordsPerMinute) / baselineWPM))
+        case let .fixed(milliseconds):
+            let wpm = self.resolveWordsPerMinute(for: cadence)
+            guard wpm > 0 else { return fallback }
+            return max(0.3, min(3.0, Double(wpm) / baselineWPM))
+        }
+    }
 
-        // Update periodically
-        Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
-            Task { @MainActor in
-                let newVariation = Int.random(in: -5...5)
-                self.wordsPerMinute = max(40, min(120, self.wordsPerMinute + newVariation))
-            }
+    private static func resolveWordsPerMinute(for cadence: TypingCadence?) -> Int {
+        guard let cadence else { return 0 }
+        switch cadence {
+        case let .human(wordsPerMinute):
+            return wordsPerMinute
+        case let .fixed(milliseconds):
+            let delay = max(milliseconds, 1)
+            let charsPerMinute = 60_000 / delay
+            return max(0, charsPerMinute / 5)
         }
     }
 }
@@ -299,7 +323,8 @@ struct SpecialKeyView: View {
 #Preview("Modern Theme") {
     TypeAnimationView(
         keys: ["H", "e", "l", "l", "o", " ", "W", "o", "r", "l", "d"],
-        theme: .modern)
+        theme: .modern,
+        cadence: .human(wordsPerMinute: 140))
         .frame(width: 600, height: 300)
         .background(Color.gray.opacity(0.1))
 }
@@ -307,7 +332,8 @@ struct SpecialKeyView: View {
 #Preview("Classic Theme") {
     TypeAnimationView(
         keys: ["T", "e", "s", "t", "{return}", "1", "2", "3"],
-        theme: .classic)
+        theme: .classic,
+        cadence: .fixed(milliseconds: 20))
         .frame(width: 600, height: 300)
         .background(Color.gray.opacity(0.1))
 }
@@ -315,7 +341,8 @@ struct SpecialKeyView: View {
 #Preview("Ghostly Theme") {
     TypeAnimationView(
         keys: ["G", "h", "o", "s", "t", "{tab}", "M", "o", "d", "e"],
-        theme: .ghostly)
+        theme: .ghostly,
+        cadence: nil)
         .frame(width: 600, height: 300)
         .background(Color.gray.opacity(0.1))
 }

@@ -191,6 +191,7 @@ private enum MCPToolTestHelpers {
 @MainActor
 private final class MockAutomationService: UIAutomationServiceProtocol {
     private let accessibilityGranted: Bool
+    var lastCadence: TypingCadence?
 
     init(accessibilityGranted: Bool) {
         self.accessibilityGranted = accessibilityGranted
@@ -207,7 +208,12 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, sessionId _: String?) async
         throws {}
 
-    func typeActions(_: [TypeAction], cadence _: TypingCadence, sessionId _: String?) async throws -> TypeResult {
+    func typeActions(
+        _: [TypeAction],
+        cadence: TypingCadence,
+        sessionId _: String?) async throws -> TypeResult
+    {
+        self.lastCadence = cadence
         TypeResult(totalCharacters: 0, keyPresses: 0)
     }
 
@@ -380,6 +386,54 @@ struct MCPToolErrorHandlingTests {
             if case let .text(error) = response.content.first {
                 #expect(error.contains("Invalid coordinates format") || error.contains("coordinates"))
             }
+        }
+    }
+
+    @Test("Type tool defaults to human cadence")
+    func typeToolUsesHumanCadence() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+
+        try await MCPToolTestHelpers.withContext(automation: automation) {
+            let tool = TypeTool()
+            let response = try await tool.execute(arguments: ToolArguments(raw: ["text": "Hello"]))
+            #expect(response.isError == false)
+        }
+
+        guard let cadence = automation.lastCadence else {
+            Issue.record("Expected automation service to capture cadence")
+            return
+        }
+
+        if case let .human(wordsPerMinute) = cadence {
+            #expect(wordsPerMinute == 140)
+        } else {
+            Issue.record("Expected human cadence, got \(cadence)")
+        }
+    }
+
+    @Test("Type tool honors linear profile")
+    func typeToolLinearProfile() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+
+        try await MCPToolTestHelpers.withContext(automation: automation) {
+            let tool = TypeTool()
+            let response = try await tool.execute(arguments: ToolArguments(raw: [
+                "text": "Ping",
+                "profile": "linear",
+                "delay": 25,
+            ]))
+            #expect(response.isError == false)
+        }
+
+        guard let cadence = automation.lastCadence else {
+            Issue.record("Expected automation service to capture cadence")
+            return
+        }
+
+        if case let .fixed(milliseconds) = cadence {
+            #expect(milliseconds == 25)
+        } else {
+            Issue.record("Expected linear cadence, got \(cadence)")
         }
     }
 }

@@ -86,7 +86,7 @@ public struct VisualizerEvent: Codable, Sendable {
     public enum Payload: Codable, Sendable {
         case screenshotFlash(rect: CGRect)
         case clickFeedback(point: CGPoint, type: ClickType)
-        case typingFeedback(keys: [String], duration: TimeInterval)
+        case typingFeedback(keys: [String], duration: TimeInterval, cadence: TypingCadence? = nil)
         case scrollFeedback(point: CGPoint, direction: ScrollDirection, amount: Int)
         case mouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval)
         case swipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval)

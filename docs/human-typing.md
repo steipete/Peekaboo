@@ -51,6 +51,7 @@ Implementation: derive base delay from the formula, then apply ±20 % jitter p
   - Multiply waits by 1.35 for spaces/punctuation and divide by 1.15 for alphanumeric digraphs to create bursts.
   - Every N words, insert a “thinking pause” (configurable default 350 ms) before resuming normal jitter.
 - Fall back to the existing fixed-delay loop when cadence == `.fixed` to keep legacy scripts untouched.
+- Emit the resolved `TypingCadence` to `VisualizationClient.showTypingFeedback` so the Peekaboo.app typing widget mirrors the exact human/linear profile and WPM being used.
 
 ### Testing & Observability
 - CLI tests: ensure parsing enforces mutual exclusivity, default WPM, and JSON serialization.

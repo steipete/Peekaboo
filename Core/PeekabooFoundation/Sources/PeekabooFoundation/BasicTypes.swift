@@ -129,10 +129,60 @@ public enum TypeAction: Sendable {
     case clear
 }
 
+/// Typing profile exposed to higher-level tooling/visualizers
+public enum TypingProfile: String, Sendable, Codable {
+    case human
+    case linear
+}
+
 /// Typing cadence configuration for automation services
 public enum TypingCadence: Sendable, Equatable {
     case fixed(milliseconds: Int)
     case human(wordsPerMinute: Int)
+
+    public var profile: TypingProfile {
+        switch self {
+        case .fixed:
+            .linear
+        case .human:
+            .human
+        }
+    }
+}
+
+extension TypingCadence: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case milliseconds
+        case wordsPerMinute
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try container.decode(String.self, forKey: .kind)
+        switch kind {
+        case "fixed":
+            let value = try container.decode(Int.self, forKey: .milliseconds)
+            self = .fixed(milliseconds: value)
+        case "human":
+            let wpm = try container.decode(Int.self, forKey: .wordsPerMinute)
+            self = .human(wordsPerMinute: wpm)
+        default:
+            throw DecodingError.dataCorruptedError(forKey: .kind, in: container, debugDescription: "Unknown typing cadence kind \(kind)")
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case let .fixed(milliseconds):
+            try container.encode("fixed", forKey: .kind)
+            try container.encode(milliseconds, forKey: .milliseconds)
+        case let .human(wordsPerMinute):
+            try container.encode("human", forKey: .kind)
+            try container.encode(wordsPerMinute, forKey: .wordsPerMinute)
+        }
+    }
 }
 
 // MARK: - CustomStringConvertible Conformances

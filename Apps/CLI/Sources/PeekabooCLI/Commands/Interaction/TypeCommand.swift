@@ -67,14 +67,9 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 
     private static let defaultHumanWPM = 140
 
-    private enum TypingProfileSelection: String {
-        case human
-        case linear
-    }
-
-    private var resolvedProfile: TypingProfileSelection {
+    private var resolvedProfile: TypingProfile {
         if let profileOption,
-           let selection = TypingProfileSelection(rawValue: profileOption.lowercased())
+           let selection = TypingProfile(rawValue: profileOption.lowercased())
         {
             return selection
         }
@@ -161,7 +156,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 
     mutating func validate() throws {
         if let option = self.profileOption,
-           TypingProfileSelection(rawValue: option.lowercased()) == nil
+           TypingProfile(rawValue: option.lowercased()) == nil
         {
             throw ValidationError("--profile must be either 'human' or 'linear'")
         }

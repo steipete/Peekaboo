@@ -294,8 +294,3 @@ private struct TypeToolValidationError: Error {
     let message: String
     init(_ message: String) { self.message = message }
 }
-
-private enum TypingProfile: String {
-    case human
-    case linear
-}

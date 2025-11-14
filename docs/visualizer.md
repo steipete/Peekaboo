@@ -83,7 +83,7 @@ Peekaboo.app still respects user-facing toggles via `PeekabooSettings`; the coor
 
 | Symptom | Likely Cause | How to Fix |
 | --- | --- | --- |
-| CLI logs “Peekaboo.app is not running…” and visuals stop | UI isn’t launched (intended best-effort behavior) | Start Peekaboo.app or its login item; visuals resume automatically. |
+| CLI debug logs “Peekaboo.app is not running…” and visuals stop | UI isn’t launched (intended best-effort behavior) | Start Peekaboo.app or its login item; visuals resume automatically. |
 | JSON files accumulate but the app never animates | App missing permissions or `VisualizerEventReceiver` never started | Relaunch the app, grant Screen Recording/Accessibility, and confirm logs show receiver registration. |
 | `VisualizerEventStore` throws file I/O errors | Shared directory missing or unwritable | Make sure the parent path exists and is writable, or set `PEEKABOO_VISUALIZER_STORAGE` to a directory with proper permissions. |
 | Annotated screenshot payload fails to decode | File deleted before the app could read it (cleanup ran too soon) | Disable cleanup temporarily with `PEEKABOO_VISUALIZER_DISABLE_CLEANUP=true` or increase the cleanup interval while debugging. |
@@ -95,7 +95,7 @@ Peekaboo.app still respects user-facing toggles via `PeekabooSettings`; the coor
 2. **Trigger an event** – Run a CLI command that emits visuals, e.g. `polter peekaboo see --mode screen --annotate --path /tmp/peekaboo-see.png`.
 3. **Watch logs** – In tmux, run `./scripts/visualizer-logs.sh --last 30s --follow` to confirm both the client and receiver log the same event ID.
 4. **Inspect storage** – Check the shared directory; files should appear momentarily and disappear after the mac app consumes them. A lingering file means the receiver failed to delete it (inspect logs for the error).
-5. **Negative test** – Quit Peekaboo.app and rerun the CLI command. The client should log a single “Peekaboo.app is not running” warning and skip event creation until the UI returns.
+5. **Negative test** – Quit Peekaboo.app and rerun the CLI command. With `--verbose` or higher logging, the client should emit a single “Peekaboo.app is not running” debug line and skip event creation until the UI returns.
 6. **Optional overrides** – Set `PEEKABOO_VISUALIZER_FORCE_APP=true` and re-run inside a headless harness to confirm the transport still works without the UI present (the files remain until you delete them).
 
 ## Visual Feedback Designs
@@ -119,6 +119,7 @@ Peekaboo.app still respects user-facing toggles via `PeekabooSettings`; the coor
 - **Effect**: Keys light up as typed
 - **Special Keys**: Visual representation (⏎, ⇥, ⌫)
 - **Position**: Semi-transparent, doesn't block content
+- **Cadence**: Widget mirrors the actual `TypingCadence` (human vs. linear) and displays the live WPM/delay coming from `VisualizerEvent.typingFeedback`.
 - **Duration**: Visible during typing + 500ms fade
 
 ### Scrolling 📜
@@ -268,7 +269,7 @@ PEEKABOO_VISUALIZER_FORCE_APP=true        # Pretend the CLI is running inside th
 ### Typing Widget
 - **Themes**: Multiple keyboard themes (classic, modern, ghostly)
 - **Effects**: Keys have satisfying press animations
-- **Speed**: Shows WPM for fun
+- **Cadence-aware**: Uses the incoming `TypingCadence` to scale animation speed and display real WPM (linear profiles convert delay to WPM).
 
 ### App Launch
 - **Personality**: Each app can have custom launch animation

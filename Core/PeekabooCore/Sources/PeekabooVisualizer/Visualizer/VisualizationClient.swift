@@ -116,8 +116,12 @@ public final class VisualizationClient: @unchecked Sendable {
         self.dispatch(.clickFeedback(point: point, type: type))
     }
 
-    public func showTypingFeedback(keys: [String], duration: TimeInterval) async -> Bool {
-        self.dispatch(.typingFeedback(keys: keys, duration: duration))
+    public func showTypingFeedback(
+        keys: [String],
+        duration: TimeInterval,
+        cadence: TypingCadence? = nil) async -> Bool
+    {
+        self.dispatch(.typingFeedback(keys: keys, duration: duration, cadence: cadence))
     }
 
     public func showScrollFeedback(at point: CGPoint, direction: ScrollDirection, amount: Int) async -> Bool {
@@ -197,7 +201,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
         guard self.isRunningInsideMacApp || Self.isVisualizerAppRunning() else {
             if !self.hasLoggedMissingApp {
-                self.log(.info, "Peekaboo.app is not running; visual feedback unavailable until it launches")
+                self.log(.debug, "Peekaboo.app is not running; visual feedback unavailable until it launches")
                 self.hasLoggedMissingApp = true
             }
             return false

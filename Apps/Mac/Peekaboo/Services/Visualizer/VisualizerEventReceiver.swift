@@ -99,8 +99,8 @@ final class VisualizerEventReceiver {
             await self.coordinator.showScreenshotFlash(in: rect)
         case let .clickFeedback(point, type):
             await self.coordinator.showClickFeedback(at: point, type: type)
-        case let .typingFeedback(keys, duration):
-            await self.coordinator.showTypingFeedback(keys: keys, duration: duration)
+        case let .typingFeedback(keys, duration, cadence):
+            await self.coordinator.showTypingFeedback(keys: keys, duration: duration, cadence: cadence)
         case let .scrollFeedback(point, direction, amount):
             await self.coordinator.showScrollFeedback(at: point, direction: direction, amount: amount)
         case let .mouseMovement(from, to, duration):
