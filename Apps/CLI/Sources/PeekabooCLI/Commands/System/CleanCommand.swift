@@ -46,7 +46,7 @@ struct CleanCommand: OutputFormattable {
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     private var configuration: CommandRuntime.Configuration { self.resolvedRuntime.configuration }

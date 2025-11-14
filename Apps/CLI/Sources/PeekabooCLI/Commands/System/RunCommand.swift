@@ -31,7 +31,7 @@ struct RunCommand: OutputFormattable {
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     private var configuration: CommandRuntime.Configuration { self.resolvedRuntime.configuration }
@@ -124,14 +124,14 @@ struct ScriptExecutionResult: Codable {
 }
 
 private enum ProcessServiceBridge {
-    static func loadScript(services: PeekabooServices, path: String) async throws -> PeekabooScript {
+    static func loadScript(services: any PeekabooServiceProviding, path: String) async throws -> PeekabooScript {
         try await Task { @MainActor in
             try await services.process.loadScript(from: path)
         }.value
     }
 
     static func executeScript(
-        services: PeekabooServices,
+        services: any PeekabooServiceProviding,
         _ script: PeekabooScript,
         failFast: Bool,
         verbose: Bool

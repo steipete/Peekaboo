@@ -134,7 +134,7 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     }
 
     @MainActor
-    private var services: PeekabooServices {
+    private var services: any PeekabooServiceProviding {
         self.resolvedRuntime.services
     }
 
@@ -151,7 +151,7 @@ struct AgentCommand: RuntimeOptionsConfigurable {
 extension AgentCommand {
     @MainActor
     mutating func run() async throws {
-        let runtime = CommandRuntime(options: CommandRuntimeOptions())
+        let runtime = CommandRuntime.makeDefault()
         try await self.run(using: runtime)
     }
 
@@ -266,7 +266,7 @@ extension AgentCommand {
     private func initializeMCP() async {
         if ProcessInfo.processInfo.environment["PEEKABOO_ENABLE_BROWSER_MCP"] == "1" {
             let defaultBrowser = TachikomaMCP.MCPServerConfig(
-                transport: "stdio-pty",
+                transport: "stdio",
                 command: "npx",
                 args: ["-y", "@agent-infra/mcp-server-browser@latest"],
                 env: [:],

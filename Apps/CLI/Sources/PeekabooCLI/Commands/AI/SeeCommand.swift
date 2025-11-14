@@ -8,14 +8,14 @@ import PeekabooFoundation
 import ScreenCaptureKit
 
 private enum ScreenCaptureBridge {
-    static func captureFrontmost(services: PeekabooServices) async throws -> CaptureResult {
+    static func captureFrontmost(services: any PeekabooServiceProviding) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureFrontmost()
         }.value
     }
 
     static func captureWindow(
-        services: PeekabooServices,
+        services: any PeekabooServiceProviding,
         appIdentifier: String,
         windowIndex: Int?
     ) async throws -> CaptureResult {
@@ -24,13 +24,13 @@ private enum ScreenCaptureBridge {
         }.value
     }
 
-    static func captureArea(services: PeekabooServices, rect: CGRect) async throws -> CaptureResult {
+    static func captureArea(services: any PeekabooServiceProviding, rect: CGRect) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureArea(rect)
         }.value
     }
 
-    static func captureScreen(services: PeekabooServices, displayIndex: Int?) async throws -> CaptureResult {
+    static func captureScreen(services: any PeekabooServiceProviding, displayIndex: Int?) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureScreen(displayIndex: displayIndex)
         }.value
@@ -84,7 +84,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
 
     private var logger: Logger { self.resolvedRuntime.logger }
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     var outputLogger: Logger { self.logger }
 
     @MainActor
@@ -235,7 +235,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         // Detect UI elements with window context
         self.logger.operationStart("element_detection")
         let detectionResult = try await AutomationServiceBridge.detectElements(
-            services: self.services,
+            automation: self.services.automation,
             imageData: captureResult.imageData,
             sessionId: nil,
             windowContext: windowContext

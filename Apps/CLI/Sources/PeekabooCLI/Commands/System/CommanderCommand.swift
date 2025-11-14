@@ -24,7 +24,7 @@ struct CommanderCommand: ParsableCommand {
         let summaries = CommanderRegistryBuilder.buildCommandSummaries()
         let outputStruct = CommanderDiagnostics(commands: summaries)
         let runtimeOptions = CommandRuntimeOptions(verbose: verbose, jsonOutput: json)
-        let runtime = CommandRuntime(options: runtimeOptions)
+        let runtime = CommandRuntime.makeDefault(options: runtimeOptions)
         CommanderDiagnosticsReporter(runtime: runtime).report(outputStruct)
     }
 }

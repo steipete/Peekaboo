@@ -60,7 +60,7 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
 
@@ -87,7 +87,7 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         let startTime = Date()
 
         do {
-            let menuBarItems = try await MenuServiceBridge.listMenuBarItems(services: self.services)
+            let menuBarItems = try await MenuServiceBridge.listMenuBarItems(menu: self.services.menu)
 
             if self.jsonOutput {
                 let output = ListJSONOutput(
@@ -146,9 +146,9 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         do {
             let result: PeekabooCore.ClickResult
             if let idx = self.index {
-                result = try await MenuServiceBridge.clickMenuBarItem(at: idx, services: self.services)
+                result = try await MenuServiceBridge.clickMenuBarItem(at: idx, menu: self.services.menu)
             } else if let name = self.itemName {
-                result = try await MenuServiceBridge.clickMenuBarItem(named: name, services: self.services)
+                result = try await MenuServiceBridge.clickMenuBarItem(named: name, menu: self.services.menu)
             } else {
                 throw PeekabooError.invalidInput("Please provide either a menu bar item name or use --index")
             }

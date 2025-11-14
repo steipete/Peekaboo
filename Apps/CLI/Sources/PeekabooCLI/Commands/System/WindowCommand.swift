@@ -170,7 +170,7 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -187,14 +187,14 @@ extension WindowCommand {
 
                 // Get window info before action
                 let windows = try await WindowServiceBridge.listWindows(
-                    services: self.services,
+                    windows: self.services.windows,
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
                 let appName = self.windowOptions.app ?? "Unknown"
 
                 // Perform the action
-                try await WindowServiceBridge.closeWindow(services: self.services, target: target)
+                try await WindowServiceBridge.closeWindow(windows: self.services.windows, target: target)
 
                 let data = createWindowActionResult(
                     action: "close",
@@ -226,7 +226,7 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -243,14 +243,14 @@ extension WindowCommand {
 
                 // Get window info before action
                 let windows = try await WindowServiceBridge.listWindows(
-                    services: self.services,
+                    windows: self.services.windows,
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
                 let appName = self.windowOptions.app ?? "Unknown"
 
                 // Perform the action
-                try await WindowServiceBridge.minimizeWindow(services: self.services, target: target)
+                try await WindowServiceBridge.minimizeWindow(windows: self.services.windows, target: target)
 
                 let data = createWindowActionResult(
                     action: "minimize",
@@ -282,7 +282,7 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -299,14 +299,14 @@ extension WindowCommand {
 
                 // Get window info before action
                 let windows = try await WindowServiceBridge.listWindows(
-                    services: self.services,
+                    windows: self.services.windows,
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
                 let appName = self.windowOptions.app ?? "Unknown"
 
                 // Perform the action
-                try await WindowServiceBridge.maximizeWindow(services: self.services, target: target)
+                try await WindowServiceBridge.maximizeWindow(windows: self.services.windows, target: target)
 
                 let data = createWindowActionResult(
                     action: "maximize",
@@ -340,7 +340,7 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -361,7 +361,7 @@ extension WindowCommand {
 
                 // Get window info before action
                 let windows = try await WindowServiceBridge.listWindows(
-                    services: self.services,
+                    windows: self.services.windows,
                     target: self.windowOptions.toWindowTarget()
                 )
                 self.logger.debug("Found \(windows.count) windows")
@@ -384,7 +384,7 @@ extension WindowCommand {
                     )
                 } else {
                     // Fallback to regular focus if no window ID
-                    try await WindowServiceBridge.focusWindow(services: self.services, target: target)
+                    try await WindowServiceBridge.focusWindow(windows: self.services.windows, target: target)
                 }
 
                 let data = createWindowActionResult(
@@ -429,7 +429,7 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -446,7 +446,7 @@ extension WindowCommand {
 
                 // Get window info
                 let windows = try await WindowServiceBridge.listWindows(
-                    services: self.services,
+                    windows: self.services.windows,
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
@@ -454,7 +454,7 @@ extension WindowCommand {
 
                 // Move the window
                 let newOrigin = CGPoint(x: x, y: y)
-                try await WindowServiceBridge.moveWindow(services: self.services, target: target, to: newOrigin)
+                try await WindowServiceBridge.moveWindow(windows: self.services.windows, target: target, to: newOrigin)
 
                 // Create result with new bounds
                 let updatedInfo = windowInfo.map { info in
@@ -508,7 +508,7 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -525,7 +525,7 @@ extension WindowCommand {
 
                 // Get window info
                 let windows = try await WindowServiceBridge.listWindows(
-                    services: self.services,
+                    windows: self.services.windows,
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
@@ -533,7 +533,7 @@ extension WindowCommand {
 
                 // Resize the window
                 let newSize = CGSize(width: width, height: height)
-                try await WindowServiceBridge.resizeWindow(services: self.services, target: target, to: newSize)
+                try await WindowServiceBridge.resizeWindow(windows: self.services.windows, target: target, to: newSize)
 
                 let refreshedWindowInfo = await self.windowOptions.refetchWindowInfo(
                     services: self.services,
@@ -587,7 +587,7 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -604,7 +604,7 @@ extension WindowCommand {
 
                 // Get window info
                 let windows = try await WindowServiceBridge.listWindows(
-                    services: self.services,
+                    windows: self.services.windows,
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
@@ -613,7 +613,7 @@ extension WindowCommand {
                 // Set bounds
                 let newBounds = CGRect(x: x, y: y, width: width, height: height)
                 try await WindowServiceBridge.setWindowBounds(
-                    services: self.services,
+                    windows: self.services.windows,
                     target: target,
                     bounds: newBounds
                 )
@@ -663,7 +663,7 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -683,7 +683,7 @@ extension WindowCommand {
                 let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
 
                 let target = WindowTarget.application(appIdentifier)
-                let windows = try await WindowServiceBridge.listWindows(services: self.services, target: target)
+                let windows = try await WindowServiceBridge.listWindows(windows: self.services.windows, target: target)
 
                 // Convert ServiceWindowInfo to WindowInfo for consistency
                 let windowInfos = windows.enumerated().map { index, window in

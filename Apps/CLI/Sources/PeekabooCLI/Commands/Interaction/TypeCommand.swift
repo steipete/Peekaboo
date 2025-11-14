@@ -45,7 +45,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
@@ -135,7 +135,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 
     private func executeTypeActions(actions: [TypeAction], sessionId: String?) async throws -> TypeResult {
         let request = TypeActionsRequest(actions: actions, typingDelay: self.delay, sessionId: sessionId)
-        return try await AutomationServiceBridge.typeActions(services: self.services, request: request)
+        return try await AutomationServiceBridge.typeActions(automation: self.services.automation, request: request)
     }
 
     private func renderResult(_ typeResult: TypeResult, startTime: Date) {

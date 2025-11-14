@@ -52,7 +52,7 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
 
@@ -69,28 +69,29 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
         let toolRegistry = MCPToolRegistry()
         let clientManager = TachikomaMCPClientManager.shared
+        let toolContext = MCPToolContext(services: self.services)
 
         let nativeTools: [any MCPTool] = [
-            ImageTool(),
+            ImageTool(context: toolContext),
             AnalyzeTool(),
-            ListTool(),
-            PermissionsTool(),
+            ListTool(context: toolContext),
+            PermissionsTool(context: toolContext),
             SleepTool(),
-            SeeTool(),
-            ClickTool(),
-            TypeTool(),
-            ScrollTool(),
-            HotkeyTool(),
-            SwipeTool(),
-            DragTool(),
-            MoveTool(),
-            AppTool(),
-            WindowTool(),
-            MenuTool(),
-            MCPAgentTool(),
-            DockTool(),
-            DialogTool(),
-            SpaceTool(),
+            SeeTool(context: toolContext),
+            ClickTool(context: toolContext),
+            TypeTool(context: toolContext),
+            ScrollTool(context: toolContext),
+            HotkeyTool(context: toolContext),
+            SwipeTool(context: toolContext),
+            DragTool(context: toolContext),
+            MoveTool(context: toolContext),
+            AppTool(context: toolContext),
+            WindowTool(context: toolContext),
+            MenuTool(context: toolContext),
+            MCPAgentTool(context: toolContext),
+            DockTool(context: toolContext),
+            DialogTool(context: toolContext),
+            SpaceTool(context: toolContext),
         ]
 
         toolRegistry.register(nativeTools)

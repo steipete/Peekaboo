@@ -46,7 +46,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -94,7 +94,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 steps: self.steps,
                 modifiers: self.modifiers
             )
-            try await AutomationServiceBridge.drag(services: self.services, request: dragRequest)
+            try await AutomationServiceBridge.drag(automation: self.services.automation, request: dragRequest)
 
             try await Task.sleep(nanoseconds: 100_000_000)
 
@@ -179,7 +179,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
 
         let target = ClickTarget.elementId(element)
         let waitResult = try await AutomationServiceBridge.waitForElement(
-            services: self.services,
+            automation: self.services.automation,
             target: target,
             timeout: 5.0,
             sessionId: sessionId

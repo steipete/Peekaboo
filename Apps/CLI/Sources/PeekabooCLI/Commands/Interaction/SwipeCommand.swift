@@ -43,7 +43,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
@@ -96,7 +96,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
             // Perform swipe using UIAutomationService
             try await AutomationServiceBridge.swipe(
-                services: self.services,
+                automation: self.services.automation,
                 from: sourcePoint,
                 to: destPoint,
                 duration: self.duration,
@@ -153,7 +153,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             // Resolve from session using waitForElement
             let target = ClickTarget.elementId(element)
             let waitResult = try await AutomationServiceBridge.waitForElement(
-                services: self.services,
+                automation: self.services.automation,
                 target: target,
                 timeout: waitTimeout,
                 sessionId: activeSessionId

@@ -78,7 +78,7 @@ extension MenuCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -125,13 +125,13 @@ extension MenuCommand {
 
                 if let itemName = normalizedItem {
                     try await MenuServiceBridge.clickMenuItemByName(
-                        services: self.services,
+                        menu: self.services.menu,
                         appIdentifier: appIdentifier,
                         itemName: itemName
                     )
                 } else if let path = normalizedPath {
                     try await MenuServiceBridge.clickMenuItem(
-                        services: self.services,
+                        menu: self.services.menu,
                         appIdentifier: appIdentifier,
                         itemPath: path
                     )
@@ -236,7 +236,7 @@ extension MenuCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -248,7 +248,7 @@ extension MenuCommand {
 
             do {
                 let clickResult = try await MenuServiceBridge
-                    .clickMenuBarItem(named: self.title, services: self.services)
+                    .clickMenuBarItem(named: self.title, menu: self.services.menu)
 
                 if self.item != nil {
                     try await Task.sleep(nanoseconds: 200_000_000)
@@ -348,7 +348,7 @@ extension MenuCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -368,7 +368,7 @@ extension MenuCommand {
                 )
 
                 let menuStructure = try await MenuServiceBridge.listMenus(
-                    services: self.services,
+                    menu: self.services.menu,
                     appIdentifier: appIdentifier
                 )
                 let filteredMenus = self.includeDisabled ? menuStructure.menus : self
@@ -563,7 +563,7 @@ extension MenuCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -574,8 +574,8 @@ extension MenuCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let frontmostMenus = try await MenuServiceBridge.listFrontmostMenus(services: self.services)
-                let menuExtras = try await MenuServiceBridge.listMenuExtras(services: self.services)
+                let frontmostMenus = try await MenuServiceBridge.listFrontmostMenus(menu: self.services.menu)
+                let menuExtras = try await MenuServiceBridge.listMenuExtras(menu: self.services.menu)
 
                 let filteredMenus = self.includeDisabled ? frontmostMenus.menus : self
                     .filterDisabledMenus(frontmostMenus.menus)
@@ -794,7 +794,7 @@ extension MenuCommand {
 private func ensureFocusIgnoringMissingWindows(
     applicationName: String,
     options: any FocusOptionsProtocol,
-    services: PeekabooServices,
+    services: any PeekabooServiceProviding,
     logger: Logger
 ) async throws {
     do {

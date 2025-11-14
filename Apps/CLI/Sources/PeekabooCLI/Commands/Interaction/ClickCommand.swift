@@ -69,7 +69,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -116,7 +116,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                     // Click by element ID with auto-wait
                     clickTarget = .elementId(elementId)
                     waitResult = try await AutomationServiceBridge.waitForElement(
-                        services: self.services,
+                        automation: self.services.automation,
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
                         sessionId: activeSessionId.isEmpty ? nil : activeSessionId
@@ -135,7 +135,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                     // Find element by query with auto-wait
                     clickTarget = .query(searchQuery)
                     waitResult = try await AutomationServiceBridge.waitForElement(
-                        services: self.services,
+                        automation: self.services.automation,
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
                         sessionId: activeSessionId.isEmpty ? nil : activeSessionId
@@ -165,7 +165,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             if case .coordinates = clickTarget {
                 // For coordinate clicks, pass nil session ID
                 try await AutomationServiceBridge.click(
-                    services: self.services,
+                    automation: self.services.automation,
                     target: clickTarget,
                     clickType: clickType,
                     sessionId: nil
@@ -173,7 +173,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             } else {
                 // For element-based clicks, pass the session ID
                 try await AutomationServiceBridge.click(
-                    services: self.services,
+                    automation: self.services.automation,
                     target: clickTarget,
                     clickType: clickType,
                     sessionId: activeSessionId.isEmpty ? nil : activeSessionId

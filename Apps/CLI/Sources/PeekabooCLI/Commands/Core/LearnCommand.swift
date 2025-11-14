@@ -22,7 +22,7 @@ struct LearnCommand {
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let systemPrompt = AgentSystemPrompt.generate()
-        let tools = ToolRegistry.allTools
+        let tools = ToolRegistry.allTools()
         self.outputComprehensiveGuide(systemPrompt: systemPrompt, tools: tools)
     }
 

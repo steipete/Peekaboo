@@ -60,7 +60,7 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -149,7 +149,7 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -238,7 +238,7 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -323,7 +323,7 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -405,7 +405,7 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -499,7 +499,7 @@ struct DialogCommand: ParsableCommand {
     private static func focusDialogAppIfNeeded(
         appName: String?,
         windowTitle: String?,
-        services: PeekabooServices,
+        services: any PeekabooServiceProviding,
         logger: Logger
     ) async {
         guard let appName, !appName.isEmpty else { return }
@@ -511,7 +511,7 @@ struct DialogCommand: ParsableCommand {
         }
 
         do {
-            try await WindowServiceBridge.focusWindow(services: services, target: target)
+            try await WindowServiceBridge.focusWindow(windows: services.windows, target: target)
             try await Task.sleep(nanoseconds: 150_000_000)
         } catch {
             if let focusError = error as? FocusError, case .windowNotFound = focusError {

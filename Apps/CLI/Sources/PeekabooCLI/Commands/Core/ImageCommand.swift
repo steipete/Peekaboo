@@ -59,7 +59,7 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     }
 
     private var logger: Logger { self.resolvedRuntime.logger }
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
     var outputLogger: Logger { self.logger }
 
@@ -224,7 +224,7 @@ extension ImageCommand {
         try await self.focusIfNeeded(appIdentifier: identifier)
 
         let windows = try await WindowServiceBridge.listWindows(
-            services: self.services,
+            windows: self.services.windows,
             target: .application(identifier)
         )
 
@@ -429,14 +429,14 @@ extension ImageFormat {
 // MARK: - Capture Bridge
 
 private enum ImageCaptureBridge {
-    static func captureScreen(services: PeekabooServices, displayIndex: Int?) async throws -> CaptureResult {
+    static func captureScreen(services: any PeekabooServiceProviding, displayIndex: Int?) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureScreen(displayIndex: displayIndex)
         }.value
     }
 
     static func captureWindow(
-        services: PeekabooServices,
+        services: any PeekabooServiceProviding,
         appIdentifier: String,
         windowIndex: Int?
     ) async throws -> CaptureResult {
@@ -445,13 +445,13 @@ private enum ImageCaptureBridge {
         }.value
     }
 
-    static func captureFrontmost(services: PeekabooServices) async throws -> CaptureResult {
+    static func captureFrontmost(services: any PeekabooServiceProviding) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureFrontmost()
         }.value
     }
 
-    static func captureArea(services: PeekabooServices, rect: CGRect) async throws -> CaptureResult {
+    static func captureArea(services: any PeekabooServiceProviding, rect: CGRect) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureArea(rect)
         }.value

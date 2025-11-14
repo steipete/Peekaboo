@@ -41,7 +41,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
         return runtime
     }
 
-    private var services: PeekabooServices { self.resolvedRuntime.services }
+    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -125,7 +125,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
                 // Wait for element to be available
                 let waitResult = try await AutomationServiceBridge.waitForElement(
-                    services: self.services,
+                    automation: self.services.automation,
                     target: .query(query),
                     timeout: 5.0,
                     sessionId: activeSessionId
@@ -160,7 +160,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
             // Perform the movement
             try await AutomationServiceBridge.moveMouse(
-                services: self.services,
+                automation: self.services.automation,
                 to: targetLocation,
                 duration: moveDuration,
                 steps: self.smooth ? self.steps : 1

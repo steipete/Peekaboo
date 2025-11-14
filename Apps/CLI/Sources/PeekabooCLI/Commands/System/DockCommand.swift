@@ -58,7 +58,7 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -69,8 +69,8 @@ extension DockCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                try await DockServiceBridge.launchFromDock(services: self.services, appName: self.app)
-                let dockItem = try await DockServiceBridge.findDockItem(services: self.services, name: self.app)
+                try await DockServiceBridge.launchFromDock(dock: self.services.dock, appName: self.app)
+                let dockItem = try await DockServiceBridge.findDockItem(dock: self.services.dock, name: self.app)
 
                 if self.jsonOutput {
                     struct DockLaunchResult: Codable {
@@ -112,7 +112,7 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -123,9 +123,9 @@ extension DockCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let dockItem = try await DockServiceBridge.findDockItem(services: self.services, name: self.app)
+                let dockItem = try await DockServiceBridge.findDockItem(dock: self.services.dock, name: self.app)
                 try await DockServiceBridge.rightClickDockItem(
-                    services: self.services,
+                    dock: self.services.dock,
                     appName: self.app,
                     menuItem: self.select
                 )
@@ -172,7 +172,7 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -183,7 +183,7 @@ extension DockCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                try await DockServiceBridge.hideDock(services: self.services)
+                try await DockServiceBridge.hideDock(dock: self.services.dock)
 
                 if self.jsonOutput {
                     struct DockHideResult: Codable { let action: String }
@@ -215,7 +215,7 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -226,7 +226,7 @@ extension DockCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                try await DockServiceBridge.showDock(services: self.services)
+                try await DockServiceBridge.showDock(dock: self.services.dock)
 
                 if self.jsonOutput {
                     struct DockShowResult: Codable { let action: String }
@@ -260,7 +260,7 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -272,7 +272,7 @@ extension DockCommand {
 
             do {
                 let dockItems = try await DockServiceBridge.listDockItems(
-                    services: self.services,
+                    dock: self.services.dock,
                     includeAll: self.includeAll
                 )
 

@@ -34,7 +34,7 @@ struct PermissionsCommand: ParsableCommand {
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
-            let permissions = await PermissionHelpers.getCurrentPermissions()
+            let permissions = await PermissionHelpers.getCurrentPermissions(services: runtime.services)
             if self.jsonOutput {
                 outputSuccessCodable(data: permissions, logger: self.outputLogger)
             } else {
@@ -63,7 +63,7 @@ struct PermissionsCommand: ParsableCommand {
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
 
-            let permissions = await PermissionHelpers.getCurrentPermissions()
+            let permissions = await PermissionHelpers.getCurrentPermissions(services: runtime.services)
             if self.jsonOutput {
                 outputSuccessCodable(data: permissions, logger: self.outputLogger)
             } else {

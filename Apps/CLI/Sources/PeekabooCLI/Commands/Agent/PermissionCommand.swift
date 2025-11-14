@@ -54,7 +54,7 @@ extension PermissionCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -72,10 +72,11 @@ extension PermissionCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
         }
 
+        @MainActor
         private func fetchPermissionStatus() async -> AgentPermissionStatusPayload {
-            async let screenRecording = self.services.screenCapture.hasScreenRecordingPermission()
-            async let accessibility = AutomationServiceBridge.hasAccessibilityPermission(services: self.services)
-            return await AgentPermissionStatusPayload(
+            let screenRecording = await self.services.screenCapture.hasScreenRecordingPermission()
+            let accessibility = await AutomationServiceBridge.hasAccessibilityPermission(automation: self.services.automation)
+            return AgentPermissionStatusPayload(
                 screen_recording: screenRecording,
                 accessibility: accessibility
             )
@@ -130,7 +131,7 @@ extension PermissionCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -267,7 +268,7 @@ extension PermissionCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -287,7 +288,7 @@ extension PermissionCommand {
         }
 
         private func renderIfAlreadyGranted() async -> Bool {
-            let hasPermission = await AutomationServiceBridge.hasAccessibilityPermission(services: self.services)
+            let hasPermission = await AutomationServiceBridge.hasAccessibilityPermission(automation: self.services.automation)
             guard hasPermission else { return false }
             let payload = AgentPermissionActionResult(
                 action: "request-accessibility",

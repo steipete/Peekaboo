@@ -77,7 +77,7 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.logger
         }
 
-        @MainActor private var services: PeekabooServices {
+        @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
@@ -239,7 +239,7 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.logger
         }
 
-        @MainActor private var services: PeekabooServices {
+        @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
@@ -393,7 +393,7 @@ struct AppCommand: ParsableCommand {
 
         var outputLogger: Logger { self.logger }
 
-        @MainActor private var services: PeekabooServices {
+        @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
@@ -466,7 +466,7 @@ struct AppCommand: ParsableCommand {
 
         var outputLogger: Logger { self.logger }
 
-        @MainActor private var services: PeekabooServices {
+        @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
@@ -551,7 +551,7 @@ struct AppCommand: ParsableCommand {
 
         var outputLogger: Logger { self.logger }
 
-        @MainActor private var services: PeekabooServices {
+        @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
@@ -654,7 +654,7 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.logger
         }
 
-        @MainActor private var services: PeekabooServices {
+        @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
@@ -759,7 +759,7 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.logger
         }
 
-        @MainActor private var services: PeekabooServices {
+        @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 

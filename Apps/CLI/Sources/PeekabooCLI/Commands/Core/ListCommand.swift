@@ -69,7 +69,7 @@ extension ListCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -119,7 +119,7 @@ extension ListCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -269,7 +269,7 @@ extension ListCommand {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
 
-            let permissions = await PermissionHelpers.getCurrentPermissions()
+            let permissions = await PermissionHelpers.getCurrentPermissions(services: runtime.services)
 
             if self.jsonOutput {
                 struct Payload: Codable {
@@ -310,7 +310,7 @@ extension ListCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
@@ -321,7 +321,7 @@ extension ListCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let items = try await MenuServiceBridge.listMenuBarItems(services: self.services)
+                let items = try await MenuServiceBridge.listMenuBarItems(menu: self.services.menu)
                 if self.jsonOutput {
                     let encoder = JSONEncoder()
                     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -380,7 +380,7 @@ extension ListCommand {
             return runtime
         }
 
-        private var services: PeekabooServices { self.resolvedRuntime.services }
+        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
