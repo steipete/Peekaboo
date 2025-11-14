@@ -1,4 +1,8 @@
 #!/usr/bin/env bun
+/**
+ * Sweetistics runner wrapper: enforces timeouts, git policy, and trash-safe deletes before dispatching any repo command.
+ * When you tweak its behavior, add a short note to AGENTS.md via `./scripts/committer "docs: update AGENTS for runner" "AGENTS.md"` so other agents know the new expectations.
+ */
 
 import { type ChildProcess, spawn } from 'node:child_process';
 import { cpSync, existsSync, renameSync, rmSync } from 'node:fs';
@@ -20,6 +24,7 @@ const LONG_TIMEOUT_MS = 25 * 60 * 1000; // Build + full-suite commands (Next.js 
 const LINT_TIMEOUT_MS = 30 * 60 * 1000;
 const LONG_RUN_REPORT_THRESHOLD_MS = 60 * 1000;
 const ENABLE_DEBUG_LOGS = process.env.RUNNER_DEBUG === '1';
+const MAX_SLEEP_SECONDS = 30;
 
 const WRAPPER_COMMANDS = new Set([
   'sudo',
@@ -33,12 +38,21 @@ const WRAPPER_COMMANDS = new Set([
 ]);
 
 const ENV_ASSIGNMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*=.*/;
-
+type SummaryStyle = 'compact' | 'minimal' | 'verbose';
+const SUMMARY_STYLE = resolveSummaryStyle(process.env.RUNNER_SUMMARY_STYLE);
 // biome-ignore format: keep each keyword on its own line for grep-friendly diffs.
-const LONG_SCRIPT_KEYWORDS = ['build', 'test:all', 'test:browser', 'vitest.browser', 'vitest.browser.config.ts'];
+const LONG_SCRIPT_KEYWORDS = [
+  'build',
+  'test:all',
+  'test:browser',
+  'test:e2e',
+  'test:e2e:headed',
+  'vitest.browser',
+  'vitest.browser.config.ts',
+];
 const EXTENDED_SCRIPT_KEYWORDS = ['lint', 'test', 'playwright', 'check', 'docker'];
 const SINGLE_TEST_SCRIPTS = new Set(['test:file']);
-const SINGLE_TEST_FLAGS = new Set(['--run']);
+const SINGLE_TEST_FLAGS = new Set(['--run', '--filter']);
 const TEST_BINARIES = new Set(['vitest', 'playwright', 'jest']);
 const LINT_BINARIES = new Set(['eslint', 'biome', 'oxlint', 'knip']);
 
@@ -95,6 +109,7 @@ let cachedTrashCliCommand: string | null | undefined;
   process.exit(1);
 });
 
+// Parses the runner CLI args and rejects unsupported flags early.
 function parseArgs(argv: string[]): string[] {
   const commandArgs: string[] = [];
   let parsingOptions = true;
@@ -164,6 +179,7 @@ function findPolterPeekabooInvocation(commandArgs: string[]): { polterIndex: num
   return null;
 }
 
+// Computes the timeout tier for the provided command tokens.
 function determineEffectiveTimeoutMs(commandArgs: string[]): number {
   const strippedTokens = stripWrappersAndAssignments(commandArgs);
   if (isTestRunnerSuiteInvocation(strippedTokens, 'integration')) {
@@ -184,6 +200,7 @@ function determineEffectiveTimeoutMs(commandArgs: string[]): number {
   return DEFAULT_TIMEOUT_MS;
 }
 
+// Determines whether the command matches any keyword requiring extra time.
 function shouldExtendTimeout(commandArgs: string[]): boolean {
   const tokens = stripWrappersAndAssignments(commandArgs);
   if (tokens.length === 0) {
@@ -191,52 +208,71 @@ function shouldExtendTimeout(commandArgs: string[]): boolean {
   }
 
   const [first, ...rest] = tokens;
+  if (!first) {
+    return false;
+  }
 
   if (first === 'pnpm') {
-    if (rest.length === 0) {
-      return false;
-    }
-    const subcommand = rest[0];
-    if (subcommand === 'run') {
-      const script = rest[1];
-      if (!script) {
-        return false;
-      }
-      return shouldExtendForScript(script);
-    }
-    if (subcommand === 'exec') {
-      const execTarget = rest[1];
-      if (!execTarget) {
-        return false;
-      }
-      if (shouldExtendForScript(execTarget) || TEST_BINARIES.has(execTarget.toLowerCase())) {
-        return true;
-      }
-      for (const token of rest.slice(1)) {
-        if (shouldExtendForScript(token) || TEST_BINARIES.has(token.toLowerCase())) {
-          return true;
-        }
-      }
-      return false;
-    }
-    if (shouldExtendForScript(subcommand)) {
-      return true;
-    }
+    return shouldExtendViaPnpm(rest);
+  }
+  if (first === 'bun') {
+    return shouldExtendViaBun(rest);
   }
 
   if (shouldExtendForScript(first) || TEST_BINARIES.has(first.toLowerCase())) {
     return true;
   }
 
-  for (const token of rest) {
-    if (shouldExtendForScript(token) || TEST_BINARIES.has(token.toLowerCase())) {
+  return rest.some((token) => shouldExtendForScript(token) || TEST_BINARIES.has(token.toLowerCase()));
+}
+
+function shouldExtendViaPnpm(rest: string[]): boolean {
+  if (rest.length === 0) {
+    return false;
+  }
+  const subcommand = rest[0];
+  if (!subcommand) {
+    return false;
+  }
+  if (subcommand === 'run') {
+    const script = rest[1];
+    return typeof script === 'string' && shouldExtendForScript(script);
+  }
+  if (subcommand === 'exec') {
+    const execTarget = rest[1];
+    if (execTarget && (shouldExtendForScript(execTarget) || TEST_BINARIES.has(execTarget.toLowerCase()))) {
+      return true;
+    }
+    return rest.slice(1).some((token) => shouldExtendForScript(token) || TEST_BINARIES.has(token.toLowerCase()));
+  }
+  return shouldExtendForScript(subcommand);
+}
+
+function shouldExtendViaBun(rest: string[]): boolean {
+  if (rest.length === 0) {
+    return false;
+  }
+  const subcommand = rest[0];
+  if (!subcommand) {
+    return false;
+  }
+  if (subcommand === 'run') {
+    const script = rest[1];
+    return typeof script === 'string' && shouldExtendForScript(script);
+  }
+  if (subcommand === 'test') {
+    return true;
+  }
+  if (subcommand === 'x' || subcommand === 'bunx') {
+    const execTarget = rest[1];
+    if (execTarget && TEST_BINARIES.has(execTarget.toLowerCase())) {
       return true;
     }
   }
-
-  return false;
+  return shouldExtendForScript(subcommand);
 }
 
+// Checks script names for long-running markers (lint/test/build/etc.).
 function shouldExtendForScript(script: string): boolean {
   if (SINGLE_TEST_SCRIPTS.has(script)) {
     return false;
@@ -244,6 +280,7 @@ function shouldExtendForScript(script: string): boolean {
   return matchesScriptKeyword(script, EXTENDED_SCRIPT_KEYWORDS);
 }
 
+// Gives lint invocations the dedicated timeout bucket.
 function shouldUseLintTimeout(commandArgs: string[]): boolean {
   const tokens = stripWrappersAndAssignments(commandArgs);
   if (tokens.length === 0) {
@@ -251,61 +288,134 @@ function shouldUseLintTimeout(commandArgs: string[]): boolean {
   }
 
   const [first, ...rest] = tokens;
+  if (!first) {
+    return false;
+  }
 
   if (first === 'pnpm') {
-    if (rest.length === 0) {
-      return false;
-    }
-    const subcommand = rest[0];
-    if (subcommand === 'run') {
-      const script = rest[1];
-      return typeof script === 'string' && script.startsWith('lint');
-    }
-    if (subcommand === 'exec') {
-      const execTarget = rest[1];
-      if (execTarget && LINT_BINARIES.has(execTarget.toLowerCase())) {
-        return true;
-      }
-    }
+    return shouldUseLintTimeoutViaPnpm(rest);
+  }
+  if (first === 'bun') {
+    return shouldUseLintTimeoutViaBun(rest);
   }
 
-  if (LINT_BINARIES.has(first.toLowerCase())) {
-    return true;
-  }
-
-  return false;
+  return LINT_BINARIES.has(first.toLowerCase());
 }
 
+function shouldUseLintTimeoutViaPnpm(rest: string[]): boolean {
+  if (rest.length === 0) {
+    return false;
+  }
+  const subcommand = rest[0];
+  if (!subcommand) {
+    return false;
+  }
+  if (subcommand === 'run') {
+    const script = rest[1];
+    return typeof script === 'string' && script.startsWith('lint');
+  }
+  if (subcommand === 'exec') {
+    const execTarget = rest[1];
+    if (execTarget && LINT_BINARIES.has(execTarget.toLowerCase())) {
+      return true;
+    }
+    return rest.slice(1).some((token) => LINT_BINARIES.has(token.toLowerCase()));
+  }
+  return LINT_BINARIES.has(subcommand.toLowerCase());
+}
+
+function shouldUseLintTimeoutViaBun(rest: string[]): boolean {
+  if (rest.length === 0) {
+    return false;
+  }
+  const subcommand = rest[0];
+  if (!subcommand) {
+    return false;
+  }
+  if (subcommand === 'run') {
+    const script = rest[1];
+    return typeof script === 'string' && script.startsWith('lint');
+  }
+  if (subcommand === 'x' || subcommand === 'bunx') {
+    return rest.slice(1).some((token) => LINT_BINARIES.has(token.toLowerCase()));
+  }
+  return LINT_BINARIES.has(subcommand.toLowerCase());
+}
+
+// Detects when a user is running a single spec so we can keep the shorter timeout.
 function isSingleTestInvocation(commandArgs: string[]): boolean {
   const tokens = stripWrappersAndAssignments(commandArgs);
   if (tokens.length === 0) {
     return false;
   }
 
-  for (const token of tokens) {
-    if (SINGLE_TEST_FLAGS.has(token)) {
-      return true;
-    }
+  if (tokens.some((token) => SINGLE_TEST_FLAGS.has(token))) {
+    return true;
   }
 
   const [first, ...rest] = tokens;
-  if (first === 'pnpm') {
-    if (rest[0] === 'test:file') {
-      return true;
-    }
-  } else if (first === 'vitest') {
-    if (rest.some((token) => SINGLE_TEST_FLAGS.has(token))) {
-      return true;
-    }
+  if (!first) {
+    return false;
   }
 
+  if (first === 'pnpm') {
+    return isSingleTestViaPnpm(rest);
+  }
+  if (first === 'bun') {
+    return isSingleTestViaBun(rest);
+  }
+  if (first === 'vitest') {
+    return rest.some((token) => SINGLE_TEST_FLAGS.has(token));
+  }
+
+  return SINGLE_TEST_SCRIPTS.has(first);
+}
+
+function isSingleTestViaPnpm(rest: string[]): boolean {
+  if (rest.length === 0) {
+    return false;
+  }
+  const subcommand = rest[0];
+  if (!subcommand) {
+    return false;
+  }
+  if (subcommand === 'run') {
+    const script = rest[1];
+    return typeof script === 'string' && SINGLE_TEST_SCRIPTS.has(script);
+  }
+  if (subcommand === 'exec') {
+    return rest.slice(1).some((token) => SINGLE_TEST_FLAGS.has(token));
+  }
+  return SINGLE_TEST_SCRIPTS.has(subcommand);
+}
+
+function isSingleTestViaBun(rest: string[]): boolean {
+  if (rest.length === 0) {
+    return false;
+  }
+  const subcommand = rest[0];
+  if (!subcommand) {
+    return false;
+  }
+  if (subcommand === 'run') {
+    const script = rest[1];
+    return typeof script === 'string' && SINGLE_TEST_SCRIPTS.has(script);
+  }
+  if (subcommand === 'test') {
+    return true;
+  }
+  if (subcommand === 'x' || subcommand === 'bunx') {
+    return rest.slice(1).some((token) => SINGLE_TEST_FLAGS.has(token));
+  }
   return false;
 }
 
+// Normalizes potential file paths/flags to aid comparison across shells.
 function normalizeForPathComparison(token: string): string {
   return token.replaceAll('\\', '/');
 }
 
+// Heuristically checks if a CLI token references an integration spec.
 function tokenReferencesIntegrationTest(token: string): boolean {
   const normalized = normalizeForPathComparison(token);
   if (normalized.includes('tests/integration/')) {
@@ -318,9 +428,13 @@ function tokenReferencesIntegrationTest(token: string): boolean {
   return false;
 }
 
+// Scans the entire command for integration spec references.
 function referencesIntegrationSpec(tokens: string[]): boolean {
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
+    if (!token) {
+      continue;
+    }
     if (token === '--run' || token === '--include') {
       const next = tokens[index + 1];
       if (next && tokenReferencesIntegrationTest(next)) {
@@ -334,21 +448,44 @@ function referencesIntegrationSpec(tokens: string[]): boolean {
   return false;
 }
 
+// Helper that matches a script token against a keyword allowlist.
 function matchesScriptKeyword(script: string, keywords: readonly string[]): boolean {
   const lowered = script.toLowerCase();
   return keywords.some((keyword) => lowered === keyword || lowered.startsWith(`${keyword}:`));
 }
 
+// Removes wrapper binaries/env assignments so heuristics see the real command.
 function stripWrappersAndAssignments(args: string[]): string[] {
   const tokens = [...args];
 
-  while (tokens.length > 0 && isEnvAssignment(tokens[0])) {
+  while (tokens.length > 0) {
+    const candidate = tokens[0];
+    if (!candidate) {
+      break;
+    }
+    if (!isEnvAssignment(candidate)) {
+      break;
+    }
     tokens.shift();
   }
 
-  while (tokens.length > 0 && WRAPPER_COMMANDS.has(tokens[0])) {
+  while (tokens.length > 0) {
+    const wrapper = tokens[0];
+    if (!wrapper) {
+      break;
+    }
+    if (!WRAPPER_COMMANDS.has(wrapper)) {
+      break;
+    }
     tokens.shift();
-    while (tokens.length > 0 && isEnvAssignment(tokens[0])) {
+    while (tokens.length > 0) {
+      const assignment = tokens[0];
+      if (!assignment) {
+        break;
+      }
+      if (!isEnvAssignment(assignment)) {
+        break;
+      }
       tokens.shift();
     }
   }
@@ -356,10 +493,12 @@ function stripWrappersAndAssignments(args: string[]): string[] {
   return tokens;
 }
 
+// Checks whether a token is an inline environment variable assignment.
 function isEnvAssignment(token: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_]*=.*/.test(token);
 }
 
+// Detects `pnpm test:<suite>` style calls regardless of wrappers.
 function isTestRunnerSuiteInvocation(tokens: string[], suite: string): boolean {
   if (tokens.length === 0) {
     return false;
@@ -368,6 +507,9 @@ function isTestRunnerSuiteInvocation(tokens: string[], suite: string): boolean {
   const normalizedSuite = suite.toLowerCase();
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
+    if (!token) {
+      continue;
+    }
     const normalizedToken = token.replace(/^[./\\]+/, '');
     if (normalizedToken === 'scripts/test-runner.ts' || normalizedToken.endsWith('/scripts/test-runner.ts')) {
       const suiteToken = tokens[index + 1]?.toLowerCase();
@@ -380,13 +522,18 @@ function isTestRunnerSuiteInvocation(tokens: string[], suite: string): boolean {
   return false;
 }
 
+// Grants the longest timeout to explicitly tagged long-running scripts.
 function shouldUseLongTimeout(commandArgs: string[]): boolean {
   const tokens = stripWrappersAndAssignments(commandArgs);
   if (tokens.length === 0) {
     return false;
   }
 
-  const [first, ...rest] = tokens;
+  const first = tokens[0];
+  if (!first) {
+    return false;
+  }
+  const rest = tokens.slice(1);
   const matches = (token: string): boolean => matchesScriptKeyword(token, LONG_SCRIPT_KEYWORDS);
 
   if (first === 'pnpm') {
@@ -394,6 +541,9 @@ function shouldUseLongTimeout(commandArgs: string[]): boolean {
       return false;
     }
     const subcommand = rest[0];
+    if (!subcommand) {
+      return false;
+    }
     if (subcommand === 'run') {
       const script = rest[1];
       if (script && matches(script)) {
@@ -423,6 +573,7 @@ function shouldUseLongTimeout(commandArgs: string[]): boolean {
   return false;
 }
 
+// Kicks off the requested command with logging, timeouts, and monitoring.
 async function runCommand(context: RunnerExecutionContext): Promise<void> {
   const { command, args, env } = buildExecutionParams(context.commandArgs);
   const commandLabel = formatDisplayCommand(context.commandArgs);
@@ -499,7 +650,7 @@ async function runCommand(context: RunnerExecutionContext): Promise<void> {
         `[runner] Command terminated after ${formatDuration(context.timeoutMs)}. Re-run inside tmux for long-lived work.`
       );
       console.error(
-        `[runner] Finished ${commandLabel} (exit ${exitCode}, elapsed ${formatDuration(elapsedMs)}; timed out).`
+        formatCompletionSummary({ exitCode, elapsedMs, timedOut: true, commandLabel })
       );
       process.exit(124);
     }
@@ -510,7 +661,7 @@ async function runCommand(context: RunnerExecutionContext): Promise<void> {
       );
     }
 
-    console.error(`[runner] Finished ${commandLabel} (exit ${exitCode}, elapsed ${formatDuration(elapsedMs)}).`);
+    console.error(formatCompletionSummary({ exitCode, elapsedMs, commandLabel }));
     process.exit(exitCode);
   } catch (error) {
     console.error('[runner] Failed to launch command:', error instanceof Error ? error.message : String(error));
@@ -519,6 +670,40 @@ async function runCommand(context: RunnerExecutionContext): Promise<void> {
   }
 }
 
+async function runCommandWithoutTimeout(context: RunnerExecutionContext): Promise<void> {
+  const { command, args, env } = buildExecutionParams(context.commandArgs);
+  const commandLabel = formatDisplayCommand(context.commandArgs);
+  const startTime = Date.now();
+
+  const child = spawn(command, args, {
+    cwd: context.workspaceDir,
+    env,
+    stdio: 'inherit',
+  });
+
+  const removeSignalHandlers = registerSignalForwarding(child);
+
+  try {
+    const exitCode = await new Promise<number>((resolve, reject) => {
+      child.once('error', (error) => {
+        removeSignalHandlers();
+        reject(error);
+      });
+      child.once('exit', (code, signal) => {
+        removeSignalHandlers();
+        resolve(code ?? exitCodeFromSignal(signal));
+      });
+    });
+    const elapsedMs = Date.now() - startTime;
+    console.error(formatCompletionSummary({ exitCode, elapsedMs, commandLabel }));
+    process.exit(exitCode);
+  } catch (error) {
+    console.error('[runner] Failed to launch command:', error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
+// Prepares the executable, args, and sanitized env for the child process.
 function buildExecutionParams(commandArgs: string[]): { command: string; args: string[]; env: NodeJS.ProcessEnv } {
   const env = { ...process.env };
   const args: string[] = [];
@@ -527,21 +712,25 @@ function buildExecutionParams(commandArgs: string[]): { command: string; args: s
   for (const token of commandArgs) {
     if (!commandStarted && isEnvAssignment(token)) {
       const [key, ...rest] = token.split('=');
-      env[key] = rest.join('=');
+      if (key) {
+        env[key] = rest.join('=');
+      }
       continue;
     }
     commandStarted = true;
     args.push(token);
   }
 
-  if (args.length === 0) {
+  if (args.length === 0 || !args[0]) {
     printUsage('Missing command to execute.');
     process.exit(1);
   }
 
-  return { command: args[0], args: args.slice(1), env };
+  const [command, ...restArgs] = args;
+  return { command, args: restArgs, env };
 }
 
+// Forwards termination signals to the child and returns an unregister hook.
 function registerSignalForwarding(child: ChildProcess): () => void {
   const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
   const handlers = new Map<NodeJS.Signals, () => void>();
@@ -563,6 +752,7 @@ function registerSignalForwarding(child: ChildProcess): () => void {
   };
 }
 
+// Maps a terminating signal to the exit code conventions bash expects.
 function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
   if (!signal) {
     return 0;
@@ -574,11 +764,14 @@ function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
   return 1;
 }
 
+// Gives policy interceptors a chance to fully handle a command before exec.
 async function resolveCommandInterception(context: RunnerExecutionContext): Promise<CommandInterceptionResult> {
   const interceptors: Array<(ctx: RunnerExecutionContext) => Promise<boolean>> = [
     maybeInjectSwiftPackagePath,
+    maybeHandleTmuxInvocation,
     maybeHandleFindInvocation,
     maybeHandleRmInvocation,
+    maybeHandleSleepInvocation,
   ];
 
   for (const interceptor of interceptors) {
@@ -596,6 +789,7 @@ async function resolveCommandInterception(context: RunnerExecutionContext): Prom
   return { handled: false, gitContext };
 }
 
+// Runs the shared git policy analyzers before dispatching the command.
 function enforceGitPolicies(gitContext: GitExecutionContext) {
   const evaluation = evaluateGitPolicies(gitContext);
   const hasConsentOverride = process.env.RUNNER_THE_USER_GAVE_ME_CONSENT === '1';
@@ -635,6 +829,7 @@ function enforceGitPolicies(gitContext: GitExecutionContext) {
   }
 }
 
+// Handles guarded `find` invocations that may delete files outright.
 async function maybeHandleFindInvocation(context: RunnerExecutionContext): Promise<boolean> {
   const findInvocation = extractFindInvocation(context.commandArgs);
   if (!findInvocation) {
@@ -685,6 +880,7 @@ async function maybeInjectSwiftPackagePath(context: RunnerExecutionContext): Pro
   return false;
 }
 
+// Intercepts plain `rm` commands to route them through trash safeguards.
 async function maybeHandleRmInvocation(context: RunnerExecutionContext): Promise<boolean> {
   const rmInvocation = extractRmInvocation(context.commandArgs);
   if (!rmInvocation) {
@@ -713,6 +909,7 @@ async function maybeHandleRmInvocation(context: RunnerExecutionContext): Promise
   return true;
 }
 
+// Applies git-specific rm protections before the command executes.
 async function maybeHandleGitRm(gitContext: GitExecutionContext): Promise<boolean> {
   if (gitContext.command?.name !== 'rm' || !gitContext.invocation) {
     return false;
@@ -748,6 +945,93 @@ async function maybeHandleGitRm(gitContext: GitExecutionContext): Promise<boolea
   return true;
 }
 
+// Blocks `sleep` calls longer than the AGENTS.md ceiling so scripts cannot stall the runner.
+async function maybeHandleSleepInvocation(context: RunnerExecutionContext): Promise<boolean> {
+  const tokens = stripWrappersAndAssignments(context.commandArgs);
+  if (tokens.length === 0) {
+    return false;
+  }
+  const [first, ...rest] = tokens;
+  if (!first || !isSleepBinary(first) || rest.length === 0) {
+    return false;
+  }
+
+  const commandIndex = context.commandArgs.length - tokens.length;
+  if (commandIndex < 0) {
+    return false;
+  }
+
+  const adjustedArgs = [...context.commandArgs];
+  const adjustments: string[] = [];
+
+  for (let offset = 0; offset < rest.length; offset += 1) {
+    const token = rest[offset];
+    const durationSeconds = parseSleepDurationSeconds(token);
+    if (durationSeconds == null || durationSeconds <= MAX_SLEEP_SECONDS) {
+      continue;
+    }
+    adjustments.push(`${token}→${formatSleepDuration(MAX_SLEEP_SECONDS)}`);
+    adjustedArgs[commandIndex + 1 + offset] = formatSleepArgument(MAX_SLEEP_SECONDS);
+  }
+
+  if (adjustments.length === 0) {
+    return false;
+  }
+
+  console.error(
+    `[runner] sleep arguments exceed ${MAX_SLEEP_SECONDS}s; clamping (${adjustments.join(', ')}).`
+  );
+  context.commandArgs = adjustedArgs;
+  return false;
+}
+
+async function maybeHandleTmuxInvocation(context: RunnerExecutionContext): Promise<boolean> {
+  const tokens = stripWrappersAndAssignments(context.commandArgs);
+  if (tokens.length === 0) {
+    return false;
+  }
+  const candidate = tokens[0];
+  if (!candidate) {
+    return false;
+  }
+  if (basename(candidate) !== 'tmux') {
+    return false;
+  }
+  console.error('[runner] Detected tmux invocation; executing command without runner timeout guardrails.');
+  await runCommandWithoutTimeout(context);
+  return true;
+}
+
+function parseSleepDurationSeconds(token: string): number | null {
+  const match = /^(\d+(?:\.\d+)?)([smhdSMHD]?)$/.exec(token);
+  if (!match) {
+    return null;
+  }
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  const unit = match[2]?.toLowerCase() ?? '';
+  const multiplier = unit === 'm' ? 60 : unit === 'h' ? 60 * 60 : unit === 'd' ? 60 * 60 * 24 : 1;
+  return value * multiplier;
+}
+
+function formatSleepArgument(seconds: number): string {
+  return Number.isInteger(seconds) ? `${seconds}` : seconds.toString();
+}
+
+function formatSleepDuration(seconds: number): string {
+  if (Number.isInteger(seconds)) {
+    return `${seconds}s`;
+  }
+  return `${seconds.toFixed(2)}s`;
+}
+
+function isSleepBinary(token: string): boolean {
+  return token === 'sleep' || token.endsWith('/sleep');
+}
+
+// Detects `git find` invocations that need policy enforcement.
 function extractFindInvocation(commandArgs: string[]): GitInvocation | null {
   for (const [index, token] of commandArgs.entries()) {
     if (token === 'find' || token.endsWith('/find')) {
@@ -757,10 +1041,22 @@ function extractFindInvocation(commandArgs: string[]): GitInvocation | null {
   return null;
 }
 
+// Detects `git rm` variants so we can intercept destructive operations.
 function extractRmInvocation(commandArgs: string[]): GitInvocation | null {
   if (commandArgs.length === 0) {
     return null;
   }
+
+  const wrappers = new Set([
+    'sudo',
+    '/usr/bin/sudo',
+    'env',
+    '/usr/bin/env',
+    'command',
+    '/bin/command',
+    'nohup',
+    '/usr/bin/nohup',
+  ]);
 
   let index = 0;
   while (index < commandArgs.length) {
@@ -772,7 +1068,7 @@ function extractRmInvocation(commandArgs: string[]): GitInvocation | null {
       index += 1;
       continue;
     }
-    if (WRAPPER_COMMANDS.has(token)) {
+    if (wrappers.has(token)) {
       index += 1;
       continue;
     }
@@ -851,6 +1147,7 @@ function determineSwiftPackagePath(workspaceDir: string): string | null {
   return null;
 }
 
+// Expands guarded find expressions into an explicit delete plan for review.
 async function buildFindDeletePlan(findArgs: string[], workspaceDir: string): Promise<{ paths: string[] } | null> {
   if (!findArgs.some((token) => token === '-delete')) {
     return null;
@@ -895,7 +1192,7 @@ async function buildFindDeletePlan(findArgs: string[], workspaceDir: string): Pr
     process.exit(exitCode);
   }
 
-  const matches = stdoutBuf.split('\0').filter((entry) => entry.length > 0);
+  const matches = stdoutBuf.split('\0').filter((entry: string) => entry.length > 0);
   if (matches.length === 0) {
     return { paths: [] };
   }
@@ -918,6 +1215,7 @@ async function buildFindDeletePlan(findArgs: string[], workspaceDir: string): Pr
   return { paths: Array.from(uniquePaths.values()) };
 }
 
+// Parses rm flags/targets to decide whether the runner should intervene.
 function parseRmArguments(argv: string[]): { targets: string[]; force: boolean; shouldIntercept: boolean } | null {
   if (argv.length <= 1) {
     return null;
@@ -929,6 +1227,9 @@ function parseRmArguments(argv: string[]): { targets: string[]; force: boolean; 
   let index = 1;
   while (index < argv.length) {
     const token = argv[index];
+    if (token === undefined) {
+      break;
+    }
     if (!treatAsTarget && token === '--') {
       treatAsTarget = true;
       index += 1;
@@ -959,6 +1260,7 @@ function parseRmArguments(argv: string[]): { targets: string[]; force: boolean; 
   return { targets, force, shouldIntercept: true };
 }
 
+// Generates a safe plan for git rm invocations, honoring guarded paths.
 function parseGitRmArguments(argv: string[], command: GitCommandInfo): GitRmPlan | null {
   const stagingOptions: string[] = [];
   const paths: string[] = [];
@@ -969,6 +1271,9 @@ function parseGitRmArguments(argv: string[], command: GitCommandInfo): GitRmPlan
   let index = command.index + 1;
   while (index < argv.length) {
     const token = argv[index];
+    if (token === undefined) {
+      break;
+    }
     if (!treatAsPath && token === '--') {
       treatAsPath = true;
       index += 1;
@@ -1034,6 +1339,7 @@ function parseGitRmArguments(argv: string[], command: GitCommandInfo): GitRmPlan
   };
 }
 
+// Emits actionable messaging when git rm targets are already gone.
 function reportMissingForRm(missing: string[], forced: boolean) {
   if (missing.length === 0 || forced) {
     return;
@@ -1044,6 +1350,7 @@ function reportMissingForRm(missing: string[], forced: boolean) {
   process.exit(1);
 }
 
+// Attempts to move the provided paths into trash instead of deleting in place.
 async function movePathsToTrash(
   paths: string[],
   baseDir: string,
@@ -1075,7 +1382,7 @@ async function movePathsToTrash(
         stdout: 'ignore',
         stderr: 'pipe',
       });
-      const [exitCode, stderrText] = await Promise.all([proc.exited, proc.stderr?.text() ?? Promise.resolve('')]);
+      const [exitCode, stderrText] = await Promise.all([proc.exited, readProcessStream(proc.stderr)]);
       if (exitCode === 0) {
         return { missing, errors: [] };
       }
@@ -1120,6 +1427,7 @@ async function movePathsToTrash(
   return { missing, errors };
 }
 
+// Resolves a potentially relative path against the workspace root.
 function resolvePath(baseDir: string, input: string): string {
   if (input.startsWith('/')) {
     return input;
@@ -1127,6 +1435,7 @@ function resolvePath(baseDir: string, input: string): string {
   return resolve(baseDir, input);
 }
 
+// Returns the trash CLI directory if available so deletes can be safe.
 function getTrashDirectory(): string | null {
   const home = process.env.HOME;
   if (!home) {
@@ -1139,6 +1448,7 @@ function getTrashDirectory(): string | null {
   return trash;
 }
 
+// Builds the destination path inside the trash directory for a file.
 function buildTrashTarget(trashDir: string, absolutePath: string): string {
   const baseName = basename(absolutePath);
   const timestamp = Date.now();
@@ -1151,10 +1461,12 @@ function buildTrashTarget(trashDir: string, absolutePath: string): string {
   return candidate;
 }
 
+// Determines whether a rename failed because the devices differ.
 function isCrossDeviceError(error: unknown): boolean {
   return error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'EXDEV';
 }
 
+// Normalizes trash/rename errors into a readable string.
 function formatTrashError(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
@@ -1162,6 +1474,7 @@ function formatTrashError(error: unknown): string {
   return String(error);
 }
 
+// Replays a git rm plan via spawn so we can surface errors consistently.
 async function stageGitRm(workDir: string, plan: GitRmPlan) {
   if (plan.paths.length === 0) {
     return;
@@ -1178,6 +1491,7 @@ async function stageGitRm(workDir: string, plan: GitRmPlan) {
   }
 }
 
+// Locates a usable trash CLI binary, caching the lookup per runner process.
 async function findTrashCliCommand(): Promise<string | null> {
   if (cachedTrashCliCommand !== undefined) {
     return cachedTrashCliCommand;
@@ -1228,6 +1542,7 @@ async function findTrashCliCommand(): Promise<string | null> {
   return null;
 }
 
+// Consumes a child process stream to completion for logging/error output.
 async function readProcessStream(stream: unknown): Promise<string> {
   if (!stream) {
     return '';
@@ -1253,6 +1568,7 @@ async function readProcessStream(stream: unknown): Promise<string> {
   return '';
 }
 
+// Shows CLI usage plus optional error messaging.
 function printUsage(message?: string) {
   if (message) {
     console.error(`[runner] ${message}`);
@@ -1266,6 +1582,7 @@ function printUsage(message?: string) {
   );
 }
 
+// Pretty-prints a millisecond duration for logs.
 function formatDuration(durationMs: number): string {
   if (durationMs < 1000) {
     return `${durationMs}ms`;
@@ -1290,10 +1607,62 @@ function formatDuration(durationMs: number): string {
   return `${hours}h ${remainingMinutes}m`;
 }
 
+function resolveSummaryStyle(rawValue: string | undefined | null): SummaryStyle {
+  if (!rawValue) {
+    return 'compact';
+  }
+  const normalized = rawValue.trim().toLowerCase();
+  switch (normalized) {
+    case 'minimal':
+      return 'minimal';
+    case 'verbose':
+      return 'verbose';
+    case 'compact':
+    case 'short':
+    default:
+      return 'compact';
+  }
+}
+
+function formatCompletionSummary(options: {
+  exitCode: number;
+  elapsedMs?: number;
+  timedOut?: boolean;
+  commandLabel: string;
+}): string {
+  const { exitCode, elapsedMs, timedOut, commandLabel } = options;
+  const durationText = typeof elapsedMs === 'number' ? formatDuration(elapsedMs) : null;
+  switch (SUMMARY_STYLE) {
+    case 'minimal': {
+      const parts = [`${exitCode}`];
+      if (durationText) {
+        parts.push(durationText);
+      }
+      if (timedOut) {
+        parts.push('timeout');
+      }
+      return `[runner] ${parts.join(' · ')}`;
+    }
+    case 'verbose': {
+      const elapsedPart = durationText ? `, elapsed ${durationText}` : '';
+      const timeoutPart = timedOut ? '; timed out' : '';
+      return `[runner] Finished ${commandLabel} (exit ${exitCode}${elapsedPart}${timeoutPart}).`;
+    }
+    case 'compact':
+    default: {
+      const elapsedPart = durationText ? ` in ${durationText}` : '';
+      const timeoutPart = timedOut ? ' (timeout)' : '';
+      return `[runner] exit ${exitCode}${elapsedPart}${timeoutPart}`;
+    }
+  }
+}
+
+// Joins the command args in a shell-friendly way for log display.
 function formatDisplayCommand(commandArgs: string[]): string {
   return commandArgs.map((token) => (token.includes(' ') ? `"${token}"` : token)).join(' ');
 }
 
+// Tells whether the runner is already executing inside the tmux guard.
 function isRunnerTmuxSession(): boolean {
   const value = process.env.RUNNER_TMUX;
   if (value) {

@@ -1,2 +1,5 @@
+packages:
+  - '.'
 overrides:
   '@steipete/oracle': link:../oracle
+  oracle: link:../oracle

@@ -5,12 +5,16 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  oracle: link:../oracle
   '@steipete/oracle': link:../oracle
 
 importers:
 
   .:
-    devDependencies:
+    dependencies:
       '@steipete/oracle':
+        specifier: link:../oracle
+        version: link:../oracle
+      oracle:
         specifier: link:../oracle
         version: link:../oracle
