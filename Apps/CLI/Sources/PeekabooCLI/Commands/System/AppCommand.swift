@@ -57,7 +57,23 @@ struct AppCommand: ParsableCommand {
 
         static let commandDescription = CommandDescription(
             commandName: "launch",
-            abstract: "Launch an application"
+            abstract: "Launch an application",
+            discussion: """
+            Launches the target app, optionally waits for it to finish starting,
+            and can hand one or more documents/URLs to the app immediately.
+
+            KEY OPTIONS:
+              --bundle-id <id>       Launch by bundle identifier instead of name/path
+              --open <path-or-url>   Repeatable; pass documents/URLs to the app right after launch
+              --wait-until-ready     Poll until the app reports it is fully launched
+              --no-focus             Skip bringing the app to the foreground
+
+            EXAMPLES:
+              peekaboo app launch "Safari"
+              peekaboo app launch "Safari" --open https://example.com --open https://news.ycombinator.com
+              peekaboo app launch "Preview" --open ~/Desktop/report.pdf --no-focus
+              peekaboo app launch --bundle-id com.apple.Notes --wait-until-ready
+            """
         )
 
         @Argument(help: "Application name or path")

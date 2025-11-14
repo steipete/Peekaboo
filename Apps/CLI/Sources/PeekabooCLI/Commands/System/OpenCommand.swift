@@ -18,14 +18,18 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
                 commandName: "open",
                 abstract: "Open a URL or file with its default (or specified) application",
                 discussion: """
-                Mirrors macOS `open` while layering Peekaboo's focus controls, structured output,
-                and error handling.
+                Mirrors macOS `open` but adds Peekaboo’s quality-of-life features:
+
+                - `--app` / `--bundle-id` to force a handler
+                - `--wait-until-ready` to block until the app reports it has finished launching
+                - `--no-focus` to keep the handler in the background
+                - `--json-output` for structured scripting
 
                 EXAMPLES:
-                  peekaboo open https://example.com
-                  peekaboo open ~/Documents/report.pdf
-                  peekaboo open ~/Desktop --app Finder --no-focus
+                  peekaboo open https://example.com --json-output
+                  peekaboo open ~/Documents/report.pdf --app "Preview"
                   peekaboo open myfile.txt --bundle-id com.apple.TextEdit --wait-until-ready
+                  peekaboo open ~/Desktop --app Finder --no-focus
                 """
             )
         }
