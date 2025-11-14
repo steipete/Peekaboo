@@ -680,6 +680,9 @@ struct UIElementSummary: Codable {
     let role: String
     let title: String?
     let label: String?
+    let description: String?
+    let role_description: String?
+    let help: String?
     let identifier: String?
     let is_actionable: Bool
     let keyboard_shortcut: String?
@@ -762,6 +765,9 @@ extension SeeCommand {
                 role: element.type.rawValue,
                 title: element.attributes["title"],
                 label: element.label,
+                description: element.attributes["description"],
+                role_description: element.attributes["roleDescription"],
+                help: element.attributes["help"],
                 identifier: element.attributes["identifier"],
                 is_actionable: element.isEnabled,
                 keyboard_shortcut: element.attributes["keyboardShortcut"]
@@ -1057,7 +1063,22 @@ extension SeeCommand: ParsableCommand {
             return CommandDescription(
                 commandName: definition.commandName,
                 abstract: definition.abstract,
-                discussion: definition.discussion
+                discussion: definition.discussion,
+                usageExamples: [
+                    CommandUsageExample(
+                        command: "peekaboo see --json-output --annotate --path /tmp/see.png",
+                        description: "Capture the frontmost window, print structured output, and save annotations."
+                    ),
+                    CommandUsageExample(
+                        command: "peekaboo see --app Safari --window-title \"Login\" --json-output",
+                        description: "Target a specific Safari window to collect stable element IDs."
+                    ),
+                    CommandUsageExample(
+                        command: "peekaboo see --mode screen --screen-index 0 --analyze 'Summarize the dashboard'",
+                        description: "Capture a display and immediately send it to the configured AI provider."
+                    )
+                ],
+                showHelpOnEmptyInvocation: true
             )
         }
     }

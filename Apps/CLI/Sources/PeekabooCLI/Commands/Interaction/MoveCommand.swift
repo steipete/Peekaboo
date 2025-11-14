@@ -330,6 +330,8 @@ extension MoveCommand: ParsableCommand {
                       When targeting elements, the cursor moves to the element's center.
                       Use element IDs from 'see' output for precise targeting.
                 """
+                ,
+                showHelpOnEmptyInvocation: true
             )
         }
     }

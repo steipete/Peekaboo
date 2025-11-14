@@ -8,7 +8,8 @@ struct SleepCommand: OutputFormattable {
         MainActorCommandDescription.describe {
             CommandDescription(
                 commandName: "sleep",
-                abstract: "Pause execution for a specified duration"
+                abstract: "Pause execution for a specified duration",
+                showHelpOnEmptyInvocation: true
             )
         }
     }

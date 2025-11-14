@@ -357,7 +357,8 @@ extension ClickCommand: ParsableCommand {
         return CommandDescription(
             commandName: definition.commandName,
             abstract: definition.abstract,
-            discussion: definition.discussion
+            discussion: definition.discussion,
+            showHelpOnEmptyInvocation: true
         )
     }
 }

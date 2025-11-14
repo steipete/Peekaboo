@@ -395,9 +395,11 @@ extension TypeCommand: ParsableCommand {
                       Use 'click' to focus an input field first.
 
                     HUMAN TYPING:
-                      Use --profile human (default) for realistic cadence; override speed with --wpm (80-220).
-                      Use --profile linear for deterministic timing via --delay.
+                    Use --profile human (default) for realistic cadence; override speed with --wpm (80-220).
+                    Use --profile linear for deterministic timing via --delay.
                 """
+                ,
+                showHelpOnEmptyInvocation: true
             )
         }
     }

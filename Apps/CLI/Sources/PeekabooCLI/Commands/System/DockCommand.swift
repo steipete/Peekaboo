@@ -35,7 +35,8 @@ struct DockCommand: ParsableCommand {
                     HideSubcommand.self,
                     ShowSubcommand.self,
                     ListSubcommand.self,
-                ]
+                ],
+                showHelpOnEmptyInvocation: true
             )
         }
     }

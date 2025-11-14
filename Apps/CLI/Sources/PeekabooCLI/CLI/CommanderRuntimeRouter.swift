@@ -11,6 +11,9 @@ enum CommanderRuntimeRouter {
     static func resolve(argv: [String]) throws -> CommanderResolvedCommand {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let trimmedArgs = Self.trimmedArguments(from: argv)
+        if try Self.handleBareInvocation(arguments: trimmedArgs, descriptors: descriptors) {
+            throw ExitCode.success
+        }
         if try Self.handleHelpRequest(arguments: trimmedArgs, descriptors: descriptors) {
             throw ExitCode.success
         }
@@ -69,6 +72,22 @@ enum CommanderRuntimeRouter {
         }
 
         return false
+    }
+
+    private static func handleBareInvocation(
+        arguments: [String],
+        descriptors: [CommanderCommandDescriptor]
+    ) throws -> Bool {
+        guard arguments.count == 1 else { return false }
+        let token = arguments[0]
+        guard let descriptor = descriptors.first(where: { $0.metadata.name == token }) else {
+            return false
+        }
+        let description = descriptor.type.commandDescription
+        guard description.showHelpOnEmptyInvocation else { return false }
+        let helpText = CommandHelpRenderer.renderHelp(for: descriptor.type)
+        print(helpText)
+        return true
     }
 
     private static func isHelpToken(_ token: String) -> Bool {

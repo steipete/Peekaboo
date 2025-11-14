@@ -30,7 +30,8 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
                   peekaboo open ~/Documents/report.pdf --app "Preview"
                   peekaboo open myfile.txt --bundle-id com.apple.TextEdit --wait-until-ready
                   peekaboo open ~/Desktop --app Finder --no-focus
-                """
+                """,
+                showHelpOnEmptyInvocation: true
             )
         }
     }

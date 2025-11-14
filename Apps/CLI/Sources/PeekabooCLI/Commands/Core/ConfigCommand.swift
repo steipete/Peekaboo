@@ -45,7 +45,8 @@ struct ConfigCommand: ParsableCommand {
             TestProviderCommand.self,
             RemoveProviderCommand.self,
             ModelsProviderCommand.self,
-        ]
+        ],
+        showHelpOnEmptyInvocation: true
     )
 
     /// Subcommand to create a default configuration file

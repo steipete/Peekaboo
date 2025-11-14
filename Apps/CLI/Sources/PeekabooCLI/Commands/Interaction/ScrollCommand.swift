@@ -181,6 +181,8 @@ extension ScrollCommand: ParsableCommand {
                       The number of scroll "lines" or "ticks" to perform.
                       Each tick is equivalent to one notch on a physical mouse wheel.
                 """
+                ,
+                showHelpOnEmptyInvocation: true
             )
         }
     }

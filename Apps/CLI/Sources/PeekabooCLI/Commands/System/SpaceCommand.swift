@@ -129,7 +129,8 @@ struct SpaceCommand: ParsableCommand {
             ListSubcommand.self,
             SwitchSubcommand.self,
             MoveWindowSubcommand.self,
-        ]
+        ],
+        showHelpOnEmptyInvocation: true
     )
 }
 

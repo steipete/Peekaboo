@@ -35,7 +35,8 @@ struct DialogCommand: ParsableCommand {
             FileSubcommand.self,
             DismissSubcommand.self,
             ListSubcommand.self,
-        ]
+        ],
+        showHelpOnEmptyInvocation: true
     )
 
     // MARK: - Click Dialog Button

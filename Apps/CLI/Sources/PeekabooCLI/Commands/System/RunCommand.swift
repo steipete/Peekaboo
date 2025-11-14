@@ -9,7 +9,8 @@ struct RunCommand: OutputFormattable {
         MainActorCommandDescription.describe {
             CommandDescription(
                 commandName: "run",
-                abstract: "Execute a Peekaboo automation script"
+                abstract: "Execute a Peekaboo automation script",
+                showHelpOnEmptyInvocation: true
             )
         }
     }

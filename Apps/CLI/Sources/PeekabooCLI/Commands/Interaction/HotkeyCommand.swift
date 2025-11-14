@@ -138,6 +138,8 @@ extension HotkeyCommand: ParsableCommand {
 
                     The keys are pressed in the order given and released in reverse order.
                 """
+                ,
+                showHelpOnEmptyInvocation: true
             )
         }
     }

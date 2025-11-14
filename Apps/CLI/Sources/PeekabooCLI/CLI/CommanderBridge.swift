@@ -122,14 +122,18 @@ extension CommanderCommandSummary {
         }
         self.options = signature.options.map { option in
             Option(
-                names: option.names.map(\.cliSpelling),
+                names: option.names
+                    .filter { !$0.isAlias }
+                    .map(\.cliSpelling),
                 help: option.help,
                 parsing: option.parsing.displayName
             )
         }
         self.flags = signature.flags.map { flag in
             Flag(
-                names: flag.names.map(\.cliSpelling),
+                names: flag.names
+                    .filter { !$0.isAlias }
+                    .map(\.cliSpelling),
                 help: flag.help
             )
         }
@@ -189,9 +193,9 @@ extension String {
 extension CommanderName {
     fileprivate var cliSpelling: String {
         switch self {
-        case let .short(value):
+        case let .short(value), let .aliasShort(value):
             "-\(value)"
-        case let .long(value):
+        case let .long(value), let .aliasLong(value):
             "--\(value)"
         }
     }

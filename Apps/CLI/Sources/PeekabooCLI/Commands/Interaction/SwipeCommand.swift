@@ -252,7 +252,8 @@ extension SwipeCommand: ParsableCommand {
                   The swipe includes a configurable duration to control the
                   speed of the drag gesture.
                 """,
-                version: "2.0.0"
+                version: "2.0.0",
+                showHelpOnEmptyInvocation: true
             )
         }
     }

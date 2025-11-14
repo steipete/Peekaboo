@@ -24,6 +24,8 @@ struct CleanCommand: OutputFormattable {
               - annotated.png: Screenshot with UI markers (if generated)
               - map.json: UI element mapping data
         """
+        ,
+        showHelpOnEmptyInvocation: true
     )
 
     @Flag(help: "Remove all session data")

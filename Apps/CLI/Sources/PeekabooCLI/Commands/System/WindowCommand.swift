@@ -65,7 +65,8 @@ struct WindowCommand: ParsableCommand {
             SetBoundsSubcommand.self,
             FocusSubcommand.self,
             WindowListSubcommand.self,
-        ]
+        ],
+        showHelpOnEmptyInvocation: true
     )
 }
 

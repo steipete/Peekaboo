@@ -38,7 +38,8 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
                 NOTE: Menu bar items are different from regular application menus. For application
                 menus (File, Edit, etc.), use the 'menu' command instead.
-                """
+                """,
+                showHelpOnEmptyInvocation: true
             )
         }
     }

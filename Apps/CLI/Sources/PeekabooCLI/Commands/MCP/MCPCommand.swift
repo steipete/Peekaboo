@@ -45,7 +45,8 @@ struct MCPCommand: ParsableCommand {
             Disable.self,
             Call.self,
             Inspect.self,
-        ]
+        ],
+        showHelpOnEmptyInvocation: true
     )
 }
 

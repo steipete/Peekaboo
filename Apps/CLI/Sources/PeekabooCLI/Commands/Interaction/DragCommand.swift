@@ -306,7 +306,8 @@ extension DragCommand: ParsableCommand {
                   peekaboo drag --from S1 --to-coords "500,250" --duration 2000
                   peekaboo drag --from T1 --to T5 --modifiers shift
                 """,
-                version: "2.0.0"
+                version: "2.0.0",
+                showHelpOnEmptyInvocation: true
             )
         }
     }

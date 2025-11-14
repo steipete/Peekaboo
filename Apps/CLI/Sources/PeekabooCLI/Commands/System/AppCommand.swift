@@ -43,7 +43,8 @@ struct AppCommand: ParsableCommand {
             UnhideSubcommand.self,
             SwitchSubcommand.self,
             ListSubcommand.self,
-        ]
+        ],
+        showHelpOnEmptyInvocation: true
     )
 
     // MARK: - Launch Application

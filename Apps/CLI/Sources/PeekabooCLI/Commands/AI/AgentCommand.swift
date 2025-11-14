@@ -58,7 +58,27 @@ func iconForTool(_ toolName: String) -> String {
 struct AgentCommand: RuntimeOptionsConfigurable {
     static let commandDescription = CommandDescription(
         commandName: "agent",
-        abstract: "Execute complex automation tasks using AI agent"
+        abstract: "Execute complex automation tasks using the Peekaboo agent",
+        discussion: """
+        Launches the autonomous Peekaboo operator so it can interpret a natural-language goal,
+        choose tools (see, click, type, etc.), and report progress back to you. Supports resuming
+        previous sessions, dry-run planning, audio input, and JSON/quiet output modes for CI.
+        """,
+        usageExamples: [
+            CommandUsageExample(
+                command: "peekaboo agent \"Prepare the TestFlight build for review\"",
+                description: "Start a brand-new session with a natural-language brief."
+            ),
+            CommandUsageExample(
+                command: "peekaboo agent --resume",
+                description: "Resume the most recent session without retyping the task."
+            ),
+            CommandUsageExample(
+                command: "peekaboo agent --resume-session SESSION_ID --max-steps 12",
+                description: "Resume a known session while capping the step budget."
+            )
+        ],
+        showHelpOnEmptyInvocation: true
     )
 
     @Argument(help: "Natural language description of the task to perform (optional when using --resume)")

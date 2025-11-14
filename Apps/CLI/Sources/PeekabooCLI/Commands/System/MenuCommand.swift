@@ -42,7 +42,8 @@ struct MenuCommand: ParsableCommand {
                     ClickExtraSubcommand.self,
                     ListSubcommand.self,
                     ListAllSubcommand.self,
-                ]
+                ],
+                showHelpOnEmptyInvocation: true
             )
         }
     }
