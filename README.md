@@ -1056,6 +1056,16 @@ peekaboo agent --verbose "Create a new document in Pages with the title 'Meeting
 # Relaunch an application (useful for applying settings or fixing issues)
 peekaboo app relaunch Safari              # Quit and restart Safari
 peekaboo app relaunch "Visual Studio Code" --wait 3 --wait-until-ready
+
+# Open URLs or documents via Peekaboo (instead of raw `open`)
+peekaboo open https://example.com --json-output
+peekaboo open ~/Documents/report.pdf --app "Preview" --wait-until-ready
+
+# Launch an app and hand it documents/URLs immediately
+peekaboo app launch "Safari" \
+  --open https://news.ycombinator.com \
+  --open https://example.com/status \
+  --no-focus
 ```
 
 ### Debugging Agent Actions

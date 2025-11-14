@@ -41,8 +41,8 @@ Use `peekaboo <command> --help` for inline flag descriptions; this page links to
 - [`space`](commands/space.md) – `list`, `switch`, `move-window` for Spaces/virtual desktops.
 - [`menu`](commands/menu.md) – `click`, `click-extra`, `list`, `list-all` for application menus + menu extras.
 - [`menubar`](commands/menubar.md) – `list` and `click` status-bar icons by name or index.
-- [`app`](commands/app.md) – `launch`, `quit`, `relaunch`, `hide`, `unhide`, `switch`, `list` with focus + wait helpers.
-- [`open`](commands/open.md) – Enhanced macOS `open` with focus control and JSON output.
+- [`app`](commands/app.md) – `launch`, `quit`, `relaunch`, `hide`, `unhide`, `switch`, `list`; `launch` now accepts repeatable `--open <url|path>` arguments (plus `--wait-until-ready`, `--no-focus`) to pass documents/URLs directly to the target app.
+- [`open`](commands/open.md) – Enhanced macOS `open` that respects `--app/--bundle-id`, `--wait-until-ready`, `--no-focus`, and emits JSON payloads for scripting.
 - [`dock`](commands/dock.md) – `launch`, `right-click`, `hide`, `show`, `list` Dock items.
 - [`dialog`](commands/dialog.md) – `click`, `input`, `file`, `dismiss`, `list` system dialogs.
 
