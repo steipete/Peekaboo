@@ -51,6 +51,23 @@ struct TypeCommandTests {
         #expect(command.delay == 0)
     }
 
+    @Test("Type command with human typing speed")
+    func typeWithWPM() throws {
+        var command = try TypeCommand.parse(["Message", "--wpm", "140", "--json-output"])
+        #expect(command.wordsPerMinute == 140)
+        #expect(command.delay == 2)
+        // Validation should allow the selected range
+        try command.validate()
+    }
+
+    @Test("Type command rejects invalid WPM")
+    func typeWithInvalidWPM() throws {
+        var command = try TypeCommand.parse(["Hello", "--wpm", "20"])
+        #expect(throws: ValidationError.self) {
+            try command.validate()
+        }
+    }
+
     @Test("Type command argument parsing")
     func typeCommandArgumentParsing() throws {
         let command = try TypeCommand.parse(["Hello World", "--delay", "10", "--return"])

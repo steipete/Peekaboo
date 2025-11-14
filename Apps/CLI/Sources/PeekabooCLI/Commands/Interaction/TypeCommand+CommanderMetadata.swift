@@ -22,6 +22,11 @@ extension TypeCommand: CommanderSignatureProviding {
                     long: "delay"
                 ),
                 .commandOption(
+                    "wpm",
+                    help: "Approximate human typing speed (words per minute)",
+                    long: "wpm"
+                ),
+                .commandOption(
                     "tab",
                     help: "Press tab N times",
                     long: "tab"

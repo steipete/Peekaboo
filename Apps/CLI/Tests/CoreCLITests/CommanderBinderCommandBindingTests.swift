@@ -333,6 +333,7 @@ struct CommanderBinderCommandBindingTests {
             options: [
                 "session": ["xyz"],
                 "delay": ["10"],
+                "wpm": ["150"],
                 "tab": ["2"],
                 "app": ["Notes"],
                 "focusTimeoutSeconds": ["3.5"]
@@ -343,6 +344,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.text == "Hello")
         #expect(command.session == "xyz")
         #expect(command.delay == 10)
+        #expect(command.wordsPerMinute == 150)
         #expect(command.tab == 2)
         #expect(command.pressReturn == true)
         #expect(command.escape == true)

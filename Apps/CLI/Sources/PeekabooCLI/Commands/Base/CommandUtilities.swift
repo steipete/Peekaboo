@@ -336,10 +336,11 @@ enum AutomationServiceBridge {
         from: CGPoint,
         to: CGPoint,
         duration: Int,
-        steps: Int
+        steps: Int,
+        profile: MouseMovementProfile
     ) async throws {
         try await Task { @MainActor in
-            try await automation.swipe(from: from, to: to, duration: duration, steps: steps)
+            try await automation.swipe(from: from, to: to, duration: duration, steps: steps, profile: profile)
         }.value
     }
 
@@ -353,7 +354,8 @@ enum AutomationServiceBridge {
                 to: request.to,
                 duration: request.duration,
                 steps: request.steps,
-                modifiers: request.modifiers
+                modifiers: request.modifiers,
+                profile: request.profile
             )
         }.value
     }
@@ -404,6 +406,67 @@ struct DragRequest: Sendable {
     let duration: Int
     let steps: Int
     let modifiers: String?
+    let profile: MouseMovementProfile
+}
+
+enum CursorMovementProfileSelection: String {
+    case linear
+    case human
+}
+
+struct CursorMovementParameters {
+    let profile: MouseMovementProfile
+    let duration: Int
+    let steps: Int
+    let smooth: Bool
+    let profileName: String
+}
+
+enum CursorMovementResolver {
+    static func resolve(
+        selection: CursorMovementProfileSelection,
+        durationOverride: Int?,
+        stepsOverride: Int?,
+        baseSmooth: Bool,
+        distance: CGFloat,
+        defaultDuration: Int,
+        defaultSteps: Int
+    ) -> CursorMovementParameters {
+        switch selection {
+        case .linear:
+            let resolvedDuration = durationOverride ?? (baseSmooth ? defaultDuration : 0)
+            let resolvedSteps = baseSmooth ? max(stepsOverride ?? defaultSteps, 1) : 1
+            return CursorMovementParameters(
+                profile: .linear,
+                duration: resolvedDuration,
+                steps: resolvedSteps,
+                smooth: baseSmooth,
+                profileName: selection.rawValue
+            )
+        case .human:
+            let resolvedDuration = durationOverride ?? Self.humanDuration(for: distance)
+            let resolvedSteps = max(stepsOverride ?? Self.humanSteps(for: distance), 30)
+            return CursorMovementParameters(
+                profile: .human(),
+                duration: resolvedDuration,
+                steps: resolvedSteps,
+                smooth: true,
+                profileName: selection.rawValue
+            )
+        }
+    }
+
+    private static func humanDuration(for distance: CGFloat) -> Int {
+        let distanceFactor = log2(Double(distance) + 1) * 90
+        let perPixel = Double(distance) * 0.45
+        let estimate = 280 + distanceFactor + perPixel
+        return min(max(Int(estimate), 300), 1700)
+    }
+
+    private static func humanSteps(for distance: CGFloat) -> Int {
+        let scaled = Int(distance * 0.35)
+        return min(max(scaled, 40), 140)
+    }
 }
 
 enum WindowServiceBridge {

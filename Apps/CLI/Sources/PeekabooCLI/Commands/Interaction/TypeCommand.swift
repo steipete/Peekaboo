@@ -19,6 +19,9 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     @Option(help: "Delay between keystrokes in milliseconds")
     var delay: Int = 2
 
+    @Option(name: .customLong("wpm"), help: "Approximate human typing speed (words per minute)")
+    var wordsPerMinute: Int?
+
     @Flag(names: [.customLong("return"), .long], help: "Press return/enter after typing")
     var pressReturn = false
 
@@ -59,9 +62,17 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         return self.textOption
     }
 
+    private var typingCadence: TypingCadence {
+        if let wordsPerMinute {
+            return .human(wordsPerMinute: wordsPerMinute)
+        }
+        return .fixed(milliseconds: self.delay)
+    }
+
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.prepare(using: runtime)
+        try self.validate()
         let startTime = Date()
         do {
             let actions = try self.buildActions()
@@ -123,6 +134,14 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         }
     }
 
+    mutating func validate() throws {
+        if let wpm = self.wordsPerMinute {
+            guard (80...220).contains(wpm) else {
+                throw ValidationError("--wpm must be between 80 and 220 to stay believable")
+            }
+        }
+    }
+
     private func warnIfFocusUnknown(sessionId: String?) {
         guard self.focusOptions.autoFocus, sessionId == nil, self.app == nil else { return }
         self.logger.warn(
@@ -143,7 +162,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     }
 
     private func executeTypeActions(actions: [TypeAction], sessionId: String?) async throws -> TypeResult {
-        let request = TypeActionsRequest(actions: actions, typingDelay: self.delay, sessionId: sessionId)
+        let request = TypeActionsRequest(actions: actions, cadence: self.typingCadence, sessionId: sessionId)
         return try await AutomationServiceBridge.typeActions(automation: self.services.automation, request: request)
     }
 
@@ -153,7 +172,8 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
             typedText: self.resolvedText,
             keyPresses: typeResult.keyPresses,
             totalCharacters: typeResult.totalCharacters,
-            executionTime: Date().timeIntervalSince(startTime)
+            executionTime: Date().timeIntervalSince(startTime),
+            wordsPerMinute: self.wordsPerMinute
         )
 
         output(result) {
@@ -161,10 +181,16 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
             if let typed = self.resolvedText {
                 print("⌨️  Typed: \"\(typed)\"")
             }
-            if typeResult.keyPresses > 0 {
-                print("🔑 Special keys: \(typeResult.keyPresses)")
+            let specialKeys = max(typeResult.keyPresses - typeResult.totalCharacters, 0)
+            if specialKeys > 0 {
+                print("🔑 Special keys: \(specialKeys)")
             }
             print("📊 Total characters: \(typeResult.totalCharacters)")
+            if let wpm = self.wordsPerMinute {
+                print("🏃‍♀️ Human cadence: \(wpm) WPM")
+            } else {
+                print("⚙️  Fixed delay: \(self.delay)ms between keys")
+            }
             print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
         }
     }
@@ -264,6 +290,9 @@ extension TypeCommand: CommanderBindableCommand {
         if let delay: Int = try values.decodeOption("delay", as: Int.self) {
             self.delay = delay
         }
+        if let wpm: Int = try values.decodeOption("wpm", as: Int.self) {
+            self.wordsPerMinute = wpm
+        }
         self.tab = try values.decodeOption("tab", as: Int.self)
         self.pressReturn = values.flag("pressReturn")
         self.escape = values.flag("escape")
@@ -282,6 +311,7 @@ struct TypeCommandResult: Codable {
     let keyPresses: Int
     let totalCharacters: Int
     let executionTime: TimeInterval
+    let wordsPerMinute: Int?
 }
 
 // MARK: - Conformances
@@ -302,6 +332,7 @@ extension TypeCommand: ParsableCommand {
                       peekaboo type "user@example.com"      # Type email
                       peekaboo type "text" --delay 0        # Type at maximum speed
                       peekaboo type "text" --delay 50       # Type slower (50ms between keys)
+                      peekaboo type "text" --wpm 150       # Type like a fast human (150 WPM)
                       peekaboo type "password" --return     # Type and press return
                       peekaboo type --tab 3                 # Press tab 3 times
                       peekaboo type "text" --clear          # Clear field first
@@ -328,6 +359,10 @@ extension TypeCommand: ParsableCommand {
                     FOCUS MANAGEMENT:
                       The command assumes an element is already focused.
                       Use 'click' to focus an input field first.
+
+                    HUMAN TYPING:
+                      Use --wpm to enable human-like cadence (80-220 WPM).
+                      When unset, --delay controls the fixed millisecond spacing.
                 """
             )
         }

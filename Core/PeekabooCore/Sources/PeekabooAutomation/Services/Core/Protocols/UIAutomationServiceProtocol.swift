@@ -33,9 +33,9 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// Type using advanced typing actions (text, special keys, key sequences)
     /// - Parameters:
     ///   - actions: Array of typing actions to perform
-    ///   - typingDelay: Delay between keystrokes in milliseconds
+    ///   - cadence: Typing cadence (fixed delay or human WPM)
     ///   - sessionId: Session ID for element resolution
-    func typeActions(_ actions: [TypeAction], typingDelay: Int, sessionId: String?) async throws -> TypeResult
+    func typeActions(_ actions: [TypeAction], cadence: TypingCadence, sessionId: String?) async throws -> TypeResult
 
     /// Scroll in a specific direction with the supplied configuration.
     /// - Parameter request: Scroll configuration including direction, amount, options, and session context.
@@ -53,7 +53,8 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - to: Ending point
     ///   - duration: Duration of the swipe in milliseconds
     ///   - steps: Number of intermediate steps
-    func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int) async throws
+    ///   - profile: Movement profile for the swipe path
+    func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int, profile: MouseMovementProfile) async throws
 
     /// Check if accessibility permission is granted
     /// - Returns: True if permission is granted
@@ -75,7 +76,15 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - duration: Duration of the drag in milliseconds
     ///   - steps: Number of intermediate steps
     ///   - modifiers: Modifier keys to hold during drag (comma-separated: cmd,shift,option,ctrl)
-    func drag(from: CGPoint, to: CGPoint, duration: Int, steps: Int, modifiers: String?) async throws
+    ///   - profile: Movement profile for the drag path
+    func drag(
+        from: CGPoint,
+        to: CGPoint,
+        duration: Int,
+        steps: Int,
+        modifiers: String?,
+        profile: MouseMovementProfile
+    ) async throws
 
     /// Move the mouse cursor to a specific location
     /// - Parameters:

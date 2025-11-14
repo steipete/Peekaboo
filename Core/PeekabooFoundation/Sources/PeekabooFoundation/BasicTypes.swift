@@ -129,6 +129,12 @@ public enum TypeAction: Sendable {
     case clear
 }
 
+/// Typing cadence configuration for automation services
+public enum TypingCadence: Sendable, Equatable {
+    case fixed(milliseconds: Int)
+    case human(wordsPerMinute: Int)
+}
+
 // MARK: - CustomStringConvertible Conformances
 
 extension ClickType: CustomStringConvertible {

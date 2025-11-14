@@ -95,7 +95,7 @@ struct TypeServiceTests {
 
         let result = try await service.typeActions(
             actions,
-            typingDelay: 50,
+            cadence: .fixed(milliseconds: 50),
             sessionId: nil)
 
         #expect(result.totalCharacters > 0)
@@ -188,7 +188,7 @@ struct TypeServiceTests {
 
         let result = try await service.typeActions(
             actions,
-            typingDelay: 50,
+            cadence: .fixed(milliseconds: 50),
             sessionId: nil)
 
         #expect(result.keyPresses == actions.count)
@@ -214,7 +214,7 @@ struct TypeServiceTests {
 
         let result = try await service.typeActions(
             newKeyActions,
-            typingDelay: 50,
+            cadence: .fixed(milliseconds: 50),
             sessionId: nil)
 
         #expect(result.keyPresses == newKeyActions.count)
@@ -243,7 +243,7 @@ struct TypeServiceTests {
 
         let result = try await service.typeActions(
             actionsWithEscapes,
-            typingDelay: 10,
+            cadence: .fixed(milliseconds: 10),
             sessionId: nil)
 
         #expect(result.totalCharacters > 0)
@@ -270,7 +270,7 @@ struct TypeServiceTests {
 
         let result = try await service.typeActions(
             mixedActions,
-            typingDelay: 20,
+            cadence: .fixed(milliseconds: 20),
             sessionId: nil)
 
         // Count expected key presses
@@ -294,10 +294,54 @@ struct TypeServiceTests {
 
         let result = try await service.typeActions(
             functionKeyActions,
-            typingDelay: 30,
+            cadence: .fixed(milliseconds: 30),
             sessionId: nil)
 
         #expect(result.keyPresses == 12)
     }
+
+    @Test("Human cadence typing uses WPM profile")
+    func humanCadenceTyping() async throws {
+        let randomSource = DeterministicTypingRandomSource(values: [0.2, 0.8, 0.4, 0.6])
+        let service = TypeService(randomSource: randomSource)
+
+        let actions: [TypeAction] = [
+            .text("Hi"),
+            .key(.space),
+            .text("there")
+        ]
+
+        let startTime = Date()
+        let result = try await service.typeActions(
+            actions,
+            cadence: .human(wordsPerMinute: 140),
+            sessionId: nil)
+
+        #expect(result.totalCharacters == 7)
+        #expect(result.keyPresses >= 8)
+        #expect(randomSource.producedCount > 0)
+        #expect(Date().timeIntervalSince(startTime) > 0)
+    }
 }
 #endif
+
+@MainActor
+final class DeterministicTypingRandomSource: TypingCadenceRandomSource {
+    private let values: [Double]
+    private var index = 0
+    var producedCount = 0
+
+    init(values: [Double]) {
+        self.values = values
+    }
+
+    func nextUnitInterval() -> Double {
+        guard !self.values.isEmpty else { return 0.5 }
+        let value = self.values[self.index % self.values.count]
+        self.index += 1
+        self.producedCount += 1
+        return value
+    }
+}
+
+extension DeterministicTypingRandomSource: @unchecked Sendable {}

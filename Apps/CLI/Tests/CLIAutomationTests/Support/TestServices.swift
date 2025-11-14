@@ -87,7 +87,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
 
     struct TypeActionsCall: Sendable {
         let actions: [TypeAction]
-        let typingDelay: Int
+        let cadence: TypingCadence
         let sessionId: String?
     }
 
@@ -100,6 +100,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         let to: CGPoint
         let duration: Int
         let steps: Int
+        let profile: MouseMovementProfile
     }
 
     struct DragCall: Sendable {
@@ -108,6 +109,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         let duration: Int
         let steps: Int
         let modifiers: String?
+        let profile: MouseMovementProfile
     }
 
     struct MoveMouseCall: Sendable {
@@ -146,7 +148,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     var detectElementsCalls: [(imageData: Data, sessionId: String?, windowContext: WindowContext?)] = []
 
     var nextTypeActionsResult: TypeResult?
-    var typeActionsResultProvider: (([TypeAction], Int, String?) -> TypeResult)?
+    var typeActionsResultProvider: (([TypeAction], TypingCadence, String?) -> TypeResult)?
     var waitForElementProvider: ((ClickTarget, TimeInterval, String?) -> WaitForElementResult)?
     private var waitForElementResults: [WaitTargetKey: WaitForElementResult] = [:]
     var detectElementsHandler: ((Data, String?, WindowContext?) async throws -> ElementDetectionResult)?
@@ -197,15 +199,15 @@ final class StubAutomationService: UIAutomationServiceProtocol {
 
     func typeActions(
         _ actions: [TypeAction],
-        typingDelay: Int,
+        cadence: TypingCadence,
         sessionId: String?
     ) async throws -> TypeResult {
         self.typeActionsCalls.append(
-            TypeActionsCall(actions: actions, typingDelay: typingDelay, sessionId: sessionId)
+            TypeActionsCall(actions: actions, cadence: cadence, sessionId: sessionId)
         )
 
         if let provider = self.typeActionsResultProvider {
-            return provider(actions, typingDelay, sessionId)
+            return provider(actions, cadence, sessionId)
         }
 
         if let nextResult = self.nextTypeActionsResult {
@@ -216,10 +218,11 @@ final class StubAutomationService: UIAutomationServiceProtocol {
             switch action {
             case let .text(text):
                 partial.characters += text.count
+                partial.keyPresses += text.count
             case .key:
                 partial.keyPresses += 1
             case .clear:
-                break
+                partial.keyPresses += 2
             }
         }
 
@@ -236,8 +239,10 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         self.hotkeyCalls.append(HotkeyCall(keys: keys, holdDuration: holdDuration))
     }
 
-    func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int) async throws {
-        self.swipeCalls.append(SwipeCall(from: from, to: to, duration: duration, steps: steps))
+    func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int, profile: MouseMovementProfile) async throws {
+        self.swipeCalls.append(
+            SwipeCall(from: from, to: to, duration: duration, steps: steps, profile: profile)
+        )
     }
 
     func hasAccessibilityPermission() async -> Bool {
@@ -264,9 +269,16 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         return WaitForElementResult(found: false, element: nil, waitTime: 0)
     }
 
-    func drag(from: CGPoint, to: CGPoint, duration: Int, steps: Int, modifiers: String?) async throws {
+    func drag(
+        from: CGPoint,
+        to: CGPoint,
+        duration: Int,
+        steps: Int,
+        modifiers: String?,
+        profile: MouseMovementProfile
+    ) async throws {
         self.dragCalls.append(
-            DragCall(from: from, to: to, duration: duration, steps: steps, modifiers: modifiers)
+            DragCall(from: from, to: to, duration: duration, steps: steps, modifiers: modifiers, profile: profile)
         )
     }
 

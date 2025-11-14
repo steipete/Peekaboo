@@ -387,9 +387,9 @@ extension UIAutomationService {
         _ = await self.visualizerClient.showTypingFeedback(keys: keys, duration: 2.0)
     }
 
-    public func typeActions(_ actions: [TypeAction], typingDelay: Int, sessionId: String?) async throws -> TypeResult {
+    public func typeActions(_ actions: [TypeAction], cadence: TypingCadence, sessionId: String?) async throws -> TypeResult {
         self.logger.debug("Delegating typeActions to TypeService")
-        return try await self.typeService.typeActions(actions, typingDelay: typingDelay, sessionId: sessionId)
+        return try await self.typeService.typeActions(actions, cadence: cadence, sessionId: sessionId)
     }
 
     // MARK: - Scroll Operations
@@ -460,22 +460,42 @@ extension UIAutomationService {
 
     // MARK: - Gesture Operations
 
-    public func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int) async throws {
+    public func swipe(
+        from: CGPoint,
+        to: CGPoint,
+        duration: Int,
+        steps: Int,
+        profile: MouseMovementProfile
+    ) async throws {
         self.logger.debug("Delegating swipe to GestureService")
-        try await self.gestureService.swipe(from: from, to: to, duration: duration, steps: steps)
+        try await self.gestureService.swipe(
+            from: from,
+            to: to,
+            duration: duration,
+            steps: steps,
+            profile: profile
+        )
 
         // Show visual feedback if available
         _ = await self.visualizerClient.showSwipeGesture(from: from, to: to, duration: TimeInterval(duration) / 1000.0)
     }
 
-    public func drag(from: CGPoint, to: CGPoint, duration: Int, steps: Int, modifiers: String?) async throws {
+    public func drag(
+        from: CGPoint,
+        to: CGPoint,
+        duration: Int,
+        steps: Int,
+        modifiers: String?,
+        profile: MouseMovementProfile
+    ) async throws {
         self.logger.debug("Delegating drag to GestureService")
         try await self.gestureService.drag(
             from: from,
             to: to,
             duration: duration,
             steps: steps,
-            modifiers: modifiers)
+            modifiers: modifiers,
+            profile: profile)
     }
 
     public func moveMouse(

@@ -47,7 +47,7 @@ struct PressCommandTests {
         let calls = await self.automationState(context) { $0.typeActionsCalls }
         let call = try #require(calls.first)
         #expect(call.actions.count == 3)
-        #expect(call.typingDelay == 100)
+        #expect(call.cadence == .fixed(milliseconds: 100))
     }
 
     @Test("Press command supports multiple keys in sequence")

@@ -11,11 +11,27 @@ public final class TypeService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "TypeService")
     private let sessionManager: any SessionManagerProtocol
     private let clickService: ClickService
+    private let cadenceRandom: any TypingCadenceRandomSource
 
-    public init(sessionManager: (any SessionManagerProtocol)? = nil, clickService: ClickService? = nil) {
+    public convenience init(
+        sessionManager: (any SessionManagerProtocol)? = nil,
+        clickService: ClickService? = nil)
+    {
+        self.init(
+            sessionManager: sessionManager,
+            clickService: clickService,
+            randomSource: SystemTypingCadenceRandomSource())
+    }
+
+    init(
+        sessionManager: (any SessionManagerProtocol)? = nil,
+        clickService: ClickService? = nil,
+        randomSource: any TypingCadenceRandomSource)
+    {
         let manager = sessionManager ?? SessionManager()
         self.sessionManager = manager
         self.clickService = clickService ?? ClickService(sessionManager: manager)
+        self.cadenceRandom = randomSource
     }
 
     /// Type text with optional target and settings
@@ -78,28 +94,45 @@ public final class TypeService {
     }
 
     /// Type actions (advanced typing with special keys)
-    public func typeActions(_ actions: [TypeAction], typingDelay: Int, sessionId: String?) async throws -> TypeResult {
-        // Type actions (advanced typing with special keys)
+    public func typeActions(_ actions: [TypeAction], cadence: TypingCadence, sessionId: String?) async throws -> TypeResult {
         var totalChars = 0
         var keyPresses = 0
+        var humanContext: HumanTypingContext?
+        let fixedDelay = self.fixedDelaySeconds(for: cadence)
 
-        self.logger.debug("Processing \(actions.count) type actions")
+        self.logger.debug("Processing \(actions.count) type actions with cadence: \(cadence.logDescription)")
 
         for action in actions {
             switch action {
             case let .text(text):
-                let delaySeconds = Double(typingDelay) / 1000.0
-                try await typeTextWithDelay(text, delay: delaySeconds)
-                totalChars += text.count
-                keyPresses += text.count
+                for character in text {
+                    try await self.typeCharacter(character)
+                    totalChars += 1
+                    keyPresses += 1
+                    try await self.sleepAfterKeystroke(
+                        typedCharacter: character,
+                        cadence: cadence,
+                        fixedDelaySeconds: fixedDelay,
+                        humanContext: &humanContext)
+                }
 
             case let .key(key):
                 try await self.typeSpecialKey(key.rawValue)
                 keyPresses += 1
+                try await self.sleepAfterKeystroke(
+                    typedCharacter: nil,
+                    cadence: cadence,
+                    fixedDelaySeconds: fixedDelay,
+                    humanContext: &humanContext)
 
             case .clear:
                 try await self.clearCurrentField()
                 keyPresses += 2 // Cmd+A and Delete
+                try await self.sleepAfterKeystroke(
+                    typedCharacter: nil,
+                    cadence: cadence,
+                    fixedDelaySeconds: fixedDelay,
+                    humanContext: &humanContext)
             }
         }
 
@@ -198,6 +231,34 @@ public final class TypeService {
         }
     }
 
+    private func sleepAfterKeystroke(
+        typedCharacter: Character?,
+        cadence: TypingCadence,
+        fixedDelaySeconds: TimeInterval,
+        humanContext: inout HumanTypingContext?) async throws
+    {
+        let delaySeconds: TimeInterval
+        switch cadence {
+        case .fixed:
+            delaySeconds = fixedDelaySeconds
+        case let .human(wordsPerMinute):
+            if humanContext == nil {
+                humanContext = HumanTypingContext(wordsPerMinute: wordsPerMinute, random: self.cadenceRandom)
+            }
+            delaySeconds = humanContext?.nextDelay(after: typedCharacter) ?? 0
+        }
+
+        guard delaySeconds > 0 else { return }
+        try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+    }
+
+    private func fixedDelaySeconds(for cadence: TypingCadence) -> TimeInterval {
+        if case let .fixed(milliseconds) = cadence {
+            return Double(max(0, milliseconds)) / 1000.0
+        }
+        return 0
+    }
+
     private func typeCharacter(_ char: Character) async throws {
         let string = String(char)
 
@@ -254,6 +315,138 @@ public final class TypeService {
     private func mapSpecialKeyToVirtualCode(_ key: String) -> CGKeyCode {
         SpecialKeyMapping.value(for: key)
     }
+}
+
+private extension TypingCadence {
+    var logDescription: String {
+        switch self {
+        case let .fixed(milliseconds):
+            return "fixed(\(milliseconds)ms)"
+        case let .human(wordsPerMinute):
+            return "human(\(wordsPerMinute) WPM)"
+        }
+    }
+}
+
+protocol TypingCadenceRandomSource: Sendable {
+    func nextUnitInterval() -> Double
+}
+
+struct SystemTypingCadenceRandomSource: TypingCadenceRandomSource {
+    func nextUnitInterval() -> Double {
+        Double.random(in: Double.leastNonzeroMagnitude..<1.0)
+    }
+}
+
+private struct HumanTypingContext {
+    private enum Constants {
+        static let logNormalSigma: Double = 0.35
+        static let punctuationMultiplier: Double = 1.35
+        static let digraphMultiplier: Double = 0.85
+        static let thinkingWordInterval: Int = 12
+        static let thinkingPauseRange: ClosedRange<Double> = 0.3...0.5
+    }
+
+    let baseDelay: TimeInterval
+    let random: any TypingCadenceRandomSource
+    var previousCharacter: Character?
+    var charactersInCurrentWord = 0
+    var wordsSincePause = 0
+
+    init(wordsPerMinute: Int, random: any TypingCadenceRandomSource) {
+        let normalizedWPM = max(wordsPerMinute, 40)
+        self.baseDelay = 60.0 / (Double(normalizedWPM) * 5.0)
+        self.random = random
+    }
+
+    mutating func nextDelay(after character: Character?) -> TimeInterval {
+        var delay = self.sampleLogNormal()
+
+        if let character {
+            if character.isWhitespaceLike || character.isPunctuationLike {
+                delay *= Constants.punctuationMultiplier
+            }
+
+            if let previous = self.previousCharacter,
+               previous.isWordCharacter,
+               character.isWordCharacter
+            {
+                delay *= Constants.digraphMultiplier
+            }
+        }
+
+        delay = self.clamp(delay)
+
+        if let pause = self.consumeWordBoundary(after: character) {
+            delay += pause
+        }
+
+        self.previousCharacter = character
+        return delay
+    }
+
+    private mutating func consumeWordBoundary(after character: Character?) -> TimeInterval? {
+        guard let character else { return nil }
+
+        if character.isWordCharacter {
+            self.charactersInCurrentWord += 1
+            return nil
+        }
+
+        if self.charactersInCurrentWord == 0 {
+            return nil
+        }
+
+        self.charactersInCurrentWord = 0
+        self.wordsSincePause += 1
+
+        if self.wordsSincePause >= Constants.thinkingWordInterval {
+            self.wordsSincePause = 0
+            return self.randomThinkingPause()
+        }
+
+        return nil
+    }
+
+    private mutating func sampleLogNormal() -> TimeInterval {
+        let sigma = Constants.logNormalSigma
+        let mu = log(self.baseDelay) - 0.5 * sigma * sigma
+        let gaussian = Self.generateGaussian(using: self.random)
+        let value = exp(mu + sigma * gaussian)
+        return max(value, self.baseDelay * 0.2)
+    }
+
+    private func clamp(_ value: TimeInterval) -> TimeInterval {
+        let minValue = self.baseDelay * 0.25
+        let maxValue = self.baseDelay * 3.5
+        return min(max(value, minValue), maxValue)
+    }
+
+    private func randomThinkingPause() -> TimeInterval {
+        let span = Constants.thinkingPauseRange.upperBound - Constants.thinkingPauseRange.lowerBound
+        return Constants.thinkingPauseRange.lowerBound + span * self.random.nextUnitInterval()
+    }
+
+    private static func generateGaussian(using random: any TypingCadenceRandomSource) -> Double {
+        let u1 = max(random.nextUnitInterval(), Double.leastNonzeroMagnitude)
+        let u2 = random.nextUnitInterval()
+        return sqrt(-2.0 * log(u1)) * cos(2.0 * .pi * u2)
+    }
+}
+
+private extension Character {
+    var isPunctuationLike: Bool {
+        self.unicodeScalars.allSatisfy { CharacterSet.punctuationCharacters.contains($0) }
+    }
+
+    var isWordCharacter: Bool {
+        self.isLetter || self.isNumber
+    }
+
+    var isWhitespaceLike: Bool {
+        self.isWhitespace || self == "\n" || self == "\t"
+    }
+}
 }
 
 // MARK: - Key codes from Carbon

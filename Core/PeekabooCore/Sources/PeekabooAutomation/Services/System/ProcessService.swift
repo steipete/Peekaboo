@@ -233,7 +233,7 @@ extension ProcessService {
             // Use typeActions to press Enter key
             _ = try await self.uiAutomationService.typeActions(
                 [.key(.return)],
-                typingDelay: 50,
+                cadence: .fixed(milliseconds: 50),
                 sessionId: sessionId)
         }
 
@@ -299,7 +299,8 @@ extension ProcessService {
             from: points.start,
             to: points.end,
             duration: Int(duration * 1000),
-            steps: 30)
+            steps: 30,
+            profile: .linear)
 
         return StepExecutionResult(
             output: .data([
@@ -326,7 +327,8 @@ extension ProcessService {
             to: CGPoint(x: dragParams.toX, y: dragParams.toY),
             duration: Int(duration * 1000), // Convert to milliseconds
             steps: 30,
-            modifiers: modifierString.isEmpty ? nil : modifierString)
+            modifiers: modifierString.isEmpty ? nil : modifierString,
+            profile: .linear)
 
         return StepExecutionResult(
             output: .data([

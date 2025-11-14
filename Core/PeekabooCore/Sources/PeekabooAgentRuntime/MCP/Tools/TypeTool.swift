@@ -15,7 +15,7 @@ public struct TypeTool: MCPTool {
     public var description: String {
         """
         Types text into UI elements or at current focus.
-        Supports special keys ({return}, {tab}, etc.) and configurable typing speed.
+        Supports special keys ({return}, {tab}, etc.) plus human typing (--wpm) or fixed-delay (--delay) pacing.
         Can target specific elements or type at current keyboard focus.
         Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5
         and anthropic/claude-sonnet-4.5
@@ -35,6 +35,8 @@ public struct TypeTool: MCPTool {
                 "delay": SchemaBuilder.number(
                     description: "Optional. Delay between keystrokes in milliseconds. Default: 5.",
                     default: 5),
+                "wpm": SchemaBuilder.number(
+                    description: "Optional. Human typing speed (80-220 WPM). Overrides delay when set."),
                 "clear": SchemaBuilder.boolean(
                     description: "Optional. Clear the field before typing (Cmd+A, Delete).",
                     default: false),
@@ -88,6 +90,7 @@ public struct TypeTool: MCPTool {
             elementId: arguments.getString("on"),
             sessionId: arguments.getString("session"),
             delay: Int(arguments.getNumber("delay") ?? 5),
+            wordsPerMinute: arguments.getNumber("wpm").map { Int($0) },
             clearField: arguments.getBool("clear") ?? false,
             pressReturn: arguments.getBool("press_return") ?? false,
             tabCount: arguments.getNumber("tab").map { Int($0) },
@@ -96,6 +99,10 @@ public struct TypeTool: MCPTool {
 
         guard request.hasActions else {
             throw TypeToolValidationError("Must specify text to type or special key actions")
+        }
+
+        if let wpm = request.wordsPerMinute, !(80...220).contains(wpm) {
+            throw TypeToolValidationError("wpm must be between 80 and 220")
         }
 
         return request
@@ -107,18 +114,23 @@ public struct TypeTool: MCPTool {
         let startTime = Date()
 
         try await self.focusIfNeeded(request: request, automation: automation)
-        try await self.clearIfNeeded(request: request, automation: automation)
-        try await self.typeTextIfNeeded(request: request, automation: automation)
-        try await self.pressSpecialKeysIfNeeded(request: request, automation: automation)
+        let actions = try self.buildActions(for: request)
+        let typeResult = try await automation.typeActions(
+            actions,
+            cadence: request.cadence,
+            sessionId: request.sessionId)
 
         let executionTime = Date().timeIntervalSince(startTime)
-        let message = self.buildSummary(request: request, executionTime: executionTime)
+        let message = self.buildSummary(
+            request: request,
+            executionTime: executionTime,
+            result: typeResult)
 
         return ToolResponse(
             content: [.text(message)],
             meta: .object([
                 "execution_time": .double(executionTime),
-                "characters_typed": request.text != nil ? .double(Double(request.text!.count)) : .null,
+                "characters_typed": .double(Double(typeResult.totalCharacters)),
             ]))
     }
 
@@ -142,54 +154,45 @@ public struct TypeTool: MCPTool {
         try await Task.sleep(nanoseconds: 100_000_000)
     }
 
-    @MainActor
-    private func clearIfNeeded(request: TypeRequest, automation: any UIAutomationServiceProtocol) async throws {
-        guard request.clearField else { return }
-        try await automation.hotkey(keys: "cmd,a", holdDuration: 50)
-        try await Task.sleep(nanoseconds: 50_000_000)
-        try await automation.hotkey(keys: "delete", holdDuration: 50)
-        try await Task.sleep(nanoseconds: 50_000_000)
-    }
+    private func buildActions(for request: TypeRequest) throws -> [TypeAction] {
+        var actions: [TypeAction] = []
 
-    @MainActor
-    private func typeTextIfNeeded(request: TypeRequest, automation: any UIAutomationServiceProtocol) async throws {
-        guard let text = request.text else { return }
-        try await automation.type(
-            text: text,
-            target: nil,
-            clearExisting: false,
-            typingDelay: request.delay,
-            sessionId: request.sessionId)
-    }
+        if request.clearField {
+            actions.append(.clear)
+        }
 
-    @MainActor
-    private func pressSpecialKeysIfNeeded(
-        request: TypeRequest,
-        automation: any UIAutomationServiceProtocol) async throws
-    {
-        if let tabCount = request.tabCount {
-            for index in 0..<tabCount {
-                try await automation.hotkey(keys: "tab", holdDuration: 50)
-                if index < tabCount - 1 {
-                    try await Task.sleep(nanoseconds: UInt64(request.delay) * 1_000_000)
-                }
-            }
+        if let text = request.text, !text.isEmpty {
+            actions.append(.text(text))
+        }
+
+        if let tabCount = request.tabCount, tabCount > 0 {
+            actions.append(contentsOf: Array(repeating: .key(.tab), count: tabCount))
         }
 
         if request.pressEscape {
-            try await automation.hotkey(keys: "escape", holdDuration: 50)
+            actions.append(.key(.escape))
         }
 
         if request.pressDelete {
-            try await automation.hotkey(keys: "delete", holdDuration: 50)
+            actions.append(.key(.delete))
         }
 
         if request.pressReturn {
-            try await automation.hotkey(keys: "return", holdDuration: 50)
+            actions.append(.key(.return))
         }
+
+        guard !actions.isEmpty else {
+            throw TypeToolValidationError("Specify text or key actions to run the type tool")
+        }
+
+        return actions
     }
 
-    private func buildSummary(request: TypeRequest, executionTime: TimeInterval) -> String {
+    private func buildSummary(
+        request: TypeRequest,
+        executionTime: TimeInterval,
+        result: TypeResult) -> String
+    {
         var actions: [String] = []
 
         if request.clearField {
@@ -217,6 +220,16 @@ public struct TypeTool: MCPTool {
             actions.append("Pressed Return")
         }
 
+        if let wpm = request.wordsPerMinute {
+            actions.append("Human cadence: \(wpm) WPM")
+        } else {
+            actions.append("Fixed delay: \(request.delay)ms")
+        }
+
+        actions.append("Chars: \(result.totalCharacters)")
+        let specialKeys = max(result.keyPresses - result.totalCharacters, 0)
+        actions.append("Special keys: \(specialKeys)")
+
         let duration = String(format: "%.2f", executionTime) + "s"
         let summary = actions.isEmpty ? "Performed no actions" : actions.joined(separator: ", ")
         return "\(AgentDisplayTokens.Status.success) \(summary) in \(duration)"
@@ -228,6 +241,7 @@ private struct TypeRequest {
     let elementId: String?
     let sessionId: String?
     let delay: Int
+    let wordsPerMinute: Int?
     let clearField: Bool
     let pressReturn: Bool
     let tabCount: Int?
@@ -235,7 +249,14 @@ private struct TypeRequest {
     let pressDelete: Bool
 
     var hasActions: Bool {
-        self.text != nil || self.tabCount != nil || self.pressEscape || self.pressDelete || self.pressReturn
+        self.text != nil || self.tabCount != nil || self.pressEscape || self.pressDelete || self.pressReturn || self.clearField
+    }
+
+    var cadence: TypingCadence {
+        if let wordsPerMinute {
+            return .human(wordsPerMinute: wordsPerMinute)
+        }
+        return .fixed(milliseconds: self.delay)
     }
 }
 

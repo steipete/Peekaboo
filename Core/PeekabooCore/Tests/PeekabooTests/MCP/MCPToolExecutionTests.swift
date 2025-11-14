@@ -205,9 +205,9 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
     func click(target _: ClickTarget, clickType _: ClickType, sessionId _: String?) async throws {}
 
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, sessionId _: String?) async
-    throws {}
+        throws {}
 
-    func typeActions(_: [TypeAction], typingDelay _: Int, sessionId _: String?) async throws -> TypeResult {
+    func typeActions(_: [TypeAction], cadence _: TypingCadence, sessionId _: String?) async throws -> TypeResult {
         TypeResult(totalCharacters: 0, keyPresses: 0)
     }
 
@@ -215,7 +215,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
 
     func hotkey(keys _: String, holdDuration _: Int) async throws {}
 
-    func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int) async throws {}
+    func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
 
     func hasAccessibilityPermission() async -> Bool { self.accessibilityGranted }
 
@@ -225,7 +225,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         WaitForElementResult(found: false, element: nil, waitTime: 0)
     }
 
-    func drag(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, modifiers _: String?) async throws {}
+    func drag(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, modifiers _: String?, profile _: MouseMovementProfile) async throws {}
 
     func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
 

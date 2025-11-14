@@ -78,7 +78,11 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
             }
 
             // Execute key presses
-            let typeRequest = TypeActionsRequest(actions: actions, typingDelay: self.delay, sessionId: sessionId)
+            let typeRequest = TypeActionsRequest(
+                actions: actions,
+                cadence: .fixed(milliseconds: self.delay),
+                sessionId: sessionId
+            )
             let result = try await AutomationServiceBridge.typeActions(
                 automation: self.services.automation,
                 request: typeRequest
