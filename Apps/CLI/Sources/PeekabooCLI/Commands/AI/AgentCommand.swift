@@ -77,8 +77,7 @@ struct AgentCommand: RuntimeOptionsConfigurable {
                 command: "peekaboo agent --resume-session SESSION_ID --max-steps 12",
                 description: "Resume a known session while capping the step budget."
             )
-        ],
-        showHelpOnEmptyInvocation: true
+        ]
     )
 
     @Argument(help: "Natural language description of the task to perform (optional when using --resume)")
@@ -281,7 +280,7 @@ extension AgentCommand {
             peekabooAgent,
             task: executionTask,
             requestedModel: requestedModel,
-            maxSteps: self.maxSteps ?? 20
+            maxSteps: self.maxSteps ?? 100
         )
     }
 
@@ -763,7 +762,7 @@ extension AgentCommand {
         self.normalizedTaskInput != nil || self.audio || self.audioFile != nil
     }
 
-    private var resolvedMaxSteps: Int { self.maxSteps ?? 20 }
+    private var resolvedMaxSteps: Int { self.maxSteps ?? 100 }
 
     private func determineChatLaunchStrategy(capabilities: TerminalCapabilities) -> ChatLaunchStrategy {
         if self.chat {
