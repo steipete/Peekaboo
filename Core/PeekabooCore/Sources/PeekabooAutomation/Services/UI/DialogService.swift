@@ -308,8 +308,7 @@ extension DialogService {
                 """
                 Active window '\(dialogInfo.title)' (role: \(dialogInfo.role)) is not a dialog and \
                 contains no interactive elements
-                """
-            )
+                """)
             throw DialogError.noActiveDialog
         }
 

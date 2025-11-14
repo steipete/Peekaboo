@@ -14,11 +14,14 @@ import Foundation
 // MARK: - NSArray Extensions
 
 extension NSArray {
+    // swiftlint:disable empty_count
     /// Provides Swift's isEmpty property for NSArray to work around linter issues
     /// The linter sometimes removes this, so we need it in a separate file
-    /// 
-    /// \(AgentDisplayTokens.Status.warning)  WARNING: Do not change `count == 0` to `isEmpty` - it will cause infinite recursion!
+    ///
+    /// \(AgentDisplayTokens.Status.warning)  WARNING: Do not change `count == 0` to `isEmpty` - it will cause infinite
+    /// recursion!
     var isEmpty: Bool {
-        count == 0  // Must use count, not isEmpty (would cause infinite recursion)
+        count == 0 // Must use count, not isEmpty (would cause infinite recursion)
     }
+    // swiftlint:enable empty_count
 }

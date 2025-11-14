@@ -144,7 +144,7 @@ extension LoggingServiceProtocol {
 
 /// Category-specific logger for cleaner API
 @MainActor
-public struct CategoryLogger: Sendable {
+public struct CategoryLogger {
     private let service: any LoggingServiceProtocol
     private let category: String
     private let defaultCorrelationId: String?

@@ -579,13 +579,12 @@ extension ElementDetectionService {
     private func adjustedElementType(
         element: Element,
         descriptor: ElementDescriptor,
-        baseType: ElementType
-    ) -> ElementType {
+        baseType: ElementType) -> ElementType
+    {
         let roleInfo = ElementRoleInfo(
             role: descriptor.role,
             roleDescription: descriptor.roleDescription,
-            isEditable: element.isEditable() ?? false
-        )
+            isEditable: element.isEditable() ?? false)
         return ElementRoleResolver.resolveType(baseType: baseType, info: roleInfo)
     }
 
