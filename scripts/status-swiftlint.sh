@@ -8,9 +8,9 @@ OUTPUT="$(pnpm run lint:swift 2>&1)"
 STATUS=$?
 
 if [ $STATUS -eq 0 ]; then
-  echo "SwiftLint: no issues"
+  echo "no issues"
 else
-  echo "SwiftLint: failed (exit $STATUS)"
+  echo "failed (exit $STATUS)"
   echo "$OUTPUT" | head -n 5
 fi
 
