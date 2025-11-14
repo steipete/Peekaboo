@@ -82,7 +82,8 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - to: Target location for the mouse cursor
     ///   - duration: Duration of the movement in milliseconds (0 for instant)
     ///   - steps: Number of intermediate steps for smooth movement
-    func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws
+    ///   - profile: Movement profile that controls path generation
+    func moveMouse(to: CGPoint, duration: Int, steps: Int, profile: MouseMovementProfile) async throws
 
     /// Get information about the currently focused UI element
     /// - Returns: Information about the focused element, or nil if no element has focus
@@ -95,6 +96,39 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// - Returns: The first element matching the criteria
     /// - Throws: PeekabooError.elementNotFound if no matching element is found
     func findElement(matching criteria: UIElementSearchCriteria, in appName: String?) async throws -> DetectedElement
+}
+
+/// Profiles controlling how mouse paths are generated.
+public enum MouseMovementProfile: Sendable, Equatable {
+    /// Linear interpolation between the current and target coordinate.
+    case linear
+    /// Human-style motion with eased velocity, micro-jitter, and subtle overshoot.
+    case human(HumanMouseProfileConfiguration = .default)
+}
+
+/// Tunable values for the human-style mouse movement profile.
+public struct HumanMouseProfileConfiguration: Sendable, Equatable {
+    public var jitterAmplitude: CGFloat
+    public var overshootProbability: Double
+    public var overshootFractionRange: ClosedRange<Double>
+    public var settleRadius: CGFloat
+    public var randomSeed: UInt64?
+
+    public init(
+        jitterAmplitude: CGFloat = 0.35,
+        overshootProbability: Double = 0.2,
+        overshootFractionRange: ClosedRange<Double> = 0.02...0.06,
+        settleRadius: CGFloat = 6,
+        randomSeed: UInt64? = nil
+    ) {
+        self.jitterAmplitude = jitterAmplitude
+        self.overshootProbability = overshootProbability
+        self.overshootFractionRange = overshootFractionRange
+        self.settleRadius = settleRadius
+        self.randomSeed = randomSeed
+    }
+
+    public static let `default` = HumanMouseProfileConfiguration()
 }
 
 /// Result of element detection

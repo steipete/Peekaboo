@@ -31,7 +31,7 @@ struct GestureServiceTests {
         ]
 
         for position in positions {
-            try await service.moveMouse(to: position, duration: 100, steps: 10)
+            try await service.moveMouse(to: position, duration: 100, steps: 10, profile: .linear)
         }
     }
 
@@ -161,7 +161,7 @@ struct GestureServiceTests {
 
         // GestureService doesn't have multiTouchTap, simulate with quick moves
         for point in points {
-            try await service.moveMouse(to: point, duration: 50, steps: 1)
+            try await service.moveMouse(to: point, duration: 50, steps: 1, profile: .linear)
         }
     }
 
@@ -190,7 +190,7 @@ struct GestureServiceTests {
         let endPoint = CGPoint(x: 500, y: 500)
 
         // Move to start
-        try await service.moveMouse(to: startPoint, duration: 100, steps: 10)
+        try await service.moveMouse(to: startPoint, duration: 100, steps: 10, profile: .linear)
 
         // Drag to middle
         try await service.drag(from: startPoint, to: midPoint, duration: 500, steps: 20, modifiers: nil)
@@ -210,7 +210,7 @@ struct GestureServiceTests {
         let hoverPoint = CGPoint(x: 400, y: 400)
 
         // Move to point to simulate hover
-        try await service.moveMouse(to: hoverPoint, duration: 100, steps: 10)
+        try await service.moveMouse(to: hoverPoint, duration: 100, steps: 10, profile: .linear)
         // Stay at position for hover duration
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
     }

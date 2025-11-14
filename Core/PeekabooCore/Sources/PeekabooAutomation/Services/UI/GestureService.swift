@@ -66,46 +66,42 @@ public final class GestureService {
     }
 
     /// Move mouse to a specific point
-    public func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws {
-        // Move mouse to a specific point
+    public func moveMouse(
+        to: CGPoint,
+        duration: Int,
+        steps: Int,
+        profile: MouseMovementProfile
+    ) async throws {
         let gestureDescription = self.describeGesture(
             name: "Mouse move requested",
             details: [
                 "to: (\(to.x), \(to.y))",
                 "duration: \(duration)ms",
                 "steps: \(steps)",
+                "profile: \(profile.logDescription)",
             ])
         self.logger.debug("\(gestureDescription)")
 
         try self.ensurePositiveSteps(steps, action: "Mouse move")
 
-        // Get current mouse location
-        let currentLocation = self.getCurrentMouseLocation()
-        let deltaX = to.x - currentLocation.x
-        let deltaY = to.y - currentLocation.y
-        let stepDelayNanos = self.stepDelay(duration: duration, steps: steps)
+        let startPoint = self.getCurrentMouseLocation()
+        let distance = hypot(to.x - startPoint.x, to.y - startPoint.y)
 
-        // Perform smooth movement
-        for i in 1...steps {
-            let progress = Double(i) / Double(steps)
-            let currentX = currentLocation.x + (deltaX * progress)
-            let currentY = currentLocation.y + (deltaY * progress)
-            let currentPoint = CGPoint(x: currentX, y: currentY)
-
-            guard let moveEvent = CGEvent(
-                mouseEventSource: nil,
-                mouseType: .mouseMoved,
-                mouseCursorPosition: currentPoint,
-                mouseButton: .left)
-            else {
-                throw PeekabooError.operationError(message: "Failed to create event")
-            }
-
-            moveEvent.post(tap: .cghidEventTap)
-
-            if stepDelayNanos > 0 {
-                try await Task.sleep(nanoseconds: stepDelayNanos)
-            }
+        switch profile {
+        case .linear:
+            let path = self.linearPath(from: startPoint, to: to, steps: steps)
+            try await self.playPath(path, duration: duration)
+        case let .human(configuration):
+            let generator = HumanMousePathGenerator(
+                start: startPoint,
+                target: to,
+                distance: distance,
+                duration: duration,
+                stepsHint: steps,
+                configuration: configuration
+            )
+            let path = generator.generate()
+            try await self.playPath(path.points, duration: path.duration)
         }
 
         self.logger.debug("Mouse move completed")
@@ -230,6 +226,209 @@ public final class GestureService {
     private func sleepIfNeeded(_ delay: UInt64) async throws {
         guard delay > 0 else { return }
         try await Task.sleep(nanoseconds: delay)
+    }
+
+    private func linearPath(from start: CGPoint, to end: CGPoint, steps: Int) -> [CGPoint] {
+        guard steps > 1 else { return [end] }
+        return (1...steps).map { step in
+            let progress = Double(step) / Double(steps)
+            let x = start.x + ((end.x - start.x) * progress)
+            let y = start.y + ((end.y - start.y) * progress)
+            return CGPoint(x: x, y: y)
+        }
+    }
+
+    private func playPath(_ points: [CGPoint], duration: Int) async throws {
+        guard !points.isEmpty else { return }
+        let delay = self.stepDelay(duration: duration, steps: points.count)
+
+        for point in points {
+            guard let moveEvent = CGEvent(
+                mouseEventSource: nil,
+                mouseType: .mouseMoved,
+                mouseCursorPosition: point,
+                mouseButton: .left)
+            else {
+                throw PeekabooError.operationError(message: "Failed to create event")
+            }
+            moveEvent.post(tap: .cghidEventTap)
+
+            if delay > 0 {
+                try await Task.sleep(nanoseconds: delay)
+            }
+        }
+    }
+}
+
+private extension MouseMovementProfile {
+    var logDescription: String {
+        switch self {
+        case .linear:
+            return "linear"
+        case .human:
+            return "human"
+        }
+    }
+}
+
+private struct HumanMousePath {
+    let points: [CGPoint]
+    let duration: Int
+}
+
+private struct HumanMousePathGenerator {
+    let start: CGPoint
+    let target: CGPoint
+    let distance: CGFloat
+    let duration: Int
+    let stepsHint: Int
+    let configuration: HumanMouseProfileConfiguration
+
+    func generate() -> HumanMousePath {
+        var rng = HumanMouseRandom(seed: self.configuration.randomSeed)
+        var current = self.start
+        var velocity = CGVector(dx: 0, dy: 0)
+        var wind = CGVector(dx: 0, dy: 0)
+        var samples: [CGPoint] = []
+
+        let resolvedDuration = self.resolvedDuration()
+        let minimumSamples = max(stepsHint, Int(Double(resolvedDuration) / 8.0))
+        let settleRadius = max(self.configuration.settleRadius, min(self.distance * 0.08, 24))
+
+        var overshootTarget: CGPoint?
+        if Self.shouldOvershoot(
+            distance: self.distance,
+            probability: self.configuration.overshootProbability,
+            rng: &rng
+        ) {
+            overshootTarget = self.makeOvershootTarget(distance: self.distance, rng: &rng)
+        }
+        var currentTarget = overshootTarget ?? self.target
+        var overshootConsumed = overshootTarget == nil
+
+        for _ in 0..<max(minimumSamples, 24) {
+            let delta = CGVector(dx: currentTarget.x - current.x, dy: currentTarget.y - current.y)
+            let distanceToTarget = max(0.001, hypot(delta.dx, delta.dy))
+            let gravityMagnitude = Self.gravity(for: distanceToTarget)
+            let gravity = CGVector(
+                dx: (delta.dx / distanceToTarget) * gravityMagnitude,
+                dy: (delta.dy / distanceToTarget) * gravityMagnitude
+            )
+            wind.dx = (wind.dx * 0.8) + (rng.nextSignedUnit() * Self.windMagnitude(for: distanceToTarget))
+            wind.dy = (wind.dy * 0.8) + (rng.nextSignedUnit() * Self.windMagnitude(for: distanceToTarget))
+
+            velocity.dx = (velocity.dx + wind.dx + gravity.dx) * 0.88
+            velocity.dy = (velocity.dy + wind.dy + gravity.dy) * 0.88
+
+            current.x += velocity.dx
+            current.y += velocity.dy
+            current = self.applyJitter(point: current, rng: &rng)
+            samples.append(current)
+
+            if distanceToTarget <= settleRadius {
+                if overshootConsumed {
+                    break
+                } else {
+                    currentTarget = self.target
+                    overshootConsumed = true
+                }
+            }
+        }
+
+        samples.append(self.target)
+        return HumanMousePath(points: samples, duration: resolvedDuration)
+    }
+
+    private func resolvedDuration() -> Int {
+        if self.duration > 0 {
+            return self.duration
+        }
+
+        let distanceFactor = log2(Double(self.distance) + 1) * 90
+        let perPixel = Double(self.distance) * 0.45
+        let estimate = 220 + distanceFactor + perPixel
+        return min(max(Int(estimate), 250), 1600)
+    }
+
+    private func applyJitter(point: CGPoint, rng: inout HumanMouseRandom) -> CGPoint {
+        let amplitude = Double(self.configuration.jitterAmplitude)
+        return CGPoint(
+            x: point.x + (rng.nextSignedUnit() * amplitude),
+            y: point.y + (rng.nextSignedUnit() * amplitude)
+        )
+    }
+
+    private func makeOvershootTarget(distance: CGFloat, rng: inout HumanMouseRandom) -> CGPoint {
+        let overshootFraction = rng.nextDouble(in: self.configuration.overshootFractionRange)
+        let extraDistance = distance * CGFloat(overshootFraction)
+        let direction = CGVector(dx: self.target.x - self.start.x, dy: self.target.y - self.start.y)
+        let length = max(0.001, hypot(direction.dx, direction.dy))
+        let normalized = CGVector(dx: direction.dx / length, dy: direction.dy / length)
+        return CGPoint(
+            x: self.target.x + (normalized.dx * extraDistance),
+            y: self.target.y + (normalized.dy * extraDistance)
+        )
+    }
+
+    private static func shouldOvershoot(
+        distance: CGFloat,
+        probability: Double,
+        rng: inout HumanMouseRandom
+    ) -> Bool {
+        guard distance > 120 else { return false }
+        return rng.nextDouble() < probability
+    }
+
+    private static func gravity(for distance: CGFloat) -> Double {
+        let clamped = min(max(distance, 1), 800)
+        return log(Double(clamped) + 2) * 1.8
+    }
+
+    private static func windMagnitude(for distance: CGFloat) -> Double {
+        let normalized = min(max(distance / 400, 0.1), 1.0)
+        return 0.6 * Double(normalized)
+    }
+}
+
+private struct HumanMouseRandom: RandomNumberGenerator {
+    private var generator: SeededGenerator
+
+    init(seed: UInt64?) {
+        let resolvedSeed = seed ?? UInt64(Date().timeIntervalSinceReferenceDate * 1_000_000)
+        self.generator = SeededGenerator(seed: resolvedSeed)
+    }
+
+    mutating func next() -> UInt64 {
+        self.generator.next()
+    }
+
+    mutating func nextDouble() -> Double {
+        Double(self.next()) / Double(UInt64.max)
+    }
+
+    mutating func nextSignedUnit() -> Double {
+        (self.nextDouble() * 2) - 1
+    }
+
+    mutating func nextDouble(in range: ClosedRange<Double>) -> Double {
+        let value = self.nextDouble()
+        return (value * (range.upperBound - range.lowerBound)) + range.lowerBound
+    }
+}
+
+private struct SeededGenerator: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: UInt64) {
+        self.state = seed == 0 ? 0x123456789ABCDEF : seed
+    }
+
+    mutating func next() -> UInt64 {
+        self.state &+= 0x9E3779B97F4A7C15
+        var z = self.state
+        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+        return z ^ (z >> 31)
     }
 }
 

@@ -227,7 +227,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
 
     func drag(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, modifiers _: String?) async throws {}
 
-    func moveMouse(to _: CGPoint, duration _: Int, steps _: Int) async throws {}
+    func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
 
     func getFocusedElement() -> UIFocusInfo? { nil }
 

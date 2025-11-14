@@ -32,6 +32,11 @@ extension MoveCommand: CommanderSignatureProviding {
                     long: "steps"
                 ),
                 .commandOption(
+                    "profile",
+                    help: "Movement profile (linear or human)",
+                    long: "profile"
+                ),
+                .commandOption(
                     "session",
                     help: "Session ID for element resolution",
                     long: "session"

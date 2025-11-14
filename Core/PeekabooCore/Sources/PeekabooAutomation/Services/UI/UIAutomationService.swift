@@ -478,13 +478,18 @@ extension UIAutomationService {
             modifiers: modifiers)
     }
 
-    public func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws {
+    public func moveMouse(
+        to: CGPoint,
+        duration: Int,
+        steps: Int,
+        profile: MouseMovementProfile
+    ) async throws {
         self.logger.debug("Delegating moveMouse to GestureService")
 
         // Get current mouse position for the animation start point
         let fromPoint = NSEvent.mouseLocation
 
-        try await self.gestureService.moveMouse(to: to, duration: duration, steps: steps)
+        try await self.gestureService.moveMouse(to: to, duration: duration, steps: steps, profile: profile)
 
         // Show visual feedback if available
         _ = await self.visualizerClient.showMouseMovement(

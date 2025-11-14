@@ -310,7 +310,7 @@ enum AutomationServiceBridge {
         try await Task { @MainActor in
             try await automation.typeActions(
                 request.actions,
-                typingDelay: request.typingDelay,
+                cadence: request.cadence,
                 sessionId: request.sessionId
             )
         }.value
@@ -362,10 +362,11 @@ enum AutomationServiceBridge {
         automation: any UIAutomationServiceProtocol,
         to point: CGPoint,
         duration: Int,
-        steps: Int
+        steps: Int,
+        profile: MouseMovementProfile
     ) async throws {
         try await Task { @MainActor in
-            try await automation.moveMouse(to: point, duration: duration, steps: steps)
+            try await automation.moveMouse(to: point, duration: duration, steps: steps, profile: profile)
         }.value
     }
 
@@ -393,7 +394,7 @@ enum AutomationServiceBridge {
 
 struct TypeActionsRequest: Sendable {
     let actions: [TypeAction]
-    let typingDelay: Int
+    let cadence: TypingCadence
     let sessionId: String?
 }
 

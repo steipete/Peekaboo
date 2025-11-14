@@ -36,6 +36,7 @@ struct MoveCommandTests {
         #expect(call.destination == CGPoint(x: 100, y: 200))
         #expect(call.duration == 750)
         #expect(call.steps == 10)
+        #expect(call.profile == .linear)
     }
 
     @Test("Move command requires a target")
@@ -75,6 +76,7 @@ struct MoveCommandTests {
         let call = try #require(moveCalls.first)
         #expect(call.destination.x == element.bounds.midX)
         #expect(call.destination.y == element.bounds.midY)
+        #expect(call.profile == .linear)
     }
 
     @Test("Move by query waits for element using automation service")
@@ -101,6 +103,7 @@ struct MoveCommandTests {
         let moveCalls = await self.automationState(context) { $0.moveMouseCalls }
         let call = try #require(moveCalls.first)
         #expect(call.destination == CGPoint(x: 240, y: 312)) // mid-point of element bounds
+        #expect(call.profile == .linear)
     }
 
     @Test("JSON output contains expected shape")
@@ -115,6 +118,20 @@ struct MoveCommandTests {
         #expect(payload.targetDescription.contains("Coordinates"))
         #expect(payload.targetLocation["x"] == 150)
         #expect(payload.targetLocation["y"] == 250)
+        #expect(payload.profile == "linear")
+    }
+
+    @Test("Human profile toggles movement mode")
+    func humanProfileSelection() async throws {
+        let context = await self.makeContext()
+        let result = try await self.runMove(arguments: ["100,200", "--profile", "human"], context: context)
+
+        #expect(result.exitStatus == 0)
+        let moveCalls = await self.automationState(context) { $0.moveMouseCalls }
+        let call = try #require(moveCalls.first)
+        #expect(call.profile == .human())
+        #expect(call.steps >= 30)
+        #expect(call.duration >= 280)
     }
 
     // MARK: - Helpers

@@ -48,6 +48,10 @@ public struct MoveTool: MCPTool {
                 "steps": SchemaBuilder.number(
                     description: "Optional. Number of steps for smooth movement. Default: 10.",
                     default: 10),
+                "profile": SchemaBuilder.string(
+                    description: "Optional. Movement profile. Use 'linear' (default) or 'human' for natural paths.",
+                    enum: ["linear", "human"],
+                    default: "linear"),
             ],
             required: [])
     }
@@ -62,11 +66,11 @@ public struct MoveTool: MCPTool {
             let request = try self.parseRequest(arguments: arguments)
             let startTime = Date()
             let target = try await self.resolveMoveTarget(request: request)
-            try await self.performMovement(to: target.location, request: request)
+            let movement = try await self.performMovement(to: target.location, request: request)
             let executionTime = Date().timeIntervalSince(startTime)
             return self.buildResponse(
                 target: target,
-                request: request,
+                movement: movement,
                 executionTime: executionTime)
         } catch let error as MoveToolValidationError {
             return ToolResponse.error(error.message)
@@ -127,20 +131,32 @@ public struct MoveTool: MCPTool {
     private func parseRequest(arguments: ToolArguments) throws -> MoveRequest {
         let target = try self.parseTarget(from: arguments)
         let sessionId = arguments.getString("session")
-        let smooth = arguments.getBool("smooth") ?? false
-        let duration = Int(arguments.getNumber("duration") ?? 500)
-        let steps = Int(arguments.getNumber("steps") ?? 10)
+        let profileName = (arguments.getString("profile") ?? "linear").lowercased()
+        guard let profile = MoveProfileOption(rawValue: profileName) else {
+            throw MoveToolValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
+        }
+        let smooth = profile == .human ? true : (arguments.getBool("smooth") ?? false)
 
-        if smooth {
-            try self.validateSmoothParameters(duration: duration, steps: steps)
+        let durationValue = arguments.getNumber("duration")
+        let stepsValue = arguments.getNumber("steps")
+        let durationProvided = arguments.getValue(for: "duration") != nil
+        let stepsProvided = arguments.getValue(for: "steps") != nil
+        let durationOverride = durationProvided ? durationValue.map(Int.init) : nil
+        let stepsOverride = stepsProvided ? stepsValue.map(Int.init) : nil
+
+        if smooth, profile == .linear {
+            let durationToValidate = durationOverride ?? 500
+            let stepsToValidate = stepsOverride ?? 10
+            try self.validateSmoothParameters(duration: durationToValidate, steps: stepsToValidate)
         }
 
         return MoveRequest(
             target: target,
             sessionId: sessionId,
             smooth: smooth,
-            duration: duration,
-            steps: steps)
+            durationOverride: durationOverride,
+            stepsOverride: stepsOverride,
+            profile: profile)
     }
 
     private func parseTarget(from arguments: ToolArguments) throws -> MoveTarget {
@@ -199,23 +215,39 @@ public struct MoveTool: MCPTool {
         }
     }
 
-    private func performMovement(to location: CGPoint, request: MoveRequest) async throws {
+    private func performMovement(to location: CGPoint, request: MoveRequest) async throws -> MovementParameters {
         let automation = self.context.automation
-        if request.smooth {
-            try await automation.moveMouse(to: location, duration: request.duration, steps: request.steps)
+        let currentLocation = CGEvent(source: nil)?.location ?? .zero
+        let distance = hypot(location.x - currentLocation.x, location.y - currentLocation.y)
+        let movement = self.resolveMovementParameters(for: request, distance: distance)
+
+        if movement.smooth {
+            try await automation.moveMouse(
+                to: location,
+                duration: movement.duration,
+                steps: movement.steps,
+                profile: movement.profile
+            )
         } else {
-            try await automation.moveMouse(to: location, duration: 0, steps: 1)
+            try await automation.moveMouse(
+                to: location,
+                duration: 0,
+                steps: 1,
+                profile: movement.profile
+            )
         }
+        return movement
     }
 
     private func buildResponse(
         target: ResolvedMoveTarget,
-        request: MoveRequest,
+        movement: MovementParameters,
         executionTime: TimeInterval) -> ToolResponse
     {
         var message = "\(AgentDisplayTokens.Status.success) Moved mouse cursor to \(target.description)"
-        if request.smooth {
-            message += " with smooth animation (\(request.duration)ms, \(request.steps) steps)"
+        message += " using \(movement.profileName) profile"
+        if movement.smooth {
+            message += " (\(movement.duration)ms, \(movement.steps) steps)"
         }
         message += " in \(String(format: "%.2f", executionTime))s"
 
@@ -227,9 +259,10 @@ public struct MoveTool: MCPTool {
                     "y": .double(Double(target.location.y)),
                 ]),
                 "target_description": .string(target.description),
-                "smooth": .bool(request.smooth),
-                "duration": request.smooth ? .double(Double(request.duration)) : .null,
-                "steps": request.smooth ? .double(Double(request.steps)) : .null,
+                "smooth": .bool(movement.smooth),
+                "profile": .string(movement.profileName),
+                "duration": movement.smooth ? .double(Double(movement.duration)) : .null,
+                "steps": movement.smooth ? .double(Double(movement.steps)) : .null,
                 "execution_time": .double(executionTime),
             ]))
     }
@@ -243,6 +276,34 @@ public struct MoveTool: MCPTool {
         // For now, return nil - in a real implementation we'd track the most recent session
         return nil
     }
+
+    private func resolveMovementParameters(for request: MoveRequest, distance: CGFloat) -> MovementParameters {
+        switch request.profile {
+        case .linear:
+            let duration = request.durationOverride ?? (request.smooth ? 500 : 0)
+            let steps = request.smooth ? max(request.stepsOverride ?? 10, 1) : 1
+            return MovementParameters(
+                profile: .linear,
+                duration: duration,
+                steps: steps,
+                smooth: request.smooth,
+                profileName: request.profile.rawValue
+            )
+        case .human:
+            let duration = request.durationOverride ?? HumanizedMovementDefaults.duration(for: distance)
+            let steps = max(
+                request.stepsOverride ?? HumanizedMovementDefaults.defaultSteps,
+                HumanizedMovementDefaults.steps(for: distance)
+            )
+            return MovementParameters(
+                profile: .human(),
+                duration: duration,
+                steps: steps,
+                smooth: true,
+                profileName: request.profile.rawValue
+            )
+        }
+    }
 }
 
 private enum MoveTarget {
@@ -255,8 +316,39 @@ private struct MoveRequest {
     let target: MoveTarget
     let sessionId: String?
     let smooth: Bool
+    let durationOverride: Int?
+    let stepsOverride: Int?
+    let profile: MoveProfileOption
+}
+
+private enum MoveProfileOption: String {
+    case linear
+    case human
+}
+
+private struct MovementParameters {
+    let profile: MouseMovementProfile
     let duration: Int
     let steps: Int
+    let smooth: Bool
+    let profileName: String
+}
+
+private enum HumanizedMovementDefaults {
+    static let defaultSteps = 60
+    static let defaultDuration = 650
+
+    static func duration(for distance: CGFloat) -> Int {
+        let distanceFactor = log2(Double(distance) + 1) * 90
+        let perPixel = Double(distance) * 0.45
+        let estimate = 280 + distanceFactor + perPixel
+        return min(max(Int(estimate), 300), 1700)
+    }
+
+    static func steps(for distance: CGFloat) -> Int {
+        let scaled = Int(distance * 0.35)
+        return min(max(scaled, 30), 140)
+    }
 }
 
 private struct ResolvedMoveTarget {

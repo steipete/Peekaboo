@@ -30,6 +30,9 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(help: "Number of steps for smooth movement (default: 20)")
     var steps: Int = 20
 
+    @Option(help: "Movement profile: linear (default) or human.")
+    var profile: String?
+
     @Option(help: "Session ID for element resolution")
     var session: String?
     @RuntimeStorage private var runtime: CommandRuntime?
@@ -60,6 +63,12 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                   Double(parts[1]) != nil else {
                 throw ValidationError("Invalid coordinates format. Use: x,y")
             }
+        }
+
+        if let profileName = self.profile?.lowercased(),
+           MovementProfileSelection(rawValue: profileName) == nil
+        {
+            throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
         }
     }
 
@@ -144,13 +153,6 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 throw ValidationError("Specify coordinates, --to, --id, or --center")
             }
 
-            // Determine movement duration
-            let moveDuration: Int = if let customDuration = duration {
-                customDuration
-            } else {
-                self.smooth ? 500 : 0
-            }
-
             // Get current mouse location for distance calculation
             let currentLocation = CGEvent(source: nil)?.location ?? CGPoint.zero
             let distance = hypot(
@@ -158,12 +160,18 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 targetLocation.y - currentLocation.y
             )
 
+            let movement = self.resolveMovementParameters(
+                profileSelection: self.selectedProfile,
+                distance: distance
+            )
+
             // Perform the movement
             try await AutomationServiceBridge.moveMouse(
                 automation: self.services.automation,
                 to: targetLocation,
-                duration: moveDuration,
-                steps: self.smooth ? self.steps : 1
+                duration: movement.duration,
+                steps: movement.steps,
+                profile: movement.profile
             )
 
             // Output results
@@ -173,8 +181,9 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 targetDescription: targetDescription,
                 fromLocation: currentLocation,
                 distance: distance,
-                duration: moveDuration,
-                smooth: smooth,
+                duration: movement.duration,
+                smooth: movement.smooth,
+                profile: movement.profileName,
                 executionTime: Date().timeIntervalSince(startTime)
             )
             output(result) {
@@ -182,8 +191,9 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 print("🎯 Target: \(targetDescription)")
                 print("📍 Location: (\(Int(targetLocation.x)), \(Int(targetLocation.y)))")
                 print("📏 Distance: \(Int(distance)) pixels")
-                if self.smooth {
-                    print("🎬 Animation: \(moveDuration)ms with \(self.steps) steps")
+                print("🧭 Profile: \(movement.profileName.capitalized)")
+                if movement.smooth {
+                    print("🎬 Animation: \(movement.duration)ms with \(movement.steps) steps")
                 }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
@@ -199,6 +209,60 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
         let label = element.label ?? element.value ?? element.id
         return "\(roleDescription): \(label)"
     }
+
+    private var selectedProfile: MovementProfileSelection {
+        guard let profileName = self.profile?.lowercased(),
+              let selection = MovementProfileSelection(rawValue: profileName) else
+        {
+            return .linear
+        }
+        return selection
+    }
+
+    private func resolveMovementParameters(
+        profileSelection: MovementProfileSelection,
+        distance: CGFloat
+    ) -> MovementParameters {
+        switch profileSelection {
+        case .linear:
+            let resolvedDuration: Int
+            if let customDuration = self.duration {
+                resolvedDuration = customDuration
+            } else {
+                resolvedDuration = self.smooth ? 500 : 0
+            }
+            let resolvedSteps = self.smooth ? max(self.steps, 1) : 1
+            return MovementParameters(
+                profile: .linear,
+                duration: resolvedDuration,
+                steps: resolvedSteps,
+                smooth: self.smooth,
+                profileName: profileSelection.rawValue
+            )
+        case .human:
+            let resolvedDuration = self.duration ?? self.defaultHumanDuration(for: distance)
+            let resolvedSteps = max(self.steps, self.defaultHumanSteps(for: distance))
+            return MovementParameters(
+                profile: .human(),
+                duration: resolvedDuration,
+                steps: resolvedSteps,
+                smooth: true,
+                profileName: profileSelection.rawValue
+            )
+        }
+    }
+
+    private func defaultHumanDuration(for distance: CGFloat) -> Int {
+        let distanceFactor = log2(Double(distance) + 1) * 90
+        let perPixel = Double(distance) * 0.45
+        let estimate = 240 + distanceFactor + perPixel
+        return min(max(Int(estimate), 280), 1700)
+    }
+
+    private func defaultHumanSteps(for distance: CGFloat) -> Int {
+        let scaled = Int(distance * 0.35)
+        return min(max(scaled, 30), 120)
+    }
 }
 
 // MARK: - JSON Output Structure
@@ -211,6 +275,7 @@ struct MoveResult: Codable {
     let distance: Double
     let duration: Int
     let smooth: Bool
+    let profile: String
     let executionTime: TimeInterval
 
     init(
@@ -221,6 +286,7 @@ struct MoveResult: Codable {
         distance: Double,
         duration: Int,
         smooth: Bool,
+        profile: String,
         executionTime: TimeInterval
     ) {
         self.success = success
@@ -230,6 +296,7 @@ struct MoveResult: Codable {
         self.distance = distance
         self.duration = duration
         self.smooth = smooth
+        self.profile = profile
         self.executionTime = executionTime
     }
 }
@@ -257,6 +324,7 @@ extension MoveCommand: ParsableCommand {
                     MOVEMENT MODES:
                       - Instant (default): Immediate cursor positioning
                       - Smooth: Animated movement with configurable duration
+                      - Human: Natural arcs with eased velocity, enable via '--profile human'
 
                     ELEMENT TARGETING:
                       When targeting elements, the cursor moves to the element's center.
@@ -284,5 +352,19 @@ extension MoveCommand: CommanderBindableCommand {
             self.steps = steps
         }
         self.session = values.singleOption("session")
+        self.profile = values.singleOption("profile")
     }
+}
+
+private enum MovementProfileSelection: String {
+    case linear
+    case human
+}
+
+private struct MovementParameters {
+    let profile: MouseMovementProfile
+    let duration: Int
+    let steps: Int
+    let smooth: Bool
+    let profileName: String
 }

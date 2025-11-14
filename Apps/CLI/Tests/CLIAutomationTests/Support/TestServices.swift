@@ -114,6 +114,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         let destination: CGPoint
         let duration: Int
         let steps: Int
+        let profile: MouseMovementProfile
     }
 
     struct HotkeyCall: Sendable {
@@ -269,9 +270,9 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         )
     }
 
-    func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws {
+    func moveMouse(to: CGPoint, duration: Int, steps: Int, profile: MouseMovementProfile) async throws {
         self.moveMouseCalls.append(
-            MoveMouseCall(destination: to, duration: duration, steps: steps)
+            MoveMouseCall(destination: to, duration: duration, steps: steps, profile: profile)
         )
     }
 
