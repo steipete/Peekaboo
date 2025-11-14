@@ -20,5 +20,6 @@ extension AgentCommand: CommanderBindableCommand {
         self.realtime = values.flag("realtime")
         self.simple = values.flag("simple")
         self.noColor = values.flag("noColor")
+        self.chat = values.flag("chat")
     }
 }

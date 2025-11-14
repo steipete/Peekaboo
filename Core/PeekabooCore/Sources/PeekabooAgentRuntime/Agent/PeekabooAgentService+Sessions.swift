@@ -11,7 +11,9 @@ extension PeekabooAgentService {
     struct SessionContext {
         let id: String
         let messages: [ModelMessage]
-        let startTime: Date
+        let createdAt: Date
+        let executionStart: Date
+        let metadata: SessionMetadata
     }
 
     enum SessionLogBehavior {
@@ -53,7 +55,12 @@ extension PeekabooAgentService {
             throw error
         }
 
-        return SessionContext(id: sessionId, messages: messages, startTime: startTime)
+        return SessionContext(
+            id: sessionId,
+            messages: messages,
+            createdAt: startTime,
+            executionStart: startTime,
+            metadata: SessionMetadata())
     }
 
     func saveCompletedSession(
@@ -61,18 +68,32 @@ extension PeekabooAgentService {
         model: LanguageModel,
         finalMessages: [ModelMessage],
         endTime: Date,
-        toolCallCount: Int) throws
+        toolCallCount: Int,
+        usage: Usage?) throws
     {
-        let executionTime = endTime.timeIntervalSince(context.startTime)
+        let executionTime = endTime.timeIntervalSince(context.executionStart)
+        let totalTokens = context.metadata.totalTokens + (usage?.totalTokens ?? 0)
+        let additionalCost = usage?.cost?.total
+        let accumulatedCost: Double?
+        if additionalCost == nil && context.metadata.totalCost == nil {
+            accumulatedCost = nil
+        } else {
+            accumulatedCost = (context.metadata.totalCost ?? 0) + (additionalCost ?? 0)
+        }
+
+        let updatedMetadata = SessionMetadata(
+            totalTokens: totalTokens,
+            totalCost: accumulatedCost,
+            toolCallCount: context.metadata.toolCallCount + toolCallCount,
+            totalExecutionTime: context.metadata.totalExecutionTime + executionTime,
+            customData: context.metadata.customData.merging(["status": "completed"]) { _, new in new }
+        )
         let updatedSession = AgentSession(
             id: context.id,
             modelName: model.description,
             messages: finalMessages,
-            metadata: SessionMetadata(
-                toolCallCount: toolCallCount,
-                totalExecutionTime: executionTime,
-                customData: ["status": "completed"]),
-            createdAt: context.startTime,
+            metadata: updatedMetadata,
+            createdAt: context.createdAt,
             updatedAt: endTime)
         try self.sessionManager.saveSession(updatedSession)
     }
@@ -102,5 +123,16 @@ extension PeekabooAgentService {
         if force || self.isVerbose {
             self.logger.debug("\(message, privacy: .public)")
         }
+    }
+
+    func makeContinuationContext(from session: AgentSession, userMessage: String) -> SessionContext {
+        var updatedMessages = session.messages
+        updatedMessages.append(.user(userMessage))
+        return SessionContext(
+            id: session.id,
+            messages: updatedMessages,
+            createdAt: session.createdAt,
+            executionStart: Date(),
+            metadata: session.metadata)
     }
 }

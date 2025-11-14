@@ -125,6 +125,9 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     @Flag(name: .long, help: "Disable colors in output")
     var noColor = false
 
+    @Flag(name: .long, help: "Start an interactive chat session")
+    var chat = false
+
     /// Computed property for output mode with smart detection and progressive enhancement
     private var outputMode: OutputMode {
         // Explicit user overrides first
@@ -162,9 +165,15 @@ struct AgentCommand: RuntimeOptionsConfigurable {
         self.resolvedRuntime.logger
     }
 
-    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
-    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
+var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
+}
+
+private enum ChatLaunchStrategy {
+    case none
+    case helpOnly
+    case interactive(initialPrompt: String?)
 }
 
 @available(macOS 14.0, *)
@@ -178,12 +187,6 @@ extension AgentCommand {
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
-
-        // Show terminal detection debug if requested
-        if self.debugTerminal {
-            let capabilities = TerminalDetector.detectCapabilities()
-            self.printTerminalDetectionDebug(capabilities, actualMode: self.outputMode)
-        }
 
         do {
             try await self.runInternal(runtime: runtime)
@@ -216,6 +219,11 @@ extension AgentCommand {
             return
         }
 
+        let terminalCapabilities = TerminalDetector.detectCapabilities()
+        if self.debugTerminal {
+            self.printTerminalDetectionDebug(terminalCapabilities, actualMode: self.outputMode)
+        }
+
         if self.listSessions {
             try await self.showSessions(agentService)
             return
@@ -246,6 +254,21 @@ extension AgentCommand {
             return
         }
 
+        switch self.determineChatLaunchStrategy(capabilities: terminalCapabilities) {
+        case .helpOnly:
+            self.printNonInteractiveChatHelp()
+            return
+        case let .interactive(initialPrompt):
+            try await self.runChatLoop(
+                peekabooAgent,
+                requestedModel: requestedModel,
+                initialPrompt: initialPrompt,
+                capabilities: terminalCapabilities)
+            return
+        case .none:
+            break
+        }
+
         if try await self.handleSessionResumption(peekabooAgent, requestedModel: requestedModel) {
             return
         }
@@ -254,7 +277,7 @@ extension AgentCommand {
             return
         }
 
-        try await self.executeAgentTask(
+        _ = try await self.executeAgentTask(
             peekabooAgent,
             task: executionTask,
             requestedModel: requestedModel,
@@ -710,7 +733,7 @@ extension AgentCommand {
         task: String,
         requestedModel: LanguageModel?,
         maxSteps: Int
-    ) async throws {
+    ) async throws -> AgentExecutionResult {
         let delegate = self.makeEventDelegate(for: task)
         do {
             let result = try await agentService.executeTask(
@@ -723,10 +746,260 @@ extension AgentCommand {
                 verbose: self.verbose
             )
             self.displayResult(result)
+            return result
         } catch {
             self.printAgentExecutionError("Agent execution failed: \(error.localizedDescription)")
             throw error
         }
+    }
+
+    private var normalizedTaskInput: String? {
+        guard let task else { return nil }
+        let trimmed = task.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private var hasTaskInput: Bool {
+        self.normalizedTaskInput != nil || self.audio || self.audioFile != nil
+    }
+
+    private var resolvedMaxSteps: Int { self.maxSteps ?? 20 }
+
+    private func determineChatLaunchStrategy(capabilities: TerminalCapabilities) -> ChatLaunchStrategy {
+        if self.chat {
+            return .interactive(initialPrompt: self.normalizedTaskInput)
+        }
+
+        if self.hasTaskInput || self.listSessions {
+            return .none
+        }
+
+        if capabilities.isInteractive && !capabilities.isPiped && !capabilities.isCI {
+            return .interactive(initialPrompt: nil)
+        }
+
+        return .helpOnly
+    }
+
+    private func ensureChatModePreconditions() -> Bool {
+        if self.jsonOutput {
+            self.printAgentExecutionError("Interactive chat is not available while --json output is enabled.")
+            return false
+        }
+        if self.quiet {
+            self.printAgentExecutionError("Interactive chat requires visible output. Remove --quiet to continue.")
+            return false
+        }
+        if self.dryRun {
+            self.printAgentExecutionError("Interactive chat cannot run in --dry-run mode.")
+            return false
+        }
+        if self.noCache {
+            self.printAgentExecutionError("Interactive chat needs session caching. Remove --no-cache.")
+            return false
+        }
+        if self.audio || self.audioFile != nil {
+            self.printAgentExecutionError("Interactive chat currently accepts typed input only.")
+            return false
+        }
+        return true
+    }
+
+    private func printNonInteractiveChatHelp() {
+        if self.jsonOutput {
+            self.printAgentExecutionError("Provide a task or run with --chat in an interactive terminal to start the agent chat loop.")
+            return
+        }
+
+        let hint = [
+            "Interactive chat requires a TTY.",
+            "To force it from scripts: peekaboo agent --chat < prompts.txt",
+            "Provide a task arg or use --chat when piping input.",
+            "",
+        ]
+        hint.forEach { print($0) }
+        self.printChatHelpMenu()
+    }
+
+    @MainActor
+    private func runChatLoop(
+        _ agentService: PeekabooAgentService,
+        requestedModel: LanguageModel?,
+        initialPrompt: String?,
+        capabilities: TerminalCapabilities
+    ) async throws {
+        guard self.ensureChatModePreconditions() else { return }
+
+        var activeSessionId: String?
+        do {
+            activeSessionId = try await self.initialChatSessionId(agentService)
+        } catch {
+            self.printAgentExecutionError(error.localizedDescription)
+            return
+        }
+
+        self.printChatWelcome(
+            sessionId: activeSessionId,
+            modelDescription: self.describeModel(requestedModel))
+        self.printChatHelpIntro()
+
+        if let seed = initialPrompt {
+            try await self.performChatTurn(
+                seed,
+                agentService: agentService,
+                sessionId: &activeSessionId,
+                requestedModel: requestedModel)
+        }
+
+        while true {
+            guard let line = self.readChatLine(prompt: "chat> ", capabilities: capabilities) else {
+                if capabilities.isInteractive {
+                    print()
+                }
+                break
+            }
+
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { continue }
+            if trimmed == "/help" {
+                self.printChatHelpMenu()
+                continue
+            }
+
+            do {
+                try await self.performChatTurn(
+                    trimmed,
+                    agentService: agentService,
+                    sessionId: &activeSessionId,
+                    requestedModel: requestedModel)
+            } catch {
+                self.printAgentExecutionError(error.localizedDescription)
+                break
+            }
+        }
+    }
+
+    private func initialChatSessionId(
+        _ agentService: PeekabooAgentService
+    ) async throws -> String? {
+        if let sessionId = self.resumeSession {
+            guard try await agentService.getSessionInfo(sessionId: sessionId) != nil else {
+                throw PeekabooError.sessionNotFound(sessionId)
+            }
+            return sessionId
+        }
+
+        if self.resume {
+            let sessions = try await agentService.listSessions()
+            guard let mostRecent = sessions.first else {
+                throw PeekabooError.commandFailed("No sessions available to resume.")
+            }
+            return mostRecent.id
+        }
+
+        return nil
+    }
+
+    private func readChatLine(prompt: String, capabilities: TerminalCapabilities) -> String? {
+        if capabilities.isInteractive {
+            fputs(prompt, stdout)
+            fflush(stdout)
+        }
+        return readLine()
+    }
+
+    private func performChatTurn(
+        _ input: String,
+        agentService: PeekabooAgentService,
+        sessionId: inout String?,
+        requestedModel: LanguageModel?
+    ) async throws {
+        let result: AgentExecutionResult
+
+        if let existingSessionId = sessionId {
+            let delegate = self.makeEventDelegate(for: input)
+            result = try await agentService.continueSession(
+                sessionId: existingSessionId,
+                userMessage: input,
+                model: requestedModel,
+                maxSteps: self.resolvedMaxSteps,
+                dryRun: self.dryRun,
+                eventDelegate: delegate,
+                verbose: self.verbose)
+            self.displayResult(result)
+        } else {
+            result = try await self.executeAgentTask(
+                agentService,
+                task: input,
+                requestedModel: requestedModel,
+                maxSteps: self.resolvedMaxSteps)
+        }
+
+        if let updatedSessionId = result.sessionId {
+            sessionId = updatedSessionId
+        }
+
+        self.printChatTurnSummary(result)
+    }
+
+    private func printChatTurnSummary(_ result: AgentExecutionResult) {
+        guard !self.quiet else { return }
+        let duration = String(format: "%.1fs", result.metadata.executionTime)
+        let sessionFragment = result.sessionId.map { String($0.prefix(8)) } ?? "–"
+        let line = [
+            TerminalColor.dim,
+            "↺ Session ",
+            sessionFragment,
+            ": ",
+            duration,
+            " • ⚒ ",
+            String(result.metadata.toolCallCount),
+            TerminalColor.reset
+        ].joined()
+        print(line)
+    }
+
+    private func describeModel(_ requestedModel: LanguageModel?) -> String {
+        requestedModel?.description ?? "default (gpt-5.1-mini)"
+    }
+
+    private func printChatWelcome(sessionId: String?, modelDescription: String) {
+        guard !self.quiet else { return }
+        let header = [
+            TerminalColor.cyan,
+            TerminalColor.bold,
+            "Interactive agent chat",
+            TerminalColor.reset,
+            " – model: ",
+            modelDescription
+        ].joined()
+        print(header)
+        if let sessionId {
+            print("\(TerminalColor.dim)Resuming session \(sessionId.prefix(8))\(TerminalColor.reset)")
+        } else {
+            print("\(TerminalColor.dim)A new session will be created on the first prompt\(TerminalColor.reset)")
+        }
+        print()
+    }
+
+    private func printChatHelpIntro() {
+        guard !self.quiet else { return }
+        print("Type /help for chat commands (Ctrl+C to exit).")
+        self.printChatHelpMenu()
+    }
+
+    private func printChatHelpMenu() {
+        guard !self.quiet else { return }
+        let lines = [
+            "",
+            "Chat commands:",
+            "  • Type any prompt and press Return to run it.",
+            "  • /help  Show this menu again.",
+            "  • Ctrl+C Exit immediately.",
+            "  • Ctrl+D Exit when idle (EOF).",
+            ""
+        ]
+        lines.forEach { print($0) }
     }
 
     private func printCapabilityFlag(_ label: String, supported: Bool, detail: String? = nil) {

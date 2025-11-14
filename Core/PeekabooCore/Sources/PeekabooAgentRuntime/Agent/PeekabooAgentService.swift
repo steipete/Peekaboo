@@ -165,8 +165,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 eventDelegate: eventDelegate)
         }
 
+        let sessionContext = try await self.prepareSession(
+            task: input,
+            model: self.defaultLanguageModel,
+            label: "audio",
+            logBehavior: .verboseOnly)
         return try await self.executeWithoutStreaming(
-            input,
+            context: sessionContext,
             model: self.defaultLanguageModel,
             maxSteps: maxSteps)
     }
@@ -256,8 +261,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
 
+            let sessionContext = try await self.prepareSession(
+                task: task,
+                model: selectedModel,
+                label: "streaming",
+                logBehavior: .always)
+
             let result = try await self.executeWithStreaming(
-                task,
+                context: sessionContext,
                 model: selectedModel,
                 maxSteps: maxSteps,
                 streamingDelegate: streamingDelegate,
@@ -269,7 +280,15 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             return result
         } else {
             // Non-streaming execution
-            return try await self.executeWithoutStreaming(task, model: selectedModel, maxSteps: maxSteps)
+            let sessionContext = try await self.prepareSession(
+                task: task,
+                model: selectedModel,
+                label: "(non-streaming)",
+                logBehavior: .verboseOnly)
+            return try await self.executeWithoutStreaming(
+                context: sessionContext,
+                model: selectedModel,
+                maxSteps: maxSteps)
         }
     }
 
@@ -284,8 +303,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         let selectedModel = self.resolveModel(model)
         // For streaming without event handler, create a dummy delegate that discards chunks
         let dummyDelegate = StreamingEventDelegate { _ in /* discard */ }
+        let sessionContext = try await self.prepareSession(
+            task: task,
+            model: selectedModel,
+            label: "streaming-api",
+            logBehavior: .always)
         return try await self.executeWithStreaming(
-            task,
+            context: sessionContext,
             model: selectedModel,
             maxSteps: 20,
             streamingDelegate: dummyDelegate,
@@ -367,8 +391,14 @@ extension PeekabooAgentService {
             }
         }
 
+        let sessionContext = try await self.prepareSession(
+            task: input,
+            model: self.defaultLanguageModel,
+            label: "audio-stream",
+            logBehavior: .always)
+
         let result = try await self.executeWithStreaming(
-            input,
+            context: sessionContext,
             model: self.defaultLanguageModel,
             maxSteps: maxSteps,
             streamingDelegate: streamingDelegate,
@@ -380,43 +410,52 @@ extension PeekabooAgentService {
 }
 
 extension PeekabooAgentService {
-    /// Resume a previous session
-    public func resumeSession(
+    public func continueSession(
         sessionId: String,
+        userMessage: String,
         model: LanguageModel? = nil,
-        eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
+        maxSteps: Int = 20,
+        dryRun: Bool = false,
+        eventDelegate: (any AgentEventDelegate)? = nil,
+        verbose: Bool = false) async throws -> AgentExecutionResult
     {
-        // Load the session
-        guard try await self.sessionManager.loadSession(id: sessionId) != nil else {
+        self.isVerbose = verbose
+        TachikomaConfiguration.current.setVerbose(verbose)
+
+        guard let existingSession = try await self.sessionManager.loadSession(id: sessionId) else {
             throw PeekabooError.sessionNotFound(sessionId)
         }
 
-        // Resume the session with existing messages using direct Tachikoma functions
+        if dryRun {
+            let now = Date()
+            return AgentExecutionResult(
+                content: "Dry run completed. Session \(sessionId) would receive: \(userMessage)",
+                messages: existingSession.messages,
+                sessionId: sessionId,
+                usage: nil,
+                metadata: AgentMetadata(
+                    executionTime: 0,
+                    toolCallCount: 0,
+                    modelName: existingSession.modelName,
+                    startTime: now,
+                    endTime: now))
+        }
 
-        // Create a continuation prompt if needed
-        let continuationPrompt = "Continue from where we left off."
+        let selectedModel = self.resolveModel(model)
+        let sessionContext = self.makeContinuationContext(from: existingSession, userMessage: userMessage)
 
-        // Execute with the loaded session
-        if eventDelegate != nil {
-            // SAFETY: We ensure that the delegate is only accessed on MainActor
-            let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate!)
-
-            // Create event stream infrastructure
+        if let eventDelegate {
+            let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate)
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
 
-            // Start processing events on MainActor
             let eventTask = Task { @MainActor in
                 let delegate = unsafeDelegate.wrappedValue
-
-                // Send start event
-                delegate.agentDidEmitEvent(.started(task: continuationPrompt))
-
+                delegate.agentDidEmitEvent(.started(task: userMessage))
                 for await event in eventStream {
                     delegate.agentDidEmitEvent(event)
                 }
             }
 
-            // Create the event handler
             let eventHandler = EventHandler { event in
                 eventContinuation.yield(event)
             }
@@ -426,28 +465,42 @@ extension PeekabooAgentService {
                 eventTask.cancel()
             }
 
-            // Create event delegate wrapper for streaming
             let streamingDelegate = StreamingEventDelegate { chunk in
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
 
-            // Run the agent with streaming
-            let selectedModel = self.resolveModel(model)
             let result = try await self.executeWithStreaming(
-                continuationPrompt,
+                context: sessionContext,
                 model: selectedModel,
-                maxSteps: 20,
-                streamingDelegate: streamingDelegate)
+                maxSteps: maxSteps,
+                streamingDelegate: streamingDelegate,
+                eventHandler: eventHandler)
 
-            // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
-
             return result
         } else {
-            // Execute without streaming
-            let selectedModel = self.resolveModel(model)
-            return try await self.executeWithoutStreaming(continuationPrompt, model: selectedModel, maxSteps: 20)
+            return try await self.executeWithoutStreaming(
+                context: sessionContext,
+                model: selectedModel,
+                maxSteps: maxSteps)
         }
+    }
+
+    /// Resume a previous session
+    public func resumeSession(
+        sessionId: String,
+        model: LanguageModel? = nil,
+        eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
+    {
+        let continuationPrompt = "Continue from where we left off."
+        return try await self.continueSession(
+            sessionId: sessionId,
+            userMessage: continuationPrompt,
+            model: model,
+            maxSteps: 20,
+            dryRun: false,
+            eventDelegate: eventDelegate,
+            verbose: self.isVerbose)
     }
 
     // MARK: - Session Management
@@ -727,99 +780,89 @@ extension PeekabooAgentService {
 
     /// Execute task using direct streamText calls with event streaming
     private func executeWithStreaming(
-        _ task: String,
+        context: SessionContext,
         model: LanguageModel,
         maxSteps: Int = 20,
         streamingDelegate: StreamingEventDelegate,
         eventHandler: EventHandler? = nil) async throws -> AgentExecutionResult
     {
         _ = streamingDelegate
-        let sessionContext = try await self.prepareSession(
-            task: task,
-            model: model,
-            label: "streaming",
-            logBehavior: .always)
-
         let tools = await self.buildToolset(for: model)
         self.logModelUsage(model, prefix: "Streaming ")
 
         let configuration = StreamingLoopConfiguration(
             model: model,
             tools: tools,
-            sessionId: sessionContext.id,
+            sessionId: context.id,
             eventHandler: eventHandler)
 
         let outcome = try await self.runStreamingLoop(
             configuration: configuration,
             maxSteps: maxSteps,
-            initialMessages: sessionContext.messages)
+            initialMessages: context.messages)
 
         let endTime = Date()
-        let executionTime = endTime.timeIntervalSince(sessionContext.startTime)
+        let executionTime = endTime.timeIntervalSince(context.executionStart)
         let toolCallCount = outcome.steps.reduce(0) { $0 + $1.toolCalls.count }
 
         try self.saveCompletedSession(
-            context: sessionContext,
+            context: context,
             model: model,
             finalMessages: outcome.messages,
             endTime: endTime,
-            toolCallCount: toolCallCount)
+            toolCallCount: toolCallCount,
+            usage: outcome.usage)
 
         return AgentExecutionResult(
             content: outcome.content,
             messages: outcome.messages,
-            sessionId: sessionContext.id,
+            sessionId: context.id,
             usage: outcome.usage,
             metadata: self.makeExecutionMetadata(
                 model: model,
                 executionTime: executionTime,
                 toolCallCount: toolCallCount,
-                startTime: sessionContext.startTime,
+                startTime: context.executionStart,
                 endTime: endTime))
     }
 
     /// Execute task using direct generateText calls without streaming
     private func executeWithoutStreaming(
-        _ task: String,
+        context: SessionContext,
         model: LanguageModel,
         maxSteps: Int = 20) async throws -> AgentExecutionResult
     {
-        let sessionContext = try await self.prepareSession(
-            task: task,
-            model: model,
-            label: "(non-streaming)",
-            logBehavior: .verboseOnly)
-
         let tools = await self.buildToolset(for: model)
         self.logModelUsage(model, prefix: "")
 
         let response = try await generateText(
             model: model,
-            messages: sessionContext.messages,
+            messages: context.messages,
             tools: tools.isEmpty ? nil : tools,
             maxSteps: maxSteps)
 
         let endTime = Date()
-        let executionTime = endTime.timeIntervalSince(sessionContext.startTime)
-        let finalMessages = sessionContext.messages + [ModelMessage.assistant(response.text)]
+        let executionTime = endTime.timeIntervalSince(context.executionStart)
+        let finalMessages = context.messages + [ModelMessage.assistant(response.text)]
 
         try self.saveCompletedSession(
-            context: sessionContext,
+            context: context,
             model: model,
             finalMessages: finalMessages,
             endTime: endTime,
-            toolCallCount: 0)
+            toolCallCount: 0,
+            usage: nil)
 
         return AgentExecutionResult(
             content: response.text,
             messages: finalMessages,
-            sessionId: sessionContext.id,
+            sessionId: context.id,
             usage: nil,
             metadata: self.makeExecutionMetadata(
                 model: model,
                 executionTime: executionTime,
                 toolCallCount: 0,
-                startTime: sessionContext.startTime,
+                startTime: context.executionStart,
                 endTime: endTime))
     }
 }

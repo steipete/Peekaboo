@@ -13,6 +13,7 @@ read_when:
 | Flag | Description |
 | --- | --- |
 | `[task]` | Optional free-form task description. Required unless you pass `--resume`/`--resume-session`. |
+| `--chat` | Force the interactive chat loop even when stdin/stdout are not TTYs. |
 | `--dry-run` | Emit the planned steps without actually invoking tools. |
 | `--max-steps <n>` | Cap how many tool invocations the agent may issue before aborting. |
 | `--model gpt-5.1|claude-sonnet-4.5` | Override the default model (`gpt-5.1-mini`). Input is validated against the allowed list. |
@@ -28,6 +29,18 @@ read_when:
 - All agent executions run under `CommandRuntime.makeDefault()`, so environment variables, credentials, and logging levels match the top-level CLI state.
 - When `--dry-run` is set the agent still reasons about the task, but tool invocations are skipped; this is useful for understanding plans without touching the UI.
 - Audio flags wire into Tachikoma’s audio stack: `--audio` opens the microphone, `--audio-file` loads a WAV/CAF file, and `--realtime` enables low-latency streaming (OpenAI-only).
+
+## Chat mode
+
+Peekaboo now ships a dependency-free interactive chat loop described in detail in `docs/agent-chat.md`. Key behaviors:
+
+- Running `peekaboo agent` without a task automatically enters chat mode when stdout is a TTY. Non-interactive shells print the chat help menu instead of hanging.
+- `--chat` forces the loop even when piped or redirected, making it easy for other agents to seed prompts programmatically.
+- `/help` is available inside the loop at any time and is printed the moment the loop starts. `/help` is also mentioned in the initial “Type /help…” banner so operators know what to do.
+- Chat sessions reuse context via the same agent session cache. Supplying `--resume` / `--resume-session <id>` before `--chat` hooks the loop into an existing conversation.
+- Ctrl+C cancels the current turn; pressing it again (while idle) exits the loop. Ctrl+D exits when idle.
+
+For automation flows that cannot attach to a TTY, pass both `--chat` and standard input (e.g., echoing prompts line-by-line). Without `--chat`, a non-interactive invocation simply prints the chat help instructions and exits so jobs don’t hang.
 
 ## Examples
 ```bash

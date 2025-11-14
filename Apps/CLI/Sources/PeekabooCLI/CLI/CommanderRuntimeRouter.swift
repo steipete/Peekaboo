@@ -11,6 +11,9 @@ enum CommanderRuntimeRouter {
     static func resolve(argv: [String]) throws -> CommanderResolvedCommand {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let trimmedArgs = Self.trimmedArguments(from: argv)
+        if Self.handleVersionRequest(arguments: trimmedArgs) {
+            throw ExitCode.success
+        }
         if try Self.handleBareInvocation(arguments: trimmedArgs, descriptors: descriptors) {
             throw ExitCode.success
         }
@@ -74,6 +77,13 @@ enum CommanderRuntimeRouter {
         return false
     }
 
+    private static func handleVersionRequest(arguments: [String]) -> Bool {
+        guard let first = arguments.first else { return false }
+        guard self.isVersionToken(first) else { return false }
+        print(Version.fullVersion)
+        return true
+    }
+
     private static func handleBareInvocation(
         arguments: [String],
         descriptors: [CommanderCommandDescriptor]
@@ -92,6 +102,10 @@ enum CommanderRuntimeRouter {
 
     private static func isHelpToken(_ token: String) -> Bool {
         token == "--help" || token == "-h"
+    }
+
+    private static func isVersionToken(_ token: String) -> Bool {
+        token == "--version" || token == "-V"
     }
 
     private static func printHelp(
