@@ -11,6 +11,10 @@ enum CommanderRuntimeRouter {
     static func resolve(argv: [String]) throws -> CommanderResolvedCommand {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let trimmedArgs = Self.trimmedArguments(from: argv)
+        if trimmedArgs.isEmpty {
+            self.printRootHelp(descriptors: descriptors)
+            throw ExitCode.success
+        }
         if Self.handleVersionRequest(arguments: trimmedArgs) {
             throw ExitCode.success
         }

@@ -7,7 +7,7 @@ read_when:
 
 # CLI Command Reference
 
-Peekaboo’s CLI mirrors everything the agent can do. Commands share the same session cache and most support `--json-output` for scripting. Use `peekaboo --version` at any time to see the embedded build/commit metadata that Poltergeist stamped into the binary.
+Peekaboo’s CLI mirrors everything the agent can do. Commands share the same session cache and most support `--json-output` for scripting. Run `peekaboo` with no arguments to print the root help menu, and `peekaboo --version` at any time to see the embedded build/commit metadata that Poltergeist stamped into the binary.
 
 Use `peekaboo <command> --help` for inline flag descriptions; this page links to the authoritative docs in `docs/commands/`.
 
