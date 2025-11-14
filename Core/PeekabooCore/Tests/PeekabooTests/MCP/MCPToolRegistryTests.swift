@@ -3,10 +3,14 @@ import MCP
 import TachikomaMCP
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @MainActor
 private func makeNativeTool<T>(_ factory: (MCPToolContext) -> T) -> T {
-    factory(MCPToolContext.makeDefault())
+    let services = PeekabooServices()
+    return factory(MCPToolContext(services: services))
 }
 
 @MainActor

@@ -3,6 +3,9 @@ import MCP
 import TachikomaMCP
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 /// Tests for MCPToolRegistry external tool functionality
 @Suite("MCP Tool Registry External Tests")

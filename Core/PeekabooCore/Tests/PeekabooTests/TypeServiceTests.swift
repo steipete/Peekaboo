@@ -3,7 +3,11 @@ import Foundation
 import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
+#if PEEKABOO_INCLUDE_AUTOMATION_TESTS
 @Suite(
     "TypeService Tests",
     .tags(.ui, .automation),
@@ -296,3 +300,4 @@ struct TypeServiceTests {
         #expect(result.keyPresses == 12)
     }
 }
+#endif

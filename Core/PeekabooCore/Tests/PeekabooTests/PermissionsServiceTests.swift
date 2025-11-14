@@ -2,6 +2,9 @@ import AppKit
 import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("PermissionsService Tests", .tags(.permissions, .unit))
 @MainActor

@@ -4,9 +4,10 @@
 //
 
 import Foundation
+import PeekabooAutomation
 import PeekabooFoundation
 import Testing
-@testable import PeekabooCore
+@testable import PeekabooAutomation
 
 private enum CaptureTestError: Error {
     case modernFailure

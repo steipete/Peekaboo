@@ -1,6 +1,9 @@
 import Tachikoma
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 /// Integration tests for model selection within PeekabooCore
 @Suite("Model Selection Core Integration Tests")

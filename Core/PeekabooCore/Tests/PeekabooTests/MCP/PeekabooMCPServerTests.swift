@@ -3,12 +3,15 @@ import Logging
 import MCP
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("PeekabooMCPServer Tests")
 struct PeekabooMCPServerTests {
     @Test("Server initialization creates server with correct capabilities")
     func serverInitialization() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // Server should be initialized but we can't directly access private properties
         // We'll test through the tool list functionality
@@ -21,7 +24,7 @@ struct PeekabooMCPServerTests {
 
     @Test("Server registers all expected tools")
     func toolRegistration() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // We need to test that all tools are registered
         // This would require either exposing the toolRegistry or testing through the protocol
@@ -36,7 +39,7 @@ struct PeekabooMCPServerTests {
         // and sending actual MCP protocol messages
 
         // For now, we can at least verify the server initializes without error
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // In a real test, we would:
         // 1. Create a mock transport
@@ -46,7 +49,7 @@ struct PeekabooMCPServerTests {
 
     @Test("Server handles CallTool request for valid tool")
     func callToolValidTool() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // Test would involve:
         // 1. Setting up mock transport
@@ -56,7 +59,7 @@ struct PeekabooMCPServerTests {
 
     @Test("Server handles CallTool request for invalid tool")
     func callToolInvalidTool() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // Test would involve:
         // 1. Setting up mock transport
@@ -66,7 +69,7 @@ struct PeekabooMCPServerTests {
 
     @Test("Server handles Initialize request")
     func initializeHandler() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // Test would verify:
         // 1. Server responds with correct protocol version
@@ -76,7 +79,7 @@ struct PeekabooMCPServerTests {
 
     @Test("Server gracefully handles transport errors")
     func transportErrorHandling() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // Test scenarios:
         // 1. Transport disconnection
@@ -145,7 +148,7 @@ enum MockTransportError: Swift.Error {
 struct MCPServerIntegrationTests {
     @Test("Server starts and stops cleanly on stdio transport")
     func stdioTransportLifecycle() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // We can't easily test stdio transport in unit tests
         // This would be better as an integration test with actual process spawning
@@ -153,7 +156,7 @@ struct MCPServerIntegrationTests {
 
     @Test("Server handles concurrent tool calls")
     func concurrentToolCalls() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // Test would involve:
         // 1. Setting up multiple concurrent CallTool requests
@@ -163,7 +166,7 @@ struct MCPServerIntegrationTests {
 
     @Test("Server maintains session state correctly")
     func sessionState() async throws {
-        _ = try await PeekabooMCPServer()
+        _ = try await makeServer()
 
         // Test scenarios:
         // 1. Multiple clients connecting
@@ -178,17 +181,22 @@ struct MCPServerIntegrationTests {
 struct MCPServerPerformanceTests {
     @Test("Tool listing performance")
     func toolListingPerformance() async throws {
-        _ = try await PeekabooMCPServer()
-
+        _ = try await makeServer()
         // Measure time to list tools
         // Should complete in < 10ms
     }
 
     @Test("Tool execution performance for simple tools")
     func simpleToolPerformance() async throws {
-        _ = try await PeekabooMCPServer()
-
+        _ = try await makeServer()
         // Test tools like "sleep" that have minimal overhead
         // Should complete in < 50ms including protocol overhead
     }
+}
+
+@MainActor
+private func makeServer() async throws -> PeekabooMCPServer {
+    let services = PeekabooServices()
+    services.installAgentRuntimeDefaults()
+    return try await PeekabooMCPServer()
 }

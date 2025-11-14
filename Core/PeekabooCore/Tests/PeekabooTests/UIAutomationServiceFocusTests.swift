@@ -1,6 +1,9 @@
 import CoreGraphics
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("UIAutomationService Focus Tests", .tags(.safe))
 struct UIAutomationServiceFocusTests {

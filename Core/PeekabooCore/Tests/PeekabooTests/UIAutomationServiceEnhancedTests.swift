@@ -4,6 +4,9 @@ import Foundation
 import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("UIAutomationServiceEnhanced Tests", .serialized, .tags(.safe))
 struct UIAutomationServiceEnhancedTests {
@@ -220,7 +223,8 @@ struct MockElement {
     }
 }
 
-private actor MockSessionManager: SessionManagerProtocol {
+@MainActor
+private final class MockSessionManager: SessionManagerProtocol {
     private var mockDetectionResult: ElementDetectionResult?
     private var storedResults: [String: ElementDetectionResult] = [:]
 

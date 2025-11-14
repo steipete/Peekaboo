@@ -3,6 +3,9 @@ import Foundation
 import PeekabooFoundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("ScreenCaptureService test harness", .tags(.ui))
 @MainActor
@@ -153,8 +156,10 @@ private final class StubVisualizationClient: VisualizationClientProtocol, @unche
     func showScreenshotFlash(in rect: CGRect) async -> Bool { false }
 }
 
-private actor CountingPermissionEvaluator: ScreenRecordingPermissionEvaluating {
+@MainActor
+private final class CountingPermissionEvaluator: ScreenRecordingPermissionEvaluating {
     private(set) var callCount = 0
+
     func hasPermission(logger: CategoryLogger) async -> Bool {
         self.callCount += 1
         return true

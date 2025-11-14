@@ -4,6 +4,9 @@ import AXorcist
 import Foundation
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("Element+Timeout Tests - Current API")
 struct ElementTimeoutTests {

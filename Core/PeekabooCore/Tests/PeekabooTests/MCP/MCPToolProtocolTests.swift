@@ -3,6 +3,9 @@ import MCP
 import TachikomaMCP
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("MCP Tool Protocol Tests")
 struct MCPToolProtocolTests {

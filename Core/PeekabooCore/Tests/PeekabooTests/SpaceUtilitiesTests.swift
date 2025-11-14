@@ -2,6 +2,9 @@ import AppKit
 import CoreGraphics
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("Space Utilities Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
 struct SpaceUtilitiesTests {

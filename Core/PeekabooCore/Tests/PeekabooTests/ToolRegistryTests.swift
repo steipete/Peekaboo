@@ -2,6 +2,9 @@ import Foundation
 import Tachikoma
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("ToolRegistry Tests")
 struct ToolRegistryTests {
@@ -10,7 +13,8 @@ struct ToolRegistryTests {
     @Test("Registry contains expected tools")
     @MainActor
     func registryContainsExpectedTools() {
-        let allTools = ToolRegistry.allTools()
+        let fixture = makeToolRegistryFixture()
+        let allTools = fixture.tools
 
         // Verify registry is not empty
         #expect(!allTools.isEmpty)
@@ -19,6 +23,8 @@ struct ToolRegistryTests {
     @Test("Tool retrieval by name")
     @MainActor
     func toolRetrievalByName() {
+        _ = makeToolRegistryFixture()
+
         // Test exact name match
         let clickTool = ToolRegistry.tool(named: "click")
         #expect(clickTool != nil)
@@ -36,8 +42,10 @@ struct ToolRegistryTests {
     @Test("Tool retrieval by command name")
     @MainActor
     func toolRetrievalByCommandName() {
+        let fixture = makeToolRegistryFixture()
+
         // Find a tool with a different command name
-        let toolWithCommandName = ToolRegistry.allTools().first { $0.commandName != nil }
+        let toolWithCommandName = fixture.tools.first { $0.commandName != nil }
 
         if let tool = toolWithCommandName, let cmdName = tool.commandName {
             let retrievedTool = ToolRegistry.tool(named: cmdName)
@@ -51,6 +59,7 @@ struct ToolRegistryTests {
     @Test("Tools organized by category")
     @MainActor
     func toolsOrganizedByCategory() {
+        _ = makeToolRegistryFixture()
         let toolsByCategory = ToolRegistry.toolsByCategory()
 
         // Verify categories are populated
@@ -87,8 +96,11 @@ struct ToolRegistryTests {
     @Test("Parameter retrieval")
     @MainActor
     func parameterRetrieval() {
+        let fixture = makeToolRegistryFixture()
+
         // Get a tool with parameters
-        guard let clickTool = ToolRegistry.tool(named: "click") else {
+        guard let clickTool = ToolRegistry.tool(named: "click") ?? fixture.tools.first(where: { $0.name == "click" })
+        else {
             Issue.record("Click tool not found")
             return
         }
@@ -260,7 +272,8 @@ struct ToolRegistryTests {
     @Test("All tools have valid categories")
     @MainActor
     func allToolsHaveValidCategories() {
-        let allTools = ToolRegistry.allTools()
+        let fixture = makeToolRegistryFixture()
+        let allTools = fixture.tools
         let validCategories = Set(ToolCategory.allCases)
 
         for tool in allTools {
@@ -271,7 +284,8 @@ struct ToolRegistryTests {
     @Test("No duplicate tool names")
     @MainActor
     func noDuplicateToolNames() {
-        let allTools = ToolRegistry.allTools()
+        let fixture = makeToolRegistryFixture()
+        let allTools = fixture.tools
         let toolNames = allTools.map(\.name)
         let uniqueToolNames = Set(toolNames)
 
@@ -281,7 +295,8 @@ struct ToolRegistryTests {
     @Test("All tools have abstracts and discussions")
     @MainActor
     func allToolsHaveDescriptions() {
-        let allTools = ToolRegistry.allTools()
+        let fixture = makeToolRegistryFixture()
+        let allTools = fixture.tools
 
         for tool in allTools {
             #expect(!tool.abstract.isEmpty, "Tool \(tool.name) has empty abstract")
@@ -329,4 +344,17 @@ extension ToolRegistryTests {
             Issue.record("\(name) parameter not found")
         }
     }
+}
+
+@MainActor
+private func makeToolRegistryFixture() -> ToolRegistryFixture {
+    let services = PeekabooServices()
+    ToolRegistry.configureDefaultServices { services }
+    let tools = ToolRegistry.allTools(using: services)
+    return ToolRegistryFixture(services: services, tools: tools)
+}
+
+private struct ToolRegistryFixture {
+    let services: PeekabooServices
+    let tools: [PeekabooToolDefinition]
 }

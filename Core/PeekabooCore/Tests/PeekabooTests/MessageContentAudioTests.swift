@@ -3,6 +3,9 @@ import Tachikoma
 import TachikomaAudio
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 @Suite("Audio Content Tests - Tachikoma Integration")
 struct MessageContentAudioTests {

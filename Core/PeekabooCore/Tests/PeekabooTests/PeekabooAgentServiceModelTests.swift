@@ -1,6 +1,9 @@
 import Tachikoma
 import Testing
 @testable import PeekabooCore
+@testable import PeekabooAutomation
+@testable import PeekabooAgentRuntime
+@testable import PeekabooVisualizer
 
 /// Tests for PeekabooAgentService model selection functionality
 @Suite("PeekabooAgentService Model Selection Tests")
@@ -175,6 +178,9 @@ private class MockEventDelegate: AgentEventDelegate {
 /// Tests for model selection in different execution paths
 @Suite("Model Selection Execution Path Tests")
 struct ModelSelectionExecutionPathTests {
+    @MainActor
+    private func makeServices() -> PeekabooServices { PeekabooServices() }
+
     @Test("executeWithStreaming uses provided model")
     @MainActor
     func executeWithStreamingUsesProvidedModel() async throws {
@@ -191,7 +197,7 @@ struct ModelSelectionExecutionPathTests {
             let result = try await agentService.executeTask(
                 "test streaming execution",
                 maxSteps: 1,
-                sessionId: nil,
+                sessionId: (nil as String?),
                 model: customModel,
                 eventDelegate: eventDelegate)
 
@@ -216,9 +222,9 @@ struct ModelSelectionExecutionPathTests {
             let result = try await agentService.executeTask(
                 "test non-streaming execution",
                 maxSteps: 1,
-                sessionId: nil,
+                sessionId: (nil as String?),
                 model: customModel,
-                eventDelegate: nil)
+                eventDelegate: (nil as (any AgentEventDelegate)?))
 
             #expect(result.metadata.modelName == customModel.description)
         } catch {
