@@ -99,8 +99,12 @@ final class PeekabooAgent {
 
     // MARK: - Initialization
 
-    init(settings: PeekabooSettings, sessionStore: SessionStore) {
-        self.services = PeekabooServices.shared
+    init(
+        settings: PeekabooSettings,
+        sessionStore: SessionStore,
+        services: PeekabooServices = PeekabooServices())
+    {
+        self.services = services
         self.settings = settings
         self.sessionStore = sessionStore
     }

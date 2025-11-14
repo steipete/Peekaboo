@@ -8,7 +8,7 @@ import Testing
 struct ToolRegistryTests {
     @Test("All expected tools are registered")
     func allToolsAreRegistered() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
         #expect(!allTools.isEmpty)
 
         let toolNames = Set(allTools.map(\.name))
@@ -38,7 +38,7 @@ struct ToolRegistryTests {
 
     @Test("Tool definitions are valid")
     func toolDefinitionsAreValid() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
 
         for tool in allTools {
             #expect(!tool.name.isEmpty)

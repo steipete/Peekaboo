@@ -11,6 +11,7 @@ struct PeekabooApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
 
+    @State private var services = PeekabooServices()
     // Core state - initialized together for proper dependencies
     @State private var settings = PeekabooSettings()
     @State private var sessionStore = SessionStore()
@@ -55,12 +56,17 @@ struct PeekabooApp: App {
         WindowGroup("HiddenWindow") {
             HiddenWindowView()
                 .task {
+                    self.settings.connectServices(self.services)
+
                     // Initialize dependencies if needed
                     if self.speechRecognizer == nil {
                         self.speechRecognizer = SpeechRecognizer(settings: self.settings)
                     }
                     if self.agent == nil {
-                        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
+                        self.agent = PeekabooAgent(
+                            settings: self.settings,
+                            sessionStore: self.sessionStore,
+                            services: self.services)
                     }
 
                     // Configure Tachikoma with API keys from settings
@@ -113,7 +119,11 @@ struct PeekabooApp: App {
                 .environment(self.sessionStore)
                 .environment(self.permissions)
                 .environment(self.speechRecognizer ?? SpeechRecognizer(settings: self.settings))
-                .environment(self.agent ?? PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore))
+                .environment(
+                    self.agent ?? PeekabooAgent(
+                        settings: self.settings,
+                        sessionStore: self.sessionStore,
+                        services: self.services))
                 .environment(self.realtimeService ?? self.makeRealtimeVoiceService())
                 .environmentOptional(self.realtimeService)
                 .onReceive(NotificationCenter.default.publisher(for: .openMainWindow)) { _ in
@@ -173,7 +183,7 @@ struct PeekabooApp: App {
 
     private func makeRealtimeVoiceService() -> RealtimeVoiceService {
         do {
-            let agentService = try PeekabooAgentService(services: PeekabooServices.shared)
+            let agentService = try PeekabooAgentService(services: self.services)
             return RealtimeVoiceService(
                 agentService: agentService,
                 sessionStore: self.sessionStore,

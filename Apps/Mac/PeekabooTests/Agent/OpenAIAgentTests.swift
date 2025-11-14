@@ -3,7 +3,7 @@ import PeekabooCore
 import Testing
 @testable import Peekaboo
 
-@Suite("PeekabooAgentService Tests", .tags(.ai, .unit), .disabled("Uses PeekabooServices.shared which may hang"))
+@Suite("PeekabooAgentService Tests", .tags(.ai, .unit), .disabled("Uses full PeekabooServices which may hang"))
 @MainActor
 struct PeekabooAgentServiceTests {
     var agentService: PeekabooAgentService!
@@ -12,7 +12,7 @@ struct PeekabooAgentServiceTests {
     var agent: PeekabooAgent!
 
     mutating func setup() {
-        let services = PeekabooServices.shared
+        let services = PeekabooServices()
         do {
             self.agentService = try PeekabooAgentService(services: services)
         } catch {
@@ -20,8 +20,12 @@ struct PeekabooAgentServiceTests {
             self.agentService = nil
         }
         self.settings = PeekabooSettings()
+        self.settings.connectServices(services)
         self.sessionStore = SessionStore()
-        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
+        self.agent = PeekabooAgent(
+            settings: self.settings,
+            sessionStore: self.sessionStore,
+            services: services)
     }
 
     @Test("Agent service initializes correctly")

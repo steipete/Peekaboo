@@ -9,16 +9,17 @@ import Tachikoma
 import Testing
 @testable import Peekaboo
 
-@Suite("RealtimeVoiceService Tests", .tags(.unit, .ai), .disabled("Uses PeekabooServices.shared which may hang"))
+@Suite("RealtimeVoiceService Tests", .tags(.unit, .ai), .disabled("Uses full PeekabooServices which may hang"))
 @MainActor
 struct RealtimeVoiceServiceTests {
     // MARK: - Test Helpers
 
     private func createMockDependencies() throws -> (PeekabooAgentService, SessionStore, PeekabooSettings) {
-        let services = PeekabooServices.shared
+        let services = PeekabooServices()
         let agentService = try PeekabooAgentService(services: services)
         let sessionStore = SessionStore()
         let settings = PeekabooSettings()
+        settings.connectServices(services)
         return (agentService, sessionStore, settings)
     }
 

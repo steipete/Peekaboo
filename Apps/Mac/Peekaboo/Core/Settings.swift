@@ -17,6 +17,7 @@ final class PeekabooSettings {
     private var isLoading = false
     // Reference to ConfigurationManager
     private let configManager = ConfigurationManager.shared
+    private weak var services: PeekabooServices?
 
     // API Configuration - Now synced with config.json
     var selectedProvider: String = "anthropic" {
@@ -692,10 +693,14 @@ extension PeekabooSettings {
             }
 
             // Refresh the agent service to pick up new API keys
-            PeekabooServices.shared.refreshAgentService()
+            self.services?.refreshAgentService()
         } catch {
             print("Failed to save API key to credentials: \(error)")
         }
+    }
+
+    func connectServices(_ services: PeekabooServices) {
+        self.services = services
     }
 
     // MARK: - Custom Provider Management

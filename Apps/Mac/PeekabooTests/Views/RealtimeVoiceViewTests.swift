@@ -10,16 +10,17 @@ import TachikomaAudio
 import Testing
 @testable import Peekaboo
 
-@Suite("RealtimeVoiceView Tests", .tags(.unit, .ui), .disabled("Uses PeekabooServices.shared which may hang"))
+@Suite("RealtimeVoiceView Tests", .tags(.unit, .ui), .disabled("Uses full PeekabooServices which may hang"))
 @MainActor
 struct RealtimeVoiceViewTests {
     // MARK: - Test Helpers
 
     private func createMockService() throws -> RealtimeVoiceService {
-        let services = PeekabooServices.shared
+        let services = PeekabooServices()
         let agentService = try PeekabooAgentService(services: services)
         let sessionStore = SessionStore()
         let settings = PeekabooSettings()
+        settings.connectServices(services)
 
         return RealtimeVoiceService(
             agentService: agentService,
