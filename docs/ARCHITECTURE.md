@@ -7,11 +7,28 @@ This document provides a high-level overview of how Tachikoma and PeekabooCore w
 ### Core Components
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Tachikoma     │    │  PeekabooCore   │    │ PeekabooVisualizer│
-│  AI Framework  │◄───┤ Automation Core │◄───┤ Visual Feedback │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐
+│   Tachikoma     │  AI models + streaming
+└────────┬────────┘
+         │
+┌────────▼────────┐      ┌────────────────────┐      ┌────────────────────┐
+│ PeekabooAutomation│◄───►│ PeekabooAgentRuntime │◄───►│  PeekabooVisualizer  │
+│ UI/system services│      │ Agent + MCP runtime │      │ Visual feedback stack │
+└────────┬────────┘      └──────────┬──────────┘      └──────────┬──────────┘
+         │                           │                           │
+         └───────────────┬───────────┴───────────┬───────────────┘
+                         ▼                       ▼
+                  ┌─────────────┐        ┌──────────────┐
+                  │  PeekabooCore│        │   Apps / CLI │
+                  │ (umbrella)   │        │  consumers   │
+                  └─────────────┘        └──────────────┘
 ```
+
+- **PeekabooAutomation** – houses *all* automation-facing code (configuration, capture, application/menu/window services, session management, typed models). Anything that touches Accessibility, ScreenCaptureKit, or on-host configuration lives here.
+- **PeekabooVisualizer** – standalone visual feedback layer (`VisualizationClient`, event store, presets) used by automation and apps.
+- **PeekabooAgentRuntime** – MCP tools, ToolRegistry/formatters, and the agent service itself. Depends on `PeekabooAutomation` for services/data models and on `PeekabooVisualizer` for status tokens.
+- **PeekabooCore** – thin umbrella (`_exported` imports + `PeekabooServices` convenience container). Apps/CLI keep importing `PeekabooCore`, but large features can now link the more focused products directly. Whoever instantiates `PeekabooServices` is responsible for calling `installAgentRuntimeDefaults()` so MCP tools and the ToolRegistry share that instance.
+- **Tachikoma** – still the AI provider surface (OpenAI/Anthropic/Grok/Ollama) that the runtime modules call through.
 
 ### Dependency Flow
 
@@ -20,14 +37,18 @@ This document provides a high-level overview of how Tachikoma and PeekabooCore w
 - Manages OpenAI, Anthropic, Grok, and Ollama models
 - Handles API configuration and credential management
 
-**PeekabooCore** (Automation Engine)
-- Uses Tachikoma's `AIModelProvider` for intelligent automation
-- Provides specialized services for UI interaction
-- Manages sessions, screen capture, and accessibility APIs
+**PeekabooAutomation**
+- Depends on Tachikoma for provider metadata and `PeekabooVisualizer` for optional UI feedback.
+- Exposes pure Swift protocols (`ApplicationServiceProtocol`, `LoggingServiceProtocol`, etc.) plus concrete implementations (MenuService, ScreenCaptureService, ProcessService, etc.).
+- Owns persisted models such as `CaptureTarget`, `AutomationAction`, `UIElement`, `SessionInfo`, and shared helper utilities.
 
-**PeekabooVisualizer** (Feedback System)
-- Provides real-time visual feedback for automation operations
-- Integrates with all PeekabooCore services for user feedback
+**PeekabooAgentRuntime**
+- Imports `PeekabooAutomation` for services/models and hosts MCP/agent tooling (`PeekabooAgentService`, `MCPToolContext`, `ToolRegistry`, CLI/MCP formatters).
+- Provides a clean `PeekabooServiceProviding` protocol so higher layers (CLI, macOS app, Tachikoma MCP host) can swap concrete service collections without touching globals.
+
+**PeekabooVisualizer**
+- Stays decoupled from automation; only consumes `PeekabooProtocols` data (`DetectedElement`, `LogLevel`) so it can be embedded in other contexts later.
+- `VisualizationClient` is still accessed via `PeekabooAutomation` convenience wrappers, but the module boundary keeps visual dependencies out of headless hosts.
 
 ## Tachikoma: AI Model Management
 
@@ -80,6 +101,9 @@ let applications = services.applications  // ApplicationService
 - **Role**: Central registry for all automation services
 - **Pattern**: Service locator with dependency injection support
 - **Lifecycle**: Manages service initialization and coordination
+
+##### Installing a services instance
+`PeekabooServices` no longer registers itself globally. Whoever constructs an instance (CLI runtime, macOS app, integration test, etc.) **must** call `services.installAgentRuntimeDefaults()` immediately after initialization. This wires the container into `MCPToolContext` and `ToolRegistry` so downstream tooling (MCP server, CLI `peekaboo tools`, agent service) can resolve the exact same services without touching singletons. Skipping the install step will cause MCP and ToolRegistry code to fatal because no default factory is configured.
 
 #### UIAutomationService (Orchestrator)
 - **Role**: Primary automation interface delegating to specialized services
