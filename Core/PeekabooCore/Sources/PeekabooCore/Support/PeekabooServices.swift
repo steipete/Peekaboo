@@ -1,8 +1,8 @@
 import Darwin
 import Foundation
 import os.log
-import PeekabooAutomation
 import PeekabooAgentRuntime
+import PeekabooAutomation
 import PeekabooFoundation
 import PeekabooVisualizer
 import Tachikoma
