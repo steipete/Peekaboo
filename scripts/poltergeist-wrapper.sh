@@ -11,5 +11,11 @@ PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 # Change to project directory to ensure paths are resolved correctly
 cd "$PROJECT_DIR"
 
-# Run Poltergeist with all arguments passed through
-exec node ../poltergeist/dist/cli.js "$@"
+POLTER_DIR="$(cd "$PROJECT_DIR/../poltergeist" && pwd)"
+CLI_ENTRY="$POLTER_DIR/dist/cli.js"
+
+if { [ "$1" = "panel" ] || { [ "$1" = "status" ] && [ "$2" = "panel" ]; }; }; then
+  exec node --watch --watch-path "$POLTER_DIR/dist" --watch-preserve-output "$CLI_ENTRY" "$@"
+else
+  exec node "$CLI_ENTRY" "$@"
+fi
