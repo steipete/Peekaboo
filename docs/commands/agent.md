@@ -37,6 +37,7 @@ Peekaboo now ships a dependency-free interactive chat loop described in detail i
 - Running `peekaboo agent` without a task automatically enters chat mode when stdout is a TTY. Non-interactive shells print the chat help menu instead of hanging.
 - `--chat` forces the loop even when piped or redirected, making it easy for other agents to seed prompts programmatically.
 - `/help` is available inside the loop at any time and is printed the moment the loop starts. `/help` is also mentioned in the initial “Type /help…” banner so operators know what to do.
+- Pressing `Esc` during an active turn cancels the run immediately and brings you back to the prompt; Ctrl+C still works as a fallback.
 - Chat sessions reuse context via the same agent session cache. Supplying `--resume` / `--resume-session <id>` before `--chat` hooks the loop into an existing conversation.
 - Ctrl+C cancels the current turn; pressing it again (while idle) exits the loop. Ctrl+D exits when idle.
 

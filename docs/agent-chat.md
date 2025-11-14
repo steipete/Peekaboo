@@ -46,6 +46,7 @@ loop {
 - When the loop opens it prints “Type /help for chat commands” and immediately dumps the `/help` menu so operators know what to expect.
 - `/help` can be entered at any time to reprint the built-in menu.
 - End-of-file (Ctrl+D) or a SIGINT while idle breaks out of the loop. Ctrl+C while a task is running cancels that turn and returns to the prompt.
+- Press `Esc` during an active turn to cancel the in-flight run immediately and return to the prompt.
 
 ## Prompt & Output
 

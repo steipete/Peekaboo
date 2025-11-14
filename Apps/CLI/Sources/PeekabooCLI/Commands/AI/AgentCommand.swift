@@ -169,6 +169,49 @@ var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOpt
 var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
 }
 
+private final class EscapeKeyMonitor {
+    private var source: (any DispatchSourceRead)?
+    private var originalTermios = termios()
+    private let handler: () -> Void
+    private let queue = DispatchQueue(label: "peekaboo.escape.monitor")
+
+    init(handler: @escaping () -> Void) {
+        self.handler = handler
+    }
+
+    func start() {
+        guard self.source == nil else { return }
+        guard isatty(STDIN_FILENO) == 1 else { return }
+
+        guard tcgetattr(STDIN_FILENO, &self.originalTermios) == 0 else { return }
+        var raw = self.originalTermios
+        raw.c_lflag &= ~(UInt(ICANON | ECHO))
+        guard tcsetattr(STDIN_FILENO, TCSANOW, &raw) == 0 else { return }
+
+        let source = DispatchSource.makeReadSource(fileDescriptor: STDIN_FILENO, queue: self.queue)
+        source.setEventHandler { [weak self] in
+            guard let self else { return }
+            var buffer = [UInt8](repeating: 0, count: 16)
+            let count = read(STDIN_FILENO, &buffer, buffer.count)
+            guard count > 0 else { return }
+            if buffer[..<count].contains(0x1B) {
+                self.handler()
+            }
+        }
+        source.setCancelHandler { [original = self.originalTermios] in
+            var term = original
+            tcsetattr(STDIN_FILENO, TCSANOW, &term)
+        }
+        source.resume()
+        self.source = source
+    }
+
+    func stop() {
+        self.source?.cancel()
+        self.source = nil
+    }
+}
+
 private enum ChatLaunchStrategy {
     case none
     case helpOnly
@@ -912,25 +955,46 @@ extension AgentCommand {
         sessionId: inout String?,
         requestedModel: LanguageModel?
     ) async throws {
-        let result: AgentExecutionResult
+        let startingSessionId = sessionId
+        let runTask = Task { () throws -> AgentExecutionResult in
+            if let existingSessionId = startingSessionId {
+                let delegate = self.makeEventDelegate(for: input)
+                let result = try await agentService.continueSession(
+                    sessionId: existingSessionId,
+                    userMessage: input,
+                    model: requestedModel,
+                    maxSteps: self.resolvedMaxSteps,
+                    dryRun: self.dryRun,
+                    eventDelegate: delegate,
+                    verbose: self.verbose)
+                self.displayResult(result, delegate: delegate)
+                return result
+            } else {
+                return try await self.executeAgentTask(
+                    agentService,
+                    task: input,
+                    requestedModel: requestedModel,
+                    maxSteps: self.resolvedMaxSteps)
+            }
+        }
 
-        if let existingSessionId = sessionId {
-            let delegate = self.makeEventDelegate(for: input)
-            result = try await agentService.continueSession(
-                sessionId: existingSessionId,
-                userMessage: input,
-                model: requestedModel,
-                maxSteps: self.resolvedMaxSteps,
-                dryRun: self.dryRun,
-                eventDelegate: delegate,
-                verbose: self.verbose)
-            self.displayResult(result, delegate: delegate)
-        } else {
-            result = try await self.executeAgentTask(
-                agentService,
-                task: input,
-                requestedModel: requestedModel,
-                maxSteps: self.resolvedMaxSteps)
+        let cancelMonitor = EscapeKeyMonitor { [runTask] in
+            if !runTask.isCancelled {
+                runTask.cancel()
+                Task { @MainActor in
+                    print("\n\(TerminalColor.yellow)Esc pressed – cancelling current run...\(TerminalColor.reset)")
+                }
+            }
+        }
+        cancelMonitor.start()
+
+        let result: AgentExecutionResult
+        do {
+            defer { cancelMonitor.stop() }
+            result = try await runTask.value
+        } catch is CancellationError {
+            cancelMonitor.stop()
+            return
         }
 
         if let updatedSessionId = result.sessionId {
