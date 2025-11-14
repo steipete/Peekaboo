@@ -1,3 +1,10 @@
+---
+summary: 'Review Intelligent Build Prioritization guidance'
+read_when:
+  - 'planning work related to intelligent build prioritization'
+  - 'debugging or extending features described here'
+---
+
 # Intelligent Build Prioritization
 
 <!-- Generated: 2025-08-02 22:18:00 UTC -->

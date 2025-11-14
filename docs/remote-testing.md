@@ -1,3 +1,10 @@
+---
+summary: 'Review Remote Testing Playbook guidance'
+read_when:
+  - 'planning work related to remote testing playbook'
+  - 'debugging or extending features described here'
+---
+
 ## Remote Testing Playbook
 
 This document captures the current workflow for running Peekaboo’s SwiftPM test targets on a remote macOS VM over SSH, plus the pitfalls we hit while bringing the VM online.

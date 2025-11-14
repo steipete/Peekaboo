@@ -1,3 +1,10 @@
+---
+summary: 'Review Documentation Snippets guidance'
+read_when:
+  - 'planning work related to documentation snippets'
+  - 'debugging or extending features described here'
+---
+
 Directory Structure:
 
 └── ./

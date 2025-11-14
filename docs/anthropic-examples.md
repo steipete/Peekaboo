@@ -1,3 +1,10 @@
+---
+summary: 'Review Anthropic Claude Examples for Peekaboo guidance'
+read_when:
+  - 'planning work related to anthropic claude examples for peekaboo'
+  - 'debugging or extending features described here'
+---
+
 # Anthropic Claude Examples for Peekaboo
 
 ## Basic Usage

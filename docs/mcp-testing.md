@@ -1,3 +1,10 @@
+---
+summary: 'Review MCP Server Testing Guide guidance'
+read_when:
+  - 'planning work related to mcp server testing guide'
+  - 'debugging or extending features described here'
+---
+
 # MCP Server Testing Guide
 
 This guide explains how to test the Peekaboo MCP (Model Context Protocol) server during development using various tools and approaches.

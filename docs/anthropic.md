@@ -1,3 +1,10 @@
+---
+summary: 'Review Anthropic SDK Integration Plan for Peekaboo guidance'
+read_when:
+  - 'planning work related to anthropic sdk integration plan for peekaboo'
+  - 'debugging or extending features described here'
+---
+
 # Anthropic SDK Integration Plan for Peekaboo
 
 ## Overview

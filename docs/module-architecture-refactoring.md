@@ -1,3 +1,10 @@
+---
+summary: 'Review Module Architecture Refactoring Plan guidance'
+read_when:
+  - 'planning work related to module architecture refactoring plan'
+  - 'debugging or extending features described here'
+---
+
 # Module Architecture Refactoring Plan
 
 ## Problem Analysis

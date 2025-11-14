@@ -1,3 +1,10 @@
+---
+summary: 'Review Application Resolution in Peekaboo guidance'
+read_when:
+  - 'planning work related to application resolution in peekaboo'
+  - 'debugging or extending features described here'
+---
+
 # Application Resolution in Peekaboo
 
 This document explains how Peekaboo resolves applications across all commands that accept an application parameter.

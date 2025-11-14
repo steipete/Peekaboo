@@ -1,3 +1,10 @@
+---
+summary: 'Review Any other JSON data can be inserted into an example and referenced during RFT grading guidance'
+read_when:
+  - 'planning work related to any other json data can be inserted into an example and referenced during rft grading'
+  - 'debugging or extending features described here'
+---
+
 /
 Playground
 Dashboard

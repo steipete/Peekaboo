@@ -1,3 +1,10 @@
+---
+summary: 'Review OpenAI API Migration Plan: Assistants API → Chat Completions API with Protocol-Based Architecture guidance'
+read_when:
+  - 'planning work related to openai api migration plan: assistants api → chat completions api with protocol-based architecture'
+  - 'debugging or extending features described here'
+---
+
 # OpenAI API Migration Plan: Assistants API → Chat Completions API with Protocol-Based Architecture
 
 ## Status: ✅ COMPLETE

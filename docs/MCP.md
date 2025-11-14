@@ -1,3 +1,10 @@
+---
+summary: 'Review Model Context Protocol (MCP) in Peekaboo guidance'
+read_when:
+  - 'planning work related to model context protocol (mcp) in peekaboo'
+  - 'debugging or extending features described here'
+---
+
 # Model Context Protocol (MCP) in Peekaboo
 
 This document explains how Peekaboo integrates external MCP servers through TachikomaMCP, and how to configure and test transports (stdio, HTTP, SSE) from the CLI.

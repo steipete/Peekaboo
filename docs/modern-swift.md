@@ -1,3 +1,10 @@
+---
+summary: 'Review Modern Swift Development guidance'
+read_when:
+  - 'planning work related to modern swift development'
+  - 'debugging or extending features described here'
+---
+
 # Modern Swift Development
 
 Write idiomatic SwiftUI code following Apple's latest architectural recommendations and best practices.

@@ -1,3 +1,10 @@
+---
+summary: 'Review Custom AI Provider Configuration guidance'
+read_when:
+  - 'planning work related to custom ai provider configuration'
+  - 'debugging or extending features described here'
+---
+
 # Custom AI Provider Configuration
 
 This document explains how to configure custom AI providers in Peekaboo, enabling access to OpenAI-compatible and Anthropic-compatible endpoints beyond the built-in providers.

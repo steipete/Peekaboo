@@ -1,3 +1,10 @@
+---
+summary: 'Review  guidance'
+read_when:
+  - 'planning work related to '
+  - 'debugging or extending features described here'
+---
+
 #
 # Swift 6.2 Upgrade Notes
 

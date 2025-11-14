@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo MCP Client Implementation guidance'
+read_when:
+  - 'planning work related to peekaboo mcp client implementation'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo MCP Client Implementation
 
 <!-- Generated: 2025-08-05 00:15:30 UTC -->

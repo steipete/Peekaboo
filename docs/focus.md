@@ -1,3 +1,10 @@
+---
+summary: 'Review Window Focus and Space Management guidance'
+read_when:
+  - 'planning work related to window focus and space management'
+  - 'debugging or extending features described here'
+---
+
 # Window Focus and Space Management
 
 Peekaboo provides intelligent window focusing that works seamlessly across macOS Spaces (virtual desktops), ensuring your automation commands always target the correct window.

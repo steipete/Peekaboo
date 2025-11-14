@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo Playground Testing Methodology guidance'
+read_when:
+  - 'planning work related to peekaboo playground testing methodology'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo Playground Testing Methodology
 
 ## Overview

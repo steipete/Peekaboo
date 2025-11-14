@@ -1,3 +1,10 @@
+---
+summary: 'Review Modern Tachikoma API Design & Migration Plan guidance'
+read_when:
+  - 'planning work related to modern tachikoma api design & migration plan'
+  - 'debugging or extending features described here'
+---
+
 # Modern Tachikoma API Design & Migration Plan
 
 <!-- Generated: 2025-08-03 14:00:00 UTC -->

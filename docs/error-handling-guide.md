@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo Error Handling Guide guidance'
+read_when:
+  - 'planning work related to peekaboo error handling guide'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo Error Handling Guide
 
 This guide describes the unified error handling system in PeekabooCore, designed to provide consistent, user-friendly error messages across all services.

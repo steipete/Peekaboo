@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo Release Guide guidance'
+read_when:
+  - 'planning work related to peekaboo release guide'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo Release Guide
 
 This document describes the complete release process for Peekaboo, including all distribution channels: Homebrew, npm, and GitHub releases.

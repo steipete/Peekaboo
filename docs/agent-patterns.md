@@ -1,3 +1,10 @@
+---
+summary: 'Review Agent Patterns Documentation guidance'
+read_when:
+  - 'planning work related to agent patterns documentation'
+  - 'debugging or extending features described here'
+---
+
 # Agent Patterns Documentation
 
 This document describes the advanced agent patterns implemented in Peekaboo, inspired by the OpenAI SDK.

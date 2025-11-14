@@ -1,3 +1,10 @@
+---
+summary: 'Review Test Refactor Task List guidance'
+read_when:
+  - 'planning work related to test refactor task list'
+  - 'debugging or extending features described here'
+---
+
 # Test Refactor Task List
 
 The read-only automation suites are steadily moving away from `swift run` subprocesses

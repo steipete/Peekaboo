@@ -1,3 +1,10 @@
+---
+summary: 'Review Swift 6.2 CLI Compiler Crash Notes guidance'
+read_when:
+  - 'planning work related to swift 6.2 cli compiler crash notes'
+  - 'debugging or extending features described here'
+---
+
 # Swift 6.2 CLI Compiler Crash Notes
 
 ## Last Updated

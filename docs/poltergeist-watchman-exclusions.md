@@ -1,3 +1,10 @@
+---
+summary: 'Review Poltergeist Watchman Exclusion System guidance'
+read_when:
+  - 'planning work related to poltergeist watchman exclusion system'
+  - 'debugging or extending features described here'
+---
+
 # Poltergeist Watchman Exclusion System
 
 ## Overview

@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo Architecture Overview guidance'
+read_when:
+  - 'planning work related to peekaboo architecture overview'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo Architecture Overview
 
 This document provides a high-level overview of how Tachikoma and PeekabooCore work together to provide AI-powered macOS automation capabilities.

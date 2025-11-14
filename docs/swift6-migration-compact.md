@@ -1,3 +1,10 @@
+---
+summary: 'Review The Swift Concurrency Migration Guide guidance'
+read_when:
+  - 'planning work related to the swift concurrency migration guide'
+  - 'debugging or extending features described here'
+---
+
 # The Swift Concurrency Migration Guide
 
 ## Overview

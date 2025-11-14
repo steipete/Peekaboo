@@ -1,3 +1,10 @@
+---
+summary: 'Review PeekabooCore Service API Reference guidance'
+read_when:
+  - 'planning work related to peekaboocore service api reference'
+  - 'debugging or extending features described here'
+---
+
 # PeekabooCore Service API Reference
 
 This document provides a comprehensive reference for all services available in PeekabooCore. These services are used by both the CLI and Mac app to provide consistent functionality with optimal performance.

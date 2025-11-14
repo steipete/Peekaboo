@@ -1,3 +1,10 @@
+---
+summary: 'Review MCP Best Practices - May 26, 2025 guidance'
+read_when:
+  - 'planning work related to mcp best practices - may 26, 2025'
+  - 'debugging or extending features described here'
+---
+
 # MCP Best Practices - May 26, 2025
 
 **I. General Tool Configuration & Behavior**

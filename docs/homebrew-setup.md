@@ -1,3 +1,10 @@
+---
+summary: 'Review Setting Up Homebrew Tap for Peekaboo guidance'
+read_when:
+  - 'planning work related to setting up homebrew tap for peekaboo'
+  - 'debugging or extending features described here'
+---
+
 # Setting Up Homebrew Tap for Peekaboo
 
 This guide explains how to set up and maintain the Homebrew tap for Peekaboo distribution.

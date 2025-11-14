@@ -1,3 +1,10 @@
+---
+summary: 'Review Grok 4 Implementation Guide for Peekaboo guidance'
+read_when:
+  - 'planning work related to grok 4 implementation guide for peekaboo'
+  - 'debugging or extending features described here'
+---
+
 # Grok 4 Implementation Guide for Peekaboo
 
 ## Implementation Status: IMPLEMENTED ✅

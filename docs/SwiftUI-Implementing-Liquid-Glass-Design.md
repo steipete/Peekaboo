@@ -1,3 +1,10 @@
+---
+summary: 'Review Implementing Liquid Glass Design in SwiftUI guidance'
+read_when:
+  - 'planning work related to implementing liquid glass design in swiftui'
+  - 'debugging or extending features described here'
+---
+
 # Implementing Liquid Glass Design in SwiftUI
 
 ## Overview

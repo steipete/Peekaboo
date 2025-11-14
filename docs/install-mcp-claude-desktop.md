@@ -1,3 +1,10 @@
+---
+summary: 'Review Installing Peekaboo MCP in Claude Desktop guidance'
+read_when:
+  - 'planning work related to installing peekaboo mcp in claude desktop'
+  - 'debugging or extending features described here'
+---
+
 # Installing Peekaboo MCP in Claude Desktop
 
 This guide explains how to install the Peekaboo MCP server in Claude Desktop application.

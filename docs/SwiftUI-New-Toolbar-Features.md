@@ -1,3 +1,10 @@
+---
+summary: 'Review SwiftUI New Toolbar Features guidance'
+read_when:
+  - 'planning work related to swiftui new toolbar features'
+  - 'debugging or extending features described here'
+---
+
 # SwiftUI New Toolbar Features
 
 ## Overview

@@ -1,3 +1,10 @@
+---
+summary: 'Review Module Refactoring: Practical Example guidance'
+read_when:
+  - 'planning work related to module refactoring: practical example'
+  - 'debugging or extending features described here'
+---
+
 # Module Refactoring: Practical Example
 
 ## Starting Point: Extract PeekabooModels

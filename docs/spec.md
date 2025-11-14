@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo 3.0 System Specification guidance'
+read_when:
+  - 'planning work related to peekaboo 3.0 system specification'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo 3.0 System Specification
 
 **Status:** Living document · **Last updated:** 2025-11-14

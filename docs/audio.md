@@ -1,3 +1,10 @@
+---
+summary: 'Review Audio Architecture guidance'
+read_when:
+  - 'planning work related to audio architecture'
+  - 'debugging or extending features described here'
+---
+
 # Audio Architecture
 
 ## Overview

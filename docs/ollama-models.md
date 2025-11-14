@@ -1,3 +1,10 @@
+---
+summary: 'Review Ollama Models Guide guidance'
+read_when:
+  - 'planning work related to ollama models guide'
+  - 'debugging or extending features described here'
+---
+
 # Ollama Models Guide
 
 This guide provides an overview of Ollama models that excel at specific tasks, particularly tool/function calling and vision capabilities.

@@ -1,3 +1,10 @@
+---
+summary: 'Review Tool Formatter Architecture guidance'
+read_when:
+  - 'planning work related to tool formatter architecture'
+  - 'debugging or extending features described here'
+---
+
 # Tool Formatter Architecture
 
 ## Overview

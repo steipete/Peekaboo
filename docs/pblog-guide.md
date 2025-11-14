@@ -1,3 +1,10 @@
+---
+summary: 'Review pblog - Peekaboo Log Viewer guidance'
+read_when:
+  - 'planning work related to pblog - peekaboo log viewer'
+  - 'debugging or extending features described here'
+---
+
 # pblog - Peekaboo Log Viewer
 
 pblog is a powerful log viewer for monitoring all Peekaboo applications and services through macOS's unified logging system.

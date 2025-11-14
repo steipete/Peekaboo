@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo CLI Comprehensive Testing Report guidance'
+read_when:
+  - 'planning work related to peekaboo cli comprehensive testing report'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo CLI Comprehensive Testing Report
 
 This document tracks comprehensive testing of all Peekaboo CLI commands using the Playground app as a test target.

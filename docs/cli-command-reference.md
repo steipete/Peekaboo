@@ -9,44 +9,46 @@ read_when:
 
 Peekaboo’s CLI mirrors everything the agent can do. Commands share the same session cache and most support `--json-output` for scripting.
 
-## Capture & Core Utilities
+Use `peekaboo <command> --help` for inline flag descriptions; this page links to the authoritative docs in `docs/commands/`.
 
-- `image` – Capture screens, windows, frontmost apps, or regions; add `--analyze` for inline AI analysis.
-- `see` – Generate annotated UI maps (Peekaboo IDs) across multiple displays with optional `--annotate` overlay.
-- `list` – Enumerate applications, windows, sessions, or server status via flags like `--apps`, `--windows`, `--sessions`.
-- `tools` – Display every native + MCP tool; filter (`--native-only`, `--mcp-only`, `--mcp <server>`), group, or emit JSON.
-- `config` – Initialize/edit/show config + credentials, including `set-credential` helpers.
-- `permissions` – Check/request screen-recording & accessibility entitlements.
-- `learn` – Print the comprehensive guide (system prompt, tool catalog, best practices). Text-only; no JSON mode.
-- `run` – Execute `.peekaboo.json` automation scripts with `--no-fail-fast` and `--output <path>`.
-- `sleep` – Millisecond pauses (`peekaboo sleep 1500`).
-- `clean` – Prune session caches via `--all-sessions`, `--older-than <hours>`, or `--session <id>` (supports `--dry-run`).
+## Vision & Capture
 
-## Interaction Commands
+- [`see`](commands/see.md) – Capture annotated UI maps, produce session IDs, and optionally run AI analysis.
+- [`image`](commands/image.md) – Save raw PNG/JPG captures of screens, windows, or menu bar regions; supports `--analyze` prompts.
+- [`list`](commands/list.md) – Subcommands: `apps`, `windows`, `screens`, `menubar`, `permissions`.
+- [`tools`](commands/tools.md) – Filter native vs MCP tools; group by server or emit JSON summaries.
+- [`run`](commands/run.md) – Execute `.peekaboo.json` scripts (`--output`, `--no-fail-fast`).
+- [`sleep`](commands/sleep.md) – Millisecond pauses between steps.
+- [`clean`](commands/clean.md) – Remove session caches by ID, age, or all at once (`--dry-run` supported).
+- [`config`](commands/config.md) – Subcommands: `init`, `show`, `edit`, `validate`, `set-credential`, `add-provider`, `list-providers`, `test-provider`, `remove-provider`, `models`.
+- [`permissions`](commands/permissions.md) – `status` (default) and `grant` helpers for Screen Recording/Accessibility.
+- [`learn`](commands/learn.md) – Print the complete agent guide (system prompt, tool catalog, Commander signatures).
 
-- `click` – Target elements by ID/label/coordinates with built-in focus helpers.
-- `type` – Send text (including escape sequences) into the active element; pass `--app <Name>` (or a session) so Peekaboo can guarantee focus before typing.
-- `press` – Trigger keys (Return, Esc, arrows) with optional repeat counts.
-- `hotkey` – Emit modifier combos like `cmd,c`.
-- `scroll` – Scroll in any direction with granular steps and element targeting.
-- `swipe` – Gesture-style drags with direction and distance controls.
-- `drag` – Drag between elements/coordinates/apps with modifiers, duration, and smoothing.
-- `move` – Move the cursor to coordinates or element centers (great for hover states).
+## Interaction
 
-## Window & System Management
+- [`click`](commands/click.md) – Target elements by ID/query/coords with smart waits and focus helpers.
+- [`type`](commands/type.md) – Send text and control keys; supports `--clear`, `--delay`, tab counts, etc.
+- [`press`](commands/press.md) – Fire `SpecialKey` sequences with repeat counts.
+- [`hotkey`](commands/hotkey.md) – Emit modifier combos like `cmd,shift,t` in one shot.
+- [`scroll`](commands/scroll.md) – Directional scrolling with optional element targeting and smooth mode.
+- [`swipe`](commands/swipe.md) – Gesture-style drags between IDs or coordinates (`--duration`, `--steps`).
+- [`drag`](commands/drag.md) – Drag-and-drop across elements, coordinates, or Dock destinations with modifiers.
+- [`move`](commands/move.md) – Position the cursor at coordinates, element centers, or screen center with optional smoothing.
 
-- `window` – Focus, move, resize, snap, minimize, maximize, and inspect windows.
-- `space` – List Spaces, switch desktops, or move windows across displays/Spaces.
-- `menu` – Traverse application menus via `--item` or `--path`, including menu extras.
-- `menubar` – List + click macOS status-bar icons by name or index.
-- `app` – Launch/quit/hide/show apps; launches now focus the target by default, `--no-focus` keeps them backgrounded, `--open <url|path>` hands initial documents/URLs to the app, and bundle IDs + `--wait-until-ready` still apply.
-- `open` – macOS `open` on steroids: hand a URL or path to its default handler (or force an app via `--app/--bundle-id`), and reuse Peekaboo’s `--wait-until-ready`, `--no-focus`, and JSON output switches.
-- `dock` – Launch from the Dock, right-click Dock items, show/hide the Dock.
-- `dialog` – Handle system dialogs (click buttons, input text, select files, dismiss).
+## Windows, Menus, Apps, Spaces
 
-## Automation & Bridges
+- [`window`](commands/window.md) – Subcommands: `close`, `minimize`, `maximize`, `move`, `resize`, `set-bounds`, `focus`, `list`.
+- [`space`](commands/space.md) – `list`, `switch`, `move-window` for Spaces/virtual desktops.
+- [`menu`](commands/menu.md) – `click`, `click-extra`, `list`, `list-all` for application menus + menu extras.
+- [`menubar`](commands/menubar.md) – `list` and `click` status-bar icons by name or index.
+- [`app`](commands/app.md) – `launch`, `quit`, `relaunch`, `hide`, `unhide`, `switch`, `list` with focus + wait helpers.
+- [`open`](commands/open.md) – Enhanced macOS `open` with focus control and JSON output.
+- [`dock`](commands/dock.md) – `launch`, `right-click`, `hide`, `show`, `list` Dock items.
+- [`dialog`](commands/dialog.md) – `click`, `input`, `file`, `dismiss`, `list` system dialogs.
 
-- `agent` – Natural-language automation with verbose tracing, dry runs, and session resume.
-- `mcp` – Manage Peekaboo’s MCP persona: `serve`, `list`, `add`, `enable`, `disable`, `inspect`, etc.
+## Automation & Integrations
 
-Need structured payloads? Pass `--json-output` (where supported) or combine these commands inside `.peekaboo.json` scripts executed by `peekaboo run`.
+- [`agent`](commands/agent.md) – Natural-language automation with dry-run planning, resume, audio modes, and model overrides.
+- [`mcp`](commands/mcp.md) – `serve`, `list`, `add`, `remove`, `enable`, `disable`, `info`, `test`, `call`, `inspect` (stub) for Model Context Protocol workflows.
+
+Need structured payloads? Pass `--json-output` (where supported) or orchestrate multiple commands inside `.peekaboo.json` scripts executed via [`peekaboo run`](commands/run.md).

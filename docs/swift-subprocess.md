@@ -1,3 +1,10 @@
+---
+summary: 'Review swift-subprocess Adoption Guide guidance'
+read_when:
+  - 'planning work related to swift-subprocess adoption guide'
+  - 'debugging or extending features described here'
+---
+
 # swift-subprocess Adoption Guide
 
 ## Why We Care

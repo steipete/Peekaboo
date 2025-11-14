@@ -1,3 +1,10 @@
+---
+summary: 'Review MCP Testing Results guidance'
+read_when:
+  - 'planning work related to mcp testing results'
+  - 'debugging or extending features described here'
+---
+
 # MCP Testing Results
 
 ## Testing Setup

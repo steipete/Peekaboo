@@ -1,3 +1,10 @@
+---
+summary: 'Review Poltergeist Generic Target System - Implementation Summary guidance'
+read_when:
+  - 'planning work related to poltergeist generic target system - implementation summary'
+  - 'debugging or extending features described here'
+---
+
 # Poltergeist Generic Target System - Implementation Summary
 
 ## Files Created in Poltergeist Repository

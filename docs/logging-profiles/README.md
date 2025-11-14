@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo Logging - Fixing macOS Log Privacy Redaction guidance'
+read_when:
+  - 'planning work related to peekaboo logging - fixing macos log privacy redaction'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo Logging - Fixing macOS Log Privacy Redaction
 
 This directory contains configuration profiles and documentation for controlling macOS logging behavior and dealing with privacy redaction in logs.

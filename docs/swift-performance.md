@@ -1,3 +1,10 @@
+---
+summary: 'Review Swift Build Performance Optimization Guide guidance'
+read_when:
+  - 'planning work related to swift build performance optimization guide'
+  - 'debugging or extending features described here'
+---
+
 # Swift Build Performance Optimization Guide
 
 *Last Updated: August 2025 | Tested with Xcode 26 beta | Extended testing: December 2025*

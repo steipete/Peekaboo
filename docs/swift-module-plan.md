@@ -1,3 +1,10 @@
+---
+summary: 'Review Swift Module Architecture Plan guidance'
+read_when:
+  - 'planning work related to swift module architecture plan'
+  - 'debugging or extending features described here'
+---
+
 # Swift Module Architecture Plan
 
 ## Overview

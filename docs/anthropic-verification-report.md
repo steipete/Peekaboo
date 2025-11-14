@@ -1,3 +1,10 @@
+---
+summary: 'Review Anthropic SDK Integration Verification Report guidance'
+read_when:
+  - 'planning work related to anthropic sdk integration verification report'
+  - 'debugging or extending features described here'
+---
+
 # Anthropic SDK Integration Verification Report
 
 ## Executive Summary

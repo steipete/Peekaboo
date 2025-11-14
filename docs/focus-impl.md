@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo Focus & Space Management Implementation Plan guidance'
+read_when:
+  - 'planning work related to peekaboo focus & space management implementation plan'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo Focus & Space Management Implementation Plan
 
 ## Overview

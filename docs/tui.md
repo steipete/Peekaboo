@@ -1,3 +1,10 @@
+---
+summary: 'Review Terminal Output Modes and Progressive Enhancement guidance'
+read_when:
+  - 'planning work related to terminal output modes and progressive enhancement'
+  - 'debugging or extending features described here'
+---
+
 # Terminal Output Modes and Progressive Enhancement
 
 Peekaboo's agent command automatically adjusts its output for modern terminals while staying CI-friendly.

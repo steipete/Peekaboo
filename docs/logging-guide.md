@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo Logging Guide guidance'
+read_when:
+  - 'planning work related to peekaboo logging guide'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo Logging Guide
 
 ## Overview

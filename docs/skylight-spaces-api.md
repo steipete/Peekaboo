@@ -1,3 +1,10 @@
+---
+summary: 'Review ifndef CGS_ACCESSIBILITY_INTERNAL_H guidance'
+read_when:
+  - 'planning work related to ifndef cgs_accessibility_internal_h'
+  - 'debugging or extending features described here'
+---
+
 Directory Structure:
 
 └── ./

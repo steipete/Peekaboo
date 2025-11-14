@@ -1,3 +1,10 @@
+---
+summary: 'Review Peekaboo Swift MCP Server Implementation guidance'
+read_when:
+  - 'planning work related to peekaboo swift mcp server implementation'
+  - 'debugging or extending features described here'
+---
+
 # Peekaboo Swift MCP Server Implementation
 
 > **✅ UPDATE (2025-01-31)**: Migration complete! Peekaboo now runs as a pure Swift MCP server. The TypeScript server has been removed.

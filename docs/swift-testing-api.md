@@ -1,3 +1,10 @@
+---
+summary: 'Review https://developer.apple.com/documentation/testing llms-full.txt guidance'
+read_when:
+  - 'planning work related to https://developer.apple.com/documentation/testing llms-full.txt'
+  - 'debugging or extending features described here'
+---
+
 # https://developer.apple.com/documentation/testing llms-full.txt
 
 ## Swift Testing Overview
