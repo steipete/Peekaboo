@@ -59,7 +59,7 @@ struct ApplicationServiceTests {
     func hybridWindowEnumerationWithScreenRecording() async throws {
         // Given
         let service = ApplicationService()
-        let hasScreenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
+        let hasScreenRecording = PermissionsService().checkScreenRecordingPermission()
 
         // Skip test if no screen recording permission
         try #require(hasScreenRecording, "Screen recording permission required for this test")

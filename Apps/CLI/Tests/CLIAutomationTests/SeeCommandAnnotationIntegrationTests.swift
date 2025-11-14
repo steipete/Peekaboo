@@ -96,7 +96,7 @@ struct SeeCommandAnnotationIntegrationTests {
         }
 
         // Create a command that will use enhanced detection
-        let services = PeekabooServices.shared
+        let services = PeekabooServices()
         let imageData = Data() // Mock data for this test
 
         // Test with explicit window bounds

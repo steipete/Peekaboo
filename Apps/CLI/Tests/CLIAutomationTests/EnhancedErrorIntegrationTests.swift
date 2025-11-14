@@ -19,7 +19,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualShellErrors() async throws {
-        let services = await PeekabooServices.shared
+        let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available - set OPENAI_API_KEY")
             return
@@ -52,7 +52,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualAppLaunchSuggestions() async throws {
-        let services = await PeekabooServices.shared
+        let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
             return
@@ -83,7 +83,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualClickWithoutSession() async throws {
-        let services = await PeekabooServices.shared
+        let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
             return
@@ -114,7 +114,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualTypeWithoutFocus() async throws {
-        let services = await PeekabooServices.shared
+        let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
             return
@@ -147,7 +147,7 @@ struct EnhancedErrorIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
     func actualInvalidHotkey() async throws {
-        let services = await PeekabooServices.shared
+        let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
             return

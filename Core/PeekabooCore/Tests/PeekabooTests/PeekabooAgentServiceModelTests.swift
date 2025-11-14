@@ -5,10 +5,13 @@ import Testing
 /// Tests for PeekabooAgentService model selection functionality
 @Suite("PeekabooAgentService Model Selection Tests")
 struct PeekabooAgentServiceTests {
+    @MainActor
+    private func makeServices() -> PeekabooServices { PeekabooServices() }
+
     @Test("Default model initialization")
     @MainActor
     func defaultModelInitialization() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         // Should default to GPT-5
@@ -18,7 +21,7 @@ struct PeekabooAgentServiceTests {
     @Test("Custom default model initialization")
     @MainActor
     func customDefaultModelInitialization() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let customModel = LanguageModel.openai(.gpt5)
         let agentService = try PeekabooAgentService(
             services: mockServices,
@@ -30,7 +33,7 @@ struct PeekabooAgentServiceTests {
     @Test("Model parameter precedence in executeTask")
     @MainActor
     func modelParameterPrecedence() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
@@ -64,7 +67,7 @@ struct PeekabooAgentServiceTests {
     @Test("Model parameter falls back to default when nil")
     @MainActor
     func modelParameterFallback() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
@@ -93,7 +96,7 @@ struct PeekabooAgentServiceTests {
     @Test("Streaming execution respects model parameter")
     @MainActor
     func streamingExecutionModelParameter() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let customModel = LanguageModel.openai(.gpt5)
@@ -119,7 +122,7 @@ struct PeekabooAgentServiceTests {
     @Test("Resume session respects model parameter")
     @MainActor
     func resumeSessionModelParameter() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let customModel = LanguageModel.anthropic(.sonnet45)
@@ -141,7 +144,7 @@ struct PeekabooAgentServiceTests {
     @Test("Dry run execution reports requested model")
     @MainActor
     func dryRunExecutionUsesRequestedModel() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: .anthropic(.sonnet45))
@@ -175,7 +178,7 @@ struct ModelSelectionExecutionPathTests {
     @Test("executeWithStreaming uses provided model")
     @MainActor
     func executeWithStreamingUsesProvidedModel() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         // Test that the internal executeWithStreaming method would use the provided model
@@ -203,7 +206,7 @@ struct ModelSelectionExecutionPathTests {
     @Test("executeWithoutStreaming uses provided model")
     @MainActor
     func executeWithoutStreamingUsesProvidedModel() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let customModel = LanguageModel.anthropic(.sonnet45)
@@ -227,7 +230,7 @@ struct ModelSelectionExecutionPathTests {
     @Test("Model consistency across multiple calls")
     @MainActor
     func modelConsistencyAcrossMultipleCalls() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let models: [LanguageModel] = [
@@ -259,7 +262,7 @@ struct ModelSelectionEdgeCasesTests {
     @Test("Dry run execution respects model parameter")
     @MainActor
     func dryRunExecutionRespectsModel() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         // Dry run should not make API calls but should still record the model
@@ -277,7 +280,7 @@ struct ModelSelectionEdgeCasesTests {
     @Test("Audio task execution model handling")
     @MainActor
     func audioTaskExecutionModelHandling() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let audioContent = AudioContent(

@@ -15,7 +15,7 @@ struct ModelSelectionIntegrationTests {
 
         for expectedModel in testCases {
             // Agent service should use the provided model
-            let mockServices = PeekabooServices.shared
+            let mockServices = PeekabooServices()
             let agentService = try PeekabooAgentService(services: mockServices)
 
             do {
@@ -39,7 +39,7 @@ struct ModelSelectionIntegrationTests {
     @MainActor
     func nilModelHandlingInFullPipeline() async throws {
         // When nil is passed to agent service, it should use default
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
@@ -69,7 +69,7 @@ struct ModelSelectionIntegrationTests {
             .anthropic(.sonnet45),
         ]
 
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         for model in testModels {
@@ -98,7 +98,7 @@ struct ModelSelectionIntegrationTests {
     @MainActor
     func modelParameterPrecedenceOverDefault() async throws {
         // Set up agent service with a specific default
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
@@ -129,7 +129,7 @@ struct ModelSelectionIntegrationTests {
     @Test("Streaming vs non-streaming consistency")
     @MainActor
     func streamingVsNonStreamingConsistency() async throws {
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let testModel = LanguageModel.anthropic(.sonnet45)
@@ -184,7 +184,7 @@ struct ModelSelectionRegressionTests {
         // This test specifically addresses the bug where the extended executeTask method
         // with sessionId and model parameters was ignoring the model parameter
 
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
@@ -217,7 +217,7 @@ struct ModelSelectionRegressionTests {
         // This test addresses the specific bug where the streaming execution path
         // was using self.defaultLanguageModel instead of the passed model parameter
 
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
@@ -249,7 +249,7 @@ struct ModelSelectionRegressionTests {
     func agentServiceNilHandlingInExecutionPaths() async throws {
         // Test that both streaming and non-streaming paths handle nil models correctly
 
-        let mockServices = PeekabooServices.shared
+        let mockServices = PeekabooServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
         let agentService = try PeekabooAgentService(
             services: mockServices,

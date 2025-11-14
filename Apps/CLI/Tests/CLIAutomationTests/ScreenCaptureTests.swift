@@ -28,7 +28,7 @@ import Testing
              let outputPath = self.tempDir.appendingPathComponent("main-display.png").path
 
              // Create screen capture service
-             let service = PeekabooServices.shared.screenCapture
+             let service = PeekabooServices().screenCapture
 
              // Capture display
              let result = try await service.captureScreen(displayIndex: nil)
@@ -53,7 +53,7 @@ import Testing
              let outputPath = self.tempDir.appendingPathComponent("main-display.jpg").path
 
              // Create screen capture service
-             let service = PeekabooServices.shared.screenCapture
+             let service = PeekabooServices().screenCapture
 
              // Capture display
              let result = try await service.captureScreen(displayIndex: nil)
@@ -84,7 +84,7 @@ import Testing
              let outputPath = self.tempDir.appendingPathComponent("invalid.png").path
 
              await #expect(throws: PeekabooError.self) {
-                 let service = PeekabooServices.shared.screenCapture
+                 let service = PeekabooServices().screenCapture
 
                  // Try to capture with an invalid display index (very high number)
                  let _ = try await service.captureScreen(displayIndex: 999999)
@@ -114,7 +114,7 @@ import Testing
 
              let outputPath = self.tempDir.appendingPathComponent("window.png").path
 
-             let service = PeekabooServices.shared.screenCapture
+             let service = PeekabooServices().screenCapture
 
              // The new API uses app identifier and window index
              let result = try await service.captureWindow(
@@ -149,7 +149,7 @@ import Testing
              let outputPath = self.tempDir.appendingPathComponent("invalid-window.png").path
 
              await #expect(throws: PeekabooError.self) {
-                 let service = PeekabooServices.shared.screenCapture
+                 let service = PeekabooServices().screenCapture
 
                  // Try to capture with an invalid app identifier
                  let _ = try await service.captureWindow(
@@ -178,7 +178,7 @@ import Testing
 
              // Attempt to capture without permissions should convert to our error type
              do {
-                 let service = PeekabooServices.shared.screenCapture
+                 let service = PeekabooServices().screenCapture
 
                  let _ = try await service.captureScreen(displayIndex: nil)
              } catch let error as PeekabooError {

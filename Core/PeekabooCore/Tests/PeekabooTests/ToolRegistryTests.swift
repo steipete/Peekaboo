@@ -10,7 +10,7 @@ struct ToolRegistryTests {
     @Test("Registry contains expected tools")
     @MainActor
     func registryContainsExpectedTools() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
 
         // Verify registry is not empty
         #expect(!allTools.isEmpty)
@@ -37,7 +37,7 @@ struct ToolRegistryTests {
     @MainActor
     func toolRetrievalByCommandName() {
         // Find a tool with a different command name
-        let toolWithCommandName = ToolRegistry.allTools.first { $0.commandName != nil }
+        let toolWithCommandName = ToolRegistry.allTools().first { $0.commandName != nil }
 
         if let tool = toolWithCommandName, let cmdName = tool.commandName {
             let retrievedTool = ToolRegistry.tool(named: cmdName)
@@ -260,7 +260,7 @@ struct ToolRegistryTests {
     @Test("All tools have valid categories")
     @MainActor
     func allToolsHaveValidCategories() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
         let validCategories = Set(ToolCategory.allCases)
 
         for tool in allTools {
@@ -271,7 +271,7 @@ struct ToolRegistryTests {
     @Test("No duplicate tool names")
     @MainActor
     func noDuplicateToolNames() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
         let toolNames = allTools.map(\.name)
         let uniqueToolNames = Set(toolNames)
 
@@ -281,7 +281,7 @@ struct ToolRegistryTests {
     @Test("All tools have abstracts and discussions")
     @MainActor
     func allToolsHaveDescriptions() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
 
         for tool in allTools {
             #expect(!tool.abstract.isEmpty, "Tool \(tool.name) has empty abstract")

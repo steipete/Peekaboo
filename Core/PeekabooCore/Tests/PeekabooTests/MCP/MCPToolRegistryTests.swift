@@ -4,6 +4,16 @@ import TachikomaMCP
 import Testing
 @testable import PeekabooCore
 
+@MainActor
+private func makeNativeTool<T>(_ factory: (MCPToolContext) -> T) -> T {
+    factory(MCPToolContext.makeDefault())
+}
+
+@MainActor
+private func makeNativeTool<T>(_ builder: @escaping () -> T) -> T {
+    builder()
+}
+
 @Suite("MCPToolRegistry Tests")
 @MainActor
 struct MCPToolRegistryTests {
@@ -171,26 +181,26 @@ struct MCPToolRegistryIntegrationTests {
 
         // Register the actual Peekaboo tools
         registry.register([
-            ImageTool(),
-            AnalyzeTool(),
-            ListTool(),
-            PermissionsTool(),
-            SleepTool(),
-            SeeTool(),
-            ClickTool(),
-            TypeTool(),
-            ScrollTool(),
-            HotkeyTool(),
-            SwipeTool(),
-            DragTool(),
-            MoveTool(),
-            AppTool(),
-            WindowTool(),
-            MenuTool(),
-            MCPAgentTool(),
-            DockTool(),
-            DialogTool(),
-            SpaceTool(),
+            makeNativeTool(ImageTool.init),
+            makeNativeTool(AnalyzeTool.init),
+            makeNativeTool(ListTool.init),
+            makeNativeTool(PermissionsTool.init),
+            makeNativeTool(SleepTool.init),
+            makeNativeTool(SeeTool.init),
+            makeNativeTool(ClickTool.init),
+            makeNativeTool(TypeTool.init),
+            makeNativeTool(ScrollTool.init),
+            makeNativeTool(HotkeyTool.init),
+            makeNativeTool(SwipeTool.init),
+            makeNativeTool(DragTool.init),
+            makeNativeTool(MoveTool.init),
+            makeNativeTool(AppTool.init),
+            makeNativeTool(WindowTool.init),
+            makeNativeTool(MenuTool.init),
+            makeNativeTool(MCPAgentTool.init),
+            makeNativeTool(DockTool.init),
+            makeNativeTool(DialogTool.init),
+            makeNativeTool(SpaceTool.init),
         ])
 
         let tools = registry.allTools()

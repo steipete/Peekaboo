@@ -4,13 +4,23 @@ import TachikomaMCP
 import Testing
 @testable import PeekabooCore
 
+@MainActor
+private func makeTestTool<T>(_ factory: (MCPToolContext) -> T) -> T {
+    factory(MCPToolContext.makeDefault())
+}
+
+private func makeTestTool<T>(_ builder: () -> T) -> T {
+    builder()
+}
+
+@MainActor
 @Suite("MCP Specific Tool Tests")
 struct MCPSpecificToolTests {
     // MARK: - See Tool Tests
 
     @Test("See tool schema includes annotation options")
     func seeToolSchema() {
-        let tool = SeeTool()
+        let tool = makeTestTool(SeeTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -40,7 +50,7 @@ struct MCPSpecificToolTests {
 
     @Test("Dialog tool schema validation")
     func dialogToolSchema() {
-        let tool = DialogTool()
+        let tool = makeTestTool(DialogTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -79,7 +89,7 @@ struct MCPSpecificToolTests {
 
     @Test("Menu tool schema includes path format")
     func menuToolSchema() {
-        let tool = MenuTool()
+        let tool = makeTestTool(MenuTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -107,7 +117,7 @@ struct MCPSpecificToolTests {
 
     @Test("Space tool schema includes Mission Control actions")
     func spaceToolSchema() {
-        let tool = SpaceTool()
+        let tool = makeTestTool(SpaceTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -142,7 +152,7 @@ struct MCPSpecificToolTests {
 
     @Test("Hotkey tool schema includes modifier combinations")
     func hotkeyToolSchema() {
-        let tool = HotkeyTool()
+        let tool = makeTestTool(HotkeyTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -167,7 +177,7 @@ struct MCPSpecificToolTests {
 
     @Test("Drag tool schema includes coordinate support")
     func dragToolSchema() {
-        let tool = DragTool()
+        let tool = makeTestTool(DragTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -195,7 +205,7 @@ struct MCPSpecificToolTests {
 
     @Test("Window tool complex action schema")
     func windowToolSchema() {
-        let tool = WindowTool()
+        let tool = makeTestTool(WindowTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -309,16 +319,17 @@ struct MCPSpecificToolTests {
     }
 }
 
+@MainActor
 @Suite("MCP Tool Description Tests")
 struct MCPToolDescriptionTests {
     @Test("Tool descriptions include version and capabilities")
     func toolDescriptionsIncludeMetadata() {
-        let tools: [MCPTool] = [
-            ImageTool(),
-            SeeTool(),
-            ClickTool(),
-            TypeTool(),
-            MCPAgentTool(),
+        let tools: [any MCPTool] = [
+            makeTestTool(ImageTool.init),
+            makeTestTool(SeeTool.init),
+            makeTestTool(ClickTool.init),
+            makeTestTool(TypeTool.init),
+            makeTestTool(MCPAgentTool.init),
         ]
 
         for tool in tools {
@@ -342,27 +353,27 @@ struct MCPToolDescriptionTests {
 
     @Test("Tool names follow conventions")
     func toolNamingConventions() {
-        let tools: [MCPTool] = [
-            ImageTool(),
-            AnalyzeTool(),
-            ListTool(),
-            PermissionsTool(),
-            SleepTool(),
-            SeeTool(),
-            ClickTool(),
-            TypeTool(),
-            ScrollTool(),
-            HotkeyTool(),
-            SwipeTool(),
-            DragTool(),
-            MoveTool(),
-            AppTool(),
-            WindowTool(),
-            MenuTool(),
-            MCPAgentTool(),
-            DockTool(),
-            DialogTool(),
-            SpaceTool(),
+        let tools: [any MCPTool] = [
+            makeTestTool(ImageTool.init),
+            makeTestTool(AnalyzeTool.init),
+            makeTestTool(ListTool.init),
+            makeTestTool(PermissionsTool.init),
+            makeTestTool(SleepTool.init),
+            makeTestTool(SeeTool.init),
+            makeTestTool(ClickTool.init),
+            makeTestTool(TypeTool.init),
+            makeTestTool(ScrollTool.init),
+            makeTestTool(HotkeyTool.init),
+            makeTestTool(SwipeTool.init),
+            makeTestTool(DragTool.init),
+            makeTestTool(MoveTool.init),
+            makeTestTool(AppTool.init),
+            makeTestTool(WindowTool.init),
+            makeTestTool(MenuTool.init),
+            makeTestTool(MCPAgentTool.init),
+            makeTestTool(DockTool.init),
+            makeTestTool(DialogTool.init),
+            makeTestTool(SpaceTool.init),
         ]
 
         for tool in tools {
@@ -379,3 +390,5 @@ struct MCPToolDescriptionTests {
         }
     }
 }
+
+

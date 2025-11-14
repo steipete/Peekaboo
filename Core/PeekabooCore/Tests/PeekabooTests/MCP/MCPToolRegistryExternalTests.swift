@@ -44,7 +44,7 @@ struct MCPToolRegistryExternalTests {
     @Test("Set client manager")
     func testSetClientManager() async {
         let registry = MCPToolRegistry()
-        let clientManager = TachikomaMCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager()
 
         registry.setClientManager(clientManager)
 
@@ -55,7 +55,7 @@ struct MCPToolRegistryExternalTests {
     @Test("Register external tools from empty client manager")
     func registerExternalToolsEmpty() async {
         let registry = MCPToolRegistry()
-        let clientManager = TachikomaMCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager()
 
         await registry.registerExternalTools(from: clientManager)
 
@@ -224,7 +224,7 @@ struct MCPToolRegistryExternalTests {
     @Test("Refresh external tools with client manager")
     func refreshExternalToolsWithClientManager() async throws {
         let registry = MCPToolRegistry()
-        let clientManager = TachikomaMCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager()
 
         registry.setClientManager(clientManager)
 
@@ -250,7 +250,7 @@ struct MCPToolRegistryMockExternalTests {
 
         // Simulate external tools by directly adding them
         // (In real usage, this would be done through registerExternalTools)
-        let clientManager = TachikomaMCPClientManager.shared
+        let clientManager = TachikomaMCPClientManager()
         _ = ExternalMCPTool(
             serverName: "test-server",
             originalTool: Tool(

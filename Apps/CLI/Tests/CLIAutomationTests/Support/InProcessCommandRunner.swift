@@ -41,7 +41,7 @@ enum InProcessCommandRunner {
         services: PeekabooServices,
         spaceService: SpaceCommandSpaceService? = nil
     ) async throws -> CommandRunResult {
-        try await PeekabooServices.withTestServices(services) {
+        try await CommandRuntime.withInjectedServices(services) {
             if let spaceService {
                 try await SpaceCommandEnvironment.withSpaceService(spaceService) {
                     try await self.execute(arguments: arguments)

@@ -85,8 +85,8 @@ struct CategorizedToolsTests {
             clientManager: clientManager)
 
         let externalTools = [
-            "server1": [externalTool1, externalTool2] as [MCPTool],
-            "server2": [externalTool3] as [MCPTool],
+            "server1": [externalTool1, externalTool2] as [any MCPTool],
+            "server2": [externalTool3] as [any MCPTool],
         ]
 
         let categorized = CategorizedTools(native: nativeTools, external: externalTools)
@@ -213,13 +213,13 @@ struct ToolOrganizerTests {
                     serverName: "server1",
                     originalTool: Tool(name: "external1", description: "External tool 1", inputSchema: .object([:])),
                     clientManager: clientManager),
-            ] as [MCPTool],
+            ] as [any MCPTool],
             "server2": [
                 ExternalMCPTool(
                     serverName: "server2",
                     originalTool: Tool(name: "external2", description: "External tool 2", inputSchema: .object([:])),
                     clientManager: clientManager),
-            ] as [MCPTool],
+            ] as [any MCPTool],
         ]
 
         let originalTools = CategorizedTools(native: nativeTools, external: externalTools)
@@ -274,7 +274,7 @@ struct ToolOrganizerTests {
                     serverName: "server1",
                     originalTool: Tool(name: "alpha", description: "First external", inputSchema: .object([:])),
                     clientManager: clientManager),
-            ] as [MCPTool],
+            ] as [any MCPTool],
         ]
 
         let originalTools = CategorizedTools(native: nativeTools, external: externalTools)

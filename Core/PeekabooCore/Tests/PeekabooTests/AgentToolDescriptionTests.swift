@@ -9,7 +9,7 @@ struct AgentToolDescriptionTests {
     @Test("All agent tools have comprehensive descriptions")
     @MainActor
     func allToolsHaveDescriptions() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
 
         for tool in allTools {
             // Check that essential fields are present and non-empty
@@ -24,7 +24,7 @@ struct AgentToolDescriptionTests {
     @Test("Tool descriptions follow consistent format")
     @MainActor
     func toolDescriptionFormat() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
 
         for tool in allTools {
             let discussion = tool.discussion
@@ -60,7 +60,7 @@ struct AgentToolDescriptionTests {
     @Test("Click tool has enhanced element matching description")
     @MainActor
     func clickToolEnhancedDescription() {
-        guard let clickTool = ToolRegistry.allTools.first(where: { $0.name == "click" }) else {
+        guard let clickTool = ToolRegistry.allTools().first(where: { $0.name == "click" }) else {
             Issue.record("Click tool not found")
             return
         }
@@ -82,7 +82,7 @@ struct AgentToolDescriptionTests {
     @Test("Type tool includes escape sequence documentation")
     @MainActor
     func typeToolEscapeSequences() {
-        guard let typeTool = ToolRegistry.allTools.first(where: { $0.name == "type" }) else {
+        guard let typeTool = ToolRegistry.allTools().first(where: { $0.name == "type" }) else {
             Issue.record("Type tool not found")
             return
         }
@@ -98,7 +98,7 @@ struct AgentToolDescriptionTests {
     @Test("See tool has comprehensive UI detection description")
     @MainActor
     func seeToolUIDetection() {
-        guard let seeTool = ToolRegistry.allTools.first(where: { $0.name == "see" }) else {
+        guard let seeTool = ToolRegistry.allTools().first(where: { $0.name == "see" }) else {
             Issue.record("See tool not found")
             return
         }
@@ -116,7 +116,7 @@ struct AgentToolDescriptionTests {
     @Test("Shell tool has quoting examples")
     @MainActor
     func shellToolQuotingExamples() {
-        guard let shellTool = ToolRegistry.allTools.first(where: { $0.name == "shell" }) else {
+        guard let shellTool = ToolRegistry.allTools().first(where: { $0.name == "shell" }) else {
             Issue.record("Shell tool not found")
             return
         }
@@ -136,7 +136,7 @@ struct AgentToolDescriptionTests {
     @Test("Required parameters are clearly marked")
     @MainActor
     func requiredParametersMarked() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
 
         for tool in allTools {
             for param in tool.parameters where param.required {
@@ -151,7 +151,7 @@ struct AgentToolDescriptionTests {
     @Test("Optional parameters have default values documented")
     @MainActor
     func optionalParameterDefaults() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
 
         for tool in allTools {
             for param in tool.parameters where !param.required {
@@ -174,7 +174,7 @@ struct AgentToolDescriptionTests {
     @Test("Tools are properly categorized")
     @MainActor
     func toolCategorization() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
         let categorizedTools = Dictionary(grouping: allTools, by: { $0.category })
 
         // Verify we have tools in expected categories
@@ -203,7 +203,7 @@ struct AgentToolDescriptionTests {
         let toolsWithErrorGuidance = ["click"]
 
         for toolName in toolsWithErrorGuidance {
-            guard let tool = ToolRegistry.allTools.first(where: { $0.name == toolName }) else {
+            guard let tool = ToolRegistry.allTools().first(where: { $0.name == toolName }) else {
                 continue
             }
 
@@ -229,7 +229,7 @@ struct AgentToolDescriptionTests {
         var toolsWithoutGuidance: [String] = []
 
         for toolName in interactionTools {
-            guard let tool = ToolRegistry.allTools.first(where: { $0.name == toolName }) else {
+            guard let tool = ToolRegistry.allTools().first(where: { $0.name == toolName }) else {
                 continue
             }
 
@@ -263,7 +263,7 @@ struct AgentToolDescriptionTests {
     @Test("Tool examples are realistic and helpful")
     @MainActor
     func toolExampleQuality() {
-        let allTools = ToolRegistry.allTools
+        let allTools = ToolRegistry.allTools()
 
         for tool in allTools where tool.discussion.contains("EXAMPLE") {
             // Examples should reference the tool somehow

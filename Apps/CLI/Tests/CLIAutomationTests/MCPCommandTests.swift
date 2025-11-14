@@ -283,11 +283,9 @@ struct MCPCallCommandRuntimeTests {
 @MainActor
 private func executeCall(command: inout MCPCommand.Call, jsonOutput: Bool) async throws {
     let services = TestServicesFactory.makePeekabooServices()
-    try await PeekabooServices.withTestServices(services) {
-        let configuration = CommandRuntime.Configuration(verbose: false, jsonOutput: jsonOutput, logLevel: nil)
-        let runtime = CommandRuntime(configuration: configuration)
-        try await command.run(using: runtime)
-    }
+    let configuration = CommandRuntime.Configuration(verbose: false, jsonOutput: jsonOutput, logLevel: nil)
+    let runtime = CommandRuntime(configuration: configuration, services: services)
+    try await command.run(using: runtime)
 }
 
 @MainActor

@@ -22,9 +22,7 @@ struct SpaceToolMoveWindowTests {
             "to_current": true,
         ])
 
-        let response = try await PeekabooServices.withTestServices(context.services) {
-            try await tool.execute(arguments: args)
-        }
+        let response = try await tool.execute(arguments: args)
 
         #expect(response.isError == false)
         #expect(stubSpaceService.moveToCurrentCalls == [CGWindowID(context.windowInfo.windowID)])
@@ -49,9 +47,7 @@ struct SpaceToolMoveWindowTests {
             "follow": true,
         ])
 
-        let response = try await PeekabooServices.withTestServices(context.services) {
-            try await tool.execute(arguments: args)
-        }
+        let response = try await tool.execute(arguments: args)
 
         #expect(response.isError == false)
         #expect(stubSpaceService.moveWindowCalls.count == 1)
