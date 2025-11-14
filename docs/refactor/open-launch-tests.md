@@ -14,7 +14,7 @@ read_when:
 - Added flow tests (`OpenCommandFlowTests`, `AppCommandLaunchFlowTests`) using stub launchers/resolvers to verify command wiring.
 - Still missing:
   - **CLI help/doc polish:** Update `help open`, `help app launch`, and CLI docs once behavior is locked.
-  - **Runtime-level tests:** Add `InProcessCommandRunner`-style tests to ensure JSON output + logging remain stable around the new options.
+  - **Full CLI docs/examples:** ensure README/tutorials demonstrate `peekaboo open` + `app launch --open`.
 
 ## Proposed approach
 
@@ -35,6 +35,5 @@ read_when:
 
 ## Next steps when resuming
 
-1. Update CLI help text (`help open`, `help app launch`) and the command reference doc to mention the new options explicitly.
-2. Add runtime-level tests using `InProcessCommandRunner` to verify JSON payloads/outputs for both commands (default vs. overrides).
-3. Ensure the helper docs (and possibly README examples) reflect the new `--open` and `peekaboo open` usage once everything is stable.
+1. Update CLI help text (`help open`, `help app launch`) and command reference docs with examples for `peekaboo open` and repeated `--open`.
+2. Refresh higher-level docs/README snippets so users see the new behavior outside the reference file.
