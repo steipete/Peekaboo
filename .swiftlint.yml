@@ -38,7 +38,6 @@ opt_in_rules:
   - empty_count
   - empty_string
   - explicit_init
-  - force_unwrapping
   - fallthrough
   - fatal_error_message
   - first_where
@@ -109,7 +108,6 @@ disabled_rules:
 # Rule configurations
 force_cast: warning
 force_try: warning
-force_unwrapping: warning
 
 # identifier_name rule disabled - see disabled_rules section
 
