@@ -22,7 +22,7 @@ struct MenuCommandIntegrationTests {
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         let response = try JSONDecoder().decode(
             CodableJSONResponse<MenuListData>.self,
-            from: output.data(using: .utf8)!
+            from: Data(output.utf8)
         )
 
         #expect(response.success == true)
@@ -58,7 +58,7 @@ struct MenuCommandIntegrationTests {
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         let response = try JSONDecoder().decode(
             CodableJSONResponse<MenuClickResult>.self,
-            from: output.data(using: .utf8)!
+            from: Data(output.utf8)
         )
 
         #expect(response.success == true)

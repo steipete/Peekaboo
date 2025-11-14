@@ -52,7 +52,7 @@ import Testing
          )
 
          // Parse result
-         let data = result.data(using: .utf8)!
+         let data = Data(result.utf8)
          let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
 
          #expect(json["success"] as? Bool == true)
@@ -77,7 +77,7 @@ import Testing
          )
 
          // Parse result
-         let data = result.data(using: .utf8)!
+         let data = Data(result.utf8)
          let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
 
          #expect(json["success"] as? Bool == false)
@@ -102,7 +102,7 @@ import Testing
          )
 
          // Parse result
-         let data = result.data(using: .utf8)!
+         let data = Data(result.utf8)
          let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
 
          // Should fail due to timeout
@@ -127,7 +127,7 @@ import Testing
          )
 
          // Parse result
-         let data = result.data(using: .utf8)!
+         let data = Data(result.utf8)
          let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
 
          #expect(json["success"] as? Bool == true)
@@ -153,7 +153,7 @@ import Testing
          )
 
          // Parse result
-         let data = result.data(using: .utf8)!
+         let data = Data(result.utf8)
          let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
 
          #expect(json["success"] as? Bool == true)
@@ -178,7 +178,7 @@ import Testing
          )
 
          // Parse result
-         let data = result.data(using: .utf8)!
+         let data = Data(result.utf8)
          let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
 
          #expect(json["success"] as? Bool == false)

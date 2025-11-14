@@ -27,7 +27,7 @@ struct DockCommandTests {
         let output = result.output
 
         // Parse JSON
-        let jsonData = output.data(using: .utf8)!
+        let jsonData = Data(output.utf8)
         let response = try JSONDecoder().decode(JSONResponse.self, from: jsonData)
 
         #expect(response.success == true)

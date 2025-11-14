@@ -121,7 +121,7 @@ struct DragCommandTests {
         ]
         let (result, context) = try await self.runDragCommandWithContext(arguments)
         #expect(result.exitStatus == 0)
-        let payload = try JSONDecoder().decode(DragResult.self, from: self.output(from: result).data(using: .utf8)!)
+        let payload = try JSONDecoder().decode(DragResult.self, from: self.output(from: Data(result).utf8))
         #expect(payload.success)
         let dragCalls = await self.automationState(context) { $0.dragCalls }
         let call = try #require(dragCalls.first)

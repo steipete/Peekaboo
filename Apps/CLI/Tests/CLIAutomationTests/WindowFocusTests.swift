@@ -45,7 +45,7 @@ struct WindowFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
         if data.success {
             // Command succeeded
             #expect(Bool(true))
@@ -64,7 +64,7 @@ struct WindowFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
         // Verify command parses correctly - actual behavior depends on TextEdit being open
         #expect(data.success == true || data.error != nil)
     }
@@ -78,7 +78,7 @@ struct WindowFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
         // Finder should always be running
         if data.success {
             #expect(Bool(true))
@@ -138,7 +138,7 @@ struct WindowFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
         // Verify command accepts custom timeout
         #expect(data.success == true || data.error != nil)
     }
@@ -152,7 +152,7 @@ struct WindowFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
         // Verify command accepts retry count
         #expect(data.success == true || data.error != nil)
     }

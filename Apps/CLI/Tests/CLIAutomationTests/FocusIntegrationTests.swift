@@ -33,7 +33,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
+        let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
             Issue.record("Failed to create session")
@@ -47,7 +47,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let clickData = try JSONDecoder().decode(ClickResponse.self, from: clickOutput.data(using: .utf8)!)
+        let clickData = try JSONDecoder().decode(ClickResponse.self, from: Data(clickOutput.utf8))
         // Should either click successfully (with auto-focus) or fail gracefully
         #expect(clickData.success == true || clickData.error != nil)
     }
@@ -65,7 +65,7 @@ struct FocusIntegrationTests {
                 "--json-output"
             ])
 
-            let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
+            let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
             if seeData.success, let id = seeData.data?.session_id {
                 sessionId = id
                 break
@@ -84,7 +84,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let typeData = try JSONDecoder().decode(TypeResponse.self, from: typeOutput.data(using: .utf8)!)
+        let typeData = try JSONDecoder().decode(TypeResponse.self, from: Data(typeOutput.utf8))
         #expect(typeData.success == true || typeData.error != nil)
     }
 
@@ -99,7 +99,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(MenuResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(MenuResponse.self, from: Data(output.utf8))
         // Should either show menu (with auto-focus) or fail gracefully
         #expect(data.success == true || data.error != nil)
     }
@@ -115,7 +115,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
+        let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
             Issue.record("Failed to create session")
@@ -130,7 +130,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let clickData = try JSONDecoder().decode(ClickResponse.self, from: clickOutput.data(using: .utf8)!)
+        let clickData = try JSONDecoder().decode(ClickResponse.self, from: Data(clickOutput.utf8))
         // Command should be accepted (may fail if window not focused)
         #expect(clickData.success == true || clickData.error != nil)
     }
@@ -144,7 +144,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(TypeResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(TypeResponse.self, from: Data(output.utf8))
         // Should handle timeout gracefully
         #expect(data.success == true || data.error != nil)
     }
@@ -158,7 +158,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(MenuResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(MenuResponse.self, from: Data(output.utf8))
         // Should respect retry count
         #expect(data.success == true || data.error != nil)
     }
@@ -176,7 +176,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(WindowActionResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(WindowActionResponse.self, from: Data(output.utf8))
         #expect(data.success == true || data.error != nil)
     }
 
@@ -189,7 +189,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(WindowActionResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(WindowActionResponse.self, from: Data(output.utf8))
         #expect(data.success == true || data.error != nil)
     }
 
@@ -203,7 +203,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(WindowActionResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(WindowActionResponse.self, from: Data(output.utf8))
         #expect(data.success == false)
         #expect(data.error != nil)
         #expect(data.error?.contains("not found") == true ||
@@ -220,7 +220,7 @@ struct FocusIntegrationTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(WindowActionResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(WindowActionResponse.self, from: Data(output.utf8))
         // Should either find no match or use frontmost window
         #expect(data.success == true || data.error != nil)
     }

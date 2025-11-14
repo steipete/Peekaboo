@@ -47,7 +47,7 @@ struct SpaceCommandReadTests {
     @Test("space list with JSON output")
     func spaceListJSON() async throws {
         let output = try await self.runPeekaboo(["space", "list", "--json-output"])
-        let response = try JSONDecoder().decode(SpaceListResponse.self, from: output.data(using: .utf8)!)
+        let response = try JSONDecoder().decode(SpaceListResponse.self, from: Data(output.utf8))
         #expect(response.success)
     }
 
@@ -251,7 +251,7 @@ struct SpaceCommandActionTests {
         #expect(result.exitStatus == 0)
         let response = try JSONDecoder().decode(
             SpaceActionResponse.self,
-            from: self.output(from: result).data(using: .utf8)!
+            from: self.output(from: Data(result).utf8)
         )
         #expect(response.success)
         let switchCalls = await self.spaceState(context) { $0.switchCalls }
@@ -270,7 +270,7 @@ struct SpaceCommandActionTests {
         #expect(result.exitStatus == 0)
         let response = try JSONDecoder().decode(
             WindowSpaceActionResponse.self,
-            from: self.output(from: result).data(using: .utf8)!
+            from: self.output(from: Data(result).utf8)
         )
         #expect(response.success)
         let moveCalls = await self.spaceState(context) { $0.moveToCurrentCalls }
@@ -290,7 +290,7 @@ struct SpaceCommandActionTests {
         #expect(result.exitStatus == 0)
         let response = try JSONDecoder().decode(
             WindowSpaceActionResponse.self,
-            from: self.output(from: result).data(using: .utf8)!
+            from: self.output(from: Data(result).utf8)
         )
         #expect(response.success)
         let moveCalls = await self.spaceState(context) { $0.moveWindowCalls }

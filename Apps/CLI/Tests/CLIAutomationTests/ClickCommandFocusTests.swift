@@ -45,7 +45,7 @@ struct ClickCommandFocusTests {
         }.flatMap(\.self))
 
         let output = try await runPeekabooCommand(args)
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
 
         // Command should be valid (may fail due to no element at position)
         #expect(data.success == true || data.error != nil)
@@ -60,7 +60,7 @@ struct ClickCommandFocusTests {
             "--json-output"
         ])
 
-        let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
+        let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
         guard seeData.success,
               let sessionId = seeData.data?.session_id,
               let elements = seeData.data?.elements,
@@ -83,7 +83,7 @@ struct ClickCommandFocusTests {
             "--json-output"
         ])
 
-        let clickData = try JSONDecoder().decode(ClickResponse.self, from: clickOutput.data(using: .utf8)!)
+        let clickData = try JSONDecoder().decode(ClickResponse.self, from: Data(clickOutput.utf8))
         #expect(clickData.success == true || clickData.error != nil)
     }
 
@@ -96,7 +96,7 @@ struct ClickCommandFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(ClickResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))
         // Should handle Space switch option
         #expect(data.success == true || data.error != nil)
     }
@@ -110,7 +110,7 @@ struct ClickCommandFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(ClickResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))
         // Should handle bring-to-current-space option
         #expect(data.success == true || data.error != nil)
     }
@@ -126,7 +126,7 @@ struct ClickCommandFocusTests {
             "--json-output"
         ])
 
-        let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
+        let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
             return
@@ -164,7 +164,7 @@ struct ClickCommandFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(ClickResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))
         #expect(data.success == false)
         #expect(data.error?.contains("session") == true ||
             data.error?.contains("not found") == true
@@ -181,7 +181,7 @@ struct ClickCommandFocusTests {
             "--json-output"
         ])
 
-        let data = try JSONDecoder().decode(ClickResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))
         // Should handle conflicting options gracefully
         #expect(data.success == true || data.error != nil)
     }

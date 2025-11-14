@@ -37,7 +37,7 @@ struct WindowCommandTests {
         // Test that window list delegates to list windows command
         let output = try await runPeekabooCommand(["window", "list", "--app", "Finder", "--json-output"])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
         #expect(data.success == true || data.error != nil) // Either succeeds or fails with proper error
     }
 
@@ -151,7 +151,7 @@ struct WindowCommandTests {
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         let response = try JSONDecoder().decode(
             CodableJSONResponse<WindowActionResult>.self,
-            from: output.data(using: .utf8)!
+            from: Data(output.utf8)
         )
 
         #expect(response.success == true)
@@ -213,7 +213,7 @@ struct WindowCommandTests {
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         let response = try JSONDecoder().decode(
             CodableJSONResponse<WindowActionResult>.self,
-            from: output.data(using: .utf8)!
+            from: Data(output.utf8)
         )
 
         #expect(response.success == true)
@@ -305,7 +305,7 @@ struct WindowCommandLocalIntegrationTests {
 
         // First, ensure TextEdit is running and has a window
         let launchResult = try await runPeekabooCommand(["image", "--app", "TextEdit", "--json-output"])
-        let launchData = try JSONDecoder().decode(JSONResponse.self, from: launchResult.data(using: .utf8)!)
+        let launchData = try JSONDecoder().decode(JSONResponse.self, from: Data(launchResult.utf8))
 
         guard launchData.success else {
             Issue.record("TextEdit must be running for this test")
@@ -314,7 +314,7 @@ struct WindowCommandLocalIntegrationTests {
 
         // Try to minimize TextEdit window
         let result = try await runPeekabooCommand(["window", "minimize", "--app", "TextEdit", "--json-output"])
-        let data = try JSONDecoder().decode(JSONResponse.self, from: result.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(result.utf8))
 
         if let error = data.error {
             if error.code == "PERMISSION_ERROR_ACCESSIBILITY" {
@@ -342,7 +342,7 @@ struct WindowCommandLocalIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: result.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(result.utf8))
 
         if let error = data.error {
             if error.code == "PERMISSION_ERROR_ACCESSIBILITY" {
@@ -371,7 +371,7 @@ struct WindowCommandLocalIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: result.data(using: .utf8)!)
+        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(result.utf8))
 
         if let error = data.error {
             if error.code == "PERMISSION_ERROR_ACCESSIBILITY" {

@@ -41,7 +41,7 @@ struct ConfigurationTests {
         """
 
         let result = manager.stripJSONComments(from: jsonc)
-        let data = result.data(using: .utf8)!
+        let data = Data(result.utf8)
         let parsed = try Self.decodedDictionary(from: data)
 
         #expect(parsed["key"] as? String == "value")
@@ -61,7 +61,7 @@ struct ConfigurationTests {
         """
 
         let result = manager.stripJSONComments(from: jsonc)
-        let data = result.data(using: .utf8)!
+        let data = Data(result.utf8)
         let parsed = try Self.decodedDictionary(from: data)
 
         #expect(parsed["url"] as? String == "http://example.com//path")
@@ -170,7 +170,7 @@ struct ConfigurationTests {
         }
         """
 
-        let data = json.data(using: .utf8)!
+        let data = Data(json.utf8)
         let config = try JSONDecoder().decode(Configuration.self, from: data)
 
         #expect(config.aiProviders?.providers == "openai/gpt-5,anthropic/claude-sonnet-4.5")
@@ -196,7 +196,7 @@ struct ConfigurationTests {
         }
         """
 
-        let data = json.data(using: .utf8)!
+        let data = Data(json.utf8)
         let config = try JSONDecoder().decode(Configuration.self, from: data)
 
         #expect(config.aiProviders?.providers == "anthropic/claude-sonnet-4.5")

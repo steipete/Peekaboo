@@ -189,7 +189,7 @@ struct WindowCommandLocalTests {
 
         // Try to focus TextEdit
         let focusOutput = try await runBuiltCommand(["window", "focus", "--app", "TextEdit", "--json-output"])
-        let focusResponse = try JSONDecoder().decode(JSONResponse.self, from: focusOutput.data(using: .utf8)!)
+        let focusResponse = try JSONDecoder().decode(JSONResponse.self, from: Data(focusOutput.utf8))
 
         if focusResponse.error?.code == "PERMISSION_ERROR_ACCESSIBILITY" {
             Issue.record("Accessibility permission required")
@@ -206,7 +206,7 @@ struct WindowCommandLocalTests {
                 "--json-output",
             ])
 
-            let moveResponse = try JSONDecoder().decode(JSONResponse.self, from: moveOutput.data(using: .utf8)!)
+            let moveResponse = try JSONDecoder().decode(JSONResponse.self, from: Data(moveOutput.utf8))
 
             if moveResponse.success,
                let data = moveResponse.data as? [String: Any],

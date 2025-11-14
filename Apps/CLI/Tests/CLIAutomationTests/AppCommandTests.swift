@@ -119,7 +119,7 @@ struct AppCommandIntegrationTests {
 
         let response = try JSONDecoder().decode(
             CodableJSONResponse<LaunchResult>.self,
-            from: output.data(using: .utf8)!
+            from: Data(output.utf8)
         )
         #expect(response.success == true)
         #expect(response.data.action == "launch")
@@ -138,7 +138,7 @@ struct AppCommandIntegrationTests {
             "--json-output",
         ])
 
-        let hideData = try JSONDecoder().decode(JSONResponse.self, from: hideOutput.data(using: .utf8)!)
+        let hideData = try JSONDecoder().decode(JSONResponse.self, from: Data(hideOutput.utf8))
         #expect(hideData.success == true)
         let hideCalls = await appServiceState(hideService) { $0.hideCalls }
         #expect(hideCalls.contains("TextEdit"))
@@ -150,7 +150,7 @@ struct AppCommandIntegrationTests {
             "--json-output",
         ])
 
-        let showData = try JSONDecoder().decode(JSONResponse.self, from: showOutput.data(using: .utf8)!)
+        let showData = try JSONDecoder().decode(JSONResponse.self, from: Data(showOutput.utf8))
         #expect(showData.success == true)
         let unhideCalls = await appServiceState(showService) { $0.unhideCalls }
         #expect(unhideCalls.contains("TextEdit"))
@@ -165,7 +165,7 @@ struct AppCommandIntegrationTests {
             "--json-output",
         ])
 
-        let cycleData = try JSONDecoder().decode(JSONResponse.self, from: cycleOutput.data(using: .utf8)!)
+        let cycleData = try JSONDecoder().decode(JSONResponse.self, from: Data(cycleOutput.utf8))
         #expect(cycleData.success == true)
         let cycleCalls = await appServiceState(cycleService) { $0.activateCalls }
         #expect(!cycleCalls.isEmpty)
@@ -177,7 +177,7 @@ struct AppCommandIntegrationTests {
             "--json-output",
         ])
 
-        let switchData = try JSONDecoder().decode(JSONResponse.self, from: switchOutput.data(using: .utf8)!)
+        let switchData = try JSONDecoder().decode(JSONResponse.self, from: Data(switchOutput.utf8))
         #expect(switchData.success == true)
         let switchCalls = await appServiceState(switchService) { $0.activateCalls }
         #expect(switchCalls.contains("Finder"))
@@ -204,7 +204,7 @@ struct AppCommandIntegrationTests {
             let results: [AppQuitInfo]
         }
 
-        let response = try JSONDecoder().decode(CodableJSONResponse<QuitResult>.self, from: output.data(using: .utf8)!)
+        let response = try JSONDecoder().decode(CodableJSONResponse<QuitResult>.self, from: Data(output.utf8))
         #expect(response.success == true)
         let quitCalls = await appServiceState(appService) { $0.quitCalls }
         #expect(quitCalls.contains { $0.identifier == "TextEdit" && $0.force == false })
@@ -221,7 +221,7 @@ struct AppCommandIntegrationTests {
 
         let response = try JSONDecoder().decode(
             CodableJSONResponse<[String: String]>.self,
-            from: output.data(using: .utf8)!
+            from: Data(output.utf8)
         )
         #expect(response.success == true)
         let hideOtherCalls = await appServiceState(appService) { $0.hideOtherCalls }
