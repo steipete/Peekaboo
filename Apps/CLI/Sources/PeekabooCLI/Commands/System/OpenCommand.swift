@@ -61,7 +61,7 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
         self.prepare(using: runtime)
 
         do {
-            let targetURL = try self.resolveTargetURL()
+            let targetURL = try Self.resolveTarget(self.target)
             let handlerURL = try self.resolveHandlerApplication()
             let appInstance = try await self.openTarget(targetURL: targetURL, handlerURL: handlerURL)
             try await self.waitIfNeeded(for: appInstance)
@@ -78,8 +78,8 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
         self.logger.setJsonOutputMode(self.jsonOutput)
     }
 
-    private func resolveTargetURL() throws -> URL {
-        let trimmed = self.target.trimmingCharacters(in: .whitespacesAndNewlines)
+    static func resolveTarget(_ target: String, cwd: String = FileManager.default.currentDirectoryPath) throws -> URL {
+        let trimmed = target.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             throw ValidationError("Target must not be empty")
         }
@@ -93,8 +93,7 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
         if expanded.hasPrefix("/") {
             absolutePath = expanded
         } else {
-            absolutePath = NSString(string: FileManager.default.currentDirectoryPath)
-                .appendingPathComponent(expanded)
+            absolutePath = NSString(string: cwd).appendingPathComponent(expanded)
         }
 
         return URL(fileURLWithPath: absolutePath)

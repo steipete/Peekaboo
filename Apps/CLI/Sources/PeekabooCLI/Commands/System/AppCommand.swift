@@ -209,7 +209,7 @@ struct AppCommand: ParsableCommand {
                 let configuration = NSWorkspace.OpenConfiguration()
                 configuration.activates = self.shouldFocusAfterLaunch
 
-                let urls = try self.openTargets.map { try self.resolveOpenTarget($0) }
+                let urls = try self.openTargets.map { try Self.resolveOpenTarget($0) }
 
                 do {
                     let app = try await NSWorkspace.shared.open(
@@ -233,7 +233,10 @@ struct AppCommand: ParsableCommand {
             }
         }
 
-        private func resolveOpenTarget(_ value: String) throws -> URL {
+        static func resolveOpenTarget(
+            _ value: String,
+            cwd: String = FileManager.default.currentDirectoryPath
+        ) throws -> URL {
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
                 throw ValidationError("Open target must not be empty")
@@ -248,7 +251,7 @@ struct AppCommand: ParsableCommand {
             if expanded.hasPrefix("/") {
                 absolutePath = expanded
             } else {
-                absolutePath = NSString(string: FileManager.default.currentDirectoryPath)
+                absolutePath = NSString(string: cwd)
                     .appendingPathComponent(expanded)
             }
 
