@@ -1,8 +1,8 @@
 import Foundation
 import MCP
 import os.log
-import TachikomaMCP
 import PeekabooAutomation
+import TachikomaMCP
 
 /// MCP tool for interacting with the macOS Dock
 public struct DockTool: MCPTool {

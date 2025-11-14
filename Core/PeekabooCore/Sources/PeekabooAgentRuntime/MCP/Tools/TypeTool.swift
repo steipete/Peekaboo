@@ -1,8 +1,8 @@
 import Foundation
 import MCP
+import os.log
 import PeekabooAutomation
 import PeekabooFoundation
-import os.log
 import TachikomaMCP
 
 /// MCP tool for typing text

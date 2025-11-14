@@ -1,8 +1,8 @@
 import AppKit
 import Foundation
 import MCP
-import TachikomaMCP
 import PeekabooAutomation
+import TachikomaMCP
 
 /// MCP tool for listing various system items
 public struct ListTool: MCPTool {

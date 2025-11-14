@@ -25,9 +25,9 @@ public protocol PeekabooServiceProviding: AnyObject, Sendable {
 }
 
 @MainActor
-public extension PeekabooServiceProviding {
+extension PeekabooServiceProviding {
     /// Install this service container as the default provider for MCP tool contexts and registry helpers.
-    func installAgentRuntimeDefaults() {
+    public func installAgentRuntimeDefaults() {
         MCPToolContext.configureDefaultContext { [unowned services = self] in
             MCPToolContext(services: services)
         }

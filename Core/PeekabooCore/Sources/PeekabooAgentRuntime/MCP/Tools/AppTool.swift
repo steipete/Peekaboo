@@ -2,8 +2,8 @@ import CoreGraphics
 import Foundation
 import MCP
 import os.log
-import TachikomaMCP
 import PeekabooAutomation
+import TachikomaMCP
 
 /// MCP tool for controlling applications (launch/quit/focus/etc.)
 public struct AppTool: MCPTool {

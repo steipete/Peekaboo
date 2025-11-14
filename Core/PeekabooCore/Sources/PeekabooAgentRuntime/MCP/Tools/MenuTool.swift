@@ -1,7 +1,7 @@
 import Foundation
 import MCP
-import TachikomaMCP
 import PeekabooAutomation
+import TachikomaMCP
 
 /// MCP tool for interacting with application menu bars
 public struct MenuTool: MCPTool {
@@ -53,7 +53,7 @@ public struct MenuTool: MCPTool {
             ],
             required: ["action"])
     }
-    
+
     public init(context: MCPToolContext = .shared) {
         self.context = context
     }

@@ -1,7 +1,7 @@
 import Foundation
 import MCP
-import TachikomaMCP
 import PeekabooAutomation
+import TachikomaMCP
 
 /// MCP tool for checking macOS system permissions
 public struct PermissionsTool: MCPTool {

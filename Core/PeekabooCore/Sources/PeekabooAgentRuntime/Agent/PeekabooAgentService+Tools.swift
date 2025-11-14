@@ -5,9 +5,9 @@
 
 import Foundation
 import MCP
+import PeekabooAutomation
 import Tachikoma
 import TachikomaMCP
-import PeekabooAutomation
 
 // MARK: - Tool Creation Extension
 

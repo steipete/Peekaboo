@@ -1,7 +1,7 @@
 import Foundation
 import MCP
-import PeekabooAutomation
 import os.log
+import PeekabooAutomation
 import PeekabooFoundation
 import Tachikoma
 import TachikomaMCP

@@ -1,8 +1,8 @@
 import Foundation
 import MCP
 import os.log
-import TachikomaMCP
 import PeekabooAutomation
+import TachikomaMCP
 
 /// MCP tool for pressing keyboard shortcuts and key combinations
 public struct HotkeyTool: MCPTool {

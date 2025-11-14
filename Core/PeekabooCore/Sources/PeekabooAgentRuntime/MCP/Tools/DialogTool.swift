@@ -1,8 +1,8 @@
 import Foundation
 import MCP
 import os.log
-import TachikomaMCP
 import PeekabooAutomation
+import TachikomaMCP
 
 /// MCP tool for interacting with system dialogs and alerts
 public struct DialogTool: MCPTool {

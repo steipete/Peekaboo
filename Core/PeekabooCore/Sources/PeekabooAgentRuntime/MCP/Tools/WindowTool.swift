@@ -1,9 +1,9 @@
 import Foundation
 import MCP
 import os.log
+import PeekabooAutomation
 import PeekabooFoundation
 import TachikomaMCP
-import PeekabooAutomation
 
 /// MCP tool for manipulating application windows
 public struct WindowTool: MCPTool {

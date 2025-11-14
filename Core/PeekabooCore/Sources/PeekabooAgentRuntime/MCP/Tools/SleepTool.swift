@@ -1,7 +1,7 @@
 import Foundation
 import MCP
-import TachikomaMCP
 import PeekabooAutomation
+import TachikomaMCP
 
 /// MCP tool for pausing execution
 public struct SleepTool: MCPTool {

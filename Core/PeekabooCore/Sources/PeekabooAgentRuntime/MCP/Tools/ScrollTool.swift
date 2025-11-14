@@ -1,9 +1,9 @@
 import Foundation
 import MCP
 import os.log
+import PeekabooAutomation
 import PeekabooFoundation
 import TachikomaMCP
-import PeekabooAutomation
 
 private typealias ToolScrollDirection = PeekabooFoundation.ScrollDirection
 

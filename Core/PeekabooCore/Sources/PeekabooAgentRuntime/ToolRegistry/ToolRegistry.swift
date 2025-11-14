@@ -158,7 +158,7 @@ public enum ToolRegistry {
 
         // Convert AgentTools to PeekabooToolDefinitions
         return agentTools.compactMap { agentTool in
-            convertAgentToolToDefinition(agentTool)
+            self.convertAgentToolToDefinition(agentTool)
         }
     }
 
