@@ -41,7 +41,7 @@ final class StreamingEventDelegate: @unchecked Sendable, AgentEventDelegate {
 @available(macOS 14.0, *)
 @MainActor
 public final class PeekabooAgentService: AgentServiceProtocol {
-    let services: PeekabooServices
+    let services: any PeekabooServiceProviding
     let sessionManager: AgentSessionManager
     private let defaultLanguageModel: LanguageModel
     var currentModel: LanguageModel?
@@ -113,7 +113,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     }
 
     public init(
-        services: PeekabooServices,
+        services: any PeekabooServiceProviding,
         defaultModel: LanguageModel = .openai(.gpt5))
         throws
     {

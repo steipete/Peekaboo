@@ -130,10 +130,11 @@ public enum ToolRegistry {
 
     /// All registered tools collected from various definition structs
     @MainActor
-    public static var allTools: [PeekabooToolDefinition] {
+    public static func allTools(using services: (any PeekabooServiceProviding)? = nil) -> [PeekabooToolDefinition] {
         // Tools have been refactored into PeekabooAgentService+Tools.swift
         // We now create PeekabooToolDefinitions from the agent service
-        guard let agentService = try? PeekabooAgentService(services: PeekabooServices.shared) else {
+        let resolvedServices = services ?? PeekabooServices()
+        guard let agentService = try? PeekabooAgentService(services: resolvedServices) else {
             return []
         }
 
@@ -149,13 +150,13 @@ public enum ToolRegistry {
     /// Get tool by name
     @MainActor
     public static func tool(named name: String) -> PeekabooToolDefinition? {
-        self.allTools.first { $0.name == name || $0.commandName == name }
+        self.allTools().first { $0.name == name || $0.commandName == name }
     }
 
     /// Get tools grouped by category
     @MainActor
     public static func toolsByCategory() -> [ToolCategory: [PeekabooToolDefinition]] {
-        Dictionary(grouping: self.allTools, by: { $0.category })
+        Dictionary(grouping: self.allTools(), by: { $0.category })
     }
 
     /// Get parameter by name from a tool

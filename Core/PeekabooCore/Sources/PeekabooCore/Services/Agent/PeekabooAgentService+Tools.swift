@@ -12,10 +12,14 @@ import TachikomaMCP
 
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
+    private func makeToolContext() -> MCPToolContext {
+        MCPToolContext(services: self.services)
+    }
+
     // MARK: - Vision Tools
 
     public func createSeeTool() -> AgentTool {
-        let tool = SeeTool()
+        let tool = SeeTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -27,7 +31,7 @@ extension PeekabooAgentService {
     }
 
     public func createImageTool() -> AgentTool {
-        let tool = ImageTool()
+        let tool = ImageTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -41,7 +45,7 @@ extension PeekabooAgentService {
     // MARK: - UI Automation Tools
 
     public func createClickTool() -> AgentTool {
-        let tool = ClickTool()
+        let tool = ClickTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -53,7 +57,7 @@ extension PeekabooAgentService {
     }
 
     public func createTypeTool() -> AgentTool {
-        let tool = TypeTool()
+        let tool = TypeTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -65,7 +69,7 @@ extension PeekabooAgentService {
     }
 
     public func createScrollTool() -> AgentTool {
-        let tool = ScrollTool()
+        let tool = ScrollTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -77,7 +81,7 @@ extension PeekabooAgentService {
     }
 
     public func createHotkeyTool() -> AgentTool {
-        let tool = HotkeyTool()
+        let tool = HotkeyTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -89,7 +93,7 @@ extension PeekabooAgentService {
     }
 
     public func createDragTool() -> AgentTool {
-        let tool = DragTool()
+        let tool = DragTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -101,7 +105,7 @@ extension PeekabooAgentService {
     }
 
     public func createMoveTool() -> AgentTool {
-        let tool = MoveTool()
+        let tool = MoveTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -129,7 +133,7 @@ extension PeekabooAgentService {
     // MARK: - List Tool (Full Access)
 
     public func createListTool() -> AgentTool {
-        let tool = ListTool()
+        let tool = ListTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -143,7 +147,7 @@ extension PeekabooAgentService {
     // MARK: - Screen Tools
 
     public func createListScreensTool() -> AgentTool {
-        let tool = ListTool()
+        let tool = ListTool(context: self.makeToolContext())
         return AgentTool(
             name: "list_screens",
             description: "List all available screens/displays",
@@ -160,7 +164,7 @@ extension PeekabooAgentService {
     // MARK: - Application Tools
 
     public func createListAppsTool() -> AgentTool {
-        let tool = ListTool()
+        let tool = ListTool(context: self.makeToolContext())
         return AgentTool(
             name: "list_apps",
             description: "List running applications",
@@ -175,7 +179,7 @@ extension PeekabooAgentService {
     }
 
     public func createLaunchAppTool() -> AgentTool {
-        let tool = AppTool()
+        let tool = AppTool(context: self.makeToolContext())
         return AgentTool(
             name: "launch_app",
             description: "Launch an application",
@@ -199,7 +203,7 @@ extension PeekabooAgentService {
     // MARK: - Space Management
 
     public func createSpaceTool() -> AgentTool {
-        let tool = SpaceTool()
+        let tool = SpaceTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -213,7 +217,7 @@ extension PeekabooAgentService {
     // MARK: - Window Management
 
     public func createWindowTool() -> AgentTool {
-        let tool = WindowTool()
+        let tool = WindowTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -227,7 +231,7 @@ extension PeekabooAgentService {
     // MARK: - Menu Interaction
 
     public func createMenuTool() -> AgentTool {
-        let tool = MenuTool()
+        let tool = MenuTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -241,7 +245,7 @@ extension PeekabooAgentService {
     // MARK: - Dialog Handling
 
     public func createDialogTool() -> AgentTool {
-        let tool = DialogTool()
+        let tool = DialogTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -255,7 +259,7 @@ extension PeekabooAgentService {
     // MARK: - Dock Management
 
     public func createDockTool() -> AgentTool {
-        let tool = DockTool()
+        let tool = DockTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -283,7 +287,7 @@ extension PeekabooAgentService {
     // MARK: - Gesture Support
 
     public func createSwipeTool() -> AgentTool {
-        let tool = SwipeTool()
+        let tool = SwipeTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -297,7 +301,7 @@ extension PeekabooAgentService {
     // MARK: - Permissions Check
 
     public func createPermissionsTool() -> AgentTool {
-        let tool = PermissionsTool()
+        let tool = PermissionsTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
@@ -311,7 +315,7 @@ extension PeekabooAgentService {
     // MARK: - Full App Management
 
     public func createAppTool() -> AgentTool {
-        let tool = AppTool()
+        let tool = AppTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
