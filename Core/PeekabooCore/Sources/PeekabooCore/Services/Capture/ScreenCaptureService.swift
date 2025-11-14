@@ -70,13 +70,17 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         @MainActor
-        static func live(environment: [String: String] = ProcessInfo.processInfo.environment) -> Dependencies {
-            Dependencies(
+        static func live(
+            environment: [String: String] = ProcessInfo.processInfo.environment,
+            applicationResolver: (any ApplicationResolving)? = nil) -> Dependencies
+        {
+            let resolver = applicationResolver ?? PeekabooApplicationResolver(applicationService: ApplicationService())
+            return Dependencies(
                 visualizerClient: VisualizationClient.shared,
                 permissionEvaluator: ScreenRecordingPermissionChecker(),
                 fallbackRunner: ScreenCaptureFallbackRunner(apis: ScreenCaptureAPIResolver
                     .resolve(environment: environment)),
-                applicationResolver: PeekabooApplicationResolver(),
+                applicationResolver: resolver,
                 makeModernOperator: { logger, visualizer in
                     ScreenCaptureKitOperator(logger: logger, visualizerClient: visualizer)
                 },

@@ -134,8 +134,14 @@ protocol ApplicationResolving: Sendable {
 }
 
 struct PeekabooApplicationResolver: ApplicationResolving {
+    private let applicationService: any ApplicationServiceProtocol
+
+    init(applicationService: any ApplicationServiceProtocol) {
+        self.applicationService = applicationService
+    }
+
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
-        try await PeekabooServices.shared.applications.findApplication(identifier: identifier)
+        try await self.applicationService.findApplication(identifier: identifier)
     }
 }
 

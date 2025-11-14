@@ -99,8 +99,11 @@ public struct FocusOptions: FocusOptionsProtocol {
 public final class FocusManagementService {
     private let windowIdentityService = WindowIdentityService()
     private let spaceService = SpaceManagementService()
+    private let applications: any ApplicationServiceProtocol
 
-    public init() {}
+    public init(applications: (any ApplicationServiceProtocol)? = nil) {
+        self.applications = applications ?? ApplicationService()
+    }
 
     public struct FocusOptions {
         public let timeout: TimeInterval
@@ -129,7 +132,7 @@ public final class FocusManagementService {
         windowTitle: String? = nil) async throws -> CGWindowID?
     {
         // Find the application
-        let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: applicationName)
+        let appInfo = try await self.applications.findApplication(identifier: applicationName)
 
         guard let app = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
             throw FocusError.applicationNotRunning(applicationName)

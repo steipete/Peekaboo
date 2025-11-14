@@ -45,6 +45,7 @@ import PeekabooFoundation
 public final class ApplicationService: ApplicationServiceProtocol {
     let logger = Logger(subsystem: "boo.peekaboo.core", category: "ApplicationService")
     private let windowIdentityService = WindowIdentityService()
+    private let permissions: PermissionsService
 
     // Timeout for accessibility API calls to prevent hangs
     private static let axTimeout: Float = 2.0 // 2 seconds instead of default 6 seconds
@@ -52,9 +53,10 @@ public final class ApplicationService: ApplicationServiceProtocol {
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
 
-    public init() {
+    public init(permissions: PermissionsService = PermissionsService()) {
         // Set global AX timeout to prevent hangs
         AXTimeoutConfiguration.setGlobalTimeout(Self.axTimeout)
+        self.permissions = permissions
 
         // Connect to visualizer if available
         // Only connect to visualizer if we're not running inside the Mac app
@@ -221,7 +223,7 @@ extension ApplicationService {
         let startTime = Date()
         self.logger.info("Listing windows for application: \(appIdentifier)")
         let app = try await findApplication(identifier: appIdentifier)
-        let hasScreenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
+        let hasScreenRecording = self.permissions.checkScreenRecordingPermission()
 
         let context = WindowEnumerationContext(
             service: self,

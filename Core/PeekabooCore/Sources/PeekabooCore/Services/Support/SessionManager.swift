@@ -5,6 +5,7 @@ import PeekabooFoundation
 
 /// Default implementation of session management operations
 /// Migrated from CLI SessionCache with thread-safe actor-based design
+@MainActor
 public final class SessionManager: SessionManagerProtocol {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "SessionManager")
     private let sessionActor = SessionStorageActor()
