@@ -44,8 +44,8 @@ extension Attribute where T == String {
 @MainActor
 func findApplication(
     identifier: String,
-    services: any PeekabooServiceProviding) async throws -> (app: Element, runningApp: NSRunningApplication)
-{
+    services: any PeekabooServiceProviding
+) async throws -> (app: Element, runningApp: NSRunningApplication) {
     // Use PeekabooServices to find the application
     let appInfo = try await services.applications.findApplication(identifier: identifier)
 

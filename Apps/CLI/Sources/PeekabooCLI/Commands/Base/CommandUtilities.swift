@@ -424,19 +424,31 @@ enum WindowServiceBridge {
         }.value
     }
 
-    static func moveWindow(windows: any WindowManagementServiceProtocol, target: WindowTarget, to origin: CGPoint) async throws {
+    static func moveWindow(
+        windows: any WindowManagementServiceProtocol,
+        target: WindowTarget,
+        to origin: CGPoint
+    ) async throws {
         try await Task { @MainActor in
             try await windows.moveWindow(target: target, to: origin)
         }.value
     }
 
-    static func resizeWindow(windows: any WindowManagementServiceProtocol, target: WindowTarget, to size: CGSize) async throws {
+    static func resizeWindow(
+        windows: any WindowManagementServiceProtocol,
+        target: WindowTarget,
+        to size: CGSize
+    ) async throws {
         try await Task { @MainActor in
             try await windows.resizeWindow(target: target, to: size)
         }.value
     }
 
-    static func setWindowBounds(windows: any WindowManagementServiceProtocol, target: WindowTarget, bounds: CGRect) async throws {
+    static func setWindowBounds(
+        windows: any WindowManagementServiceProtocol,
+        target: WindowTarget,
+        bounds: CGRect
+    ) async throws {
         try await Task { @MainActor in
             try await windows.setWindowBounds(target: target, bounds: bounds)
         }.value
@@ -448,7 +460,10 @@ enum WindowServiceBridge {
         }.value
     }
 
-    static func listWindows(windows: any WindowManagementServiceProtocol, target: WindowTarget) async throws -> [ServiceWindowInfo] {
+    static func listWindows(
+        windows: any WindowManagementServiceProtocol,
+        target: WindowTarget
+    ) async throws -> [ServiceWindowInfo] {
         try await Task { @MainActor in
             try await windows.listWindows(target: target)
         }.value
@@ -480,7 +495,11 @@ enum MenuServiceBridge {
         }.value
     }
 
-    static func clickMenuItemByName(menu: any MenuServiceProtocol, appIdentifier: String, itemName: String) async throws {
+    static func clickMenuItemByName(
+        menu: any MenuServiceProtocol,
+        appIdentifier: String,
+        itemName: String
+    ) async throws {
         try await Task { @MainActor in
             try await menu.clickMenuItemByName(app: appIdentifier, itemName: itemName)
         }.value
@@ -505,7 +524,8 @@ enum MenuServiceBridge {
         }.value
     }
 
-    static func clickMenuBarItem(at index: Int, menu: any MenuServiceProtocol) async throws -> PeekabooCore.ClickResult {
+    static func clickMenuBarItem(at index: Int, menu: any MenuServiceProtocol) async throws -> PeekabooCore
+    .ClickResult {
         try await Task<PeekabooCore.ClickResult, any Error> { @MainActor in
             try await menu.clickMenuBarItem(at: index)
         }.value
@@ -676,7 +696,10 @@ extension WindowIdentificationOptions {
 protocol ApplicationResolver {}
 
 extension ApplicationResolver {
-    func resolveApplication(_ identifier: String, services: any PeekabooServiceProviding) async throws -> ServiceApplicationInfo {
+    func resolveApplication(
+        _ identifier: String,
+        services: any PeekabooServiceProviding
+    ) async throws -> ServiceApplicationInfo {
         do {
             return try await services.applications.findApplication(identifier: identifier)
         } catch {

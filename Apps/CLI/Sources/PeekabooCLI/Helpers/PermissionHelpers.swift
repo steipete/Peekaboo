@@ -12,8 +12,7 @@ enum PermissionHelpers {
 
     /// Get current permission status for all Peekaboo permissions
     static func getCurrentPermissions(
-        services: any PeekabooServiceProviding) async -> [PermissionInfo]
-    {
+        services: any PeekabooServiceProviding) async -> [PermissionInfo] {
         // Get current permission status for all Peekaboo permissions
         let screenRecording = await Task { @MainActor in
             await services.screenCapture.hasScreenRecordingPermission()
@@ -46,8 +45,7 @@ enum PermissionHelpers {
 
     /// Format permissions for help display with dynamic status
     static func formatPermissionsForHelp(
-        services: any PeekabooServiceProviding) async -> String
-    {
+        services: any PeekabooServiceProviding) async -> String {
         // Format permissions for help display with dynamic status
         let permissions = await self.getCurrentPermissions(services: services)
         var output = ["PERMISSIONS:"]

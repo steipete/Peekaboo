@@ -75,7 +75,8 @@ extension PermissionCommand {
         @MainActor
         private func fetchPermissionStatus() async -> AgentPermissionStatusPayload {
             let screenRecording = await self.services.screenCapture.hasScreenRecordingPermission()
-            let accessibility = await AutomationServiceBridge.hasAccessibilityPermission(automation: self.services.automation)
+            let accessibility = await AutomationServiceBridge
+                .hasAccessibilityPermission(automation: self.services.automation)
             return AgentPermissionStatusPayload(
                 screen_recording: screenRecording,
                 accessibility: accessibility
@@ -288,7 +289,8 @@ extension PermissionCommand {
         }
 
         private func renderIfAlreadyGranted() async -> Bool {
-            let hasPermission = await AutomationServiceBridge.hasAccessibilityPermission(automation: self.services.automation)
+            let hasPermission = await AutomationServiceBridge
+                .hasAccessibilityPermission(automation: self.services.automation)
             guard hasPermission else { return false }
             let payload = AgentPermissionActionResult(
                 action: "request-accessibility",

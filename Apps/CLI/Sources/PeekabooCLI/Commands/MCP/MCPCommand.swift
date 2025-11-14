@@ -152,8 +152,8 @@ extension MCPCommand {
             self.runtime = runtime
 
             do {
-            let arguments = try self.parseArguments()
-            try await self.ensureServerReady()
+                let arguments = try self.parseArguments()
+                try await self.ensureServerReady()
 
                 let response = try await self.clientManager.executeTool(
                     serverName: self.server,
@@ -290,17 +290,17 @@ extension MCPCommand {
         private func describe(content: MCP.Tool.Content) -> String {
             switch content {
             case let .text(text):
-                return text
+                text
             case let .image(_, mimeType, _):
-                return "Image response (\(mimeType))"
+                "Image response (\(mimeType))"
             case let .resource(uri, _, text):
                 if let text, !text.isEmpty {
-                    return "Resource: \(uri) — \(text)"
+                    "Resource: \(uri) — \(text)"
                 } else {
-                    return "Resource: \(uri)"
+                    "Resource: \(uri)"
                 }
             case let .audio(_, mimeType):
-                return "Audio response (\(mimeType))"
+                "Audio response (\(mimeType))"
             }
         }
 
@@ -327,7 +327,12 @@ extension MCPCommand {
         private func emitError(message: String, code: ErrorCode) {
             if self.wantsJSON {
                 let debugLogs = self.logger.getDebugLogs()
-                let response = JSONResponse(success: false, messages: nil, debugLogs: debugLogs, error: ErrorInfo(message: message, code: code))
+                let response = JSONResponse(
+                    success: false,
+                    messages: nil,
+                    debugLogs: debugLogs,
+                    error: ErrorInfo(message: message, code: code)
+                )
                 PeekabooCLI.outputJSON(response, logger: self.logger)
             } else {
                 print("❌ \(message)")
@@ -344,16 +349,16 @@ extension MCPCommand {
         var errorDescription: String? {
             switch self {
             case let .invalidArguments(message):
-                return message
+                message
             case let .serverNotConfigured(server):
-                return "MCP server '\(server)' is not configured. Use 'peekaboo mcp add' to register it."
+                "MCP server '\(server)' is not configured. Use 'peekaboo mcp add' to register it."
             case let .serverDisabled(server):
-                return "MCP server '\(server)' is disabled. Run 'peekaboo mcp enable \(server)' before calling tools."
+                "MCP server '\(server)' is disabled. Run 'peekaboo mcp enable \(server)' before calling tools."
             case let .connectionFailed(server, reason):
                 if let reason, !reason.isEmpty {
-                    return "Failed to connect to MCP server '\(server)' (\(reason))."
+                    "Failed to connect to MCP server '\(server)' (\(reason))."
                 } else {
-                    return "Failed to connect to MCP server '\(server)'."
+                    "Failed to connect to MCP server '\(server)'."
                 }
             }
         }
@@ -525,7 +530,10 @@ extension MCPCommand {
             let probes = await TachikomaMCPClientManager.shared.probeAllServers(timeoutMs: 5000)
             var healthResults: [String: MCPServerHealth] = [:]
             for (name, probe) in probes {
-                healthResults[name] = probe.isConnected ? .connected(toolCount: probe.toolCount, responseTime: probe.responseTime) :
+                healthResults[name] = probe.isConnected ? .connected(
+                    toolCount: probe.toolCount,
+                    responseTime: probe.responseTime
+                ) :
                     .disconnected(error: probe.error ?? "unknown error")
             }
 

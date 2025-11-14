@@ -64,6 +64,9 @@ struct AppCommand: ParsableCommand {
 
         @Flag(help: "Wait for the application to be ready")
         var waitUntilReady = false
+
+        @Flag(name: .customLong("no-focus"), help: "Do not bring the app to the foreground after launching")
+        var noFocus = false
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -84,6 +87,7 @@ struct AppCommand: ParsableCommand {
         var outputLogger: Logger { self.logger }
 
         var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var shouldFocusAfterLaunch: Bool { !self.noFocus }
 
         /// Resolve the requested app target, launch it, optionally wait until ready, and emit output.
         @MainActor
@@ -93,6 +97,7 @@ struct AppCommand: ParsableCommand {
                 let url = try self.resolveApplicationURL()
                 let launchedApp = try await self.launchApplication(at: url, name: self.displayName(for: url))
                 try await self.waitIfNeeded(for: launchedApp)
+                self.activateIfNeeded(launchedApp)
                 self.renderLaunchSuccess(app: launchedApp)
             } catch {
                 self.handleError(error)
@@ -136,6 +141,13 @@ struct AppCommand: ParsableCommand {
         private func waitIfNeeded(for app: NSRunningApplication) async throws {
             guard self.waitUntilReady else { return }
             try await self.waitForApplicationReady(app)
+        }
+
+        private func activateIfNeeded(_ app: NSRunningApplication) {
+            guard self.shouldFocusAfterLaunch else { return }
+            if !app.activate(options: []) {
+                self.logger.error("Launch succeeded but failed to focus \(app.localizedName ?? self.app)")
+            }
         }
 
         private func renderLaunchSuccess(app: NSRunningApplication) {
@@ -889,6 +901,7 @@ extension AppCommand.LaunchSubcommand: CommanderBindableCommand {
         self.app = try values.decodePositional(0, label: "app")
         self.bundleId = values.singleOption("bundleId")
         self.waitUntilReady = values.flag("waitUntilReady")
+        self.noFocus = values.flag("noFocus")
     }
 }
 

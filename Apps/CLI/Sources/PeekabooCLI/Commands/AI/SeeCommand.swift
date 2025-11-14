@@ -30,7 +30,10 @@ private enum ScreenCaptureBridge {
         }.value
     }
 
-    static func captureScreen(services: any PeekabooServiceProviding, displayIndex: Int?) async throws -> CaptureResult {
+    static func captureScreen(
+        services: any PeekabooServiceProviding,
+        displayIndex: Int?
+    ) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureScreen(displayIndex: displayIndex)
         }.value

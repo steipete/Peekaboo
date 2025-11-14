@@ -5,8 +5,8 @@
 
 import Foundation
 import PeekabooCore
-import PeekabooProtocols
 import PeekabooFoundation
+import PeekabooProtocols
 
 /// Shared options that control logging and output behavior.
 struct CommandRuntimeOptions: Sendable {
@@ -41,8 +41,8 @@ struct CommandRuntime {
     @MainActor
     init(
         configuration: Configuration,
-        services: any PeekabooServiceProviding)
-    {
+        services: any PeekabooServiceProviding
+    ) {
         self.configuration = configuration
         self.services = services
         self.logger = Logger.shared
@@ -93,7 +93,8 @@ extension CommandRuntime {
     static func makeDefault(options: CommandRuntimeOptions) -> CommandRuntime {
         CommandRuntime(
             options: options,
-            services: self.serviceOverride ?? PeekabooServices())
+            services: self.serviceOverride ?? PeekabooServices()
+        )
     }
 
     @MainActor
@@ -104,8 +105,8 @@ extension CommandRuntime {
     @MainActor
     static func withInjectedServices<T>(
         _ services: PeekabooServices,
-        perform operation: () async throws -> T) async rethrows -> T
-    {
+        perform operation: () async throws -> T
+    ) async rethrows -> T {
         try await self.$serviceOverride.withValue(services) {
             try await operation()
         }

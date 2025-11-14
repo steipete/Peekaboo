@@ -5,10 +5,10 @@ import Foundation
 struct JSONRPCMessage {
     let dictionary: [String: Any]
 
-    var method: String? { dictionary["method"] as? String }
-    var id: Any? { dictionary["id"] }
+    var method: String? { self.dictionary["method"] as? String }
+    var id: Any? { self.dictionary["id"] }
     var params: [String: Any]? {
-        dictionary["params"] as? [String: Any]
+        self.dictionary["params"] as? [String: Any]
     }
 }
 
@@ -19,9 +19,9 @@ struct MCPStubTool {
 
     func toJSON() -> [String: Any] {
         [
-            "name": name,
-            "description": description,
-            "inputSchema": inputSchema,
+            "name": self.name,
+            "description": self.description,
+            "inputSchema": self.inputSchema,
         ]
     }
 }
@@ -60,8 +60,10 @@ final class MCPStubServer {
         ]
 
         return [
-            MCPStubTool(name: "echo", description: "Echo a message back to the caller", inputSchema: echoSchema).toJSON(),
-            MCPStubTool(name: "add", description: "Add two numbers and return the sum", inputSchema: addSchema).toJSON(),
+            MCPStubTool(name: "echo", description: "Echo a message back to the caller", inputSchema: echoSchema)
+                .toJSON(),
+            MCPStubTool(name: "add", description: "Add two numbers and return the sum", inputSchema: addSchema)
+                .toJSON(),
             MCPStubTool(name: "fail", description: "Always return an error response", inputSchema: failSchema).toJSON(),
         ]
     }()
@@ -69,7 +71,7 @@ final class MCPStubServer {
     func run() {
         while true {
             guard let message = readMessage() else { break }
-            handle(message)
+            self.handle(message)
         }
     }
 
@@ -99,14 +101,12 @@ final class MCPStubServer {
             buffer.append(chunk)
 
             if buffer.count >= crlfcrlf.count,
-               buffer.suffix(crlfcrlf.count) == crlfcrlf
-            {
+               buffer.suffix(crlfcrlf.count) == crlfcrlf {
                 return buffer
             }
 
             if buffer.count >= lflf.count,
-               buffer.suffix(lflf.count) == lflf
-            {
+               buffer.suffix(lflf.count) == lflf {
                 return buffer
             }
         }
@@ -114,8 +114,7 @@ final class MCPStubServer {
 
     private func contentLength(from headers: String) -> Int? {
         for line in headers.replacingOccurrences(of: "\r", with: "")
-            .components(separatedBy: "\n") where !line.isEmpty
-        {
+            .components(separatedBy: "\n") where !line.isEmpty {
             let parts = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
             guard parts.count == 2 else { continue }
             let key = parts[0].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -146,20 +145,20 @@ final class MCPStubServer {
 
         switch method {
         case "initialize":
-            respondInitialize(id: message.id)
+            self.respondInitialize(id: message.id)
         case "notifications/initialized":
             return
         case "tools/list":
-            respondToolsList(id: message.id)
+            self.respondToolsList(id: message.id)
         case "tools/call":
-            respondToolsCall(message)
+            self.respondToolsCall(message)
         case "shutdown":
-            sendResult(id: message.id, result: [:])
+            self.sendResult(id: message.id, result: [:])
         case "exit":
-            sendResult(id: message.id, result: [:])
+            self.sendResult(id: message.id, result: [:])
             exit(0)
         default:
-            sendError(id: message.id, code: -32601, message: "Unknown method \(method)")
+            self.sendError(id: message.id, code: -32601, message: "Unknown method \(method)")
         }
     }
 
@@ -172,11 +171,11 @@ final class MCPStubServer {
                 "version": "1.0.0",
             ],
         ]
-        sendResult(id: id, result: result)
+        self.sendResult(id: id, result: result)
     }
 
     private func respondToolsList(id: Any?) {
-        sendResult(id: id, result: ["tools": tools])
+        self.sendResult(id: id, result: ["tools": self.tools])
     }
 
     private func respondToolsCall(_ message: JSONRPCMessage) {
@@ -184,7 +183,7 @@ final class MCPStubServer {
             let params = message.params,
             let name = params["name"] as? String
         else {
-            sendError(id: message.id, code: -32602, message: "Missing tool name")
+            self.sendError(id: message.id, code: -32602, message: "Missing tool name")
             return
         }
 
@@ -193,21 +192,22 @@ final class MCPStubServer {
         switch name {
         case "echo":
             let text = arguments["message"] as? String ?? ""
-            sendToolResponse(id: message.id, content: [.textPayload(text)], isError: false)
+            self.sendToolResponse(id: message.id, content: [.textPayload(text)], isError: false)
         case "add":
             let a = (arguments["a"] as? Double) ?? Double(arguments["a"] as? Int ?? 0)
             let b = (arguments["b"] as? Double) ?? Double(arguments["b"] as? Int ?? 0)
             let sum = a + b
             let message = "sum: \(Int(sum) == Int(sum.rounded()) ? String(Int(sum)) : String(sum))"
-            sendToolResponse(id: message.id, content: [.textPayload(message)], isError: false)
+            self.sendToolResponse(id: message.id, content: [.textPayload(message)], isError: false)
         case "fail":
             let reason = arguments["message"] as? String ?? "Stub tool requested failure"
-            sendToolResponse(id: message.id, content: [.textPayload(reason)], isError: true)
+            self.sendToolResponse(id: message.id, content: [.textPayload(reason)], isError: true)
         default:
-            sendToolResponse(
+            self.sendToolResponse(
                 id: message.id,
                 content: [.textPayload("Unknown stub tool: \(name)")],
-                isError: true)
+                isError: true
+            )
         }
     }
 
@@ -221,7 +221,7 @@ final class MCPStubServer {
                 "isError": isError,
             ],
         ]
-        write(payload)
+        self.write(payload)
     }
 
     private func sendResult(id: Any?, result: [String: Any]) {
@@ -231,7 +231,7 @@ final class MCPStubServer {
             "id": id,
             "result": result,
         ]
-        write(payload)
+        self.write(payload)
     }
 
     private func sendError(id: Any?, code: Int, message: String) {
@@ -244,34 +244,34 @@ final class MCPStubServer {
                 "message": message,
             ],
         ]
-        write(payload)
+        self.write(payload)
     }
 
     private func write(_ json: [String: Any]) {
         guard JSONSerialization.isValidJSONObject(json),
               let data = try? JSONSerialization.data(withJSONObject: json)
         else {
-            writeToStderr("Invalid JSON payload: \(json)")
+            self.writeToStderr("Invalid JSON payload: \(json)")
             return
         }
 
         let header = "Content-Length: \(data.count)\r\n\r\n"
         if let headerData = header.data(using: .utf8) {
-            output.write(headerData)
+            self.output.write(headerData)
         }
-        output.write(data)
+        self.output.write(data)
         fflush(stdout)
     }
 
     private func writeToStderr(_ message: String) {
         if let data = (message + "\n").data(using: .utf8) {
-            stderr.write(data)
+            self.stderr.write(data)
         }
     }
 }
 
-private extension Dictionary where Key == String, Value == Any {
-    static func textPayload(_ text: String) -> [String: Any] {
+extension [String: Any] {
+    fileprivate static func textPayload(_ text: String) -> [String: Any] {
         [
             "type": "text",
             "text": text,
