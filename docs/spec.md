@@ -1,309 +1,152 @@
-# Peekaboo Menu Bar App Specification
+# Peekaboo 3.0 System Specification
 
-## Overview
+**Status:** Living document · **Last updated:** 2025-11-14
 
-Transform the Peekaboo app into a sophisticated menu bar application that serves as an AI-powered macOS automation assistant. The app will live in the menu bar, allowing users to interact through voice or text to automate tasks on their Mac, with full visibility into what the AI agent is doing.
+Peekaboo 3.0 is the single automation stack powering the CLI, macOS app, agent runtime, and MCP integrations. This spec replaces older menu-bar-only drafts and captures the source-of-truth architecture reflected in the current codebase (`PeekabooAutomation`, `PeekabooAgentRuntime`, `PeekabooVisualizer`, CLI targets, and the Peekaboo.app bundle).
 
-## Core Features
+---
 
-### 1. Menu Bar Interface
-- **Icon**: Ghost icon (Peekaboo mascot) in the menu bar
-- **Left-click**: Opens rich view with chat/voice interface
-- **Right-click**: Shows context menu with quick actions
-- **Status Indicator**: Visual feedback when agent is working (animated ghost, badge, etc.)
+## 1. Vision & Scope
 
-### 2. Interaction Modes
-- **Voice Mode**: Simple interface with big talk button using modern Apple Speech APIs
-- **Chat Mode**: Text-based interaction for complex commands
-- **Session Persistence**: Continuous conversation context across interactions
+Peekaboo’s mission is to make macOS GUI automation as deterministic—and debuggable—as modern web automation. Key principles:
 
-### 3. Agent Integration
-- **OpenAI Chat Completions API**: Primary AI backend with function calling and streaming
-- **Tool Execution**: Full suite of automation tools (click, type, screenshot, etc.)
-- **Real-time Feedback**: Show what the agent is thinking and doing
-- **Visual Verification**: Display screenshots with element annotations
+1. **CLI-first:** Every capability must be exposed through the `peekaboo` binary. Other surfaces (Peekaboo.app, agents, MCP) are thin shells over the same Swift services.
+2. **Semantic interaction:** Commands operate on accessibility metadata (roles, labels, element IDs) instead of raw coordinates wherever possible.
+3. **Visual transparency:** All interactions should be explainable via JSON output, logs, and annotated screenshots so humans/agents can reason about state.
+4. **Reliability by default:** Commands autofocus windows (`FocusCommandOptions`), wait for actionable elements, and reuse sessions instead of forcing manual sleeps.
+5. **Agent awareness:** Outputs are machine-friendly (`--json-output`), and behaviors are documented in `docs/commands/*.md` so autonomous clients receive the same guidance as humans.
 
-### 4. Session Details View
-- **Execution Timeline**: Step-by-step view of agent actions
-- **Tool Calls**: Detailed view of each tool invocation with parameters
-- **Success/Failure Status**: Clear indicators for each action
-- **Agent Reasoning**: Show the agent's thought process
-- **Screenshots**: Visual history of what the agent saw
+**Scope:**
+- CLI automation (`Apps/CLI`) built on `PeekabooCore` services.
+- Peekaboo.app menu-bar UI + inspector/visualizer overlays.
+- Agent runtime (Tachikoma + PeekabooAgentService) including `peekaboo agent` & MCP server (`peekaboo mcp`).
+- Shared infrastructure such as session caching, configuration, permissions, and logging.
 
-### 5. Element Inspector Integration
-- **Interactive Screenshots**: Click on screenshots to see element details
-- **Hover Annotations**: Show accessibility information on hover
-- **Element Highlighting**: Visual indicators for interactive elements
-- **Accessibility Tree**: Optional detailed view of UI structure
+Not in scope: backwards compatibility with pre-3.0 CLIs, legacy argument parser usage, or duplicate menu-bar prototypes.
 
-### 6. Settings & Configuration
-- **API Keys**: Secure storage for OpenAI/Ollama keys
-- **Launch on Startup**: System integration preferences
-- **Debug Panel**: Logs, network requests, and troubleshooting
-- **Model Selection**: Choose between different AI providers/models
+---
 
-## Architecture
+## 2. Product Surfaces
 
-### Project Structure
+| Surface | Entry point | Purpose | Notes |
+| --- | --- | --- | --- |
+| CLI | `polter peekaboo …` | Primary automation surface with Commander-based command tree, JSON outputs, and agent-friendly logging. | Default actor is `@MainActor`. Commands live under `Apps/CLI/Sources/PeekabooCLI/Commands`. |
+| Peekaboo.app | `Apps/Peekaboo` | Menu-bar UI + inspector. Shares `PeekabooServices()` with CLI and registers defaults via `services.installAgentRuntimeDefaults()`. | Launching via `polter peekaboo …` starts the UI alongside the CLI binary. |
+| Visualizer | `PeekabooVisualizer` target | Animations, overlays, and progress indicators consumed by both CLI and app. | Communicates through the service layer (no direct AppKit glue inside commands). |
+| Agent runtime | `PeekabooAgentRuntime` + Tachikoma | Implements `peekaboo agent`, GPT‑5/Sonnet integrations, dry-run planners, audio input, and MCP tools. | System prompt + tool descriptions live in `PeekabooAgentService.generateSystemPrompt()` and `create*Tool()` helpers. |
+| MCP server/client | `peekaboo mcp` | Exposes native tools via Model Context Protocol and manages external servers (add/list/test/call). | Uses `TachikomaMCPClientManager` and `PeekabooMCPServer`. |
 
-```
-Peekaboo/
-├── PeekabooCore/                    # Shared framework
-│   ├── Agent/                       # Agent logic from CLI
-│   │   ├── OpenAIAgent.swift
-│   │   ├── AgentTypes.swift
-│   │   ├── AgentFunctions.swift
-│   │   └── AgentNetworking.swift
-│   ├── AI/                          # AI provider abstraction
-│   │   ├── AIProvider.swift
-│   │   ├── OpenAIProvider.swift
-│   │   └── OllamaProvider.swift
-│   ├── Commands/                    # Command implementations
-│   │   ├── CommandProtocol.swift
-│   │   ├── SeeCommand.swift
-│   │   ├── ClickCommand.swift
-│   │   └── ... (other commands)
-│   ├── Session/                     # Session management
-│   │   ├── SessionManager.swift
-│   │   ├── SessionCache.swift
-│   │   └── SessionTypes.swift
-│   ├── UI/                          # Shared UI components
-│   │   ├── ElementOverlay/
-│   │   ├── OverlayManager.swift
-│   │   └── UIElementTypes.swift
-│   └── Utilities/                   # Common utilities
-│       ├── AXorcistExtensions.swift
-│       ├── Logging.swift
-│       └── Configuration.swift
-│
-├── GUI/Peekaboo/                    # Main menu bar app
-│   ├── App/
-│   │   ├── PeekabooApp.swift      # App entry point
-│   │   ├── AppDelegate.swift      # Lifecycle management
-│   │   └── StatusBarController.swift
-│   ├── Views/
-│   │   ├── MainView/              # Primary interaction view
-│   │   │   ├── ChatView.swift
-│   │   │   ├── VoiceView.swift
-│   │   │   └── SessionView.swift
-│   │   ├── Details/               # Session details window
-│   │   │   ├── TimelineView.swift
-│   │   │   ├── ToolCallView.swift
-│   │   │   └── ScreenshotView.swift
-│   │   ├── Settings/              # Settings window
-│   │   │   ├── SettingsView.swift
-│   │   │   ├── APIKeysView.swift
-│   │   │   └── DebugView.swift
-│   │   └── Inspector/             # Element inspection
-│   │       ├── InspectorView.swift
-│   │       └── ElementDetailsView.swift
-│   ├── Services/
-│   │   ├── AgentService.swift     # Agent coordination
-│   │   ├── SpeechService.swift    # Voice integration
-│   │   ├── SessionService.swift   # Session management
-│   │   └── PermissionService.swift
-│   └── Resources/
-│       └── Assets.xcassets        # Icons, images
-│
-├── peekaboo-cli/                    # Existing CLI (modified)
-│   └── Sources/peekaboo/
-│       └── main.swift             # CLI entry point
-│
-└── PeekabooInspector/              # Existing inspector (shared components)
-```
+---
 
-### Component Architecture
+## 3. Core Modules & Services
 
-#### 1. **PeekabooCore Framework**
-Shared Swift package containing all reusable logic:
-- Agent execution engine (extracted from CLI)
-- Command implementations with direct function calls
-- Session management with GUI-friendly callbacks
-- UI element detection and overlay components
-- Configuration and logging utilities
+### 3.1 PeekabooAutomation (`Core/PeekabooCore/Sources/PeekabooAutomation`)
+- Capture: `ScreenCaptureService`, `ImageCaptureBridge`, ScreenCaptureKit integration.
+- Automation: `UIAutomationService`, `AutomationServiceBridge` for click/type/scroll/etc.
+- Windows/Spaces/Menus/Dock/Dialog services with high-level bridges consumed by commands.
+- Session management: `SessionManager` (stores screenshots/element maps under `~/.peekaboo/session/<PID>`).
 
-#### 2. **Service Layer Architecture**
-Following VibeTunnel patterns:
+### 3.2 PeekabooAgentRuntime
+- `PeekabooAgentService`: orchestrates tools, system prompt, MCP tool registry.
+- `AgentDisplayTokens`: maps tool names to icons/text for progress output.
+- Tachikoma integrations for GPT‑5, Claude, Grok, Ollama, including audio streams (`--audio`, `--audio-file`, `--realtime`).
+
+### 3.3 PeekabooVisualizer
+- Animation + overlay payloads for CLI/app progress indicators.
+- Receives structured events from `PeekabooServices` so both CLI and UI show the same feedback.
+
+### 3.4 Command Runtime (`Apps/CLI/Sources/PeekabooCLI/Commands/Base`)
+- `CommandRuntime` wires Commander parsing to the services layer.
+- Global options (verbose/log-level/json) are hydrated in `CommandRuntimeOptions` and made available through `RuntimeOptionsConfigurable`.
+- `FocusCommandOptions` and `WindowIdentificationOptions` are reusable option groups; they map CLI flags to strongly typed structs used by automation services.
+
+### 3.5 PeekabooServices lifecycle
 ```swift
 @MainActor
-final class AgentService: ObservableObject {
-    static let shared = AgentService()
-    @Published var isExecuting = false
-    @Published var currentSession: Session?
-    // ...
-}
+let services = PeekabooServices()
+services.installAgentRuntimeDefaults()
 ```
+- Required in every surface that instantiates `PeekabooServices` directly (tests, custom daemons, etc.).
+- Registers agent runtime defaults so MCP tools, CLI, and Peekaboo.app share the same service instances.
+- CLI entry point (`PeekabooEntryPoint.swift`) creates a single `PeekabooServices` per process through `CommandRuntimeExecutor`.
 
-#### 3. **Window Management**
-Multi-window support using WindowGroup:
-- Main window (chat/voice interface)
-- Settings window
-- Session details window
-- Inspector window (optional)
+---
 
-#### 4. **State Management**
-Modern SwiftUI patterns:
-- @StateObject for service instances
-- @EnvironmentObject for app-wide state
-- @Observable for model objects
-- Avoid unnecessary ViewModels
+## 4. Session Lifecycle & Storage
 
-### Key Integration Points
+1. **Creation:** `peekaboo see` (and `image` when annotations are saved) captures the target, runs element detection, and writes files to `~/.peekaboo/session/<PID>/` via `SessionManager`. Writes happen in a staging dir followed by atomic rename to avoid partial state.
+2. **Resolution:** Interaction commands call `services.sessions.getMostRecentSession()` when `--session` is omitted. Coordinate-only commands skip session usage entirely to avoid stale data.
+3. **Reuse:** Commands that focus applications (`click`, `type`, etc.) merge session info with explicit `--app` or `FocusCommandOptions` to bring the right window/Space forward before interacting.
+4. **Cleanup:** `peekaboo clean` proxies into `services.files.clean*` helpers. Users can delete all sessions, those older than N hours, or a single session ID; `--dry-run` reports would-be deletions without touching disk.
 
-#### 1. **Agent Execution**
-- Replace CLI process spawning with direct function calls
-- Use `AgentInternalExecutor` pattern for in-app execution
-- Add progress delegates for real-time UI updates
-- Implement cancellation support
+This shared cache is the hand-off mechanism between CLI invocations, custom scripts, and agents. Nothing else should read/write UI maps manually.
 
-#### 2. **Session Visualization**
-- Transform CLI JSON output to rich UI models
-- Add timeline visualization for step-by-step execution
-- Integrate screenshot capture with element annotations
-- Store sessions in Core Data for history
+---
 
-#### 3. **Voice Integration**
-```swift
-import Speech
-import AVFoundation
+## 5. CLI Runtime Overview
 
-class SpeechService: NSObject, ObservableObject {
-    @Published var isListening = false
-    @Published var transcription = ""
-    // Modern Speech framework integration
-}
-```
+- Commands are pure Swift structs conforming to `ParsableCommand` + optional protocols (`ApplicationResolvable`, `ErrorHandlingCommand`, `RuntimeOptionsConfigurable`).
+- Commander metadata (`CommanderSignatureProviding`) replaces the previous ArgumentParser reflection and feeds both `peekaboo help` and `peekaboo learn`.
+- Long-running or high-level commands (agents, MCP) still run on the main actor but hand heavy work to services that may hop threads internally.
+- Every command documents its behavior in `docs/commands/<command>.md`. Use those docs for flag-level reference; this spec only covers architecture coupling.
 
-#### 4. **Element Inspector Integration**
-- Reuse `OverlayManager` logic for element detection
-- Adapt `ElementOverlay` views for screenshot annotation
-- Add interactive element selection on screenshots
-- Show accessibility tree on demand
+Common helpers:
+- `AutomationServiceBridge`: click/type/scroll/sleep wrappers that add waits and error hints.
+- `ensureFocused(...)`: centralizes Space switching, retries, and no-auto-focus overrides.
+- `ProcessServiceBridge`: loads and executes `.peekaboo.json` automation scripts for `peekaboo run`.
 
-## Implementation Phases
+---
 
-### Phase 1: Foundation (Week 1)
-1. **Setup PeekabooCore Framework**
-   - Extract agent logic from CLI
-   - Create shared command implementations
-   - Setup basic project structure
+## 6. Peekaboo.app & Visualizer
 
-2. **Basic Menu Bar App**
-   - StatusBarController implementation
-   - Basic window management
-   - Settings infrastructure
+- SwiftUI menu-bar app housed in `Apps/Peekaboo`. Maintains a long-lived `@State private var services = PeekabooServices()` and registers runtime defaults immediately.
+- Presents chat/voice UI tied to `PeekabooAgentService`, progress timeline (Visualizer feed), and inspector overlays.
+- Shares the same logging + configuration stack as the CLI; `PeekabooServices` guarantees parity between app and CLI behaviors.
+- Visualizer target listens for events (captures, element highlights, agent step updates) and renders them both in the app and as CLI overlays when supported.
 
-### Phase 2: Core Features (Week 2)
-1. **Agent Integration**
-   - Wire up OpenAI Chat Completions API
-   - Implement execution callbacks
-   - Basic session management
+---
 
-2. **Primary UI**
-   - Chat interface
-   - Simple voice button
-   - Real-time status updates
+## 7. Agent Runtime & MCP
 
-### Phase 3: Advanced Features (Week 3)
-1. **Session Details**
-   - Timeline visualization
-   - Tool call details
-   - Screenshot viewer
+### 7.1 `peekaboo agent`
+- Lives under `Apps/CLI/Sources/PeekabooCLI/Commands/AI/AgentCommand.swift`.
+- Supports natural-language tasks, `--dry-run`, `--max-steps`, `--resume` / `--resume-session`, `--list-sessions`, `--no-cache`, and audio options.
+- Output modes (`minimal`, `compact`, `enhanced`, `quiet`, `verbose`) adapt to terminal capabilities via `TerminalDetector`.
+- Uses Tachikoma to call GPT‑5 (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`) or Claude Sonnet 4.5. Session metadata is stored via `AgentSessionInfo` for resume flows.
 
-2. **Inspector Integration**
-   - Element overlay on screenshots
-   - Hover interactions
-   - Accessibility details
+### 7.2 MCP (`peekaboo mcp`)
+- `serve` starts `PeekabooMCPServer` over stdio/HTTP/SSE.
+- Client management commands (`list`, `add`, `remove`, `enable`, `disable`, `info`, `test`, `call`, `inspect` placeholder) interact with `TachikomaMCPClientManager` and persist config through the MCP profile.
+- Native Peekaboo tools are registered via `MCPToolRegistry`; external tools are fetched from enabled servers so agents see a unified catalog (also surfaced by `peekaboo tools`).
 
-### Phase 4: Polish (Week 4)
-1. **Voice Integration**
-   - Full speech recognition
-   - Natural language processing
-   - Voice feedback
+---
 
-2. **Final Polish**
-   - Ghost icon and animations
-   - Performance optimization
-   - Error handling
-   - Documentation
+## 8. Primary Workflows
 
-## Technical Considerations
+1. **Capture → Act loop**
+   - `see` generates session files + annotated PNG (optional) and prints the `session_id`.
+   - Interaction commands automatically pick up the freshest session (unless `--session` overrides) and autofocus the relevant window.
+   - Logs + JSON output include timings, UI bounds, and hints for debugging (e.g., element not found suggestions).
 
-### 1. **Performance**
-- Lazy loading of screenshots
-- Efficient session storage
-- Background processing for AI calls
-- Smooth animations at 60fps
+2. **Configuration & Permissions**
+   - `peekaboo config` manages `~/.peekaboo/config.json` (JSONC), credentials, and custom AI providers. Commands directly call `ConfigurationManager` so the CLI/app read identical settings at startup.
+   - `peekaboo permissions status|grant` uses `PermissionHelpers` to inspect/describe Screen Recording, Accessibility, Full Disk Access, etc. All automation commands should fail fast with actionable errors when permissions are missing.
 
-### 2. **Security**
-- Secure API key storage in Keychain
-- Permission handling for accessibility/screen recording
-- Sandboxing considerations
+3. **Automation Scripts & Agents**
+   - `.peekaboo.json` scripts (executed via `peekaboo run`) call the same commands internally; results are aggregated into `ScriptExecutionResult` for CI-friendly logging.
+   - `peekaboo agent` builds on top of those tools: it plans via GPT‑5/Sonnet, emits progress (Visualizer + stderr), and stores session history so users can resume or inspect steps. Agents always call the public CLI tools, so debugging any failure is as simple as rerunning the emitted sequence manually.
 
-### 3. **Error Handling**
-- Graceful degradation
-- User-friendly error messages
-- Retry mechanisms
-- Offline support
+4. **MCP & External Tools**
+   - Running `peekaboo mcp serve` lets Claude Desktop / MCP Inspector consume Peekaboo tools directly.
+   - Conversely, `peekaboo mcp add/list/test/call` allows Peekaboo to invoke remote MCP servers, making `peekaboo tools` the union of native and external capabilities.
 
-### 4. **Testing Strategy**
-- Unit tests for PeekabooCore
-- UI tests for critical flows
-- Integration tests with test host app
-- Performance benchmarks
+---
 
-## Design Guidelines
+## 9. Future Work & Open Questions
 
-### 1. **Visual Design**
-- Follow Apple HIG
-- Consistent with system appearance
-- Light/dark mode support
-- Subtle animations
+- **Space/window telemetry:** continue refining `SpaceCommand` outputs so CLI/app/agent logs include explicit display + Space IDs for every focused window.
+- **Right-button swipes:** `SwipeCommand` currently rejects `--right-button`; hooking that path up through `AutomationServiceBridge.swipe` is tracked separately.
+- **Inspector unification:** Peekaboo.app, CLI overlays, and `docs/interaction-debugging.md` fixtures should share a single component catalog so new detectors (e.g., hidden web fields) land once and benefit all surfaces.
+- **MCP inspect tooling:** `peekaboo mcp inspect` is a stub today; once the inspector is implemented, document its flags under `docs/commands/mcp.md` and surface it in the CLI help output.
 
-### 2. **User Experience**
-- Immediate feedback for all actions
-- Clear progress indicators
-- Cancellable operations
-- Keyboard shortcuts
-
-### 3. **Accessibility**
-- Full VoiceOver support
-- Keyboard navigation
-- High contrast mode
-- Reduced motion support
-
-## Success Metrics
-
-1. **Performance**: < 100ms UI response time
-2. **Reliability**: 99.9% uptime for core features
-3. **Usability**: Complete task in < 3 interactions
-4. **Quality**: < 0.1% crash rate
-
-## Future Enhancements
-
-1. **Plugin System**: Allow third-party tool additions
-2. **Shortcuts Integration**: Native Shortcuts app support
-3. **Multi-Model Support**: Claude, local models, etc.
-4. **Team Features**: Shared automations and templates
-5. **Analytics**: Usage insights and optimization suggestions
-
-## Dependencies
-
-### External
-- **AXorcist**: Accessibility API wrapper
-- **OpenAI Swift**: API client (or native implementation)
-- **Sparkle**: Auto-update framework
-
-### System
-- macOS 14.0+ (for latest SwiftUI features)
-- Swift 5.9+
-- Xcode 15+
-
-## Development Timeline
-
-- **Week 1**: Foundation and basic menu bar app
-- **Week 2**: Agent integration and core UI
-- **Week 3**: Advanced features and inspector
-- **Week 4**: Voice, polish, and release prep
-
-Total estimated time: 4 weeks for MVP
+For flag-level behavior, troubleshooting steps, and real-world examples, refer to the per-command docs in `docs/commands/`. This spec focuses on how the pieces fit together; the command docs capture day-to-day usage.
