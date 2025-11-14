@@ -59,10 +59,12 @@ public final class ElementDetectionService {
         self.logger.debug("Found \(windowResolution.windowTypeDescription): \(windowName)")
 
         var elementIdMap: [String: DetectedElement] = [:]
-        let detectedElements = self.collectElements(
+        let allowWebFocus = windowContext?.shouldFocusWebContent ?? true
+        let detectedElements = await self.collectElements(
             window: windowResolution.window,
             appElement: windowResolution.appElement,
             appIsActive: targetApp.isActive,
+            allowWebFocus: allowWebFocus,
             elementIdMap: &elementIdMap)
 
         // Note: Parent-child relationships are not directly supported in the protocol's DetectedElement struct
@@ -116,6 +118,14 @@ extension ElementDetectionService {
         "axdescription",
         "axunknown",
     ]
+    private static let textFieldRoles: Set<String> = [
+        "axtextfield",
+        "axtextarea",
+        "axsearchfield",
+        "axsecuretextfield",
+    ]
+    private static let maxTraversalDepth = 80
+    private static let maxWebFocusAttempts = 2
 
     // MARK: - Helper Methods
 
@@ -123,7 +133,7 @@ extension ElementDetectionService {
         switch role.lowercased() {
         case "axbutton", "axpopupbutton":
             .button
-        case "axtextfield", "axtextarea", "axsearchfield":
+        case _ where Self.textFieldRoles.contains(role.lowercased()):
             .textField
         case "axlink", "axweblink":
             .link
@@ -410,18 +420,58 @@ extension ElementDetectionService {
         window: Element,
         appElement: Element,
         appIsActive: Bool,
-        elementIdMap: inout [String: DetectedElement]) -> [DetectedElement]
+        allowWebFocus: Bool,
+        elementIdMap: inout [String: DetectedElement]) async -> [DetectedElement]
     {
         var detectedElements: [DetectedElement] = []
-        self.processElement(
-            window,
-            depth: 0,
-            detectedElements: &detectedElements,
-            elementIdMap: &elementIdMap)
+        var attempt = 0
 
-        if appIsActive, let menuBar = appElement.menuBar() {
-            self.processMenuBar(menuBar, elements: &detectedElements, elementIdMap: &elementIdMap)
-        }
+        repeat {
+            elementIdMap.removeAll(keepingCapacity: true)
+            detectedElements.removeAll(keepingCapacity: true)
+
+            var visitedElements = Set<Element>()
+            self.processElement(
+                window,
+                depth: 0,
+                detectedElements: &detectedElements,
+                elementIdMap: &elementIdMap,
+                visitedElements: &visitedElements)
+
+            self.processElement(
+                appElement,
+                depth: 0,
+                detectedElements: &detectedElements,
+                elementIdMap: &elementIdMap,
+                visitedElements: &visitedElements)
+
+            if let focusedElement = appElement.focusedUIElement() {
+                self.processElement(
+                    focusedElement,
+                    depth: 0,
+                    detectedElements: &detectedElements,
+                    elementIdMap: &elementIdMap,
+                    visitedElements: &visitedElements)
+            }
+
+            if appIsActive, let menuBar = appElement.menuBar() {
+                self.processMenuBar(menuBar, elements: &detectedElements, elementIdMap: &elementIdMap)
+            }
+
+            if detectedElements.contains(where: { $0.type == .textField }) {
+                break
+            }
+
+            guard attempt < Self.maxWebFocusAttempts,
+                  allowWebFocus,
+                  self.focusWebContentIfNeeded(window: window, appElement: appElement)
+            else {
+                break
+            }
+
+            attempt += 1
+            try? await Task.sleep(nanoseconds: 150_000_000)
+        } while true
 
         return detectedElements
     }
@@ -430,9 +480,11 @@ extension ElementDetectionService {
         _ element: Element,
         depth: Int,
         detectedElements: inout [DetectedElement],
-        elementIdMap: inout [String: DetectedElement])
+        elementIdMap: inout [String: DetectedElement],
+        visitedElements: inout Set<Element>)
     {
-        guard depth < 20 else { return }
+        guard depth < Self.maxTraversalDepth else { return }
+        guard visitedElements.insert(element).inserted else { return }
         guard let descriptor = self.describeElement(element) else { return }
 
         self.logButtonDebugInfoIfNeeded(descriptor)
@@ -453,7 +505,8 @@ extension ElementDetectionService {
                 roleDescription: descriptor.roleDescription,
                 identifier: descriptor.identifier,
                 isActionable: isActionable,
-                keyboardShortcut: keyboardShortcut))
+                keyboardShortcut: keyboardShortcut,
+                placeholder: descriptor.placeholder))
 
         let detectedElement = DetectedElement(
             id: elementId,
@@ -472,7 +525,8 @@ extension ElementDetectionService {
             of: element,
             depth: depth + 1,
             detectedElements: &detectedElements,
-            elementIdMap: &elementIdMap)
+            elementIdMap: &elementIdMap,
+            visitedElements: &visitedElements)
     }
 
     private func describeElement(_ element: Element) -> ElementDescriptor? {
@@ -489,14 +543,16 @@ extension ElementDetectionService {
             help: element.help(),
             roleDescription: element.roleDescription(),
             identifier: element.identifier(),
-            isEnabled: element.isEnabled() ?? false)
+            isEnabled: element.isEnabled() ?? false,
+            placeholder: element.placeholderValue())
     }
 
     private func processChildren(
         of element: Element,
         depth: Int,
         detectedElements: inout [DetectedElement],
-        elementIdMap: inout [String: DetectedElement])
+        elementIdMap: inout [String: DetectedElement],
+        visitedElements: inout Set<Element>)
     {
         guard let children = element.children() else { return }
         for child in children {
@@ -504,7 +560,8 @@ extension ElementDetectionService {
                 child,
                 depth: depth,
                 detectedElements: &detectedElements,
-                elementIdMap: &elementIdMap)
+                elementIdMap: &elementIdMap,
+                visitedElements: &visitedElements)
         }
     }
 
@@ -529,7 +586,8 @@ extension ElementDetectionService {
             value: descriptor.value,
             roleDescription: descriptor.roleDescription,
             description: descriptor.description,
-            identifier: descriptor.identifier)
+            identifier: descriptor.identifier,
+            placeholder: descriptor.placeholder)
 
         let childTexts = self.textualDescendants(of: element)
         return ElementLabelResolver.resolve(
@@ -585,7 +643,84 @@ extension ElementDetectionService {
             role: descriptor.role,
             roleDescription: descriptor.roleDescription,
             isEditable: element.isEditable() ?? false)
-        return ElementRoleResolver.resolveType(baseType: baseType, info: roleInfo)
+        let resolved = ElementRoleResolver.resolveType(baseType: baseType, info: roleInfo)
+
+        let loweredTitle = descriptor.title?.lowercased()
+        let loweredLabel = descriptor.label?.lowercased()
+        let keywords = ["email", "password", "username", "phone", "code"]
+        let matchesKeyword =
+            loweredTitle.map { title in keywords.contains(where: { title.contains($0) }) } ?? false ||
+            loweredLabel.map { label in keywords.contains(where: { label.contains($0) }) } ?? false
+
+        if resolved == .group,
+           (descriptor.placeholder?.isEmpty == false ||
+               matchesKeyword ||
+               self.containsTextFieldDescendant(element, depth: 0, remainingDepth: 2))
+        {
+            return .textField
+        }
+
+        return resolved
+    }
+
+    private func containsTextFieldDescendant(
+        _ element: Element,
+        depth: Int,
+        remainingDepth: Int
+    ) -> Bool {
+        guard remainingDepth >= 0 else { return false }
+        guard let children = element.children(strict: true) else { return false }
+
+        for child in children {
+            if let role = child.role()?.lowercased(),
+               Self.textFieldRoles.contains(role)
+            {
+                return true
+            }
+
+            if child.isEditable() == true {
+                return true
+            }
+
+            if self.containsTextFieldDescendant(child, depth: depth + 1, remainingDepth: remainingDepth - 1) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private func focusWebContentIfNeeded(window: Element, appElement: Element) -> Bool {
+        guard let target = self.findWebArea(in: window) ?? self.findWebArea(in: appElement) else {
+            return false
+        }
+
+        do {
+            try target.performAction(.press)
+            self.logger.debug("Focused AXWebArea to expose embedded web content")
+            return true
+        } catch {
+            self.logger.error("Failed to focus AXWebArea: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private func findWebArea(in element: Element, depth: Int = 0) -> Element? {
+        guard depth < 6 else { return nil }
+
+        let role = element.role()?.lowercased()
+        let roleDescription = element.roleDescription()?.lowercased()
+        if role == "axwebarea" || roleDescription?.contains("web area") == true {
+            return element
+        }
+
+        guard let children = element.children(strict: depth >= 1) else { return nil }
+        for child in children {
+            if let found = self.findWebArea(in: child, depth: depth + 1) {
+                return found
+            }
+        }
+        return nil
     }
 
     private func isElementActionable(_ element: Element, role: String) -> Bool {
@@ -634,6 +769,7 @@ extension ElementDetectionService {
         if let identifier = input.identifier { attributes["identifier"] = identifier }
         if input.isActionable { attributes["isActionable"] = "true" }
         if let shortcut = input.keyboardShortcut { attributes["keyboardShortcut"] = shortcut }
+        if let placeholder = input.placeholder { attributes["placeholder"] = placeholder }
 
         return attributes
     }
@@ -742,6 +878,7 @@ private struct ElementDescriptor {
     let roleDescription: String?
     let identifier: String?
     let isEnabled: Bool
+    let placeholder: String?
 }
 
 private struct ElementAttributeInput {
@@ -753,6 +890,7 @@ private struct ElementAttributeInput {
     let identifier: String?
     let isActionable: Bool
     let keyboardShortcut: String?
+    let placeholder: String?
 }
 
 extension CGSize {

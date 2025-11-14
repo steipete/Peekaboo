@@ -8,6 +8,7 @@ struct ElementLabelInfo {
     let roleDescription: String?
     let description: String?
     let identifier: String?
+    let placeholder: String?
 }
 
 enum ElementLabelResolver {
@@ -18,7 +19,7 @@ enum ElementLabelResolver {
         -> String?
     {
         let baseLabel = ElementLabelResolver.firstNonGeneric(
-            candidates: [info.label, info.title, info.value, info.roleDescription])
+            candidates: [info.label, info.title, info.value, info.placeholder, info.roleDescription])
 
         guard info.role.lowercased() == "axbutton" else {
             return baseLabel

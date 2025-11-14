@@ -344,15 +344,18 @@ public struct UIAnalysisData: Codable, Sendable {
         public let applicationName: String?
         public let windowTitle: String?
         public let windowBounds: CGRect?
+        public let shouldFocusWebContent: Bool?
 
         public init(
             applicationName: String? = nil,
             windowTitle: String? = nil,
-            windowBounds: CGRect? = nil)
+            windowBounds: CGRect? = nil,
+            shouldFocusWebContent: Bool? = nil)
         {
             self.applicationName = applicationName
             self.windowTitle = windowTitle
             self.windowBounds = windowBounds
+            self.shouldFocusWebContent = shouldFocusWebContent
         }
     }
 }

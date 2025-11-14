@@ -15,7 +15,8 @@ struct ElementLabelResolverTests {
             value: nil,
             roleDescription: nil,
             description: nil,
-            identifier: nil)
+            identifier: nil,
+            placeholder: nil)
 
         let resolved = ElementLabelResolver.resolve(info: info, childTexts: [], identifierCleaner: { $0 })
         #expect(resolved == "Submit")
@@ -30,7 +31,8 @@ struct ElementLabelResolverTests {
             value: nil,
             roleDescription: nil,
             description: nil,
-            identifier: nil)
+            identifier: nil,
+            placeholder: nil)
 
         let resolved = ElementLabelResolver.resolve(info: info, childTexts: ["Allow"], identifierCleaner: { $0 })
         #expect(resolved == "Allow")
@@ -45,7 +47,8 @@ struct ElementLabelResolverTests {
             value: nil,
             roleDescription: nil,
             description: nil,
-            identifier: "bubble-allow-button")
+            identifier: "bubble-allow-button",
+            placeholder: nil)
 
         let resolved = ElementLabelResolver.resolve(info: info, childTexts: [], identifierCleaner: { _ in "Allow" })
         #expect(resolved == "Allow")

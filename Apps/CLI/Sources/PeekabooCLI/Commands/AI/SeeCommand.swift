@@ -73,6 +73,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     @Option(help: "Analyze captured content with AI")
     var analyze: String?
+
+    @Flag(name: .customLong("no-web-focus"), help: "Skip web-content focus fallback when no text fields are detected")
+    var noWebFocus = false
     @RuntimeStorage private var runtime: CommandRuntime?
     var runtimeOptions = CommandRuntimeOptions()
 
@@ -232,7 +235,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         let windowContext = WindowContext(
             applicationName: captureResult.metadata.applicationInfo?.name,
             windowTitle: captureResult.metadata.windowInfo?.title,
-            windowBounds: captureResult.metadata.windowInfo?.bounds
+            windowBounds: captureResult.metadata.windowInfo?.bounds,
+            shouldFocusWebContent: self.noWebFocus ? false : true
         )
 
         // Detect UI elements with window context

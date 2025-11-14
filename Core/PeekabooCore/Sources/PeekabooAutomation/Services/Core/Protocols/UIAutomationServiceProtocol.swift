@@ -231,14 +231,19 @@ public nonisolated struct WindowContext: Sendable {
     /// Window bounds in screen coordinates
     public let windowBounds: CGRect?
 
+    /// Whether element detection should attempt to focus embedded web content when inputs are missing
+    public let shouldFocusWebContent: Bool?
+
     public init(
         applicationName: String? = nil,
         windowTitle: String? = nil,
-        windowBounds: CGRect? = nil)
+        windowBounds: CGRect? = nil,
+        shouldFocusWebContent: Bool? = nil)
     {
         self.applicationName = applicationName
         self.windowTitle = windowTitle
         self.windowBounds = windowBounds
+        self.shouldFocusWebContent = shouldFocusWebContent
     }
 }
 
