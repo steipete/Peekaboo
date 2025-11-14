@@ -15,6 +15,14 @@ struct TypeCommandTests {
         #expect(command.clear == false)
     }
 
+    @Test("Type command with --text option")
+    func typeWithTextOption() throws {
+        let command = try TypeCommand.parse(["--text", "Option Text", "--json-output"])
+
+        #expect(command.text == nil)
+        #expect(command.textOption == "Option Text")
+    }
+
     @Test("Type command with special keys")
     func typeWithSpecialKeys() throws {
         let command = try TypeCommand.parse(["--tab", "2", "--return", "--json-output"])

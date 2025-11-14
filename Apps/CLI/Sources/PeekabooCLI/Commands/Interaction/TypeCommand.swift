@@ -10,6 +10,9 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     @Argument(help: "Text to type")
     var text: String?
 
+    @Option(name: .customLong("text"), help: "Text to type (alternative to positional argument)")
+    var textOption: String?
+
     @Option(help: "Session ID (uses latest if not specified)")
     var session: String?
 
@@ -49,6 +52,12 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+    private var resolvedText: String? {
+        if let primary = text, !primary.isEmpty {
+            return primary
+        }
+        return textOption
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -79,7 +88,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
             actions.append(.clear)
         }
 
-        if let textToType = text {
+        if let textToType = self.resolvedText {
             actions.append(contentsOf: Self.processTextWithEscapes(textToType))
         }
 
@@ -141,7 +150,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     private func renderResult(_ typeResult: TypeResult, startTime: Date) {
         let result = TypeCommandResult(
             success: true,
-            typedText: text,
+            typedText: self.resolvedText,
             keyPresses: typeResult.keyPresses,
             totalCharacters: typeResult.totalCharacters,
             executionTime: Date().timeIntervalSince(startTime)
@@ -149,7 +158,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 
         output(result) {
             print("✅ Typing completed")
-            if let typed = text {
+            if let typed = self.resolvedText {
                 print("⌨️  Typed: \"\(typed)\"")
             }
             if typeResult.keyPresses > 0 {
@@ -250,6 +259,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 extension TypeCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.text = try values.decodeOptionalPositional(0, label: "text")
+        self.textOption = values.singleOption("text")
         self.session = values.singleOption("session")
         if let delay: Int = try values.decodeOption("delay", as: Int.self) {
             self.delay = delay

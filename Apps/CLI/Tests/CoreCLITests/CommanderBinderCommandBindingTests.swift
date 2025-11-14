@@ -353,6 +353,22 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.focusOptions.focusTimeoutSeconds == 3.5)
     }
 
+    @Test("Type command binding with text option")
+    func bindTypeCommandTextOption() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "text": ["OptionText"],
+                "session": ["abc"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: TypeCommand.self, parsedValues: parsed)
+        #expect(command.text == nil)
+        #expect(command.textOption == "OptionText")
+        #expect(command.session == "abc")
+    }
+
     @Test("Press command binding")
     func bindPressCommand() throws {
         let parsed = ParsedValues(
