@@ -16,7 +16,7 @@ enum CommanderRuntimeExecutor {
 
         if var runtimeCommand = command as? any AsyncRuntimeCommand {
             let runtimeOptions = try CommanderCLIBinder.makeRuntimeOptions(from: resolved.parsedValues)
-            let runtime = CommandRuntime(options: runtimeOptions)
+            let runtime = CommandRuntime.makeDefault(options: runtimeOptions)
             try await runtimeCommand.run(using: runtime)
             return
         }

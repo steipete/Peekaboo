@@ -18,7 +18,7 @@ extension AsyncRuntimeCommand {
     /// and executes the async implementation on the main actor.
     mutating func run() throws {
         var commandCopy = self
-        let runtime = CommandRuntime(options: CommandRuntimeOptions())
+        let runtime = CommandRuntime.makeDefault()
         let semaphore = DispatchSemaphore(value: 0)
         var thrownError: (any Error)?
 

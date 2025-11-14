@@ -11,14 +11,14 @@ enum PermissionHelpers {
     }
 
     /// Get current permission status for all Peekaboo permissions
-    static func getCurrentPermissions() async -> [PermissionInfo] {
+    static func getCurrentPermissions(
+        services: any PeekabooServiceProviding) async -> [PermissionInfo]
+    {
         // Get current permission status for all Peekaboo permissions
         let screenRecording = await Task { @MainActor in
-            await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
+            await services.screenCapture.hasScreenRecordingPermission()
         }.value
-        let accessibility = await AutomationServiceBridge.hasAccessibilityPermission(
-            services: PeekabooServices.shared
-        )
+        let accessibility = await AutomationServiceBridge.hasAccessibilityPermission(automation: services.automation)
 
         return [
             PermissionInfo(
@@ -45,9 +45,11 @@ enum PermissionHelpers {
     }
 
     /// Format permissions for help display with dynamic status
-    static func formatPermissionsForHelp() async -> String {
+    static func formatPermissionsForHelp(
+        services: any PeekabooServiceProviding) async -> String
+    {
         // Format permissions for help display with dynamic status
-        let permissions = await getCurrentPermissions()
+        let permissions = await self.getCurrentPermissions(services: services)
         var output = ["PERMISSIONS:"]
 
         for permission in permissions {

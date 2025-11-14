@@ -9,7 +9,7 @@ func ensureFocused(
     applicationName: String? = nil,
     windowTitle: String? = nil,
     options: any FocusOptionsProtocol,
-    services: PeekabooServices
+    services: any PeekabooServiceProviding
 ) async throws {
     guard options.autoFocus else {
         return
@@ -55,7 +55,7 @@ func ensureFocused(
 
             for target in fallbackTargets {
                 do {
-                    try await WindowServiceBridge.focusWindow(services: services, target: target)
+                    try await WindowServiceBridge.focusWindow(windows: services.windows, target: target)
                     return
                 } catch {
                     fallbackErrors.append(error)
@@ -64,7 +64,7 @@ func ensureFocused(
 
             if let appName = applicationName {
                 do {
-                    try await PeekabooServices.shared.applications.activateApplication(identifier: appName)
+                    try await services.applications.activateApplication(identifier: appName)
                     return
                 } catch {
                     fallbackErrors.append(error)

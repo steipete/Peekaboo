@@ -259,7 +259,7 @@ extension OutputFormattable {
 
 /// Check and require screen recording permission
 @MainActor
-func requireScreenRecordingPermission(services: PeekabooServices = PeekabooServices.shared) async throws {
+func requireScreenRecordingPermission(services: any PeekabooServiceProviding) async throws {
     // Check and require screen recording permission
     let hasPermission = await Task { @MainActor in
         await services.screenCapture.hasScreenRecordingPermission()
@@ -272,7 +272,7 @@ func requireScreenRecordingPermission(services: PeekabooServices = PeekabooServi
 
 /// Check and require accessibility permission
 @MainActor
-func requireAccessibilityPermission(services: PeekabooServices = PeekabooServices.shared) throws {
+func requireAccessibilityPermission(services: any PeekabooServiceProviding) throws {
     if !services.permissions.checkAccessibilityPermission() {
         throw CaptureError.accessibilityPermissionDenied
     }
@@ -282,33 +282,33 @@ func requireAccessibilityPermission(services: PeekabooServices = PeekabooService
 
 enum AutomationServiceBridge {
     static func waitForElement(
-        services: PeekabooServices,
+        automation: any UIAutomationServiceProtocol,
         target: ClickTarget,
         timeout: TimeInterval,
         sessionId: String?
     ) async throws -> WaitForElementResult {
         try await Task { @MainActor in
-            try await services.automation.waitForElement(target: target, timeout: timeout, sessionId: sessionId)
+            try await automation.waitForElement(target: target, timeout: timeout, sessionId: sessionId)
         }.value
     }
 
     static func click(
-        services: PeekabooServices,
+        automation: any UIAutomationServiceProtocol,
         target: ClickTarget,
         clickType: ClickType,
         sessionId: String?
     ) async throws {
         try await Task { @MainActor in
-            try await services.automation.click(target: target, clickType: clickType, sessionId: sessionId)
+            try await automation.click(target: target, clickType: clickType, sessionId: sessionId)
         }.value
     }
 
     static func typeActions(
-        services: PeekabooServices,
+        automation: any UIAutomationServiceProtocol,
         request: TypeActionsRequest
     ) async throws -> TypeResult {
         try await Task { @MainActor in
-            try await services.automation.typeActions(
+            try await automation.typeActions(
                 request.actions,
                 typingDelay: request.typingDelay,
                 sessionId: request.sessionId
@@ -317,38 +317,38 @@ enum AutomationServiceBridge {
     }
 
     static func scroll(
-        services: PeekabooServices,
+        automation: any UIAutomationServiceProtocol,
         request: ScrollRequest
     ) async throws {
         try await Task { @MainActor in
-            try await services.automation.scroll(request)
+            try await automation.scroll(request)
         }.value
     }
 
-    static func hotkey(services: PeekabooServices, keys: String, holdDuration: Int) async throws {
+    static func hotkey(automation: any UIAutomationServiceProtocol, keys: String, holdDuration: Int) async throws {
         try await Task { @MainActor in
-            try await services.automation.hotkey(keys: keys, holdDuration: holdDuration)
+            try await automation.hotkey(keys: keys, holdDuration: holdDuration)
         }.value
     }
 
     static func swipe(
-        services: PeekabooServices,
+        automation: any UIAutomationServiceProtocol,
         from: CGPoint,
         to: CGPoint,
         duration: Int,
         steps: Int
     ) async throws {
         try await Task { @MainActor in
-            try await services.automation.swipe(from: from, to: to, duration: duration, steps: steps)
+            try await automation.swipe(from: from, to: to, duration: duration, steps: steps)
         }.value
     }
 
     static func drag(
-        services: PeekabooServices,
+        automation: any UIAutomationServiceProtocol,
         request: DragRequest
     ) async throws {
         try await Task { @MainActor in
-            try await services.automation.drag(
+            try await automation.drag(
                 from: request.from,
                 to: request.to,
                 duration: request.duration,
@@ -359,24 +359,24 @@ enum AutomationServiceBridge {
     }
 
     static func moveMouse(
-        services: PeekabooServices,
+        automation: any UIAutomationServiceProtocol,
         to point: CGPoint,
         duration: Int,
         steps: Int
     ) async throws {
         try await Task { @MainActor in
-            try await services.automation.moveMouse(to: point, duration: duration, steps: steps)
+            try await automation.moveMouse(to: point, duration: duration, steps: steps)
         }.value
     }
 
     static func detectElements(
-        services: PeekabooServices,
+        automation: any UIAutomationServiceProtocol,
         imageData: Data,
         sessionId: String?,
         windowContext: WindowContext?
     ) async throws -> ElementDetectionResult {
         try await Task { @MainActor in
-            try await services.automation.detectElements(
+            try await automation.detectElements(
                 in: imageData,
                 sessionId: sessionId,
                 windowContext: windowContext
@@ -384,9 +384,9 @@ enum AutomationServiceBridge {
         }.value
     }
 
-    static func hasAccessibilityPermission(services: PeekabooServices) async -> Bool {
+    static func hasAccessibilityPermission(automation: any UIAutomationServiceProtocol) async -> Bool {
         await Task { @MainActor in
-            await services.automation.hasAccessibilityPermission()
+            await automation.hasAccessibilityPermission()
         }.value
     }
 }
@@ -406,146 +406,146 @@ struct DragRequest: Sendable {
 }
 
 enum WindowServiceBridge {
-    static func closeWindow(services: PeekabooServices, target: WindowTarget) async throws {
+    static func closeWindow(windows: any WindowManagementServiceProtocol, target: WindowTarget) async throws {
         try await Task { @MainActor in
-            try await services.windows.closeWindow(target: target)
+            try await windows.closeWindow(target: target)
         }.value
     }
 
-    static func minimizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
+    static func minimizeWindow(windows: any WindowManagementServiceProtocol, target: WindowTarget) async throws {
         try await Task { @MainActor in
-            try await services.windows.minimizeWindow(target: target)
+            try await windows.minimizeWindow(target: target)
         }.value
     }
 
-    static func maximizeWindow(services: PeekabooServices, target: WindowTarget) async throws {
+    static func maximizeWindow(windows: any WindowManagementServiceProtocol, target: WindowTarget) async throws {
         try await Task { @MainActor in
-            try await services.windows.maximizeWindow(target: target)
+            try await windows.maximizeWindow(target: target)
         }.value
     }
 
-    static func moveWindow(services: PeekabooServices, target: WindowTarget, to origin: CGPoint) async throws {
+    static func moveWindow(windows: any WindowManagementServiceProtocol, target: WindowTarget, to origin: CGPoint) async throws {
         try await Task { @MainActor in
-            try await services.windows.moveWindow(target: target, to: origin)
+            try await windows.moveWindow(target: target, to: origin)
         }.value
     }
 
-    static func resizeWindow(services: PeekabooServices, target: WindowTarget, to size: CGSize) async throws {
+    static func resizeWindow(windows: any WindowManagementServiceProtocol, target: WindowTarget, to size: CGSize) async throws {
         try await Task { @MainActor in
-            try await services.windows.resizeWindow(target: target, to: size)
+            try await windows.resizeWindow(target: target, to: size)
         }.value
     }
 
-    static func setWindowBounds(services: PeekabooServices, target: WindowTarget, bounds: CGRect) async throws {
+    static func setWindowBounds(windows: any WindowManagementServiceProtocol, target: WindowTarget, bounds: CGRect) async throws {
         try await Task { @MainActor in
-            try await services.windows.setWindowBounds(target: target, bounds: bounds)
+            try await windows.setWindowBounds(target: target, bounds: bounds)
         }.value
     }
 
-    static func focusWindow(services: PeekabooServices, target: WindowTarget) async throws {
+    static func focusWindow(windows: any WindowManagementServiceProtocol, target: WindowTarget) async throws {
         try await Task { @MainActor in
-            try await services.windows.focusWindow(target: target)
+            try await windows.focusWindow(target: target)
         }.value
     }
 
-    static func listWindows(services: PeekabooServices, target: WindowTarget) async throws -> [ServiceWindowInfo] {
+    static func listWindows(windows: any WindowManagementServiceProtocol, target: WindowTarget) async throws -> [ServiceWindowInfo] {
         try await Task { @MainActor in
-            try await services.windows.listWindows(target: target)
+            try await windows.listWindows(target: target)
         }.value
     }
 }
 
 enum MenuServiceBridge {
-    static func listMenus(services: PeekabooServices, appIdentifier: String) async throws -> MenuStructure {
+    static func listMenus(menu: any MenuServiceProtocol, appIdentifier: String) async throws -> MenuStructure {
         try await Task { @MainActor in
-            try await services.menu.listMenus(for: appIdentifier)
+            try await menu.listMenus(for: appIdentifier)
         }.value
     }
 
-    static func listFrontmostMenus(services: PeekabooServices) async throws -> MenuStructure {
+    static func listFrontmostMenus(menu: any MenuServiceProtocol) async throws -> MenuStructure {
         try await Task { @MainActor in
-            try await services.menu.listFrontmostMenus()
+            try await menu.listFrontmostMenus()
         }.value
     }
 
-    static func listMenuExtras(services: PeekabooServices) async throws -> [MenuExtraInfo] {
+    static func listMenuExtras(menu: any MenuServiceProtocol) async throws -> [MenuExtraInfo] {
         try await Task { @MainActor in
-            try await services.menu.listMenuExtras()
+            try await menu.listMenuExtras()
         }.value
     }
 
-    static func clickMenuItem(services: PeekabooServices, appIdentifier: String, itemPath: String) async throws {
+    static func clickMenuItem(menu: any MenuServiceProtocol, appIdentifier: String, itemPath: String) async throws {
         try await Task { @MainActor in
-            try await services.menu.clickMenuItem(app: appIdentifier, itemPath: itemPath)
+            try await menu.clickMenuItem(app: appIdentifier, itemPath: itemPath)
         }.value
     }
 
-    static func clickMenuItemByName(services: PeekabooServices, appIdentifier: String, itemName: String) async throws {
+    static func clickMenuItemByName(menu: any MenuServiceProtocol, appIdentifier: String, itemName: String) async throws {
         try await Task { @MainActor in
-            try await services.menu.clickMenuItemByName(app: appIdentifier, itemName: itemName)
+            try await menu.clickMenuItemByName(app: appIdentifier, itemName: itemName)
         }.value
     }
 
-    static func clickMenuExtra(services: PeekabooServices, title: String) async throws {
+    static func clickMenuExtra(menu: any MenuServiceProtocol, title: String) async throws {
         try await Task { @MainActor in
-            try await services.menu.clickMenuExtra(title: title)
+            try await menu.clickMenuExtra(title: title)
         }.value
     }
 
-    static func listMenuBarItems(services: PeekabooServices) async throws -> [MenuBarItemInfo] {
+    static func listMenuBarItems(menu: any MenuServiceProtocol) async throws -> [MenuBarItemInfo] {
         try await Task { @MainActor in
-            try await services.menu.listMenuBarItems()
+            try await menu.listMenuBarItems()
         }.value
     }
 
-    static func clickMenuBarItem(named name: String, services: PeekabooServices) async throws -> PeekabooCore
+    static func clickMenuBarItem(named name: String, menu: any MenuServiceProtocol) async throws -> PeekabooCore
     .ClickResult {
         try await Task<PeekabooCore.ClickResult, any Error> { @MainActor in
-            try await services.menu.clickMenuBarItem(named: name)
+            try await menu.clickMenuBarItem(named: name)
         }.value
     }
 
-    static func clickMenuBarItem(at index: Int, services: PeekabooServices) async throws -> PeekabooCore.ClickResult {
+    static func clickMenuBarItem(at index: Int, menu: any MenuServiceProtocol) async throws -> PeekabooCore.ClickResult {
         try await Task<PeekabooCore.ClickResult, any Error> { @MainActor in
-            try await services.menu.clickMenuBarItem(at: index)
+            try await menu.clickMenuBarItem(at: index)
         }.value
     }
 }
 
 enum DockServiceBridge {
-    static func launchFromDock(services: PeekabooServices, appName: String) async throws {
+    static func launchFromDock(dock: any DockServiceProtocol, appName: String) async throws {
         try await Task { @MainActor in
-            try await services.dock.launchFromDock(appName: appName)
+            try await dock.launchFromDock(appName: appName)
         }.value
     }
 
-    static func findDockItem(services: PeekabooServices, name: String) async throws -> DockItem {
+    static func findDockItem(dock: any DockServiceProtocol, name: String) async throws -> DockItem {
         try await Task { @MainActor in
-            try await services.dock.findDockItem(name: name)
+            try await dock.findDockItem(name: name)
         }.value
     }
 
-    static func rightClickDockItem(services: PeekabooServices, appName: String, menuItem: String?) async throws {
+    static func rightClickDockItem(dock: any DockServiceProtocol, appName: String, menuItem: String?) async throws {
         try await Task { @MainActor in
-            try await services.dock.rightClickDockItem(appName: appName, menuItem: menuItem)
+            try await dock.rightClickDockItem(appName: appName, menuItem: menuItem)
         }.value
     }
 
-    static func hideDock(services: PeekabooServices) async throws {
+    static func hideDock(dock: any DockServiceProtocol) async throws {
         try await Task { @MainActor in
-            try await services.dock.hideDock()
+            try await dock.hideDock()
         }.value
     }
 
-    static func showDock(services: PeekabooServices) async throws {
+    static func showDock(dock: any DockServiceProtocol) async throws {
         try await Task { @MainActor in
-            try await services.dock.showDock()
+            try await dock.showDock()
         }.value
     }
 
-    static func listDockItems(services: PeekabooServices, includeAll: Bool) async throws -> [DockItem] {
+    static func listDockItems(dock: any DockServiceProtocol, includeAll: Bool) async throws -> [DockItem] {
         try await Task { @MainActor in
-            try await services.dock.listDockItems(includeAll: includeAll)
+            try await dock.listDockItems(includeAll: includeAll)
         }.value
     }
 }
@@ -618,7 +618,7 @@ extension WindowIdentificationOptions {
     /// Re-fetch the window info after a mutation so callers report fresh bounds.
     @MainActor
     func refetchWindowInfo(
-        services: PeekabooServices,
+        services: any PeekabooServiceProviding,
         logger: Logger,
         context: StaticString
     ) async -> ServiceWindowInfo? {
@@ -629,7 +629,7 @@ extension WindowIdentificationOptions {
 
         do {
             let refreshedWindows = try await WindowServiceBridge.listWindows(
-                services: services,
+                windows: services.windows,
                 target: target
             )
             return self.selectWindow(from: refreshedWindows)
@@ -676,7 +676,7 @@ extension WindowIdentificationOptions {
 protocol ApplicationResolver {}
 
 extension ApplicationResolver {
-    func resolveApplication(_ identifier: String, services: PeekabooServices) async throws -> ServiceApplicationInfo {
+    func resolveApplication(_ identifier: String, services: any PeekabooServiceProviding) async throws -> ServiceApplicationInfo {
         do {
             return try await services.applications.findApplication(identifier: identifier)
         } catch {

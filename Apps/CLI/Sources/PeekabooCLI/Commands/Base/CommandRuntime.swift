@@ -24,6 +24,9 @@ struct CommandRuntimeOptions: Sendable {
 
 /// Runtime context passed to runtime-aware commands.
 struct CommandRuntime {
+    @TaskLocal
+    private static var serviceOverride: PeekabooServices?
+
     struct Configuration {
         var verbose: Bool
         var jsonOutput: Bool
@@ -31,13 +34,16 @@ struct CommandRuntime {
     }
 
     let configuration: Configuration
-    @MainActor let services: PeekabooServices
+    @MainActor let services: any PeekabooServiceProviding
     @MainActor let logger: Logger
 
     @MainActor
-    init(configuration: Configuration) {
+    init(
+        configuration: Configuration,
+        services: any PeekabooServiceProviding)
+    {
         self.configuration = configuration
-        self.services = PeekabooServices.shared
+        self.services = services
         self.logger = Logger.shared
 
         self.logger.setJsonOutputMode(configuration.jsonOutput)
@@ -74,8 +80,32 @@ struct CommandRuntime {
     }
 
     @MainActor
-    init(options: CommandRuntimeOptions) {
-        self.init(configuration: options.makeConfiguration())
+    init(options: CommandRuntimeOptions, services: any PeekabooServiceProviding) {
+        self.init(configuration: options.makeConfiguration(), services: services)
+    }
+}
+
+extension CommandRuntime {
+    @MainActor
+    static func makeDefault(options: CommandRuntimeOptions) -> CommandRuntime {
+        CommandRuntime(
+            options: options,
+            services: self.serviceOverride ?? PeekabooServices())
+    }
+
+    @MainActor
+    static func makeDefault() -> CommandRuntime {
+        self.makeDefault(options: CommandRuntimeOptions())
+    }
+
+    @MainActor
+    static func withInjectedServices<T>(
+        _ services: PeekabooServices,
+        perform operation: () async throws -> T) async rethrows -> T
+    {
+        try await self.$serviceOverride.withValue(services) {
+            try await operation()
+        }
     }
 }
 
