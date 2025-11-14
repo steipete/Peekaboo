@@ -38,6 +38,7 @@ opt_in_rules:
   - empty_count
   - empty_string
   - explicit_init
+  - force_unwrapping
   - fallthrough
   - fatal_error_message
   - first_where
