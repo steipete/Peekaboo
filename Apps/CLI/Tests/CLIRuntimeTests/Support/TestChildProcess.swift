@@ -60,6 +60,10 @@ enum TestChildProcess {
         )
     }
 
+    static func canLocatePeekabooBinary() -> Bool {
+        (try? self.peekabooBinaryURL()) != nil
+    }
+
     private static func packageRootURL() -> URL {
         var url = URL(fileURLWithPath: #filePath)
         // .../Apps/CLI/Tests/CLIRuntimeTests/Support/TestChildProcess.swift
