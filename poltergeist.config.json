@@ -3,7 +3,7 @@
   "projectType": "mixed",
   "targets": [
     {
-      "name": "peekaboo",
+      "name": "Peekaboo",
       "type": "executable",
       "enabled": true,
       "buildCommand": "./scripts/build-swift-debug.sh",
@@ -29,7 +29,43 @@
       ]
     },
     {
-      "name": "peekaboo-mac",
+      "name": "Commander",
+      "type": "test",
+      "enabled": true,
+      "testCommand": "./runner swift test --package-path Commander",
+      "watchPaths": [
+        "Commander/**/*.swift",
+        "Commander/Package.swift"
+      ],
+      "settlingDelay": 1000,
+      "debounceInterval": 5000
+    },
+    {
+      "name": "AXorcist",
+      "type": "test",
+      "enabled": true,
+      "testCommand": "./runner swift test --package-path AXorcist",
+      "watchPaths": [
+        "AXorcist/**/*.swift",
+        "AXorcist/Package.swift"
+      ],
+      "settlingDelay": 1000,
+      "debounceInterval": 5000
+    },
+    {
+      "name": "Tachikoma",
+      "type": "test",
+      "enabled": true,
+      "testCommand": "./runner swift test --package-path Tachikoma",
+      "watchPaths": [
+        "Tachikoma/**/*.swift",
+        "Tachikoma/Package.swift"
+      ],
+      "settlingDelay": 1000,
+      "debounceInterval": 5000
+    },
+    {
+      "name": "Peekaboo.app",
       "type": "app-bundle",
       "platform": "macos",
       "enabled": true,
@@ -113,10 +149,10 @@
     {
       "label": "SwiftLint",
       "command": "./scripts/status-swiftlint.sh",
-      "targets": ["peekaboo"],
+      "targets": ["Peekaboo"],
       "cooldownSeconds": 60,
       "timeoutSeconds": 300,
-      "maxLines": 6
+      "maxLines": 3
     }
   ]
 }
