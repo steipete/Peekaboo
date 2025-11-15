@@ -134,6 +134,7 @@ polter peekaboo <command>     # Run CLI with automatic rebuild
 ./scripts/pblog.sh -f          # Stream logs
 npm run poltergeist:status     # Check build status
 alias pb='polter peekaboo'    # Add to ~/.zshrc for convenience
+pnpm oracle                   # Smart Oracle CLI quick help
 
 # Examples
 polter peekaboo agent "take screenshot"
@@ -144,6 +145,8 @@ polter peekaboo see --annotate
 # ./peekaboo                   # May run stale binary
 # ./scripts/peekaboo-wait.sh   # Redundant wrapper, use polter directly
 ```
+
+Oracle is a CLI to get help from a very smart AI. Use it for tricky issues and call `pnpm oracle` for usage details.
 
 ## Poltergeist Usage
 
