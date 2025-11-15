@@ -170,6 +170,7 @@ var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOpt
 var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
 }
 
+@MainActor
 private final class TerminalModeGuard {
     private let fd: Int32
     private var original = termios()
@@ -196,13 +197,14 @@ private final class TerminalModeGuard {
         self.active = false
     }
 
+    @MainActor
     deinit {
         self.restore()
     }
 }
 
 private final class EscapeKeyMonitor {
-    private var source: DispatchSourceRead?
+    private var source: (any DispatchSourceRead)?
     private var terminalGuard: TerminalModeGuard?
     private let handler: @Sendable () async -> Void
     private let queue = DispatchQueue(label: "peekaboo.escape.monitor")
@@ -1447,9 +1449,15 @@ private final class AgentChatInput: Component {
     var onSubmit: ((String) -> Void)?
     var onCancel: (() -> Void)?
     var onInterrupt: (() -> Void)?
+    var onQueueWhileLocked: (() -> Void)?
 
     var isLocked: Bool = false {
-        didSet { self.editor.disableSubmit = self.isLocked }
+        didSet {
+            // Keep submit enabled so users can queue prompts while a run is active.
+            if !self.isLocked {
+                self.editor.disableSubmit = false
+            }
+        }
     }
 
     init() {
@@ -1477,16 +1485,24 @@ private final class AgentChatInput: Component {
                 self.onCancel?()
                 return
             }
+        case .key(.end, _):
+            if self.isLocked {
+                self.onQueueWhileLocked?()
+                return
+            }
         default:
             break
         }
 
-        guard !self.isLocked else { return }
         self.editor.handle(input: input)
     }
 
     func clear() {
         self.editor.setText("")
+    }
+
+    func currentText() -> String {
+        self.editor.getText()
     }
 }
 
@@ -1501,6 +1517,8 @@ private final class AgentChatUI {
     private let header: Text
     private let sessionLine: Text
     private let helpLines: [String]
+    private let queueContainer = Container()
+    private let queuePreview = Text(text: "", paddingX: 1, paddingY: 0)
 
     private var promptContinuation: AsyncStream<String>.Continuation?
     private var loader: Loader?
@@ -1508,6 +1526,8 @@ private final class AgentChatUI {
     private var assistantComponent: MarkdownComponent?
     private var thinkingComponent: Text?
     private var sessionId: String?
+    private var queuedPrompts: [String] = []
+    private var isRunning = false
 
     init(modelDescription: String, sessionId: String?, helpLines: [String]) {
         self.tui = TUI(terminal: ProcessTerminal())
@@ -1533,6 +1553,9 @@ private final class AgentChatUI {
         self.input.onInterrupt = { [weak self] in
             self?.onInterruptRequested?()
         }
+        self.input.onQueueWhileLocked = { [weak self] in
+            self?.queueCurrentInput()
+        }
     }
 
     func start() throws {
@@ -1541,6 +1564,7 @@ private final class AgentChatUI {
         self.tui.addChild(Spacer(lines: 1))
         self.tui.addChild(self.messages)
         self.tui.addChild(Spacer(lines: 1))
+        self.tui.addChild(self.queueContainer)
         self.tui.addChild(self.input)
         self.tui.setFocus(self.input)
 
@@ -1593,10 +1617,15 @@ private final class AgentChatUI {
     }
 
     func setRunning(_ running: Bool) {
+        let wasRunning = self.isRunning
+        self.isRunning = running
         self.input.isLocked = running
         if !running {
             self.loader?.stop()
             self.loader = nil
+            if wasRunning {
+                self.processNextQueuedPromptIfNeeded()
+            }
         }
     }
 
@@ -1686,8 +1715,64 @@ private final class AgentChatUI {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        self.appendUserMessage(trimmed)
-        self.promptContinuation?.yield(trimmed)
+        if self.isRunning {
+            self.enqueueQueuedPrompt(trimmed)
+            self.input.clear()
+            return
+        }
+
+        self.dispatchPrompt(trimmed)
+    }
+
+    private func queueCurrentInput() {
+        guard self.isRunning else { return }
+        let trimmed = self.input.currentText().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        self.enqueueQueuedPrompt(trimmed)
+        self.input.clear()
+    }
+
+    private func enqueueQueuedPrompt(_ prompt: String) {
+        self.queuedPrompts.append(prompt)
+        self.updateQueuePreview()
+    }
+
+    private func updateQueuePreview() {
+        if self.queuedPrompts.isEmpty {
+            self.queueContainer.clear()
+            self.queuePreview.text = ""
+            self.requestRender()
+            return
+        }
+
+        self.queuePreview.text = self.queuePreviewLine()
+        if self.queueContainer.children.isEmpty {
+            self.queueContainer.addChild(self.queuePreview)
+        }
+        self.requestRender()
+    }
+
+    private func queuePreviewLine() -> String {
+        let joined = self.queuedPrompts.joined(separator: "   ·   ")
+        var summary = "Queued (\(self.queuedPrompts.count)): \(joined)"
+        let limit = 96
+        if summary.count > limit {
+            let index = summary.index(summary.startIndex, offsetBy: max(0, limit - 1))
+            summary = String(summary[..<index]) + "…"
+        }
+        return summary
+    }
+
+    private func processNextQueuedPromptIfNeeded() {
+        guard !self.queuedPrompts.isEmpty else { return }
+        let next = self.queuedPrompts.removeFirst()
+        self.updateQueuePreview()
+        self.dispatchPrompt(next)
+    }
+
+    private func dispatchPrompt(_ text: String) {
+        self.appendUserMessage(text)
+        self.promptContinuation?.yield(text)
     }
 
     private func appendUserMessage(_ text: String) {
