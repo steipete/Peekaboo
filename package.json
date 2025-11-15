@@ -33,6 +33,7 @@
     "poltergeist:rest": "./runner ./scripts/poltergeist-wrapper.sh rest",
     "poltergeist:status": "./runner ./scripts/poltergeist-wrapper.sh status",
     "poltergeist:logs": "./runner ./scripts/poltergeist-wrapper.sh logs",
+    "poltergeist:panel": "./scripts/poltergeist-wrapper.sh panel",
     "oracle": "./runner pnpm -C ../oracle oracle"
   },
   "repository": {
