@@ -21,7 +21,7 @@
     "test:all": "./runner bash -lc 'set -euo pipefail; cd Apps/CLI && swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION && PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift test'",
     "test": "pnpm run test:safe",
     "tachikoma:test:integration": "./runner bash -lc 'cd Tachikoma && source ~/.profile && INTEGRATION_TESTS=1 swift test --parallel -Xswiftc -DLIVE_PROVIDER_TESTS'",
-    "lint:swift": "./runner swiftlint --config Apps/CLI/.swiftlint.yml --path Apps/CLI",
+    "lint:swift": "./runner swiftlint lint --config Apps/CLI/.swiftlint.yml Apps/CLI",
     "lint": "pnpm run lint:swift",
     "format:swift": "./runner swiftformat Apps/CLI",
     "format": "pnpm run format:swift",
