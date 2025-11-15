@@ -496,11 +496,11 @@ extension ImageCommand {
             window.alpha > 0.05 && !window.isMinimized && !window.isOffScreen
         }
 
-        if let ranked = visibleWindows.sorted(by: Self.compareWindows).first {
+        if let ranked = visibleWindows.min(by: Self.compareWindows) {
             return ranked
         }
 
-        return windows.sorted { $0.index < $1.index }.first
+        return windows.min { $0.index < $1.index }
     }
 
     private static func compareWindows(_ lhs: ServiceWindowInfo, _ rhs: ServiceWindowInfo) -> Bool {

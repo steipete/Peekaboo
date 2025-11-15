@@ -66,8 +66,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
         }
 
         if let profileName = self.profile?.lowercased(),
-           MovementProfileSelection(rawValue: profileName) == nil
-        {
+           MovementProfileSelection(rawValue: profileName) == nil {
             throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
         }
     }
@@ -212,8 +211,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
     private var selectedProfile: MovementProfileSelection {
         guard let profileName = self.profile?.lowercased(),
-              let selection = MovementProfileSelection(rawValue: profileName) else
-        {
+              let selection = MovementProfileSelection(rawValue: profileName) else {
             return .linear
         }
         return selection

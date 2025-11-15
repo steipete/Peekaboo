@@ -165,8 +165,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         }
 
         if let profileName = self.profile?.lowercased(),
-           CursorMovementProfileSelection(rawValue: profileName) == nil
-        {
+           CursorMovementProfileSelection(rawValue: profileName) == nil {
             throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
         }
     }
