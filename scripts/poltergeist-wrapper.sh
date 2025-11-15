@@ -29,6 +29,19 @@ if [[ "$NEEDS_CONFIG" == "true" ]]; then
   set -- "$@" --config "$PROJECT_DIR/poltergeist.config.json"
 fi
 
+# Always run against the Peekaboo config (not the Poltergeist repo itself)
+CONFIG_PATH="$PROJECT_DIR/poltergeist.config.json"
+ADD_CONFIG_FLAG=true
+for arg in "$@"; do
+  case "$arg" in
+    -c|--config) ADD_CONFIG_FLAG=false ;;
+    --config=*) ADD_CONFIG_FLAG=false ;;
+  esac
+done
+if $ADD_CONFIG_FLAG; then
+  set -- "$@" --config "$CONFIG_PATH"
+fi
+
 # Run directly from TypeScript sources using tsx in the Poltergeist repo.
 if { [ "$1" = "panel" ] || { [ "$1" = "status" ] && [ "$2" = "panel" ]; }; }; then
   exec pnpm --dir "$POLTER_DIR" exec tsx --watch "$CLI_TS" "$@"
