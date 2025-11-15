@@ -191,7 +191,10 @@ struct VisualizerTestView: View {
 
     func testTypeAnimation() async {
         let keys = ["H", "e", "l", "l", "o", "Space", "W", "o", "r", "l", "d"]
-        _ = await self.coordinator.showTypingFeedback(keys: keys, duration: 3.0)
+        _ = await self.coordinator.showTypingFeedback(
+            keys: keys,
+            duration: 3.0,
+            cadence: .human(wordsPerMinute: 55))
     }
 
     func testScrollAnimation() async {

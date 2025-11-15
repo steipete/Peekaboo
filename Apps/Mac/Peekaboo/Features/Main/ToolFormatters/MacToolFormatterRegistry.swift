@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import PeekabooCore
 
 /// Registry that manages all tool formatters for the Mac app
 @MainActor
@@ -68,6 +69,12 @@ final class MacToolFormatterRegistry {
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
             return nil
+        }
+
+        if let summary = ToolEventSummary.from(resultJSON: json)?.shortDescription(toolName: toolName),
+           !summary.isEmpty
+        {
+            return summary
         }
 
         // Try to get formatter

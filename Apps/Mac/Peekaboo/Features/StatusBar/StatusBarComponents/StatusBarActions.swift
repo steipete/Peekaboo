@@ -70,8 +70,10 @@ struct NewSessionButton: View {
             Label("New Session", systemImage: "plus")
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
+                .foregroundStyle(.white.opacity(0.92))
+                .menuActionCapsule(fillOpacity: 0.16)
         })
-        .buttonStyle(MenuActionButtonStyle())
+        .buttonStyle(.modern)
     }
 }
 
@@ -84,8 +86,10 @@ struct ExpandButton: View {
             Label("Expand", systemImage: "arrow.up.left.and.arrow.down.right")
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
+                .foregroundStyle(.white.opacity(0.92))
+                .menuActionCapsule(fillOpacity: 0.16)
         })
-        .buttonStyle(MenuActionButtonStyle())
+        .buttonStyle(.modern)
     }
 }
 
@@ -99,40 +103,23 @@ struct QuickActionsView: View {
             Button(action: self.onOpenMainWindow, label: {
                 Label("Open Main Window", systemImage: "rectangle.stack")
                     .frame(maxWidth: .infinity)
+                    .foregroundStyle(.white.opacity(0.92))
+                    .menuActionCapsule(fillOpacity: 0.16)
             })
-            .buttonStyle(MenuActionButtonStyle())
+            .buttonStyle(.modern)
 
             Button(action: self.onCreateNewSession, label: {
                 Label("New Session", systemImage: "plus.circle")
                     .frame(maxWidth: .infinity)
+                    .foregroundStyle(.white.opacity(0.92))
+                    .menuActionCapsule(fillOpacity: 0.16)
             })
-            .buttonStyle(MenuActionButtonStyle())
+            .buttonStyle(.modern)
         }
     }
 }
 
 // MARK: - Shared Styling
-
-struct MenuActionButtonStyle: ButtonStyle {
-    typealias Body = AnyView
-
-    func makeBody(configuration: Configuration) -> AnyView {
-        AnyView(
-            configuration.label
-                .foregroundStyle(.white.opacity(0.92))
-                .padding(.vertical, 10)
-                .padding(.horizontal, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(configuration.isPressed ? 0.24 : 0.16))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.white.opacity(0.2))))
-                .shadow(color: Color.black.opacity(configuration.isPressed ? 0.1 : 0.18), radius: 12, y: 8)
-                .scaleEffect(configuration.isPressed ? 0.98 : 1)
-                .animation(.easeOut(duration: 0.12), value: configuration.isPressed))
-    }
-}
 
 extension View {
     fileprivate func menuActionCapsule(fillOpacity: Double) -> some View {
@@ -145,5 +132,6 @@ extension View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .stroke(Color.white.opacity(0.15))))
+            .shadow(color: Color.black.opacity(0.18), radius: 12, y: 8)
     }
 }

@@ -48,9 +48,14 @@ public struct SleepTool: MCPTool {
         let actualDuration = Date().timeIntervalSince(startTime) * 1000 // Convert to ms
         let seconds = Double(milliseconds) / 1000.0
 
-        let summary =
+        let summaryText =
             "\(AgentDisplayTokens.Status.success) Paused for \(seconds)s " +
             "(requested: \(milliseconds)ms, actual: \(Int(actualDuration))ms)"
-        return ToolResponse.text(summary)
+        let summaryMeta = ToolEventSummary(
+            actionDescription: "Sleep",
+            waitDurationMs: actualDuration,
+            waitReason: nil
+        )
+        return ToolResponse.text(summaryText, meta: ToolEventSummary.merge(summary: summaryMeta, into: nil))
     }
 }

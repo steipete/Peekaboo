@@ -157,12 +157,18 @@ public struct SpaceTool: MCPTool {
             output += "\n"
         }
 
+        let message = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseMeta: [String: Value] = [
+            "count": .double(Double(spaces.count)),
+            "execution_time": .double(executionTime),
+            "detailed": .bool(detailed),
+        ]
+        let summary = ToolEventSummary(
+            actionDescription: "List Spaces",
+            notes: "\(spaces.count) spaces")
         return ToolResponse(
-            content: [.text(output.trimmingCharacters(in: .whitespacesAndNewlines))],
-            meta: .object([
-                "count": .double(Double(spaces.count)),
-                "execution_time": .double(executionTime),
-            ]))
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     @MainActor
@@ -197,13 +203,17 @@ public struct SpaceTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
         let message = self.successMessage("Switched to Space \(spaceNumber)", duration: executionTime)
 
+        let baseMeta: [String: Value] = [
+            "space_number": .double(Double(spaceNumber)),
+            "space_id": .double(Double(targetSpace.id)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            actionDescription: "Switch Space",
+            notes: "Space \(spaceNumber)")
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "space_number": .double(Double(spaceNumber)),
-                "space_id": .double(Double(targetSpace.id)),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     @MainActor
@@ -255,11 +265,11 @@ public struct SpaceTool: MCPTool {
     {
         switch action {
         case let .list(detailed):
-            try await self.handleList(service: service, detailed: detailed, startTime: startTime)
+            return try await self.handleList(service: service, detailed: detailed, startTime: startTime)
         case let .switchSpace(spaceNumber):
-            try await self.handleSwitch(service: service, spaceNumber: spaceNumber, startTime: startTime)
+            return try await self.handleSwitch(service: service, spaceNumber: spaceNumber, startTime: startTime)
         case let .moveWindow(request):
-            try await self.handleMoveWindow(service: service, request: request, startTime: startTime)
+            return try await self.handleMoveWindow(service: service, request: request, startTime: startTime)
         }
     }
 
@@ -381,14 +391,19 @@ extension SpaceTool {
             "Moved window '\(windowInfo.title)' to current Space",
             duration: executionTime)
 
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowID)),
+            "moved_to_current": .bool(true),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            windowTitle: windowInfo.title,
+            actionDescription: "Space Move",
+            notes: "current")
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowID)),
-                "moved_to_current": .bool(true),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     @MainActor
@@ -420,15 +435,20 @@ extension SpaceTool {
         let body = "Moved window '\(windowInfo.title)' to Space \(targetSpaceNumber)\(followText)"
         let message = self.successMessage(body, duration: executionTime)
 
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowID)),
+            "target_space_number": .double(Double(targetSpaceNumber)),
+            "target_space_id": .double(Double(targetSpace.id)),
+            "followed": .bool(request.follow),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            windowTitle: windowInfo.title,
+            actionDescription: "Space Move",
+            notes: "space \(targetSpaceNumber)")
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowID)),
-                "target_space_number": .double(Double(targetSpaceNumber)),
-                "target_space_id": .double(Double(targetSpace.id)),
-                "followed": .bool(request.follow),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 }

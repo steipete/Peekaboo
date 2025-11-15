@@ -320,7 +320,10 @@ struct AnimationToggleRow: View {
     @MainActor
     private func previewTyping() async {
         let sampleKeys = ["H", "e", "l", "l", "o"]
-        _ = await self.visualizerCoordinator.showTypingFeedback(keys: sampleKeys, duration: 2.0)
+        _ = await self.visualizerCoordinator.showTypingFeedback(
+            keys: sampleKeys,
+            duration: 2.0,
+            cadence: .human(wordsPerMinute: 60))
     }
 
     @MainActor

@@ -139,13 +139,20 @@ public struct ScrollTool: MCPTool {
         let message = "\(AgentDisplayTokens.Status.success) Performed \(scrollDescription) \(request.direction) " +
             "(\(request.amount) ticks) \(target.description) in \(duration)"
 
-        return ToolResponse.text(message)
+        let summary = ToolEventSummary(
+            targetApp: target.appName,
+            actionDescription: request.smooth ? "Smooth scroll" : "Scroll",
+            scrollDirection: request.direction.rawValue,
+            scrollAmount: Double(request.amount),
+            notes: target.description
+        )
+        return ToolResponse.text(message, meta: ToolEventSummary.merge(summary: summary, into: nil))
     }
 
     @MainActor
     private func resolveTargetDescription(request: ScrollToolRequest) async throws -> ScrollTargetDescription {
         guard let elementId = request.elementId else {
-            return ScrollTargetDescription(elementId: nil, description: "at current mouse position")
+            return ScrollTargetDescription(elementId: nil, description: "at current mouse position", appName: nil)
         }
 
         guard let session = await self.getSession(id: request.sessionId) else {
@@ -159,7 +166,10 @@ public struct ScrollTool: MCPTool {
 
         let label = element.title ?? element.label ?? "untitled"
         let description = "on \(element.role): \(label)"
-        return ScrollTargetDescription(elementId: elementId, description: description)
+        return ScrollTargetDescription(
+            elementId: elementId,
+            description: description,
+            appName: session.applicationName)
     }
 }
 
@@ -175,6 +185,7 @@ private struct ScrollToolRequest {
 private struct ScrollTargetDescription {
     let elementId: String?
     let description: String
+    let appName: String?
 }
 
 private struct ScrollToolValidationError: Error {

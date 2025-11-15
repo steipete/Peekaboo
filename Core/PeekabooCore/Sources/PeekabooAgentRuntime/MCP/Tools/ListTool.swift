@@ -109,7 +109,12 @@ public struct ListTool: MCPTool {
                 lines.append(activeLine)
             }
 
-            return ToolResponse.text(lines.joined(separator: "\n"))
+            let summary = ToolEventSummary(
+                actionDescription: "List Applications",
+                notes: "\(apps.count) running")
+            return ToolResponse.text(
+                lines.joined(separator: "\n"),
+                meta: ToolEventSummary.merge(summary: summary, into: nil))
         } catch {
             return ToolResponse.error("Failed to list applications: \(error.localizedDescription)")
         }
@@ -197,8 +202,9 @@ public struct ListTool: MCPTool {
         sections.append("- Architecture: \(ProcessInfo.processInfo.processorArchitecture)")
 
         let fullStatus = sections.joined(separator: "\n")
+        let summary = ToolEventSummary(actionDescription: "Server Status", notes: nil)
 
-        return ToolResponse.text(fullStatus)
+        return ToolResponse.text(fullStatus, meta: ToolEventSummary.merge(summary: summary, into: nil))
     }
 }
 
@@ -271,7 +277,17 @@ private struct WindowListFormatter {
         var lines = self.headerLines()
         lines.append("")
         lines.append(contentsOf: self.windowLines())
-        return ToolResponse.text(lines.joined(separator: "\n"))
+        let baseMeta: Value = .object([
+            "window_count": .int(self.windows.count),
+            "app": self.appInfo?.name != nil ? .string(self.appInfo!.name) : .string(self.identifier),
+        ])
+        let summary = ToolEventSummary(
+            targetApp: self.appInfo?.name ?? self.identifier,
+            actionDescription: "List Windows",
+            notes: "\(self.windows.count) windows")
+        return ToolResponse.text(
+            lines.joined(separator: "\n"),
+            meta: ToolEventSummary.merge(summary: summary, into: baseMeta))
     }
 
     private func headerLines() -> [String] {

@@ -4,6 +4,21 @@
 # This script builds the CLI independently of the Node.js MCP server
 
 set -e
+set -o pipefail
+
+if command -v xcbeautify >/dev/null 2>&1; then
+    USE_XCBEAUTIFY=1
+else
+    USE_XCBEAUTIFY=0
+fi
+
+pipe_build_output() {
+    if [[ "$USE_XCBEAUTIFY" -eq 1 ]]; then
+        xcbeautify "$@"
+    else
+        cat
+    fi
+}
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -17,7 +32,7 @@ cd "$(dirname "$0")/../Apps/CLI"
 
 # Build for release with optimizations
 echo -e "${BLUE}Building release version...${NC}"
-swift build -c release
+swift build -c release 2>&1 | pipe_build_output
 
 # Get the build output path
 BUILD_PATH=".build/release/peekaboo"

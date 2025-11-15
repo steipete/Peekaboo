@@ -211,11 +211,17 @@ public struct MoveTool: MCPTool {
             let location = CGPoint(x: element.frame.midX, y: element.frame.midY)
             let label = element.title ?? element.label ?? "untitled"
             let summary = "element \(elementId) (\(element.role): \(label))"
-            return ResolvedMoveTarget(location: location, description: summary)
+            return ResolvedMoveTarget(
+                location: location,
+                description: summary,
+                targetApp: session.applicationName,
+                windowTitle: session.windowTitle,
+                elementRole: element.summaryRole,
+                elementLabel: element.summaryLabel)
         }
     }
 
-    private func performMovement(to location: CGPoint, request: MoveRequest) async throws -> MovementParameters {
+    private func performMovement(to location: CGPoint, request: MoveRequest) async throws -> MovementExecution {
         let automation = self.context.automation
         let currentLocation = CGEvent(source: nil)?.location ?? .zero
         let distance = hypot(location.x - currentLocation.x, location.y - currentLocation.y)
@@ -236,35 +242,68 @@ public struct MoveTool: MCPTool {
                 profile: movement.profile
             )
         }
-        return movement
+        return MovementExecution(
+            parameters: movement,
+            startPoint: currentLocation,
+            distance: distance,
+            direction: pointerDirection(from: currentLocation, to: location)
+        )
     }
 
     private func buildResponse(
         target: ResolvedMoveTarget,
-        movement: MovementParameters,
+        movement: MovementExecution,
         executionTime: TimeInterval) -> ToolResponse
     {
         var message = "\(AgentDisplayTokens.Status.success) Moved mouse cursor to \(target.description)"
-        message += " using \(movement.profileName) profile"
-        if movement.smooth {
-            message += " (\(movement.duration)ms, \(movement.steps) steps)"
+        message += " using \(movement.parameters.profileName) profile"
+        if movement.parameters.smooth {
+            message += " (\(movement.parameters.duration)ms, \(movement.parameters.steps) steps)"
         }
         message += " in \(String(format: "%.2f", executionTime))s"
 
+        var metaDict: [String: Value] = [
+            "target_location": .object([
+                "x": .double(Double(target.location.x)),
+                "y": .double(Double(target.location.y)),
+            ]),
+            "target_description": .string(target.description),
+            "smooth": .bool(movement.parameters.smooth),
+            "profile": .string(movement.parameters.profileName),
+            "duration": movement.parameters.smooth ? .double(Double(movement.parameters.duration)) : .null,
+            "steps": movement.parameters.smooth ? .double(Double(movement.parameters.steps)) : .null,
+            "execution_time": .double(executionTime),
+            "distance": .double(Double(movement.distance)),
+            "start_location": .object([
+                "x": .double(Double(movement.startPoint.x)),
+                "y": .double(Double(movement.startPoint.y)),
+            ]),
+        ]
+
+        if let direction = movement.direction {
+            metaDict["direction"] = .string(direction)
+        }
+
+        let summary = ToolEventSummary(
+            targetApp: target.targetApp,
+            windowTitle: target.windowTitle,
+            elementRole: target.elementRole,
+            elementLabel: target.elementLabel,
+            actionDescription: "Move cursor",
+            coordinates: ToolEventSummary.Coordinates(
+                x: Double(target.location.x),
+                y: Double(target.location.y)),
+            pointerProfile: movement.parameters.profileName,
+            pointerDistance: Double(movement.distance),
+            pointerDirection: movement.direction,
+            pointerDurationMs: Double(movement.parameters.duration),
+            notes: target.description)
+
+        let metaValue = ToolEventSummary.merge(summary: summary, into: .object(metaDict))
+
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "target_location": .object([
-                    "x": .double(Double(target.location.x)),
-                    "y": .double(Double(target.location.y)),
-                ]),
-                "target_description": .string(target.description),
-                "smooth": .bool(movement.smooth),
-                "profile": .string(movement.profileName),
-                "duration": movement.smooth ? .double(Double(movement.duration)) : .null,
-                "steps": movement.smooth ? .double(Double(movement.steps)) : .null,
-                "execution_time": .double(executionTime),
-            ]))
+            meta: metaValue)
     }
 
     private func getSession(id: String?) async -> UISession? {
@@ -307,6 +346,33 @@ private struct MoveRequest {
 private struct ResolvedMoveTarget {
     let location: CGPoint
     let description: String
+    let targetApp: String?
+    let windowTitle: String?
+    let elementRole: String?
+    let elementLabel: String?
+
+    init(
+        location: CGPoint,
+        description: String,
+        targetApp: String? = nil,
+        windowTitle: String? = nil,
+        elementRole: String? = nil,
+        elementLabel: String? = nil)
+    {
+        self.location = location
+        self.description = description
+        self.targetApp = targetApp
+        self.windowTitle = windowTitle
+        self.elementRole = elementRole
+        self.elementLabel = elementLabel
+    }
+}
+
+private struct MovementExecution {
+    let parameters: MovementParameters
+    let startPoint: CGPoint
+    let distance: CGFloat
+    let direction: String?
 }
 
 private struct MoveToolValidationError: Error {

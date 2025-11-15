@@ -85,14 +85,21 @@ public struct HotkeyTool: MCPTool {
             let message = "\(AgentDisplayTokens.Status.success) Pressed \(formattedKeys) " +
                 "(held for \(holdDurationMs)ms) in \(durationText)s"
 
+            let baseMeta: Value = .object([
+                "keys": .string(keys),
+                "hold_duration": .double(Double(holdDurationMs)),
+                "execution_time": .double(executionTime),
+                "formatted_keys": .string(formattedKeys),
+            ])
+
+            let summary = ToolEventSummary(
+                actionDescription: "Hotkey",
+                waitDurationMs: Double(holdDurationMs),
+                notes: formattedKeys)
+
             return ToolResponse(
                 content: [.text(message)],
-                meta: .object([
-                    "keys": .string(keys),
-                    "hold_duration": .double(Double(holdDurationMs)),
-                    "execution_time": .double(executionTime),
-                    "formatted_keys": .string(formattedKeys),
-                ]))
+                meta: ToolEventSummary.merge(summary: summary, into: baseMeta))
 
         } catch {
             self.logger.error("Hotkey execution failed: \(error)")

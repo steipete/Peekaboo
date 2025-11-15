@@ -75,23 +75,23 @@ public struct DragTool: MCPTool {
 
         do {
             let startTime = Date()
-            let (fromPoint, fromDescription) = try await self.resolveLocation(
+            let fromPoint = try await self.resolveLocation(
                 target: request.fromTarget,
                 sessionId: request.sessionId,
                 parameterName: "from")
-            let (toPoint, toDescription) = try await self.resolveLocation(
+            let toPoint = try await self.resolveLocation(
                 target: request.toTarget,
                 sessionId: request.sessionId,
                 parameterName: "to")
 
-            guard fromPoint != toPoint else {
+            guard fromPoint.point != toPoint.point else {
                 return ToolResponse.error("Start and end points must be different")
             }
 
             try await self.focusTargetAppIfNeeded(request: request)
             self.logSpaceIntentIfNeeded(request: request)
 
-            let distance = hypot(toPoint.x - fromPoint.x, toPoint.y - fromPoint.y)
+            let distance = hypot(toPoint.point.x - fromPoint.point.x, toPoint.point.y - fromPoint.point.y)
             let movement = request.profile.resolveParameters(
                 smooth: true,
                 durationOverride: request.durationOverride,
@@ -102,8 +102,8 @@ public struct DragTool: MCPTool {
             )
 
             try await self.context.automation.drag(
-                from: fromPoint,
-                to: toPoint,
+                from: fromPoint.point,
+                to: toPoint.point,
                 duration: movement.duration,
                 steps: movement.steps,
                 modifiers: request.modifiers,
@@ -111,8 +111,8 @@ public struct DragTool: MCPTool {
 
             let executionTime = Date().timeIntervalSince(startTime)
             return self.buildResponse(
-                from: DragPointDescription(point: fromPoint, description: fromDescription),
-                to: DragPointDescription(point: toPoint, description: toDescription),
+                from: fromPoint,
+                to: toPoint,
                 movement: movement,
                 executionTime: executionTime,
                 request: request)
@@ -131,18 +131,24 @@ public struct DragTool: MCPTool {
     private func resolveLocation(
         target: DragLocationInput,
         sessionId: String?,
-        parameterName: String) async throws -> (CGPoint, String)
+        parameterName: String) async throws -> DragPointDescription
     {
         switch target {
         case let .coordinates(raw):
             let point = try self.parseCoordinates(raw, parameterName: parameterName)
-            return (point, "(\(Int(point.x)), \(Int(point.y)))")
+            return DragPointDescription(point: point, description: "(\(Int(point.x)), \(Int(point.y)))")
         case let .element(query):
             guard let session = await self.getSession(id: sessionId) else {
                 throw CoordinateParseError(message: "No active session. Run 'see' command first to capture UI state.")
             }
             if let element = await session.getElement(byId: query) {
-                return (element.centerPoint, "element \(query) (\(element.humanDescription))")
+                return DragPointDescription(
+                    point: element.centerPoint,
+                    description: "element \(query) (\(element.humanDescription))",
+                    targetApp: session.applicationName,
+                    windowTitle: session.windowTitle,
+                    elementRole: element.summaryRole,
+                    elementLabel: element.summaryLabel)
             }
 
             let elements = await session.uiElements
@@ -158,7 +164,13 @@ public struct DragTool: MCPTool {
             }
 
             let element = matches.first { $0.isActionable } ?? matches[0]
-            return (element.centerPoint, element.humanDescription)
+            return DragPointDescription(
+                point: element.centerPoint,
+                description: element.humanDescription,
+                targetApp: session.applicationName,
+                windowTitle: session.windowTitle,
+                elementRole: element.summaryRole,
+                elementLabel: element.summaryLabel)
         }
     }
 
@@ -266,7 +278,24 @@ public struct DragTool: MCPTool {
             metaData["target_app"] = .string(toApp)
         }
 
-        return ToolResponse(content: [.text(message)], meta: .object(metaData))
+        let summary = ToolEventSummary(
+            targetApp: request.targetApp ?? to.targetApp ?? from.targetApp,
+            windowTitle: to.windowTitle ?? from.windowTitle,
+            elementRole: to.elementRole ?? from.elementRole,
+            elementLabel: to.elementLabel ?? from.elementLabel,
+            actionDescription: "Drag",
+            coordinates: ToolEventSummary.Coordinates(
+                x: Double(to.point.x),
+                y: Double(to.point.y)),
+            pointerProfile: movement.profileName,
+            pointerDistance: Double(distance),
+            pointerDirection: pointerDirection(from: from.point, to: to.point),
+            pointerDurationMs: Double(movement.duration),
+            notes: "from \(from.description) to \(to.description)")
+
+        let metaValue = ToolEventSummary.merge(summary: summary, into: .object(metaData))
+
+        return ToolResponse(content: [.text(message)], meta: metaValue)
     }
 
     private struct CoordinateParseError: Swift.Error {
@@ -367,6 +396,26 @@ private struct DragToolError: Swift.Error {
 private struct DragPointDescription {
     let point: CGPoint
     let description: String
+    let targetApp: String?
+    let windowTitle: String?
+    let elementRole: String?
+    let elementLabel: String?
+
+    init(
+        point: CGPoint,
+        description: String,
+        targetApp: String? = nil,
+        windowTitle: String? = nil,
+        elementRole: String? = nil,
+        elementLabel: String? = nil)
+    {
+        self.point = point
+        self.description = description
+        self.targetApp = targetApp
+        self.windowTitle = windowTitle
+        self.elementRole = elementRole
+        self.elementLabel = elementLabel
+    }
 }
 
 extension UIElement {

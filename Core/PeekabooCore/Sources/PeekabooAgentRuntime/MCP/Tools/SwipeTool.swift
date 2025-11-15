@@ -167,23 +167,37 @@ public struct SwipeTool: MCPTool {
         with \(movement.steps) steps (\(movement.profileName) profile, distance: \(distanceText)px) in \(durationText)s
         """
 
+        let metaDict: [String: Value] = [
+            "from": .object([
+                "x": .double(Double(fromPoint.x)),
+                "y": .double(Double(fromPoint.y)),
+            ]),
+            "to": .object([
+                "x": .double(Double(toPoint.x)),
+                "y": .double(Double(toPoint.y)),
+            ]),
+            "duration": .double(Double(movement.duration)),
+            "steps": .double(Double(movement.steps)),
+            "profile": .string(movement.profileName),
+            "distance": .double(distance),
+            "execution_time": .double(executionTime),
+        ]
+
+        let summary = ToolEventSummary(
+            actionDescription: "Swipe",
+            coordinates: ToolEventSummary.Coordinates(x: Double(toPoint.x), y: Double(toPoint.y)),
+            pointerProfile: movement.profileName,
+            pointerDistance: Double(distance),
+            pointerDirection: pointerDirection(from: fromPoint, to: toPoint),
+            pointerDurationMs: Double(movement.duration),
+            notes: "from (\(Int(fromPoint.x)), \(Int(fromPoint.y))) to (\(Int(toPoint.x)), \(Int(toPoint.y)))"
+        )
+
+        let metaValue = ToolEventSummary.merge(summary: summary, into: .object(metaDict))
+
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "from": .object([
-                    "x": .double(Double(fromPoint.x)),
-                    "y": .double(Double(fromPoint.y)),
-                ]),
-                "to": .object([
-                    "x": .double(Double(toPoint.x)),
-                    "y": .double(Double(toPoint.y)),
-                ]),
-                "duration": .double(Double(movement.duration)),
-                "steps": .double(Double(movement.steps)),
-                "profile": .string(movement.profileName),
-                "distance": .double(distance),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: metaValue)
     }
 
     private func parseCoordinates(_ coordString: String, parameterName: String) throws -> CGPoint {

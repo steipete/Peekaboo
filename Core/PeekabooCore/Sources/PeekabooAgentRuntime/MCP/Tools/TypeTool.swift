@@ -129,7 +129,9 @@ public struct TypeTool: MCPTool {
         let automation = self.context.automation
         let startTime = Date()
 
-        try await self.focusIfNeeded(request: request, automation: automation)
+        let targetContext = try await self.resolveTargetContext(for: request)
+
+        try await self.focusIfNeeded(targetContext: targetContext, request: request, automation: automation)
         let actions = try self.buildActions(for: request)
         let typeResult = try await automation.typeActions(
             actions,
@@ -141,18 +143,41 @@ public struct TypeTool: MCPTool {
             request: request,
             executionTime: executionTime,
             result: typeResult)
+        let baseMeta: Value = .object([
+            "execution_time": .double(executionTime),
+            "characters_typed": .double(Double(typeResult.totalCharacters)),
+        ])
+        let summary = self.buildEventSummary(
+            request: request,
+            result: typeResult,
+            targetContext: targetContext)
+        let mergedMeta = ToolEventSummary.merge(summary: summary, into: baseMeta)
 
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "execution_time": .double(executionTime),
-                "characters_typed": .double(Double(typeResult.totalCharacters)),
-            ]))
+            meta: mergedMeta)
     }
 
     @MainActor
-    private func focusIfNeeded(request: TypeRequest, automation: any UIAutomationServiceProtocol) async throws {
-        guard let elementId = request.elementId else { return }
+    private func focusIfNeeded(
+        targetContext: TargetElementContext?,
+        request: TypeRequest,
+        automation: any UIAutomationServiceProtocol) async throws
+    {
+        guard let context = targetContext else { return }
+
+        let element = context.element
+        let clickLocation = CGPoint(x: element.frame.midX, y: element.frame.midY)
+        try await automation.click(
+            target: .coordinates(clickLocation),
+            clickType: .single,
+            sessionId: request.sessionId)
+        try await Task.sleep(nanoseconds: 100_000_000)
+    }
+
+    @MainActor
+    private func resolveTargetContext(for request: TypeRequest) async throws -> TargetElementContext? {
+        guard let elementId = request.elementId else { return nil }
         guard let session = await self.getSession(id: request.sessionId) else {
             throw TypeToolValidationError("No active session. Run 'see' command first to capture UI state.")
         }
@@ -162,12 +187,45 @@ public struct TypeTool: MCPTool {
                 "Element '\(elementId)' not found in current session. Run 'see' command to update UI state.")
         }
 
-        let clickLocation = CGPoint(x: element.frame.midX, y: element.frame.midY)
-        try await automation.click(
-            target: .coordinates(clickLocation),
-            clickType: .single,
-            sessionId: request.sessionId)
-        try await Task.sleep(nanoseconds: 100_000_000)
+        return TargetElementContext(session: session, element: element)
+    }
+
+    private func buildEventSummary(
+        request: TypeRequest,
+        result: TypeResult,
+        targetContext: TargetElementContext?) -> ToolEventSummary
+    {
+        let truncatedInput = self.truncatedText(request.text)
+        return ToolEventSummary(
+            targetApp: targetContext?.session.applicationName,
+            windowTitle: targetContext?.session.windowTitle,
+            elementRole: targetContext?.element.summaryRole,
+            elementLabel: targetContext?.element.summaryLabel,
+            elementValue: truncatedInput,
+            actionDescription: self.describeAction(for: request),
+            notes: truncatedInput)
+    }
+
+    private func truncatedText(_ text: String?, limit: Int = 80) -> String? {
+        guard let text, !text.isEmpty else { return nil }
+        if text.count <= limit {
+            return text
+        }
+        let endIndex = text.index(text.startIndex, offsetBy: limit)
+        return String(text[..<endIndex]) + "…"
+    }
+
+    private func describeAction(for request: TypeRequest) -> String {
+        if let text = request.text, !text.isEmpty {
+            return "Typed"
+        }
+        var actions: [String] = []
+        if let tabs = request.tabCount, tabs > 0 { actions.append("Tab×\(tabs)") }
+        if request.pressReturn { actions.append("Return") }
+        if request.pressEscape { actions.append("Escape") }
+        if request.pressDelete { actions.append("Delete") }
+        if request.clearField { actions.append("Clear Field") }
+        return actions.isEmpty ? "Type" : actions.joined(separator: ", ")
     }
 
     private func buildActions(for request: TypeRequest) throws -> [TypeAction] {
@@ -293,4 +351,9 @@ private struct TypeRequest {
 private struct TypeToolValidationError: Error {
     let message: String
     init(_ message: String) { self.message = message }
+}
+
+private struct TargetElementContext {
+    let session: UISession
+    let element: UIElement
 }

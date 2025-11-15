@@ -33,7 +33,8 @@
     "poltergeist:rest": "./scripts/poltergeist-wrapper.sh rest",
     "poltergeist:status": "./scripts/poltergeist-wrapper.sh status",
     "poltergeist:panel": "./scripts/poltergeist-wrapper.sh status panel",
-    "poltergeist:logs": "./scripts/poltergeist-wrapper.sh logs"
+    "poltergeist:logs": "./scripts/poltergeist-wrapper.sh logs",
+    "oracle": "oracle"
   },
   "repository": {
     "type": "git",
@@ -44,5 +45,8 @@
   "bugs": {
     "url": "https://github.com/steipete/peekaboo/issues"
   },
-  "homepage": "https://github.com/steipete/peekaboo#readme"
+  "homepage": "https://github.com/steipete/peekaboo#readme",
+  "devDependencies": {
+    "@steipete/oracle": "file:../oracle"
+  }
 }

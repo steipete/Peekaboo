@@ -119,32 +119,43 @@ public struct WindowTool: MCPTool {
 
         switch action {
         case .close:
-            return try await self.handleClose(service: service, target: target, startTime: startTime)
+            return try await self.handleClose(service: service, target: target, appName: inputs.app, startTime: startTime)
 
         case .minimize:
-            return try await self.handleMinimize(service: service, target: target, startTime: startTime)
+            return try await self.handleMinimize(service: service, target: target, appName: inputs.app, startTime: startTime)
 
         case .maximize:
-            return try await self.handleMaximize(service: service, target: target, startTime: startTime)
+            return try await self.handleMaximize(service: service, target: target, appName: inputs.app, startTime: startTime)
 
         case .move:
             let position = try inputs.requirePosition(for: action)
-            return try await self.handleMove(service: service, target: target, position: position, startTime: startTime)
+            return try await self.handleMove(
+                service: service,
+                target: target,
+                appName: inputs.app,
+                position: position,
+                startTime: startTime)
 
         case .resize:
             let size = try inputs.requireSize(for: action)
-            return try await self.handleResize(service: service, target: target, size: size, startTime: startTime)
+            return try await self.handleResize(
+                service: service,
+                target: target,
+                appName: inputs.app,
+                size: size,
+                startTime: startTime)
 
         case .setBounds:
             let bounds = try inputs.requireBounds()
             return try await self.handleSetBounds(
                 service: service,
                 target: target,
+                appName: inputs.app,
                 bounds: bounds,
                 startTime: startTime)
 
         case .focus:
-            return try await self.handleFocus(service: service, target: target, startTime: startTime)
+            return try await self.handleFocus(service: service, target: target, appName: inputs.app, startTime: startTime)
         }
     }
 
@@ -153,6 +164,7 @@ public struct WindowTool: MCPTool {
     private func handleClose(
         service: any WindowManagementServiceProtocol,
         target: WindowTarget,
+        appName: String?,
         startTime: Date) async throws -> ToolResponse
     {
         // Get window info before closing for better reporting
@@ -165,22 +177,26 @@ public struct WindowTool: MCPTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
 
+        let message = self.successMessage(action: "Closed window '\(windowInfo.title)'", duration: executionTime)
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowInfo.windowID)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: appName,
+            windowTitle: windowInfo.title,
+            actionDescription: "Window Close",
+            notes: nil)
         return ToolResponse(
-            content: [
-                .text(self.successMessage(
-                    action: "Closed window '\(windowInfo.title)'",
-                    duration: executionTime)),
-            ],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowInfo.windowID)),
-                "execution_time": .double(executionTime),
-            ]))
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleMinimize(
         service: any WindowManagementServiceProtocol,
         target: WindowTarget,
+        appName: String?,
         startTime: Date) async throws -> ToolResponse
     {
         // Get window info before minimizing
@@ -193,22 +209,26 @@ public struct WindowTool: MCPTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
 
+        let message = self.successMessage(action: "Minimized window '\(windowInfo.title)'", duration: executionTime)
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowInfo.windowID)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: appName,
+            windowTitle: windowInfo.title,
+            actionDescription: "Window Minimize",
+            notes: nil)
         return ToolResponse(
-            content: [
-                .text(self.successMessage(
-                    action: "Minimized window '\(windowInfo.title)'",
-                    duration: executionTime)),
-            ],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowInfo.windowID)),
-                "execution_time": .double(executionTime),
-            ]))
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleMaximize(
         service: any WindowManagementServiceProtocol,
         target: WindowTarget,
+        appName: String?,
         startTime: Date) async throws -> ToolResponse
     {
         // Get window info before maximizing
@@ -221,22 +241,26 @@ public struct WindowTool: MCPTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
 
+        let message = self.successMessage(action: "Maximized window '\(windowInfo.title)'", duration: executionTime)
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowInfo.windowID)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: appName,
+            windowTitle: windowInfo.title,
+            actionDescription: "Window Maximize",
+            notes: nil)
         return ToolResponse(
-            content: [
-                .text(self.successMessage(
-                    action: "Maximized window '\(windowInfo.title)'",
-                    duration: executionTime)),
-            ],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowInfo.windowID)),
-                "execution_time": .double(executionTime),
-            ]))
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleMove(
         service: any WindowManagementServiceProtocol,
         target: WindowTarget,
+        appName: String?,
         position: CGPoint,
         startTime: Date) async throws -> ToolResponse
     {
@@ -251,22 +275,29 @@ public struct WindowTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         let detail = "Moved window '\(windowInfo.title)' to (\(Int(position.x)), \(Int(position.y)))"
+        let message = self.successMessage(action: detail, duration: executionTime)
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowInfo.windowID)),
+            "new_x": .double(Double(position.x)),
+            "new_y": .double(Double(position.y)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: appName,
+            windowTitle: windowInfo.title,
+            actionDescription: "Window Move",
+            coordinates: ToolEventSummary.Coordinates(x: Double(position.x), y: Double(position.y)),
+            notes: nil)
         return ToolResponse(
-            content: [
-                .text(self.successMessage(action: detail, duration: executionTime)),
-            ],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowInfo.windowID)),
-                "new_x": .double(Double(position.x)),
-                "new_y": .double(Double(position.y)),
-                "execution_time": .double(executionTime),
-            ]))
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleResize(
         service: any WindowManagementServiceProtocol,
         target: WindowTarget,
+        appName: String?,
         size: CGSize,
         startTime: Date) async throws -> ToolResponse
     {
@@ -281,22 +312,28 @@ public struct WindowTool: MCPTool {
         let executionTime = Date().timeIntervalSince(startTime)
 
         let detail = "Resized window '\(windowInfo.title)' to \(Int(size.width)) × \(Int(size.height))"
+        let message = self.successMessage(action: detail, duration: executionTime)
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowInfo.windowID)),
+            "new_width": .double(Double(size.width)),
+            "new_height": .double(Double(size.height)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: appName,
+            windowTitle: windowInfo.title,
+            actionDescription: "Window Resize",
+            notes: "\(Int(size.width))×\(Int(size.height))")
         return ToolResponse(
-            content: [
-                .text(self.successMessage(action: detail, duration: executionTime)),
-            ],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowInfo.windowID)),
-                "new_width": .double(Double(size.width)),
-                "new_height": .double(Double(size.height)),
-                "execution_time": .double(executionTime),
-            ]))
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleSetBounds(
         service: any WindowManagementServiceProtocol,
         target: WindowTarget,
+        appName: String?,
         bounds: CGRect,
         startTime: Date) async throws -> ToolResponse
     {
@@ -312,24 +349,33 @@ public struct WindowTool: MCPTool {
 
         let detail = "Set bounds for window '\(windowInfo.title)' to (\(Int(bounds.origin.x)), "
             + "\(Int(bounds.origin.y)), \(Int(bounds.width)) × \(Int(bounds.height)))"
+        let message = self.successMessage(action: detail, duration: executionTime)
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowInfo.windowID)),
+            "new_x": .double(Double(bounds.origin.x)),
+            "new_y": .double(Double(bounds.origin.y)),
+            "new_width": .double(Double(bounds.width)),
+            "new_height": .double(Double(bounds.height)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: appName,
+            windowTitle: windowInfo.title,
+            actionDescription: "Window Set Bounds",
+            coordinates: ToolEventSummary.Coordinates(
+                x: Double(bounds.origin.x),
+                y: Double(bounds.origin.y)),
+            notes: "\(Int(bounds.width))×\(Int(bounds.height))")
         return ToolResponse(
-            content: [
-                .text(self.successMessage(action: detail, duration: executionTime)),
-            ],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowInfo.windowID)),
-                "new_x": .double(Double(bounds.origin.x)),
-                "new_y": .double(Double(bounds.origin.y)),
-                "new_width": .double(Double(bounds.width)),
-                "new_height": .double(Double(bounds.height)),
-                "execution_time": .double(executionTime),
-            ]))
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleFocus(
         service: any WindowManagementServiceProtocol,
         target: WindowTarget,
+        appName: String?,
         startTime: Date) async throws -> ToolResponse
     {
         // Get window info before focusing
@@ -342,17 +388,20 @@ public struct WindowTool: MCPTool {
 
         let executionTime = Date().timeIntervalSince(startTime)
 
+        let message = self.successMessage(action: "Focused window '\(windowInfo.title)'", duration: executionTime)
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowInfo.windowID)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: appName,
+            windowTitle: windowInfo.title,
+            actionDescription: "Window Focus",
+            notes: nil)
         return ToolResponse(
-            content: [
-                .text(self.successMessage(
-                    action: "Focused window '\(windowInfo.title)'",
-                    duration: executionTime)),
-            ],
-            meta: .object([
-                "window_title": .string(windowInfo.title),
-                "window_id": .double(Double(windowInfo.windowID)),
-                "execution_time": .double(executionTime),
-            ]))
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     // MARK: - Helper Methods

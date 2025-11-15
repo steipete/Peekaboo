@@ -156,13 +156,18 @@ extension ImageTool {
 
         let imagePath = try savedFiles.first?.path ?? saveTemporaryImage(firstCapture.imageData)
         let analysis = try await analyzeImage(at: imagePath, question: question)
+        let baseMeta: [String: Value] = [
+            "model": .string(analysis.modelUsed),
+            "savedFiles": .array(savedFiles.map { Value.string($0.path) }),
+            "question": .string(question),
+        ]
+        let summary = ToolEventSummary(
+            actionDescription: "Image Analyze",
+            notes: question)
 
         return ToolResponse.text(
             analysis.text,
-            meta: .object([
-                "model": .string(analysis.modelUsed),
-                "savedFiles": .array(savedFiles.map { Value.string($0.path) }),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func buildCaptureResponse(
@@ -170,7 +175,19 @@ extension ImageTool {
         savedFiles: [MCPSavedFile],
         captureResults: [CaptureResult]) -> ToolResponse
     {
-        let meta = Value.object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })])
+        let baseMeta = Value.object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })])
+        let captureNote: String
+        if savedFiles.isEmpty {
+            captureNote = "Captured image"
+        } else if savedFiles.count == 1, let label = savedFiles.first?.item_label {
+            captureNote = label
+        } else {
+            captureNote = "Captured \(savedFiles.count) images"
+        }
+        let summary = ToolEventSummary(
+            actionDescription: "Image Capture",
+            notes: captureNote)
+        let meta = ToolEventSummary.merge(summary: summary, into: baseMeta)
 
         if format == .data, let capture = captureResults.first, captureResults.count == 1 {
             return ToolResponse.image(data: capture.imageData, mimeType: "image/png", meta: meta)

@@ -1,8 +1,23 @@
 #!/bin/bash
 set -e
+set -o pipefail
 
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SWIFT_PROJECT_PATH="$PROJECT_ROOT/Apps/CLI"
+
+if command -v xcbeautify >/dev/null 2>&1; then
+    USE_XCBEAUTIFY=1
+else
+    USE_XCBEAUTIFY=0
+fi
+
+pipe_build_output() {
+    if [[ "$USE_XCBEAUTIFY" -eq 1 ]]; then
+        xcbeautify "$@"
+    else
+        cat
+    fi
+}
 
 # Parse arguments
 CLEAN_BUILD=false
@@ -70,7 +85,10 @@ else
     echo "🏗️ Building for debug (incremental)..."
 fi
 
-(cd "$SWIFT_PROJECT_PATH" && swift build)
+(
+    cd "$SWIFT_PROJECT_PATH"
+    swift build 2>&1 | pipe_build_output
+)
 
 echo "🔏 Code signing the debug binary..."
 PROJECT_NAME="peekaboo"

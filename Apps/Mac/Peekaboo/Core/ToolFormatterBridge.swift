@@ -30,14 +30,14 @@ class ToolFormatterBridge {
             // Format completed tool call
             let resultDict = self.parseArguments(result)
             let success = (resultDict["success"] as? Bool) ?? true
+            let summaryText = ToolEventSummary.from(resultJSON: resultDict)?
+                .shortDescription(toolName: name) ?? formatter.formatResultSummary(result: resultDict)
 
             if success {
-                let summary = formatter.formatResultSummary(result: resultDict)
-                if !summary.isEmpty {
-                    return "\(AgentDisplayTokens.Status.success) \(toolType.displayName): \(summary)"
-                } else {
-                    return "\(AgentDisplayTokens.Status.success) \(toolType.displayName) completed"
+                if !summaryText.isEmpty {
+                    return "\(AgentDisplayTokens.Status.success) \(toolType.displayName): \(summaryText)"
                 }
+                return "\(AgentDisplayTokens.Status.success) \(toolType.displayName) completed"
             } else {
                 let error = (resultDict["error"] as? String) ?? "Failed"
                 return "\(AgentDisplayTokens.Status.failure) \(toolType.displayName): \(error)"
@@ -79,6 +79,11 @@ class ToolFormatterBridge {
 
         let formatter = ToolFormatterRegistry.shared.formatter(for: toolType)
         let resultDict = self.parseArguments(result)
+        if let summary = ToolEventSummary.from(resultJSON: resultDict)?.shortDescription(toolName: name),
+           !summary.isEmpty
+        {
+            return summary
+        }
 
         let summary = formatter.formatResultSummary(result: resultDict)
         if !summary.isEmpty {
@@ -135,8 +140,12 @@ class ToolFormatterBridge {
         if let result {
             let resultDict = self.parseArguments(result)
             let success = (resultDict["success"] as? Bool) ?? true
+            let summaryText = ToolEventSummary.from(resultJSON: resultDict)?.shortDescription(toolName: name)
 
             if success {
+                if let summaryText, !summaryText.isEmpty {
+                    return "\(AgentDisplayTokens.Status.success) \(displayName): \(summaryText)"
+                }
                 return "\(AgentDisplayTokens.Status.success) \(displayName) completed"
             } else {
                 let error = (resultDict["error"] as? String) ?? "Failed"

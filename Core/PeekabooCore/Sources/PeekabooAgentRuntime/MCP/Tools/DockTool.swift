@@ -116,12 +116,17 @@ public struct DockTool: MCPTool {
         let duration = self.formatDuration(executionTime)
         let message = "\(AgentDisplayTokens.Status.success) Launched \(app) from dock in \(duration)"
 
+        let baseMeta: [String: Value] = [
+            "app_name": .string(app),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: app,
+            actionDescription: "Dock Launch",
+            notes: nil)
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "app_name": .string(app),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleRightClick(
@@ -144,13 +149,18 @@ public struct DockTool: MCPTool {
         }
         message += " in \(self.formatDuration(executionTime))"
 
+        let baseMeta: [String: Value] = [
+            "app_name": .string(app),
+            "menu_item": menuItem != nil ? .string(menuItem!) : .null,
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            targetApp: app,
+            actionDescription: "Dock Menu",
+            notes: menuItem ?? "Context menu")
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "app_name": .string(app),
-                "menu_item": menuItem != nil ? .string(menuItem!) : .null,
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleHide(
@@ -164,12 +174,14 @@ public struct DockTool: MCPTool {
         let duration = self.formatDuration(executionTime)
         let message = "\(AgentDisplayTokens.Status.success) Hidden dock (enabled auto-hide) in \(duration)"
 
+        let baseMeta: [String: Value] = [
+            "auto_hide_enabled": .bool(true),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(actionDescription: "Dock Hide", notes: nil)
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "auto_hide_enabled": .bool(true),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleShow(
@@ -183,12 +195,14 @@ public struct DockTool: MCPTool {
         let duration = self.formatDuration(executionTime)
         let message = "\(AgentDisplayTokens.Status.success) Shown dock (disabled auto-hide) in \(duration)"
 
+        let baseMeta: [String: Value] = [
+            "auto_hide_enabled": .bool(false),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(actionDescription: "Dock Show", notes: nil)
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "auto_hide_enabled": .bool(false),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func handleList(
@@ -220,30 +234,34 @@ public struct DockTool: MCPTool {
         """
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
+        let baseMeta: [String: Value] = [
+            "dock_item_count": .double(Double(dockItems.count)),
+            "include_all": .bool(includeAll),
+            "dock_items": .array(dockItems.map { item in
+                .object([
+                    "index": .double(Double(item.index)),
+                    "title": .string(item.title),
+                    "item_type": .string(item.itemType.rawValue),
+                    "is_running": item.isRunning != nil ? .bool(item.isRunning!) : .null,
+                    "bundle_identifier": item.bundleIdentifier != nil ? .string(item.bundleIdentifier!) : .null,
+                    "position": item.position != nil ? .object([
+                        "x": .double(Double(item.position!.x)),
+                        "y": .double(Double(item.position!.y)),
+                    ]) : .null,
+                    "size": item.size != nil ? .object([
+                        "width": .double(Double(item.size!.width)),
+                        "height": .double(Double(item.size!.height)),
+                    ]) : .null,
+                ])
+            }),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            actionDescription: "Dock List",
+            notes: "\(dockItems.count) items")
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "dock_item_count": .double(Double(dockItems.count)),
-                "include_all": .bool(includeAll),
-                "dock_items": .array(dockItems.map { item in
-                    .object([
-                        "index": .double(Double(item.index)),
-                        "title": .string(item.title),
-                        "item_type": .string(item.itemType.rawValue),
-                        "is_running": item.isRunning != nil ? .bool(item.isRunning!) : .null,
-                        "bundle_identifier": item.bundleIdentifier != nil ? .string(item.bundleIdentifier!) : .null,
-                        "position": item.position != nil ? .object([
-                            "x": .double(Double(item.position!.x)),
-                            "y": .double(Double(item.position!.y)),
-                        ]) : .null,
-                        "size": item.size != nil ? .object([
-                            "width": .double(Double(item.size!.width)),
-                            "height": .double(Double(item.size!.height)),
-                        ]) : .null,
-                    ])
-                }),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {

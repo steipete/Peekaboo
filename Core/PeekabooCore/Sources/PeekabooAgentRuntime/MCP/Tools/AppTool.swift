@@ -305,24 +305,26 @@ private struct AppToolActions {
         let countLine = "\(AgentDisplayTokens.Status.info) Found \(apps.count) running applications "
             + "in \(self.executionTimeString(from: executionTime))"
 
+        let baseMeta: [String: Value] = [
+            "apps": .array(
+                apps.map { app in
+                    .object([
+                        "name": .string(app.name),
+                        "bundle_id": app.bundleIdentifier != nil ? .string(app.bundleIdentifier!) : .null,
+                        "process_id": .double(Double(app.processIdentifier)),
+                        "is_active": .bool(app.isActive),
+                        "is_hidden": .bool(app.isHidden),
+                    ])
+                }),
+            "execution_time": .double(executionTime),
+        ]
+        let summaryMeta = self.makeSummary(for: nil, action: "List Applications", notes: "Found \(apps.count) apps")
         return ToolResponse(
             content: [
                 .text(summary),
                 .text(countLine),
             ],
-            meta: .object([
-                "apps": .array(
-                    apps.map { app in
-                        .object([
-                            "name": .string(app.name),
-                            "bundle_id": app.bundleIdentifier != nil ? .string(app.bundleIdentifier!) : .null,
-                            "process_id": .double(Double(app.processIdentifier)),
-                            "is_active": .bool(app.isActive),
-                            "is_hidden": .bool(app.isHidden),
-                        ])
-                    }),
-                "execution_time": .double(executionTime),
-            ]))
+            meta: ToolEventSummary.merge(summary: summaryMeta, into: .object(baseMeta)))
     }
 
     // MARK: Helpers
@@ -371,15 +373,17 @@ private struct AppToolActions {
             message += warningLine
         }
 
+        let baseMeta: [String: Value] = [
+            "quit_count": .double(Double(quitCount)),
+            "failed": .array(failed.map(Value.string)),
+            "except": .array(excluded.map(Value.string)),
+            "execution_time": .double(executionTime),
+            "force": .bool(request.force),
+        ]
+        let summary = self.makeSummary(for: nil, action: "Quit Applications", notes: "Quit \(quitCount) apps")
         return ToolResponse(
             content: [.text(message)],
-            meta: .object([
-                "quit_count": .double(Double(quitCount)),
-                "failed": .array(failed.map(Value.string)),
-                "except": .array(excluded.map(Value.string)),
-                "execution_time": .double(executionTime),
-                "force": .bool(request.force),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func buildResponse(
@@ -396,24 +400,29 @@ private struct AppToolActions {
         ]
         meta.merge(extraMeta) { $1 }
 
+        let summary = self.makeSummary(for: app, action: self.actionDescription(from: message), notes: nil)
         return ToolResponse(
             content: [.text(message)],
-            meta: .object(meta))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(meta)))
     }
 
     private func focusResponse(app: ServiceApplicationInfo, startTime: Date, verb: String) -> ToolResponse {
         let statusLine = "\(AgentDisplayTokens.Status.success) \(verb) \(app.name) (PID: \(app.processIdentifier))"
+        let baseMeta: [String: Value] = [
+            "app_name": .string(app.name),
+            "process_id": .double(Double(app.processIdentifier)),
+            "execution_time": .double(self.executionTime(since: startTime)),
+        ]
+        let summary = self.makeSummary(for: app, action: verb, notes: nil)
         return ToolResponse(
             content: [.text(statusLine)],
-            meta: .object([
-                "app_name": .string(app.name),
-                "process_id": .double(Double(app.processIdentifier)),
-                "execution_time": .double(self.executionTime(since: startTime)),
-            ]))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
     private func executionMeta(from startTime: Date) -> Value {
-        .object(["execution_time": .double(self.executionTime(since: startTime))])
+        let baseMeta: Value = .object(["execution_time": .double(self.executionTime(since: startTime))])
+        let summary = self.makeSummary(for: nil, action: "Switch Applications", notes: nil)
+        return ToolEventSummary.merge(summary: summary, into: baseMeta)
     }
 
     private func executionTime(since startTime: Date) -> Double {
@@ -426,6 +435,22 @@ private struct AppToolActions {
 
     private func executionTimeString(from interval: Double) -> String {
         "\(String(format: "%.2f", interval))s"
+    }
+
+    private func makeSummary(for app: ServiceApplicationInfo?, action: String, notes: String?) -> ToolEventSummary {
+        var summary = ToolEventSummary(
+            targetApp: app?.name,
+            actionDescription: action,
+            notes: notes)
+        summary.elementValue = app?.bundleIdentifier
+        return summary
+    }
+
+    private func actionDescription(from message: String) -> String {
+        guard let token = message.split(separator: " ").dropFirst().first else {
+            return "App"
+        }
+        return String(token)
     }
 
     private func identifier(for app: ServiceApplicationInfo) -> String {

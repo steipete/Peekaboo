@@ -67,3 +67,13 @@ extension MovementProfileOption {
         }
     }
 }
+
+extension UIElement {
+    var summaryRole: String? {
+        self.roleDescription ?? self.role
+    }
+
+    var summaryLabel: String? {
+        self.title ?? self.label ?? self.value
+    }
+}

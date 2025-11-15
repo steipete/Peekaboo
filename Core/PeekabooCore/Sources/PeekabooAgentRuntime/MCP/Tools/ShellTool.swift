@@ -82,9 +82,15 @@ public struct ShellTool: MCPTool {
             }
 
             self.logger.debug("Command completed successfully")
+            let summary = ToolEventSummary(
+                command: command,
+                workingDirectory: FileManager.default.currentDirectoryPath,
+                notes: nil)
+            let meta = ToolEventSummary.merge(summary: summary, into: nil)
             return ToolResponse(
                 content: [.text(output)],
-                isError: false)
+                isError: false,
+                meta: meta)
         } catch {
             self.logger.error("Failed to execute command: \(error.localizedDescription)")
             return ToolResponse(

@@ -90,13 +90,18 @@ public struct MenuTool: MCPTool {
             let menuStructure = try await self.context.menu.listMenus(for: app)
             let formattedOutput = self.formatMenuStructure(menuStructure)
 
+            let baseMeta: Value = .object([
+                "app": .string(menuStructure.application.name),
+                "total_menus": .int(menuStructure.menus.count),
+                "total_items": .int(menuStructure.totalItems),
+            ])
+            let summary = ToolEventSummary(
+                targetApp: menuStructure.application.name,
+                actionDescription: "List Menus",
+                notes: "\(menuStructure.menus.count) menus / \(menuStructure.totalItems) items")
             return ToolResponse.text(
                 formattedOutput,
-                meta: .object([
-                    "app": .string(menuStructure.application.name),
-                    "total_menus": .int(menuStructure.menus.count),
-                    "total_items": .int(menuStructure.totalItems),
-                ]))
+                meta: ToolEventSummary.merge(summary: summary, into: baseMeta))
         } catch {
             return ToolResponse.error("Failed to list menus for app '\(app)': \(error.localizedDescription)")
         }
@@ -130,12 +135,16 @@ public struct MenuTool: MCPTool {
                 output += "• \(menuInfo.app): \(menuInfo.menuCount) menus, \(menuInfo.itemCount) items\n"
             }
 
+            let baseMeta: Value = .object([
+                "total_apps": .int(allMenus.count),
+                "apps": .array(allMenus.map { .string($0.app) }),
+            ])
+            let summary = ToolEventSummary(
+                actionDescription: "List All Menus",
+                notes: "\(allMenus.count) apps")
             return ToolResponse.text(
                 output,
-                meta: .object([
-                    "total_apps": .int(allMenus.count),
-                    "apps": .array(allMenus.map { .string($0.app) }),
-                ]))
+                meta: ToolEventSummary.merge(summary: summary, into: baseMeta))
         } catch {
             return ToolResponse.error("Failed to list all menus: \(error.localizedDescription)")
         }
@@ -150,7 +159,13 @@ public struct MenuTool: MCPTool {
         if let path = arguments.getString("path") {
             do {
                 try await self.context.menu.clickMenuItem(app: app, itemPath: path)
-                return ToolResponse.text("\(AgentDisplayTokens.Status.success) Successfully clicked menu item: \(path)")
+                let summary = ToolEventSummary(
+                    targetApp: app,
+                    actionDescription: "Menu Click",
+                    notes: path)
+                return ToolResponse.text(
+                    "\(AgentDisplayTokens.Status.success) Successfully clicked menu item: \(path)",
+                    meta: ToolEventSummary.merge(summary: summary, into: nil))
             } catch {
                 return ToolResponse
                     .error("Failed to click menu item '\(path)' in app '\(app)': \(error.localizedDescription)")
@@ -158,7 +173,13 @@ public struct MenuTool: MCPTool {
         } else if let item = arguments.getString("item") {
             do {
                 try await self.context.menu.clickMenuItemByName(app: app, itemName: item)
-                return ToolResponse.text("\(AgentDisplayTokens.Status.success) Successfully clicked menu item: \(item)")
+                let summary = ToolEventSummary(
+                    targetApp: app,
+                    actionDescription: "Menu Click",
+                    notes: item)
+                return ToolResponse.text(
+                    "\(AgentDisplayTokens.Status.success) Successfully clicked menu item: \(item)",
+                    meta: ToolEventSummary.merge(summary: summary, into: nil))
             } catch {
                 return ToolResponse
                     .error("Failed to click menu item '\(item)' in app '\(app)': \(error.localizedDescription)")
@@ -176,8 +197,12 @@ public struct MenuTool: MCPTool {
 
         do {
             try await self.context.menu.clickMenuExtra(title: title)
-            return ToolResponse
-                .text("\(AgentDisplayTokens.Status.success) Successfully clicked system menu extra: \(title)")
+            let summary = ToolEventSummary(
+                actionDescription: "Menu Extra",
+                notes: title)
+            return ToolResponse.text(
+                "\(AgentDisplayTokens.Status.success) Successfully clicked system menu extra: \(title)",
+                meta: ToolEventSummary.merge(summary: summary, into: nil))
         } catch {
             return ToolResponse.error("Failed to click system menu extra '\(title)': \(error.localizedDescription)")
         }

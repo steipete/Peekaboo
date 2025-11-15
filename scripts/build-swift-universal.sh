@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e # Exit immediately if a command exits with a non-zero status.
+set -o pipefail
 
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SWIFT_PROJECT_PATH="$PROJECT_ROOT/Apps/CLI"
@@ -14,6 +15,20 @@ X86_64_BINARY_TEMP="$PROJECT_ROOT/${FINAL_BINARY_NAME}-x86_64"
 # -wmo: Whole Module Optimization, allows more aggressive optimizations.
 # -Xlinker -dead_strip: Remove dead code at the linking stage.
 SWIFT_OPTIMIZATION_FLAGS="-Xswiftc -Osize -Xswiftc -wmo -Xlinker -dead_strip"
+
+if command -v xcbeautify >/dev/null 2>&1; then
+    USE_XCBEAUTIFY=1
+else
+    USE_XCBEAUTIFY=0
+fi
+
+pipe_build_output() {
+    if [[ "$USE_XCBEAUTIFY" -eq 1 ]]; then
+        xcbeautify "$@"
+    else
+        cat
+    fi
+}
 
 echo "🧹 Cleaning previous build artifacts..."
 (cd "$SWIFT_PROJECT_PATH" && swift package reset) || echo "'swift package reset' encountered an issue, attempting rm -rf..."
@@ -50,12 +65,18 @@ enum Version {
 EOF
 
 echo "🏗️ Building for arm64 (Apple Silicon)..."
-(cd "$SWIFT_PROJECT_PATH" && swift build --arch arm64 -c release $SWIFT_OPTIMIZATION_FLAGS)
+(
+    cd "$SWIFT_PROJECT_PATH"
+    swift build --arch arm64 -c release $SWIFT_OPTIMIZATION_FLAGS 2>&1 | pipe_build_output
+)
 cp "$SWIFT_PROJECT_PATH/.build/arm64-apple-macosx/release/$FINAL_BINARY_NAME" "$ARM64_BINARY_TEMP"
 echo "✅ arm64 build complete: $ARM64_BINARY_TEMP"
 
 echo "🏗️ Building for x86_64 (Intel)..."
-(cd "$SWIFT_PROJECT_PATH" && swift build --arch x86_64 -c release $SWIFT_OPTIMIZATION_FLAGS)
+(
+    cd "$SWIFT_PROJECT_PATH"
+    swift build --arch x86_64 -c release $SWIFT_OPTIMIZATION_FLAGS 2>&1 | pipe_build_output
+)
 cp "$SWIFT_PROJECT_PATH/.build/x86_64-apple-macosx/release/$FINAL_BINARY_NAME" "$X86_64_BINARY_TEMP"
 echo "✅ x86_64 build complete: $X86_64_BINARY_TEMP"
 

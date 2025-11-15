@@ -5,8 +5,10 @@
 
 @preconcurrency import Foundation
 import os
+import PeekabooAutomation
 import PeekabooCore
 import PeekabooFoundation
+import PeekabooProtocols
 
 #if VISUALIZER_VERBOSE_LOGS
 @inline(__always)
@@ -129,7 +131,7 @@ final class VisualizerEventReceiver {
         case let .annotatedScreenshot(imageData, elements, windowBounds, duration):
             await self.coordinator.showAnnotatedScreenshot(
                 imageData: imageData,
-                elements: elements,
+                elements: self.convertDetectedElements(elements),
                 windowBounds: windowBounds,
                 duration: duration)
         }
@@ -141,5 +143,19 @@ final class VisualizerEventReceiver {
 
     private static func parseEventID(from descriptor: String) -> UUID? {
         descriptor.split(separator: "|", maxSplits: 1).first.flatMap { UUID(uuidString: String($0)) }
+    }
+
+    private func convertDetectedElements(
+        _ elements: [PeekabooProtocols.DetectedElement]) -> [PeekabooAutomation.DetectedElement]
+    {
+        elements.map { element in
+            PeekabooAutomation.DetectedElement(
+                id: element.id,
+                type: element.type,
+                label: element.label,
+                value: element.value,
+                bounds: element.bounds,
+                isEnabled: element.isEnabled)
+        }
     }
 }

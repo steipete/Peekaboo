@@ -134,6 +134,7 @@ extension AgentOutputDelegate {
         }
 
         let (formatter, toolType) = self.toolFormatter(for: name)
+        let summary = ToolEventSummary.from(resultJSON: json)
 
         if let toolType, [ToolType.taskCompleted, .needMoreInformation, .needInfo].contains(toolType) {
             self.handleCommunicationToolComplete(name: name, toolType: toolType)
@@ -143,7 +144,11 @@ extension AgentOutputDelegate {
         let success = (json["success"] as? Bool) ?? true
 
         if success {
-            let resultSummary = self.resultSummary(for: name, json: json, formatter: formatter)
+            let resultSummary = self.resultSummary(
+                for: name,
+                json: json,
+                formatter: formatter,
+                summary: summary)
             self.handleSuccess(
                 resultSummary: resultSummary,
                 durationString: durationString,
@@ -326,18 +331,8 @@ extension AgentOutputDelegate {
     }
 
     private func successStatusLine(resultSummary: String, durationString: String) -> String {
-        let statusPrefix = [
-            " ",
-            TerminalColor.bgGreen,
-            TerminalColor.bold,
-            " ",
-            AgentDisplayTokens.Status.success,
-            " ",
-            TerminalColor.reset
-        ].joined()
-
-        guard !resultSummary.isEmpty else {
-            return "\(statusPrefix)\(durationString)"
+        if resultSummary.isEmpty {
+            return " \(durationString)"
         }
 
         let summarySegment = [
@@ -347,7 +342,7 @@ extension AgentOutputDelegate {
             TerminalColor.reset
         ].joined()
 
-        return "\(statusPrefix)\(summarySegment)\(durationString)"
+        return "\(summarySegment)\(durationString)"
     }
 
     private func failureStatusLine(message: String, durationString: String) -> String {
@@ -428,11 +423,20 @@ extension AgentOutputDelegate {
         return (UnknownToolFormatter(toolName: name), nil)
     }
 
-    private func resultSummary(for name: String, json: [String: Any], formatter: any ToolFormatter) -> String {
-        var summary = formatter.formatResultSummary(result: json)
+    private func resultSummary(
+        for name: String,
+        json: [String: Any],
+        formatter: any ToolFormatter,
+        summary: ToolEventSummary?
+    ) -> String {
+        if let summaryText = summary?.shortDescription(toolName: name) {
+            return summaryText
+        }
+
+        var fallback = formatter.formatResultSummary(result: json)
 
         guard name == "app" else {
-            return summary
+            return self.cleanToolPrefix(fallback)
         }
 
         if let meta = json["meta"] as? [String: Any],
@@ -442,21 +446,21 @@ extension AgentOutputDelegate {
            let text = firstContent["text"] as? String {
             switch text {
             case let value where value.contains("Launched"):
-                summary = "→ \(appName) launched"
+                fallback = "→ \(appName) launched"
             case let value where value.contains("Quit"):
-                summary = "→ \(appName) quit"
+                fallback = "→ \(appName) quit"
             case let value where value.contains("Focused") || value.contains("Switched"):
-                summary = "→ \(appName) focused"
+                fallback = "→ \(appName) focused"
             case let value where value.contains("Hidden"):
-                summary = "→ \(appName) hidden"
+                fallback = "→ \(appName) hidden"
             case let value where value.contains("Unhidden"):
-                summary = "→ \(appName) shown"
+                fallback = "→ \(appName) shown"
             default:
                 break
             }
         }
 
-        return summary
+        return self.cleanToolPrefix(fallback)
     }
 
     private func handleSuccess(
@@ -467,16 +471,11 @@ extension AgentOutputDelegate {
     ) {
         switch self.outputMode {
         case .minimal:
-            if !resultSummary.isEmpty {
-                print(" OK \(resultSummary)\(durationString)")
-            } else {
-                print(" OK\(durationString)")
-            }
+            let prefix = resultSummary.isEmpty ? "" : " \(resultSummary)"
+            print("\(prefix)\(durationString)")
 
         case .verbose:
-            print(
-                " \(TerminalColor.green)\(AgentDisplayTokens.Status.success)\(TerminalColor.reset)\(durationString)"
-            )
+            print(" \(durationString)")
             if let formatted = formatJSON(result) {
                 print("\(TerminalColor.gray)Result:\(TerminalColor.reset)")
                 print(formatted)
@@ -530,8 +529,9 @@ extension AgentOutputDelegate {
         guard self.outputMode != .minimal && self.outputMode != .quiet else { return }
         guard let detail = self.primaryResultMessage(from: json) else { return }
         let snippet = detail.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !snippet.isEmpty else { return }
-        print("\n   \(TerminalColor.gray)\(snippet.prefix(240))\(TerminalColor.reset)")
+        let sanitized = self.cleanToolPrefix(snippet)
+        guard !sanitized.isEmpty else { return }
+        print("\n   \(TerminalColor.gray)\(sanitized.prefix(240))\(TerminalColor.reset)")
     }
 
     private func primaryResultMessage(from json: [String: Any]) -> String? {

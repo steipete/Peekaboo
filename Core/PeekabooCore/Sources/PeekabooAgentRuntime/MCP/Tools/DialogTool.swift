@@ -163,6 +163,10 @@ public struct DialogTool: MCPTool {
             let summary =
                 "\(AgentDisplayTokens.Status.success) Clicked button '\(button)' in " +
                 "\(Self.formattedDuration(executionTime))s"
+            let summaryMeta = ToolEventSummary(
+                targetApp: window,
+                actionDescription: "Dialog Button",
+                notes: button)
             return self.successResponse(
                 message: summary,
                 meta: [
@@ -171,7 +175,8 @@ public struct DialogTool: MCPTool {
                     "success": .bool(result.success),
                     "execution_time": .double(executionTime),
                     "details": .object(result.details.mapValues { .string($0) }),
-                ])
+                ],
+                summary: summaryMeta)
         } else {
             return ToolResponse
                 .error("Failed to click button '\(button)': \(result.details["error"] ?? "Unknown error")")
@@ -196,6 +201,10 @@ public struct DialogTool: MCPTool {
             let message =
                 "\(AgentDisplayTokens.Status.success) Entered text '\(request.text)' into \(fieldDesc)\(clearSuffix) " +
                 "in \(Self.formattedDuration(executionTime))s"
+            let summaryMeta = ToolEventSummary(
+                targetApp: request.window,
+                actionDescription: "Dialog Input",
+                notes: fieldDesc)
             return self.successResponse(
                 message: message,
                 meta: [
@@ -206,7 +215,8 @@ public struct DialogTool: MCPTool {
                     "success": .bool(result.success),
                     "execution_time": .double(executionTime),
                     "details": .object(result.details.mapValues { .string($0) }),
-                ])
+                ],
+                summary: summaryMeta)
         } else {
             return ToolResponse.error("Failed to enter text: \(result.details["error"] ?? "Unknown error")")
         }
@@ -227,6 +237,9 @@ public struct DialogTool: MCPTool {
             let summary =
                 "\(AgentDisplayTokens.Status.success) Selected file '\(selection.path)' " +
                 "in \(Self.formattedDuration(executionTime))s"
+            let summaryMeta = ToolEventSummary(
+                actionDescription: "Dialog File",
+                notes: selection.filename)
             return self.successResponse(
                 message: summary,
                 meta: [
@@ -237,7 +250,8 @@ public struct DialogTool: MCPTool {
                     "success": .bool(result.success),
                     "execution_time": .double(executionTime),
                     "details": .object(result.details.mapValues { .string($0) }),
-                ])
+                ],
+                summary: summaryMeta)
         } else {
             return ToolResponse.error("Failed to select file: \(result.details["error"] ?? "Unknown error")")
         }
@@ -256,6 +270,10 @@ public struct DialogTool: MCPTool {
             let summary =
                 "\(AgentDisplayTokens.Status.success) Dismissed dialog using \(method) in " +
                 "\(Self.formattedDuration(executionTime))s"
+            let summaryMeta = ToolEventSummary(
+                targetApp: request.window,
+                actionDescription: "Dialog Dismiss",
+                notes: method)
             return self.successResponse(
                 message: summary,
                 meta: [
@@ -264,14 +282,15 @@ public struct DialogTool: MCPTool {
                     "success": .bool(result.success),
                     "execution_time": .double(executionTime),
                     "details": .object(result.details.mapValues { .string($0) }),
-                ])
+                ],
+                summary: summaryMeta)
         } else {
             return ToolResponse.error("Failed to dismiss dialog: \(result.details["error"] ?? "Unknown error")")
         }
     }
 
-    private func successResponse(message: String, meta: [String: Value]) -> ToolResponse {
-        ToolResponse(content: [.text(message)], meta: .object(meta))
+    private func successResponse(message: String, meta: [String: Value], summary: ToolEventSummary) -> ToolResponse {
+        ToolResponse(content: [.text(message)], meta: ToolEventSummary.merge(summary: summary, into: .object(meta)))
     }
 
     static func formattedDuration(_ duration: TimeInterval) -> String {
@@ -387,9 +406,13 @@ private struct DialogListFormatter {
     let executionTime: TimeInterval
 
     func response() -> ToolResponse {
-        ToolResponse(
+        let summary = ToolEventSummary(
+            targetApp: self.elements.dialogInfo.title,
+            actionDescription: "List Dialog",
+            notes: self.elements.dialogInfo.title)
+        return ToolResponse(
             content: [.text(self.renderContent())],
-            meta: .object(self.metaDictionary()))
+            meta: ToolEventSummary.merge(summary: summary, into: .object(self.metaDictionary())))
     }
 
     private func renderContent() -> String {

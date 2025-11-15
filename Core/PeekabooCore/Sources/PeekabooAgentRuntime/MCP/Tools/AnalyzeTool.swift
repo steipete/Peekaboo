@@ -111,11 +111,23 @@ public struct AnalyzeTool: MCPTool {
                 "in \(String(format: "%.2f", duration))s.",
             ].joined(separator: " ")
 
+            let baseMeta: [String: Value] = [
+                "image_path": .string(imagePath),
+                "question": .string(question),
+                "provider": providerType != nil ? .string(providerType!) : .null,
+                "model": .string(modelName),
+                "execution_time": .double(duration),
+            ]
+            let summary = ToolEventSummary(
+                actionDescription: "Image Analyze",
+                notes: question)
+
             return ToolResponse(
                 content: [
                     .text(analysisText),
                     .text(timingMessage),
-                ])
+                ],
+                meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
 
         } catch {
             self.logger.error("Analysis failed: \(error)")

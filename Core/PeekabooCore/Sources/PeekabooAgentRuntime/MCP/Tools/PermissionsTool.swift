@@ -63,9 +63,20 @@ public struct PermissionsTool: MCPTool {
 
         // Return error response if required permissions are missing
         if !screenRecording {
-            return ToolResponse.error(responseText)
+            let summary = ToolEventSummary(actionDescription: "Permissions", notes: "Screen Recording missing")
+            return ToolResponse.error(responseText, meta: ToolEventSummary.merge(summary: summary, into: nil))
         }
 
-        return ToolResponse.text(responseText)
+        let baseMeta: [String: Value] = [
+            "screen_recording": .bool(screenRecording),
+            "accessibility": .bool(accessibility),
+        ]
+        let summary = ToolEventSummary(
+            actionDescription: "Permissions",
+            notes: "Screen Recording ✅, Accessibility \(accessibility ? "✅" : "⚠️")")
+
+        return ToolResponse.text(
+            responseText,
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 }

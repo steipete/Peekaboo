@@ -301,7 +301,7 @@ extension PeekabooAgentService {
             let toolResult = AgentToolResult.success(toolCallId: toolCall.id, result: result)
             await self.sendToolCompletionEvent(
                 name: toolCall.name,
-                payload: self.toolResultPayload(from: result),
+                payload: self.toolResultPayload(from: result, toolName: toolCall.name),
                 eventHandler: context.eventHandler)
             currentMessages.append(ModelMessage(role: .tool, content: [.toolResult(toolResult)]))
             return toolResult
@@ -337,10 +337,20 @@ extension PeekabooAgentService {
         await eventHandler.send(.toolCallCompleted(name: name, result: payload))
     }
 
-    private func toolResultPayload(from result: AnyAgentToolValue) -> String {
+    private func toolResultPayload(from result: AnyAgentToolValue, toolName: String) -> String {
         do {
             let jsonObject = try result.toJSON()
-            let wrapped: Any = jsonObject is [String: Any] ? jsonObject : ["result": jsonObject]
+            var wrapped: [String: Any]
+            if let dict = jsonObject as? [String: Any] {
+                wrapped = dict
+            } else {
+                wrapped = ["result": jsonObject]
+            }
+
+            if let summaryText = self.summaryText(from: wrapped, toolName: toolName) {
+                wrapped["summary_text"] = summaryText
+            }
+
             let data = try JSONSerialization.data(withJSONObject: wrapped, options: [])
             return String(data: data, encoding: .utf8) ?? "{}"
         } catch {
@@ -348,6 +358,17 @@ extension PeekabooAgentService {
             let escapedFallback = fallback.replacingOccurrences(of: "\"", with: "\\\"")
             return "{\"result\": \"\(escapedFallback)\"}"
         }
+    }
+
+    private func summaryText(from payload: [String: Any], toolName: String) -> String? {
+        guard
+            let meta = payload["meta"] as? [String: Any],
+            let summaryJSON = meta["summary"] as? [String: Any],
+            let summary = ToolEventSummary(json: summaryJSON)
+        else {
+            return nil
+        }
+        return summary.shortDescription(toolName: toolName)
     }
 
     private func toolErrorPayload(from error: any Error) -> String {

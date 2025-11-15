@@ -380,19 +380,29 @@ public struct SeeTool: MCPTool {
         target: CaptureTarget) async throws -> ToolResponse
     {
         let finalScreenshot = output.annotatedPath ?? output.screenshotPath
-        let summary = await buildSummary(
+        let summaryText = await buildSummary(
             session: session,
             elements: elements,
             screenshotPath: finalScreenshot,
             target: target)
 
-        var content: [MCP.Tool.Content] = [.text(summary)]
+        var content: [MCP.Tool.Content] = [.text(summaryText)]
         if output.annotate, let annotatedPath = output.annotatedPath {
             let imageData = try Data(contentsOf: URL(fileURLWithPath: annotatedPath))
             content.append(.image(data: imageData.base64EncodedString(), mimeType: "image/png", metadata: nil))
         }
 
-        return ToolResponse(content: content, meta: self.makeMetadata(session: session, elements: elements))
+        let baseMeta = self.makeMetadata(session: session, elements: elements)
+        var summary = ToolEventSummary(
+            targetApp: session.applicationName,
+            windowTitle: session.windowTitle,
+            actionDescription: "See",
+            notes: String(describing: target))
+        summary.captureApp = session.applicationName
+        summary.captureWindow = session.windowTitle
+
+        let mergedMeta = ToolEventSummary.merge(summary: summary, into: baseMeta)
+        return ToolResponse(content: content, meta: mergedMeta)
     }
 
     private func makeMetadata(session: UISession, elements: [UIElement]) -> Value {
@@ -538,6 +548,8 @@ actor UISession {
     private(set) var uiElements: [UIElement] = []
     private(set) var createdAt: Date
     private(set) var lastAccessedAt: Date
+    nonisolated(unsafe) private(set) var cachedApplicationName: String?
+    nonisolated(unsafe) private(set) var cachedWindowTitle: String?
 
     init() {
         self.id = UUID().uuidString
@@ -548,6 +560,8 @@ actor UISession {
     func setScreenshot(path: String, metadata: CaptureMetadata) {
         self.screenshotPath = path
         self.screenshotMetadata = metadata
+        self.cachedApplicationName = metadata.applicationInfo?.name
+        self.cachedWindowTitle = metadata.windowInfo?.title
         self.lastAccessedAt = Date()
     }
 
@@ -558,6 +572,14 @@ actor UISession {
 
     func getElement(byId id: String) -> UIElement? {
         self.uiElements.first { $0.id == id }
+    }
+
+    nonisolated var applicationName: String? {
+        self.cachedApplicationName
+    }
+
+    nonisolated var windowTitle: String? {
+        self.cachedWindowTitle
     }
 }
 

@@ -1,10 +1,25 @@
 #!/bin/bash
 set -e # Exit immediately if a command exits with a non-zero status.
+set -o pipefail
 
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SWIFT_PROJECT_PATH="$PROJECT_ROOT/Apps/CLI"
 FINAL_BINARY_NAME="peekaboo"
 FINAL_BINARY_PATH="$PROJECT_ROOT/$FINAL_BINARY_NAME"
+
+if command -v xcbeautify >/dev/null 2>&1; then
+    USE_XCBEAUTIFY=1
+else
+    USE_XCBEAUTIFY=0
+fi
+
+pipe_build_output() {
+    if [[ "$USE_XCBEAUTIFY" -eq 1 ]]; then
+        xcbeautify "$@"
+    else
+        cat
+    fi
+}
 
 # Swift compiler flags for size optimization
 # -Osize: Optimize for binary size.
@@ -47,7 +62,10 @@ enum Version {
 EOF
 
 echo "🏗️ Building for arm64 (Apple Silicon) only..."
-(cd "$SWIFT_PROJECT_PATH" && swift build --arch arm64 -c release $SWIFT_OPTIMIZATION_FLAGS)
+(
+    cd "$SWIFT_PROJECT_PATH"
+    swift build --arch arm64 -c release $SWIFT_OPTIMIZATION_FLAGS 2>&1 | pipe_build_output
+)
 cp "$SWIFT_PROJECT_PATH/.build/arm64-apple-macosx/release/$FINAL_BINARY_NAME" "$FINAL_BINARY_PATH.tmp"
 echo "✅ arm64 build complete"
 

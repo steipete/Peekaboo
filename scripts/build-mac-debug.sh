@@ -1,5 +1,6 @@
 #!/bin/bash
 # Build script for macOS Peekaboo app using xcodebuild
+set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -10,6 +11,20 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+
+if command -v xcbeautify >/dev/null 2>&1; then
+    USE_XCBEAUTIFY=1
+else
+    USE_XCBEAUTIFY=0
+fi
+
+pipe_build_output() {
+    if [[ "$USE_XCBEAUTIFY" -eq 1 ]]; then
+        xcbeautify "$@"
+    else
+        cat
+    fi
+}
 
 # Build configuration
 WORKSPACE="$PROJECT_ROOT/Apps/Peekaboo.xcworkspace"
@@ -37,9 +52,10 @@ xcodebuild \
     CODE_SIGN_IDENTITY="" \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGN_ENTITLEMENTS="" \
-    CODE_SIGNING_ALLOWED=NO
+    CODE_SIGNING_ALLOWED=NO \
+    2>&1 | pipe_build_output
 
-BUILD_EXIT_CODE=$?
+BUILD_EXIT_CODE=${PIPESTATUS[0]}
 
 if [ $BUILD_EXIT_CODE -eq 0 ]; then
     echo -e "${GREEN}✅ Build successful${NC}"

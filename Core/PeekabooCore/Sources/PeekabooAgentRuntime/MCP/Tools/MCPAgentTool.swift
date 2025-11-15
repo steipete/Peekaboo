@@ -127,12 +127,17 @@ public struct MCPAgentTool: MCPTool {
             ])
         }
 
-        let meta = Value.object([
+        let baseMeta = Value.object([
             "sessionCount": .string(String(sessions.count)),
             "sessions": .array(sessionsArray),
         ])
+        let summaryMeta = ToolEventSummary(
+            actionDescription: "List agent sessions",
+            notes: "\(sessions.count) session\(sessions.count == 1 ? "" : "s")")
 
-        return ToolResponse.text("Available Sessions:\n\n\(summary)", meta: meta)
+        return ToolResponse.text(
+            "Available Sessions:\n\n\(summary)",
+            meta: ToolEventSummary.merge(summary: summaryMeta, into: baseMeta))
     }
 
     private func renderSessionSummaries(_ sessions: [SessionSummary]) -> String {
@@ -185,12 +190,17 @@ public struct MCPAgentTool: MCPTool {
     }
 
     private func formatResult(result: AgentExecutionResult, input: AgentInput) -> ToolResponse {
+        let summary = self.summary(for: result)
+
         if input.quiet {
-            return ToolResponse.text(result.content)
+            return ToolResponse.text(result.content, meta: ToolEventSummary.merge(summary: summary, into: nil))
         }
 
         if input.verbose {
-            return ToolResponse.text(result.content, meta: self.verboseMetadata(for: result))
+            let verboseMeta = self.verboseMetadata(for: result)
+            return ToolResponse.text(
+                result.content,
+                meta: ToolEventSummary.merge(summary: summary, into: verboseMeta))
         }
 
         var output = result.content
@@ -209,8 +219,25 @@ public struct MCPAgentTool: MCPTool {
             output += tokensLine
         }
 
-        let meta = result.sessionId.map { Value.object(["sessionId": .string($0)]) }
-        return ToolResponse.text(output, meta: meta)
+        let baseMeta = result.sessionId.map { Value.object(["sessionId": .string($0)]) }
+        return ToolResponse.text(output, meta: ToolEventSummary.merge(summary: summary, into: baseMeta))
+    }
+
+    private func summary(for result: AgentExecutionResult) -> ToolEventSummary {
+        var details: [String] = []
+        if !result.metadata.modelName.isEmpty {
+            details.append("Model \(result.metadata.modelName)")
+        }
+        if result.metadata.toolCallCount > 0 {
+            details.append("\(result.metadata.toolCallCount) tool call\(result.metadata.toolCallCount == 1 ? "" : "s")")
+        }
+        if let usage = result.usage {
+            details.append("\(usage.totalTokens) tokens total")
+        }
+
+        return ToolEventSummary(
+            actionDescription: "Agent run",
+            notes: details.isEmpty ? nil : details.joined(separator: " · "))
     }
 
     private func verboseMetadata(for result: AgentExecutionResult) -> Value {

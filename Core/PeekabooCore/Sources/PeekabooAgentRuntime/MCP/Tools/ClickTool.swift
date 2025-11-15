@@ -112,13 +112,21 @@ public struct ClickTool: MCPTool {
             let element = try await self.requireElement(id: identifier, session: session)
             return ClickResolution(
                 location: element.centerPoint,
-                elementDescription: element.humanDescription)
+                elementDescription: element.humanDescription,
+                targetApp: session.applicationName,
+                windowTitle: session.windowTitle,
+                elementRole: element.humanRole,
+                elementLabel: element.displayLabel)
         case let .query(text):
             let session = try await self.requireSession(id: request.sessionId)
             let element = try await self.findElement(matching: text, session: session)
             return ClickResolution(
                 location: element.centerPoint,
-                elementDescription: element.humanDescription)
+                elementDescription: element.humanDescription,
+                targetApp: session.applicationName,
+                windowTitle: session.windowTitle,
+                elementRole: element.humanRole,
+                elementLabel: element.displayLabel)
         }
     }
 
@@ -150,9 +158,22 @@ public struct ClickTool: MCPTool {
             "clicked_element": resolution.elementDescription.map(Value.string) ?? .null,
         ]
 
+        let summary = ToolEventSummary(
+            targetApp: resolution.targetApp,
+            windowTitle: resolution.windowTitle,
+            elementRole: resolution.elementRole,
+            elementLabel: resolution.elementLabel,
+            actionDescription: intent.displayVerb,
+            coordinates: ToolEventSummary.Coordinates(
+                x: Double(resolution.location.x),
+                y: Double(resolution.location.y))
+        )
+
+        let metaValue = ToolEventSummary.merge(summary: summary, into: .object(metaDict))
+
         return ToolResponse(
             content: [.text(message)],
-            meta: .object(metaDict))
+            meta: metaValue)
     }
 
     private func parseCoordinates(_ raw: String) throws -> CGPoint {
@@ -232,6 +253,26 @@ private enum ClickRequestTarget {
 private struct ClickResolution {
     let location: CGPoint
     let elementDescription: String?
+    let targetApp: String?
+    let windowTitle: String?
+    let elementRole: String?
+    let elementLabel: String?
+
+    init(
+        location: CGPoint,
+        elementDescription: String?,
+        targetApp: String? = nil,
+        windowTitle: String? = nil,
+        elementRole: String? = nil,
+        elementLabel: String? = nil)
+    {
+        self.location = location
+        self.elementDescription = elementDescription
+        self.targetApp = targetApp
+        self.windowTitle = windowTitle
+        self.elementRole = elementRole
+        self.elementLabel = elementLabel
+    }
 }
 
 private struct ClickIntent {
@@ -264,5 +305,13 @@ extension UIElement {
 
     fileprivate var humanDescription: String {
         "\(self.role): \(self.title ?? self.label ?? "untitled")"
+    }
+
+    fileprivate var humanRole: String? {
+        self.roleDescription ?? self.role
+    }
+
+    fileprivate var displayLabel: String? {
+        self.title ?? self.label ?? self.value
     }
 }

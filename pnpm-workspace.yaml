@@ -1,0 +1,2 @@
+overrides:
+  '@steipete/oracle': link:../oracle
