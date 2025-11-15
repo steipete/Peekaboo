@@ -7,3 +7,6 @@
 [submodule "Commander"]
 	path = Commander
 	url = https://github.com/steipete/Commander.git
+[submodule "TauTUI"]
+	path = TauTUI
+	url = https://github.com/steipete/TauTUI.git

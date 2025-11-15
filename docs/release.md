@@ -160,7 +160,7 @@ Use `./scripts/committer` for all commits in the main repository:
   - [ ] Format/lint fixes: `./scripts/committer "style: apply format and lint fixes" "path/to/file1" "path/to/file2"`
   - [ ] Test updates: `./scripts/committer "test: update tests for release" "path/to/test1" "path/to/test2"`
   - [ ] CHANGELOG: `./scripts/committer "docs(changelog): add entries for vX.Y.Z" "CHANGELOG.md"`
-  - [ ] Submodule updates: `./scripts/committer "chore: update submodule commits" "AXorcist" "Commander" "Tachikoma"`
+  - [ ] Submodule updates: `./scripts/committer "chore: update submodule commits" "AXorcist" "Commander" "Tachikoma" "TauTUI"`
   - [ ] Other logical groups as needed
 - [ ] Push: `./runner git push`
 - [ ] Verify no dirty files: `git status` should be clean
@@ -173,6 +173,7 @@ Verify all repositories are clean and ready for release:
 - [ ] AXorcist: `cd AXorcist && git status` shows clean working tree
 - [ ] Commander: `cd Commander && git status` shows clean working tree
 - [ ] Tachikoma: `cd Tachikoma && git status` shows clean working tree
+- [ ] TauTUI: `cd TauTUI && git status` shows clean working tree
 - [ ] All tests passing across all repositories
 - [ ] All submodules pushed to remote
 - [ ] Main repository pushed to remote

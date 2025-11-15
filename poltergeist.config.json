@@ -16,6 +16,7 @@
         "AXorcist/**/*.swift",
         "Commander/**/*.swift",
         "Tachikoma/**/*.swift",
+        "TauTUI/**/*.swift",
         "Apps/CLI/**/*.swift"
       ],
       "postBuild": [
@@ -31,7 +32,7 @@
     {
       "name": "Commander",
       "type": "test",
-      "enabled": true,
+      "enabled": false,
       "testCommand": "./runner swift test --package-path Commander",
       "watchPaths": [
         "Commander/**/*.swift",
@@ -43,7 +44,7 @@
     {
       "name": "AXorcist",
       "type": "test",
-      "enabled": true,
+      "enabled": false,
       "testCommand": "./runner swift test --package-path AXorcist",
       "watchPaths": [
         "AXorcist/**/*.swift",
@@ -55,11 +56,23 @@
     {
       "name": "Tachikoma",
       "type": "test",
-      "enabled": true,
+      "enabled": false,
       "testCommand": "./runner swift test --package-path Tachikoma",
       "watchPaths": [
         "Tachikoma/**/*.swift",
         "Tachikoma/Package.swift"
+      ],
+      "settlingDelay": 1000,
+      "debounceInterval": 5000
+    },
+    {
+      "name": "TauTUI",
+      "type": "test",
+      "enabled": false,
+      "testCommand": "./runner swift test --package-path TauTUI",
+      "watchPaths": [
+        "TauTUI/**/*.swift",
+        "TauTUI/Package.swift"
       ],
       "settlingDelay": 1000,
       "debounceInterval": 5000
@@ -82,7 +95,8 @@
         "Core/PeekabooCore/**/*.swift",
         "AXorcist/**/*.swift",
         "Commander/**/*.swift",
-        "Tachikoma/**/*.swift"
+        "Tachikoma/**/*.swift",
+        "TauTUI/**/*.swift"
       ]
     }
   ],
