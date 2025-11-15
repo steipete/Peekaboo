@@ -101,6 +101,9 @@ enum CommanderRuntimeRouter {
         let description = descriptor.type.commandDescription
         guard description.showHelpOnEmptyInvocation else { return false }
         self.printCommandHelp(descriptor, path: [token])
+        if !descriptor.metadata.subcommands.isEmpty {
+            throw CommanderProgramError.missingSubcommand(command: token)
+        }
         return true
     }
 

@@ -23,7 +23,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     var wordsPerMinute: Int?
 
     @Option(name: .customLong("profile"), help: "Typing profile: human (default) or linear")
-    var profileOption: String?
+    var profileOption: String? = TypingProfile.human.rawValue
 
     @Flag(names: [.customLong("return"), .long], help: "Press return/enter after typing")
     var pressReturn = false
@@ -69,8 +69,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 
     private var resolvedProfile: TypingProfile {
         if let profileOption,
-           let selection = TypingProfile(rawValue: profileOption.lowercased())
-        {
+           let selection = TypingProfile(rawValue: profileOption.lowercased()) {
             return selection
         }
         return .human
@@ -156,8 +155,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 
     mutating func validate() throws {
         if let option = self.profileOption,
-           TypingProfile(rawValue: option.lowercased()) == nil
-        {
+           TypingProfile(rawValue: option.lowercased()) == nil {
             throw ValidationError("--profile must be either 'human' or 'linear'")
         }
 
@@ -324,7 +322,9 @@ extension TypeCommand: CommanderBindableCommand {
         if let wpm: Int = try values.decodeOption("wpm", as: Int.self) {
             self.wordsPerMinute = wpm
         }
-        self.profileOption = values.singleOption("profile")
+        if let profile = values.singleOption("profile") {
+            self.profileOption = profile
+        }
         self.tab = try values.decodeOption("tab", as: Int.self)
         self.pressReturn = values.flag("pressReturn")
         self.escape = values.flag("escape")
