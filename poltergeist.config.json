@@ -17,6 +17,15 @@
         "Commander/**/*.swift",
         "Tachikoma/**/*.swift",
         "Apps/CLI/**/*.swift"
+      ],
+      "postBuild": [
+        {
+          "name": "Swift tests",
+          "command": "./scripts/status-swifttests.sh",
+          "runOn": "success",
+          "timeoutSeconds": 1800,
+          "maxLines": 5
+        }
       ]
     },
     {
