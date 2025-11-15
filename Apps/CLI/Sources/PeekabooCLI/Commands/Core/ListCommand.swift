@@ -104,7 +104,7 @@ extension ListCommand {
     @MainActor
 
     struct WindowsSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional,
-        RuntimeOptionsConfigurable {
+    RuntimeOptionsConfigurable {
         @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
         var app: String
 
@@ -129,7 +129,8 @@ extension ListCommand {
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
         var jsonOutput: Bool {
-            // PIDWindowsSubcommandTests read jsonOutput immediately after parsing; prefer stored options over a missing runtime.
+            // PIDWindowsSubcommandTests read jsonOutput immediately after parsing; prefer stored options over a missing
+            // runtime.
             self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
         }
 

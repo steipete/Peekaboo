@@ -108,7 +108,11 @@ struct CommandHelpRenderer {
     private static func renderExamples(_ examples: [CommandUsageExample], theme: HelpTheme?) -> String? {
         guard !examples.isEmpty else { return nil }
         let rows = examples.map { ("$ \($0.command)", $0.description) }
-        return self.makeSection(title: "USAGE EXAMPLES", lines: self.renderKeyValueRows(rows, theme: theme), theme: theme)
+        return self.makeSection(
+            title: "USAGE EXAMPLES",
+            lines: self.renderKeyValueRows(rows, theme: theme),
+            theme: theme
+        )
     }
 
     private static func makeSection(title: String, lines: [String], theme: HelpTheme?) -> String {
@@ -118,23 +122,21 @@ struct CommandHelpRenderer {
 
     private static func renderKeyValueRows(_ rows: [(String, String?)], theme: HelpTheme?) -> [String] {
         guard !rows.isEmpty else { return [] }
-        let padding = min(max(rows.map { $0.0.count }.max() ?? 0, 12), 32)
+        let padding = min(max(rows.map(\.0.count).max() ?? 0, 12), 32)
         return rows.map { key, value in
             guard let value, !value.isEmpty else {
                 let displayKey = theme?.command(key) ?? key
                 return displayKey
             }
-            let paddedKey: String
-            if key.count >= padding {
-                paddedKey = key
+            let paddedKey: String = if key.count >= padding {
+                key
             } else {
-                paddedKey = key + String(repeating: " ", count: padding - key.count)
+                key + String(repeating: " ", count: padding - key.count)
             }
             let displayKey = theme?.command(paddedKey) ?? paddedKey
             return "\(displayKey)  \(value)"
         }
     }
-
 }
 
 extension ParsableCommand {

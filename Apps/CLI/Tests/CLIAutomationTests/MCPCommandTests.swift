@@ -1,6 +1,6 @@
+import Commander
 import Darwin
 import Foundation
-import Commander
 import MCP
 import PeekabooCore
 import TachikomaMCP

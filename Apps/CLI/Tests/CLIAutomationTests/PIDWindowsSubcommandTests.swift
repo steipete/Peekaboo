@@ -49,5 +49,4 @@ struct PIDWindowsSubcommandTests {
             #expect(command.app == pidFormat)
         }
     }
-
 }

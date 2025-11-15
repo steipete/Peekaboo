@@ -45,12 +45,12 @@ extension Tag {
 enum CLITestEnvironment {
     @preconcurrency
     @inline(__always)
-    nonisolated private static func flag(_ key: String) -> Bool {
+    private nonisolated static func flag(_ key: String) -> Bool {
         ProcessInfo.processInfo.environment[key]?.lowercased() == "true"
     }
 
     @preconcurrency
-    nonisolated(unsafe) private static var runAutomationTests: Bool {
+    private nonisolated(unsafe) static var runAutomationTests: Bool {
         flag("RUN_AUTOMATION_TESTS")
     }
 

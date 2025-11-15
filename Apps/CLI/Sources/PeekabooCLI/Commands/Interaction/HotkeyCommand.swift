@@ -137,8 +137,8 @@ extension HotkeyCommand: ParsableCommand {
                       Function: f1-f12
 
                     The keys are pressed in the order given and released in reverse order.
-                """
-                ,
+                """,
+
                 showHelpOnEmptyInvocation: true
             )
         }

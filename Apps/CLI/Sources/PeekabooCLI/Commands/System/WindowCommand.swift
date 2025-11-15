@@ -684,7 +684,10 @@ extension WindowCommand {
                 let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
 
                 let target = WindowTarget.application(appIdentifier)
-                let rawWindows = try await WindowServiceBridge.listWindows(windows: self.services.windows, target: target)
+                let rawWindows = try await WindowServiceBridge.listWindows(
+                    windows: self.services.windows,
+                    target: target
+                )
                 let windows = WindowFilterHelper.filter(
                     windows: rawWindows,
                     appIdentifier: appIdentifier,

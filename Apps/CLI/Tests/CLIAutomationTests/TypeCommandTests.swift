@@ -113,7 +113,10 @@ struct TypeCommandTests {
     @Test("Type execution honors linear profile and delay")
     func runTypeCommandLinearProfile() async throws {
         let context = await self.makeContext()
-        let result = try await self.runType(arguments: ["Hello", "--profile", "linear", "--delay", "15"], context: context)
+        let result = try await self.runType(
+            arguments: ["Hello", "--profile", "linear", "--delay", "15"],
+            context: context
+        )
 
         #expect(result.exitStatus == 0)
         let call = try #require(await self.automationState(context) { $0.typeActionsCalls.first })
@@ -256,7 +259,7 @@ struct TypeCommandTests {
 
     @MainActor
     private func makeContext(
-        configure: ((StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: ((StubAutomationService, StubSessionManager) -> ())? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()

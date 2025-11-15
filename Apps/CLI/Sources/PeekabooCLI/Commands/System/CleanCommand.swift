@@ -23,8 +23,8 @@ struct CleanCommand: OutputFormattable {
               - raw.png: Original screenshot
               - annotated.png: Screenshot with UI markers (if generated)
               - map.json: UI element mapping data
-        """
-        ,
+        """,
+
         showHelpOnEmptyInvocation: true
     )
 

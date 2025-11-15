@@ -16,7 +16,8 @@ enum WindowFilterHelper {
                         "title": window.title,
                         "index": window.index,
                         "reason": reason,
-                    ])
+                    ]
+                )
                 return false
             }
             return true

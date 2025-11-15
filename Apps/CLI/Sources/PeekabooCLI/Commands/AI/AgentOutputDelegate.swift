@@ -148,7 +148,8 @@ extension AgentOutputDelegate {
                 for: name,
                 json: json,
                 formatter: formatter,
-                summary: summary)
+                summary: summary
+            )
             self.handleSuccess(
                 resultSummary: resultSummary,
                 durationString: durationString,

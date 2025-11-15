@@ -5,8 +5,8 @@ enum Version {
     static let gitCommitDate = "2025-11-14 07:27:37 +0000"
     static let gitBranch = "main"
     static let buildDate = "2025-11-14T09:06:29+00:00"
-    
+
     static var fullVersion: String {
-        return "\(current) (\(gitBranch)/\(gitCommit), built: \(buildDate))"
+        "\(current) (\(gitBranch)/\(gitCommit), built: \(buildDate))"
     }
 }

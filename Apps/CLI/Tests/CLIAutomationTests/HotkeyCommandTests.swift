@@ -22,7 +22,6 @@ import Testing
         // Test with session ID
         let command4 = try HotkeyCommand.parse(["--keys", "cmd,z", "--session", "test-session"])
         #expect(command4.session == "test-session")
-
     }
 
     @Test func invalidInputHandling() async throws {

@@ -173,8 +173,8 @@ extension PressCommand: ParsableCommand {
                     TIMING:
                       Use --delay to control timing between key presses (default: 100ms)
                       Use --hold to control how long each key is held (default: 50ms)
-                """
-                ,
+                """,
+
                 showHelpOnEmptyInvocation: true
             )
         }

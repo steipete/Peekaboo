@@ -1,9 +1,9 @@
 import CoreGraphics
 import Foundation
 import Testing
+@testable import PeekabooAutomation
 @testable import PeekabooCLI
 @testable import PeekabooCore
-@testable import PeekabooAutomation
 
 #if !PEEKABOO_SKIP_AUTOMATION
 

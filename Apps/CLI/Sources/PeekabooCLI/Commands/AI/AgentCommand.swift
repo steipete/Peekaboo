@@ -6,9 +6,9 @@ import Logging
 import PeekabooCore
 import PeekabooFoundation
 import Spinner
-import TauTUI
 import Tachikoma
 import TachikomaMCP
+import TauTUI
 
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working
@@ -165,9 +165,9 @@ struct AgentCommand: RuntimeOptionsConfigurable {
         self.resolvedRuntime.logger
     }
 
-var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
-var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
+    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
 }
 
 @MainActor
@@ -206,10 +206,10 @@ private final class TerminalModeGuard {
 private final class EscapeKeyMonitor {
     private var source: (any DispatchSourceRead)?
     private var terminalGuard: TerminalModeGuard?
-    private let handler: @Sendable () async -> Void
+    private let handler: @Sendable () async -> ()
     private let queue = DispatchQueue(label: "peekaboo.escape.monitor")
 
-    init(handler: @escaping @Sendable () async -> Void) {
+    init(handler: @escaping @Sendable () async -> ()) {
         self.handler = handler
     }
 
@@ -341,7 +341,8 @@ extension AgentCommand {
                 peekabooAgent,
                 requestedModel: requestedModel,
                 initialPrompt: initialPrompt,
-                capabilities: terminalCapabilities)
+                capabilities: terminalCapabilities
+            )
             return
         case .none:
             break
@@ -884,7 +885,10 @@ extension AgentCommand {
 
     private func printNonInteractiveChatHelp() {
         if self.jsonOutput {
-            self.printAgentExecutionError("Provide a task or run with --chat in an interactive terminal to start the agent chat loop.")
+            self
+                .printAgentExecutionError(
+                    "Provide a task or run with --chat in an interactive terminal to start the agent chat loop."
+                )
             return
         }
 
@@ -913,7 +917,8 @@ extension AgentCommand {
                     agentService,
                     requestedModel: requestedModel,
                     initialPrompt: initialPrompt,
-                    capabilities: capabilities)
+                    capabilities: capabilities
+                )
                 return
             } catch {
                 self.printAgentExecutionError(
@@ -925,7 +930,8 @@ extension AgentCommand {
             agentService,
             requestedModel: requestedModel,
             initialPrompt: initialPrompt,
-            capabilities: capabilities)
+            capabilities: capabilities
+        )
     }
 
     @MainActor
@@ -945,7 +951,8 @@ extension AgentCommand {
 
         self.printChatWelcome(
             sessionId: activeSessionId,
-            modelDescription: self.describeModel(requestedModel))
+            modelDescription: self.describeModel(requestedModel)
+        )
         self.printChatHelpIntro()
 
         if let seed = initialPrompt {
@@ -953,7 +960,8 @@ extension AgentCommand {
                 seed,
                 agentService: agentService,
                 sessionId: &activeSessionId,
-                requestedModel: requestedModel)
+                requestedModel: requestedModel
+            )
         }
 
         while true {
@@ -976,7 +984,8 @@ extension AgentCommand {
                     trimmed,
                     agentService: agentService,
                     sessionId: &activeSessionId,
-                    requestedModel: requestedModel)
+                    requestedModel: requestedModel
+                )
             } catch {
                 self.printAgentExecutionError(error.localizedDescription)
                 break
@@ -1000,7 +1009,8 @@ extension AgentCommand {
                 maxSteps: self.resolvedMaxSteps,
                 dryRun: self.dryRun,
                 eventDelegate: delegate,
-                verbose: self.verbose)
+                verbose: self.verbose
+            )
         }
 
         return try await agentService.executeTask(
@@ -1010,7 +1020,8 @@ extension AgentCommand {
             model: requestedModel,
             dryRun: self.dryRun,
             eventDelegate: delegate,
-            verbose: self.verbose)
+            verbose: self.verbose
+        )
     }
 
     @MainActor
@@ -1073,7 +1084,8 @@ extension AgentCommand {
                     agentService: agentService,
                     sessionId: activeSessionId,
                     requestedModel: requestedModel,
-                    delegate: tuiDelegate)
+                    delegate: tuiDelegate
+                )
             }
 
             do {
@@ -1140,7 +1152,8 @@ extension AgentCommand {
                     maxSteps: self.resolvedMaxSteps,
                     dryRun: self.dryRun,
                     eventDelegate: delegate,
-                    verbose: self.verbose)
+                    verbose: self.verbose
+                )
                 self.displayResult(result, delegate: delegate)
                 return result
             } else {
@@ -1148,7 +1161,8 @@ extension AgentCommand {
                     agentService,
                     task: input,
                     requestedModel: requestedModel,
-                    maxSteps: self.resolvedMaxSteps)
+                    maxSteps: self.resolvedMaxSteps
+                )
             }
         }
 
@@ -1446,10 +1460,10 @@ extension AgentCommand {
 private final class AgentChatInput: Component {
     private let editor = Editor()
 
-    var onSubmit: ((String) -> Void)?
-    var onCancel: (() -> Void)?
-    var onInterrupt: (() -> Void)?
-    var onQueueWhileLocked: (() -> Void)?
+    var onSubmit: ((String) -> ())?
+    var onCancel: (() -> ())?
+    var onInterrupt: (() -> ())?
+    var onQueueWhileLocked: (() -> ())?
 
     var isLocked: Bool = false {
         didSet {
@@ -1472,7 +1486,7 @@ private final class AgentChatInput: Component {
 
     func handle(input: TerminalInput) {
         switch input {
-        case .key(.character(let char), let modifiers):
+        case let .key(.character(char), modifiers):
             if modifiers.contains(.control) {
                 let lower = String(char).lowercased()
                 if lower == "c" || lower == "d" {
@@ -1508,8 +1522,8 @@ private final class AgentChatInput: Component {
 
 @MainActor
 private final class AgentChatUI {
-    var onCancelRequested: (() -> Void)?
-    var onInterruptRequested: (() -> Void)?
+    var onCancelRequested: (() -> ())?
+    var onInterruptRequested: (() -> ())?
 
     private let tui: TUI
     private let messages = Container()

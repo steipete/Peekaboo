@@ -128,7 +128,7 @@ enum CommanderRuntimeRouter {
         }
         self.printCommandHelp(descriptor, path: path)
     }
-    
+
     private static func printRootHelp(descriptors: [CommanderCommandDescriptor]) {
         let theme = self.makeHelpTheme()
         print(self.renderRootUsageCard(theme: theme))
@@ -141,8 +141,8 @@ enum CommanderRuntimeRouter {
         for category in CommandRegistryEntry.Category.allCases {
             guard let commands = groupedByCategory[category], !commands.isEmpty else { continue }
             print(theme.heading(category.displayName))
-        let rows = self.renderCommandList(for: commands, theme: theme)
-        rows.forEach { print($0) }
+            let rows = self.renderCommandList(for: commands, theme: theme)
+            rows.forEach { print($0) }
             print("")
         }
 
@@ -172,7 +172,7 @@ enum CommanderRuntimeRouter {
 
 // MARK: - Usage Card + Theming
 
-private extension CommanderRuntimeRouter {
+extension CommanderRuntimeRouter {
     private static let categoryLookup: [ObjectIdentifier: CommandRegistryEntry.Category] = {
         var lookup: [ObjectIdentifier: CommandRegistryEntry.Category] = [:]
         for entry in CommandRegistry.entries {
@@ -248,16 +248,16 @@ private extension CommanderRuntimeRouter {
         indent: String = "  "
     ) -> [String] {
         let sorted = commands.sorted { $0.metadata.name < $1.metadata.name }
-        let maxNameLength = sorted.map { $0.metadata.name.count }.max() ?? 0
+        let maxNameLength = sorted.map(\.metadata.name.count).max() ?? 0
         let columnWidth = min(max(maxNameLength, 8), 24)
         return sorted.map { descriptor in
             let name = descriptor.metadata.name
-            let summary = descriptor.metadata.abstract.isEmpty ? "No description provided." : descriptor.metadata.abstract
-            let paddedName: String
-            if name.count >= columnWidth {
-                paddedName = name
+            let summary = descriptor.metadata.abstract.isEmpty ? "No description provided." : descriptor.metadata
+                .abstract
+            let paddedName: String = if name.count >= columnWidth {
+                name
             } else {
-                paddedName = name + String(repeating: " ", count: columnWidth - name.count)
+                name + String(repeating: " ", count: columnWidth - name.count)
             }
             let displayName = theme.command(paddedName)
             return "\(indent)\(displayName)  \(summary)"
@@ -335,8 +335,8 @@ struct HelpTheme {
     }
 }
 
-private extension CommandRegistryEntry.Category {
-    var displayName: String {
+extension CommandRegistryEntry.Category {
+    fileprivate var displayName: String {
         switch self {
         case .core:
             "Core Commands"

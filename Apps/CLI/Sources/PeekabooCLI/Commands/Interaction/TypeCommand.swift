@@ -82,9 +82,9 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     private var typingCadence: TypingCadence {
         switch self.resolvedProfile {
         case .human:
-            return .human(wordsPerMinute: self.resolvedWordsPerMinute)
+            .human(wordsPerMinute: self.resolvedWordsPerMinute)
         case .linear:
-            return .fixed(milliseconds: self.delay)
+            .fixed(milliseconds: self.delay)
         }
     }
 
@@ -397,8 +397,8 @@ extension TypeCommand: ParsableCommand {
                     HUMAN TYPING:
                     Use --profile human (default) for realistic cadence; override speed with --wpm (80-220).
                     Use --profile linear for deterministic timing via --delay.
-                """
-                ,
+                """,
+
                 showHelpOnEmptyInvocation: true
             )
         }

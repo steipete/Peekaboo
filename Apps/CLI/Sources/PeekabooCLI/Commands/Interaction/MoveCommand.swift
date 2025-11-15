@@ -223,11 +223,10 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     ) -> MovementParameters {
         switch profileSelection {
         case .linear:
-            let resolvedDuration: Int
-            if let customDuration = self.duration {
-                resolvedDuration = customDuration
+            let resolvedDuration: Int = if let customDuration = self.duration {
+                customDuration
             } else {
-                resolvedDuration = self.smooth ? 500 : 0
+                self.smooth ? 500 : 0
             }
             let resolvedSteps = self.smooth ? max(self.steps, 1) : 1
             return MovementParameters(
@@ -327,8 +326,8 @@ extension MoveCommand: ParsableCommand {
                     ELEMENT TARGETING:
                       When targeting elements, the cursor moves to the element's center.
                       Use element IDs from 'see' output for precise targeting.
-                """
-                ,
+                """,
+
                 showHelpOnEmptyInvocation: true
             )
         }
