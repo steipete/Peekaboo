@@ -134,7 +134,6 @@ struct RunCommandDataTests {
         #expect(command.scriptPath == "/path/to/script.peekaboo.json")
         #expect(command.output == nil)
         #expect(command.noFailFast == false)
-        #expect(command.verbose == false)
     }
 
     @Test("Run command parses all options")
@@ -143,12 +142,10 @@ struct RunCommandDataTests {
             "/tmp/automation.peekaboo.json",
             "--output", "results.json",
             "--no-fail-fast",
-            "--verbose",
         ])
         #expect(command.scriptPath == "/tmp/automation.peekaboo.json")
         #expect(command.output == "results.json")
         #expect(command.noFailFast == true)
-        #expect(command.verbose == true)
     }
 
     @Test("Run command requires script path")

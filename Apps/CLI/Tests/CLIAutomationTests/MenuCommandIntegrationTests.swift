@@ -63,7 +63,13 @@ struct MenuCommandIntegrationTests {
 
         #expect(response.success == true)
         #expect(response.data.menu_path == "File > New")
-        #expect(context.menuService.clickPathCalls == [(context.appInfo.name, "File > New")])
+        #expect(context.menuService.clickPathCalls.count == 1)
+        if let call = context.menuService.clickPathCalls.first {
+            #expect(call.app == context.appInfo.name)
+            #expect(call.path == "File > New")
+        } else {
+            Issue.record("Expected click to be recorded")
+        }
     }
 
     // MARK: - Helpers

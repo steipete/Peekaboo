@@ -3,6 +3,8 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
+private typealias WindowsSubcommand = ListCommand.WindowsSubcommand
+
 @Suite("PID Windows Subcommand Tests", .serialized, .tags(.safe))
 struct PIDWindowsSubcommandTests {
     @Test("Parse windows subcommand with PID")

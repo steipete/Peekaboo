@@ -2,6 +2,8 @@ import CoreGraphics
 import Foundation
 import MCP
 import Testing
+@testable import PeekabooAgentRuntime
+@testable import PeekabooAutomation
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
