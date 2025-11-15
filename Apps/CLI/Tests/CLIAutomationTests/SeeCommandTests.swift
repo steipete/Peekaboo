@@ -1,5 +1,8 @@
 import CoreGraphics
 import Foundation
+import PeekabooAutomation
+import PeekabooCore
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 

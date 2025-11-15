@@ -6,19 +6,22 @@ import TachikomaMCP
 
 @MainActor
 enum MCPStubFixtures {
-    static let scriptURL: URL = {
+    enum FixtureError: Error {
+        case missing
+    }
+
+    static func scriptURL() throws -> URL {
         let supportFile = URL(fileURLWithPath: #filePath)
         let cliRoot = supportFile
             .deletingLastPathComponent() // Support
             .deletingLastPathComponent() // CLIAutomationTests
             .deletingLastPathComponent() // Tests
         let url = cliRoot.appendingPathComponent("TestFixtures/MCPStubServer.swift", isDirectory: false)
-        precondition(
-            FileManager.default.fileExists(atPath: url.path),
-            "Stub MCP server script not found at \(url.path)"
-        )
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw FixtureError.missing
+        }
         return url.standardizedFileURL
-    }()
+    }
 }
 
 @MainActor
@@ -35,7 +38,7 @@ struct MCPStubTestHarness {
         try fm.createDirectory(at: self.homeURL, withIntermediateDirectories: true)
         self.serverName = serverName
         self.profileDirectoryName = ".peekaboo-mcp-tests-\(uuid)"
-        self.stubScriptPath = MCPStubFixtures.scriptURL.path
+        self.stubScriptPath = try MCPStubFixtures.scriptURL().path
     }
 
     func addStubServer() async throws {

@@ -40,10 +40,15 @@ struct MenuCommandTests {
         let subcommands = MenuCommand.commandDescription.subcommands
         #expect(subcommands.count == 3)
 
-        let subcommandNames = subcommands.map(\.commandDescription.commandName)
-        #expect(subcommandNames.contains("click"))
-        #expect(subcommandNames.contains("click-system"))
-        #expect(subcommandNames.contains("list"))
+        var names: [String] = [] // Key-path map here trips SILGen; keep loop (docs/silgen-crash-debug.md).
+        names.reserveCapacity(subcommands.count)
+        for descriptor in subcommands {
+            guard let name = descriptor.commandDescription.commandName else { continue }
+            names.append(name)
+        }
+        #expect(names.contains("click"))
+        #expect(names.contains("click-system"))
+        #expect(names.contains("list"))
     }
 
     @Test("Menu click command help")

@@ -186,7 +186,7 @@ struct SeeCommandAnnotationIntegrationTests {
         var command = try SeeCommand.parse([])
         command.app = app
         command.annotate = annotate
-        command.jsonOutput = jsonOutput
+        command.runtimeOptions.jsonOutput = jsonOutput
         if let windowTitle {
             command.windowTitle = windowTitle
         }
@@ -244,6 +244,7 @@ struct SeeCommandAnnotationIntegrationTests {
                 self.makeElement(
                     id: "G1",
                     type: .group,
+                    label: nil,
                     bounds: CGRect(x: 10, y: 80, width: 300, height: 200)
                 )
             ],

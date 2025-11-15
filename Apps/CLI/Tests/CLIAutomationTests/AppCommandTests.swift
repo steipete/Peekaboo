@@ -18,7 +18,12 @@ struct AppCommandTests {
         let subcommands = AppCommand.commandDescription.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map(\.commandDescription.commandName)
+        var subcommandNames: [String] = []
+        subcommandNames.reserveCapacity(subcommands.count)
+        for descriptor in subcommands {
+            let name = descriptor.commandDescription.commandName ?? ""
+            subcommandNames.append(name)
+        }
         #expect(subcommandNames.contains("launch"))
         #expect(subcommandNames.contains("quit"))
         #expect(subcommandNames.contains("hide"))

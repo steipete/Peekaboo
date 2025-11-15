@@ -4,6 +4,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
+#if !PEEKABOO_SKIP_AUTOMATION
 @Suite("ImageCommand Tests", .serialized, .tags(.imageCapture, .unit))
 @MainActor
 struct ImageCommandTests {
@@ -549,13 +550,13 @@ struct ImageCommandTests {
             services: services
         )
 
-        await #expect(throws: PeekabooError.self) {
+        do {
             try await command.run(using: runtime)
-        } catch: { error in
-            guard case .windowNotFound = error else {
-                Issue.record("Expected windowNotFound, received: \(error)")
-                return
-            }
+            Issue.record("Expected windowNotFound error")
+        } catch PeekabooError.windowNotFound {
+            // expected
+        } catch {
+            Issue.record("Expected windowNotFound, received: \(error)")
         }
     }
 
@@ -567,7 +568,7 @@ struct ImageCommandTests {
             title: "Console Overlay",
             bounds: CGRect(x: 0, y: 0, width: 400, height: 200),
             index: 0,
-            sharingState: .none
+            sharingState: .some(.none)
         )
         let visible = ServiceWindowInfo(
             windowID: 91,
@@ -620,7 +621,7 @@ struct ImageCommandTests {
             windowID: 101,
             title: "Overlay",
             bounds: CGRect(x: 0, y: 0, width: 500, height: 300),
-            sharingState: .none
+            sharingState: .some(.none)
         )
         let appInfo = ServiceApplicationInfo(
             processIdentifier: 9090,
@@ -644,13 +645,13 @@ struct ImageCommandTests {
             services: services
         )
 
-        await #expect(throws: PeekabooError.self) {
+        do {
             try await command.run(using: runtime)
-        } catch: { error in
-            guard case .windowNotFound = error else {
-                Issue.record("Expected windowNotFound, received: \(error)")
-                return
-            }
+            Issue.record("Expected windowNotFound error")
+        } catch PeekabooError.windowNotFound {
+            // expected
+        } catch {
+            Issue.record("Expected windowNotFound, received: \(error)")
         }
     }
 
@@ -677,3 +678,4 @@ struct ImageCommandTests {
         )
     }
 }
+#endif

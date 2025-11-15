@@ -29,11 +29,11 @@ struct AgentMenuTests {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Ensure Calculator is running
-        _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "Calculator"])
+        _ = try await runCommand(["app", "--action", "launch", "--name", "Calculator"])
         try await Task.sleep(for: .seconds(2))
 
         // Test agent discovering menus
-        let output = try await runPeekabooCommand([
+        let output = try await runCommand([
             "agent",
             "List all menus available in the Calculator app",
             "--json-output",
@@ -68,11 +68,11 @@ struct AgentMenuTests {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Ensure Calculator is running
-        _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "Calculator"])
+        _ = try await runCommand(["app", "--action", "launch", "--name", "Calculator"])
         try await Task.sleep(for: .seconds(2))
 
         // Test agent using menu to switch Calculator mode
-        let output = try await runPeekabooCommand([
+        let output = try await runCommand([
             "agent",
             "Switch Calculator to Scientific mode using the View menu",
             "--json-output",
@@ -114,10 +114,10 @@ struct AgentMenuTests {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with TextEdit
-        _ = try await runPeekabooCommand(["app", "--action", "launch", "--name", "TextEdit"])
+        _ = try await runCommand(["app", "--action", "launch", "--name", "TextEdit"])
         try await Task.sleep(for: .seconds(2))
 
-        let output = try await runPeekabooCommand([
+        let output = try await runCommand([
             "agent",
             "Find and use the spell check feature in TextEdit",
             "--json-output",
@@ -157,7 +157,7 @@ struct AgentMenuTests {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with non-existent menu item
-        let output = try await runPeekabooCommand([
+        let output = try await runCommand([
             "agent",
             "Click on the 'Quantum Computing' menu item in Calculator",
             "--json-output",

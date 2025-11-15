@@ -12,14 +12,15 @@ struct WindowFilteringHelperTests {
                 windowID: 1,
                 title: "Overlay",
                 bounds: CGRect(x: 0, y: 0, width: 400, height: 400),
-                sharingState: .none
+                index: 0,
+                sharingState: .some(.none)
             ),
             ServiceWindowInfo(
                 windowID: 2,
                 title: "Editor",
                 bounds: CGRect(x: 0, y: 0, width: 1200, height: 900),
-                sharingState: .readWrite,
-                index: 1
+                index: 1,
+                sharingState: .some(.readWrite)
             ),
         ]
 
@@ -42,14 +43,15 @@ struct WindowFilteringHelperTests {
                 title: "Hidden",
                 bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
                 isMinimized: true,
+                index: 0,
                 isOnScreen: false
             ),
             ServiceWindowInfo(
                 windowID: 4,
                 title: "Visible",
                 bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
-                isOnScreen: true,
-                index: 1
+                index: 1,
+                isOnScreen: true
             ),
         ]
 

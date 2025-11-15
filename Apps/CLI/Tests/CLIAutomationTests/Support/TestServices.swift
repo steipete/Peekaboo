@@ -6,7 +6,7 @@ import PeekabooFoundation
 @testable import PeekabooCore
 
 enum TestStubError: Error {
-    case unimplemented(String)
+    case unimplemented(StaticString)
 }
 
 @MainActor
@@ -515,9 +515,11 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
 
     func cleanSessionsOlderThan(days: Int) async throws -> Int {
         let threshold = Date().addingTimeInterval(TimeInterval(-days * 24 * 60 * 60))
-        let ids = self.sessionInfos.values
+        let ids: [String] = self.sessionInfos.values
             .filter { $0.lastAccessedAt < threshold }
-            .map(\.id)
+            .reduce(into: []) { partialResult, info in
+                partialResult.append(info.id)
+            }
         for id in ids {
             try await self.cleanSession(sessionId: id)
         }
@@ -933,6 +935,7 @@ final class StubWindowService: WindowManagementServiceProtocol {
         throw TestStubError.unimplemented(#function)
     }
 
+    @MainActor
     func moveWindow(target: WindowTarget, to position: CGPoint) async throws {
         try self.updateWindow(target: target) { info in
             let newBounds = CGRect(origin: position, size: info.bounds.size)
@@ -940,6 +943,7 @@ final class StubWindowService: WindowManagementServiceProtocol {
         }
     }
 
+    @MainActor
     func resizeWindow(target: WindowTarget, to size: CGSize) async throws {
         try self.updateWindow(target: target) { info in
             let newBounds = CGRect(origin: info.bounds.origin, size: size)
@@ -947,16 +951,19 @@ final class StubWindowService: WindowManagementServiceProtocol {
         }
     }
 
+    @MainActor
     func setWindowBounds(target: WindowTarget, bounds: CGRect) async throws {
         try self.updateWindow(target: target) { info in
             info.withBounds(bounds)
         }
     }
 
+    @MainActor
     func focusWindow(target: WindowTarget) async throws {
         self.focusCalls.append(target)
     }
 
+    @MainActor
     func listWindows(target: WindowTarget) async throws -> [ServiceWindowInfo] {
         switch target {
         case let .application(app):
@@ -979,6 +986,7 @@ final class StubWindowService: WindowManagementServiceProtocol {
         nil
     }
 
+    @MainActor
     private func updateWindow(
         target: WindowTarget,
         transform: (ServiceWindowInfo) -> ServiceWindowInfo
@@ -993,6 +1001,7 @@ final class StubWindowService: WindowManagementServiceProtocol {
         self.windowsByApp[selection.app] = windows
     }
 
+    @MainActor
     private func resolveWindowLocation(target: WindowTarget) throws -> (app: String, index: Int) {
         switch target {
         case let .application(app):
@@ -1055,9 +1064,10 @@ extension ServiceWindowInfo {
     }
 }
 
+@MainActor
 final class StubSpaceService: SpaceCommandSpaceService {
-    var spaces: [SpaceInfo]
-    var windowSpaces: [Int: [SpaceInfo]]
+    let spaces: [SpaceInfo]
+    let windowSpaces: [Int: [SpaceInfo]]
     var switchCalls: [CGSSpaceID] = []
     var moveWindowCalls: [(windowID: CGWindowID, spaceID: CGSSpaceID?)] = []
     var moveToCurrentCalls: [CGWindowID] = []
@@ -1093,17 +1103,17 @@ final class StubSpaceService: SpaceCommandSpaceService {
 @MainActor
 enum TestServicesFactory {
     static func makePeekabooServices(
-        applications: ApplicationServiceProtocol = StubApplicationService(applications: []),
-        windows: WindowManagementServiceProtocol = StubWindowService(windowsByApp: [:]),
-        menu: MenuServiceProtocol = StubMenuService(menusByApp: [:]),
-        dialogs: DialogServiceProtocol = StubDialogService(),
-        dock: DockServiceProtocol = StubDockService(),
-        sessions: SessionManagerProtocol = StubSessionManager(),
-        files: FileServiceProtocol = StubFileService(),
-        process: ProcessServiceProtocol = StubProcessService(),
+        applications: any ApplicationServiceProtocol = StubApplicationService(applications: []),
+        windows: any WindowManagementServiceProtocol = StubWindowService(windowsByApp: [:]),
+        menu: any MenuServiceProtocol = StubMenuService(menusByApp: [:]),
+        dialogs: any DialogServiceProtocol = StubDialogService(),
+        dock: any DockServiceProtocol = StubDockService(),
+        sessions: any SessionManagerProtocol = StubSessionManager(),
+        files: any FileServiceProtocol = StubFileService(),
+        process: any ProcessServiceProtocol = StubProcessService(),
         screens: [ScreenInfo] = [],
-        automation: UIAutomationServiceProtocol = StubAutomationService(),
-        screenCapture: ScreenCaptureServiceProtocol = StubScreenCaptureService()
+        automation: any UIAutomationServiceProtocol = StubAutomationService(),
+        screenCapture: any ScreenCaptureServiceProtocol = StubScreenCaptureService()
     ) -> PeekabooServices {
         let screenService = StubScreenService(screens: screens)
         let services = PeekabooServices(
@@ -1138,15 +1148,15 @@ enum TestServicesFactory {
     static func makeAutomationTestContext(
         automation: StubAutomationService = StubAutomationService(),
         sessions: StubSessionManager = StubSessionManager(),
-        applications: ApplicationServiceProtocol = StubApplicationService(applications: []),
-        windows: WindowManagementServiceProtocol = StubWindowService(windowsByApp: [:]),
-        menu: MenuServiceProtocol = StubMenuService(menusByApp: [:]),
-        dialogs: DialogServiceProtocol = StubDialogService(),
-        dock: DockServiceProtocol = StubDockService(),
-        files: FileServiceProtocol = StubFileService(),
-        process: ProcessServiceProtocol = StubProcessService(),
+        applications: any ApplicationServiceProtocol = StubApplicationService(applications: []),
+        windows: any WindowManagementServiceProtocol = StubWindowService(windowsByApp: [:]),
+        menu: any MenuServiceProtocol = StubMenuService(menusByApp: [:]),
+        dialogs: any DialogServiceProtocol = StubDialogService(),
+        dock: any DockServiceProtocol = StubDockService(),
+        files: any FileServiceProtocol = StubFileService(),
+        process: any ProcessServiceProtocol = StubProcessService(),
         screens: [ScreenInfo] = [],
-        screenCapture: ScreenCaptureServiceProtocol = StubScreenCaptureService()
+        screenCapture: any ScreenCaptureServiceProtocol = StubScreenCaptureService()
     ) -> AutomationTestContext {
         let services = self.makePeekabooServices(
             applications: applications,

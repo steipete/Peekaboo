@@ -73,16 +73,26 @@ struct TypeCommandTests {
     @Test("Type command rejects invalid WPM")
     func typeWithInvalidWPM() throws {
         var command = try TypeCommand.parse(["Hello", "--wpm", "20"])
-        #expect(throws: ValidationError.self) {
+        do {
             try command.validate()
+            Issue.record("Expected validation failure for WPM outside allowed range")
+        } catch is any ValidationError {
+            // expected
+        } catch {
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
     @Test("Type command rejects WPM with linear profile")
     func typeRejectsWPMWithLinearProfile() throws {
         var command = try TypeCommand.parse(["Hello", "--profile", "linear", "--wpm", "140"])
-        #expect(throws: ValidationError.self) {
+        do {
             try command.validate()
+            Issue.record("Expected validation failure for linear profile with WPM")
+        } catch is any ValidationError {
+            // expected
+        } catch {
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
@@ -111,14 +121,6 @@ struct TypeCommandTests {
             #expect(milliseconds == 15)
         } else {
             Issue.record("Expected linear cadence")
-        }
-    }
-
-    @Test("Type command rejects WPM with linear profile")
-    func typeRejectsWPMWithLinearProfile() throws {
-        var command = try TypeCommand.parse(["Hello", "--profile", "linear", "--wpm", "140"])
-        #expect(throws: ValidationError.self) {
-            try command.validate()
         }
     }
 

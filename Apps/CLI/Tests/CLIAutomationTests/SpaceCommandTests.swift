@@ -3,6 +3,7 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 @testable import PeekabooCore
+@testable import PeekabooAutomation
 
 #if !PEEKABOO_SKIP_AUTOMATION
 
@@ -117,7 +118,7 @@ struct SpaceCommandReadTests {
     }
 
     @MainActor
-    func makeTestContext() -> (services: PeekabooServices, spaceService: SpaceCommandSpaceService) {
+    func makeTestContext() -> (services: PeekabooServices, spaceService: any SpaceCommandSpaceService) {
         let applications = Self.testApplications()
         let windowsByApp = Self.windowsByApp()
 
@@ -251,7 +252,7 @@ struct SpaceCommandActionTests {
         #expect(result.exitStatus == 0)
         let response = try JSONDecoder().decode(
             SpaceActionResponse.self,
-            from: self.output(from: Data(result).utf8)
+            from: Data(self.output(from: result).utf8)
         )
         #expect(response.success)
         let switchCalls = await self.spaceState(context) { $0.switchCalls }
@@ -270,7 +271,7 @@ struct SpaceCommandActionTests {
         #expect(result.exitStatus == 0)
         let response = try JSONDecoder().decode(
             WindowSpaceActionResponse.self,
-            from: self.output(from: Data(result).utf8)
+            from: Data(self.output(from: result).utf8)
         )
         #expect(response.success)
         let moveCalls = await self.spaceState(context) { $0.moveToCurrentCalls }
@@ -290,7 +291,7 @@ struct SpaceCommandActionTests {
         #expect(result.exitStatus == 0)
         let response = try JSONDecoder().decode(
             WindowSpaceActionResponse.self,
-            from: self.output(from: Data(result).utf8)
+            from: Data(self.output(from: result).utf8)
         )
         #expect(response.success)
         let moveCalls = await self.spaceState(context) { $0.moveWindowCalls }

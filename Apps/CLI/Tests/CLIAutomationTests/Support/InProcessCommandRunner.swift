@@ -39,7 +39,7 @@ enum InProcessCommandRunner {
     static func run(
         _ arguments: [String],
         services: PeekabooServices,
-        spaceService: SpaceCommandSpaceService? = nil
+        spaceService: (any SpaceCommandSpaceService)? = nil
     ) async throws -> CommandRunResult {
         try await CommandRuntime.withInjectedServices(services) {
             if let spaceService {

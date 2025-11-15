@@ -4,6 +4,20 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
+private struct DialogTextFieldPayload: Codable, Sendable {
+    let title: String?
+    let value: String?
+    let placeholder: String?
+}
+
+private struct DialogListPayload: Codable, Sendable {
+    let title: String
+    let role: String
+    let buttons: [String]
+    let textFields: [DialogTextFieldPayload]
+    let textElements: [String]
+}
+
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
     "Dialog Command  Tests",
@@ -24,7 +38,12 @@ struct DialogCommandTests {
         let subcommands = DialogCommand.commandDescription.subcommands
         #expect(subcommands.count == 5)
 
-        let subcommandNames = subcommands.map(\.commandDescription.commandName)
+        var subcommandNames: [String] = []
+        subcommandNames.reserveCapacity(subcommands.count)
+        for descriptor in subcommands {
+            guard let name = descriptor.commandDescription.commandName else { continue }
+            subcommandNames.append(name)
+        }
         #expect(subcommandNames.contains("click"))
         #expect(subcommandNames.contains("input"))
         #expect(subcommandNames.contains("file"))
@@ -82,14 +101,14 @@ struct DialogCommandTests {
 
     @Test("dialog dismiss uses force flag")
     func dialogDismissForce() async throws {
-        let dialogService = await MainActor.run { StubDialogService() }
+        let dialogService = StubDialogService()
         dialogService.dismissResult = DialogActionResult(
             success: true,
             action: .dismiss,
             details: ["method": "escape"]
         )
 
-        let services = await self.makeTestServices(dialogs: dialogService)
+        let services = self.makeTestServices(dialogs: dialogService)
         let (output, status) = try await self.runCommand(
             ["dialog", "dismiss", "--force", "--json-output"],
             services: services
@@ -165,10 +184,8 @@ struct DialogCommandTests {
             ],
             staticTexts: ["Choose a document to open"]
         )
-        let dialogService = await MainActor.run {
-            StubDialogService(elements: elements)
-        }
-        let services = await self.makeTestServices(dialogs: dialogService)
+        let dialogService = StubDialogService(elements: elements)
+        let services = self.makeTestServices(dialogs: dialogService)
 
         let (output, status) = try await self.runCommand(
             ["dialog", "list", "--json-output"],
@@ -176,22 +193,8 @@ struct DialogCommandTests {
         )
         #expect(status == 0)
 
-        struct DialogTextFieldPayload: Codable {
-            let title: String?
-            let value: String?
-            let placeholder: String?
-        }
-
-        struct DialogListPayload: Codable {
-            let title: String
-            let role: String
-            let buttons: [String]
-            let textFields: [DialogTextFieldPayload]
-            let textElements: [String]
-        }
-
         let data = try #require(output.data(using: .utf8))
-        let response = try JSONDecoder().decode(UnifiedToolOutput<DialogListPayload>.self, from: data)
+        let response = try JSONDecoder().decode(CodableJSONResponse<DialogListPayload>.self, from: data)
         #expect(response.data.title == "Open")
         #expect(response.data.buttons.contains("New Document"))
         #expect(response.data.textFields.first?.placeholder == "File name")
@@ -205,7 +208,7 @@ struct DialogCommandTests {
             action: .clickButton,
             details: ["button": "New Document", "window": "Open"]
         )
-        let services = await self.makeTestServices(dialogs: dialogService)
+        let services = self.makeTestServices(dialogs: dialogService)
 
         let (output, status) = try await self.runCommand(
             ["dialog", "click", "--button", "New Document", "--json-output"],
@@ -226,7 +229,7 @@ struct DialogCommandTests {
     }
 
     private func runCommand(_ args: [String]) async throws -> (output: String, status: Int32) {
-        let services = await self.makeTestServices()
+        let services = self.makeTestServices()
         return try await self.runCommand(args, services: services)
     }
 
@@ -244,7 +247,7 @@ struct DialogCommandTests {
 
     @MainActor
     private func makeTestServices(
-        dialogs: DialogServiceProtocol = StubDialogService()
+        dialogs: any DialogServiceProtocol = StubDialogService()
     ) -> PeekabooServices {
         TestServicesFactory.makePeekabooServices(dialogs: dialogs)
     }

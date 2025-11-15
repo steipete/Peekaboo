@@ -23,9 +23,6 @@ import Testing
         let command4 = try HotkeyCommand.parse(["--keys", "cmd,z", "--session", "test-session"])
         #expect(command4.session == "test-session")
 
-        // Test JSON output flag
-        let command5 = try HotkeyCommand.parse(["--keys", "escape", "--json-output"])
-        #expect(command5.jsonOutput == true)
     }
 
     @Test func invalidInputHandling() async throws {

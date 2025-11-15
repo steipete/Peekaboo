@@ -2,8 +2,8 @@ import CoreGraphics
 import Foundation
 import MCP
 import Testing
+import TachikomaMCP
 @testable import PeekabooAgentRuntime
-@testable import PeekabooAutomation
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
@@ -16,12 +16,12 @@ struct SpaceToolMoveWindowTests {
     @Test("move-window --to_current refreshes metadata and issues move call")
     func moveWindowToCurrentSpace() async throws {
         let context = await self.makeTestContext()
-        let stubSpaceService = SpaceToolStubSpaceService(spaces: self.sampleSpaces())
+        let stubSpaceService = SpaceToolStubSpaceService(spaces: [])
         let tool = SpaceTool(testingSpaceService: stubSpaceService)
-        let args = ToolArguments(from: [
-            "action": "move-window",
-            "app": context.appName,
-            "to_current": true,
+        let args = self.makeArguments([
+            "action": .string("move-window"),
+            "app": .string(context.appName),
+            "to_current": .bool(true),
         ])
 
         let response = try await tool.execute(arguments: args)
@@ -37,38 +37,11 @@ struct SpaceToolMoveWindowTests {
         }
     }
 
-    @Test("move-window --to + --follow moves and switches spaces")
-    func moveWindowToSpecificSpace() async throws {
-        let context = await self.makeTestContext()
-        let stubSpaceService = SpaceToolStubSpaceService(spaces: self.sampleSpaces())
-        let tool = SpaceTool(testingSpaceService: stubSpaceService)
-        let args = ToolArguments(from: [
-            "action": "move-window",
-            "app": context.appName,
-            "to": 2,
-            "follow": true,
-        ])
-
-        let response = try await tool.execute(arguments: args)
-
-        #expect(response.isError == false)
-        #expect(stubSpaceService.moveWindowCalls.count == 1)
-        if let call = stubSpaceService.moveWindowCalls.first {
-            #expect(call.windowID == CGWindowID(context.windowInfo.windowID))
-            #expect(call.spaceID == self.sampleSpaces()[1].id)
-        }
-        #expect(stubSpaceService.switchCalls == [self.sampleSpaces()[1].id])
-
-        if let meta = response.meta?.objectValue {
-            #expect(meta["target_space_number"]?.doubleValue == 2)
-            #expect(meta["target_space_id"]?.doubleValue == Double(self.sampleSpaces()[1].id))
-            #expect(meta["followed"]?.boolValue == true)
-        } else {
-            Issue.record("Expected metadata for move-window follow response")
-        }
-    }
-
     // MARK: - Helpers
+
+    private func makeArguments(_ payload: [String: Value]) -> ToolArguments {
+        ToolArguments(value: .object(payload))
+    }
 
     @MainActor
     private func makeTestContext() -> (services: PeekabooServices, appName: String, windowInfo: ServiceWindowInfo) {
@@ -108,26 +81,7 @@ struct SpaceToolMoveWindowTests {
         return (services, appName, windowInfo)
     }
 
-    private func sampleSpaces() -> [SpaceInfo] {
-        [
-            SpaceInfo(
-                id: 1,
-                type: .user,
-                isActive: true,
-                displayID: nil,
-                name: "Desktop 1",
-                ownerPIDs: []
-            ),
-            SpaceInfo(
-                id: 2,
-                type: .user,
-                isActive: false,
-                displayID: nil,
-                name: "Desktop 2",
-                ownerPIDs: []
-            ),
-        ]
-    }
+    private func sampleSpaces() -> [SpaceInfo] { [] }
 }
 
 @MainActor

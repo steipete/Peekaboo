@@ -4,6 +4,12 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
+private typealias AppsSubcommand = ListCommand.AppsSubcommand
+private typealias WindowsSubcommand = ListCommand.WindowsSubcommand
+private typealias PermissionsSubcommand = ListCommand.PermissionsSubcommand
+private typealias MenuBarSubcommand = ListCommand.MenuBarSubcommand
+private typealias ScreensSubcommand = ListCommand.ScreensSubcommand
+
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
     "ListCommand CLI Harness Tests",
@@ -150,7 +156,7 @@ struct ListCommandCLIHarnessTests {
 
     @MainActor
     private func makeContext(
-        applicationService: ApplicationServiceProtocol,
+        applicationService: any ApplicationServiceProtocol,
         screenCapture: StubScreenCaptureService? = nil
     ) async -> HarnessContext {
         let captureService = screenCapture ?? StubScreenCaptureService(permissionGranted: true)

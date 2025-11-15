@@ -40,7 +40,16 @@ struct AgentIntegrationTests {
         #expect(output.data?.steps.count ?? 0 > 0)
 
         // Check that TextEdit commands were used
-        let stepCommands = output.data?.steps.map(\.command) ?? []
+        let stepCommands: [String] = {
+            guard let steps = output.data?.steps else { return [] }
+            var commands: [String] = []
+            commands.reserveCapacity(steps.count)
+            for step in steps {
+                guard let command = step.command else { continue }
+                commands.append(command)
+            }
+            return commands
+        }()
         #expect(stepCommands.contains("peekaboo_app") || stepCommands.contains("peekaboo_see"))
         #expect(stepCommands.contains("peekaboo_type"))
 
@@ -72,7 +81,16 @@ struct AgentIntegrationTests {
             #expect(output.success == true)
 
             // Verify window commands were used
-            let stepCommands = output.data?.steps.map(\.command) ?? []
+            let stepCommands: [String] = {
+                guard let steps = output.data?.steps else { return [] }
+                var commands: [String] = []
+                commands.reserveCapacity(steps.count)
+                for step in steps {
+                    guard let command = step.command else { continue }
+                    commands.append(command)
+                }
+                return commands
+            }()
             #expect(stepCommands.contains("peekaboo_app") || stepCommands.contains("peekaboo_window"))
             #expect(stepCommands.contains("peekaboo_sleep"))
         }

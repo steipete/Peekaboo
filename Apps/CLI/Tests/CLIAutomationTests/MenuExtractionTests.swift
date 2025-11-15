@@ -3,12 +3,15 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-private let runLocalHarnessEnabled: Bool = {
-    guard let raw = ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"]?.lowercased() else {
-        return false
+private enum MenuHarnessConfig {
+    @preconcurrency
+    nonisolated static func runLocalHarnessEnabled() -> Bool {
+        guard let raw = ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"]?.lowercased() else {
+            return false
+        }
+        return raw == "true" || raw == "1" || raw == "yes"
     }
-    return raw == "true" || raw == "1" || raw == "yes"
-}()
+}
 
 // Generic response structure for tests
 struct MenuTestResponse: Codable {
@@ -28,7 +31,7 @@ struct MenuExtractionData: Codable {
         case apps
     }
 
-    init(from decoder: Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.app = try container.decodeIfPresent(String.self, forKey: .app)
 
@@ -50,7 +53,7 @@ struct MenuExtractionData: Codable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(self.app, forKey: .app)
         // For encoding, we'd need to convert back to AnyCodable
@@ -61,7 +64,7 @@ struct MenuExtractionData: Codable {
 struct AnyCodable: Codable {
     let value: Any
 
-    init(from decoder: Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
 
         if let bool = try? container.decode(Bool.self) {
@@ -73,7 +76,12 @@ struct AnyCodable: Codable {
         } else if let string = try? container.decode(String.self) {
             self.value = string
         } else if let array = try? container.decode([AnyCodable].self) {
-            self.value = array.map(\.value)
+            var values: [Any] = []
+            values.reserveCapacity(array.count)
+            for element in array {
+                values.append(element.value)
+            }
+            self.value = values
         } else if let dict = try? container.decode([String: AnyCodable].self) {
             self.value = dict.mapValues { $0.value }
         } else {
@@ -81,7 +89,7 @@ struct AnyCodable: Codable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         // Simplified encoding
         if let bool = value as? Bool {
@@ -165,24 +173,17 @@ struct MenuExtractionTests {
 
         #expect(json.success == true)
 
-        if let menuData = json.data as? [String: Any] {
-            let jsonData = try JSONSerialization.data(withJSONObject: menuData)
-            let menus = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+        if let menuStructure = json.data?.menu_structure {
+            // Find File menu
+            if let fileMenu = menuStructure.first(where: { $0["title"] as? String == "File" }),
+               let items = fileMenu["items"] as? [[String: Any]] {
+                if let newItem = items.first(where: { $0["title"] as? String == "New" }) {
+                    #expect(newItem["shortcut"] as? String == "⌘N")
+                }
 
-            if let menuStructure = menus?["menu_structure"] as? [[String: Any]] {
-                // Find File menu
-                if let fileMenu = menuStructure.first(where: { $0["title"] as? String == "File" }),
-                   let items = fileMenu["items"] as? [[String: Any]] {
-                    // Check for New shortcut
-                    if let newItem = items.first(where: { $0["title"] as? String == "New" }) {
-                        #expect(newItem["shortcut"] as? String == "⌘N")
-                    }
-
-                    // Check for Save shortcut
-                    if let saveItem = items.first(where: { ($0["title"] as? String)?.contains("Save") == true }) {
-                        let shortcut = saveItem["shortcut"] as? String
-                        #expect(shortcut == "⌘S" || shortcut == nil) // Save might not always have shortcut
-                    }
+                if let saveItem = items.first(where: { ($0["title"] as? String)?.contains("Save") == true }) {
+                    let shortcut = saveItem["shortcut"] as? String
+                    #expect(shortcut == "⌘S" || shortcut == nil)
                 }
             }
         }
@@ -200,24 +201,19 @@ struct MenuExtractionTests {
 
         #expect(json.success == true)
 
-        if let responseData = json.data as? [String: Any] {
-            // json.data is already the data dictionary
-            if let apps = responseData["apps"] as? [[String: Any]] {
-                #expect(!apps.isEmpty)
+        if let apps = json.data?.apps {
+            #expect(!apps.isEmpty)
 
-                // Should have at least one app
-                if let firstApp = apps.first {
-                    #expect(firstApp["app_name"] != nil)
-                    #expect(firstApp["bundle_id"] != nil)
-                    #expect(firstApp["pid"] != nil)
+            if let firstApp = apps.first {
+                #expect(firstApp["app_name"] != nil)
+                #expect(firstApp["bundle_id"] != nil)
+                #expect(firstApp["pid"] != nil)
 
-                    if let menus = firstApp["menus"] as? [[String: Any]] {
-                        #expect(!menus.isEmpty)
+                if let menus = firstApp["menus"] as? [[String: Any]] {
+                    #expect(!menus.isEmpty)
 
-                        // Should have standard menus
-                        let menuTitles = menus.compactMap { $0["title"] as? String }
-                        #expect(menuTitles.contains("Apple")) // Apple menu is always present
-                    }
+                    let menuTitles = menus.compactMap { $0["title"] as? String }
+                    #expect(menuTitles.contains("Apple"))
                 }
             }
         }
@@ -295,7 +291,7 @@ struct MenuExtractionTests {
     "Menu & Dialog Local Harness",
     .serialized,
     .tags(.automation),
-    .enabled(if: runLocalHarnessEnabled)
+    .enabled(if: MenuHarnessConfig.runLocalHarnessEnabled())
 )
 struct MenuDialogLocalHarnessTests {
     private static let repositoryRoot: URL = {
@@ -421,7 +417,7 @@ struct MenuDialogLocalHarnessTests {
         .timeLimit(.minutes(3))
     )
     func menuStressLoop() async throws {
-        try self.runMenuStressLoop(
+        try await self.runMenuStressLoop(
             appName: "TextEdit",
             menuPath: "File > New",
             verification: { response in
@@ -432,7 +428,7 @@ struct MenuDialogLocalHarnessTests {
             }
         )
 
-        try self.runMenuStressLoop(
+        try await self.runMenuStressLoop(
             appName: "Calculator",
             menuPath: "View > Scientific",
             verification: { response in
@@ -558,11 +554,10 @@ struct MenuDialogLocalHarnessTests {
             return
         }
         let age = Date().timeIntervalSince(modifiedDate)
-        #expect(
-            age < maxAge,
+        let freshnessMessage =
             "Peekaboo binary at \(binaryURL.path) is older than \(Int(maxAge)) seconds. " +
-                "Run `polter peekaboo -- version` or rebuild via Poltergeist to refresh it."
-        )
+            "Run `polter peekaboo -- version` or rebuild via Poltergeist to refresh it."
+        #expect(age < maxAge, Comment(rawValue: freshnessMessage))
     }
 
     private struct DialogListPayload: Codable {

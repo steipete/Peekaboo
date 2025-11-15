@@ -4,6 +4,17 @@ import Testing
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
+private struct DragResult: Codable {
+    let success: Bool
+    let from: [String: Int]
+    let to: [String: Int]
+    let duration: Int
+    let steps: Int
+    let profile: String
+    let modifiers: String?
+    let executionTime: TimeInterval
+}
+
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("Drag Command Tests", .serialized, .tags(.safe), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct DragCommandTests {
@@ -274,8 +285,8 @@ extension DragCommandTests {
 
     fileprivate func runDragCommandWithContext(
         _ args: [String],
-        applications: ApplicationServiceProtocol? = nil,
-        windows: WindowManagementServiceProtocol? = nil,
+        applications: (any ApplicationServiceProtocol)? = nil,
+        windows: (any WindowManagementServiceProtocol)? = nil,
         configure: (@MainActor (StubAutomationService, StubSessionManager) -> ())? = nil
     ) async throws -> (CommandRunResult, TestServicesFactory.AutomationTestContext) {
         let context = await self.makeAutomationContext(applications: applications, windows: windows)
@@ -289,8 +300,8 @@ extension DragCommandTests {
     }
 
     fileprivate func makeAutomationContext(
-        applications: ApplicationServiceProtocol? = nil,
-        windows: WindowManagementServiceProtocol? = nil
+        applications: (any ApplicationServiceProtocol)? = nil,
+        windows: (any WindowManagementServiceProtocol)? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             TestServicesFactory.makeAutomationTestContext(
@@ -314,4 +325,8 @@ extension DragCommandTests {
     }
 }
 
+#else
+#if !PEEKABOO_SKIP_AUTOMATION
+// Drag automation tests disabled pending Swift compiler fixes (docs/silgen-crash-debug.md).
+#endif
 #endif
