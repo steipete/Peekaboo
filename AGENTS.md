@@ -7,6 +7,9 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **Dependency refresh**: local `Commander` package (replaces swift-argument-parser), `swift-async-algorithms 1.0.4`, `swift-collections 1.3.0`, `swift-crypto 3.15.1`, `swift-system 1.6.3`, plus `swift-sdk 0.10.2` (official MCP release) across PeekabooCore/Tachikoma/Apps.
 - **Code updates**: centralized `LanguageModel.parse` in Tachikoma, replaced ad-hoc agent glyphs with `AgentDisplayTokens`, removed TermKit TUI hooks from CLI, default agent model now `gpt-5.1`, emojis toned down in agent output, and Mac icon assets/resources registered for SwiftPM.
 - **Verification**: `swift build` clean for Tachikoma, PeekabooCore, peekaboo CLI, and macOS app; `swift test --filter TypeCommandTests` currently hits a Swift frontend signal 5 (compiler bug) even outside tmux—log captured for follow-up. Other large suites remain gated by `RUN_LOCAL_TESTS=true`.
+- **Crash workarounds tracking**: When SILGen (or related compiler pieces) explode—especially around key-path sugar—document the repro + workaround steps in `docs/silgen-crash-debug.md` and rewrite the offending code/tests immediately instead of waiting for Apple to ship a fixed toolchain.
+- **SILGen key-path landmines**: Swift 6.2 still crashes in SILGen when tests lean on key-path maps (see `docs/silgen-crash-debug.md`). Avoid `array.map(\\.foo)` and similar sugar inside automation tests; rewrite them as for-in loops before filing new bugs.
+- **Compiler workarounds required**: We can’t wait for Apple to ship a fixed Swift compiler. When SILGen (or related) crashes block progress, isolate the offending construct and rewrite it into an equivalent shape that dodges the bug; document the workaround in `docs/silgen-crash-debug.md` so other agents reuse it instead of blocking on upstream fixes.
 - **Next steps**: file Swift compiler crash with stack dump, add test subsets so automation suites compile in smaller batches, and revisit `tmux`-logged test strategy once the compiler issue is resolved.
 - **CI note**: when running long Swift test suites use bare `tmux new-session …` invocations (no `while` loops or `tmux wait-for` wrappers). Continuous polling prevents our hang detector from spotting stuck jobs, which defeats the reason we run tests inside tmux. When implementing progress checks or back-off behaviour, cap individual `sleep`/timeout intervals at **≤30s** so the hang detector retains sufficient cadence.
 - **CI monitoring**: use the GitHub CLI to inspect jobs instead of guessing. Examples: `gh run list --workflow "macOS CI" --limit 5` to see recent runs and `gh run view <run-id> --log` (or `--job <job-id> --log`) to stream detailed logs when a step fails.
@@ -21,6 +24,7 @@ This file provides guidance to our automation agents (Claude Code, GPT-5, and fr
 - **Research rule**: Whenever you're stuck or even slightly unsure about an approach, run a quick web search (e.g., `web.run` via Google) before guessing—cite what you find and keep iterating until you have a grounded plan.
 - **When stuck**: If you’re unsure how to proceed, temporarily pause and look for external references—run a quick web search (Google, Stack Overflow, Apple docs, etc.) for similar symptoms before escalating. Capture anything relevant back in the issue/notes so the next agent has context.
 - **Agent model choice**: When validating agentic flows end-to-end, prefer OpenAI GPT-5 or Anthropic Claude Sonnet 4.5—those two models currently give the most reliable Peekaboo behavior and should be the baseline for deep debugging. Other Tachikoma models remain allowed (and are great for smoke tests or repro attempts), so keep overrides flexible when writing tooling; just default your own test passes to GPT-5/Sonnet 4.5 unless there’s a specific reason to cover another provider.
+- **Swift key-path map crashes**: Swift 6.2 still has SILGen bugs triggered by `array.map(\.foo)` patterns inside the automation tests. When touching those suites, prefer explicit loops, and see `docs/silgen-crash-debug.md` for the history and the list of files we already refactored to work around signal-5 compiler crashes.
 - **Commit discipline**: Batch related changes before committing. Never commit single files opportunistically—coordinate commit groups so parallel agents aren’t surprised by partially landed work.
 - **Committer script**: All commits must go through `./scripts/committer "type(scope): subject" "path/to/file1" "path/to/file2"`. Pass the commit message as the first quoted argument, list every file path after it (also quoted), and let the helper manage staging—never run `git add` manually. The script validates paths, clears the index, re-stages only the listed files, and then creates the commit so you can land exactly what you expect.
 - **Version control hygiene**: Never revert or overwrite files you did not edit. Other agents and humans may be working in parallel, so avoid destructive operations (including `git checkout`, `git reset`, or similar) unless explicitly instructed.
@@ -134,7 +138,7 @@ polter peekaboo <command>     # Run CLI with automatic rebuild
 ./scripts/pblog.sh -f          # Stream logs
 npm run poltergeist:status     # Check build status
 alias pb='polter peekaboo'    # Add to ~/.zshrc for convenience
-pnpm oracle                   # Smart Oracle CLI quick help
+pnpm oracle                   # Smart Oracle CLI quick help (proxies to pnpm -C ../oracle oracle)
 
 # Examples
 polter peekaboo agent "take screenshot"
@@ -146,7 +150,7 @@ polter peekaboo see --annotate
 # ./scripts/peekaboo-wait.sh   # Redundant wrapper, use polter directly
 ```
 
-Oracle is a CLI to get help from a very smart AI. Use it for tricky issues and call `pnpm oracle` for usage details.
+Oracle is a CLI to get help from a very smart AI. `pnpm oracle` now shells into the neighboring repo (`pnpm -C ../oracle oracle`), so each invocation builds the TypeScript sources before running the CLI—no more stale `dist`. If that repo breaks, fix it there first.
 
 ## Poltergeist Usage
 

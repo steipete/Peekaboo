@@ -2,6 +2,9 @@
 import Foundation
 import PackageDescription
 
+let packageDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+let infoPlistPath = packageDirectory.appendingPathComponent("Sources/Resources/Info.plist").path
+
 let concurrencyBaseSettings: [SwiftSetting] = [
     .enableExperimentalFeature("StrictConcurrency"),
     .enableUpcomingFeature("ExistentialAny"),
@@ -45,7 +48,7 @@ var targets: [Target] = [
                 "-Xlinker", "-sectcreate",
                 "-Xlinker", "__TEXT",
                 "-Xlinker", "__info_plist",
-                "-Xlinker", "Sources/Resources/Info.plist",
+                "-Xlinker", infoPlistPath,
                 // Ensure LC_UUID is generated for macOS 26 compatibility
                 "-Xlinker", "-random_uuid",
             ]),

@@ -59,8 +59,9 @@ extension ListCommand {
 
     @MainActor
 
-    struct AppsSubcommand: ErrorHandlingCommand, OutputFormattable {
+    struct AppsSubcommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
         @RuntimeStorage private var runtime: CommandRuntime?
+        var runtimeOptions = CommandRuntimeOptions()
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -72,7 +73,10 @@ extension ListCommand {
         private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool {
+            // Tests access jsonOutput while only parsing arguments, so fall back to stored runtime options.
+            self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -99,7 +103,8 @@ extension ListCommand {
 
     @MainActor
 
-    struct WindowsSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
+    struct WindowsSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional,
+        RuntimeOptionsConfigurable {
         @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
         var app: String
 
@@ -111,6 +116,7 @@ extension ListCommand {
         @Option(name: .long, help: "Additional details (comma-separated: off_screen,bounds,ids)")
         var includeDetails: String?
         @RuntimeStorage private var runtime: CommandRuntime?
+        var runtimeOptions = CommandRuntimeOptions()
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -122,7 +128,10 @@ extension ListCommand {
         private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool {
+            // PIDWindowsSubcommandTests read jsonOutput immediately after parsing; prefer stored options over a missing runtime.
+            self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+        }
 
         enum WindowDetailOption: String, ExpressibleFromArgument {
             case ids
@@ -250,8 +259,9 @@ extension ListCommand {
 
     @MainActor
 
-    struct PermissionsSubcommand: OutputFormattable {
+    struct PermissionsSubcommand: OutputFormattable, RuntimeOptionsConfigurable {
         @RuntimeStorage private var runtime: CommandRuntime?
+        var runtimeOptions = CommandRuntimeOptions()
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -262,7 +272,7 @@ extension ListCommand {
 
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -300,8 +310,9 @@ extension ListCommand {
 
     @MainActor
 
-    struct MenuBarSubcommand: ErrorHandlingCommand, OutputFormattable {
+    struct MenuBarSubcommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
         @RuntimeStorage private var runtime: CommandRuntime?
+        var runtimeOptions = CommandRuntimeOptions()
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -313,7 +324,7 @@ extension ListCommand {
         private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -370,8 +381,9 @@ extension ListCommand {
 
     @MainActor
 
-    struct ScreensSubcommand: ErrorHandlingCommand, OutputFormattable {
+    struct ScreensSubcommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
         @RuntimeStorage private var runtime: CommandRuntime?
+        var runtimeOptions = CommandRuntimeOptions()
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -383,7 +395,7 @@ extension ListCommand {
         private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
         private var logger: Logger { self.resolvedRuntime.logger }
         var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
