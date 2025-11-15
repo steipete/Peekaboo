@@ -29,6 +29,8 @@
     "docs:list": "./runner node scripts/docs-list.mjs",
     "polter": "NODE_PATH=../poltergeist/node_modules ./runner node ../poltergeist/dist/polter.js",
     "polter:dev": "cd /Users/steipete/Projects/Peekaboo && NODE_PATH=../poltergeist/node_modules ./runner pnpm --dir ../poltergeist exec tsx ../poltergeist/src/polter.ts",
+    "peekaboo": "pnpm run polter -- peekaboo",
+    "peekaboo:dev": "pnpm run polter:dev -- peekaboo",
     "poltergeist:start": "./runner ./scripts/poltergeist-wrapper.sh start",
     "poltergeist:haunt": "./runner ./scripts/poltergeist-wrapper.sh haunt",
     "poltergeist:stop": "./runner ./scripts/poltergeist-wrapper.sh stop",
