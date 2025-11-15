@@ -12,10 +12,11 @@ PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 cd "$PROJECT_DIR"
 
 POLTER_DIR="$(cd "$PROJECT_DIR/../poltergeist" && pwd)"
-CLI_ENTRY="$POLTER_DIR/dist/cli.js"
+CLI_TS="$POLTER_DIR/src/cli.ts"
 
+# Run directly from TypeScript sources using tsx in the Poltergeist repo.
 if { [ "$1" = "panel" ] || { [ "$1" = "status" ] && [ "$2" = "panel" ]; }; }; then
-  exec node --watch --watch-path "$POLTER_DIR/dist" --watch-preserve-output "$CLI_ENTRY" "$@"
+  exec pnpm --dir "$POLTER_DIR" exec tsx --watch "$CLI_TS" "$@"
 else
-  exec node "$CLI_ENTRY" "$@"
+  exec pnpm --dir "$POLTER_DIR" exec tsx "$CLI_TS" "$@"
 fi
