@@ -1593,6 +1593,7 @@ private final class AgentChatUI {
 
     func beginRun(prompt: String) {
         self.setRunning(true)
+        self.removeLoader()
         self.loader = Loader(tui: self.tui, message: "Running…")
         if let loader {
             self.messages.addChild(loader)
@@ -1621,12 +1622,19 @@ private final class AgentChatUI {
         self.isRunning = running
         self.input.isLocked = running
         if !running {
-            self.loader?.stop()
-            self.loader = nil
+            self.removeLoader()
             if wasRunning {
                 self.processNextQueuedPromptIfNeeded()
             }
         }
+    }
+
+    private func removeLoader() {
+        guard let loader else { return }
+        loader.stop()
+        self.messages.removeChild(loader)
+        self.loader = nil
+        self.requestRender()
     }
 
     func markCancelling() {
