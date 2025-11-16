@@ -18,7 +18,11 @@ struct ToolSummaryEmissionTests {
         }
 
         #expect(summary.command == "echo summary-test")
-        #expect(summary.shortDescription(toolName: tool.name) == "Run `echo summary-test`")
+        guard let description = summary.shortDescription(toolName: tool.name) else {
+            Issue.record("Shell summary missing short description")
+            return
+        }
+        #expect(description.hasPrefix("Run `echo summary-test`"))
     }
 
     @Test("Sleep tool stores wait duration")

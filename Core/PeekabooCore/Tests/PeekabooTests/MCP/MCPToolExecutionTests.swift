@@ -214,7 +214,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         sessionId _: String?) async throws -> TypeResult
     {
         self.lastCadence = cadence
-        TypeResult(totalCharacters: 0, keyPresses: 0)
+        return TypeResult(totalCharacters: 0, keyPresses: 0)
     }
 
     func scroll(_: ScrollRequest) async throws {}
@@ -399,7 +399,8 @@ struct MCPToolErrorHandlingTests {
             #expect(response.isError == false)
         }
 
-        guard let cadence = automation.lastCadence else {
+        let capturedCadence = await MainActor.run { automation.lastCadence }
+        guard let cadence = capturedCadence else {
             Issue.record("Expected automation service to capture cadence")
             return
         }
@@ -425,7 +426,8 @@ struct MCPToolErrorHandlingTests {
             #expect(response.isError == false)
         }
 
-        guard let cadence = automation.lastCadence else {
+        let capturedCadence = await MainActor.run { automation.lastCadence }
+        guard let cadence = capturedCadence else {
             Issue.record("Expected automation service to capture cadence")
             return
         }
