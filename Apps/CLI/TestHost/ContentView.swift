@@ -1,3 +1,4 @@
+import Algorithms
 import AppKit
 import SwiftUI
 
@@ -85,8 +86,8 @@ struct ContentView: View {
             GroupBox("Log Messages") {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(self.logMessages.enumerated()), id: \.offset) { _, message in
-                            Text(message)
+                        ForEach(Array(self.logMessages.indexed()), id: \.index) { pair in
+                            Text(pair.element)
                                 .font(.system(size: 12, design: .monospaced))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }

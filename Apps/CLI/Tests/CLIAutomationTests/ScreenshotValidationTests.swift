@@ -125,7 +125,7 @@ struct ScreenshotValidationTests {
         let screens = NSScreen.screens
         print("Found \(screens.count) display(s)")
 
-        for (index, screen) in screens.enumerated() {
+        for (index, screen) in screens.indexed() {
             let displayID = self.getDisplayID(for: screen)
             let outputPath = "/tmp/peekaboo-display-\(index).png"
             defer { try? FileManager.default.removeItem(atPath: outputPath) }
