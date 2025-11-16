@@ -93,8 +93,8 @@ Clone with `git clone --recursive` or run `git submodule update --init --recursi
 
 #### Submodule Details
 - `AXorcist` is our accessibility engine: it wraps the macOS AX APIs with type-safe Swift helpers so every command (and agent) can discover UI elements, grant permissions, and drive buttons/text fields without reinventing accessibility plumbing. Because the underlying APIs are macOS-only we keep AXorcist’s CI and release targets scoped to macOS 14+.
-- `Commander` is the shared parser/runtime that replaces Swift Argument Parser across Peekaboo. It provides property-wrapper metadata, a central router, standard CLI flags, and binders that hydrate existing command structs while keeping the runtime @MainActor-friendly. Commander’s CI now spans every Swift-supported OS (macOS, Linux, Windows, iOS/tvOS/watchOS/visionOS simulator destinations, plus Android via `--swift-sdk android`) so the parser stays portable.
-- `Tachikoma` is the AI provider SDK plus MCP adapters. It defines model enums, capability tables, request/response abstractions, and tool execution so the CLI and agents can swap between OpenAI, Anthropic, Groq, Ollama, etc. using one set of services. Tachikoma mirrors Commander’s platform matrix: macOS for local development plus Linux/Windows/Apple simulators/Android cross-compiles to ensure every provider build path remains healthy.
+- `Commander` is the shared parser/runtime that replaces Swift Argument Parser across Peekaboo. It provides property-wrapper metadata, a central router, standard CLI flags, and binders that hydrate existing command structs while keeping the runtime @MainActor-friendly. Commander’s CI now spans macOS, Linux, Apple simulators (iOS/tvOS/watchOS/visionOS), and Android (via `--swift-sdk android`) so the parser stays portable without promising Windows support we can’t exercise.
+- `Tachikoma` is the AI provider SDK plus MCP adapters. It defines model enums, capability tables, request/response abstractions, and tool execution so the CLI and agents can swap between OpenAI, Anthropic, Groq, Ollama, etc. using one set of services. Tachikoma mirrors Commander’s matrix: macOS for local development plus Linux, Apple simulators, and Android cross-compiles to ensure every provider build path remains healthy.
 
 ## 🧩 Platform Support
 
@@ -102,8 +102,8 @@ Clone with `git clone --recursive` or run `git submodule update --init --recursi
 | --- | --- | --- |
 | Peekaboo CLI + Mac app | macOS 14.0+ | Everything ships as a native macOS product; CI only runs on macOS runners so we can exercise ScreenCaptureKit and Accessibility APIs. |
 | AXorcist | macOS 14.0+ | Accessibility frameworks are macOS-only, so both the library and its CLI stay scoped to macOS. |
-| Commander | macOS, Linux, Windows, Apple simulators (iOS/tvOS/watchOS/visionOS), Android (aarch64) | New CI jobs install Swift toolchains via Swiftly/WinGet, run `xcodebuild` against each simulator platform, and cross-compile with `--swift-sdk android` so Commander stays portable anywhere Swift builds. |
-| Tachikoma | macOS, Linux, Windows, Apple simulators (iOS/tvOS/watchOS/visionOS), Android (aarch64) | Matches Commander’s matrix and additionally runs the Android cross-compilation plus the Apple destination builds for provider SDK validation. |
+| Commander | macOS, Linux, Apple simulators (iOS/tvOS/watchOS/visionOS), Android (aarch64) | CI installs Swift toolchains via Swiftly, runs `xcodebuild` against each simulator platform, and cross-compiles with `--swift-sdk android` so Commander stays portable on the platforms we actively test. |
+| Tachikoma | macOS, Linux, Apple simulators (iOS/tvOS/watchOS/visionOS), Android (aarch64) | Matches Commander’s matrix and additionally runs the Android cross-compilation plus the Apple destination builds for provider SDK validation. |
 
 ## 🚀 Quick Start: CLI Tool
 
