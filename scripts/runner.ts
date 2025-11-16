@@ -156,6 +156,12 @@ function enforcePolterArgumentSeparator(commandArgs: string[]): void {
   const separatorPos = afterPeekaboo.indexOf('--');
   const toInspect = separatorPos === -1 ? afterPeekaboo : afterPeekaboo.slice(0, separatorPos);
   const flagToken = toInspect.find((token) => token.startsWith('-'));
+  const passthroughFlags = new Set(['--version', '-V', '--help', '-h']);
+
+  if (flagToken && passthroughFlags.has(flagToken)) {
+    // Allow common single-shot flags without requiring an explicit separator.
+    return;
+  }
   if (flagToken) {
     console.error(
       `[runner] polter peekaboo commands must insert '--' before CLI flags so Poltergeist does not consume them. Example: polter peekaboo -- dialog dismiss --force`,
