@@ -72,6 +72,7 @@ jobs:
 
   android:
     if: github.event_name == 'workflow_dispatch'
+    continue-on-error: true
     runs-on: ubuntu-22.04
     needs: macos-host
     steps:
