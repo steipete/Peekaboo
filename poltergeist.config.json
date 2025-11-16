@@ -218,7 +218,11 @@
       "command": "./scripts/status-swiftlint.sh",
       "cooldownSeconds": 60,
       "timeoutSeconds": 300,
-      "maxLines": 3
+      "maxLines": 5,
+      "formatter": "auto",
+      "targets": [
+        "Peekaboo"
+      ]
     },
     {
       "label": "Tests (Commander)",
