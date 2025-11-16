@@ -826,9 +826,10 @@ extension AgentCommand {
             let duration = String(format: "%.2f", result.metadata.executionTime)
             let sessionId = result.sessionId ?? "none"
             let finalTokens = result.usage?.totalTokens ?? 0
+            let status = result.metadata.context["status"] ?? "completed"
             AutomationEventLogger.log(
                 .agent,
-                "result success=\(result.success) task='\(task)' model=\(result.metadata.modelName) duration=\(duration)s tools=\(result.metadata.toolCallCount) dry_run=\(self.dryRun) session=\(sessionId) tokens=\(finalTokens)"
+                "result status=\(status) task='\(task)' model=\(result.metadata.modelName) duration=\(duration)s tools=\(result.metadata.toolCallCount) dry_run=\(self.dryRun) session=\(sessionId) tokens=\(finalTokens)"
             )
             return result
         } catch {
