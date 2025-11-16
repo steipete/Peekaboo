@@ -1,3 +1,4 @@
+import Algorithms
 import Foundation
 import Tachikoma
 
@@ -354,27 +355,29 @@ public final class AgentSessionManager: @unchecked Sendable {
     }
 
     private func generateSessionSummary(from messages: [ModelMessage]) -> String? {
-        // Find the first user message to use as summary
-        for message in messages where message.role == .user {
-            for case let .text(text) in message.content {
+        messages.firstNonNil { message in
+            guard message.role == .user else { return nil }
+            if case let .text(text) = message.content.first {
                 return String(text.prefix(100))
             }
+            return nil
         }
-        return nil
     }
 
     private func evictOldCacheEntries() {
         guard self.sessionCache.count > Self.maxCacheSize else { return }
 
         // Remove oldest entries
-        let sortedKeys = self.sessionCache.keys.sorted { key1, key2 in
-            let session1 = self.sessionCache[key1]!
-            let session2 = self.sessionCache[key2]!
-            return session1.updatedAt < session2.updatedAt
-        }
+        let excess = self.sessionCache.count - Self.maxCacheSize
+        guard excess > 0 else { return }
 
-        let keysToRemove = sortedKeys.prefix(self.sessionCache.count - Self.maxCacheSize)
-        for key in keysToRemove {
+        let oldestKeys = self.sessionCache
+            .lazy
+            .sorted { $0.value.updatedAt < $1.value.updatedAt }
+            .prefix(excess)
+            .map(\.key)
+
+        for key in oldestKeys {
             self.sessionCache.removeValue(forKey: key)
         }
     }

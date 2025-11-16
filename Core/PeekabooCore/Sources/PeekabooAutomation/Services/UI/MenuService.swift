@@ -623,7 +623,7 @@ extension MenuService {
         let extras = try await listMenuExtras()
 
         // Convert MenuExtraInfo to MenuBarItemInfo with index
-        return extras.enumerated().map { index, extra in
+        return extras.indexed().map { index, extra in
             let displayTitle = self.resolvedMenuBarTitle(for: extra, index: index)
             return MenuBarItemInfo(
                 title: displayTitle,
@@ -703,7 +703,7 @@ extension MenuService {
         context: inout MenuTraversalContext) async throws -> Element
     {
         var currentElement = startingElement
-        for (index, component) in components.enumerated() {
+        for (index, component) in components.indexed() {
             let isLastComponent = index == components.count - 1
             currentElement = try await self.navigateMenuLevel(
                 currentElement: currentElement,

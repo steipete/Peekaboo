@@ -63,7 +63,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
             // Build actions - repeat each key sequence 'count' times
             var actions: [TypeAction] = []
             for _ in 0..<self.count {
-                for (index, key) in self.keys.enumerated() {
+                for (index, key) in self.keys.indexed() {
                     if let specialKey = SpecialKey(rawValue: key.lowercased()) {
                         actions.append(.key(specialKey))
                     }

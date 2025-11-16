@@ -1,3 +1,4 @@
+import Algorithms
 import AppKit
 import Commander
 import CoreGraphics
@@ -193,7 +194,7 @@ extension ImageCommand {
         let indexes = screens.isEmpty ? [0] : Array(screens.indices)
 
         var savedFiles: [SavedFile] = []
-        for (ordinal, displayIndex) in indexes.enumerated() {
+        for (ordinal, displayIndex) in indexes.indexed() {
             let result = try await ImageCaptureBridge.captureScreen(services: self.services, displayIndex: displayIndex)
             let saved = try self.saveCaptureResult(result, preferredName: "screen\(displayIndex)", index: ordinal)
             savedFiles.append(saved)
@@ -236,7 +237,7 @@ extension ImageCommand {
         }
 
         var savedFiles: [SavedFile] = []
-        for (ordinal, window) in filtered.enumerated() {
+        for (ordinal, window) in filtered.indexed() {
             let result = try await ImageCaptureBridge.captureWindow(
                 services: self.services,
                 appIdentifier: identifier,

@@ -684,7 +684,7 @@ extension DialogService {
         let axTextFields = self.collectTextFields(from: dialog)
         self.logger.debug("Found \(axTextFields.count) text fields")
 
-        return axTextFields.enumerated().map { index, field in
+        return axTextFields.indexed().map { index, field in
             DialogTextField(
                 title: field.title(),
                 value: field.value() as? String,

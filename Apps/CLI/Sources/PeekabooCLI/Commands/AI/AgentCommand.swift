@@ -730,7 +730,7 @@ extension AgentCommand {
         dateFormatter.dateStyle = .short
         dateFormatter.timeStyle = .short
 
-        for (index, session) in sessions.prefix(10).enumerated() {
+        for (index, session) in sessions.prefix(10).indexed() {
             self.printSessionLine(index: index, session: session, dateFormatter: dateFormatter)
             if index < sessions.count - 1 {
                 print()

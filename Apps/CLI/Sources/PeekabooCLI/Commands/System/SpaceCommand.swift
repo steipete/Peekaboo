@@ -200,7 +200,7 @@ struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
             }
         }
 
-        for (index, space) in spaces.enumerated() {
+        for (index, space) in spaces.indexed() {
             let marker = space.isActive ? "→" : " "
             let displayInfo = space.displayID.map { " (Display \($0))" } ?? ""
             print("\(marker) Space \(index + 1) [ID: \(space.id), Type: \(space.type.rawValue)\(displayInfo)]")

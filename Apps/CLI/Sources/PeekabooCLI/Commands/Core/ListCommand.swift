@@ -1,3 +1,4 @@
+import Algorithms
 import AppKit
 import Commander
 import Foundation
@@ -358,7 +359,7 @@ extension ListCommand {
             }
 
             Swift.print("Menu Bar Items (\(items.count)):")
-            for (index, item) in items.enumerated() {
+            for (index, item) in items.indexed() {
                 self.displayMenuBarItem(item, index: index)
             }
         }
@@ -472,7 +473,7 @@ extension ListCommand {
 
         private func buildScreenSummary(for screens: [PeekabooCore.ScreenInfo]) -> ScreenOutput.Summary {
             let count = screens.count
-            let highlights = screens.enumerated().compactMap { index, screen in
+            let highlights = screens.indexed().compactMap { index, screen in
                 screen.isPrimary ? ScreenOutput.Summary.Highlight(
                     label: "Primary",
                     value: "\(screen.name) (Index \(index))",

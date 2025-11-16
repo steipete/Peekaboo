@@ -1,3 +1,4 @@
+import Algorithms
 import AppKit
 import Foundation
 import MCP
@@ -88,7 +89,7 @@ public struct ListTool: MCPTool {
             lines.append(appCountLine)
             lines.append("")
 
-            for (index, app) in apps.enumerated() {
+            for (index, app) in apps.indexed() {
                 var entry = "\(index + 1). \(app.name)"
                 if let bundleID = app.bundleIdentifier, !bundleID.isEmpty {
                     entry += " (\(bundleID))"
@@ -313,7 +314,7 @@ private struct WindowListFormatter {
         }
 
         var lines = ["Windows:"]
-        for (index, window) in self.windows.enumerated() {
+        for (index, window) in self.windows.indexed() {
             var entry = "\(index + 1). \"\(window.title)\""
             let detailText = self.detailDescription(for: window)
             if !detailText.isEmpty {

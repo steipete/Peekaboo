@@ -1,3 +1,4 @@
+import Algorithms
 import AppKit
 import AXorcist
 import Commander
@@ -957,7 +958,7 @@ extension SeeCommand {
             // Save all screenshots except the first (which will be saved by the normal flow)
             print("📸 Captured \(results.count) screen(s):")
 
-            for (index, result) in results.enumerated() {
+            for (index, result) in results.indexed() {
                 if index > 0 {
                     // Save additional screenshots
                     let screenPath: String
@@ -1025,7 +1026,7 @@ extension SeeCommand {
 
         self.logger.info("Found \(displays.count) display(s) to capture")
 
-        for (index, display) in displays.enumerated() {
+        for (index, display) in displays.indexed() {
             self.logger.verbose("Capturing display \(index)", category: "MultiScreen", metadata: [
                 "displayID": display.displayID,
                 "width": display.width,

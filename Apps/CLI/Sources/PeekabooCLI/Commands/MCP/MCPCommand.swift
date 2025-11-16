@@ -1,3 +1,4 @@
+import Algorithms
 import Commander
 import Foundation
 import Logging
@@ -260,7 +261,7 @@ extension MCPCommand {
                 print("Response: \(self.describe(content: response.content[0]))")
             } else {
                 print("Response:")
-                for (index, content) in response.content.enumerated() {
+                for (index, content) in response.content.indexed() {
                     print("  \(index + 1). \(self.describe(content: content))")
                 }
             }

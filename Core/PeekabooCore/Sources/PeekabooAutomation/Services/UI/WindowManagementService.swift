@@ -383,7 +383,7 @@ extension WindowManagementService {
     private func firstRenderableWindow(from windows: [Element], appName: String) -> Element? {
         let minimumDimension: CGFloat = 50
 
-        for (idx, window) in windows.enumerated() {
+        for (idx, window) in windows.indexed() {
             if window.isMinimized() == true {
                 self.logger.debug("Skipping minimized window idx \(idx) for \(appName)")
                 continue

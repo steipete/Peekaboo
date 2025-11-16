@@ -921,7 +921,7 @@ private struct WindowEnumerationContext {
         var enrichedWindows: [ServiceWindowInfo] = []
         var warnings: [String] = []
 
-        for (index, axWindow) in axResult.windows.enumerated() {
+        for (index, axWindow) in axResult.windows.indexed() {
             if Date().timeIntervalSince(self.startTime) > Double(self.axTimeout * 2) {
                 warnings.append("Stopped enrichment after timeout")
                 break
@@ -970,7 +970,7 @@ private struct WindowEnumerationContext {
             self.logger.warning("\(warning)")
         }
 
-        for (index, window) in limitedWindows.enumerated() {
+        for (index, window) in limitedWindows.indexed() {
             if Date().timeIntervalSince(self.startTime) > Double(self.axTimeout) {
                 warnings.append("Stopped processing after \(self.axTimeout)s timeout")
                 break

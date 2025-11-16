@@ -75,6 +75,7 @@ let package = Package(
             dependencies: [
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
                 .product(name: "PeekabooProtocols", package: "PeekabooProtocols"),
+                .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
             ],
             path: "Sources/PeekabooVisualizer",
             swiftSettings: coreTargetSettings),

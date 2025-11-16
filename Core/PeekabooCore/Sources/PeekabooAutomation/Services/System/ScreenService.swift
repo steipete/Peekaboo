@@ -1,3 +1,4 @@
+import Algorithms
 import AppKit
 import Foundation
 import os
@@ -44,7 +45,7 @@ public final class ScreenService: ScreenServiceProtocol {
         let screens = NSScreen.screens
         let mainScreen = NSScreen.main
 
-        return screens.enumerated().map { index, screen in
+        return screens.indexed().map { index, screen in
             let displayID = screen.displayID
             let name = screen.localizedName
 

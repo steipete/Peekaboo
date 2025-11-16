@@ -23,6 +23,7 @@ let package = Package(
         // External dependencies centralized here
         .package(path: "../../AXorcist"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.4"),
+        .package(url: "https://github.com/apple/swift-algorithms", from: "1.2.1"),
         .package(path: "../../Commander"),
         .package(url: "https://github.com/apple/swift-log", from: "1.6.4"),
         .package(url: "https://github.com/apple/swift-system", from: "1.6.3"),
@@ -34,6 +35,7 @@ let package = Package(
             dependencies: [
                 .product(name: "AXorcist", package: "AXorcist"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(name: "Algorithms", package: "swift-algorithms"),
                 .product(name: "Commander", package: "Commander"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "SystemPackage", package: "swift-system"),

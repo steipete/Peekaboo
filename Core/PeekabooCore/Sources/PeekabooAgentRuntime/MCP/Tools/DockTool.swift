@@ -1,3 +1,4 @@
+import Algorithms
 import Foundation
 import MCP
 import os.log
@@ -213,7 +214,7 @@ public struct DockTool: MCPTool {
         let dockItems = try await service.listDockItems(includeAll: includeAll)
         let executionTime = Date().timeIntervalSince(startTime)
 
-        let itemList = dockItems.enumerated().map { index, item in
+        let itemList = dockItems.indexed().map { index, item in
             var info = "[\(index)] \(item.title) (\(item.itemType.rawValue))"
             if let isRunning = item.isRunning {
                 info += isRunning ? " [RUNNING]" : " [NOT RUNNING]"

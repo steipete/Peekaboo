@@ -1,3 +1,4 @@
+import Algorithms
 import Darwin
 import Foundation
 import os.log
@@ -416,7 +417,7 @@ extension PeekabooServices {
     {
         var executedActions: [ExecutedAction] = []
 
-        for (index, action) in actions.enumerated() {
+        for (index, action) in actions.indexed() {
             self.logger
                 .info("Executing action \(index + 1)/\(actions.count): \(String(describing: action), privacy: .public)")
             let startTime = Date()

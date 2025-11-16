@@ -55,7 +55,7 @@ public final class ProcessService: ProcessServiceProtocol {
         var results: [StepResult] = []
         var currentSessionId: String?
 
-        for (index, step) in script.steps.enumerated() {
+        for (index, step) in script.steps.indexed() {
             let stepNumber = index + 1
             let stepStartTime = Date()
 

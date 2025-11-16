@@ -5,6 +5,7 @@
 //  Consistent ID generation for UI elements
 //
 
+import Algorithms
 import Foundation
 import PeekabooFoundation
 import PeekabooProtocols
@@ -132,7 +133,7 @@ extension ElementIDGenerator {
         // Group by category to maintain sequential numbering
         var categoryGroups: [ElementCategory: [(Int, String?)]] = [:]
 
-        for (index, element) in elements.enumerated() {
+        for (index, element) in elements.indexed() {
             var group = categoryGroups[element.category] ?? []
             group.append((index, element.label))
             categoryGroups[element.category] = group
@@ -144,7 +145,7 @@ extension ElementIDGenerator {
         for (category, group) in categoryGroups {
             let startIndex = self.counters[category] ?? 0
 
-            for (offset, (originalIndex, _)) in group.enumerated() {
+            for (offset, (originalIndex, _)) in group.indexed() {
                 let id = "\(category.idPrefix)\(startIndex + offset + 1)"
                 results[originalIndex] = id
             }

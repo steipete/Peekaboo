@@ -103,7 +103,7 @@ struct ScreenCaptureFallbackRunner: Sendable {
     {
         var lastError: (any Error)?
 
-        for (index, api) in self.apis.enumerated() {
+        for (index, api) in self.apis.indexed() {
             do {
                 logger.debug(
                     "Attempting \(operationName) via \(api.description)",

@@ -7,6 +7,7 @@
 // This centralizes version management and provides a single import point
 
 @_exported import AsyncAlgorithms
+@_exported import Algorithms
 @_exported import AXorcist
 @_exported import Commander
 @_exported import Logging
@@ -18,6 +19,7 @@
 public enum DependencyInfo {
     public static let axorcistVersion = "main"
     public static let asyncAlgorithmsVersion = "1.0.4"
+    public static let algorithmsVersion = "1.2.1"
     public static let commanderVersion = "local"
     public static let swiftLogVersion = "1.5.3"
     public static let swiftSystemVersion = "1.6.3"
@@ -27,6 +29,7 @@ public enum DependencyInfo {
         [
             "AXorcist": axorcistVersion,
             "AsyncAlgorithms": asyncAlgorithmsVersion,
+            "Algorithms": algorithmsVersion,
             "Commander": commanderVersion,
             "SwiftLog": swiftLogVersion,
             "SwiftSystem": swiftSystemVersion,

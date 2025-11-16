@@ -42,7 +42,7 @@ public final class DockService: DockServiceProtocol {
         let dockElements = dockList.children() ?? []
         var items: [DockItem] = []
 
-        for (index, element) in dockElements.enumerated() {
+        for (index, element) in dockElements.indexed() {
             guard let item = self.makeDockItem(from: element, index: index, includeAll: includeAll) else {
                 continue
             }

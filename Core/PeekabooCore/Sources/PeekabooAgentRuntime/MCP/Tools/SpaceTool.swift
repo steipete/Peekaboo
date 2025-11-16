@@ -1,3 +1,4 @@
+import Algorithms
 import CoreGraphics
 import Foundation
 import MCP
@@ -131,7 +132,7 @@ public struct SpaceTool: MCPTool {
 
         var output = "Found \(spaces.count) Space(s):\n\n"
 
-        for (index, space) in spaces.enumerated() {
+        for (index, space) in spaces.indexed() {
             let spaceNumber = index + 1
             let activeIndicator = space.isActive ? " (Active)" : ""
 

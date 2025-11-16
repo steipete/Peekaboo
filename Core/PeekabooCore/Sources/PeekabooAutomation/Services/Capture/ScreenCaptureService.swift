@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import Algorithms
 import Foundation
 import PeekabooFoundation
 import PeekabooVisualizer
@@ -590,7 +591,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         private nonisolated static func firstRenderableWindowIndex(in windows: [SCWindow]) -> Int? {
-            for (index, window) in windows.enumerated() {
+            for (index, window) in windows.indexed() {
                 guard let info = self.makeFilteringInfo(from: window, index: index) else { continue }
                 guard WindowFiltering.isRenderable(info) else { continue }
                 return index
@@ -1009,12 +1010,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         private nonisolated static func firstRenderableWindowIndex(
             in windows: [[String: Any]]) -> Int?
         {
-            for (index, window) in windows.enumerated() {
-                guard let info = self.makeFilteringInfo(from: window, index: index) else { continue }
-                guard WindowFiltering.isRenderable(info) else { continue }
-                return index
-            }
-            return nil
+            windows.indexed().first { indexWindow in
+                guard let info = self.makeFilteringInfo(from: indexWindow.element, index: indexWindow.index) else {
+                    return false
+                }
+                return WindowFiltering.isRenderable(info)
+            }?.index
         }
 
         private nonisolated static func makeFilteringInfo(

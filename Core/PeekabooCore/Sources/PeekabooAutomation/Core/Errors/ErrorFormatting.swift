@@ -1,3 +1,4 @@
+import Algorithms
 import Foundation
 import PeekabooFoundation
 
@@ -73,7 +74,7 @@ public enum ErrorFormatter {
 
         var output = "Multiple errors occurred (\(errors.count)):\n"
 
-        for (index, error) in errors.enumerated() {
+        for (index, error) in errors.indexed() {
             let standardized = ErrorStandardizer.standardize(error)
             output += "\n\(index + 1). \(standardized.userMessage)"
         }

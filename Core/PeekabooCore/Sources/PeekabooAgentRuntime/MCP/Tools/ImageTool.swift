@@ -1,3 +1,4 @@
+import Algorithms
 import AppKit
 import Foundation
 import MCP
@@ -122,7 +123,7 @@ extension ImageTool {
         guard let basePath = request.path else { return [] }
         var savedFiles: [MCPSavedFile] = []
 
-        for (index, result) in results.enumerated() {
+        for (index, result) in results.indexed() {
             let fileName = results.count > 1 ?
                 generateFileName(
                     basePath: basePath,

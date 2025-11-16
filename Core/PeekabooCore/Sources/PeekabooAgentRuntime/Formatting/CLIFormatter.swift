@@ -1,3 +1,4 @@
+import Algorithms
 import Foundation
 import PeekabooAutomation
 
@@ -86,7 +87,7 @@ public enum CLIFormatter {
         guard !data.applications.isEmpty else { return "" }
 
         var result = "\n\nApplications:"
-        for (index, app) in data.applications.enumerated() {
+        for (index, app) in data.applications.indexed() {
             result += "\n\(index + 1). \(app.name)"
             if let bundleId = app.bundleIdentifier {
                 result += " (\(bundleId))"
@@ -110,7 +111,7 @@ public enum CLIFormatter {
         }
 
         var result = "\n\nWindows:"
-        for (index, window) in data.windows.enumerated() {
+        for (index, window) in data.windows.indexed() {
             result += "\n\(index + 1). \(window.title.isEmpty ? "[Untitled]" : window.title)"
             result += " - ID: \(window.windowID)"
 
