@@ -168,7 +168,11 @@ extension TypingCadence: Codable {
             let wpm = try container.decode(Int.self, forKey: .wordsPerMinute)
             self = .human(wordsPerMinute: wpm)
         default:
-            throw DecodingError.dataCorruptedError(forKey: .kind, in: container, debugDescription: "Unknown typing cadence kind \(kind)")
+            throw DecodingError.dataCorruptedError(
+                forKey: .kind,
+                in: container,
+                debugDescription: "Unknown typing cadence kind \(kind)"
+            )
         }
     }
 

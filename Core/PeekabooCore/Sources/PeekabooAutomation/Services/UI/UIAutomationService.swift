@@ -386,7 +386,11 @@ extension UIAutomationService {
         await self.visualizeTyping(keys: Array(text).map { String($0) }, cadence: .fixed(milliseconds: typingDelay))
     }
 
-    public func typeActions(_ actions: [TypeAction], cadence: TypingCadence, sessionId: String?) async throws -> TypeResult {
+    public func typeActions(
+        _ actions: [TypeAction],
+        cadence: TypingCadence,
+        sessionId: String?
+    ) async throws -> TypeResult {
         self.logger.debug("Delegating typeActions to TypeService")
         let result = try await self.typeService.typeActions(actions, cadence: cadence, sessionId: sessionId)
         await self.visualizeTypeActions(actions, cadence: cadence)
@@ -510,6 +514,7 @@ extension UIAutomationService {
         _ = await self.visualizerClient.showSwipeGesture(from: from, to: to, duration: TimeInterval(duration) / 1000.0)
     }
 
+    // swiftlint:disable:next function_parameter_count
     public func drag(
         from: CGPoint,
         to: CGPoint,

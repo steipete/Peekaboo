@@ -221,7 +221,13 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
 
     func hotkey(keys _: String, holdDuration _: Int) async throws {}
 
-    func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
+    func swipe(
+        from _: CGPoint,
+        to _: CGPoint,
+        duration _: Int,
+        steps _: Int,
+        profile _: MouseMovementProfile
+    ) async throws {}
 
     func hasAccessibilityPermission() async -> Bool { self.accessibilityGranted }
 
@@ -231,9 +237,22 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         WaitForElementResult(found: false, element: nil, waitTime: 0)
     }
 
-    func drag(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, modifiers _: String?, profile _: MouseMovementProfile) async throws {}
+    // swiftlint:disable:next function_parameter_count
+    func drag(
+        from _: CGPoint,
+        to _: CGPoint,
+        duration _: Int,
+        steps _: Int,
+        modifiers _: String?,
+        profile _: MouseMovementProfile
+    ) async throws {}
 
-    func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
+    func moveMouse(
+        to _: CGPoint,
+        duration _: Int,
+        steps _: Int,
+        profile _: MouseMovementProfile
+    ) async throws {}
 
     func getFocusedElement() -> UIFocusInfo? { nil }
 

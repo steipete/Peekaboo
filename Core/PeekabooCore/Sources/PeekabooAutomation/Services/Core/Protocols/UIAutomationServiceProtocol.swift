@@ -69,6 +69,7 @@ public protocol UIAutomationServiceProtocol: Sendable {
     func waitForElement(target: ClickTarget, timeout: TimeInterval, sessionId: String?) async throws
         -> WaitForElementResult
 
+    // swiftlint:disable function_parameter_count
     /// Perform a drag operation between two points
     /// - Parameters:
     ///   - from: Starting point for the drag
@@ -85,6 +86,7 @@ public protocol UIAutomationServiceProtocol: Sendable {
         modifiers: String?,
         profile: MouseMovementProfile
     ) async throws
+    // swiftlint:enable function_parameter_count
 
     /// Move the mouse cursor to a specific location
     /// - Parameters:

@@ -155,6 +155,7 @@ final class MockAutomationService: UIAutomationServiceProtocol {
         return self.waitResult
     }
 
+    // swiftlint:disable:next function_parameter_count
     func drag(
         from _: CGPoint,
         to _: CGPoint,

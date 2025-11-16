@@ -44,6 +44,7 @@ public final class GestureService {
         self.logger.debug("Swipe completed")
     }
 
+    // swiftlint:disable function_parameter_count
     /// Perform a drag operation with optional modifiers
     public func drag(
         from: CGPoint,
@@ -79,6 +80,7 @@ public final class GestureService {
 
         self.logger.debug("Drag completed")
     }
+    // swiftlint:enable function_parameter_count
 
     /// Move mouse to a specific point
     public func moveMouse(

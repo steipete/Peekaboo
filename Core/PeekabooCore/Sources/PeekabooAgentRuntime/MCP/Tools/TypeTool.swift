@@ -334,7 +334,12 @@ private struct TypeRequest {
     static let defaultHumanWPM = 140
 
     var hasActions: Bool {
-        self.text != nil || self.tabCount != nil || self.pressEscape || self.pressDelete || self.pressReturn || self.clearField
+        self.text != nil ||
+        self.tabCount != nil ||
+        self.pressEscape ||
+        self.pressDelete ||
+        self.pressReturn ||
+        self.clearField
     }
 
     var cadence: TypingCadence {

@@ -653,9 +653,9 @@ extension ElementDetectionService {
             loweredLabel.map { label in keywords.contains(where: { label.contains($0) }) } ?? false
 
         if resolved == .group,
-           (descriptor.placeholder?.isEmpty == false ||
-               matchesKeyword ||
-               self.containsTextFieldDescendant(element, depth: 0, remainingDepth: 2))
+           descriptor.placeholder?.isEmpty == false ||
+           matchesKeyword ||
+           self.containsTextFieldDescendant(element, depth: 0, remainingDepth: 2)
         {
             return .textField
         }

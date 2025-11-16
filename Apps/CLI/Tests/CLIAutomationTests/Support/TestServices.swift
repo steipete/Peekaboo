@@ -269,6 +269,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         return WaitForElementResult(found: false, element: nil, waitTime: 0)
     }
 
+    // swiftlint:disable:next function_parameter_count
     func drag(
         from: CGPoint,
         to: CGPoint,

@@ -32,6 +32,7 @@ enum HumanizedMovementDefaults {
 }
 
 extension MovementProfileOption {
+    // swiftlint:disable:next function_parameter_count
     func resolveParameters(
         smooth: Bool,
         durationOverride: Int?,

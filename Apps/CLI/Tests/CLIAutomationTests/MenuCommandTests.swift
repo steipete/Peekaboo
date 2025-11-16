@@ -146,7 +146,7 @@ struct MenuCommandTests {
 
     private func runMenuCommand(
         _ args: [String],
-        configure: (@MainActor (StubMenuService, StubApplicationService) -> ())? = nil
+        configure: (@MainActor (StubMenuService, StubApplicationService) -> Void)? = nil
     ) async throws -> CommandRunResult {
         let (result, _) = try await self.runMenuCommandWithContext(args, configure: configure)
         return result
@@ -154,7 +154,7 @@ struct MenuCommandTests {
 
     private func runMenuCommandWithContext(
         _ args: [String],
-        configure: (@MainActor (StubMenuService, StubApplicationService) -> ())? = nil
+        configure: (@MainActor (StubMenuService, StubApplicationService) -> Void)? = nil
     ) async throws -> (CommandRunResult, MenuHarnessContext) {
         let context = await self.makeMenuContext()
         if let configure {

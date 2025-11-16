@@ -849,7 +849,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     index: resolvedIndex,
                     layer: targetWindow[kCGWindowLayer as String] as? Int ?? 0,
                     isOnScreen: targetWindow[kCGWindowIsOnscreen as String] as? Bool ?? true,
-                    sharingState: (targetWindow[kCGWindowSharingState as String] as? Int).flatMap { WindowSharingState(rawValue: $0) }))
+                    sharingState: (targetWindow[kCGWindowSharingState as String] as? Int).flatMap {
+                        WindowSharingState(rawValue: $0)
+                    }
+                ))
 
             return CaptureResult(
                 imageData: imageData,

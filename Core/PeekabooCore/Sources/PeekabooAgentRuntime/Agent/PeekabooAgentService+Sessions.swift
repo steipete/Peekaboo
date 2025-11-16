@@ -63,6 +63,7 @@ extension PeekabooAgentService {
             metadata: SessionMetadata())
     }
 
+    // swiftlint:disable:next function_parameter_count
     func saveCompletedSession(
         context: SessionContext,
         model: LanguageModel,

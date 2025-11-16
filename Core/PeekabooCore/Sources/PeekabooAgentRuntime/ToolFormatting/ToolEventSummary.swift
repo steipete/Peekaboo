@@ -77,6 +77,7 @@ public struct ToolEventSummary: Codable, Sendable {
         self.notes = notes
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     public func toMetaValue() -> Value {
         var dict: [String: Value] = [:]
         if let targetApp { dict["target_app"] = .string(targetApp) }
