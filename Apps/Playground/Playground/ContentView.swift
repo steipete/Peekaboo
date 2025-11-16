@@ -5,7 +5,7 @@ private let logger = Logger(subsystem: "boo.peekaboo.playground", category: "Cli
 
 struct ContentView: View {
     @EnvironmentObject var actionLogger: ActionLogger
-    @State private var selectedTab = "text"
+    @EnvironmentObject var tabRouter: PlaygroundTabRouter
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,7 +17,7 @@ struct ContentView: View {
             Divider()
 
             // Main content area with tabs
-            TabView(selection: self.$selectedTab) {
+            TabView(selection: self.$tabRouter.selectedTab) {
                 ClickTestingView()
                     .tabItem { Label("Click Testing", systemImage: "cursorarrow.click") }
                     .tag("click")
@@ -60,6 +60,7 @@ struct ContentView: View {
 
 struct HeaderView: View {
     @EnvironmentObject var actionLogger: ActionLogger
+    @EnvironmentObject var tabRouter: PlaygroundTabRouter
 
     var body: some View {
         HStack {
@@ -103,6 +104,15 @@ struct HeaderView: View {
                         Label("Clear", systemImage: "trash")
                     })
                     .foregroundColor(.red)
+
+                    Button(action: {
+                        self.tabRouter.selectedTab = "drag"
+                        self.actionLogger.log(.menu, "Quick switched to Drag & Drop tab")
+                    }, label: {
+                        Label("Go to Drag & Drop", systemImage: "hand.draw")
+                    })
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("nav-drag-tab")
                 }
             }
         }
@@ -131,5 +141,6 @@ struct StatusBarView: View {
 #Preview {
     ContentView()
         .environmentObject(ActionLogger.shared)
+        .environmentObject(PlaygroundTabRouter())
         .frame(width: 1200, height: 800)
 }

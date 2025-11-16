@@ -7,9 +7,15 @@ private let logger = Logger(subsystem: "boo.peekaboo.playground", category: "App
 private let clickLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Click")
 private let keyLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Key")
 
+@MainActor
+final class PlaygroundTabRouter: ObservableObject {
+    @Published var selectedTab: String = "text"
+}
+
 @main
 struct PlaygroundApp: App {
     @StateObject private var actionLogger = ActionLogger.shared
+    @StateObject private var tabRouter = PlaygroundTabRouter()
     @State private var eventMonitor: Any?
 
     init() {
@@ -206,6 +212,7 @@ struct PlaygroundApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(self.actionLogger)
+                .environmentObject(self.tabRouter)
                 .frame(minWidth: 1200, minHeight: 800)
         }
         .windowResizability(.contentSize)
@@ -250,6 +257,50 @@ struct PlaygroundApp: App {
                     logger.info("This should not be logged - disabled")
                 }
                 .disabled(true)
+
+                Divider()
+
+                Button("Switch to Click Testing Tab") {
+                    self.tabRouter.selectedTab = "click"
+                    self.actionLogger.log(.menu, "Switched to tab: Click Testing")
+                }
+                .keyboardShortcut("1", modifiers: [.command, .option])
+
+                Button("Switch to Text Input Tab") {
+                    self.tabRouter.selectedTab = "text"
+                    self.actionLogger.log(.menu, "Switched to tab: Text Input")
+                }
+                .keyboardShortcut("2", modifiers: [.command, .option])
+
+                Button("Switch to Controls Tab") {
+                    self.tabRouter.selectedTab = "controls"
+                    self.actionLogger.log(.menu, "Switched to tab: Controls")
+                }
+                .keyboardShortcut("3", modifiers: [.command, .option])
+
+                Button("Switch to Scroll & Gestures Tab") {
+                    self.tabRouter.selectedTab = "scroll"
+                    self.actionLogger.log(.menu, "Switched to tab: Scroll & Gestures")
+                }
+                .keyboardShortcut("4", modifiers: [.command, .option])
+
+                Button("Switch to Window Tab") {
+                    self.tabRouter.selectedTab = "window"
+                    self.actionLogger.log(.menu, "Switched to tab: Window")
+                }
+                .keyboardShortcut("5", modifiers: [.command, .option])
+
+                Button("Switch to Drag & Drop Tab") {
+                    self.tabRouter.selectedTab = "drag"
+                    self.actionLogger.log(.menu, "Switched to tab: Drag & Drop")
+                }
+                .keyboardShortcut("6", modifiers: [.command, .option])
+
+                Button("Switch to Keyboard Tab") {
+                    self.tabRouter.selectedTab = "keyboard"
+                    self.actionLogger.log(.menu, "Switched to tab: Keyboard")
+                }
+                .keyboardShortcut("7", modifiers: [.command, .option])
             }
 
             CommandGroup(after: .textEditing) {
@@ -259,6 +310,7 @@ struct PlaygroundApp: App {
                 }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
             }
+
         }
 
         WindowGroup("Log Viewer", id: "log-viewer") {
