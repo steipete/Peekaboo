@@ -6,11 +6,6 @@ import TachikomaMCP
 
 private enum DefaultMCPServer {
     static let name = "chrome-devtools"
-    static let legacyNames: Set<String> = ["browser"]
-
-    static func matches(_ name: String) -> Bool {
-        name == self.name || self.legacyNames.contains(name)
-    }
 }
 
 private enum MCPAutoConnectPolicy {
@@ -360,7 +355,7 @@ public final class MCPClientManager {
     }
 
     private func initializeAdditionalServers(_ userConfigs: [String: MCPServerConfig]) async {
-        for (serverName, serverConfig) in userConfigs where !DefaultMCPServer.matches(serverName) {
+        for (serverName, serverConfig) in userConfigs where serverName != DefaultMCPServer.name {
             self.configs[serverName] = serverConfig
             let connection = MCPClientConnection(name: serverName, config: serverConfig)
             self.connections[serverName] = connection
@@ -379,15 +374,7 @@ public final class MCPClientManager {
     private func userProvidedDefaultConfig(
         from userConfigs: [String: MCPServerConfig]) -> MCPServerConfig?
     {
-        if let config = userConfigs[DefaultMCPServer.name] {
-            return config
-        }
-        for legacyName in DefaultMCPServer.legacyNames {
-            if let config = userConfigs[legacyName] {
-                return config
-            }
-        }
-        return nil
+        userConfigs[DefaultMCPServer.name]
     }
 
     /// Connect to all enabled servers
@@ -615,7 +602,7 @@ public final class MCPClientManager {
 
     /// Check if a server is a default server
     public func isDefaultServer(name: String) -> Bool {
-        DefaultMCPServer.matches(name)
+        name == DefaultMCPServer.name
     }
 
     /// Remove a server

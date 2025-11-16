@@ -7,11 +7,6 @@ import TachikomaMCP
 
 private enum MCPDefaults {
     static let serverName = "chrome-devtools"
-    static let legacyServerNames: Set<String> = ["browser"]
-
-    static func matches(_ name: String) -> Bool {
-        name == self.serverName || self.legacyServerNames.contains(name)
-    }
 }
 
 // MARK: - Shared MCP client abstraction
@@ -691,7 +686,7 @@ extension MCPCommand {
                 let healthText = health.statusText
 
                 // Show if this is a default server
-                let isDefault = MCPDefaults.matches(serverName)
+                let isDefault = (serverName == MCPDefaults.serverName)
                 let defaultMarker = isDefault ? " [default]" : ""
 
                 print("\(serverName): \(simplifiedCommand) - \(healthSymbol) \(healthText)\(defaultMarker)")
