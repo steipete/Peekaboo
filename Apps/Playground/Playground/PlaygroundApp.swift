@@ -7,11 +7,6 @@ private let logger = Logger(subsystem: "boo.peekaboo.playground", category: "App
 private let clickLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Click")
 private let keyLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Key")
 
-@MainActor
-final class PlaygroundTabRouter: ObservableObject {
-    @Published var selectedTab: String = "text"
-}
-
 @main
 struct PlaygroundApp: App {
     @StateObject private var actionLogger = ActionLogger.shared

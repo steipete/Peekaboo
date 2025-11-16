@@ -3,6 +3,11 @@ import SwiftUI
 
 private let logger = Logger(subsystem: "boo.peekaboo.playground", category: "Click")
 
+@MainActor
+final class PlaygroundTabRouter: ObservableObject {
+    @Published var selectedTab: String = "text"
+}
+
 struct ContentView: View {
     @EnvironmentObject var actionLogger: ActionLogger
     @EnvironmentObject var tabRouter: PlaygroundTabRouter
