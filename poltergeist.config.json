@@ -173,7 +173,8 @@
       "targets": ["Commander"],
       "cooldownSeconds": 600,
       "timeoutSeconds": 900,
-      "maxLines": 3
+      "maxLines": 6,
+      "formatter": "auto"
     },
     {
       "label": "Tests (AXorcist)",
@@ -181,7 +182,8 @@
       "targets": ["AXorcist"],
       "cooldownSeconds": 600,
       "timeoutSeconds": 900,
-      "maxLines": 3
+      "maxLines": 6,
+      "formatter": "auto"
     },
     {
       "label": "Tests (Tachikoma)",
@@ -189,7 +191,8 @@
       "targets": ["Tachikoma"],
       "cooldownSeconds": 900,
       "timeoutSeconds": 1200,
-      "maxLines": 3
+      "maxLines": 6,
+      "formatter": "auto"
     },
     {
       "label": "Tests (TauTUI)",
@@ -197,7 +200,8 @@
       "targets": ["TauTUI"],
       "cooldownSeconds": 900,
       "timeoutSeconds": 1200,
-      "maxLines": 3
+      "maxLines": 6,
+      "formatter": "auto"
     }
   ]
 }
