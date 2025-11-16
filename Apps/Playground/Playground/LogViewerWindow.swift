@@ -118,7 +118,7 @@ struct LogViewerWindow: View {
                 // Category summary
                 HStack(spacing: 15) {
                     ForEach(ActionCategory.allCases, id: \.self) { category in
-                        let count = self.actionLogger.entries.count(where: { $0.category == category })
+                        let count = self.actionLogger.categoryCounts[category, default: 0]
                         if count > 0 {
                             HStack(spacing: 4) {
                                 Circle()

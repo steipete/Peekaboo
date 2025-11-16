@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import OSLog
 import SwiftUI
@@ -52,18 +53,25 @@ struct LogEntry: Identifiable {
     let message: String
     let details: String?
 
-    var formattedTime: String {
+    private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss.SSS"
-        return formatter.string(from: self.timestamp)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    var formattedTime: String {
+        Self.timestampFormatter.string(from: self.timestamp)
     }
 }
 
 @MainActor
-class ActionLogger: ObservableObject {
+final class ActionLogger: ObservableObject {
     static let shared = ActionLogger()
+    static let entryLimit = 2000
 
     @Published private(set) var entries: [LogEntry] = []
+    @Published private(set) var categoryCounts = ActionLogger.makeEmptyCategoryCounts()
     @Published private(set) var actionCount: Int = 0
     @Published var lastAction: String = "Ready"
     @Published var showingLogViewer = false
@@ -79,9 +87,17 @@ class ActionLogger: ObservableObject {
     private let gestureLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Gesture")
     private let controlLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Control")
 
+    private static let exportDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
     private init() {}
 
     func log(_ category: ActionCategory, _ message: String, details: String? = nil) {
+        self.dropOldestEntryIfNeeded()
+
         let entry = LogEntry(
             timestamp: Date(),
             category: category,
@@ -89,11 +105,11 @@ class ActionLogger: ObservableObject {
             details: details)
 
         self.entries.append(entry)
+        self.categoryCounts[category, default: 0] += 1
         self.actionCount += 1
         self.lastAction = message
 
-        // Log to OSLog with appropriate logger
-        let logger = self.getLogger(for: category)
+        let logger = self.logger(for: category)
         if let details {
             logger.info("\(message, privacy: .public) - \(details, privacy: .public)")
         } else {
@@ -103,13 +119,15 @@ class ActionLogger: ObservableObject {
 
     func clearLogs() {
         self.entries.removeAll()
+        self.categoryCounts = Self.makeEmptyCategoryCounts()
         self.actionCount = 0
         self.lastAction = "Logs cleared"
-        self.clickLogger.info("Logs cleared")
+        self.controlLogger.info("Logs cleared")
     }
 
     func exportLogs() -> String {
-        let header = "Peekaboo Playground Action Log\nGenerated: \(Date())\n\n"
+        let timestamp = Self.exportDateFormatter.string(from: Date())
+        let header = "Peekaboo Playground Action Log\nGenerated: \(timestamp)\n\n"
         let logLines = self.entries.map { entry in
             let details = entry.details.map { " - \($0)" } ?? ""
             return "[\(entry.formattedTime)] [\(entry.category.rawValue)] \(entry.message)\(details)"
@@ -124,10 +142,22 @@ class ActionLogger: ObservableObject {
         NSPasteboard.general.setString(logs, forType: .string)
 
         self.lastAction = "Logs copied to clipboard"
-        self.clickLogger.info("Logs exported to clipboard")
+        self.controlLogger.info("Logs exported to clipboard")
     }
 
-    private func getLogger(for category: ActionCategory) -> Logger {
+    private func dropOldestEntryIfNeeded() {
+        guard self.entries.count >= Self.entryLimit,
+              let removed = self.entries.first
+        else {
+            return
+        }
+
+        self.entries.removeFirst()
+        let current = self.categoryCounts[removed.category, default: 0]
+        self.categoryCounts[removed.category] = max(0, current - 1)
+    }
+
+    private func logger(for category: ActionCategory) -> Logger {
         switch category {
         case .click: self.clickLogger
         case .text: self.textLogger
@@ -140,5 +170,9 @@ class ActionLogger: ObservableObject {
         case .gesture: self.gestureLogger
         case .control: self.controlLogger
         }
+    }
+
+    private static func makeEmptyCategoryCounts() -> [ActionCategory: Int] {
+        Dictionary(uniqueKeysWithValues: ActionCategory.allCases.map { ($0, 0) })
     }
 }

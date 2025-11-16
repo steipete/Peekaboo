@@ -16,6 +16,7 @@ struct ActionLoggerTests {
         #expect(logger.lastAction == "Clicked button")
         #expect(logger.entries.first?.details == "Primary CTA")
         #expect(logger.entries.first?.category == .click)
+        #expect(logger.categoryCounts[.click] == 1)
     }
 
     @Test("clearLogs resets counters and appends status message")
@@ -29,6 +30,7 @@ struct ActionLoggerTests {
         #expect(logger.entries.isEmpty)
         #expect(logger.actionCount == 0)
         #expect(logger.lastAction == "Logs cleared")
+        #expect(logger.categoryCounts.values.allSatisfy { $0 == 0 })
     }
 
     @Test("exportLogs emits human readable lines")
@@ -44,5 +46,20 @@ struct ActionLoggerTests {
         #expect(exported.contains("Peekaboo Playground Action Log"))
         #expect(exported.contains("Opened File menu"))
         #expect(exported.contains("Toggled switch"))
+    }
+
+    @Test("log enforces bounded history")
+    func logKeepsBoundedHistory() {
+        let logger = ActionLogger.shared
+        logger.clearLogs()
+
+        for index in 0...ActionLogger.entryLimit {
+            logger.log(.click, "Event \(index)")
+        }
+
+        #expect(logger.entries.count == ActionLogger.entryLimit)
+        #expect(logger.categoryCounts[.click] == ActionLogger.entryLimit)
+        #expect(logger.actionCount == ActionLogger.entryLimit + 1)
+        #expect(logger.entries.first?.message == "Event 1")
     }
 }
