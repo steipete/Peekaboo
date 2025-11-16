@@ -4,6 +4,15 @@ import os.log
 import PeekabooAutomation
 import TachikomaMCP
 
+private enum DefaultMCPServer {
+    static let name = "chrome-devtools"
+    static let legacyNames: Set<String> = ["browser"]
+
+    static func matches(_ name: String) -> Bool {
+        name == self.name || self.legacyNames.contains(name)
+    }
+}
+
 private enum MCPAutoConnectPolicy {
     private static let overrideLock = OSAllocatedUnfairLock(initialState: Bool?.none)
     private static let forceEnable =
@@ -294,63 +303,64 @@ public final class MCPClientManager {
         let defaultBrowserConfig = MCPServerConfig(
             transport: "stdio",
             command: "npx",
-            args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+            args: ["-y", "chrome-devtools-mcp@latest"],
             env: [:],
             enabled: true,
             timeout: 15.0,
             autoReconnect: true,
-            description: "Browser automation via BrowserMCP")
+            description: "Chrome DevTools automation")
 
         let actualUserConfigs = userConfigs.isEmpty ?
             (ConfigurationManager.shared.getConfiguration()?.mcpClients ?? [:]) : userConfigs
 
-        await self.initializeBrowserServer(
+        await self.initializeDefaultServer(
             userConfigs: actualUserConfigs,
             defaultConfig: defaultBrowserConfig)
         await self.initializeAdditionalServers(actualUserConfigs)
     }
 
-    private func initializeBrowserServer(
+    private func initializeDefaultServer(
         userConfigs: [String: MCPServerConfig],
         defaultConfig: MCPServerConfig) async
     {
-        if let userBrowserConfig = userConfigs["browser"] {
-            await self.configureBrowserFromUserConfig(userBrowserConfig)
+        if let userBrowserConfig = self.userProvidedDefaultConfig(from: userConfigs) {
+            await self.configureDefaultServerFromUserConfig(userBrowserConfig)
             return
         }
 
-        self.configs["browser"] = defaultConfig
-        let connection = MCPClientConnection(name: "browser", config: defaultConfig)
-        self.connections["browser"] = connection
+        self.configs[DefaultMCPServer.name] = defaultConfig
+        let connection = MCPClientConnection(name: DefaultMCPServer.name, config: defaultConfig)
+        self.connections[DefaultMCPServer.name] = connection
 
         do {
             try await connection.connect()
-            self.logger.info("Initialized default browser MCP server")
+            self.logger.info("Initialized default Chrome DevTools MCP server")
         } catch {
-            self.logger.error("Failed to connect to default browser MCP server: \\(error.localizedDescription)")
+            self.logger.error(
+                "Failed to connect to default Chrome DevTools MCP server: \(error.localizedDescription)")
         }
     }
 
-    private func configureBrowserFromUserConfig(_ config: MCPServerConfig) async {
-        self.configs["browser"] = config
-        let connection = MCPClientConnection(name: "browser", config: config)
-        self.connections["browser"] = connection
+    private func configureDefaultServerFromUserConfig(_ config: MCPServerConfig) async {
+        self.configs[DefaultMCPServer.name] = config
+        let connection = MCPClientConnection(name: DefaultMCPServer.name, config: config)
+        self.connections[DefaultMCPServer.name] = connection
 
         guard config.enabled else {
-            self.logger.info("Browser MCP server is disabled by user configuration")
+            self.logger.info("Chrome DevTools MCP server is disabled by user configuration")
             return
         }
 
         do {
             try await connection.connect()
-            self.logger.info("Initialized user-configured browser MCP server")
+            self.logger.info("Initialized user-configured Chrome DevTools MCP server")
         } catch {
-            self.logger.error("Failed to connect to browser MCP server: \\(error.localizedDescription)")
+            self.logger.error("Failed to connect to Chrome DevTools MCP server: \(error.localizedDescription)")
         }
     }
 
     private func initializeAdditionalServers(_ userConfigs: [String: MCPServerConfig]) async {
-        for (serverName, serverConfig) in userConfigs where serverName != "browser" {
+        for (serverName, serverConfig) in userConfigs where !DefaultMCPServer.matches(serverName) {
             self.configs[serverName] = serverConfig
             let connection = MCPClientConnection(name: serverName, config: serverConfig)
             self.connections[serverName] = connection
@@ -364,6 +374,20 @@ public final class MCPClientManager {
                 self.logger.error("Failed to connect to '\(serverName)': \\(error.localizedDescription)")
             }
         }
+    }
+
+    private func userProvidedDefaultConfig(
+        from userConfigs: [String: MCPServerConfig]) -> MCPServerConfig?
+    {
+        if let config = userConfigs[DefaultMCPServer.name] {
+            return config
+        }
+        for legacyName in DefaultMCPServer.legacyNames {
+            if let config = userConfigs[legacyName] {
+                return config
+            }
+        }
+        return nil
     }
 
     /// Connect to all enabled servers
@@ -591,8 +615,7 @@ public final class MCPClientManager {
 
     /// Check if a server is a default server
     public func isDefaultServer(name: String) -> Bool {
-        // Browser server is the default server shipped with Peekaboo
-        name == "browser"
+        DefaultMCPServer.matches(name)
     }
 
     /// Remove a server

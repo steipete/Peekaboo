@@ -36,6 +36,8 @@ private var isDebugLoggingEnabled: Bool {
     return false
 }
 
+private let defaultMCPServerName = "chrome-devtools"
+
 private func aiDebugPrint(_ message: String) {
     if isDebugLoggingEnabled {
         print(message)
@@ -392,17 +394,18 @@ extension AgentCommand {
 
     private static func initializeMCP() async {
         if ProcessInfo.processInfo.environment["PEEKABOO_ENABLE_BROWSER_MCP"] == "1" {
-            let defaultBrowser = TachikomaMCP.MCPServerConfig(
+            let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
                 transport: "stdio",
                 command: "npx",
-                args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+                args: ["-y", "chrome-devtools-mcp@latest"],
                 env: [:],
                 enabled: true,
                 timeout: 60.0,
                 autoReconnect: true,
-                description: "Browser automation via BrowserMCP"
+                description: "Chrome DevTools automation"
             )
-            TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+            TachikomaMCPClientManager.shared.registerDefaultServers(
+                [defaultMCPServerName: defaultChromeDevTools])
         }
         await TachikomaMCPClientManager.shared.initializeFromProfile()
     }

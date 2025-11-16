@@ -389,15 +389,15 @@ Add to your Cursor settings:
 
 Peekaboo v3 now functions as both an MCP server (exposing its tools) and an MCP client (consuming external tools). This enables powerful workflows that combine Peekaboo's native automation with tools from the broader MCP ecosystem.
 
-### Default Integration: BrowserMCP
+### Default Integration: Chrome DevTools MCP
 
-Peekaboo ships with [BrowserMCP](https://browsermcp.io) enabled by default, providing browser automation capabilities via Puppeteer:
+Peekaboo ships with the [Chrome DevTools MCP](https://chrome-devtools-mcp.modelcontextprotocol.io) enabled by default, providing Chromium automation via the DevTools protocol:
 
 ```bash
-# BrowserMCP tools are available immediately
-peekaboo tools --mcp-only                    # List only external MCP tools  
-peekaboo tools --mcp browser                 # Show BrowserMCP tools specifically
-peekaboo agent "Navigate to github.com and click the sign up button"  # Uses browser:navigate and browser:click
+# Chrome DevTools tools are available immediately
+peekaboo tools --mcp-only                     # List only external MCP tools  
+peekaboo tools --mcp chrome-devtools          # Show Chrome DevTools MCP tools specifically
+peekaboo agent "Navigate to github.com and click the sign up button"  # Uses chrome-devtools:navigate_page + click
 ```
 
 ### Managing External MCP Servers
@@ -414,18 +414,18 @@ peekaboo mcp add files -- npx -y @modelcontextprotocol/server-filesystem ~/Docum
 peekaboo mcp test github --show-tools
 
 # Enable/disable servers
-peekaboo mcp disable browser    # Disable default BrowserMCP
-peekaboo mcp enable github      # Re-enable a server
+peekaboo mcp disable chrome-devtools    # Disable default Chrome DevTools MCP
+peekaboo mcp enable github              # Re-enable a server
 ```
 
 ### Configuration
 
-External servers are configured in `~/.peekaboo/config.json`. To disable BrowserMCP:
+External servers are configured in `~/.peekaboo/config.json`. To disable Chrome DevTools MCP:
 
 ```json
 {
   "mcpClients": {
-    "browser": {
+    "chrome-devtools": {
       "enabled": false
     }
   }
@@ -436,9 +436,9 @@ External servers are configured in `~/.peekaboo/config.json`. To disable Browser
 
 All external tools are prefixed with their server name:
 
-- **browser:navigate** - Navigate to URL (BrowserMCP)
-- **browser:click** - Click elements on webpage (BrowserMCP)  
-- **browser:screenshot** - Take webpage screenshot (BrowserMCP)
+- **chrome-devtools:navigate_page** - Navigate to URL (Chrome DevTools MCP)
+- **chrome-devtools:click** - Click elements on webpage (Chrome DevTools MCP)  
+- **chrome-devtools:screenshot** - Take webpage screenshot (Chrome DevTools MCP)
 - **github:create_issue** - Create GitHub issues (GitHub server)
 - **files:read_file** - Read files (Filesystem server)
 

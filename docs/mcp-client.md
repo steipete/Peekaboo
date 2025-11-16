@@ -19,7 +19,7 @@ Peekaboo now operates as both:
 - **MCP Server**: Exposing 22+ native Swift automation tools
 - **MCP Client**: Consuming tools from external MCP servers with server prefixes
 
-**Default Integration**: Peekaboo ships with [BrowserMCP](https://browsermcp.io) enabled by default, providing lightweight browser automation capabilities. This can be disabled via configuration if not needed.
+**Default Integration**: Peekaboo ships with the [Chrome DevTools MCP](https://chrome-devtools-mcp.modelcontextprotocol.io) enabled by default, providing lightweight browser automation capabilities via the DevTools protocol. This can be disabled via configuration if not needed.
 
 ### Key Features
 
@@ -137,7 +137,7 @@ peekaboo mcp list --json-output
 ```
 Checking MCP server health...
 
-browser: npx -y @agent-infra/mcp-server-browser@latest - ✓ Connected (15 tools, 134ms) [default]
+chrome-devtools: npx -y chrome-devtools-mcp@latest - ✓ Connected (15 tools, 134ms) [default]
 github: npx -y @modelcontextprotocol/server-github - ✓ Connected (12 tools, 145ms)
 files: npx -y @modelcontextprotocol/server-filesystem - ✓ Connected (8 tools, 89ms)
 weather: /usr/local/bin/weather-mcp - ✗ Failed to connect (Command not found)
@@ -205,15 +205,15 @@ peekaboo mcp disable weather
 
 ## Configuration
 
-MCP client settings are stored in `~/.peekaboo/config.json`. Peekaboo ships with BrowserMCP enabled by default, but you can disable it or add additional servers:
+MCP client settings are stored in `~/.peekaboo/config.json`. Peekaboo ships with the Chrome DevTools MCP enabled by default, but you can disable it or add additional servers:
 
 ### Default Server Configuration
 
-To disable the default BrowserMCP server:
+To disable the default Chrome DevTools server:
 ```json
 {
   "mcpClients": {
-    "browser": {
+    "chrome-devtools": {
       "enabled": false
     }
   }
@@ -311,13 +311,13 @@ The agent system automatically:
 
 ## Popular MCP Servers
 
-### BrowserMCP (Default)
+### Chrome DevTools MCP (Default)
 ```bash
 # Included by default, or add manually:
-peekaboo mcp add browser -- npx -y @agent-infra/mcp-server-browser@latest
+peekaboo mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest
 ```
-**Tools**: navigate, click, type, screenshot, get_url, get_title, wait_for_selector, evaluate_js, fill_form, close_tab, new_tab
-**Description**: Lightweight browser automation via Puppeteer for web interaction tasks.
+**Tools**: navigate_page, click, type, screenshot, get_url, get_title, wait_for_selector, evaluate_js, fill_form, close_tab, new_tab  
+**Description**: Chrome DevTools automation via the CDP protocol for web interaction tasks.
 
 ### GitHub Server
 ```bash
@@ -331,7 +331,7 @@ peekaboo mcp add files -- npx -y @modelcontextprotocol/server-filesystem /allowe
 ```
 **Tools**: read_file, write_file, create_directory, list_directory, move_file, delete_file, get_file_info
 
-### Playwright Server
+### Chrome DevTools (Playwright) Server
 ```bash
 peekaboo mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest
 ```

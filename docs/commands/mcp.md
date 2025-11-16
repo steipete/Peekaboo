@@ -24,7 +24,7 @@ read_when:
 
 ## Implementation notes
 - `serve` instantiates `PeekabooMCPServer` and maps the transport string to `PeekabooCore.TransportType`. Stdio is the default for Claude Code integrations; HTTP/SSE is wired for the forthcoming remote mode.
-- `list` registers a built-in BrowserMCP server (`npx -y @agent-infra/mcp-server-browser`) before scanning user profiles, ensuring it shows up even if you never ran `mcp add browser …`.
+- `list` registers a built-in Chrome DevTools MCP server (`npx -y chrome-devtools-mcp@latest`) before scanning user profiles, ensuring it shows up even if you never ran `mcp add chrome-devtools …`.
 - Adding servers parses repeated `--env` / `--header` flags into dictionaries, persists the profile via `TachikomaMCPClientManager.persist()`, and immediately probes the server unless `--disabled` is set.
 - `call` parses `--args` as arbitrary JSON (objects or `null`), waits for the server to report healthy, then prints either a colored textual response or a JSON payload matching the MCP spec (content array, metadata, errors, etc.).
 - Enable/disable/test/info all leverage `MCPClientManager.shared`, so running them keeps the MCP daemon in sync with your edits without restarting Peekaboo.
@@ -34,8 +34,8 @@ read_when:
 # Start the Peekaboo MCP server for Claude Code (stdio transport)
 polter peekaboo -- mcp serve
 
-# Add a local Browser MCP helper
-polter peekaboo -- mcp add browser-local --transport stdio -- env API_TOKEN=abc -- npx -y @agent-infra/mcp-server-browser@latest
+# Add a local Chrome DevTools MCP helper
+polter peekaboo -- mcp add chrome-devtools-local --transport stdio -- env API_TOKEN=abc -- npx -y chrome-devtools-mcp@latest
 
 # Call a remote tool with JSON args and see the structured response
 polter peekaboo -- mcp call claude-code --tool edit_file --args '{"path":"main.swift"}' --json-output

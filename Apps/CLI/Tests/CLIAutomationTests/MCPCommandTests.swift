@@ -171,6 +171,8 @@ struct MCPCommandIntegrationTests {
     }
 }
 
+private let defaultMCPServerName = "chrome-devtools"
+
 @Suite("MCP Command Error Handling Tests")
 struct MCPCommandErrorHandlingTests {
     @Test("Inspect command runs without throwing")
@@ -188,10 +190,14 @@ struct MCPCallCommandRuntimeTests {
     @Test("Mock manager echoes text content")
     func mockManagerReturnsText() async throws {
         let manager = MockMCPClientManager()
-        manager.setServer(name: "browser")
+        manager.setServer(name: defaultMCPServerName)
         manager.executeResponse = .text("pong")
 
-        let response = try await manager.executeTool(serverName: "browser", toolName: "echo", arguments: [:])
+        let response = try await manager.executeTool(
+            serverName: defaultMCPServerName,
+            toolName: "echo",
+            arguments: [:]
+        )
         guard let first = response.content.first else {
             Issue.record("Expected text response from mock executeTool call.")
             return
@@ -206,10 +212,14 @@ struct MCPCallCommandRuntimeTests {
     @Test("Mock manager surfaces error responses")
     func mockManagerSurfacesErrors() async throws {
         let manager = MockMCPClientManager()
-        manager.setServer(name: "browser")
+        manager.setServer(name: defaultMCPServerName)
         manager.executeResponse = .error("boom")
 
-        let response = try await manager.executeTool(serverName: "browser", toolName: "unstable", arguments: [:])
+        let response = try await manager.executeTool(
+            serverName: defaultMCPServerName,
+            toolName: "unstable",
+            arguments: [:]
+        )
         guard let first = response.content.first else {
             Issue.record("Expected error ToolResponse from mock executeTool call.")
             return

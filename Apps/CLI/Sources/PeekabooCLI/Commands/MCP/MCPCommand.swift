@@ -5,6 +5,15 @@ import MCP
 import PeekabooCore
 import TachikomaMCP
 
+private enum MCPDefaults {
+    static let serverName = "chrome-devtools"
+    static let legacyServerNames: Set<String> = ["browser"]
+
+    static func matches(_ name: String) -> Bool {
+        name == self.serverName || self.legacyServerNames.contains(name)
+    }
+}
+
 // MARK: - Shared MCP client abstraction
 
 protocol MCPClientManaging: AnyObject {
@@ -206,18 +215,18 @@ extension MCPCommand {
         }
 
         private func registerDefaultServers() {
-            let defaultBrowser = TachikomaMCP.MCPServerConfig(
+            let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
                 transport: "stdio",
                 command: "npx",
-                args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+                args: ["-y", "chrome-devtools-mcp@latest"],
                 env: [:],
                 enabled: true,
                 timeout: 15.0,
                 autoReconnect: true,
-                description: "Browser automation via BrowserMCP"
+                description: "Chrome DevTools automation"
             )
 
-            self.clientManager.registerDefaultServers(["browser": defaultBrowser])
+            self.clientManager.registerDefaultServers([MCPDefaults.serverName: defaultChromeDevTools])
         }
 
         private func ensureServerReady() async throws {
@@ -468,18 +477,19 @@ extension MCPCommand {
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
-            // Register browser MCP as a default server
-            let defaultBrowser = TachikomaMCP.MCPServerConfig(
+            // Register Chrome DevTools MCP as a default server
+            let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
                 transport: "stdio",
                 command: "npx",
-                args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+                args: ["-y", "chrome-devtools-mcp@latest"],
                 env: [:],
                 enabled: true,
                 timeout: 15.0,
                 autoReconnect: true,
-                description: "Browser automation via BrowserMCP"
+                description: "Chrome DevTools automation"
             )
-            TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+            TachikomaMCPClientManager.shared.registerDefaultServers(
+                [MCPDefaults.serverName: defaultChromeDevTools])
 
             // Suppress os_log output unless verbose
             let originalStderr = dup(STDERR_FILENO)
@@ -616,7 +626,7 @@ extension MCPCommand {
                             let components = afterModules.split(separator: "/")
                             if components.count >= 1 {
                                 if components[0].starts(with: "@") && components.count >= 2 {
-                                    // Scoped package like @agent-infra/mcp-server-browser
+                                    // Scoped package like chrome-devtools-mcp
                                     return "\(components[0])/\(components[1])"
                                 } else {
                                     // Regular package
@@ -681,7 +691,7 @@ extension MCPCommand {
                 let healthText = health.statusText
 
                 // Show if this is a default server
-                let isDefault = (serverName == "browser")
+                let isDefault = MCPDefaults.matches(serverName)
                 let defaultMarker = isDefault ? " [default]" : ""
 
                 print("\(serverName): \(simplifiedCommand) - \(healthSymbol) \(healthText)\(defaultMarker)")
@@ -784,18 +794,19 @@ extension MCPCommand {
                 description: self.description
             )
 
-            // Register browser MCP as a default server
-            let defaultBrowser = TachikomaMCP.MCPServerConfig(
+            // Register Chrome DevTools MCP as a default server
+            let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
                 transport: "stdio",
                 command: "npx",
-                args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+                args: ["-y", "chrome-devtools-mcp@latest"],
                 env: [:],
                 enabled: true,
                 timeout: 15.0,
                 autoReconnect: true,
-                description: "Browser automation via BrowserMCP"
+                description: "Chrome DevTools automation"
             )
-            TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+            TachikomaMCPClientManager.shared.registerDefaultServers(
+                [MCPDefaults.serverName: defaultChromeDevTools])
 
             // Load existing profile configs, add server, persist, then probe
             await TachikomaMCPClientManager.shared.initializeFromProfile(connect: false)

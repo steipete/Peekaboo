@@ -580,18 +580,18 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Initialize MCP client with Peekaboo defaults and user overrides via TachikomaMCP
     public func initializeMCPClient() async {
         // TEMPORARILY DISABLED: MCP servers for debugging Grok issues (too many tools)
-        // Register Peekaboo's default Browser MCP as a host default
-        // let defaultBrowser = TachikomaMCP.MCPServerConfig(
+        // Register Peekaboo's default Chrome DevTools MCP as a host default
+        // let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
         //     transport: "stdio",
         //     command: "npx",
-        //     args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+        //     args: ["-y", "chrome-devtools-mcp@latest"],
         //     env: [:],
         //     enabled: true,
         //     timeout: 15.0,
         //     autoReconnect: true,
-        //     description: "Browser automation via BrowserMCP"
+        //     description: "Chrome DevTools automation"
         // )
-        // await TachikomaMCPClientManager.shared.registerDefaultServers(["browser": defaultBrowser])
+        // await TachikomaMCPClientManager.shared.registerDefaultServers(["chrome-devtools": defaultChromeDevTools])
 
         // Let TachikomaMCP handle parsing ~/.peekaboo/config.json and merging overrides
         // await TachikomaMCPClientManager.shared.initializeFromProfile()
