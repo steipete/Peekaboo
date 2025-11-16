@@ -101,12 +101,10 @@
     },
     {
       "name": "Inspector",
-      "type": "app-bundle",
-      "platform": "macos",
+      "type": "executable",
       "enabled": true,
-      "buildCommand": "cd Apps/PeekabooInspector && xcodebuild -scheme Inspector -configuration Debug -project Inspector.xcodeproj -sdk macosx CODE_SIGN_IDENTITY=\"\" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO CONFIGURATION_BUILD_DIR=./Inspector/build/Debug build",
-      "bundleId": "boo.peekaboo.inspector",
-      "autoRelaunch": true,
+      "buildCommand": "cd Apps/PeekabooInspector && swift build",
+      "autoRelaunch": false,
       "settlingDelay": 4000,
       "debounceInterval": 5000,
       "icon": "./assets/icon_512x512@2x.png",
@@ -125,7 +123,7 @@
         "Tachikoma/**/*.swift",
         "TauTUI/**/*.swift"
       ],
-      "outputPath": "Apps/PeekabooInspector/Inspector/build/Debug/Inspector.app"
+      "outputPath": "Apps/PeekabooInspector/.build/debug/PeekabooInspector"
     }
   ],
   "watchman": {
@@ -198,7 +196,9 @@
     {
       "label": "Tests (Commander)",
       "command": "swift test --package-path Commander",
-      "targets": ["Commander"],
+      "targets": [
+        "Commander"
+      ],
       "cooldownSeconds": 600,
       "timeoutSeconds": 900,
       "maxLines": 6,
@@ -207,7 +207,9 @@
     {
       "label": "Tests (AXorcist)",
       "command": "swift test --package-path AXorcist",
-      "targets": ["AXorcist"],
+      "targets": [
+        "AXorcist"
+      ],
       "cooldownSeconds": 600,
       "timeoutSeconds": 900,
       "maxLines": 6,
@@ -216,7 +218,9 @@
     {
       "label": "Tests (Tachikoma)",
       "command": "swift test --package-path Tachikoma",
-      "targets": ["Tachikoma"],
+      "targets": [
+        "Tachikoma"
+      ],
       "cooldownSeconds": 900,
       "timeoutSeconds": 1200,
       "maxLines": 6,
@@ -225,7 +229,9 @@
     {
       "label": "Tests (TauTUI)",
       "command": "swift test --package-path TauTUI",
-      "targets": ["TauTUI"],
+      "targets": [
+        "TauTUI"
+      ],
       "cooldownSeconds": 900,
       "timeoutSeconds": 1200,
       "maxLines": 6,
