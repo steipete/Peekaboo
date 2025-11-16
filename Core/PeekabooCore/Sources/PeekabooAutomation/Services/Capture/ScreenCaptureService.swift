@@ -286,9 +286,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             switch api {
             case .modern:
                 self.logger.debug(
-                    "Bypassing modern ScreenCaptureKit path; using legacy fallback",
+                    "Using ScreenCaptureKit window capture path",
                     correlationId: correlationId)
-                return try await self.legacyOperator.captureWindow(
+                return try await self.modernOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
                     correlationId: correlationId)
