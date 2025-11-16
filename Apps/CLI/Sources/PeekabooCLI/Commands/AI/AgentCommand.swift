@@ -832,6 +832,11 @@ extension AgentCommand {
                 verbose: self.verbose
             )
             self.displayResult(result, delegate: delegate)
+            let duration = String(format: "%.2f", result.metadata.executionTime)
+            AutomationEventLogger.log(
+                .agent,
+                "task='\(task)' model=\(result.metadata.modelName) duration=\(duration)s tools=\(result.metadata.toolCallCount) dry_run=\(self.dryRun) session=\(result.sessionId ?? "none")"
+            )
             return result
         } catch {
             self.printAgentExecutionError("Agent execution failed: \(error.localizedDescription)")
