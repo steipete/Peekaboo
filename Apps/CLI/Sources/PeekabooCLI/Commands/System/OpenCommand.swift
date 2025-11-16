@@ -155,6 +155,10 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
             is_ready: app.isFinishedLaunching,
             focused: didFocus && self.shouldFocus
         )
+        AutomationEventLogger.log(
+            .open,
+            "target=\(result.resolved_target) handler=\(result.handler_app) bundle=\(result.bundle_id ?? "unknown") focused=\(result.focused)"
+        )
 
         output(result) {
             let handler = app.localizedName ?? app.bundleIdentifier ?? "application"

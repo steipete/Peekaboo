@@ -177,6 +177,10 @@ struct AppCommand: ParsableCommand {
                 pid: app.processIdentifier,
                 is_ready: app.isFinishedLaunching
             )
+            AutomationEventLogger.log(
+                .app,
+                "launch app=\(data.app_name) bundle=\(data.bundle_id) pid=\(data.pid) ready=\(data.is_ready)"
+            )
 
             output(data) {
                 print("✓ Launched \(app.localizedName ?? self.app) (PID: \(app.processIdentifier))")
@@ -385,6 +389,12 @@ struct AppCommand: ParsableCommand {
                         }
                     }
                 }
+                for result in results {
+                    AutomationEventLogger.log(
+                        .app,
+                        "quit app=\(result.app_name) pid=\(result.pid) success=\(result.success) force=\(self.force)"
+                    )
+                }
 
             } catch {
                 handleError(error)
@@ -455,6 +465,10 @@ struct AppCommand: ParsableCommand {
                 output(data) {
                     print("✓ Hidden \(appInfo.name)")
                 }
+                AutomationEventLogger.log(
+                    .app,
+                    "hide app=\(appInfo.name) bundle=\(appInfo.bundleIdentifier ?? "unknown")"
+                )
 
             } catch {
                 handleError(error)
@@ -545,6 +559,10 @@ struct AppCommand: ParsableCommand {
                 output(data) {
                     print("✓ Shown \(appInfo.name)")
                 }
+                AutomationEventLogger.log(
+                    .app,
+                    "unhide app=\(appInfo.name) bundle=\(appInfo.bundleIdentifier ?? "unknown") activated=\(self.activate)"
+                )
 
             } catch {
                 handleError(error)
@@ -618,6 +636,7 @@ struct AppCommand: ParsableCommand {
                     output(data) {
                         print("✓ Cycled to next application")
                     }
+                    AutomationEventLogger.log(.app, "switch action=cycle success=true")
                 } else if let targetApp = to {
                     let appInfo = try await resolveApplication(targetApp, services: self.services)
 
@@ -647,6 +666,10 @@ struct AppCommand: ParsableCommand {
                     output(data) {
                         print("✓ Switched to \(appInfo.name)")
                     }
+                    AutomationEventLogger.log(
+                        .app,
+                        "switch app=\(appInfo.name) bundle=\(appInfo.bundleIdentifier ?? "unknown") success=\(success)"
+                    )
                 } else {
                     throw ValidationError("Either --to or --cycle must be specified")
                 }
@@ -733,6 +756,10 @@ struct AppCommand: ParsableCommand {
                             is_hidden: app.isHidden
                         )
                     }
+                )
+                AutomationEventLogger.log(
+                    .app,
+                    "list count=\(filtered.count) includeHidden=\(self.includeHidden) includeBackground=\(self.includeBackground)"
                 )
 
                 output(data) {

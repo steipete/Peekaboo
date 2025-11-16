@@ -156,6 +156,24 @@ private func createWindowActionResult(
     )
 }
 
+private func logWindowAction(
+    action: String,
+    appName: String?,
+    windowInfo: ServiceWindowInfo?
+) {
+    let title = windowInfo?.title ?? "Unknown"
+    let boundsDescription: String
+    if let windowBounds = windowInfo?.bounds {
+        boundsDescription = "bounds=(\(Int(windowBounds.origin.x)),\(Int(windowBounds.origin.y)))x(\(Int(windowBounds.size.width)),\(Int(windowBounds.size.height)))"
+    } else {
+        boundsDescription = "bounds=unknown"
+    }
+    AutomationEventLogger.log(
+        .window,
+        "\(action) app=\(appName ?? "Unknown") title=\(title) \(boundsDescription)"
+    )
+}
+
 // MARK: - Subcommands
 
 extension WindowCommand {
@@ -196,6 +214,12 @@ extension WindowCommand {
 
                 // Perform the action
                 try await WindowServiceBridge.closeWindow(windows: self.services.windows, target: target)
+
+                logWindowAction(
+                    action: "close",
+                    appName: appName,
+                    windowInfo: windowInfo
+                )
 
                 let data = createWindowActionResult(
                     action: "close",
@@ -252,6 +276,11 @@ extension WindowCommand {
 
                 // Perform the action
                 try await WindowServiceBridge.minimizeWindow(windows: self.services.windows, target: target)
+                logWindowAction(
+                    action: "minimize",
+                    appName: appName,
+                    windowInfo: windowInfo
+                )
 
                 let data = createWindowActionResult(
                     action: "minimize",
@@ -308,6 +337,11 @@ extension WindowCommand {
 
                 // Perform the action
                 try await WindowServiceBridge.maximizeWindow(windows: self.services.windows, target: target)
+                logWindowAction(
+                    action: "maximize",
+                    appName: appName,
+                    windowInfo: windowInfo
+                )
 
                 let data = createWindowActionResult(
                     action: "maximize",
@@ -388,15 +422,27 @@ extension WindowCommand {
                     try await WindowServiceBridge.focusWindow(windows: self.services.windows, target: target)
                 }
 
+                let refreshedWindowInfo = await self.windowOptions.refetchWindowInfo(
+                    services: self.services,
+                    logger: self.logger,
+                    context: "window-focus"
+                )
+                let finalWindowInfo = refreshedWindowInfo ?? windowInfo
+                logWindowAction(
+                    action: "focus",
+                    appName: appName,
+                    windowInfo: finalWindowInfo
+                )
+
                 let data = createWindowActionResult(
                     action: "focus",
                     success: true,
-                    windowInfo: windowInfo,
+                    windowInfo: finalWindowInfo,
                     appName: appName
                 )
 
                 output(data) {
-                    var message = "Successfully focused window '\(windowInfo?.title ?? "Untitled")' of \(appName)"
+                    var message = "Successfully focused window '\(finalWindowInfo?.title ?? "Untitled")' of \(appName)"
                     if self.focusOptions.bringToCurrentSpace {
                         message += " (moved to current Space)"
                     }
@@ -471,15 +517,28 @@ extension WindowCommand {
                     )
                 }
 
+                let refreshedWindowInfo = await self.windowOptions.refetchWindowInfo(
+                    services: self.services,
+                    logger: self.logger,
+                    context: "window-move"
+                )
+                let finalWindowInfo = refreshedWindowInfo ?? updatedInfo ?? windowInfo
+
+                logWindowAction(
+                    action: "move",
+                    appName: appName,
+                    windowInfo: finalWindowInfo
+                )
+
                 let data = createWindowActionResult(
                     action: "move",
                     success: true,
-                    windowInfo: updatedInfo,
+                    windowInfo: finalWindowInfo,
                     appName: appName
                 )
 
                 output(data) {
-                    print("Successfully moved window '\(windowInfo?.title ?? "Untitled")' to (\(self.x), \(self.y))")
+                    print("Successfully moved window '\(finalWindowInfo?.title ?? "Untitled")' to (\(self.x), \(self.y))")
                 }
 
             } catch {
@@ -542,6 +601,11 @@ extension WindowCommand {
                     context: "window-resize"
                 )
                 let finalWindowInfo = refreshedWindowInfo ?? windowInfo
+                logWindowAction(
+                    action: "resize",
+                    appName: appName,
+                    windowInfo: finalWindowInfo
+                )
 
                 let data = createWindowActionResult(
                     action: "resize",
@@ -625,6 +689,11 @@ extension WindowCommand {
                     context: "window-set-bounds"
                 )
                 let finalWindowInfo = refreshedWindowInfo ?? windowInfo
+                logWindowAction(
+                    action: "set-bounds",
+                    appName: appName,
+                    windowInfo: finalWindowInfo
+                )
 
                 let data = createWindowActionResult(
                     action: "set-bounds",

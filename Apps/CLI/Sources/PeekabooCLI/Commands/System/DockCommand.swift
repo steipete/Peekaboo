@@ -72,6 +72,7 @@ extension DockCommand {
             do {
                 try await DockServiceBridge.launchFromDock(dock: self.services.dock, appName: self.app)
                 let dockItem = try await DockServiceBridge.findDockItem(dock: self.services.dock, name: self.app)
+                AutomationEventLogger.log(.dock, "launch app=\(dockItem.title)")
 
                 if self.jsonOutput {
                     struct DockLaunchResult: Codable {
@@ -130,6 +131,8 @@ extension DockCommand {
                     appName: self.app,
                     menuItem: self.select
                 )
+                let selectionDescription = self.select ?? "context-only"
+                AutomationEventLogger.log(.dock, "right_click app=\(dockItem.title) selection=\(selectionDescription)")
 
                 if self.jsonOutput {
                     struct DockRightClickResult: Codable {
@@ -185,6 +188,7 @@ extension DockCommand {
 
             do {
                 try await DockServiceBridge.hideDock(dock: self.services.dock)
+                AutomationEventLogger.log(.dock, "hide")
 
                 if self.jsonOutput {
                     struct DockHideResult: Codable { let action: String }
@@ -228,6 +232,7 @@ extension DockCommand {
 
             do {
                 try await DockServiceBridge.showDock(dock: self.services.dock)
+                AutomationEventLogger.log(.dock, "show")
 
                 if self.jsonOutput {
                     struct DockShowResult: Codable { let action: String }
@@ -275,6 +280,10 @@ extension DockCommand {
                 let dockItems = try await DockServiceBridge.listDockItems(
                     dock: self.services.dock,
                     includeAll: self.includeAll
+                )
+                AutomationEventLogger.log(
+                    .dock,
+                    "list count=\(dockItems.count) includeAll=\(self.includeAll)"
                 )
 
                 if self.jsonOutput {
