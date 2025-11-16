@@ -6,6 +6,8 @@ struct ScrollTestingView: View {
     @State private var lastGesture = ""
     @State private var magnification: CGFloat = 1.0
     @State private var rotation: Angle = .zero
+    @State private var lastVerticalOffset: CGFloat?
+    @State private var lastHorizontalOffset: CGFloat?
 
     var body: some View {
         VStack(spacing: 20) {
@@ -36,9 +38,13 @@ struct ScrollTestingView: View {
                                 }
                             }
                             .padding()
+                            .background(ScrollOffsetReader(coordinateSpace: "vertical-scroll-area") { offset in
+                                self.logVerticalScrollChange(offset: offset.y)
+                            })
                         }
                         .frame(height: 300)
                         .background(Color(NSColor.controlBackgroundColor))
+                        .coordinateSpace(name: "vertical-scroll-area")
                         .accessibilityIdentifier("vertical-scroll")
 
                         HStack {
@@ -94,9 +100,13 @@ struct ScrollTestingView: View {
                                 }
                             }
                             .padding()
+                            .background(ScrollOffsetReader(coordinateSpace: "horizontal-scroll-area") { offset in
+                                self.logHorizontalScrollChange(offset: offset.x)
+                            })
                         }
                         .frame(height: 150)
                         .background(Color(NSColor.controlBackgroundColor))
+                        .coordinateSpace(name: "horizontal-scroll-area")
                         .accessibilityIdentifier("horizontal-scroll")
                     }
                 }
@@ -247,6 +257,57 @@ struct ScrollTestingView: View {
             Spacer()
         }
         .padding()
+    }
+
+    private func logVerticalScrollChange(offset: CGFloat) {
+        let rounded = (offset * 100).rounded() / 100
+        if let lastOffset = self.lastVerticalOffset, abs(lastOffset - rounded) < 5 {
+            return
+        }
+        self.lastVerticalOffset = rounded
+        self.actionLogger.log(
+            .scroll,
+            "Vertical scroll offset",
+            details: "y=\(Int(rounded))"
+        )
+    }
+
+    private func logHorizontalScrollChange(offset: CGFloat) {
+        let rounded = (offset * 100).rounded() / 100
+        if let lastOffset = self.lastHorizontalOffset, abs(lastOffset - rounded) < 5 {
+            return
+        }
+        self.lastHorizontalOffset = rounded
+        self.actionLogger.log(
+            .scroll,
+            "Horizontal scroll offset",
+            details: "x=\(Int(rounded))"
+        )
+    }
+}
+
+private struct ScrollOffsetReader: View {
+    var coordinateSpace: String
+    var onChange: (CGPoint) -> Void
+
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .preference(
+                    key: ScrollOffsetPreferenceKey.self,
+                    value: proxy.frame(in: .named(coordinateSpace)).origin)
+        }
+        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+            self.onChange(value)
+        }
+    }
+}
+
+private struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGPoint = .zero
+
+    static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {
+        value = nextValue()
     }
 }
 

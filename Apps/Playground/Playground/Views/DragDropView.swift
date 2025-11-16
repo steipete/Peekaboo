@@ -20,6 +20,7 @@ struct DragDropView: View {
         ScrollView {
             VStack(spacing: 20) {
                 SectionHeader(title: "Drag & Drop Testing", icon: "hand.draw")
+                    .accessibilityIdentifier("drag-drop-header")
 
                 // Draggable items
                 GroupBox("Draggable Items") {
