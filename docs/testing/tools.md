@@ -101,8 +101,6 @@ The following subsections spell out the concrete steps, required Playground surf
   3. Record session ID printed to stdout, verify `~/.peekaboo/session/<id>/map.json` references Playground elements (`single-click-button`, etc.).
 - **Log capture**: Optional `Click` capture if you immediately chain interactions with the new session; otherwise store the PNG + session metadata path.
 - **Pass criteria**: Session folder exists, UI map contains Playground identifiers, CLI exits 0.
-- **Current blocker (Nov 16, 2025)**: Playground cannot be launched yet because `./runner xcodebuild -list -project Apps/Playground/Playground.xcodeproj` crashes inside IDESwiftPackageCore while inserting package references (`NSInvalidArgumentException: -[NSMutableArray insertObjects:atIndexes:]`). Need a reliable build/launch path (or prebuilt .app) before running `see`.
-
 #### `image`
 - **View**: Keep Playground on ScrollTestingView to capture dynamic content.
 - **Steps**:
@@ -118,7 +116,6 @@ The following subsections spell out the concrete steps, required Playground surf
   2. For `list windows`, compare returned bounds vs. WindowTestingView readout.
   3. For `list menubar`, capture the result and cross-check with actual status items.
 - **Logs**: Use `playground-log` `Window` category when forcing focus changes to validate `app focus` interplay.
-
 #### `tools`
 - **Steps**:
   1. `polter peekaboo -- tools --native-only --json-output > "$LOG_ROOT/tools-native.json"`.
