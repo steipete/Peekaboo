@@ -132,10 +132,10 @@ extension MCPCommand {
         private static let connectionTimeoutSeconds: TimeInterval = 15
 
         @Argument(help: "MCP server to connect to")
-        var server: String
+        var server: String?
 
-        @Option(help: "Tool to call")
-        var tool: String
+        @Argument(help: "Tool to call")
+        var tool: String?
 
         @Option(help: "Tool arguments as JSON")
         var args: String = "{}"
@@ -158,19 +158,30 @@ extension MCPCommand {
             self.runtime = runtime
 
             do {
+                guard let server = self.server, !server.isEmpty else {
+                    throw CallError.invalidArguments("Specify the target MCP server via --server.")
+                }
+                guard let tool = self.tool, !tool.isEmpty else {
+                    throw CallError.invalidArguments("Specify the MCP tool to call using --tool.")
+                }
+
                 let arguments = try self.parseArguments()
-                try await self.ensureServerReady()
+                try await self.ensureServerReady(serverName: server)
 
                 let response = try await self.clientManager.executeTool(
-                    serverName: self.server,
-                    toolName: self.tool,
+                    serverName: server,
+                    toolName: tool,
                     arguments: arguments
+                )
+                AutomationEventLogger.log(
+                    .mcp,
+                    "call server=\(server) tool=\(tool) error=\(response.isError)"
                 )
 
                 if self.wantsJSON {
-                    self.outputJSON(response: response)
+                    self.outputJSON(response: response, serverName: server, toolName: tool)
                 } else {
-                    self.outputHumanReadable(response: response)
+                    self.outputHumanReadable(response: response, server: server, toolName: tool)
                 }
 
                 if response.isError {
@@ -225,24 +236,24 @@ extension MCPCommand {
             self.clientManager.registerDefaultServers([MCPDefaults.serverName: defaultChromeDevTools])
         }
 
-        private func ensureServerReady() async throws {
+        private func ensureServerReady(serverName: String) async throws {
             await self.prepareClientManager()
 
-            guard let info = await self.clientManager.getServerInfo(name: self.server) else {
-                throw CallError.serverNotConfigured(self.server)
+            guard let info = await self.clientManager.getServerInfo(name: serverName) else {
+                throw CallError.serverNotConfigured(serverName)
             }
 
             guard info.config.enabled else {
-                throw CallError.serverDisabled(self.server)
+                throw CallError.serverDisabled(serverName)
             }
 
             let probe = await self.clientManager.probeServer(
-                name: self.server,
+                name: serverName,
                 timeoutMs: Int(Self.connectionTimeoutSeconds * 1000)
             )
 
             guard probe.isConnected else {
-                throw CallError.connectionFailed(server: self.server, reason: probe.error)
+                throw CallError.connectionFailed(server: serverName, reason: probe.error)
             }
         }
 
@@ -251,9 +262,9 @@ extension MCPCommand {
             await self.clientManager.initializeFromProfile(connect: false)
         }
 
-        private func outputHumanReadable(response: ToolResponse) {
-            print("MCP server: \(self.server)")
-            print("Tool: \(self.tool)")
+        private func outputHumanReadable(response: ToolResponse, server: String, toolName: String) {
+            print("MCP server: \(server)")
+            print("Tool: \(toolName)")
 
             if response.content.isEmpty {
                 print("Response: (no content)")
@@ -277,17 +288,17 @@ extension MCPCommand {
             }
         }
 
-        private func outputJSON(response: ToolResponse) {
-            let payload = self.makeJSONPayload(for: response)
+        private func outputJSON(response: ToolResponse, serverName: String, toolName: String) {
+            let payload = self.makeJSONPayload(for: response, serverName: serverName, toolName: toolName)
             outputJSONCodable(payload, logger: self.logger)
         }
 
-        private func makeJSONPayload(for response: ToolResponse) -> CallJSONPayload {
+        private func makeJSONPayload(for response: ToolResponse, serverName: String, toolName: String) -> CallJSONPayload {
             let contents = response.content.map(SerializableContent.init)
             return CallJSONPayload(
                 success: !response.isError,
-                server: self.server,
-                tool: self.tool,
+                server: serverName,
+                tool: toolName,
                 response: .init(isError: response.isError, content: contents, meta: response.meta),
                 errorMessage: self.extractErrorMessage(from: response)
             )
@@ -1213,3 +1224,14 @@ extension MCPCommand.Serve: AsyncRuntimeCommand {}
 @MainActor
 extension MCPCommand.Call: ParsableCommand {}
 extension MCPCommand.Call: AsyncRuntimeCommand {}
+
+@MainActor
+extension MCPCommand.Call: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.server = try values.requiredPositional(0, label: "server")
+        self.tool = try values.requiredPositional(1, label: "tool")
+        if let argsValue = values.singleOption("args") {
+            self.args = argsValue
+        }
+    }
+}
