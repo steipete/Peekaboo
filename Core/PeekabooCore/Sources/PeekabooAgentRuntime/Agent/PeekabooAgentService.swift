@@ -79,6 +79,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 config.getAPIKey(for: .ollama)
             case .lmstudio:
                 config.getAPIKey(for: .lmstudio)
+            case .azureOpenAI:
+                config.getAPIKey(for: .azureOpenAI)
             case .openRouter:
                 config.getAPIKey(for: .custom("openrouter"))
             case .together:

@@ -64,6 +64,7 @@ public final class PeekabooAIService {
         case let .grok(m): ("grok", m.modelId)
         case let .ollama(m): ("ollama", m.modelId)
         case let .lmstudio(m): ("lmstudio", m.modelId)
+        case let .azureOpenAI(deployment, _, _, _): ("azure-openai", deployment)
         case let .openRouter(modelId): ("openrouter", modelId)
         case let .together(modelId): ("together", modelId)
         case let .replicate(modelId): ("replicate", modelId)

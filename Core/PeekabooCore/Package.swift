@@ -54,6 +54,7 @@ let package = Package(
                 .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
                 .product(name: "TachikomaAudio", package: "Tachikoma"),
+                .product(name: "TachikomaMCP", package: "Tachikoma"),
                 .product(name: "Configuration", package: "swift-configuration"),
             ],
             path: "Sources/PeekabooAutomation",
