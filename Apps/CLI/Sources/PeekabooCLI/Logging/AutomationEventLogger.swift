@@ -11,6 +11,7 @@ enum AutomationLogCategory: String, CaseIterable {
     case dock = "Dock"
     case menu = "Menu"
     case open = "Open"
+    case space = "Space"
     case agent = "Agent"
     case mcp = "MCP"
     case dialog = "Dialog"

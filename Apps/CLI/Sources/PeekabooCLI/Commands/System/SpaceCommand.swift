@@ -162,6 +162,10 @@ struct ListSubcommand: ErrorHandlingCommand, OutputFormattable {
 
         let spaceService = SpaceCommandEnvironment.service
         let spaces = await spaceService.getAllSpaces()
+        AutomationEventLogger.log(
+            .space,
+            "list count=\(spaces.count) detailed=\(self.detailed ? 1 : 0)"
+        )
 
         if self.jsonOutput {
             let data = SpaceListData(
@@ -260,6 +264,10 @@ struct SwitchSubcommand: ErrorHandlingCommand, OutputFormattable {
 
             let targetSpace = spaces[self.to - 1]
             try await spaceService.switchToSpace(targetSpace.id)
+            AutomationEventLogger.log(
+                .space,
+                "switch to=\(self.to) space_id=\(targetSpace.id)"
+            )
 
             if self.jsonOutput {
                 let data = SpaceActionResult(
@@ -350,6 +358,10 @@ struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, Output
 
             if self.toCurrent {
                 try await spaceService.moveWindowToCurrentSpace(windowID: windowID)
+                AutomationEventLogger.log(
+                    .space,
+                    "move_window window_id=\(windowID) mode=current title=\"\(windowInfo.title)\""
+                )
                 if self.jsonOutput {
                     let data = WindowSpaceActionResult(
                         action: "move-window",
@@ -382,6 +394,10 @@ struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, Output
             if self.follow {
                 try await spaceService.switchToSpace(targetSpace.id)
             }
+            AutomationEventLogger.log(
+                .space,
+                "move_window window_id=\(windowID) space=\(spaceNum) follow=\(self.follow ? 1 : 0) title=\"\(windowInfo.title)\""
+            )
 
             if self.jsonOutput {
                 let data = WindowSpaceActionResult(

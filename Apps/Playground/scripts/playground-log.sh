@@ -104,6 +104,7 @@ while [[ $# -gt 0 ]]; do
             echo "  Focus     - Focus changes"
             echo "  Gesture   - Swipes, pinches, rotations"
             echo "  Control   - Sliders, pickers, other controls"
+            echo "  Space     - Space list/move/switch events"
             echo "  App       - Application events"
             echo "  MCP       - MCP tool invocations"
             echo ""
@@ -139,6 +140,7 @@ if [[ "$SHOW_ALL_CATEGORIES" == true ]]; then
     echo -e "${BLUE}Focus${NC}     - Focus changes"
     echo -e "${RED}Gesture${NC}   - Swipes, pinches, rotations"
     echo -e "${GREEN}Control${NC}   - Sliders, pickers, other controls"
+    echo -e "${CYAN}Space${NC}     - Space list/move/switch events"
     echo -e "${PURPLE}App${NC}       - Application events"
     echo -e "${CYAN}MCP${NC}       - MCP tool invocations"
     exit 0
@@ -195,6 +197,8 @@ format_output() {
             elif [[ $line =~ \[Window\] ]]; then
                 echo -e "${YELLOW}$line${NC}"
             elif [[ $line =~ \[Scroll\] ]]; then
+                echo -e "${CYAN}$line${NC}"
+            elif [[ $line =~ \[Space\] ]]; then
                 echo -e "${CYAN}$line${NC}"
             elif [[ $line =~ \[Drag\] ]]; then
                 echo -e "${RED}$line${NC}"
