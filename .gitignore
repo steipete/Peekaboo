@@ -173,6 +173,10 @@ debug
 *.backup
 *~
 
+# Build artifacts and derived data
+.artifacts/
+.derived-data/
+
 # Crush directory
 .crush/
 
