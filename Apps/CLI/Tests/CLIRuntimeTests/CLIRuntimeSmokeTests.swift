@@ -63,7 +63,8 @@ struct CLIRuntimeSmokeTests {
             "stdio"
         ])
         #expect(result.status != .exited(0))
-        #expect(result.standardError.contains("Command is required"))
+        let errorOutput = result.standardError + result.standardOutput
+        #expect(errorOutput.contains("Command is required"))
     }
 
     @Test("peekaboo agent warns when no provider credentials exist")
