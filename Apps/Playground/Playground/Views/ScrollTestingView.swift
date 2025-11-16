@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ScrollTestingView: View {
     @EnvironmentObject var actionLogger: ActionLogger
@@ -37,15 +38,24 @@ struct ScrollTestingView: View {
                                     }
                                 }
                             }
-                            .padding()
-                            .background(ScrollOffsetReader(coordinateSpace: "vertical-scroll-area") { offset in
-                                self.logVerticalScrollChange(offset: offset.y)
-                            })
+                            .background(
+                                ScrollAccessibilityConfigurator(
+                                    identifier: "vertical-scroll",
+                                    label: "Vertical Scroll Area")
+                            )
                         }
+                        .overlay(
+                            AXScrollTargetOverlay(
+                                identifier: "vertical-scroll",
+                                label: "Vertical Scroll Area")
+                        )
+                        .padding()
+                        .background(ScrollOffsetReader(coordinateSpace: "vertical-scroll-area") { offset in
+                            self.logVerticalScrollChange(offset: offset.y)
+                        })
                         .frame(height: 300)
                         .background(Color(NSColor.controlBackgroundColor))
                         .coordinateSpace(name: "vertical-scroll-area")
-                        .accessibilityIdentifier("vertical-scroll")
 
                         HStack {
                             Button("Top") {
@@ -99,15 +109,24 @@ struct ScrollTestingView: View {
                                     }
                                 }
                             }
-                            .padding()
-                            .background(ScrollOffsetReader(coordinateSpace: "horizontal-scroll-area") { offset in
-                                self.logHorizontalScrollChange(offset: offset.x)
-                            })
+                            .background(
+                                ScrollAccessibilityConfigurator(
+                                    identifier: "horizontal-scroll",
+                                    label: "Horizontal Scroll Area")
+                            )
                         }
+                        .overlay(
+                            AXScrollTargetOverlay(
+                                identifier: "horizontal-scroll",
+                                label: "Horizontal Scroll Area")
+                        )
+                        .padding()
+                        .background(ScrollOffsetReader(coordinateSpace: "horizontal-scroll-area") { offset in
+                            self.logHorizontalScrollChange(offset: offset.x)
+                        })
                         .frame(height: 150)
                         .background(Color(NSColor.controlBackgroundColor))
                         .coordinateSpace(name: "horizontal-scroll-area")
-                        .accessibilityIdentifier("horizontal-scroll")
                     }
                 }
             }
@@ -233,11 +252,20 @@ struct ScrollTestingView: View {
                             }
                             .padding()
                             .background(Color.gray.opacity(0.1))
+                            .background(
+                                ScrollAccessibilityConfigurator(
+                                    identifier: "nested-inner-scroll",
+                                    label: "Nested Inner Scroll")
+                            )
                         }
+                        .overlay(
+                            AXScrollTargetOverlay(
+                                identifier: "nested-inner-scroll",
+                                label: "Nested Inner Scroll")
+                        )
                         .frame(height: 150)
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(8)
-                        .accessibilityIdentifier("nested-inner-scroll")
 
                         ForEach(1..<6) { index in
                             Text("Outer item \(index)")
@@ -248,10 +276,19 @@ struct ScrollTestingView: View {
                         }
                     }
                     .padding()
+                    .background(
+                        ScrollAccessibilityConfigurator(
+                            identifier: "nested-outer-scroll",
+                            label: "Nested Outer Scroll")
+                    )
                 }
+                .overlay(
+                    AXScrollTargetOverlay(
+                        identifier: "nested-outer-scroll",
+                        label: "Nested Outer Scroll")
+                )
                 .frame(height: 200)
                 .background(Color(NSColor.controlBackgroundColor))
-                .accessibilityIdentifier("nested-outer-scroll")
             }
 
             Spacer()
@@ -337,5 +374,100 @@ struct GestureArea: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(self.color, lineWidth: 2))
         .accessibilityIdentifier(self.identifier)
+    }
+}
+
+private struct ScrollAccessibilityConfigurator: NSViewRepresentable {
+    let identifier: String
+    let label: String
+
+    func makeNSView(context: Context) -> ConfiguratorView {
+        let view = ConfiguratorView()
+        view.identifierValue = self.identifier
+        view.labelValue = self.label
+        return view
+    }
+
+    func updateNSView(_ nsView: ConfiguratorView, context: Context) {
+        nsView.identifierValue = self.identifier
+        nsView.labelValue = self.label
+        nsView.updateScrollIdentifier()
+    }
+
+    final class ConfiguratorView: NSView {
+        var identifierValue: String?
+        var labelValue: String?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            DispatchQueue.main.async { self.updateScrollIdentifier() }
+        }
+
+        override func layout() {
+            super.layout()
+            DispatchQueue.main.async { self.updateScrollIdentifier() }
+        }
+
+        func updateScrollIdentifier() {
+            guard
+                let id = self.identifierValue,
+                let label = self.labelValue,
+                let scrollView = self.enclosingScrollView
+            else { return }
+
+            scrollView.setAccessibilityIdentifier(id)
+            scrollView.setAccessibilityLabel(label)
+            scrollView.setAccessibilityRole(.scrollArea)
+            scrollView.setAccessibilityElement(true)
+            scrollView.contentView.setAccessibilityIdentifier("\(id)-clip")
+            scrollView.documentView?.setAccessibilityIdentifier("\(id)-content")
+
+            NSAccessibility.post(notification: .layoutChanged, for: scrollView)
+        }
+    }
+}
+
+private struct AXScrollTargetOverlay: NSViewRepresentable {
+    let identifier: String
+    let label: String
+
+    func makeNSView(context: Context) -> ProxyAXView {
+        let view = ProxyAXView()
+        view.configure(id: self.identifier, label: self.label)
+        return view
+    }
+
+    func updateNSView(_ nsView: ProxyAXView, context: Context) {
+        nsView.configure(id: self.identifier, label: self.label)
+    }
+
+    final class ProxyAXView: NSView {
+        private var idValue = ""
+        private var labelValue = ""
+
+        override var isOpaque: Bool { false }
+
+        override func draw(_ dirtyRect: NSRect) {
+            // transparent overlay
+        }
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            nil
+        }
+
+        func configure(id: String, label: String) {
+            self.idValue = id
+            self.labelValue = label
+            self.setAccessibilityElement(true)
+            self.setAccessibilityRole(.scrollArea)
+            self.setAccessibilityIdentifier(id)
+            self.setAccessibilityLabel(label)
+        }
+
+        override func accessibilityFrame() -> NSRect {
+            guard let window else { return .zero }
+            let inWindow = self.convert(self.bounds, to: nil)
+            return window.convertToScreen(inWindow)
+        }
     }
 }
