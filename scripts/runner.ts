@@ -586,10 +586,14 @@ async function runCommand(context: RunnerExecutionContext): Promise<void> {
 
   const startTime = Date.now();
 
+  const wantsInteractiveTty = context.commandArgs.some((token) =>
+    ['polter', 'peekaboo', 'poltergeist'].includes(token)
+  );
+
   const child = spawn(command, args, {
     cwd: context.workspaceDir,
     env,
-    stdio: ['inherit', 'pipe', 'pipe'],
+    stdio: wantsInteractiveTty ? ['inherit', 'inherit', 'inherit'] : ['inherit', 'pipe', 'pipe'],
   });
 
   if (isRunnerTmuxSession()) {
