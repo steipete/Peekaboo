@@ -1,3 +1,4 @@
+import Foundation
 import MCP
 import PeekabooAgentRuntime
 import PeekabooAutomation
@@ -38,9 +39,38 @@ struct ToolSummaryEmissionTests {
 private func extractSummary(from meta: Value?) -> ToolEventSummary? {
     guard case let .object(metaDict) = meta,
           let summaryValue = metaDict["summary"],
-          let json = summaryValue.toJSON() as? [String: Any]
+          let json = convertToJSONObject(summaryValue) as? [String: Any]
     else {
         return nil
     }
     return ToolEventSummary(json: json)
+}
+
+private func convertToJSONObject(_ value: Value) -> Any? {
+    switch value {
+    case .null:
+        return NSNull()
+    case let .string(string):
+        return string
+    case let .int(int):
+        return int
+    case let .double(double):
+        return double
+    case let .bool(bool):
+        return bool
+    case let .array(array):
+        return array.compactMap { convertToJSONObject($0) }
+    case let .object(dict):
+        return dict.reduce(into: [String: Any]()) { result, entry in
+            if let converted = convertToJSONObject(entry.value) {
+                result[entry.key] = converted
+            }
+        }
+    case let .data(mimeType, data):
+        return [
+            "type": "data",
+            "mimeType": mimeType ?? "application/octet-stream",
+            "base64": data.base64EncodedString(),
+        ]
+    }
 }
