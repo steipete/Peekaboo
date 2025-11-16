@@ -26,11 +26,12 @@ pipe_build_output() {
     fi
 }
 
-# Build configuration
-WORKSPACE="$PROJECT_ROOT/Apps/Peekaboo.xcworkspace"
-SCHEME="Peekaboo"
-CONFIGURATION="Debug"
-DERIVED_DATA_PATH="$PROJECT_ROOT/.build/DerivedData"
+# Build configuration (overridable for other schemes)
+WORKSPACE="${WORKSPACE:-$PROJECT_ROOT/Apps/Peekaboo.xcworkspace}"
+SCHEME="${SCHEME:-Peekaboo}"
+CONFIGURATION="${CONFIGURATION:-Debug}"
+APP_NAME="${APP_NAME:-$SCHEME}"
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$PROJECT_ROOT/.build/DerivedData}"
 
 # Check if workspace exists
 if [ ! -d "$WORKSPACE" ]; then
@@ -38,7 +39,7 @@ if [ ! -d "$WORKSPACE" ]; then
     exit 1
 fi
 
-echo -e "${CYAN}Building Peekaboo Mac app (${CONFIGURATION})...${NC}"
+echo -e "${CYAN}Building ${SCHEME} macOS app (${CONFIGURATION})...${NC}"
 
 # Build the app
 xcodebuild \
@@ -61,7 +62,7 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
     echo -e "${GREEN}✅ Build successful${NC}"
     
     # Find and report the app location
-    APP_PATH=$(find "$DERIVED_DATA_PATH" -name "Peekaboo.app" -type d | grep -E "Build/Products/${CONFIGURATION}" | head -1)
+    APP_PATH=$(find "$DERIVED_DATA_PATH" -name "${APP_NAME}.app" -type d | grep -E "Build/Products/${CONFIGURATION}" | head -1)
     if [ -n "$APP_PATH" ]; then
         echo -e "${GREEN}📦 App built at: $APP_PATH${NC}"
     fi
