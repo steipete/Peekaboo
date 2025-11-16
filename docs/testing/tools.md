@@ -377,11 +377,13 @@ The following subsections spell out the concrete steps, required Playground surf
 - **Steps**:
   1. `polter peekaboo -- mcp list --json-output > .artifacts/playground-tools/20251116-091934-mcp-list.json`.
   2. (Future) `polter peekaboo -- mcp test <server>` once servers are provisioned locally.
-  3. `polter peekaboo -- mcp call chrome-devtools list_tabs --json-output > .artifacts/playground-tools/20251116-092025-mcp-call-chrome.json`.
+  3. `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output > .artifacts/playground-tools/20251116-171250-mcp-call-chrome-nav.json`.
+  4. Optional: `polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log(\"Peekaboo console\"); return \"ok\"; }"}' --json-output > .artifacts/playground-tools/20251116-171356-mcp-call-chrome-eval.json`.
 - **2025-11-16 status**:
   - `mcp list` succeeds (see artifact above) but takes ~45s because no servers respond quickly in this environment.
-  - `mcp call chrome-devtools list_tabs` retries the `initialize` handshake three times (protocol versions 2025-03-26, 2024-11-05, legacy key) and times out each attempt; see the CLI output appended to `.artifacts/playground-tools/20251116-092025-mcp-call-chrome.json`. The command exits with status 1 after disconnecting from the stdio transport.
-  - No MCP-specific Playground logs exist yet (`playground-log -c MCP` is empty). Next follow-up is to provision a reachable MCP server or stub so we can capture a successful call artifact.
+  - `mcp call chrome-devtools navigate_page` succeeds when chrome-devtools-mcp is launched with `--isolated` (Peekaboo now appends that flag automatically). The response confirms the URL load and selected tab.
+  - Additional calls (e.g., `evaluate_script`) also succeed, but note that each `mcp call` launches a fresh chrome-devtools-mcp instance, so commands that rely on shared console/network history (such as `list_console_messages`) will return empty unless everything happens inside a single invocation.
+  - Instrumentation (`tachikoma.mcp.*` logs + optional `MCP_STDIO_STDOUT=/tmp/*.log`) shows stdout/stderr flowing normally after the transport refactor. Still no dedicated Playground `[MCP]` logger (`playground-log -c MCP` is empty), so rely on the CLI artifacts until we wire in `AutomationEventLogger`.
 
 ## Reporting & Follow-Up
 - Record every executed test case (command, arguments, session ID, log file path, outcome) in `Apps/Playground/PLAYGROUND_TEST.md`.

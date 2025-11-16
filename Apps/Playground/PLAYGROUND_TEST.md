@@ -367,14 +367,15 @@
 - **Result**: All three moves succeeded (CLI output shows target info, distances, and timing). Attempting `move --to-coords ...` or `--coords ...` still errors with “Unknown option …” because the command expects positional coordinates or `--to`; leaving that TODO in the docs.
 - **Notes**: `playground-log -c Focus` remains empty during these runs, so CLI output is the primary evidence for now.
 
-### ⏸️ `mcp` command – servers still unreachable
+### ✅ `mcp` command – list + chrome-devtools nav/eval
 - **Commands**:
   1. `polter peekaboo -- mcp list --json-output > .artifacts/playground-tools/20251116-091934-mcp-list.json`
-  2. `polter peekaboo -- mcp call chrome-devtools list_tabs --json-output > .artifacts/playground-tools/20251116-092025-mcp-call-chrome.json`
+  2. `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output > .artifacts/playground-tools/20251116-171250-mcp-call-chrome-nav.json`
+  3. `polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log(\"Peekaboo console\"); return \"ok\"; }"}' --json-output > .artifacts/playground-tools/20251116-171356-mcp-call-chrome-eval.json`
 - **Result**:
   - `mcp list` succeeds after ~45s (no local MCP servers respond quickly, but the command eventually returns with an empty/default list).
-  - `mcp call chrome-devtools list_tabs` fails: the stdio transport launches (`npx ...`), but the server never acknowledges `initialize`, so the client retries three times with different protocol fields and then times out. CLI logs show the entire retry sequence (see the artifact file).
-- **Notes**: `playground-log.sh -c MCP` remains empty—there’s no Playground logging for MCP yet. To fully verify this tool we’ll need a reachable MCP server or a stubbed mock; current behavior is “graceful failure after handshake timeouts”.
+  - `mcp call chrome-devtools navigate_page` succeeds once chrome-devtools-mcp is launched with `--isolated`. The tool reports the navigation + tab selection, and a follow-up `evaluate_script` returns `"ok"` as expected.
+- **Notes**: Each `mcp call` spins up a fresh chrome-devtools-mcp process, so calls that rely on shared console history (e.g., `list_console_messages`) will return empty unless they happen within the same invocation. `playground-log.sh -c MCP` remains empty—there’s no dedicated `AutomationEventLogger` category yet, so rely on the CLI JSON artifacts + `tachikoma.mcp.*` logs for now.
 
 ### ✅ `dialog` command – TextEdit Save sheet
 - **Setup**:

@@ -32,7 +32,7 @@ read_when:
    - Migrate AXorcist’s `runAXORCCommand` and similar utilities once the CLI pilot is stable for a week of CI runs.
    - Document any platform-specific observations (e.g. sandbox quirks, resource cleanup) in this file as we go.
 5. **Evaluate production adoption**  
-   - After tests prove reliable, design a PeekabooCore abstraction (`ChildProcessService`) that can swap `Process` vs. Subprocess internally. Production code often needs cancellation, long-running streaming, and PTY support; confirm Subprocess’ PTY story before migrating `StdioTransportPTY`.
+   - After tests prove reliable, design a PeekabooCore abstraction (`ChildProcessService`) that can swap `Process` vs. Subprocess internally. Production code often needs cancellation, long-running streaming, and the occasional pseudo-terminal; confirm Subprocess’ PTY story before we rely on it inside the MCP transports.
 
 ## Usage Cheatsheet
 ```swift
@@ -69,6 +69,6 @@ struct TestChildProcess {
 - Cancellation: wrapping the spawn in `withTimeout` or explicitly calling `process.terminate()` cooperates with async tasks. This will help us enforce per-test timeouts instead of blocking on `waitUntilExit()`.
 
 ## Open Questions
-- PTY support is currently experimental. Before we migrate `StdioTransportPTY`, confirm the API surface and whether pseudo-terminal workflows are on the roadmap.
+- PTY support is currently experimental. Even though our MCP client now sticks to pipes, confirm Subprocess’ pseudo-terminal roadmap before depending on it for future CLI integrations.
 - Some of our tests rely on combined stdout/stderr ordering. Subprocess exposes them separately; we need to decide whether to merge streams manually or only capture stderr when non-empty.
 - Monitor the upstream issue tracker for breaking changes ahead of `1.0.0`; update this doc with any migration notes after each dependency bump.
