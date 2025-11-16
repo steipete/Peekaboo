@@ -44,6 +44,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
+            try self.validate()
             // Get session if available
             let sessionId: String? = if let providedSession = session {
                 providedSession

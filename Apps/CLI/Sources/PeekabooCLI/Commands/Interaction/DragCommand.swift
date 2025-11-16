@@ -113,6 +113,10 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 profile: movement.profile
             )
             try await AutomationServiceBridge.drag(automation: self.services.automation, request: dragRequest)
+            AutomationEventLogger.log(
+                .drag,
+                "drag from=(\(Int(startPoint.x)),\(Int(startPoint.y))) to=(\(Int(endPoint.x)),\(Int(endPoint.y))) modifiers=\(self.modifiers ?? "none") session=\(sessionId ?? "latest") profile=\(movement.profileName)"
+            )
 
             try await Task.sleep(nanoseconds: 100_000_000)
 

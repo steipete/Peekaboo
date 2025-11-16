@@ -90,6 +90,10 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 automation: self.services.automation,
                 request: scrollRequest
             )
+            AutomationEventLogger.log(
+                .scroll,
+                "direction=\(self.direction) amount=\(self.amount) smooth=\(self.smooth) target=\(self.on ?? "pointer") session=\(sessionId ?? "latest")"
+            )
 
             // Calculate total ticks for output
             let totalTicks = self.smooth ? self.amount * 3 : self.amount

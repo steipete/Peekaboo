@@ -125,6 +125,10 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 steps: movement.steps,
                 profile: movement.profile
             )
+            AutomationEventLogger.log(
+                .gesture,
+                "swipe from=(\(Int(sourcePoint.x)),\(Int(sourcePoint.y))) to=(\(Int(destPoint.x)),\(Int(destPoint.y))) profile=\(movement.profileName) steps=\(movement.steps) session=\(sessionId ?? "latest")"
+            )
 
             // Small delay to ensure swipe is processed
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
