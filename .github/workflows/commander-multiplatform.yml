@@ -70,22 +70,6 @@ jobs:
       - name: Test (Linux)
         run: swift test
 
-  windows:
-    runs-on: windows-latest
-    needs: macos-host
-    defaults:
-      run:
-        shell: pwsh
-        working-directory: Commander
-    steps:
-      - uses: actions/checkout@v4
-      - uses: compnerd/gha-setup-swift@v0.4.0
-        with:
-          swift-version: swift-6.2-release
-          swift-build: 6.2-RELEASE
-      - name: Test (Windows)
-        run: swift test
-
   android:
     runs-on: ubuntu-22.04
     needs: macos-host
