@@ -144,10 +144,12 @@ public final class ScrollService {
             let queryLower = query.lowercased()
 
             for element in detectionResult.elements.all {
+                let identifierMatch = element.attributes["identifier"]?.lowercased().contains(queryLower) ?? false
                 let matches = element.label?.lowercased().contains(queryLower) ?? false ||
-                    element.value?.lowercased().contains(queryLower) ?? false
+                    element.value?.lowercased().contains(queryLower) ?? false ||
+                    identifierMatch
 
-                if matches, element.isEnabled {
+                if matches {
                     return element.bounds
                 }
             }

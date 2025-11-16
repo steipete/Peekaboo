@@ -56,6 +56,7 @@ public final class SessionManager: SessionManagerProtocol {
                 title: element.label,
                 label: element.label,
                 value: element.value,
+                identifier: element.attributes["identifier"],
                 frame: element.bounds,
                 isActionable: self.isActionableType(element.type),
                 keyboardShortcut: element.attributes["keyboardShortcut"])
@@ -105,6 +106,13 @@ public final class SessionManager: SessionManagerProtocol {
         var allElements: [DetectedElement] = []
 
         for (_, uiElement) in sessionData.uiMap {
+            var attributes: [String: String] = [:]
+            if let identifier = uiElement.identifier {
+                attributes["identifier"] = identifier
+            }
+            if let shortcut = uiElement.keyboardShortcut {
+                attributes["keyboardShortcut"] = shortcut
+            }
             let detectedElement = DetectedElement(
                 id: uiElement.id,
                 type: self.convertRoleToElementType(uiElement.role),
@@ -112,7 +120,7 @@ public final class SessionManager: SessionManagerProtocol {
                 value: uiElement.value,
                 bounds: uiElement.frame,
                 isEnabled: uiElement.isActionable,
-                attributes: uiElement.keyboardShortcut != nil ? ["keyboardShortcut": uiElement.keyboardShortcut!] : [:])
+                attributes: attributes)
             allElements.append(detectedElement)
         }
 
