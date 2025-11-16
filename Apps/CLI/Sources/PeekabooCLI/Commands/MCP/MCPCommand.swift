@@ -725,6 +725,7 @@ extension MCPCommand {
         @Argument(help: "Command and arguments to run the MCP server")
         var command: [String] = []
         @RuntimeStorage private var runtime: CommandRuntime?
+        private let stderrHandle = FileHandle.standardError
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
@@ -741,7 +742,9 @@ extension MCPCommand {
             self.runtime = runtime
 
             guard !self.command.isEmpty else {
-                self.logger.error("Command is required. Use -- to separate command from options.")
+                let message = "Command is required. Use -- to separate command from options."
+                self.logger.error(message)
+                self.emitUserFacingError(message)
                 throw ExitCode.failure
             }
 
@@ -818,6 +821,11 @@ extension MCPCommand {
                 self.logger.error("Failed to add MCP server: \(error.localizedDescription)")
                 throw ExitCode.failure
             }
+        }
+
+        private func emitUserFacingError(_ message: String) {
+            guard let data = "\(message)\n".data(using: .utf8) else { return }
+            self.stderrHandle.write(data)
         }
     }
 
