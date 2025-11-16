@@ -166,6 +166,38 @@
       "cooldownSeconds": 60,
       "timeoutSeconds": 300,
       "maxLines": 3
+    },
+    {
+      "label": "Tests (Commander)",
+      "command": "swift test --package-path Commander",
+      "targets": ["Commander"],
+      "cooldownSeconds": 600,
+      "timeoutSeconds": 900,
+      "maxLines": 3
+    },
+    {
+      "label": "Tests (AXorcist)",
+      "command": "swift test --package-path AXorcist",
+      "targets": ["AXorcist"],
+      "cooldownSeconds": 600,
+      "timeoutSeconds": 900,
+      "maxLines": 3
+    },
+    {
+      "label": "Tests (Tachikoma)",
+      "command": "swift test --package-path Tachikoma",
+      "targets": ["Tachikoma"],
+      "cooldownSeconds": 900,
+      "timeoutSeconds": 1200,
+      "maxLines": 3
+    },
+    {
+      "label": "Tests (TauTUI)",
+      "command": "swift test --package-path TauTUI",
+      "targets": ["TauTUI"],
+      "cooldownSeconds": 900,
+      "timeoutSeconds": 1200,
+      "maxLines": 3
     }
   ]
 }
