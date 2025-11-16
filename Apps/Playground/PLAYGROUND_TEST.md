@@ -284,13 +284,14 @@
   3. `polter peekaboo -- agent "Say hi" --max-steps 1`
 - **Findings**: AutomationEventLogger still emits `[Agent]` entries summarizing each run (task, model, duration, dry-run flag), so `playground-log -c Agent` captures evidence even though Playground UI doesn’t log these events itself.
 
-### ⚠️ `mcp` command – `call` now steadies but remote server unavailable
-- **Logs**: `.artifacts/playground-tools/20251116-055255-mcp.log` (list) and `.artifacts/playground-tools/20251116-065820-mcp-call-chrome-devtools.log`
-- **Artifacts**: `.artifacts/playground-tools/20251116-055255-mcp-list.json`
+### ✅ `mcp` command – chrome-devtools navigate/eval
+- **Logs**: `.artifacts/playground-tools/20251116-210340-mcp.log`
+- **Artifacts**: `.artifacts/playground-tools/20251116-210313-mcp-list.json`, `.artifacts/playground-tools/20251116-210325-mcp-call-chrome-nav.json`, `.artifacts/playground-tools/20251116-210334-mcp-call-chrome-eval.json`
 - **Commands**:
   1. `polter peekaboo -- mcp list --json-output`
-  2. `polter peekaboo -- mcp call chrome-devtools list_tabs`
-- **Findings**: Commander argument crash is fixed—the CLI now launches Tachikoma’s MCP client, attempts to connect to `chrome-devtools` via `npx`, and retries the `initialize` handshake three times before timing out (expected because the server isn’t running locally). Need a reachable MCP server/stub to capture a successful call artifact, but the blocker noted earlier is resolved.
+  2. `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output`
+  3. `polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log("Playground MCP"); return document.title; }"}' --json-output`
+- **Findings**: Both calls succeed via chrome-devtools-mcp (Peekaboo now appends `--isolated` automatically). The MCP log shows `[MCP] call server=chrome-devtools tool=navigate_page` and `tool=evaluate_script`, so Playground evidence exists alongside the CLI JSON.
 
 ### ✅ `dialog` command – TextEdit Save sheet
 - **Commands**:

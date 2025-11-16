@@ -371,15 +371,15 @@ The following subsections spell out the concrete steps, required Playground surf
 
 #### `mcp`
 - **Steps**:
-  1. `polter peekaboo -- mcp list --json-output > .artifacts/playground-tools/20251116-091934-mcp-list.json`.
-  2. (Future) `polter peekaboo -- mcp test <server>` once servers are provisioned locally.
-  3. `pnpm run polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output > .artifacts/playground-tools/20251116-183614-mcp-call-chrome-nav.json`.
-  4. Optional: `pnpm run polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log(\"Playground MCP log capture\"); return \"ok\"; }"}' --json-output > .artifacts/playground-tools/20251116-183617-mcp-call-chrome-eval.json`.
-- **2025-11-16 status**:
-  - `mcp list` succeeds (see artifact above) but takes ~45s because no servers respond quickly in this environment.
-  - `mcp call chrome-devtools navigate_page` succeeds when chrome-devtools-mcp is launched with `--isolated` (Peekaboo now appends that flag automatically). The response confirms the URL load and selected tab.
-  - Additional calls (e.g., `evaluate_script`) also succeed, but note that each `mcp call` launches a fresh chrome-devtools-mcp instance, so commands that rely on shared console/network history (such as `list_console_messages`) will return empty unless everything happens inside a single invocation.
-  - Playground logging now captures the MCP automation events: `.artifacts/playground-tools/20251116-183634-mcp.log` shows the `[MCP] call server=chrome-devtools …` entries immediately after the two commands above. Keep using `./Apps/Playground/scripts/playground-log.sh -c MCP --last 15m --all -o <file>` when running this plan so the log artifact travels with the JSON output.
+  1. `polter peekaboo -- mcp list --json-output > .artifacts/playground-tools/20251116-210313-mcp-list.json`.
+  2. `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output > .artifacts/playground-tools/20251116-210325-mcp-call-chrome-nav.json`.
+  3. `polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log(\"Playground MCP\"); return document.title; }"}' --json-output > .artifacts/playground-tools/20251116-210334-mcp-call-chrome-eval.json`.
+  4. Capture the OSLog stream with `./Apps/Playground/scripts/playground-log.sh -c MCP --last 15m --all -o .artifacts/playground-tools/20251116-210340-mcp.log`.
+- **2025-11-16 verification**:
+  - `mcp list` still takes ~45s but now deterministically returns the chrome-devtools catalog; Peekaboo appends `--isolated`, so Chrome profile locks never block.
+  - `navigate_page` hits https://example.com and `evaluate_script` returns the page title (and console log) with `success: true`; the JSON artifacts capture the payloads for regression diffs.
+  - Playground `[MCP]` log records both invocations (`tool=navigate_page`, `tool=evaluate_script`), so the regression plan has deterministic log + artifact coverage.
+  - Reminder: each `mcp call` runs in its own chrome-devtools-mcp process; tools needing console history must execute within one call or script multiple actions inside the tool.
 
 ## Reporting & Follow-Up
 - Record every executed test case (command, arguments, session ID, log file path, outcome) in `Apps/Playground/PLAYGROUND_TEST.md`.
