@@ -206,7 +206,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
     func click(target _: ClickTarget, clickType _: ClickType, sessionId _: String?) async throws {}
 
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, sessionId _: String?) async
-        throws {}
+    throws {}
 
     func typeActions(
         _: [TypeAction],
@@ -226,8 +226,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         to _: CGPoint,
         duration _: Int,
         steps _: Int,
-        profile _: MouseMovementProfile
-    ) async throws {}
+        profile _: MouseMovementProfile) async throws {}
 
     func hasAccessibilityPermission() async -> Bool { self.accessibilityGranted }
 
@@ -244,15 +243,13 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         duration _: Int,
         steps _: Int,
         modifiers _: String?,
-        profile _: MouseMovementProfile
-    ) async throws {}
+        profile _: MouseMovementProfile) async throws {}
 
     func moveMouse(
         to _: CGPoint,
         duration _: Int,
         steps _: Int,
-        profile _: MouseMovementProfile
-    ) async throws {}
+        profile _: MouseMovementProfile) async throws {}
 
     func getFocusedElement() -> UIFocusInfo? { nil }
 

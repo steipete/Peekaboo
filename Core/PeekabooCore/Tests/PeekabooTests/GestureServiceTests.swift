@@ -48,8 +48,7 @@ struct GestureServiceTests {
             duration: 500,
             steps: 20,
             modifiers: nil,
-            profile: .linear
-        )
+            profile: .linear)
     }
 
     @Test("Drag with duration")
@@ -66,8 +65,7 @@ struct GestureServiceTests {
             duration: 1000,
             steps: 20,
             modifiers: nil,
-            profile: .linear
-        ) // 1 second drag
+            profile: .linear) // 1 second drag
         let elapsed = Date().timeIntervalSince(startTime)
 
         // Should take approximately 1 second
@@ -171,8 +169,7 @@ struct GestureServiceTests {
             duration: 500,
             steps: steps,
             modifiers: nil,
-            profile: .linear
-        )
+            profile: .linear)
     }
 
     @Test("Multi-touch tap")
@@ -225,8 +222,7 @@ struct GestureServiceTests {
             duration: 500,
             steps: 20,
             modifiers: nil,
-            profile: .linear
-        )
+            profile: .linear)
 
         // Continue drag to end
         try await service.drag(
@@ -235,8 +231,7 @@ struct GestureServiceTests {
             duration: 500,
             steps: 20,
             modifiers: nil,
-            profile: .linear
-        )
+            profile: .linear)
 
         // Swipe back
         let swipeEnd = CGPoint(x: endPoint.x - 200, y: endPoint.y)

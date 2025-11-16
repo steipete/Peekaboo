@@ -166,8 +166,7 @@ public struct ClickTool: MCPTool {
             actionDescription: intent.displayVerb,
             coordinates: ToolEventSummary.Coordinates(
                 x: Double(resolution.location.x),
-                y: Double(resolution.location.y))
-        )
+                y: Double(resolution.location.y)))
 
         let metaValue = ToolEventSummary.merge(summary: summary, into: .object(metaDict))
 

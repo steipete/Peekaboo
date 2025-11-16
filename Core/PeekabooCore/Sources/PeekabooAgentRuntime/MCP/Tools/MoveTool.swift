@@ -232,22 +232,19 @@ public struct MoveTool: MCPTool {
                 to: location,
                 duration: movement.duration,
                 steps: movement.steps,
-                profile: movement.profile
-            )
+                profile: movement.profile)
         } else {
             try await automation.moveMouse(
                 to: location,
                 duration: 0,
                 steps: 1,
-                profile: movement.profile
-            )
+                profile: movement.profile)
         }
         return MovementExecution(
             parameters: movement,
             startPoint: currentLocation,
             distance: distance,
-            direction: pointerDirection(from: currentLocation, to: location)
-        )
+            direction: pointerDirection(from: currentLocation, to: location))
     }
 
     private func buildResponse(
@@ -323,8 +320,7 @@ public struct MoveTool: MCPTool {
             stepsOverride: request.stepsOverride,
             defaultDuration: 500,
             defaultSteps: 10,
-            distance: distance
-        )
+            distance: distance)
     }
 }
 

@@ -144,8 +144,7 @@ public struct ScrollTool: MCPTool {
             actionDescription: request.smooth ? "Smooth scroll" : "Scroll",
             scrollDirection: request.direction.rawValue,
             scrollAmount: Double(request.amount),
-            notes: target.description
-        )
+            notes: target.description)
         return ToolResponse.text(message, meta: ToolEventSummary.merge(summary: summary, into: nil))
     }
 

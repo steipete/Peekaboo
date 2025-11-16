@@ -39,8 +39,8 @@ extension MovementProfileOption {
         stepsOverride: Int?,
         defaultDuration: Int,
         defaultSteps: Int,
-        distance: CGFloat
-    ) -> MovementParameters {
+        distance: CGFloat) -> MovementParameters
+    {
         switch self {
         case .linear:
             let duration = durationOverride ?? (smooth ? defaultDuration : 0)
@@ -50,21 +50,18 @@ extension MovementProfileOption {
                 duration: duration,
                 steps: steps,
                 smooth: smooth,
-                profileName: self.rawValue
-            )
+                profileName: self.rawValue)
         case .human:
             let duration = durationOverride ?? HumanizedMovementDefaults.duration(for: distance)
             let steps = max(
                 stepsOverride ?? HumanizedMovementDefaults.defaultSteps,
-                HumanizedMovementDefaults.steps(for: distance)
-            )
+                HumanizedMovementDefaults.steps(for: distance))
             return MovementParameters(
                 profile: .human(),
                 duration: duration,
                 steps: steps,
                 smooth: true,
-                profileName: self.rawValue
-            )
+                profileName: self.rawValue)
         }
     }
 }

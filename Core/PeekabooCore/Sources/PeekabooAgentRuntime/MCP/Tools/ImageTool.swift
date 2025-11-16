@@ -176,13 +176,12 @@ extension ImageTool {
         captureResults: [CaptureResult]) -> ToolResponse
     {
         let baseMeta = Value.object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })])
-        let captureNote: String
-        if savedFiles.isEmpty {
-            captureNote = "Captured image"
+        let captureNote: String = if savedFiles.isEmpty {
+            "Captured image"
         } else if savedFiles.count == 1, let label = savedFiles.first?.item_label {
-            captureNote = label
+            label
         } else {
-            captureNote = "Captured \(savedFiles.count) images"
+            "Captured \(savedFiles.count) images"
         }
         let summary = ToolEventSummary(
             actionDescription: "Image Capture",

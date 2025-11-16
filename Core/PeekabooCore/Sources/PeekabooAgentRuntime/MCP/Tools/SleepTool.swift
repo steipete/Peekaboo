@@ -54,8 +54,7 @@ public struct SleepTool: MCPTool {
         let summaryMeta = ToolEventSummary(
             actionDescription: "Sleep",
             waitDurationMs: actualDuration,
-            waitReason: nil
-        )
+            waitReason: nil)
         return ToolResponse.text(summaryText, meta: ToolEventSummary.merge(summary: summaryMeta, into: nil))
     }
 }

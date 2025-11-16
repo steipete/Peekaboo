@@ -308,7 +308,7 @@ struct TypeServiceTests {
         let actions: [TypeAction] = [
             .text("Hi"),
             .key(.space),
-            .text("there")
+            .text("there"),
         ]
 
         let startTime = Date()

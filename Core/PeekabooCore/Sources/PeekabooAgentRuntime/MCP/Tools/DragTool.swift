@@ -98,8 +98,7 @@ public struct DragTool: MCPTool {
                 stepsOverride: request.stepsOverride,
                 defaultDuration: 500,
                 defaultSteps: 20,
-                distance: distance
-            )
+                distance: distance)
 
             try await self.context.automation.drag(
                 from: fromPoint.point,

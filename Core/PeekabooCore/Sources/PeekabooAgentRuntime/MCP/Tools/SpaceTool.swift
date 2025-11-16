@@ -265,11 +265,11 @@ public struct SpaceTool: MCPTool {
     {
         switch action {
         case let .list(detailed):
-            return try await self.handleList(service: service, detailed: detailed, startTime: startTime)
+            try await self.handleList(service: service, detailed: detailed, startTime: startTime)
         case let .switchSpace(spaceNumber):
-            return try await self.handleSwitch(service: service, spaceNumber: spaceNumber, startTime: startTime)
+            try await self.handleSwitch(service: service, spaceNumber: spaceNumber, startTime: startTime)
         case let .moveWindow(request):
-            return try await self.handleMoveWindow(service: service, request: request, startTime: startTime)
+            try await self.handleMoveWindow(service: service, request: request, startTime: startTime)
         }
     }
 

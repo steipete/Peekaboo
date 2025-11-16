@@ -107,13 +107,12 @@ extension ApplicationService {
         let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
         let sharingRaw = windowInfo[kCGWindowSharingState as String] as? Int
         let sharingState = sharingRaw.flatMap { WindowSharingState(rawValue: $0) }
-        let excludedFromMenu: Bool
-        if ownerPID == getpid(),
-           let window = NSApp.window(withWindowNumber: windowID)
+        let excludedFromMenu: Bool = if ownerPID == getpid(),
+                                        let window = NSApp.window(withWindowNumber: windowID)
         {
-            excludedFromMenu = window.isExcludedFromWindowsMenu
+            window.isExcludedFromWindowsMenu
         } else {
-            excludedFromMenu = false
+            false
         }
 
         let info = ServiceWindowInfo(

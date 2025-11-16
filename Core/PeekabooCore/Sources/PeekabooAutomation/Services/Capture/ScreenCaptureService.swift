@@ -851,8 +851,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     isOnScreen: targetWindow[kCGWindowIsOnscreen as String] as? Bool ?? true,
                     sharingState: (targetWindow[kCGWindowSharingState as String] as? Int).flatMap {
                         WindowSharingState(rawValue: $0)
-                    }
-                ))
+                    }))
 
             return CaptureResult(
                 imageData: imageData,
@@ -1171,7 +1170,6 @@ private final class CaptureOutput: NSObject, @unchecked Sendable {
         }
     }
 }
-
 
 extension CaptureOutput: SCStreamOutput {}
 

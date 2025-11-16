@@ -389,8 +389,8 @@ extension UIAutomationService {
     public func typeActions(
         _ actions: [TypeAction],
         cadence: TypingCadence,
-        sessionId: String?
-    ) async throws -> TypeResult {
+        sessionId: String?) async throws -> TypeResult
+    {
         self.logger.debug("Delegating typeActions to TypeService")
         let result = try await self.typeService.typeActions(actions, cadence: cadence, sessionId: sessionId)
         await self.visualizeTypeActions(actions, cadence: cadence)
@@ -499,16 +499,15 @@ extension UIAutomationService {
         to: CGPoint,
         duration: Int,
         steps: Int,
-        profile: MouseMovementProfile
-    ) async throws {
+        profile: MouseMovementProfile) async throws
+    {
         self.logger.debug("Delegating swipe to GestureService")
         try await self.gestureService.swipe(
             from: from,
             to: to,
             duration: duration,
             steps: steps,
-            profile: profile
-        )
+            profile: profile)
 
         // Show visual feedback if available
         _ = await self.visualizerClient.showSwipeGesture(from: from, to: to, duration: TimeInterval(duration) / 1000.0)
@@ -521,8 +520,8 @@ extension UIAutomationService {
         duration: Int,
         steps: Int,
         modifiers: String?,
-        profile: MouseMovementProfile
-    ) async throws {
+        profile: MouseMovementProfile) async throws
+    {
         self.logger.debug("Delegating drag to GestureService")
         try await self.gestureService.drag(
             from: from,
@@ -537,8 +536,8 @@ extension UIAutomationService {
         to: CGPoint,
         duration: Int,
         steps: Int,
-        profile: MouseMovementProfile
-    ) async throws {
+        profile: MouseMovementProfile) async throws
+    {
         self.logger.debug("Delegating moveMouse to GestureService")
 
         // Get current mouse position for the animation start point

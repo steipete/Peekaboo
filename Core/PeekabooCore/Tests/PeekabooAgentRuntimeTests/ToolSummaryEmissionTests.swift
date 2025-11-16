@@ -53,25 +53,25 @@ private func extractSummary(from meta: Value?) -> ToolEventSummary? {
 private func convertToJSONObject(_ value: Value) -> Any? {
     switch value {
     case .null:
-        return NSNull()
+        NSNull()
     case let .string(string):
-        return string
+        string
     case let .int(int):
-        return int
+        int
     case let .double(double):
-        return double
+        double
     case let .bool(bool):
-        return bool
+        bool
     case let .array(array):
-        return array.compactMap { convertToJSONObject($0) }
+        array.compactMap { convertToJSONObject($0) }
     case let .object(dict):
-        return dict.reduce(into: [String: Any]()) { result, entry in
+        dict.reduce(into: [String: Any]()) { result, entry in
             if let converted = convertToJSONObject(entry.value) {
                 result[entry.key] = converted
             }
         }
     case let .data(mimeType, data):
-        return [
+        [
             "type": "data",
             "mimeType": mimeType ?? "application/octet-stream",
             "base64": data.base64EncodedString(),

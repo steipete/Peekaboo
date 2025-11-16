@@ -340,11 +340,10 @@ extension PeekabooAgentService {
     private func toolResultPayload(from result: AnyAgentToolValue, toolName: String) -> String {
         do {
             let jsonObject = try result.toJSON()
-            var wrapped: [String: Any]
-            if let dict = jsonObject as? [String: Any] {
-                wrapped = dict
+            var wrapped: [String: Any] = if let dict = jsonObject as? [String: Any] {
+                dict
             } else {
-                wrapped = ["result": jsonObject]
+                ["result": jsonObject]
             }
 
             if let summaryText = self.summaryText(from: wrapped, toolName: toolName) {

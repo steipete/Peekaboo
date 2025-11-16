@@ -548,8 +548,8 @@ actor UISession {
     private(set) var uiElements: [UIElement] = []
     private(set) var createdAt: Date
     private(set) var lastAccessedAt: Date
-    nonisolated(unsafe) private(set) var cachedApplicationName: String?
-    nonisolated(unsafe) private(set) var cachedWindowTitle: String?
+    private(set) nonisolated(unsafe) var cachedApplicationName: String?
+    private(set) nonisolated(unsafe) var cachedWindowTitle: String?
 
     init() {
         self.id = UUID().uuidString

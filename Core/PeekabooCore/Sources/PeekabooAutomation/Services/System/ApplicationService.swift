@@ -849,13 +849,12 @@ private struct WindowEnumerationContext {
         let spaces = spaceService.getSpacesForWindow(windowID: CGWindowID(windowID))
         let (spaceID, spaceName) = spaces.first.map { ($0.id, $0.name) } ?? (nil, nil)
         let screenInfo = screenService.screenContainingWindow(bounds: bounds)
-        let excludedFromMenu: Bool
-        if ownerPID == getpid(),
-           let window = NSApp.window(withWindowNumber: windowID)
+        let excludedFromMenu: Bool = if ownerPID == getpid(),
+                                        let window = NSApp.window(withWindowNumber: windowID)
         {
-            excludedFromMenu = window.isExcludedFromWindowsMenu
+            window.isExcludedFromWindowsMenu
         } else {
-            excludedFromMenu = false
+            false
         }
 
         return ServiceWindowInfo(

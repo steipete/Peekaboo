@@ -97,8 +97,8 @@ public final class TypeService {
     public func typeActions(
         _ actions: [TypeAction],
         cadence: TypingCadence,
-        sessionId: String?
-    ) async throws -> TypeResult {
+        sessionId: String?) async throws -> TypeResult
+    {
         var totalChars = 0
         var keyPresses = 0
         var humanContext: HumanTypingContext?
@@ -321,13 +321,13 @@ public final class TypeService {
     }
 }
 
-private extension TypingCadence {
-    var logDescription: String {
+extension TypingCadence {
+    fileprivate var logDescription: String {
         switch self {
         case let .fixed(milliseconds):
-            return "fixed(\(milliseconds)ms)"
+            "fixed(\(milliseconds)ms)"
         case let .human(wordsPerMinute):
-            return "human(\(wordsPerMinute) WPM)"
+            "human(\(wordsPerMinute) WPM)"
         }
     }
 }
@@ -438,16 +438,16 @@ private struct HumanTypingContext {
     }
 }
 
-private extension Character {
-    var isPunctuationLike: Bool {
+extension Character {
+    fileprivate var isPunctuationLike: Bool {
         self.unicodeScalars.allSatisfy { CharacterSet.punctuationCharacters.contains($0) }
     }
 
-    var isWordCharacter: Bool {
+    fileprivate var isWordCharacter: Bool {
         self.isLetter || self.isNumber
     }
 
-    var isWhitespaceLike: Bool {
+    fileprivate var isWhitespaceLike: Bool {
         self.isWhitespace || self == "\n" || self == "\t"
     }
 }

@@ -666,8 +666,8 @@ extension ElementDetectionService {
     private func containsTextFieldDescendant(
         _ element: Element,
         depth: Int,
-        remainingDepth: Int
-    ) -> Bool {
+        remainingDepth: Int) -> Bool
+    {
         guard remainingDepth >= 0 else { return false }
         guard let children = element.children(strict: true) else { return false }
 

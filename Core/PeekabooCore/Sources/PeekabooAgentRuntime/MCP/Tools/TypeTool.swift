@@ -109,7 +109,7 @@ public struct TypeTool: MCPTool {
             throw TypeToolValidationError("wpm must be between 80 and 220")
         }
 
-        if request.wordsPerMinute != nil && request.profile != .human {
+        if request.wordsPerMinute != nil, request.profile != .human {
             throw TypeToolValidationError("wpm is only supported with the human profile")
         }
 
@@ -335,11 +335,11 @@ private struct TypeRequest {
 
     var hasActions: Bool {
         self.text != nil ||
-        self.tabCount != nil ||
-        self.pressEscape ||
-        self.pressDelete ||
-        self.pressReturn ||
-        self.clearField
+            self.tabCount != nil ||
+            self.pressEscape ||
+            self.pressDelete ||
+            self.pressReturn ||
+            self.clearField
     }
 
     var cadence: TypingCadence {

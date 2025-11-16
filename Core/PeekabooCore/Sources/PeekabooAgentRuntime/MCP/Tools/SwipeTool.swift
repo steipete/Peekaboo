@@ -127,8 +127,7 @@ public struct SwipeTool: MCPTool {
             stepsOverride: stepsOverride,
             defaultDuration: 500,
             defaultSteps: 10,
-            distance: distance
-        )
+            distance: distance)
 
         let automation = self.context.automation
         try await automation.drag(
@@ -190,8 +189,7 @@ public struct SwipeTool: MCPTool {
             pointerDistance: Double(distance),
             pointerDirection: pointerDirection(from: fromPoint, to: toPoint),
             pointerDurationMs: Double(movement.duration),
-            notes: "from (\(Int(fromPoint.x)), \(Int(fromPoint.y))) to (\(Int(toPoint.x)), \(Int(toPoint.y)))"
-        )
+            notes: "from (\(Int(fromPoint.x)), \(Int(fromPoint.y))) to (\(Int(toPoint.x)), \(Int(toPoint.y)))")
 
         let metaValue = ToolEventSummary.merge(summary: summary, into: .object(metaDict))
 

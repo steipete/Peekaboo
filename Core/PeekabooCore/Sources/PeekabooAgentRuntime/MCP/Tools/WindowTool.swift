@@ -123,24 +123,21 @@ public struct WindowTool: MCPTool {
                 service: service,
                 target: target,
                 appName: inputs.app,
-                startTime: startTime
-            )
+                startTime: startTime)
 
         case .minimize:
             return try await self.handleMinimize(
                 service: service,
                 target: target,
                 appName: inputs.app,
-                startTime: startTime
-            )
+                startTime: startTime)
 
         case .maximize:
             return try await self.handleMaximize(
                 service: service,
                 target: target,
                 appName: inputs.app,
-                startTime: startTime
-            )
+                startTime: startTime)
 
         case .move:
             let position = try inputs.requirePosition(for: action)
@@ -167,16 +164,14 @@ public struct WindowTool: MCPTool {
                 target: target,
                 appName: inputs.app,
                 bounds: bounds,
-                startTime: startTime
-            )
+                startTime: startTime)
 
         case .focus:
             return try await self.handleFocus(
                 service: service,
                 target: target,
                 appName: inputs.app,
-                startTime: startTime
-            )
+                startTime: startTime)
         }
     }
 

@@ -75,11 +75,10 @@ extension PeekabooAgentService {
         let executionTime = endTime.timeIntervalSince(context.executionStart)
         let totalTokens = context.metadata.totalTokens + (usage?.totalTokens ?? 0)
         let additionalCost = usage?.cost?.total
-        let accumulatedCost: Double?
-        if additionalCost == nil && context.metadata.totalCost == nil {
-            accumulatedCost = nil
+        let accumulatedCost: Double? = if additionalCost == nil, context.metadata.totalCost == nil {
+            nil
         } else {
-            accumulatedCost = (context.metadata.totalCost ?? 0) + (additionalCost ?? 0)
+            (context.metadata.totalCost ?? 0) + (additionalCost ?? 0)
         }
 
         let updatedMetadata = SessionMetadata(
@@ -87,8 +86,7 @@ extension PeekabooAgentService {
             totalCost: accumulatedCost,
             toolCallCount: context.metadata.toolCallCount + toolCallCount,
             totalExecutionTime: context.metadata.totalExecutionTime + executionTime,
-            customData: context.metadata.customData.merging(["status": "completed"]) { _, new in new }
-        )
+            customData: context.metadata.customData.merging(["status": "completed"]) { _, new in new })
         let updatedSession = AgentSession(
             id: context.id,
             modelName: model.description,

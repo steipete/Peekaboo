@@ -17,8 +17,8 @@ public final class GestureService {
         to: CGPoint,
         duration: Int,
         steps: Int,
-        profile: MouseMovementProfile
-    ) async throws {
+        profile: MouseMovementProfile) async throws
+    {
         let gestureDescription = self.describeGesture(
             name: "Swipe requested",
             details: [
@@ -37,8 +37,7 @@ public final class GestureService {
             to: to,
             duration: duration,
             steps: steps,
-            profile: profile
-        )
+            profile: profile)
         try await self.performSwipe(path: path, start: from, button: .left, eventFlags: [])
 
         self.logger.debug("Swipe completed")
@@ -74,12 +73,12 @@ public final class GestureService {
             to: to,
             duration: duration,
             steps: steps,
-            profile: profile
-        )
+            profile: profile)
         try await self.performDrag(path: path, start: from, eventFlags: eventFlags)
 
         self.logger.debug("Drag completed")
     }
+
     // swiftlint:enable function_parameter_count
 
     /// Move mouse to a specific point
@@ -87,8 +86,8 @@ public final class GestureService {
         to: CGPoint,
         duration: Int,
         steps: Int,
-        profile: MouseMovementProfile
-    ) async throws {
+        profile: MouseMovementProfile) async throws
+    {
         let gestureDescription = self.describeGesture(
             name: "Mouse move requested",
             details: [
@@ -115,8 +114,7 @@ public final class GestureService {
                 distance: distance,
                 duration: duration,
                 stepsHint: steps,
-                configuration: configuration
-            )
+                configuration: configuration)
             let path = generator.generate()
             try await self.playPath(path.points, duration: path.duration)
         }
@@ -184,8 +182,8 @@ public final class GestureService {
         path: HumanMousePath,
         start: CGPoint,
         button: CGMouseButton,
-        eventFlags: CGEventFlags
-    ) async throws {
+        eventFlags: CGEventFlags) async throws
+    {
         try await self.moveMouseToPoint(start)
         try self.postMouseEvent(type: .leftMouseDown, at: start, button: button, flags: eventFlags)
 
@@ -202,8 +200,8 @@ public final class GestureService {
     private func performDrag(
         path: HumanMousePath,
         start: CGPoint,
-        eventFlags: CGEventFlags
-    ) async throws {
+        eventFlags: CGEventFlags) async throws
+    {
         try await self.moveMouseToPoint(start)
         try self.postMouseEvent(type: .leftMouseDown, at: start, flags: eventFlags)
 
@@ -266,8 +264,8 @@ public final class GestureService {
         to end: CGPoint,
         duration: Int,
         steps: Int,
-        profile: MouseMovementProfile
-    ) -> HumanMousePath {
+        profile: MouseMovementProfile) -> HumanMousePath
+    {
         let distance = hypot(end.x - start.x, end.y - start.y)
         switch profile {
         case .linear:
@@ -279,8 +277,7 @@ public final class GestureService {
                 distance: distance,
                 duration: duration,
                 stepsHint: steps,
-                configuration: configuration
-            )
+                configuration: configuration)
             return generator.generate()
         }
     }
@@ -307,13 +304,13 @@ public final class GestureService {
     }
 }
 
-private extension MouseMovementProfile {
-    var logDescription: String {
+extension MouseMovementProfile {
+    fileprivate var logDescription: String {
         switch self {
         case .linear:
-            return "linear"
+            "linear"
         case .human:
-            return "human"
+            "human"
         }
     }
 }
@@ -346,8 +343,8 @@ private struct HumanMousePathGenerator {
         if Self.shouldOvershoot(
             distance: self.distance,
             probability: self.configuration.overshootProbability,
-            rng: &rng
-        ) {
+            rng: &rng)
+        {
             overshootTarget = self.makeOvershootTarget(distance: self.distance, rng: &rng)
         }
         var currentTarget = overshootTarget ?? self.target
@@ -359,8 +356,7 @@ private struct HumanMousePathGenerator {
             let gravityMagnitude = Self.gravity(for: distanceToTarget)
             let gravity = CGVector(
                 dx: (delta.dx / distanceToTarget) * gravityMagnitude,
-                dy: (delta.dy / distanceToTarget) * gravityMagnitude
-            )
+                dy: (delta.dy / distanceToTarget) * gravityMagnitude)
             wind.dx = (wind.dx * 0.8) + (rng.nextSignedUnit() * Self.windMagnitude(for: distanceToTarget))
             wind.dy = (wind.dy * 0.8) + (rng.nextSignedUnit() * Self.windMagnitude(for: distanceToTarget))
 
@@ -401,8 +397,7 @@ private struct HumanMousePathGenerator {
         let amplitude = Double(self.configuration.jitterAmplitude)
         return CGPoint(
             x: point.x + (rng.nextSignedUnit() * amplitude),
-            y: point.y + (rng.nextSignedUnit() * amplitude)
-        )
+            y: point.y + (rng.nextSignedUnit() * amplitude))
     }
 
     private func makeOvershootTarget(distance: CGFloat, rng: inout HumanMouseRandom) -> CGPoint {
@@ -413,15 +408,14 @@ private struct HumanMousePathGenerator {
         let normalized = CGVector(dx: direction.dx / length, dy: direction.dy / length)
         return CGPoint(
             x: self.target.x + (normalized.dx * extraDistance),
-            y: self.target.y + (normalized.dy * extraDistance)
-        )
+            y: self.target.y + (normalized.dy * extraDistance))
     }
 
     private static func shouldOvershoot(
         distance: CGFloat,
         probability: Double,
-        rng: inout HumanMouseRandom
-    ) -> Bool {
+        rng: inout HumanMouseRandom) -> Bool
+    {
         guard distance > 120 else { return false }
         return rng.nextDouble() < probability
     }
@@ -467,14 +461,14 @@ private struct SeededGenerator: RandomNumberGenerator {
     private var state: UInt64
 
     init(seed: UInt64) {
-        self.state = seed == 0 ? 0x123456789ABCDEF : seed
+        self.state = seed == 0 ? 0x123_4567_89AB_CDEF : seed
     }
 
     mutating func next() -> UInt64 {
-        self.state &+= 0x9E3779B97F4A7C15
+        self.state &+= 0x9E37_79B9_7F4A_7C15
         var z = self.state
-        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
-        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
         return z ^ (z >> 31)
     }
 }

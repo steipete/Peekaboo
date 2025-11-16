@@ -171,8 +171,7 @@ extension TypingCadence: Codable {
             throw DecodingError.dataCorruptedError(
                 forKey: .kind,
                 in: container,
-                debugDescription: "Unknown typing cadence kind \(kind)"
-            )
+                debugDescription: "Unknown typing cadence kind \(kind)")
         }
     }
 

@@ -84,8 +84,7 @@ public protocol UIAutomationServiceProtocol: Sendable {
         duration: Int,
         steps: Int,
         modifiers: String?,
-        profile: MouseMovementProfile
-    ) async throws
+        profile: MouseMovementProfile) async throws
     // swiftlint:enable function_parameter_count
 
     /// Move the mouse cursor to a specific location
@@ -130,8 +129,8 @@ public struct HumanMouseProfileConfiguration: Sendable, Equatable {
         overshootProbability: Double = 0.2,
         overshootFractionRange: ClosedRange<Double> = 0.02...0.06,
         settleRadius: CGFloat = 6,
-        randomSeed: UInt64? = nil
-    ) {
+        randomSeed: UInt64? = nil)
+    {
         self.jitterAmplitude = jitterAmplitude
         self.overshootProbability = overshootProbability
         self.overshootFractionRange = overshootFractionRange

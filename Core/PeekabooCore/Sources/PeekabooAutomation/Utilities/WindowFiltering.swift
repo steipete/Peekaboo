@@ -17,42 +17,42 @@ public enum WindowFiltering {
         var thresholds: Thresholds {
             switch self {
             case .capture:
-                return .default
+                .default
             case .list:
-                return Thresholds(minWidth: 60, minHeight: 60, minAlpha: 0.0)
+                Thresholds(minWidth: 60, minHeight: 60, minAlpha: 0.0)
             }
         }
 
         var requireShareable: Bool {
             switch self {
             case .capture:
-                return true
+                true
             case .list:
-                return false
+                false
             }
         }
 
         var requireOnScreen: Bool {
             switch self {
             case .capture:
-                return true
+                true
             case .list:
-                return false
+                false
             }
         }
     }
 
     public static func isRenderable(
         _ window: ServiceWindowInfo,
-        mode: Mode = .capture
-    ) -> Bool {
-        disqualificationReason(for: window, mode: mode) == nil
+        mode: Mode = .capture) -> Bool
+    {
+        self.disqualificationReason(for: window, mode: mode) == nil
     }
 
     public static func disqualificationReason(
         for window: ServiceWindowInfo,
-        mode: Mode = .capture
-    ) -> String? {
+        mode: Mode = .capture) -> String?
+    {
         let thresholds = mode.thresholds
         if window.layer != 0 {
             return "layer != 0"
