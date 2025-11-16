@@ -98,6 +98,34 @@
         "Tachikoma/**/*.swift",
         "TauTUI/**/*.swift"
       ]
+    },
+    {
+      "name": "Inspector",
+      "type": "app-bundle",
+      "platform": "macos",
+      "enabled": true,
+      "buildCommand": "cd Apps/PeekabooInspector && CONFIGURATION_BUILD_DIR=./Inspector/build/Debug xcodebuild -scheme Inspector -configuration Debug -project Inspector.xcodeproj build",
+      "bundleId": "boo.peekaboo.inspector",
+      "autoRelaunch": true,
+      "settlingDelay": 4000,
+      "debounceInterval": 5000,
+      "icon": "./assets/icon_512x512@2x.png",
+      "watchPaths": [
+        "Apps/PeekabooInspector/**/*.swift",
+        "Apps/PeekabooInspector/**/*.storyboard",
+        "Apps/PeekabooInspector/**/*.xib",
+        "Apps/PeekabooInspector/**/*.xcassets",
+        "Apps/PeekabooInspector/**/*.entitlements",
+        "Apps/PeekabooInspector/**/*.plist",
+        "Apps/PeekabooInspector/Inspector.xcodeproj/project.pbxproj",
+        "Apps/PeekabooInspector/Package.swift",
+        "Core/PeekabooCore/**/*.swift",
+        "AXorcist/**/*.swift",
+        "Commander/**/*.swift",
+        "Tachikoma/**/*.swift",
+        "TauTUI/**/*.swift"
+      ],
+      "outputPath": "Apps/PeekabooInspector/Inspector/build/Debug/Inspector.app"
     }
   ],
   "watchman": {
