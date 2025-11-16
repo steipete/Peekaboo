@@ -32,8 +32,8 @@
     {
       "name": "Commander",
       "type": "test",
-      "enabled": false,
-      "testCommand": "./runner swift test --package-path Commander",
+      "enabled": true,
+      "testCommand": "swift test --package-path Commander",
       "watchPaths": [
         "Commander/**/*.swift",
         "Commander/Package.swift"
@@ -44,8 +44,8 @@
     {
       "name": "AXorcist",
       "type": "test",
-      "enabled": false,
-      "testCommand": "./runner swift test --package-path AXorcist",
+      "enabled": true,
+      "testCommand": "swift test --package-path AXorcist",
       "watchPaths": [
         "AXorcist/**/*.swift",
         "AXorcist/Package.swift"
@@ -56,8 +56,8 @@
     {
       "name": "Tachikoma",
       "type": "test",
-      "enabled": false,
-      "testCommand": "./runner swift test --package-path Tachikoma",
+      "enabled": true,
+      "testCommand": "swift test --package-path Tachikoma",
       "watchPaths": [
         "Tachikoma/**/*.swift",
         "Tachikoma/Package.swift"
@@ -68,8 +68,8 @@
     {
       "name": "TauTUI",
       "type": "test",
-      "enabled": false,
-      "testCommand": "./runner swift test --package-path TauTUI",
+      "enabled": true,
+      "testCommand": "swift test --package-path TauTUI",
       "watchPaths": [
         "TauTUI/**/*.swift",
         "TauTUI/Package.swift"
