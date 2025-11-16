@@ -824,7 +824,7 @@ extension MCPCommand {
         }
 
         private func emitUserFacingError(_ message: String) {
-            guard let data = "\(message)\n".data(using: .utf8) else { return }
+            let data = Data((message + "\n").utf8)
             self.stderrHandle.write(data)
         }
     }
