@@ -10,6 +10,58 @@ private enum MCPDefaults {
     static let serverName = "chrome-devtools"
 }
 
+enum ChromeDevToolsServerFactory {
+    static func tachikomaConfig(
+        timeout: TimeInterval = 15.0,
+        autoReconnect: Bool = true
+    ) -> TachikomaMCP.MCPServerConfig {
+        let details = self.resolveCommandDetails()
+        return TachikomaMCP.MCPServerConfig(
+            transport: details.transport,
+            command: details.command,
+            args: details.arguments,
+            env: [:],
+            enabled: true,
+            timeout: timeout,
+            autoReconnect: autoReconnect,
+            description: "Chrome DevTools automation"
+        )
+    }
+
+    private static func resolveCommandDetails() -> (transport: String, command: String, arguments: [String]) {
+        if let local = self.localBinaryPath() {
+            return ("stdio", local, ["--isolated"])
+        } else if self.hasExecutable(named: "pnpm") {
+            return ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
+        } else {
+            return ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
+        }
+    }
+
+    private static func hasExecutable(named name: String) -> Bool {
+        let paths = (ProcessInfo.processInfo.environment["PATH"] ?? "")
+            .split(separator: ":")
+            .map(String.init)
+        let fileManager = FileManager.default
+
+        for path in paths {
+            let candidate = URL(fileURLWithPath: path).appendingPathComponent(name).path
+            if fileManager.isExecutableFile(atPath: candidate) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static func localBinaryPath() -> String? {
+        let cwd = FileManager.default.currentDirectoryPath
+        let path = URL(fileURLWithPath: cwd)
+            .appendingPathComponent("node_modules/.bin/chrome-devtools-mcp")
+            .path
+        return FileManager.default.isExecutableFile(atPath: path) ? path : nil
+    }
+}
+
 // MARK: - Shared MCP client abstraction
 
 protocol MCPClientManaging: AnyObject {
@@ -222,16 +274,7 @@ extension MCPCommand {
         }
 
         private func registerDefaultServers() {
-            let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
-                transport: "stdio",
-                command: "npx",
-                args: ["-y", "chrome-devtools-mcp@latest"],
-                env: [:],
-                enabled: true,
-                timeout: 15.0,
-                autoReconnect: true,
-                description: "Chrome DevTools automation"
-            )
+            let defaultChromeDevTools = ChromeDevToolsServerFactory.tachikomaConfig(timeout: 15.0, autoReconnect: true)
 
             self.clientManager.registerDefaultServers([MCPDefaults.serverName: defaultChromeDevTools])
         }
@@ -485,16 +528,7 @@ extension MCPCommand {
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
             // Register Chrome DevTools MCP as a default server
-            let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
-                transport: "stdio",
-                command: "npx",
-                args: ["-y", "chrome-devtools-mcp@latest"],
-                env: [:],
-                enabled: true,
-                timeout: 15.0,
-                autoReconnect: true,
-                description: "Chrome DevTools automation"
-            )
+            let defaultChromeDevTools = ChromeDevToolsServerFactory.tachikomaConfig(timeout: 15.0, autoReconnect: true)
             TachikomaMCPClientManager.shared.registerDefaultServers(
                 [MCPDefaults.serverName: defaultChromeDevTools])
 
@@ -802,16 +836,7 @@ extension MCPCommand {
             )
 
             // Register Chrome DevTools MCP as a default server
-            let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
-                transport: "stdio",
-                command: "npx",
-                args: ["-y", "chrome-devtools-mcp@latest"],
-                env: [:],
-                enabled: true,
-                timeout: 15.0,
-                autoReconnect: true,
-                description: "Chrome DevTools automation"
-            )
+            let defaultChromeDevTools = ChromeDevToolsServerFactory.tachikomaConfig(timeout: 15.0, autoReconnect: true)
             TachikomaMCPClientManager.shared.registerDefaultServers(
                 [MCPDefaults.serverName: defaultChromeDevTools])
 

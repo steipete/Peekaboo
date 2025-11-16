@@ -18,3 +18,18 @@ importers:
       oracle:
         specifier: link:../oracle
         version: link:../oracle
+    devDependencies:
+      chrome-devtools-mcp:
+        specifier: 0.10.1
+        version: 0.10.1
+
+packages:
+
+  chrome-devtools-mcp@0.10.1:
+    resolution: {integrity: sha512-jyDAbaf2zyl4HVa8vfRqwkCCqT+QpuiRgrEQ6iodqOb5BaqATQb9zZARqYGIDNlwEpmAhKvhkQ0w+0R9dvCc2A==}
+    engines: {node: ^20.19.0 || ^22.12.0 || >=23}
+    hasBin: true
+
+snapshots:
+
+  chrome-devtools-mcp@0.10.1: {}

@@ -53,5 +53,8 @@
   "dependencies": {
     "@steipete/oracle": "link:../oracle",
     "oracle": "link:../oracle"
+  },
+  "devDependencies": {
+    "chrome-devtools-mcp": "0.10.1"
   }
 }

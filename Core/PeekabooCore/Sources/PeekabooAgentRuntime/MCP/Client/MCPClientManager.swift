@@ -295,15 +295,7 @@ public final class MCPClientManager {
     public func initializeDefaultServers(userConfigs: [String: MCPServerConfig]) async {
         self.logger.info("Initializing default MCP servers...")
 
-        let defaultBrowserConfig = MCPServerConfig(
-            transport: "stdio",
-            command: "npx",
-            args: ["-y", "chrome-devtools-mcp@latest"],
-            env: [:],
-            enabled: true,
-            timeout: 15.0,
-            autoReconnect: true,
-            description: "Chrome DevTools automation")
+        let defaultBrowserConfig = Self.defaultChromeDevToolsConfig(timeout: 15.0, autoReconnect: true)
 
         let actualUserConfigs = userConfigs.isEmpty ?
             (ConfigurationManager.shared.getConfiguration()?.mcpClients ?? [:]) : userConfigs
@@ -663,5 +655,106 @@ extension MCPClientManager {
     @MainActor
     public static func _setAutoConnectOverrideForTesting(_ value: Bool?) {
         MCPAutoConnectPolicy.setOverride(value)
+    }
+
+    public static func defaultChromeDevToolsConfig(
+        timeout: TimeInterval = 15.0,
+        autoReconnect: Bool = true,
+        enabled: Bool = true
+    ) -> MCPServerConfig {
+        let details = self.chromeCommandDetails()
+        return MCPServerConfig(
+            transport: details.transport,
+            command: details.command,
+            args: details.arguments,
+            env: [:],
+            enabled: enabled,
+            timeout: timeout,
+            autoReconnect: autoReconnect,
+            description: "Chrome DevTools automation"
+        )
+    }
+
+    private static func chromeCommandDetails() -> (transport: String, command: String, arguments: [String]) {
+        if let local = self.localBinaryPath() {
+            return ("stdio", local, ["--isolated"])
+        } else if self.hasExecutable(named: "pnpm") {
+            return ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
+        } else {
+            return ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
+        }
+    }
+
+    private static func hasExecutable(named name: String) -> Bool {
+        let searchPaths = (ProcessInfo.processInfo.environment["PATH"] ?? "")
+            .split(separator: ":")
+            .map(String.init)
+        let fileManager = FileManager.default
+        for path in searchPaths {
+            let candidate = URL(fileURLWithPath: path).appendingPathComponent(name).path
+            if fileManager.isExecutableFile(atPath: candidate) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static func localBinaryPath() -> String? {
+        let cwd = FileManager.default.currentDirectoryPath
+        let path = URL(fileURLWithPath: cwd)
+            .appendingPathComponent("node_modules/.bin/chrome-devtools-mcp")
+            .path
+        return FileManager.default.isExecutableFile(atPath: path) ? path : nil
+    }
+}
+
+public enum ChromeDevToolsMCPConfig {
+    public static func make(
+        timeout: TimeInterval = 15.0,
+        autoReconnect: Bool = true,
+        enabled: Bool = true
+    ) -> MCPServerConfig {
+        let details = Self.commandDetails()
+        return MCPServerConfig(
+            transport: details.transport,
+            command: details.command,
+            args: details.arguments,
+            env: [:],
+            enabled: enabled,
+            timeout: timeout,
+            autoReconnect: autoReconnect,
+            description: "Chrome DevTools automation"
+        )
+    }
+
+    private static func commandDetails() -> (transport: String, command: String, arguments: [String]) {
+        if let local = Self.localBinaryPath() {
+            return ("stdio", local, ["--isolated"])
+        } else if Self.hasExecutable(named: "pnpm") {
+            return ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
+        } else {
+            return ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
+        }
+    }
+
+    private static func hasExecutable(named name: String) -> Bool {
+        let process = Process()
+        process.launchPath = "/usr/bin/which"
+        process.arguments = [name]
+        do {
+            try process.run()
+            process.waitUntilExit()
+            return process.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+
+    private static func localBinaryPath() -> String? {
+        let cwd = FileManager.default.currentDirectoryPath
+        let path = URL(fileURLWithPath: cwd)
+            .appendingPathComponent("node_modules/.bin/chrome-devtools-mcp")
+            .path
+        return FileManager.default.isExecutableFile(atPath: path) ? path : nil
     }
 }

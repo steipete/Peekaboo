@@ -394,16 +394,7 @@ extension AgentCommand {
 
     private static func initializeMCP() async {
         if ProcessInfo.processInfo.environment["PEEKABOO_ENABLE_BROWSER_MCP"] == "1" {
-            let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
-                transport: "stdio",
-                command: "npx",
-                args: ["-y", "chrome-devtools-mcp@latest"],
-                env: [:],
-                enabled: true,
-                timeout: 60.0,
-                autoReconnect: true,
-                description: "Chrome DevTools automation"
-            )
+            let defaultChromeDevTools = ChromeDevToolsServerFactory.tachikomaConfig(timeout: 60.0, autoReconnect: true)
             TachikomaMCPClientManager.shared.registerDefaultServers(
                 [defaultMCPServerName: defaultChromeDevTools])
         }
@@ -833,9 +824,11 @@ extension AgentCommand {
             )
             self.displayResult(result, delegate: delegate)
             let duration = String(format: "%.2f", result.metadata.executionTime)
+            let sessionId = result.sessionId ?? "none"
+            let finalTokens = result.usage?.totalTokens ?? 0
             AutomationEventLogger.log(
                 .agent,
-                "task='\(task)' model=\(result.metadata.modelName) duration=\(duration)s tools=\(result.metadata.toolCallCount) dry_run=\(self.dryRun) session=\(result.sessionId ?? "none")"
+                "result success=\(result.success) task='\(task)' model=\(result.metadata.modelName) duration=\(duration)s tools=\(result.metadata.toolCallCount) dry_run=\(self.dryRun) session=\(sessionId) tokens=\(finalTokens)"
             )
             return result
         } catch {
