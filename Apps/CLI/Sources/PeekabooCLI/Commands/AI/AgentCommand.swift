@@ -377,7 +377,7 @@ extension AgentCommand {
             LoggingSystem.bootstrap { label in
                 var handler = StreamLogHandler.standardOutput(label: label)
                 if label.hasPrefix("tachikoma.mcp") {
-                    handler.logLevel = .warning
+                    handler.logLevel = .critical // hide MCP init chatter unless --verbose
                 } else {
                     handler.logLevel = .info
                 }
