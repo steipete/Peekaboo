@@ -10,7 +10,27 @@ enum MenuError: Error {
     case menuItemNotFound(String)
     case submenuNotFound(String)
     case menuExtraNotFound
+    case menuItemDisabled(String)
     case menuOperationFailed(String)
+}
+
+extension MenuError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .menuBarNotFound:
+            "Menu bar not found"
+        case let .menuItemNotFound(path):
+            "Menu item not found: \(path)"
+        case let .submenuNotFound(path):
+            "Submenu not found: \(path)"
+        case .menuExtraNotFound:
+            "Menu extra not found"
+        case let .menuItemDisabled(path):
+            "Menu item is disabled: \(path)"
+        case let .menuOperationFailed(reason):
+            "Menu operation failed: \(reason)"
+        }
+    }
 }
 
 /// Interact with application menu bar items and system menu extras
@@ -124,13 +144,18 @@ extension MenuCommand {
                     logger: self.logger
                 )
 
+                let canonicalPath: String? = normalizedPath.map(Self.canonicalizeMenuPath)
+                if let canonicalPath {
+                    try await self.ensureMenuItemEnabled(appIdentifier: appIdentifier, menuPath: canonicalPath)
+                }
+
                 if let itemName = normalizedItem {
                     try await MenuServiceBridge.clickMenuItemByName(
                         menu: self.services.menu,
                         appIdentifier: appIdentifier,
                         itemName: itemName
                     )
-                } else if let path = normalizedPath {
+                } else if let path = canonicalPath {
                     try await MenuServiceBridge.clickMenuItem(
                         menu: self.services.menu,
                         appIdentifier: appIdentifier,
@@ -139,7 +164,7 @@ extension MenuCommand {
                 }
 
                 let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
-                let clickedPath = normalizedPath ?? normalizedItem!
+                let clickedPath = canonicalPath ?? normalizedItem!
 
                 if self.jsonOutput {
                     let data = MenuClickResult(
@@ -176,6 +201,8 @@ extension MenuCommand {
                     .MENU_ITEM_NOT_FOUND
                 case .menuExtraNotFound:
                     .MENU_ITEM_NOT_FOUND
+                case .menuItemDisabled:
+                    .INTERACTION_FAILED
                 case .menuOperationFailed:
                     .INTERACTION_FAILED
                 }
@@ -294,6 +321,8 @@ extension MenuCommand {
                     .MENU_ITEM_NOT_FOUND
                 case .menuExtraNotFound:
                     .MENU_ITEM_NOT_FOUND
+                case .menuItemDisabled:
+                    .INTERACTION_FAILED
                 case .menuOperationFailed:
                     .INTERACTION_FAILED
                 }
@@ -516,6 +545,8 @@ extension MenuCommand {
                     .MENU_ITEM_NOT_FOUND
                 case .menuExtraNotFound:
                     .MENU_ITEM_NOT_FOUND
+                case .menuItemDisabled:
+                    .INTERACTION_FAILED
                 case .menuOperationFailed:
                     .INTERACTION_FAILED
                 }
@@ -759,6 +790,8 @@ extension MenuCommand {
                     .MENU_ITEM_NOT_FOUND
                 case .menuExtraNotFound:
                     .MENU_ITEM_NOT_FOUND
+                case .menuItemDisabled:
+                    .INTERACTION_FAILED
                 case .menuOperationFailed:
                     .INTERACTION_FAILED
                 }
@@ -812,6 +845,63 @@ private func ensureFocusIgnoringMissingWindows(
             logger.debug("Skipping focus: window lookup failed for '\(applicationName)': \(focusError)")
         default:
             throw focusError
+        }
+    }
+}
+
+@MainActor
+private func findMenuItem(
+    canonicalPath: String,
+    in menus: [Menu]
+) -> MenuItem? {
+    for menu in menus {
+        let menuBase = MenuCommand.ClickSubcommand.canonicalizeMenuPath(menu.title)
+        if menuBase == canonicalPath {
+            return nil // top-level menu is not a clickable item
+        }
+        if let item = findMenuItem(in: menu.items, canonicalPath: canonicalPath) {
+            return item
+        }
+    }
+    return nil
+}
+
+private func findMenuItem(
+    in items: [MenuItem],
+    canonicalPath: String
+) -> MenuItem? {
+    for item in items {
+        if MenuCommand.ClickSubcommand.canonicalizeMenuPath(item.path) == canonicalPath {
+            return item
+        }
+        if let nested = findMenuItem(in: item.submenu, canonicalPath: canonicalPath) {
+            return nested
+        }
+    }
+    return nil
+}
+
+@MainActor
+extension MenuCommand.ClickSubcommand {
+    fileprivate static func canonicalizeMenuPath(_ rawPath: String) -> String {
+        rawPath
+            .split(separator: ">")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " > ")
+    }
+
+    fileprivate func ensureMenuItemEnabled(appIdentifier: String, menuPath: String) async throws {
+        let structure = try await MenuServiceBridge.listMenus(
+            menu: self.services.menu,
+            appIdentifier: appIdentifier
+        )
+        let canonical = menuPath
+        guard let item = findMenuItem(canonicalPath: canonical, in: structure.menus) else {
+            throw MenuError.menuItemNotFound(canonical)
+        }
+        guard item.isEnabled else {
+            throw MenuError.menuItemDisabled(canonical)
         }
     }
 }
