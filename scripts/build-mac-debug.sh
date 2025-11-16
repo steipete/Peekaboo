@@ -26,6 +26,23 @@ pipe_build_output() {
     fi
 }
 
+# Emit progress markers that Poltergeist can parse while passing through original output.
+progress_filter() {
+    local current=0
+    local total=0
+    while IFS= read -r line; do
+        # Count compile steps; keep total as a running maximum for a best-effort denominator.
+        if [[ "$line" =~ ^Compile ]]; then
+            current=$((current + 1))
+            if (( total < current )); then
+                total=$current
+            fi
+            printf '[%d/%d] %s\n' "$current" "$total" "$line"
+        fi
+        printf '%s\n' "$line"
+    done
+}
+
 # Build configuration (overridable for other schemes)
 WORKSPACE="${WORKSPACE:-$PROJECT_ROOT/Apps/Peekaboo.xcworkspace}"
 SCHEME="${SCHEME:-Peekaboo}"
@@ -54,7 +71,7 @@ xcodebuild \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGN_ENTITLEMENTS="" \
     CODE_SIGNING_ALLOWED=NO \
-    2>&1 | pipe_build_output
+    2>&1 | progress_filter | pipe_build_output
 
 BUILD_EXIT_CODE=${PIPESTATUS[0]}
 
