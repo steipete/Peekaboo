@@ -105,6 +105,7 @@ while [[ $# -gt 0 ]]; do
             echo "  Gesture   - Swipes, pinches, rotations"
             echo "  Control   - Sliders, pickers, other controls"
             echo "  App       - Application events"
+            echo "  MCP       - MCP tool invocations"
             echo ""
             echo "Examples:"
             echo "  playground-log.sh                           # Show last 50 lines from past 5 minutes"
@@ -139,6 +140,7 @@ if [[ "$SHOW_ALL_CATEGORIES" == true ]]; then
     echo -e "${RED}Gesture${NC}   - Swipes, pinches, rotations"
     echo -e "${GREEN}Control${NC}   - Sliders, pickers, other controls"
     echo -e "${PURPLE}App${NC}       - Application events"
+    echo -e "${CYAN}MCP${NC}       - MCP tool invocations"
     exit 0
 fi
 
@@ -204,6 +206,10 @@ format_output() {
                 echo -e "${RED}$line${NC}"
             elif [[ $line =~ \[Control\] ]]; then
                 echo -e "${GREEN}$line${NC}"
+            elif [[ $line =~ \[App\] ]]; then
+                echo -e "${PURPLE}$line${NC}"
+            elif [[ $line =~ \[MCP\] ]]; then
+                echo -e "${CYAN}$line${NC}"
             else
                 echo "$line"
             fi
