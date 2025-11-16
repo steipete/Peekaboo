@@ -104,7 +104,7 @@
       "type": "app-bundle",
       "platform": "macos",
       "enabled": true,
-      "buildCommand": "cd Apps/PeekabooInspector && CONFIGURATION_BUILD_DIR=./Inspector/build/Debug xcodebuild -scheme Inspector -configuration Debug -project Inspector.xcodeproj build",
+      "buildCommand": "cd Apps/PeekabooInspector && xcodebuild -scheme Inspector -configuration Debug -project Inspector.xcodeproj -sdk macosx CODE_SIGN_IDENTITY=\"\" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO CONFIGURATION_BUILD_DIR=./Inspector/build/Debug build",
       "bundleId": "boo.peekaboo.inspector",
       "autoRelaunch": true,
       "settlingDelay": 4000,
