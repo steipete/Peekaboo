@@ -14,14 +14,13 @@ on:
 jobs:
   macos-host:
     runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: Commander
     steps:
       - uses: actions/checkout@v4
       - name: Swift version
+        working-directory: Commander
         run: swift --version
       - name: Test (macOS)
+        working-directory: Commander
         run: swift test
 
   apple-simulators:
@@ -59,15 +58,13 @@ jobs:
   linux:
     runs-on: ubuntu-24.04
     needs: macos-host
-    defaults:
-      run:
-        working-directory: Commander
     steps:
       - uses: actions/checkout@v4
       - uses: SwiftyLab/setup-swift@v1
         with:
           swift-version: '6.2'
       - name: Test (Linux)
+        working-directory: Commander
         run: swift test
 
   android:
