@@ -1,5 +1,6 @@
 import AppKit
 import OSLog
+import PeekabooFoundation
 import SwiftUI
 
 private let logger = Logger(subsystem: "boo.peekaboo.playground", category: "App")
@@ -38,7 +39,7 @@ struct PlaygroundApp: App {
         let screenY = screenHeight - (windowFrame.origin.y + locationInWindow.y)
         let screenLocation = NSPoint(x: screenX, y: screenY)
 
-        let clickType = event.type == .leftMouseDown ? "Left" : "Right"
+        let clickType: ClickType = event.type == .leftMouseDown ? .single : .right
         let descriptor = self.elementDescriptor(for: window, at: locationInWindow)
 
         let logMessage = self.formatClickLogMessage(
@@ -46,7 +47,7 @@ struct PlaygroundApp: App {
             descriptor: descriptor,
             windowLocation: locationInWindow,
             screenLocation: screenLocation)
-        clickLogger.info(logMessage)
+        clickLogger.info("\(logMessage, privacy: .public)")
 
         // Don't duplicate log in ActionLogger - let the button handlers do their specific logging
         // This is just for system-level logging
@@ -59,7 +60,7 @@ struct PlaygroundApp: App {
             let (eventTypeStr, keyInfo) = self.describeKeyEvent(event)
 
             let logMessage = "\(eventTypeStr): \(keyInfo) (keyCode: \(event.keyCode))"
-            keyLogger.info(logMessage)
+            keyLogger.info("\(logMessage, privacy: .public)")
 
             // Also log to ActionLogger for UI display (only for keyDown events)
             if event.type == .keyDown {
@@ -172,7 +173,8 @@ struct PlaygroundApp: App {
             return accessibilityLabel
         }
 
-        if let accessibilityId = hitView.accessibilityIdentifier(), !accessibilityId.isEmpty {
+        let accessibilityId = hitView.accessibilityIdentifier()
+        if !accessibilityId.isEmpty {
             let cleaned = accessibilityId
                 .replacingOccurrences(of: "-button", with: "")
                 .replacingOccurrences(of: "-", with: " ")
