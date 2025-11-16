@@ -314,7 +314,10 @@ extension AgentCommand {
 
         let shouldSuppressMCPLogs = !self.verbose && !self.debugTerminal
         self.configureLogging(suppressingMCPLogs: shouldSuppressMCPLogs)
-        await self.initializeMCP()
+        // Warm up MCP servers off the main actor so chat can start immediately.
+        Task.detached(priority: .utility) {
+            await Self.initializeMCP()
+        }
 
         guard let peekabooAgent = agentService as? PeekabooAgentService else {
             throw PeekabooError.commandFailed("Agent service not properly initialized")
@@ -385,7 +388,7 @@ extension AgentCommand {
         }
     }
 
-    private func initializeMCP() async {
+    private static func initializeMCP() async {
         if ProcessInfo.processInfo.environment["PEEKABOO_ENABLE_BROWSER_MCP"] == "1" {
             let defaultBrowser = TachikomaMCP.MCPServerConfig(
                 transport: "stdio",
