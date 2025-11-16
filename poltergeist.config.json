@@ -100,7 +100,7 @@
       ]
     },
     {
-      "name": "Playground",
+      "name": "Playground.app",
       "type": "app-bundle",
       "platform": "macos",
       "enabled": true,
@@ -127,7 +127,7 @@
       ]
     },
     {
-      "name": "Inspector",
+      "name": "Inspector.app",
       "type": "executable",
       "enabled": true,
       "buildCommand": "cd Apps/PeekabooInspector && swift build",
