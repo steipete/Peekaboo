@@ -259,7 +259,7 @@ struct TypeCommandTests {
 
     @MainActor
     private func makeContext(
-        configure: ((StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: ((StubAutomationService, StubSessionManager) -> ())? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()

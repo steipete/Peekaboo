@@ -233,7 +233,7 @@ protocol OutputFormattable {
 
 extension OutputFormattable {
     /// Output data in appropriate format
-    func output(_ data: some Codable, humanReadable: () -> Void) {
+    func output(_ data: some Codable, humanReadable: () -> ()) {
         // Output data in appropriate format
         if jsonOutput {
             outputSuccessCodable(data: data, logger: self.outputLogger)
@@ -423,17 +423,17 @@ struct CursorMovementParameters {
     let profileName: String
 }
 
-    enum CursorMovementResolver {
-        // swiftlint:disable:next function_parameter_count
-        static func resolve(
-            selection: CursorMovementProfileSelection,
-            durationOverride: Int?,
-            stepsOverride: Int?,
-            baseSmooth: Bool,
-            distance: CGFloat,
-            defaultDuration: Int,
-            defaultSteps: Int
-        ) -> CursorMovementParameters {
+enum CursorMovementResolver {
+    // swiftlint:disable:next function_parameter_count
+    static func resolve(
+        selection: CursorMovementProfileSelection,
+        durationOverride: Int?,
+        stepsOverride: Int?,
+        baseSmooth: Bool,
+        distance: CGFloat,
+        defaultDuration: Int,
+        defaultSteps: Int
+    ) -> CursorMovementParameters {
         switch selection {
         case .linear:
             let resolvedDuration = durationOverride ?? (baseSmooth ? defaultDuration : 0)

@@ -9,6 +9,7 @@ import Spinner
 import Tachikoma
 import TachikomaMCP
 import TauTUI
+
 // swiftlint:disable file_length
 
 // Temporary session info struct until PeekabooAgentService implements session management
@@ -207,10 +208,10 @@ private final class TerminalModeGuard {
 private final class EscapeKeyMonitor {
     private var source: (any DispatchSourceRead)?
     private var terminalGuard: TerminalModeGuard?
-    private let handler: @Sendable () async -> Void
+    private let handler: @Sendable () async -> ()
     private let queue = DispatchQueue(label: "peekaboo.escape.monitor")
 
-    init(handler: @escaping @Sendable () async -> Void) {
+    init(handler: @escaping @Sendable () async -> ()) {
         self.handler = handler
     }
 
@@ -1464,10 +1465,10 @@ extension AgentCommand {
 private final class AgentChatInput: Component {
     private let editor = Editor()
 
-    var onSubmit: ((String) -> Void)?
-    var onCancel: (() -> Void)?
-    var onInterrupt: (() -> Void)?
-    var onQueueWhileLocked: (() -> Void)?
+    var onSubmit: ((String) -> ())?
+    var onCancel: (() -> ())?
+    var onInterrupt: (() -> ())?
+    var onQueueWhileLocked: (() -> ())?
 
     var isLocked: Bool = false {
         didSet {
@@ -1526,8 +1527,8 @@ private final class AgentChatInput: Component {
 
 @MainActor
 private final class AgentChatUI {
-    var onCancelRequested: (() -> Void)?
-    var onInterruptRequested: (() -> Void)?
+    var onCancelRequested: (() -> ())?
+    var onInterruptRequested: (() -> ())?
 
     private let tui: TUI
     private let messages = Container()

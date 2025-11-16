@@ -122,7 +122,7 @@ struct ScrollCommandTests {
     }
 
     private func makeContext(
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSessionManager) -> ())? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()

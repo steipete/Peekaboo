@@ -265,7 +265,7 @@ struct TypeAnimationView: View {
             return wordsPerMinute
         case let .fixed(milliseconds):
             let delay = max(milliseconds, 1)
-            let charsPerMinute = 60_000 / delay
+            let charsPerMinute = 60000 / delay
             return max(0, charsPerMinute / 5)
         }
     }

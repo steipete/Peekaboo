@@ -277,7 +277,7 @@ struct DragCommandTests {
 extension DragCommandTests {
     fileprivate func runDragCommand(
         _ args: [String],
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSessionManager) -> ())? = nil
     ) async throws -> CommandRunResult {
         let (result, _) = try await self.runDragCommandWithContext(args, configure: configure)
         return result
@@ -287,7 +287,7 @@ extension DragCommandTests {
         _ args: [String],
         applications: (any ApplicationServiceProtocol)? = nil,
         windows: (any WindowManagementServiceProtocol)? = nil,
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSessionManager) -> ())? = nil
     ) async throws -> (CommandRunResult, TestServicesFactory.AutomationTestContext) {
         let context = await self.makeAutomationContext(applications: applications, windows: windows)
         if let configure {
