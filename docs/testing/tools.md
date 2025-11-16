@@ -71,20 +71,20 @@ read_when:
 ### Windows, Menus, Apps
 | Tool | Playground validation target | Log category | Sample CLI | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
-| `window` | WindowTestingView controls + extra Playground windows | `Window` | `polter peekaboo -- window focus --app Playground` | In progress – instrumentation active (TextEdit run 2025-11-16) | `.artifacts/playground-tools/20251116-073620-window.log` |
-| `space` | macOS Spaces while Playground anchored on Space 1 | `Window` (verify frontmost window) | `polter peekaboo -- space list --detailed` | In progress – commands work, no Space log | `.artifacts/playground-tools/20251116-053816-space.log` |
-| `menu` | Playground “Test Menu” + context menus | `Menu` | `polter peekaboo -- menu click --path "Test Menu>Test Action 1" --app Playground` | In progress – disabled items incorrectly report success | `.artifacts/playground-tools/20251116-051547-menu.log` |
+| `window` | WindowTestingView controls + extra Playground windows | `Window` | `polter peekaboo -- window focus --app Playground` | Verified – Playground list/move/resize/set-bounds captured 2025-11-16 | `.artifacts/playground-tools/20251116-194900-window.log` |
+| `space` | macOS Spaces while Playground anchored on Space 1 | `Space` | `polter peekaboo -- space list --detailed` | Verified – list/switch/move now emit `[Space]` logs (instr. added 2025-11-16) | `.artifacts/playground-tools/20251116-205548-space.log` |
+| `menu` | Playground “Test Menu” + context menus | `Menu` | `polter peekaboo -- menu click --path "Test Menu>Test Action 1" --app Playground` | Verified – menu click + disabled error cases logged 2025-11-16 | `.artifacts/playground-tools/20251116-195020-menu.log` |
 | `menubar` | macOS menu extras (Wi-Fi, Clock) plus Playground status icons | `Menu` (system) | `polter peekaboo -- menubar list --json-output` | Verified – list + click captured; logs via Control Center predicate | `.artifacts/playground-tools/20251116-053932-menubar.log` |
-| `app` | Launch/quit/focus Playground + helper apps (TextEdit) | `App` + `Focus` | `polter peekaboo -- app list --include-hidden --json-output` | In progress – instrumentation now logs actions (2025-11-16) | `.artifacts/playground-tools/20251116-071820-app.log` |
-| `open` | Open Playground fixtures/documents | `App`/`Focus` | `polter peekaboo -- open Apps/Playground/README.md --app TextEdit --json-output` | In progress – Open logger emits entries; need more target coverage | `.artifacts/playground-tools/20251116-071740-open.log` |
-| `dock` | Dock item interactions w/ Playground icon | `App` + `Window` | `polter peekaboo -- dock list --json-output` | In progress – Dock commands now log hide/show/list/launch | `.artifacts/playground-tools/20251116-071700-dock.log` |
+| `app` | Launch/quit/focus Playground + helper apps (TextEdit) | `App` + `Focus` | `polter peekaboo -- app list --include-hidden --json-output` | Verified – Playground app list/switch/hide/launch captured 2025-11-16 | `.artifacts/playground-tools/20251116-195420-app.log` |
+| `open` | Open Playground fixtures/documents | `App`/`Focus` | `polter peekaboo -- open Apps/Playground/README.md --app TextEdit --json-output` | Verified – TextEdit + browser + no-focus covered 2025-11-16 | `.artifacts/playground-tools/20251116-200220-open.log` |
+| `dock` | Dock item interactions w/ Playground icon | `App` + `Window` | `polter peekaboo -- dock list --json-output` | Verified – right-click + menu selection now captured with `[Dock]` logs | `.artifacts/playground-tools/20251116-205850-dock.log` |
 | `dialog` | System dialog triggered from Playground (e.g., File > Open) | `Menu` + `Dialog` logs | `polter peekaboo -- dialog list --app TextEdit` | Verified – spawn Save sheet to test | `.artifacts/playground-tools/20251116-054316-dialog.log` |
 
 ### Automation & Integrations
 | Tool | Playground coverage | Log category | Sample CLI | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
-| `agent` | Run natural-language tasks scoped to Playground (“click the single button”) | Captures whichever sub-tools fire (`Click`, `Text`, etc.) | `polter peekaboo -- agent "Say hi" --max-steps 1` | In progress – agent runs, no Agent log yet | `.artifacts/playground-tools/20251116-054356-agent-list.json` |
-| `mcp` | Ensure Playground-focused MCP servers still enumerate & test (esp. Tachikoma) | N/A | `polter peekaboo -- mcp list --json-output` | In progress – list works, `mcp call` crashes Commander | `.artifacts/playground-tools/20251116-055255-mcp-list.json` |
+| `agent` | Run natural-language tasks scoped to Playground (“click the single button”) | Captures whichever sub-tools fire (`Click`, `Text`, etc.) | `polter peekaboo -- agent "Say hi" --max-steps 1` | Verified – agent list + tasks logged 2025-11-16 | `.artifacts/playground-tools/20251116-200900-agent.log` |
+| `mcp` | Ensure Playground-focused MCP servers still enumerate & test (esp. Tachikoma) | `MCP` | `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}'` | Verified – chrome-devtools list/navigate/eval captured with `[MCP]` logs (2025-11-16) | `.artifacts/playground-tools/20251116-210340-mcp.log` |
 
 > **Status Legend:** `Not started` = no logs yet, `In progress` = partial run logged, `Blocked` = awaiting fix, `Verified` = passing with log path recorded.
 
@@ -233,10 +233,10 @@ The following subsections spell out the concrete steps, required Playground surf
 - **Test cases**:
   1. `polter peekaboo -- scroll --direction down --amount 6 --session <id>` for vertical movement.
   2. `polter peekaboo -- scroll --direction right --amount 4 --smooth --session <id>` for horizontal smooth scrolling.
-  3. Negative path: `--on vertical-scroll` still fails until ScrollTestingView exposes those identifiers in `see`.
+  3. `polter peekaboo -- scroll --direction down --amount 6 --on vertical-scroll --session <id>` and `... --direction right --amount 4 --on horizontal-scroll --session <id>` to prove the new identifiers work end-to-end.
 - **2025-11-16 verification**:
-  - Captured session `.artifacts/playground-tools/20251116-085714-see-scrolltab.{json,png}` (session `DBFDD053-4513-4603-B7C3-9170E7386BA7`), then ran the down/right commands above. `playground-log.sh -c Scroll` recorded both CLI automation entries in `.artifacts/playground-tools/20251116-085815-scroll.log` (showing the `[boo.peekaboo.playground:Scroll]` lines).
-  - `polter peekaboo -- scroll --session DBFDD053-… --direction down --amount 2 --on vertical-scroll` still raises `Element not found: vertical-scroll`, confirming ScrollTestingView doesn’t surface those identifiers in `see` yet. Leave this as a known follow-up.
+  - Captured session `.artifacts/playground-tools/20251116-194615-see-scrolltab.json` (session `649EB632-ED4B-4935-9F1F-1866BB763804`) and re-ran both `scroll` commands with `--on vertical-scroll` and `--on horizontal-scroll`. The CLI outputs live at `.artifacts/playground-tools/20251116-194652-scroll-vertical.json` and `.artifacts/playground-tools/20251116-194708-scroll-horizontal.json` (both ✅ now that the Playground view exposes identifiers and the ScrollService session cache preserves them).
+  - Added `.artifacts/playground-tools/20251116-194730-scroll.log` via `./Apps/Playground/scripts/playground-log.sh -c Scroll --last 10m --all -o …`; it shows the `[Scroll] direction=down` and `[Scroll] direction=right` events emitted by AutomationEventLogger.
 
 #### `swipe`
 - **View**: Gesture Testing area.
@@ -284,22 +284,19 @@ The following subsections spell out the concrete steps, required Playground surf
   4. `polter peekaboo -- window set-bounds --app Playground --x 200 --y 200 --width 1100 --height 700`.
   5. `polter peekaboo -- window list --app Playground --json-output`.
 - **2025-11-16 verification**:
-  - Commands run with Playground as the target; artifacts include `.artifacts/playground-tools/20251116-141723-window-list-playground.json`.
-  - Window log `.artifacts/playground-tools/20251116-141610-window.log` shows `[Window] focus`, `move`, `resize`, and `set-bounds` entries with bounds metadata, confirming instrumentation.
+  - Commands rerun with Playground as the target: `.artifacts/playground-tools/20251116-194858-window-list-playground.json`, `...-window-move-playground.json`, `...-window-resize-playground.json`, `...-window-setbounds-playground.json`, and `...-window-focus-playground.json` capture each CLI invocation.
+  - Window log `.artifacts/playground-tools/20251116-194900-window.log` shows `[Window] focus`, `move`, `resize`, and `set_bounds` entries with updated bounds, confirming instrumentation now covers the Playground window itself.
 
 #### `space`
 - **Scenario**: Single Space (current setup). Need additional Space to test multi-space behavior.
 - **Test cases**:
   1. `polter peekaboo -- space list --detailed --json-output`.
   2. `polter peekaboo -- space switch --to 1` (happy path) and expect error for `--to 2` when only one Space exists.
-  3. `polter peekaboo -- space move-window --app Playground --to 1 --follow`.
+  3. `polter peekaboo -- space move-window --app Playground --window-index 0 --to 1 --follow`.
 - **2025-11-16 run**:
-  - Commands above executed again with fresh artifacts:
-    - `.artifacts/playground-tools/20251116-091557-space-list.json` (`space list --detailed`)
-    - `.artifacts/playground-tools/20251116-091602-space-switch-2.json` (expected `VALIDATION_ERROR` when targeting Space 2)
-    - `space move-window --app Playground --to 1 --follow` (no-op but validates command flow)
-  - Environment still exposes only one space (IDs 1-1). CLI error message remains descriptive when requesting Space 2.
-  - `playground-log.sh -c Space` still produces an empty file (`.artifacts/playground-tools/20251116-091632-space.log`)—there’s no dedicated `Space` logger yet, which is worth tracking for future instrumentation.
+  - Latest artifacts: `.artifacts/playground-tools/20251116-205527-space-list.json`, `...205532-space-list-detailed.json`, `...205536-space-switch-1.json`, `...205541-space-move-window.json`, plus `...195602-space-switch-2.json` for the expected validation error.
+  - AutomationEventLogger now emits `[Space]` entries (list count + actions) captured via `.artifacts/playground-tools/20251116-205548-space.log`.
+  - Still only one desktop (Space IDs 1-1), so the `--to 2` path continues to produce `VALIDATION_ERROR (Available: 1-1)` as designed.
 
 #### `menu`
 - **View**: Playground’s “Test Menu” items (standard menu bar). Context menus on the `right-click-area` still require `click` rather than `menu` because `menu click` doesn’t accept coordinate targets yet.
@@ -308,9 +305,8 @@ The following subsections spell out the concrete steps, required Playground surf
   2. `polter peekaboo -- menu click --app Playground --path "Test Menu>Submenu>Nested Action A"`.
   3. Disabled menu handling: `polter peekaboo -- menu click --app Playground --path "Test Menu>Disabled Action"` should fail with a descriptive error.
 - **2025-11-16 verification**:
-  - Listed the menu tree via `polter peekaboo -- menu list --app Playground --json-output > .artifacts/playground-tools/20251116-090600-menu-playground.json` (shows Test Menu entries + Submenu).
-  - Commands above succeeded and logged `[Menu] Test Action 1 clicked` / `Submenu > Nested Action A clicked` in `.artifacts/playground-tools/20251116-090512-menu.log`.
-  - Disabled item command now emits `Menu item is disabled: Test Menu > Disabled Action` with code `INTERACTION_FAILED` (see `.artifacts/playground-tools/20251116-090509-menu-click-disabled.json`).
+  - Re-ran the command set; artifacts include `.artifacts/playground-tools/20251116-195020-menu-click-action.json`, `...195024-menu-click-submenu.json`, and `...195022-menu-click-disabled.json` (the last exits with `INTERACTION_FAILED` and message `Menu item is disabled: ...`).
+  - Playground Menu log `.artifacts/playground-tools/20251116-195020-menu.log` now shows each click (`Test Action 1`, `Submenu > Nested Action A`, and the disabled error), proving `AutomationEventLogger` coverage.
   - Context menu coverage remains TBD; `menu click` currently targets menu-bar entries only.
 
 #### `menubar`
@@ -328,25 +324,25 @@ The following subsections spell out the concrete steps, required Playground surf
   3. `polter peekaboo -- app hide --app Playground` / `polter peekaboo -- app unhide --app Playground`
   4. `polter peekaboo -- app launch "TextEdit" --json-output` followed by `polter peekaboo -- app quit --app TextEdit --json-output`
 - **2025-11-16 verification**:
-  - Newly captured artifacts: `.artifacts/playground-tools/20251116-090750-app-list.json`, `...-090831-app-launch-textedit.json`, `...-090837-app-quit-textedit.json`.
-  - Playground log `.artifacts/playground-tools/20251116-090840-app.log` shows the entire sequence (`list`, `switch`, `hide`, `unhide`, `launch`, `quit`) with bundle IDs/PIDs, confirming `AutomationEventLogger` coverage.
+  - Re-ran the flow: `.artifacts/playground-tools/20251116-195420-app-list.json`, `...195421-app-switch.json`, `...195422-app-hide.json`, `...195423-app-unhide.json`, `...195424-app-launch-textedit.json`, and `...195425-app-quit-textedit.json` capture the CLI outputs.
+  - App log `.artifacts/playground-tools/20251116-195420-app.log` shows the matching `[App] list`, `switch`, `hide`, `unhide`, `launch`, and `quit` entries with bundle IDs + PIDs.
 
 #### `open`
 - **Tests**:
   1. `polter peekaboo -- open Apps/Playground/README.md --app TextEdit --json-output > .artifacts/playground-tools/20251116-091415-open-readme-textedit.json`.
   2. `polter peekaboo -- open https://example.com --json-output > .artifacts/playground-tools/20251116-091422-open-example.json`.
   3. `polter peekaboo -- open Apps/Playground/README.md --app TextEdit --no-focus --json-output > .artifacts/playground-tools/20251116-091435-open-readme-textedit-nofocus.json`.
-- **2025-11-16 verification**: The new runs succeeded; `.artifacts/playground-tools/20251116-091445-open-open.log` shows three `[Open]` entries (TextEdit focused, Chrome focused, TextEdit unfocused). Use these artifacts to prove both app-specific and browser-based opens plus the `--no-focus` behavior.
+- **2025-11-16 verification**: Latest run captured `.artifacts/playground-tools/20251116-200220-open.log` with the three `[Open]` entries (TextEdit focus, browser focus, TextEdit `--no-focus`), alongside the corresponding CLI JSON artifacts.
 
 #### `dock`
 - **Tests**:
-  1. `polter peekaboo -- dock list --json-output` (artifact `.artifacts/playground-tools/20251116-090944-dock-list.json`).
+  1. `polter peekaboo -- dock list --json-output` (artifact `.artifacts/playground-tools/20251116-200750-dock-list.json`).
   2. `polter peekaboo -- dock launch Playground`.
   3. `polter peekaboo -- dock hide` / `polter peekaboo -- dock show`.
-  4. `polter peekaboo -- dock right-click --app Finder --select "New Finder Window"`.
+  4. `polter peekaboo -- dock right-click --app Finder --select "New Finder Window"` (JSON artifact `.artifacts/playground-tools/20251116-205828-dock-right-click.json`).
 - **2025-11-16 verification**:
-  - The commands above succeeded; CLI outputs confirm each action and `AutomationEventLogger` recorded them in `.artifacts/playground-tools/20251116-091019-dock.log` (list, launch, hide, show, right_click entries).
-  - Right-click command produced JSON at `.artifacts/playground-tools/20251116-091016-dock-right-click.json`, showing `selectedItem : "New Finder Window"`.
+  - `[Dock]` logger entries captured via `.artifacts/playground-tools/20251116-205850-dock.log` show `list`, `launch Playground`, `hide`, `show`, and the Finder right-click with `selection=New Finder Window`.
+  - Context menu selection works once Finder is present in the Dock; if the menu doesn’t surface, re-run after focusing the Dock. No additional code changes required.
 
 #### `dialog`
 - **Scenario**: Trigger TextEdit’s Save panel so dialog tooling has something to attach to.
@@ -368,22 +364,22 @@ The following subsections spell out the concrete steps, required Playground surf
 #### `agent`
 - **Scope**: Playground-specific instructions to exercise multiple tools automatically.
 - **Tests**:
-  1. `polter peekaboo -- agent --list-sessions --json-output > .artifacts/playground-tools/20251116-091814-agent-list.json`.
-  2. `polter peekaboo -- agent "Say hi" --max-steps 1 --json-output > .artifacts/playground-tools/20251116-091820-agent-hi.json`.
-  3. `polter peekaboo -- agent "Summarize the Playground UI" --dry-run --max-steps 2 --json-output > .artifacts/playground-tools/20251116-091831-agent-toolbar.json`.
-- **2025-11-16 run**: Commands succeeded; `[Agent]` log lines recorded in `.artifacts/playground-tools/20251116-091839-agent.log` (task name, model, duration, dry-run flag). Use these artifacts to prove both live and dry-run invocations.
+  1. `polter peekaboo -- agent --list-sessions --json-output > .artifacts/playground-tools/20251116-200900-agent-list.json`.
+  2. `polter peekaboo -- agent "Say hi" --max-steps 1 --json-output > .artifacts/playground-tools/20251116-200901-agent-hi.json`.
+  3. `polter peekaboo -- agent "Summarize the Playground UI" --dry-run --max-steps 2 --json-output > .artifacts/playground-tools/20251116-200902-agent-toolbar.json`.
+- **2025-11-16 run**: Commands succeeded again; `[Agent]` log lines recorded in `.artifacts/playground-tools/20251116-200900-agent.log` (task name, model, duration, dry-run flag). Use these artifacts to prove both live and dry-run invocations.
 
 #### `mcp`
 - **Steps**:
   1. `polter peekaboo -- mcp list --json-output > .artifacts/playground-tools/20251116-091934-mcp-list.json`.
   2. (Future) `polter peekaboo -- mcp test <server>` once servers are provisioned locally.
-  3. `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output > .artifacts/playground-tools/20251116-171250-mcp-call-chrome-nav.json`.
-  4. Optional: `polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log(\"Peekaboo console\"); return \"ok\"; }"}' --json-output > .artifacts/playground-tools/20251116-171356-mcp-call-chrome-eval.json`.
+  3. `pnpm run polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output > .artifacts/playground-tools/20251116-183614-mcp-call-chrome-nav.json`.
+  4. Optional: `pnpm run polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log(\"Playground MCP log capture\"); return \"ok\"; }"}' --json-output > .artifacts/playground-tools/20251116-183617-mcp-call-chrome-eval.json`.
 - **2025-11-16 status**:
   - `mcp list` succeeds (see artifact above) but takes ~45s because no servers respond quickly in this environment.
   - `mcp call chrome-devtools navigate_page` succeeds when chrome-devtools-mcp is launched with `--isolated` (Peekaboo now appends that flag automatically). The response confirms the URL load and selected tab.
   - Additional calls (e.g., `evaluate_script`) also succeed, but note that each `mcp call` launches a fresh chrome-devtools-mcp instance, so commands that rely on shared console/network history (such as `list_console_messages`) will return empty unless everything happens inside a single invocation.
-  - Instrumentation (`tachikoma.mcp.*` logs + optional `MCP_STDIO_STDOUT=/tmp/*.log`) shows stdout/stderr flowing normally after the transport refactor. Still no dedicated Playground `[MCP]` logger (`playground-log -c MCP` is empty), so rely on the CLI artifacts until we wire in `AutomationEventLogger`.
+  - Playground logging now captures the MCP automation events: `.artifacts/playground-tools/20251116-183634-mcp.log` shows the `[MCP] call server=chrome-devtools …` entries immediately after the two commands above. Keep using `./Apps/Playground/scripts/playground-log.sh -c MCP --last 15m --all -o <file>` when running this plan so the log artifact travels with the JSON output.
 
 ## Reporting & Follow-Up
 - Record every executed test case (command, arguments, session ID, log file path, outcome) in `Apps/Playground/PLAYGROUND_TEST.md`.
