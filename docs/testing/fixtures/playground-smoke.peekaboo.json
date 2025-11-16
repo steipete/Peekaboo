@@ -1,0 +1,58 @@
+{
+  "description": "Minimal Playground smoke covering see/click/type",
+  "steps": [
+    {
+      "stepId": "focus_playground",
+      "command": "app",
+      "params": {
+        "generic": {
+          "_0": {
+            "name": "Playground",
+            "action": "focus"
+          }
+        }
+      },
+      "comment": "Ensure Playground is foregrounded before we capture"
+    },
+    {
+      "stepId": "capture_playground",
+      "command": "see",
+      "params": {
+        "generic": {
+          "_0": {
+            "app": "Playground",
+            "path": ".artifacts/playground-tools/run-script-see.png",
+            "annotate": "true"
+          }
+        }
+      },
+      "comment": "Capture annotated UI map for downstream steps"
+    },
+    {
+      "stepId": "click_focus_basic",
+      "command": "click",
+      "params": {
+        "generic": {
+          "_0": {
+            "query": "Focus Basic Field"
+          }
+        }
+      },
+      "comment": "Focus the basic text field via helper button in TextInputView"
+    },
+    {
+      "stepId": "type_basic_field",
+      "command": "type",
+      "params": {
+        "generic": {
+          "_0": {
+            "text": "Playground smoke",
+            "field": "basic-text-field",
+            "clear-first": "true"
+          }
+        }
+      },
+      "comment": "Fill the Basic Text Field to verify typing"
+    }
+  ]
+}
