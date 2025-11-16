@@ -163,7 +163,6 @@
     {
       "label": "SwiftLint",
       "command": "./scripts/status-swiftlint.sh",
-      "targets": ["Peekaboo"],
       "cooldownSeconds": 60,
       "timeoutSeconds": 300,
       "maxLines": 3
