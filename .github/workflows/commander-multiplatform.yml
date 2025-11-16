@@ -51,7 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           SDK_PATH=$(xcrun --sdk ${{ matrix.sdk }} --show-sdk-path)
-          xcrun --sdk ${{ matrix.sdk }} swift build \
+          swift build \
             --build-tests \
             --triple "${{ matrix.triple }}" \
             --sdk "$SDK_PATH"
