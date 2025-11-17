@@ -3,6 +3,30 @@ import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
+private enum ConfigCommandTimeouts {
+    static let network: Duration = .seconds(10)
+}
+
+enum TimeoutError: Error {
+    case timedOut
+}
+
+@Sendable
+func withTimeout<T>(_ duration: Duration, operation: @escaping @Sendable () async -> T) async -> Result<T, TimeoutError> {
+    await withTaskGroup(of: Result<T, TimeoutError>.self) { group in
+        group.addTask {
+            .success(await operation())
+        }
+        group.addTask {
+            try? await Task.sleep(for: duration)
+            return .failure(.timedOut)
+        }
+        let result = await group.next()!
+        group.cancelAll()
+        return result
+    }
+}
+
 @available(macOS 14.0, *)
 @MainActor
 extension ConfigCommand {
@@ -67,6 +91,9 @@ extension ConfigCommand {
         @Flag(name: .long, help: "Overwrite existing provider with same ID")
         var force: Bool = false
 
+        @Flag(name: .long, help: "Show the change without writing to disk")
+        var dryRun: Bool = false
+
         @RuntimeStorage var runtime: CommandRuntime?
 
         enum HeaderParseError: LocalizedError {
@@ -103,6 +130,30 @@ extension ConfigCommand {
                 throw ExitCode.failure
             }
 
+            guard !self.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                self.emitError(
+                    code: "INVALID_NAME",
+                    message: "Provider name must not be empty"
+                )
+                throw ExitCode.failure
+            }
+
+            guard let validatedBaseURL = Self.validatedURL(self.baseUrl) else {
+                self.emitError(
+                    code: "INVALID_URL",
+                    message: "Base URL must include scheme and host (e.g., https://api.example.com)"
+                )
+                throw ExitCode.failure
+            }
+
+            guard !self.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                self.emitError(
+                    code: "INVALID_API_KEY",
+                    message: "API key must not be empty"
+                )
+                throw ExitCode.failure
+            }
+
             let manager = self.configManager
             if manager.getCustomProvider(id: self.providerId) != nil, !self.force {
                 self.emitError(
@@ -121,7 +172,7 @@ extension ConfigCommand {
             }
 
             let options = Configuration.ProviderOptions(
-                baseURL: self.baseUrl,
+                baseURL: validatedBaseURL,
                 apiKey: self.apiKey,
                 headers: headerDict
             )
@@ -134,6 +185,11 @@ extension ConfigCommand {
                 models: nil,
                 enabled: true
             )
+
+            if self.dryRun {
+                self.emitDryRunSummary(provider: provider, providerId: self.providerId)
+                return
+            }
 
             do {
                 try manager.addCustomProvider(provider, id: self.providerId)
@@ -185,7 +241,7 @@ extension ConfigCommand {
                     throw HeaderParseError.invalidPair(entry)
                 }
 
-                let key = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                let key = components[0].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 let value = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
 
                 guard !key.isEmpty else {
@@ -196,12 +252,45 @@ extension ConfigCommand {
             return headerDict
         }
 
+        static func validatedURL(_ value: String) -> String? {
+            guard let components = URLComponents(string: value),
+                  let scheme = components.scheme,
+                  !scheme.isEmpty,
+                  components.host != nil
+            else { return nil }
+            return components.string
+        }
+
         private func emitError(code: String, message: String) {
             if self.jsonOutput {
                 let errorOutput = ErrorOutput(error: true, code: code, message: message, details: nil)
                 outputJSON(errorOutput, logger: self.logger)
             } else {
                 print("[error] \(message)")
+            }
+        }
+
+        private func emitDryRunSummary(provider: Configuration.CustomProvider, providerId: String) {
+            let summary = [
+                "providerId": providerId,
+                "type": provider.type.rawValue,
+                "baseUrl": provider.options.baseURL,
+                "apiKey": provider.options.apiKey
+            ]
+
+            if self.jsonOutput {
+                let output = SuccessOutput(success: true, data: [
+                    "message": "Dry run - no changes written",
+                    "provider": summary
+                ])
+                outputJSON(output, logger: self.logger)
+            } else {
+                print("[dry-run] Would add provider '\(providerId)' (\(provider.name))")
+                print("   Type: \(provider.type.rawValue)")
+                print("   Base URL: \(provider.options.baseURL)")
+                if let description = provider.description {
+                    print("   Description: \(description)")
+                }
             }
         }
     }
@@ -299,7 +388,23 @@ extension ConfigCommand {
         mutating func run(using runtime: CommandRuntime) async throws {
             self.prepare(using: runtime)
 
-            let (success, error) = await self.configManager.testCustomProvider(id: self.providerId)
+            let result: Result<(Bool, String?), TimeoutError> = await withTimeout(
+                ConfigCommandTimeouts.network
+            ) {
+                await self.configManager.testCustomProvider(id: self.providerId)
+            }
+
+            let success: Bool
+            let error: String?
+
+            switch result {
+            case .failure:
+                success = false
+                error = "Connection test timed out"
+            case .success(let value):
+                success = value.0
+                error = value.1
+            }
 
             if self.jsonOutput {
                 if success {
@@ -353,6 +458,9 @@ extension ConfigCommand {
         @Flag(name: .long, help: "Skip confirmation prompt")
         var force: Bool = false
 
+        @Flag(name: .long, help: "Show planned removal without writing to disk")
+        var dryRun: Bool = false
+
         @RuntimeStorage var runtime: CommandRuntime?
 
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -373,6 +481,11 @@ extension ConfigCommand {
                     print("Cancelled.")
                     return
                 }
+            }
+
+            if self.dryRun {
+                self.emitDryRun(provider: provider)
+                return
             }
 
             do {
@@ -421,6 +534,19 @@ extension ConfigCommand {
                 print("[error] \(message)")
             }
         }
+
+        private func emitDryRun(provider: Configuration.CustomProvider) {
+            if self.jsonOutput {
+                let output = SuccessOutput(success: true, data: [
+                    "message": "Dry run - no changes written",
+                    "providerId": self.providerId,
+                    "action": "remove"
+                ])
+                outputJSON(output, logger: self.logger)
+            } else {
+                print("[dry-run] Would remove provider '\(self.providerId)' (\(provider.name))")
+            }
+        }
     }
 
     /// Discover or list models for a custom AI provider.
@@ -443,6 +569,9 @@ extension ConfigCommand {
         @Flag(name: .long, help: "Discover models from API (for OpenAI-compatible providers)")
         var discover: Bool = false
 
+        @Flag(name: .long, help: "Persist discovered (or configured) models back into configuration")
+        var save: Bool = false
+
         @RuntimeStorage var runtime: CommandRuntime?
 
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -453,15 +582,27 @@ extension ConfigCommand {
                 throw ExitCode.failure
             }
 
-            var models: [String] = []
-            var apiError: String?
+            let modelResult: Result<(models: [String], error: String?), TimeoutError> = await withTimeout(
+                ConfigCommandTimeouts.network
+            ) {
+                await self.configManager.discoverModelsForCustomProvider(id: self.providerId)
+            }
 
-            if self.discover && provider.type == .openai {
-                let (discoveredModels, error) = await self.configManager.discoverModelsForCustomProvider(id: self.providerId)
-                models = discoveredModels
-                apiError = error
-            } else {
-                models = provider.models?.keys.map { String($0) } ?? []
+            let models: [String]
+            let apiError: String?
+
+            switch modelResult {
+            case .failure:
+                models = []
+                apiError = "Model discovery timed out"
+            case .success(let tuple):
+                if self.discover && provider.type == .openai {
+                    models = tuple.models
+                    apiError = tuple.error
+                } else {
+                    models = provider.models?.keys.map { String($0) } ?? []
+                    apiError = tuple.error
+                }
             }
 
             if self.jsonOutput {
@@ -476,9 +617,6 @@ extension ConfigCommand {
                 return
             }
 
-            print("Models for provider '\(self.providerId)' (\(provider.name)):")
-            print()
-
             if let error = apiError {
                 print("[error] Failed to discover models: \(error)")
                 if !models.isEmpty {
@@ -492,17 +630,22 @@ extension ConfigCommand {
                 } else {
                     print("No models available.")
                 }
-                return
+            } else {
+                print("Models for provider '\(self.providerId)' (\(provider.name)):")
+                print()
+                for model in models.sorted() {
+                    print("  • \(model)")
+                }
+                print()
+                print("Found \(models.count) model(s)")
+
+                if provider.type == .openai && !self.discover {
+                    print("Tip: Use --discover to query the API for all available models")
+                }
             }
 
-            for model in models.sorted() {
-                print("  • \(model)")
-            }
-            print()
-            print("Found \(models.count) model(s)")
-
-            if provider.type == .openai && !self.discover {
-                print("Tip: Use --discover to query the API for all available models")
+            if self.save, apiError == nil {
+                try self.saveModels(models, for: providerId, existing: provider)
             }
         }
 
@@ -518,6 +661,22 @@ extension ConfigCommand {
             } else {
                 print("[error] Provider '\(self.providerId)' not found")
             }
+        }
+
+        private func saveModels(_ models: [String], for providerId: String, existing provider: Configuration.CustomProvider) throws {
+            let modelDefinitions = Dictionary(
+                uniqueKeysWithValues: models.map { ($0, Configuration.ModelDefinition(name: $0)) }
+            )
+            let updated = Configuration.CustomProvider(
+                name: provider.name,
+                description: provider.description,
+                type: provider.type,
+                options: provider.options,
+                models: modelDefinitions,
+                enabled: provider.enabled
+            )
+            try self.configManager.addCustomProvider(updated, id: providerId)
+            print("[ok] Saved \(models.count) model(s) to configuration")
         }
     }
 }

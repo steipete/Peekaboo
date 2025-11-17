@@ -32,8 +32,15 @@ public final class ConfigurationManager: @unchecked Sendable {
     public static let shared = ConfigurationManager()
 
     /// Base directory for all Peekaboo configuration
+    ///
+    /// Can be overridden in tests or automation via `PEEKABOO_CONFIG_DIR`.
     public static var baseDir: String {
-        NSString(string: "~/.peekaboo").expandingTildeInPath
+        if let override = ProcessInfo.processInfo.environment["PEEKABOO_CONFIG_DIR"],
+           !override.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+            return NSString(string: override).expandingTildeInPath
+        }
+        return NSString(string: "~/.peekaboo").expandingTildeInPath
     }
 
     /// Legacy configuration directory (for migration)
@@ -84,6 +91,14 @@ public final class ConfigurationManager: @unchecked Sendable {
         // Load configuration on init, but don't crash if it fails
         _ = self.loadConfiguration()
     }
+
+    #if DEBUG
+    /// Clear cached configuration/credentials so tests can re-seed with a different base dir.
+    public func resetForTesting() {
+        self.configuration = nil
+        self.credentials = [:]
+    }
+    #endif
 
     /// Migrate from legacy configuration if needed
     public func migrateIfNeeded() throws {

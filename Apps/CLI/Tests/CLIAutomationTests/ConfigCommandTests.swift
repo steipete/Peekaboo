@@ -1,9 +1,36 @@
 import Foundation
+import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
 @Suite("ConfigCommand Tests", .tags(.safe))
 struct ConfigCommandTests {
+    // MARK: - Helpers
+
+    private func makeRuntime(json: Bool = false) -> CommandRuntime {
+        CommandRuntime(configuration: .init(verbose: false, jsonOutput: json, logLevel: nil), services: PeekabooServices())
+    }
+
+    private func withTempConfigDir(_ body: @escaping (URL) async throws -> Void) async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        #if DEBUG
+        ConfigurationManager.shared.resetForTesting()
+        #endif
+
+        defer {
+            unsetenv("PEEKABOO_CONFIG_DIR")
+            #if DEBUG
+            ConfigurationManager.shared.resetForTesting()
+            #endif
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        try await body(tempDir)
+    }
+
     @Test("ConfigCommand exists and has correct subcommands")
     func configCommandStructure() {
         // Verify the command exists
@@ -84,11 +111,78 @@ struct ConfigCommandTests {
     @Test("AddProviderCommand parses headers and rejects invalid formats")
     func headerParsing() throws {
         let parsed = try ConfigCommand.AddProviderCommand.parseHeaders("X-Key:one,Auth: Bearer")
-        #expect(parsed?["X-Key"] == "one")
-        #expect(parsed?["Auth"] == "Bearer")
+        #expect(parsed?["x-key"] == "one")
+        #expect(parsed?["auth"] == "Bearer")
 
         #expect(throws: ConfigCommand.AddProviderCommand.HeaderParseError.self) {
             _ = try ConfigCommand.AddProviderCommand.parseHeaders("missingColon")
+        }
+    }
+
+    @Test("Init command creates config file at overridden path", .serialized)
+    func initCreatesConfig() async throws {
+        try await self.withTempConfigDir { dir in
+            var command = ConfigCommand.InitCommand()
+            try await command.run(using: self.makeRuntime())
+
+            let configPath = dir.appendingPathComponent("config.json")
+            #expect(FileManager.default.fileExists(atPath: configPath.path))
+        }
+    }
+
+    @Test("Add provider dry-run does not write", .serialized)
+    func addProviderDryRun() async throws {
+        try await self.withTempConfigDir { dir in
+            var command = ConfigCommand.AddProviderCommand()
+            command.providerId = "openrouter"
+            command.type = "openai"
+            command.name = "OpenRouter"
+            command.baseUrl = "https://openrouter.ai/api/v1"
+            command.apiKey = "{env:OPENROUTER_API_KEY}"
+            command.dryRun = true
+
+            try await command.run(using: self.makeRuntime())
+
+            let configPath = dir.appendingPathComponent("config.json")
+            #expect(!FileManager.default.fileExists(atPath: configPath.path))
+        }
+    }
+
+    @Test("Add/remove provider persists to config", .serialized)
+    func addAndRemoveProvider() async throws {
+        try await self.withTempConfigDir { _ in
+            var add = ConfigCommand.AddProviderCommand()
+            add.providerId = "local"
+            add.type = "openai"
+            add.name = "Local"
+            add.baseUrl = "https://api.local/v1"
+            add.apiKey = "{env:LOCAL_API_KEY}"
+            try await add.run(using: self.makeRuntime())
+
+            let providersAfterAdd = ConfigurationManager.shared.listCustomProviders()
+            #expect(providersAfterAdd["local"] != nil)
+            #expect(providersAfterAdd["local"]?.options.baseURL == "https://api.local/v1")
+
+            var remove = ConfigCommand.RemoveProviderCommand()
+            remove.providerId = "local"
+            remove.force = true
+            try await remove.run(using: self.makeRuntime())
+
+            let providersAfterRemove = ConfigurationManager.shared.listCustomProviders()
+            #expect(providersAfterRemove["local"] == nil)
+        }
+    }
+
+    @Test("Edit print-path leaves filesystem untouched", .serialized)
+    func editPrintPath() async throws {
+        try await self.withTempConfigDir { dir in
+            let configPath = dir.appendingPathComponent("config.json").path
+
+            var command = ConfigCommand.EditCommand()
+            command.printPath = true
+            try await command.run(using: self.makeRuntime())
+
+            #expect(!FileManager.default.fileExists(atPath: configPath))
         }
     }
 }

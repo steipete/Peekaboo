@@ -24,6 +24,7 @@ extension ConfigCommand.EditCommand: AsyncRuntimeCommand {}
 extension ConfigCommand.EditCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.editor = values.singleOption("editor")
+        self.printPath = values.flag("print-path")
     }
 }
 
@@ -59,6 +60,7 @@ extension ConfigCommand.AddProviderCommand: CommanderBindableCommand {
         self.description = values.singleOption("description")
         self.headers = values.singleOption("headers")
         self.force = values.flag("force")
+        self.dryRun = values.flag("dry-run")
     }
 }
 
@@ -87,6 +89,7 @@ extension ConfigCommand.RemoveProviderCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.providerId = try values.decodePositional(0, label: "providerId")
         self.force = values.flag("force")
+        self.dryRun = values.flag("dry-run")
     }
 }
 
@@ -97,5 +100,6 @@ extension ConfigCommand.ModelsProviderCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.providerId = try values.decodePositional(0, label: "providerId")
         self.discover = values.flag("discover")
+        self.save = values.flag("save")
     }
 }

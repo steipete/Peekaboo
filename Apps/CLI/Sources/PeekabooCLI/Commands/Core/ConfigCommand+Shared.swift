@@ -52,6 +52,14 @@ extension ConfigRuntimeCommand {
     var credentialsPath: String {
         ConfigurationManager.credentialsPath
     }
+
+    var baseDir: String {
+        ConfigurationManager.baseDir
+    }
+
+    func defaultEditor(from environment: [String: String] = ProcessInfo.processInfo.environment) -> String {
+        environment["EDITOR"] ?? "nano"
+    }
 }
 
 @MainActor

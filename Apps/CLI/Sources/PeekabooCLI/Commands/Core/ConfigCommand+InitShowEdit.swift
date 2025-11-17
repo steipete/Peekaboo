@@ -204,10 +204,17 @@ extension ConfigCommand {
 
         @Option(name: .long, help: "Editor to use (defaults to $EDITOR or nano)")
         var editor: String?
+        @Flag(name: .customLong("print-path"), help: "Print the configuration path and exit without opening an editor")
+        var printPath: Bool = false
         @RuntimeStorage var runtime: CommandRuntime?
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.prepare(using: runtime)
+
+            if self.printPath {
+                print(self.configPath)
+                return
+            }
 
             // Create config if it doesn't exist
             if !FileManager.default.fileExists(atPath: self.configPath) {
@@ -225,7 +232,7 @@ extension ConfigCommand {
                 try self.configManager.createDefaultConfiguration()
             }
 
-            let editorCommand = self.editor ?? ProcessInfo.processInfo.environment["EDITOR"] ?? "nano"
+            let editorCommand = self.editor ?? self.defaultEditor()
 
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -236,6 +243,17 @@ extension ConfigCommand {
                 process.waitUntilExit()
 
                 guard process.terminationStatus == 0 else {
+                    if self.jsonOutput {
+                        let errorOutput = ErrorOutput(
+                            error: true,
+                            code: "EDITOR_FAILED",
+                            message: "Editor exited with status \(process.terminationStatus)",
+                            details: editorCommand
+                        )
+                        outputJSON(errorOutput, logger: self.logger)
+                    } else {
+                        print("[error] Editor exited with status \(process.terminationStatus)")
+                    }
                     throw ExitCode.failure
                 }
 
