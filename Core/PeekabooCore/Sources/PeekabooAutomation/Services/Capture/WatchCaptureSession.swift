@@ -415,7 +415,7 @@ public final class WatchCaptureSession {
         }
         if removed > 0 {
             self.warnings.append(
-                WatchWarning(code: .displayChanged, message: "Autoclean removed \(removed) old watch sessions"))
+                WatchWarning(code: .autoclean, message: "Autoclean removed \(removed) old watch sessions"))
         }
     }
 

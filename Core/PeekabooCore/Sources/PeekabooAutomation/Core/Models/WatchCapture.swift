@@ -143,6 +143,7 @@ public struct WatchWarning: Codable, Sendable, Equatable {
         case displayChanged
         case lowFps
         case diffDowngraded
+        case autoclean
     }
 
     public let code: Code

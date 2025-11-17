@@ -35,7 +35,7 @@ Adaptive screenshot capture for agents. Runs up to a set duration, samples at lo
 
 ## Outputs
 - PNG frames: `frame-0001.png`… with timestamps and change percentages.
-- `contact.png`: grid of sampled frames (max 6 columns).
+- `contact.png`: grid of sampled frames (max 6 columns) with sampled indexes recorded.
 - `metadata.json`: scope, options, stats, per-frame info, motion intervals, warnings.
 
 ## Notes
@@ -52,3 +52,8 @@ polter peekaboo -- watch \
   --threshold 2.5 --heartbeat-sec 5 --quiet-ms 800 \
   --highlight-changes
 ```
+
+## When to use which
+- **watch**: Long/latent interactions; keep only changed frames; always PNG + contact sheet.
+- **image**: Single deterministic capture (PNG/JPG) with optional AI analyze; faster cold-start.
+- **see**: Full vision pipeline with element IDs and annotations for automation flows.
