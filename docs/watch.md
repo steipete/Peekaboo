@@ -50,6 +50,11 @@ Goal: add a long-running, change-aware PNG capture tool (`peekaboo watch`) that 
 - `metadata.json`: structured schema (see below) including scope, options, stats, per-frame entries, motion intervals, warnings, diff algorithm/scale, autoclean time.
 - CLI/MCP responses share the same `WatchCaptureResult` (see schema); text output mirrors `ImageCommand` log style.
 
+## Troubleshooting
+- **Region failures**: Regions are in global coords; if entirely off-screen, the command errors. Regions spanning displays are clamped to the visible union and emit a warning.
+- **Captured too many frames**: Reduce `--active-fps`, lower `--threshold`, or set `--max-frames`; `--diff-budget-ms` can force fast diff when SSIM is too slow.
+- **No motion detected**: Lower `--threshold` or use `--heartbeat-sec` to force periodic frames so slow drift is still captured.
+
 ### Schema (Swift-first)
 ```swift
 struct WatchFrameInfo: Codable {

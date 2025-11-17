@@ -58,3 +58,9 @@ polter peekaboo -- watch \
 - **watch**: Long/latent interactions; keep only changed frames; always PNG + contact sheet.
 - **image**: Single deterministic capture (PNG/JPG) with optional AI analyze; faster cold-start.
 - **see**: Full vision pipeline with element IDs and annotations for automation flows.
+
+## Troubleshooting
+- **No frames kept**: Lower `--threshold` or set `--heartbeat-sec` > 0 to force periodic frames.
+- **Missing action because it happened late**: Increase `--duration` and ensure `--idle-fps` isn’t 0; heartbeat guarantees a frame every N seconds even when idle.
+- **Region errors**: Regions use global screen coordinates. Off-screen regions fail; regions spanning displays are clamped with a warning. Specify a single-display region for deterministic results.
+- **Too many frames**: Lower `--active-fps` or set `--max-frames`; enable `--diff-budget-ms` to auto-fallback to fast diff when SSIM is expensive.
