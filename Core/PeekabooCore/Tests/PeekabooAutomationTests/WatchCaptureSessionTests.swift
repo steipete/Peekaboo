@@ -52,6 +52,44 @@ struct WatchCaptureSessionTests {
         #expect(result.changePercent <= 100)
     }
 
+    @Test("Bounding boxes always include overall motion bounds")
+    func boundingBoxesIncludeUnion() {
+        // Two disjoint regions far apart should still report a union box that spans both.
+        let width = 8
+        let height = 8
+        let prev = WatchCaptureSession.LumaBuffer(width: width, height: height, pixels: Array(repeating: 0, count: width * height))
+        var pixels = Array(repeating: UInt8(0), count: width * height)
+        func index(_ x: Int, _ y: Int) -> Int { y * width + x }
+        // Activate a block in the top-left and another in the bottom-right.
+        for y in 0..<2 {
+            for x in 0..<2 {
+                pixels[index(x, y)] = 255
+            }
+        }
+        for y in (height - 2)..<height {
+            for x in (width - 2)..<width {
+                pixels[index(x, y)] = 255
+            }
+        }
+        let curr = WatchCaptureSession.LumaBuffer(width: width, height: height, pixels: pixels)
+        let result = WatchCaptureSession.computeChange(
+            strategy: .fast,
+            diffBudgetMs: nil,
+            previous: prev,
+            current: curr,
+            deltaThreshold: 1,
+            originalSize: CGSize(width: 800, height: 800))
+        guard let union = result.boundingBoxes.first else {
+            Issue.record("Expected bounding boxes to be reported")
+            return
+        }
+        #expect(union.origin.x == 0)
+        #expect(union.origin.y == 0)
+        #expect(union.width == 800)
+        #expect(union.height == 800)
+        #expect(result.boundingBoxes.count <= 5)
+    }
+
     @Test("Stops at max-frames cap and keeps first frame")
     @MainActor
     func respectsFrameCapDuringWatch() async throws {

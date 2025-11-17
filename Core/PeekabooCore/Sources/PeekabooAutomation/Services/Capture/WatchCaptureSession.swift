@@ -586,10 +586,10 @@ public final class WatchCaptureSession {
         originalSize: CGSize) -> [CGRect]
     {
         var visited = Array(repeating: false, count: mask.count)
-        var boxes: [CGRect] = []
         let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
         let maxBoxes = 5      // Avoid overwhelming overlays
         let minPixels = 1     // Tiny blobs still count; caller can filter when drawing
+        var collected: [CGRect] = []
 
         func index(_ x: Int, _ y: Int) -> Int { y * width + x }
 
@@ -627,12 +627,35 @@ public final class WatchCaptureSession {
                     y: CGFloat(minY) * scaleY,
                     width: CGFloat(maxX - minX + 1) * scaleX,
                     height: CGFloat(maxY - minY + 1) * scaleY)
-                boxes.append(rect)
-                if boxes.count >= maxBoxes { return boxes }
+                collected.append(rect)
             }
         }
 
-        return boxes
+        guard !collected.isEmpty else {
+            return []
+        }
+
+        let sorted = collected.sorted { lhs, rhs in
+            let lhsArea = lhs.width * lhs.height
+            let rhsArea = rhs.width * rhs.height
+            if lhsArea == rhsArea {
+                return lhs.origin.y < rhs.origin.y
+            }
+            return lhsArea > rhsArea
+        }
+
+        let unionRect = sorted.dropFirst().reduce(sorted[0]) { partialResult, rect in
+            partialResult.union(rect)
+        }
+
+        var result: [CGRect] = [unionRect]
+        for rect in sorted {
+            guard result.count < maxBoxes else { break }
+            if rect.equalTo(unionRect) { continue }
+            result.append(rect)
+        }
+
+        return result
     }
 
     nonisolated static func computeSSIM(previous: LumaBuffer, current: LumaBuffer) -> Double {
