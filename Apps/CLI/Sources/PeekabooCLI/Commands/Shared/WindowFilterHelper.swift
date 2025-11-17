@@ -1,6 +1,7 @@
 import PeekabooCore
 
 enum WindowFilterHelper {
+    /// Shared window filtering for capture/list flows. Keeps heuristics consistent across commands.
     static func filter(
         windows: [ServiceWindowInfo],
         appIdentifier: String,
