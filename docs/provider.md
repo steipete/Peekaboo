@@ -7,7 +7,7 @@ read_when:
 
 # Custom AI Provider Configuration
 
-This document explains how to configure custom AI providers in Peekaboo, enabling access to OpenAI-compatible and Anthropic-compatible endpoints beyond the built-in providers.
+This document explains how to configure AI providers in Peekaboo, including built-ins (OpenAI, Anthropic, Grok/xAI, Gemini) and custom OpenAI-/Anthropic-compatible endpoints.
 
 ## Overview
 
@@ -22,9 +22,10 @@ Peekaboo supports custom AI providers through configuration-based setup. This al
 ## Built-in vs Custom Providers
 
 ### Built-in Providers
-- **OpenAI**: GPT-5 family, GPT-4.1, GPT-4o, o4-mini
-- **Anthropic**: Claude 4, Claude 3.5, Claude 3.7 series  
-- **Grok (xAI)**: Grok 4, Grok 2 series
+- **OpenAI**: GPT-5 family, GPT-4.1, GPT-4o, o4-mini (OAuth or API key)
+- **Anthropic**: Claude 4 / Max / Pro / 3.x (OAuth or API key)
+- **Grok (xAI)**: Grok 4, Grok 2 series (API key; `grok` canonical, `xai` alias)
+- **Gemini**: Gemini 1.5 family (API key)
 - **Ollama**: Local models with tool support
 
 ### Custom Providers
@@ -79,19 +80,27 @@ Custom providers are configured in `~/.peekaboo/config.json`:
 - **`openai`**: OpenAI-compatible endpoints (Chat Completions API)
 - **`anthropic`**: Anthropic-compatible endpoints (Messages API)
 
-### Environment Variables
+### Environment Variables vs Credentials
 
-API keys are referenced using `{env:VARIABLE_NAME}` syntax and stored securely in `~/.peekaboo/credentials`:
+- Peekaboo never copies environment values into files automatically. Env vars are read live and shown as `ready (env)` in `config show/init`.
+- Credentials you add manually are stored in `~/.peekaboo/credentials` with `chmod 600`.
+- OAuth (OpenAI/Codex, Anthropic Max) stores refresh/access tokens + expiry in the credentials file; no API key is written.
 
 ```bash
-# Set API key
-peekaboo config set-credential OPENROUTER_API_KEY or-...
-peekaboo config set-credential GROQ_API_KEY gsk-...
+# Set API key (stored after validation)
+peekaboo config add openai sk-...
+peekaboo config add anthropic sk-ant-...
+peekaboo config add grok xai-...
+peekaboo config add gemini ya29....
+
+# OAuth (no API key stored)
+peekaboo config login openai
+peekaboo config login anthropic
 ```
 
 ## CLI Management
 
-### Add Provider
+### Add Provider (custom, OpenAI/Anthropic compatible)
 
 ```bash
 peekaboo config add-provider \
@@ -162,7 +171,7 @@ peekaboo config add-provider \
   --url "https://openrouter.ai/api/v1" \
   --api-key OPENROUTER_API_KEY
 
-peekaboo config set-credential OPENROUTER_API_KEY or-your-key-here
+peekaboo config add openai or-your-key-here
 ```
 
 ### Groq
@@ -175,7 +184,7 @@ peekaboo config add-provider \
   --url "https://api.groq.com/openai/v1" \
   --api-key GROQ_API_KEY
 
-peekaboo config set-credential GROQ_API_KEY gsk-your-key-here
+peekaboo config add grok gsk-your-key-here
 ```
 
 ### Together AI

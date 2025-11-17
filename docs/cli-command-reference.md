@@ -21,7 +21,7 @@ Use `peekaboo <command> --help` for inline flag descriptions; this page links to
 - [`run`](commands/run.md) – Execute `.peekaboo.json` scripts (`--output`, `--no-fail-fast`).
 - [`sleep`](commands/sleep.md) – Millisecond pauses between steps.
 - [`clean`](commands/clean.md) – Remove session caches by ID, age, or all at once (`--dry-run` supported).
-- [`config`](commands/config.md) – Subcommands: `init`, `show`, `edit`, `validate`, `set-credential`, `add-provider`, `list-providers`, `test-provider`, `remove-provider`, `models`.
+- [`config`](commands/config.md) – Subcommands: `init`, `show`, `edit`, `validate`, `add`, `login`, `set-credential` (legacy), `add-provider`, `list-providers`, `test-provider`, `remove-provider`, `models`.
 - [`permissions`](commands/permissions.md) – `status` (default) and `grant` helpers for Screen Recording/Accessibility.
 - [`learn`](commands/learn.md) – Print the complete agent guide (system prompt, tool catalog, Commander signatures).
 
