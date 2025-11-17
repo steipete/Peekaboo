@@ -54,8 +54,10 @@ Open items
 
 ## Progress log (2025-11-17)
 - Docs: updated provider/config/oauth references and clarified grok/xai aliasing.
-- Code (earlier iteration): Peekaboo CLI grew `config add/login` and live validation; Tachikoma providers were modified to prefer OAuth tokens. This needs to be replaced by Tachikoma-owned auth/CLI per the updated plan.
-- Blocker to resolve in refactor: TachikomaConfiguration does not currently load Peekaboo credentials; decide on CredentialStore/Resolver in Tachikoma and remove duplicate Peekaboo-layer logic.
+- Tachikoma: new AuthManager (CredentialStore/Resolver, validators, OAuth PKCE) and providers (OpenAI/Anthropic) now resolve auth via AuthManager (bearer or API key). Grok env aliases normalized.
+- Peekaboo CLI: refactored `config add/login/status` to delegate validation/OAuth/storage to Tachikoma AuthManager; `profileDirectoryName` forced to `.peekaboo` during CLI runs; legacy set-credential writes via AuthManager.
+- Submodule updated: Tachikoma commit `d08e422` (auth centralization); main commit `24ad2458` wires Peekaboo CLI to Tachikoma.
+- Remaining work: add status/validation CLI inside Tachikoma or reuse the shared logic for other hosts; add tests (validators, OAuth refresh, CLI snapshots); implement refresh persistence path in Tachikoma Configuration if desired.
 
 ## Next steps (for the refactor proper)
 1) Build Tachikoma CredentialStore/Resolver + OAuthManager + validators; add Tachikoma CLI (`config add/login/show/init`).
