@@ -148,6 +148,13 @@ public struct WatchWarning: Codable, Sendable, Equatable {
 
     public let code: Code
     public let message: String
+    public let details: [String: String]?
+
+    public init(code: Code, message: String, details: [String: String]? = nil) {
+        self.code = code
+        self.message = message
+        self.details = details
+    }
 }
 
 public struct WatchOptionsSnapshot: Codable, Sendable, Equatable {

@@ -22,6 +22,7 @@ public final class WatchCaptureSession {
     private let autocleanMinutes: Int
     private let fileManager = FileManager.default
     private let screenService: (any ScreenServiceProtocol)?
+    private let sessionId = UUID().uuidString
 
     private var frames: [WatchFrameInfo] = []
     private var motionIntervals: [WatchMotionInterval] = []
@@ -416,7 +417,10 @@ public final class WatchCaptureSession {
         }
         if removed > 0 {
             self.warnings.append(
-                WatchWarning(code: .autoclean, message: "Autoclean removed \(removed) old watch sessions"))
+                WatchWarning(
+                    code: .autoclean,
+                    message: "Autoclean removed \(removed) old watch sessions",
+                    details: ["session": self.sessionId]))
         }
     }
 
