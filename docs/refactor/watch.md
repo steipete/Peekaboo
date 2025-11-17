@@ -18,12 +18,6 @@ This doc tracks the next improvements to make `peekaboo watch` sturdier and more
 - **(Done)** Autoclean safety: track `autocleanAt`, skip deleting user-specified paths, and emit structured `autoclean` warnings with counts.
 - **(Done)** Shared metadata helpers: CLI and MCP now share `WatchMetaSummary` for emitting contact/diff metadata.
 
-## Testing gaps
-- Cover cap scenarios (max-frames/max-mb while mode flips) in Swift Testing — stubbed tests exist but are disabled by default via swift-test filtering.
-
-## Docs polish
-- **(Done)** Document MCP meta fields (`contact_columns/contact_rows/contact_sampled_indexes`, `contact_thumb_size`) for agents.
-
-## Performance ideas
-- Downscale diff further (128px) when CPU load is high or FPS falls behind; record the downgrade.
-- Cache the downscaled buffer for contact-sheet thumbs to avoid a second resize pass when many frames are kept.
+## Notes
+- Cap scenario tests now exist (Swift Testing, stubbed capture) but remain behind the automation/Swift test filtering gate.
+- Future performance ideas (optional): downscale diff further when FPS lags; reuse downscaled buffers for contact thumbs.
