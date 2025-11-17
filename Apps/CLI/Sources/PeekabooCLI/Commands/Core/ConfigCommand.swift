@@ -25,7 +25,7 @@ struct ConfigCommand: ParsableCommand {
         Configuration precedence (highest to lowest):
         1. Command-line arguments
         2. Environment variables
-        3. Credentials file (for API keys)
+        3. Credentials file (for API keys or OAuth tokens)
         4. Configuration file
         5. Built-in defaults
 
@@ -37,6 +37,8 @@ struct ConfigCommand: ParsableCommand {
             ShowCommand.self,
             EditCommand.self,
             ValidateCommand.self,
+            AddCommand.self,
+            LoginCommand.self,
             SetCredentialCommand.self,
             AddProviderCommand.self,
             ListProvidersCommand.self,

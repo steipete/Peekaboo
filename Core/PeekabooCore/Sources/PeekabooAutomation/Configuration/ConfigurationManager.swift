@@ -404,6 +404,11 @@ public final class ConfigurationManager: @unchecked Sendable {
             return envValue
         }
 
+        // 2. OAuth access token (credentials)
+        if let token = self.validOAuthAccessToken(prefix: "OPENAI") {
+            return token
+        }
+
         // 2. Credentials file
         if let credValue = credentials["OPENAI_API_KEY"] {
             return credValue
@@ -422,6 +427,11 @@ public final class ConfigurationManager: @unchecked Sendable {
         // 1. Environment variable (highest priority)
         if let envValue = self.environmentValue(for: "ANTHROPIC_API_KEY") {
             return envValue
+        }
+
+        // 2. OAuth access token (credentials)
+        if let token = self.validOAuthAccessToken(prefix: "ANTHROPIC") {
+            return token
         }
 
         // 2. Credentials file
@@ -512,6 +522,24 @@ public final class ConfigurationManager: @unchecked Sendable {
 
         // Update
         try self.saveCredentials([key: value])
+    }
+
+    private func validOAuthAccessToken(prefix: String) -> String? {
+        self.loadCredentials()
+        guard let token = self.credentials["\(prefix)_ACCESS_TOKEN"] else { return nil }
+        guard let expiryString = self.credentials["\(prefix)_ACCESS_EXPIRES"],
+              let expiryInt = Int(expiryString) else { return token }
+        let expiryDate = Date(timeIntervalSince1970: TimeInterval(expiryInt))
+        if expiryDate > Date() {
+            return token
+        }
+        return nil
+    }
+
+    /// Read a credential by key (loads from disk if needed)
+    public func credentialValue(for key: String) -> String? {
+        self.loadCredentials()
+        return self.credentials[key]
     }
 
     /// Get selected AI provider

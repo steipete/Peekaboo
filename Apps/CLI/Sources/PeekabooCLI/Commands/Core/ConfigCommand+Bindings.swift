@@ -6,6 +6,9 @@ extension ConfigCommand.InitCommand: AsyncRuntimeCommand {}
 extension ConfigCommand.InitCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.force = values.flag("force")
+        if let timeout = values.singleOption("timeout"), let seconds = Double(timeout) {
+            self.timeoutSeconds = seconds
+        }
     }
 }
 
@@ -15,6 +18,9 @@ extension ConfigCommand.ShowCommand: AsyncRuntimeCommand {}
 extension ConfigCommand.ShowCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.effective = values.flag("effective")
+        if let timeout = values.singleOption("timeout"), let seconds = Double(timeout) {
+            self.timeoutSeconds = seconds
+        }
     }
 }
 
@@ -34,6 +40,32 @@ extension ConfigCommand.ValidateCommand: AsyncRuntimeCommand {}
 extension ConfigCommand.ValidateCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         _ = values
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.AddCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.AddCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.provider = try values.decodePositional(0, label: "provider")
+        self.secret = try values.decodePositional(1, label: "secret")
+        if let timeout = values.singleOption("timeout"), let seconds = Double(timeout) {
+            self.timeoutSeconds = seconds
+        }
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.LoginCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.LoginCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.provider = try values.decodePositional(0, label: "provider")
+        if let timeout = values.singleOption("timeout"), let seconds = Double(timeout) {
+            self.timeoutSeconds = seconds
+        }
+        self.noBrowser = values.flag("no-browser")
     }
 }
 
