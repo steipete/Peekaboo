@@ -14,16 +14,12 @@ This doc tracks the next improvements to make `peekaboo watch` sturdier and more
 - **(Done)** Multi-blob motion boxes (connected components with caps).
 - **(Done)** Keep-based filenames + sampled contact metadata exposed in CLI/MCP.
 - **(Done)** Region clamp: off-screen errors; straddling regions clamp with warning.
-- **Focus heuristics parity via code sharing:** Extract shared window scoring/selection utilities from `image` so `watch` uses the same heuristics (size/visibility/level/minimized filtering) instead of bespoke logic.
-- **Autoclean safety:** Track `autocleanAt`, skip deleting user-specified paths, and emit structured `autoclean` warning with counts.
-- **Shared metadata helpers:** Deduplicate diff/contact metadata emission between CLI and MCP surfaces to avoid divergence.
+- **(Done)** Focus heuristics parity via code sharing: `WatchCommand` now reuses the `ImageCommand` window scoring/filtering helpers.
+- **(Done)** Autoclean safety: track `autocleanAt`, skip deleting user-specified paths, and emit structured `autoclean` warnings with counts.
+- **(Done)** Shared metadata helpers: CLI and MCP now share `WatchMetaSummary` for emitting contact/diff metadata.
 
 ## Testing gaps
-- Add CLI automation tests:
-  - Cap warnings (`max-frames`, size cap).
-  - Diff-budget downgrade path (force SSIM slow, assert `diffDowngraded`).
-  - Region clamp warning path.
-- Add hysteresis/early-stop Swift Testing coverage (enter/exit thresholds, frame/size caps).
+- Expand hysteresis/early-stop Swift Testing coverage (enter/exit thresholds, frame/size caps, long idle→active→idle transitions).
 
 ## Docs polish
 - **(Done)** Document MCP meta fields (`contact_columns/contact_rows/contact_sampled_indexes`, `contact_thumb_size`) for agents.

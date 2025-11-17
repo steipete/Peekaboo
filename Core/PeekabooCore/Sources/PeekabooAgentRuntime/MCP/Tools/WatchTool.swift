@@ -75,17 +75,30 @@ public struct WatchTool: MCPTool {
             actionDescription: "Watch Capture",
             notes: summary)
 
-        return ToolResponse.text(summary, meta: ToolEventSummary.merge(summary: meta, into: .object([
-            "frames": .array(result.frames.map { .string($0.path) }),
-            "contact": .string(result.contactSheet.path),
-            "metadata": .string(result.metadataFile),
-            "diff_algorithm": .string(result.diffAlgorithm),
-            "diff_scale": .string(result.diffScale),
-            "contact_columns": .string("\(result.contactColumns)"),
-            "contact_rows": .string("\(result.contactRows)"),
-            "contact_thumb_size": .string("\(Int(result.contactThumbSize.width))x\(Int(result.contactThumbSize.height))"),
-            "contact_sampled_indexes": .array(result.contactSampledIndexes.map { .string("\($0)") })
-        ])))
+        let metaSummary = WatchMetaSummary.make(from: result)
+        return ToolResponse.text(
+            summary,
+            meta: ToolEventSummary.merge(
+                summary: meta,
+                into: WatchMetaBuilder.buildMeta(from: metaSummary)))
+    }
+}
+
+// MARK: - Shared meta builder
+
+private enum WatchMetaBuilder {
+    static func buildMeta(from summary: WatchMetaSummary) -> Value {
+        .object([
+            "frames": .array(summary.frames.map { .string($0) }),
+            "contact": .string(summary.contactPath),
+            "metadata": .string(summary.metadataPath),
+            "diff_algorithm": .string(summary.diffAlgorithm),
+            "diff_scale": .string(summary.diffScale),
+            "contact_columns": .string("\(summary.contactColumns)"),
+            "contact_rows": .string("\(summary.contactRows)"),
+            "contact_thumb_size": .string("\(Int(summary.contactThumbSize.width))x\(Int(summary.contactThumbSize.height))"),
+            "contact_sampled_indexes": .array(summary.contactSampledIndexes.map { .string("\($0)") })
+        ])
     }
 }
 

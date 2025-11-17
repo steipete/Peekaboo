@@ -190,3 +190,29 @@ public struct WatchCaptureResult: Codable, Sendable, Equatable {
     public var contactSampledIndexes: [Int] { self.contactSheet.sampledFrameIndexes }
     public var contactThumbSize: CGSize { self.contactSheet.thumbSize }
 }
+
+/// Shared summary for emitting watch metadata across CLI and MCP surfaces.
+public struct WatchMetaSummary: Sendable, Equatable {
+    public let frames: [String]
+    public let contactPath: String
+    public let metadataPath: String
+    public let diffAlgorithm: String
+    public let diffScale: String
+    public let contactColumns: Int
+    public let contactRows: Int
+    public let contactThumbSize: CGSize
+    public let contactSampledIndexes: [Int]
+
+    public static func make(from result: WatchCaptureResult) -> Self {
+        Self(
+            frames: result.frames.map(\.path),
+            contactPath: result.contactSheet.path,
+            metadataPath: result.metadataFile,
+            diffAlgorithm: result.diffAlgorithm,
+            diffScale: result.diffScale,
+            contactColumns: result.contactColumns,
+            contactRows: result.contactRows,
+            contactThumbSize: result.contactThumbSize,
+            contactSampledIndexes: result.contactSampledIndexes)
+    }
+}

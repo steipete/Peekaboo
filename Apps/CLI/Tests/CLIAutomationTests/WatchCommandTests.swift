@@ -168,3 +168,64 @@ struct WatchCommandTests {
         let decoded = try JSONDecoder().decode(WatchCaptureResult.self, from: Data(result.stdout.utf8))
         #expect(decoded.warnings.contains { $0.code == .diffDowngraded })
     }
+
+    @Test("Meta summary mirrors capture result")
+    @MainActor
+    func metaSummaryMatchesResult() async throws {
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("watch-meta-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+
+        var call = 0
+        let frames = [
+            WatchCommandTests.makePNG(color: .systemRed, size: CGSize(width: 20, height: 20)),
+            WatchCommandTests.makePNG(color: .systemBlue, size: CGSize(width: 20, height: 20))
+        ]
+
+        let stubCapture = StubScreenCaptureService(permissionGranted: true)
+        stubCapture.captureFrontmostHandler = {
+            defer { call += 1 }
+            let data = frames[call % frames.count]
+            return CaptureResult(
+                imageData: data,
+                savedPath: nil,
+                metadata: CaptureMetadata(
+                    size: CGSize(width: 20, height: 20),
+                    mode: .frontmost,
+                    applicationInfo: nil,
+                    windowInfo: nil,
+                    displayInfo: nil,
+                    timestamp: Date()))
+        }
+
+        let ctx = TestServicesFactory.makeAutomationTestContext(
+            screens: [
+                ScreenInfo(index: 0, name: "Test", frame: CGRect(x: 0, y: 0, width: 100, height: 100), visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100), isPrimary: true, scaleFactor: 2, displayID: 1)
+            ],
+            screenCapture: stubCapture)
+
+        let args = [
+            "watch",
+            "--duration", "1",
+            "--idle-fps", "4",
+            "--active-fps", "6",
+            "--threshold", "0.1",
+            "--max-frames", "3",
+            "--path", tmp.path,
+            "--json-output"
+        ]
+
+        let result = try await InProcessCommandRunner.run(args, services: ctx.services)
+        #expect(result.exitStatus == 0)
+        let decoded = try JSONDecoder().decode(WatchCaptureResult.self, from: Data(result.stdout.utf8))
+        let meta = WatchMetaSummary.make(from: decoded)
+
+        #expect(meta.frames == decoded.frames.map(\.path))
+        #expect(meta.contactPath == decoded.contactSheet.path)
+        #expect(meta.metadataPath == decoded.metadataFile)
+        #expect(meta.diffAlgorithm == decoded.diffAlgorithm)
+        #expect(meta.diffScale == decoded.diffScale)
+        #expect(meta.contactColumns == decoded.contactColumns)
+        #expect(meta.contactRows == decoded.contactRows)
+        #expect(meta.contactSampledIndexes == decoded.contactSampledIndexes)
+    }
