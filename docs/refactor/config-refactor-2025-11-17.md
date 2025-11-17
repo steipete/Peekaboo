@@ -59,8 +59,9 @@ Open items
 - Submodule updated: Tachikoma commit `d08e422` (auth centralization); main commit `24ad2458` wires Peekaboo CLI to Tachikoma.
 - New tests (Tachikoma): `AuthManagerTests` cover env-vs-cred precedence, grok aliasing, validator success/failure (mocked HTTP). Commit `1e2a080`.
 - OAuth refresh implemented with persistence; tests cover refresh-on-expiry. Commit `b69ec72`.
-- Tachikoma-native CLI wrapper added: `tk-config` (commands: add/login/status). Commit `88dcc1a`.
-- Remaining work: Peekaboo CLI integration/snapshot tests; optional broader suite runs when time allows.
+- Tachikoma-native CLI wrapper added: `tk-config` (commands: add/login/status), now using a lightweight manual parser. Commits `88dcc1a`, `53ecdf1`.
+- Ran `swift test` in Tachikoma (passes; only pre-existing #expect warnings in placeholder tests).
+- Remaining work: Peekaboo CLI integration/snapshot tests if desired; optional broader suite runs.
 
 ## Next steps (for the refactor proper)
 1) Build Tachikoma CredentialStore/Resolver + OAuthManager + validators; add Tachikoma CLI (`config add/login/show/init`).
