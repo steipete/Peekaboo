@@ -1,8 +1,10 @@
 import CoreGraphics
+import Foundation
 import Testing
 @testable import PeekabooAutomation
 
 @Suite("Watch hysteresis and caps")
+@MainActor
 struct WatchHysteresisTests {
     @Test("Exits active after quiet period")
     func exitsActiveAfterQuiet() {

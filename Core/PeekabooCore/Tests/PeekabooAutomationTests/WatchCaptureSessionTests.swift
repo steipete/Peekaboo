@@ -1,5 +1,8 @@
 import CoreGraphics
+import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 @testable import PeekabooAutomation
 
 @Suite("WatchCaptureSession diffing")
@@ -145,20 +148,24 @@ struct WatchCaptureSessionTests {
         }
         ctx.setFillColor(CGColor(red: 0.2, green: 0.5, blue: 0.8, alpha: 1))
         ctx.fill(CGRect(origin: .zero, size: size))
-        guard let image = ctx.makeImage(),
-              let dest = CGImageDestinationCreateWithData(
-                  NSMutableData(),
-                  UTType.png.identifier as CFString,
-                  1,
-                  nil)
-        else {
-            fatalError("Failed to build PNG")
+        guard let image = ctx.makeImage() else {
+            fatalError("Failed to build CGImage")
         }
-        CGImageDestinationAddImage(dest, image, nil)
-        guard CGImageDestinationFinalize(dest) else {
+
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data,
+            UTType.png.identifier as CFString,
+            1,
+            nil)
+        else {
+            fatalError("Failed to create image destination")
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else {
             fatalError("Failed to finalize PNG")
         }
-        return dest.data as Data
+        return data as Data
     }
 }
 
@@ -187,9 +194,14 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     }
 
     func captureArea(_ rect: CGRect) async throws -> CaptureResult {
-        var meta = self.baseMetadata(mode: .area)
-        meta.displayInfo = DisplayInfo(index: 0, name: "Test", bounds: rect, scaleFactor: 2)
-        return CaptureResult(imageData: self.resultData, savedPath: nil, metadata: meta, warning: nil)
+        let metadata = CaptureMetadata(
+            size: rect.size,
+            mode: .area,
+            applicationInfo: nil,
+            windowInfo: nil,
+            displayInfo: DisplayInfo(index: 0, name: "Test", bounds: rect, scaleFactor: 2),
+            timestamp: Date())
+        return CaptureResult(imageData: self.resultData, savedPath: nil, metadata: metadata, warning: nil)
     }
 
     func hasScreenRecordingPermission() async -> Bool { true }
