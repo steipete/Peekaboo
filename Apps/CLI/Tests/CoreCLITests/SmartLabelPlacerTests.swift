@@ -86,8 +86,8 @@ struct SmartLabelPlacerTests {
 
 // MARK: - Helpers
 
-private extension SmartLabelPlacerTests {
-    static func makeImage(size: NSSize) -> NSImage {
+extension SmartLabelPlacerTests {
+    fileprivate static func makeImage(size: NSSize) -> NSImage {
         let image = NSImage(size: size)
         image.lockFocus()
         NSColor.white.setFill()
@@ -96,7 +96,7 @@ private extension SmartLabelPlacerTests {
         return image
     }
 
-    static func expectedScoringRect(from labelRect: NSRect, imageSize: NSSize) -> NSRect {
+    fileprivate static func expectedScoringRect(from labelRect: NSRect, imageSize: NSSize) -> NSRect {
         let imageRect = NSRect(
             x: labelRect.origin.x,
             y: imageSize.height - labelRect.origin.y - labelRect.height,
@@ -110,10 +110,10 @@ private extension SmartLabelPlacerTests {
             dy: -SmartLabelPlacer.defaultScoreRegionPadding
         )
 
-        return clamp(expanded, within: NSRect(origin: .zero, size: imageSize))
+        return self.clamp(expanded, within: NSRect(origin: .zero, size: imageSize))
     }
 
-    static func clamp(_ rect: NSRect, within bounds: NSRect) -> NSRect {
+    fileprivate static func clamp(_ rect: NSRect, within bounds: NSRect) -> NSRect {
         let minX = max(bounds.minX, rect.minX)
         let maxX = min(bounds.maxX, rect.maxX)
         let minY = max(bounds.minY, rect.minY)
@@ -126,7 +126,7 @@ private extension SmartLabelPlacerTests {
         )
     }
 
-    static func expect(_ lhs: NSRect, equals rhs: NSRect, accuracy: CGFloat = 0.001) {
+    fileprivate static func expect(_ lhs: NSRect, equals rhs: NSRect, accuracy: CGFloat = 0.001) {
         #expect(abs(lhs.origin.x - rhs.origin.x) < accuracy)
         #expect(abs(lhs.origin.y - rhs.origin.y) < accuracy)
         #expect(abs(lhs.size.width - rhs.size.width) < accuracy)
@@ -149,8 +149,8 @@ private final class RecordingTextDetector: SmartLabelPlacerTextDetecting {
     }
 }
 
-private extension DetectedElement {
-    static func make(id: String) -> DetectedElement {
+extension DetectedElement {
+    fileprivate static func make(id: String) -> DetectedElement {
         DetectedElement(
             id: id,
             type: .button,

@@ -12,12 +12,13 @@ struct WatchCaptureSessionTests {
         let prev = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 0, 0, 0])
         let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
         let result = WatchCaptureSession.computeChange(
-            strategy: .fast,
-            diffBudgetMs: nil,
-            previous: prev,
-            current: curr,
-            deltaThreshold: 10,
-            originalSize: CGSize(width: 200, height: 200))
+            using: .init(
+                strategy: .fast,
+                diffBudgetMs: nil,
+                previous: prev,
+                current: curr,
+                deltaThreshold: 10,
+                originalSize: CGSize(width: 200, height: 200)))
         #expect(result.changePercent > 0)
         let firstBox = result.boundingBoxes.first
         #expect(abs((firstBox?.origin.x ?? 0) - 100) < 0.1)
@@ -28,12 +29,13 @@ struct WatchCaptureSessionTests {
     func qualityNoChange() {
         let buffer = WatchCaptureSession.LumaBuffer(width: 4, height: 4, pixels: Array(repeating: 64, count: 16))
         let result = WatchCaptureSession.computeChange(
-            strategy: .quality,
-            diffBudgetMs: nil,
-            previous: buffer,
-            current: buffer,
-            deltaThreshold: 10,
-            originalSize: CGSize(width: 100, height: 100))
+            using: .init(
+                strategy: .quality,
+                diffBudgetMs: nil,
+                previous: buffer,
+                current: buffer,
+                deltaThreshold: 10,
+                originalSize: CGSize(width: 100, height: 100)))
         #expect(result.changePercent < 0.01)
         #expect(result.boundingBoxes.isEmpty)
     }
@@ -43,12 +45,13 @@ struct WatchCaptureSessionTests {
         let prev = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 0, 0, 0])
         let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [255, 255, 255, 255])
         let result = WatchCaptureSession.computeChange(
-            strategy: .quality,
-            diffBudgetMs: nil,
-            previous: prev,
-            current: curr,
-            deltaThreshold: 10,
-            originalSize: CGSize(width: 100, height: 100))
+            using: .init(
+                strategy: .quality,
+                diffBudgetMs: nil,
+                previous: prev,
+                current: curr,
+                deltaThreshold: 10,
+                originalSize: CGSize(width: 100, height: 100)))
         #expect(result.changePercent <= 100)
     }
 
@@ -57,7 +60,10 @@ struct WatchCaptureSessionTests {
         // Two disjoint regions far apart should still report a union box that spans both.
         let width = 8
         let height = 8
-        let prev = WatchCaptureSession.LumaBuffer(width: width, height: height, pixels: Array(repeating: 0, count: width * height))
+        let prev = WatchCaptureSession.LumaBuffer(
+            width: width,
+            height: height,
+            pixels: Array(repeating: 0, count: width * height))
         var pixels = Array(repeating: UInt8(0), count: width * height)
         func index(_ x: Int, _ y: Int) -> Int { y * width + x }
         // Activate a block in the top-left and another in the bottom-right.
@@ -73,12 +79,13 @@ struct WatchCaptureSessionTests {
         }
         let curr = WatchCaptureSession.LumaBuffer(width: width, height: height, pixels: pixels)
         let result = WatchCaptureSession.computeChange(
-            strategy: .fast,
-            diffBudgetMs: nil,
-            previous: prev,
-            current: curr,
-            deltaThreshold: 1,
-            originalSize: CGSize(width: 800, height: 800))
+            using: .init(
+                strategy: .fast,
+                diffBudgetMs: nil,
+                previous: prev,
+                current: curr,
+                deltaThreshold: 1,
+                originalSize: CGSize(width: 800, height: 800)))
         guard let union = result.boundingBoxes.first else {
             Issue.record("Expected bounding boxes to be reported")
             return
@@ -96,7 +103,14 @@ struct WatchCaptureSessionTests {
         let png = Self.makePNG(size: CGSize(width: 20, height: 20))
         let capture = StubScreenCaptureService(result: png, size: CGSize(width: 20, height: 20))
         let screens = StubScreenService()
-        let scope = WatchScope(kind: .frontmost, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+        let scope = WatchScope(
+            kind: .frontmost,
+            screenIndex: nil,
+            displayUUID: nil,
+            windowId: nil,
+            applicationIdentifier: nil,
+            windowIndex: nil,
+            region: nil)
 
         let options = WatchCaptureOptions(
             duration: 2,
@@ -116,14 +130,15 @@ struct WatchCaptureSessionTests {
         let output = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("watch-cap-\(UUID().uuidString)", isDirectory: true)
 
-        let session = WatchCaptureSession(
+        let dependencies = WatchCaptureDependencies(
             screenCapture: capture,
-            screenService: screens,
+            screenService: screens)
+        let configuration = WatchCaptureConfiguration(
             scope: scope,
             options: options,
             outputRoot: output,
-            autocleanMinutes: 1,
-            managedAutoclean: false)
+            autoclean: WatchAutocleanConfig(minutes: 1, managed: false))
+        let session = WatchCaptureSession(dependencies: dependencies, configuration: configuration)
 
         let result = try await session.run()
         #expect(result.frames.count == 1)
@@ -136,7 +151,14 @@ struct WatchCaptureSessionTests {
         let png = Self.makePNG(size: CGSize(width: 50, height: 50))
         let capture = StubScreenCaptureService(result: png, size: CGSize(width: 50, height: 50))
         let screens = StubScreenService()
-        let scope = WatchScope(kind: .frontmost, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+        let scope = WatchScope(
+            kind: .frontmost,
+            screenIndex: nil,
+            displayUUID: nil,
+            windowId: nil,
+            applicationIdentifier: nil,
+            windowIndex: nil,
+            region: nil)
 
         let options = WatchCaptureOptions(
             duration: 2,
@@ -156,14 +178,15 @@ struct WatchCaptureSessionTests {
         let output = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("watch-sizecap-\(UUID().uuidString)", isDirectory: true)
 
-        let session = WatchCaptureSession(
+        let dependencies = WatchCaptureDependencies(
             screenCapture: capture,
-            screenService: screens,
+            screenService: screens)
+        let configuration = WatchCaptureConfiguration(
             scope: scope,
             options: options,
             outputRoot: output,
-            autocleanMinutes: 1,
-            managedAutoclean: false)
+            autoclean: WatchAutocleanConfig(minutes: 1, managed: false))
+        let session = WatchCaptureSession(dependencies: dependencies, configuration: configuration)
 
         let result = try await session.run()
         #expect(result.warnings.contains { $0.code == .sizeCap })
@@ -262,7 +285,11 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
             mode: mode,
             applicationInfo: nil,
             windowInfo: nil,
-            displayInfo: DisplayInfo(index: 0, name: "Test", bounds: CGRect(origin: .zero, size: self.size), scaleFactor: 2),
+            displayInfo: DisplayInfo(
+                index: 0,
+                name: "Test",
+                bounds: CGRect(origin: .zero, size: self.size),
+                scaleFactor: 2),
             timestamp: Date())
     }
 }
@@ -270,7 +297,16 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 @MainActor
 private final class StubScreenService: ScreenServiceProtocol {
     func listScreens() -> [ScreenInfo] {
-        [ScreenInfo(index: 0, name: "Test", frame: CGRect(x: 0, y: 0, width: 100, height: 100), visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100), isPrimary: true, scaleFactor: 2, displayID: 1)]
+        [
+            ScreenInfo(
+                index: 0,
+                name: "Test",
+                frame: CGRect(x: 0, y: 0, width: 100, height: 100),
+                visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100),
+                isPrimary: true,
+                scaleFactor: 2,
+                displayID: 1),
+        ]
     }
 
     func screenContainingWindow(bounds _: CGRect) -> ScreenInfo? { self.listScreens().first }

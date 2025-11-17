@@ -61,7 +61,11 @@ enum MCPCallFormatter {
         }
     }
 
-    private static func makeJSONPayload(for response: ToolResponse, serverName: String, toolName: String) -> CallJSONPayload {
+    private static func makeJSONPayload(
+        for response: ToolResponse,
+        serverName: String,
+        toolName: String
+    ) -> CallJSONPayload {
         let contents = response.content.map(SerializableContent.init)
         return CallJSONPayload(
             success: !response.isError,

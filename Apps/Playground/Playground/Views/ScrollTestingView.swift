@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ScrollTestingView: View {
     @EnvironmentObject var actionLogger: ActionLogger
@@ -41,14 +41,12 @@ struct ScrollTestingView: View {
                             .background(
                                 ScrollAccessibilityConfigurator(
                                     identifier: "vertical-scroll",
-                                    label: "Vertical Scroll Area")
-                            )
+                                    label: "Vertical Scroll Area"))
                         }
                         .overlay(
                             AXScrollTargetOverlay(
                                 identifier: "vertical-scroll",
-                                label: "Vertical Scroll Area")
-                        )
+                                label: "Vertical Scroll Area"))
                         .padding()
                         .background(ScrollOffsetReader(coordinateSpace: "vertical-scroll-area") { offset in
                             self.logVerticalScrollChange(offset: offset.y)
@@ -112,14 +110,12 @@ struct ScrollTestingView: View {
                             .background(
                                 ScrollAccessibilityConfigurator(
                                     identifier: "horizontal-scroll",
-                                    label: "Horizontal Scroll Area")
-                            )
+                                    label: "Horizontal Scroll Area"))
                         }
                         .overlay(
                             AXScrollTargetOverlay(
                                 identifier: "horizontal-scroll",
-                                label: "Horizontal Scroll Area")
-                        )
+                                label: "Horizontal Scroll Area"))
                         .padding()
                         .background(ScrollOffsetReader(coordinateSpace: "horizontal-scroll-area") { offset in
                             self.logHorizontalScrollChange(offset: offset.x)
@@ -255,14 +251,12 @@ struct ScrollTestingView: View {
                             .background(
                                 ScrollAccessibilityConfigurator(
                                     identifier: "nested-inner-scroll",
-                                    label: "Nested Inner Scroll")
-                            )
+                                    label: "Nested Inner Scroll"))
                         }
                         .overlay(
                             AXScrollTargetOverlay(
                                 identifier: "nested-inner-scroll",
-                                label: "Nested Inner Scroll")
-                        )
+                                label: "Nested Inner Scroll"))
                         .frame(height: 150)
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(8)
@@ -279,14 +273,12 @@ struct ScrollTestingView: View {
                     .background(
                         ScrollAccessibilityConfigurator(
                             identifier: "nested-outer-scroll",
-                            label: "Nested Outer Scroll")
-                    )
+                            label: "Nested Outer Scroll"))
                 }
                 .overlay(
                     AXScrollTargetOverlay(
                         identifier: "nested-outer-scroll",
-                        label: "Nested Outer Scroll")
-                )
+                        label: "Nested Outer Scroll"))
                 .frame(height: 200)
                 .background(Color(NSColor.controlBackgroundColor))
             }
@@ -305,8 +297,7 @@ struct ScrollTestingView: View {
         self.actionLogger.log(
             .scroll,
             "Vertical scroll offset",
-            details: "y=\(Int(rounded))"
-        )
+            details: "y=\(Int(rounded))")
     }
 
     private func logHorizontalScrollChange(offset: CGFloat) {
@@ -318,8 +309,7 @@ struct ScrollTestingView: View {
         self.actionLogger.log(
             .scroll,
             "Horizontal scroll offset",
-            details: "x=\(Int(rounded))"
-        )
+            details: "x=\(Int(rounded))")
     }
 }
 
@@ -332,7 +322,7 @@ private struct ScrollOffsetReader: View {
             Color.clear
                 .preference(
                     key: ScrollOffsetPreferenceKey.self,
-                    value: proxy.frame(in: .named(coordinateSpace)).origin)
+                    value: proxy.frame(in: .named(self.coordinateSpace)).origin)
         }
         .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
             self.onChange(value)

@@ -693,11 +693,11 @@ extension AgentCommand {
         }
 
         return nil
-}
+    }
 
-final class SilentAgentEventDelegate: AgentEventDelegate {
-    func agentDidEmitEvent(_ event: AgentEvent) {}
-}
+    final class SilentAgentEventDelegate: AgentEventDelegate {
+        func agentDidEmitEvent(_ event: AgentEvent) {}
+    }
 
     func printAgentExecutionError(_ message: String) {
         if self.jsonOutput {

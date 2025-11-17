@@ -47,4 +47,3 @@ struct ConfigCommand: ParsableCommand {
         showHelpOnEmptyInvocation: true
     )
 }
-

@@ -65,10 +65,13 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Diff strategy: fast|quality (default fast)")
     var diffStrategy: String?
 
-    @Option(name: .long, help: "Diff time budget in milliseconds before falling back to fast (default 30 for quality)")
+    @Option(
+        name: .long,
+        help: "Diff time budget in milliseconds before falling back to fast (default 30 when quality)"
+    )
     var diffBudgetMs: Int?
 
-// Output
+    // Output
     @Option(name: .long, help: "Output directory (defaults to temp watch session)")
     var path: String?
 
@@ -103,7 +106,8 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
                 "duration": self.duration ?? 60,
                 "idle_fps": self.idleFps ?? 2,
                 "active_fps": self.activeFps ?? 8
-            ])
+            ]
+        )
 
         do {
             try await requireScreenRecordingPermission(services: self.services)
@@ -115,14 +119,23 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             }
 
             let outputDir = try self.resolveOutputDirectory()
-            let session = WatchCaptureSession(
+            let dependencies = WatchCaptureDependencies(
                 screenCapture: self.services.screenCapture,
-                screenService: self.services.screens,
+                screenService: self.services.screens
+            )
+            let configuration = WatchCaptureConfiguration(
                 scope: scope,
                 options: options,
                 outputRoot: outputDir,
-                autocleanMinutes: self.autocleanMinutes ?? 120,
-                managedAutoclean: self.path == nil)
+                autoclean: WatchAutocleanConfig(
+                    minutes: self.autocleanMinutes ?? 120,
+                    managed: self.path == nil
+                )
+            )
+            let session = WatchCaptureSession(
+                dependencies: dependencies,
+                configuration: configuration
+            )
             let result = try await session.run()
 
             self.output(result)
@@ -133,13 +146,15 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
                     "frames_kept": result.stats.framesKept,
                     "frames_dropped": result.stats.framesDropped,
                     "fps_effective": result.stats.fpsEffective
-                ])
+                ]
+            )
         } catch {
             self.handleError(error)
             self.logger.operationComplete(
                 "watch_command",
                 success: false,
-                metadata: ["error": error.localizedDescription])
+                metadata: ["error": error.localizedDescription]
+            )
             throw ExitCode(1)
         }
     }
@@ -151,9 +166,25 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         switch mode {
         case .screen:
             let displayInfo = try await self.displayInfo(for: self.screenIndex)
-            return WatchScope(kind: .screen, screenIndex: displayInfo?.index, displayUUID: displayInfo?.uuid, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+            return WatchScope(
+                kind: .screen,
+                screenIndex: displayInfo?.index,
+                displayUUID: displayInfo?.uuid,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: nil
+            )
         case .frontmost:
-            return WatchScope(kind: .frontmost, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+            return WatchScope(
+                kind: .frontmost,
+                screenIndex: nil,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: nil
+            )
         case .window:
             let identifier = try self.resolveApplicationIdentifier()
             let windowIdx = try await self.resolveWindowIndex(for: identifier)
@@ -164,10 +195,19 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
                 windowId: nil,
                 applicationIdentifier: identifier,
                 windowIndex: windowIdx,
-                region: nil)
+                region: nil
+            )
         case .area:
             let rect = try self.parseRegion()
-            return WatchScope(kind: .region, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: rect)
+            return WatchScope(
+                kind: .region,
+                screenIndex: nil,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: rect
+            )
         case .multi:
             throw ValidationError("watch does not support multi-mode captures")
         }
@@ -201,12 +241,14 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         do {
             let windows = try await WindowServiceBridge.listWindows(
                 windows: self.services.windows,
-                target: .application(identifier))
+                target: .application(identifier)
+            )
             let renderable = WindowFilterHelper.filter(
                 windows: windows,
                 appIdentifier: identifier,
                 mode: .capture,
-                logger: self.logger)
+                logger: self.logger
+            )
             if let title = self.windowTitle,
                let match = renderable.first(where: { $0.title.localizedCaseInsensitiveContains(title) }) {
                 return match.index
@@ -240,7 +282,7 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         let quiet = max(self.quietMs ?? 1000, 0)
         let maxFrames = max(self.maxFrames ?? 800, 1)
         let resolutionCap = self.resolutionCap ?? 1440
-        let diffStrategy = WatchCaptureOptions.DiffStrategy(rawValue: (self.diffStrategy ?? "fast")) ?? .fast
+        let diffStrategy = WatchCaptureOptions.DiffStrategy(rawValue: self.diffStrategy ?? "fast") ?? .fast
         let diffBudgetMs = self.diffBudgetMs ?? (diffStrategy == .quality ? 30 : nil)
 
         let maxMb = self.maxMb.flatMap { $0 > 0 ? $0 : nil }
@@ -258,7 +300,8 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             captureFocus: self.captureFocus,
             resolutionCap: resolutionCap,
             diffStrategy: diffStrategy,
-            diffBudgetMs: diffBudgetMs)
+            diffBudgetMs: diffBudgetMs
+        )
     }
 
     private func resolveOutputDirectory() throws -> URL {
@@ -280,9 +323,17 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             return
         }
 
-        print("🎥 watch captured \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)), contact sheet: \(meta.contactPath), diff: \(meta.diffAlgorithm) @ \(meta.diffScale), grid \(meta.contactColumns)x\(meta.contactRows) thumb \(Int(meta.contactThumbSize.width))x\(Int(meta.contactThumbSize.height))")
+        print("""
+        🎥 watch captured \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)),
+        contact sheet: \(meta.contactPath), diff: \(meta.diffAlgorithm) @ \(meta.diffScale),
+        grid \(meta.contactColumns)x\(meta.contactRows) \
+        thumb \(Int(meta.contactThumbSize.width))x\(Int(meta.contactThumbSize.height))
+        """)
         for frame in result.frames {
-            print("🖼️  \(frame.reason.rawValue) t=\(frame.timestampMs)ms Δ=\(String(format: "%.2f", frame.changePercent))% → \(frame.path)")
+            print("""
+            🖼️  \(frame.reason.rawValue) t=\(frame.timestampMs)ms \
+            Δ=\(String(format: "%.2f", frame.changePercent))% → \(frame.path)
+            """)
         }
         for warning in result.warnings {
             print("⚠️  \(warning.code.rawValue): \(warning.message)")
@@ -299,24 +350,28 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
                 focusTimeout: nil,
                 focusRetryCount: nil,
                 spaceSwitch: false,
-                bringToCurrentSpace: false)
+                bringToCurrentSpace: false
+            )
             try await ensureFocused(
                 applicationName: appIdentifier,
                 windowTitle: self.windowTitle,
                 options: options,
-                services: self.services)
+                services: self.services
+            )
         case .foreground:
             let options = FocusOptions(
                 autoFocus: true,
                 focusTimeout: nil,
                 focusRetryCount: nil,
                 spaceSwitch: true,
-                bringToCurrentSpace: true)
+                bringToCurrentSpace: true
+            )
             try await ensureFocused(
                 applicationName: appIdentifier,
                 windowTitle: self.windowTitle,
                 options: options,
-                services: self.services)
+                services: self.services
+            )
         }
     }
 }

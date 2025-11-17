@@ -14,7 +14,8 @@ struct VisualizerCommand: RuntimeOptionsConfigurable {
                 commandName: "visualizer",
                 abstract: "Exercise Peekaboo visual feedback animations",
                 discussion: "Runs a lightweight smoke sequence that fires every visualizer event so you can verify Peekaboo.app is rendering overlays.",
-                showHelpOnEmptyInvocation: false)
+                showHelpOnEmptyInvocation: false
+            )
         }
     }
 
@@ -74,7 +75,11 @@ private struct VisualizerSmokeSequence {
         }
 
         try await self.step("Swipe gesture") {
-            await client.showSwipeGesture(from: CGPoint(x: point.x - 120, y: point.y), to: CGPoint(x: point.x + 120, y: point.y), duration: 0.6)
+            await client.showSwipeGesture(
+                from: CGPoint(x: point.x - 120, y: point.y),
+                to: CGPoint(x: point.x + 120, y: point.y),
+                duration: 0.6
+            )
         }
 
         try await self.step("Hotkey heads-up display") {
@@ -98,7 +103,11 @@ private struct VisualizerSmokeSequence {
         }
 
         try await self.step("Dialog interaction highlight") {
-            await client.showDialogInteraction(element: .button, elementRect: CGRect(origin: point, size: CGSize(width: 160, height: 40)), action: .clickButton)
+            await client.showDialogInteraction(
+                element: .button,
+                elementRect: CGRect(origin: point, size: CGSize(width: 160, height: 40)),
+                action: .clickButton
+            )
         }
 
         try await self.step("Space switch indicator") {
@@ -106,12 +115,15 @@ private struct VisualizerSmokeSequence {
         }
 
         try await self.step("Element detection overlay") {
-            let sampleElements: [String: CGRect] = ["B1": CGRect(x: primaryRect.minX + 20, y: primaryRect.minY + 20, width: 140, height: 44), "T1": CGRect(x: primaryRect.midX - 80, y: primaryRect.midY, width: 200, height: 40)]
+            let sampleElements: [String: CGRect] = [
+                "B1": CGRect(x: primaryRect.minX + 20, y: primaryRect.minY + 20, width: 140, height: 44),
+                "T1": CGRect(x: primaryRect.midX - 80, y: primaryRect.midY, width: 200, height: 40)
+            ]
             await client.showElementDetection(elements: sampleElements)
         }
     }
 
-    private func step(_ name: String, action: @escaping @MainActor () async -> Void) async throws {
+    private func step(_ name: String, action: @escaping @MainActor () async -> ()) async throws {
         self.logger.debug("VisualizerSmoke: \(name)")
         await action()
         try await Task.sleep(for: .milliseconds(250))

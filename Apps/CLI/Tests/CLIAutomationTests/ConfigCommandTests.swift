@@ -8,11 +8,17 @@ struct ConfigCommandTests {
     // MARK: - Helpers
 
     private func makeRuntime(json: Bool = false) -> CommandRuntime {
-        CommandRuntime(configuration: .init(verbose: false, jsonOutput: json, logLevel: nil), services: PeekabooServices())
+        CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: json, logLevel: nil),
+            services: PeekabooServices()
+        )
     }
 
-    private func withTempConfigDir(_ body: @escaping (URL) async throws -> Void) async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    private func withTempConfigDir(_ body: @escaping (URL) async throws -> ()) async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+            isDirectory: true
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)

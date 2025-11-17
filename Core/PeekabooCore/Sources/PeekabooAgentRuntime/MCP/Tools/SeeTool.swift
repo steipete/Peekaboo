@@ -145,7 +145,7 @@ public struct SeeTool: MCPTool {
 
         Returns Peekaboo element IDs (B1 for buttons, T1 for text fields, etc.) that can be
         used with interaction commands and creates/updates a session that tracks UI state.
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5.1
+        Peekaboo MCP 3.0.0 using openai/gpt-5.1
         and anthropic/claude-sonnet-4.5.
         """
     }
@@ -325,7 +325,10 @@ public struct SeeTool: MCPTool {
         try result.imageData.write(to: URL(fileURLWithPath: path))
     }
 
-    private func detectUIElements(target: CaptureTarget, session: UISession) async throws -> ([UIElement], [AutomationDetectedElement]) {
+    private func detectUIElements(
+        target: CaptureTarget,
+        session: UISession) async throws -> ([UIElement], [AutomationDetectedElement])
+    {
         guard let screenshotPath = await session.screenshotPath else {
             self.logger.warning("No screenshot available for element detection")
             return ([], [])
@@ -467,7 +470,6 @@ public struct SeeTool: MCPTool {
             elements: protocolElements,
             windowBounds: windowBounds)
     }
-
 
     @MainActor
     private func buildSummary(

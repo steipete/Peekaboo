@@ -1,6 +1,6 @@
+import Algorithms
 import AppKit
 import CoreGraphics
-import Algorithms
 import Foundation
 import PeekabooFoundation
 import PeekabooVisualizer

@@ -3,11 +3,11 @@
 //  PeekabooCLITests
 //
 
+import Commander
 import Foundation
 import PeekabooCore
 import TachikomaMCP
 import Testing
-import Commander
 @testable import PeekabooCLI
 
 @Suite("MCP command flows", .tags(.safe))

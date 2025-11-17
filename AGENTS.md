@@ -218,7 +218,7 @@ To test this project interactive we can use:
 
 1. **Check the build timestamp**: Every Peekaboo execution shows when it was compiled:
    ```
-   Peekaboo 3.0.0-beta.1 (main/bdbaf32-dirty, 2025-07-28 17:13:41 +0200)
+   Peekaboo 3.0.0 (main/bdbaf32-dirty, 2025-07-28 17:13:41 +0200)
    ```
    If the timestamp is older than your recent changes, the binary is stale!
 

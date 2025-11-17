@@ -990,13 +990,13 @@ enum ConfigurationValidationError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidIdentifier(let msg),
-             .invalidName(let msg),
-             .invalidURL(let msg),
-             .invalidAPIKey(let msg),
-             .invalidHeaders(let msg),
-             .invalidModels(let msg):
-            return msg
+        case let .invalidIdentifier(msg),
+             let .invalidName(msg),
+             let .invalidURL(msg),
+             let .invalidAPIKey(msg),
+             let .invalidHeaders(msg),
+             let .invalidModels(msg):
+            msg
         }
     }
 }

@@ -13,9 +13,9 @@ struct WatchCommandCapsTests {
     @MainActor
     func emitsFrameCapWarning() async throws {
         let stubCapture = StubScreenCaptureService(permissionGranted: true)
-        let png = makePNG(color: .systemPink)
+        let png = self.makePNG(color: .systemPink)
         stubCapture.captureFrontmostHandler = {
-            return CaptureResult(
+            CaptureResult(
                 imageData: png,
                 savedPath: nil,
                 metadata: CaptureMetadata(
@@ -24,14 +24,25 @@ struct WatchCommandCapsTests {
                     applicationInfo: nil,
                     windowInfo: nil,
                     displayInfo: nil,
-                    timestamp: Date()))
+                    timestamp: Date()
+                )
+            )
         }
 
         let ctx = TestServicesFactory.makeAutomationTestContext(
             screens: [
-                ScreenInfo(index: 0, name: "Test", frame: CGRect(x: 0, y: 0, width: 100, height: 100), visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100), isPrimary: true, scaleFactor: 2, displayID: 1)
+                ScreenInfo(
+                    index: 0,
+                    name: "Test",
+                    frame: CGRect(x: 0, y: 0, width: 100, height: 100),
+                    visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100),
+                    isPrimary: true,
+                    scaleFactor: 2,
+                    displayID: 1
+                )
             ],
-            screenCapture: stubCapture)
+            screenCapture: stubCapture
+        )
 
         let args = [
             "watch",
@@ -54,9 +65,9 @@ struct WatchCommandCapsTests {
     func emitsSizeCapWarning() async throws {
         let stubCapture = StubScreenCaptureService(permissionGranted: true)
         // Large fake frame (~1MB) to trip a low max-mb.
-        let png = makePNG(color: .systemGray, size: CGSize(width: 500, height: 500))
+        let png = self.makePNG(color: .systemGray, size: CGSize(width: 500, height: 500))
         stubCapture.captureFrontmostHandler = {
-            return CaptureResult(
+            CaptureResult(
                 imageData: png,
                 savedPath: nil,
                 metadata: CaptureMetadata(
@@ -65,14 +76,25 @@ struct WatchCommandCapsTests {
                     applicationInfo: nil,
                     windowInfo: nil,
                     displayInfo: nil,
-                    timestamp: Date()))
+                    timestamp: Date()
+                )
+            )
         }
 
         let ctx = TestServicesFactory.makeAutomationTestContext(
             screens: [
-                ScreenInfo(index: 0, name: "Test", frame: CGRect(x: 0, y: 0, width: 100, height: 100), visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100), isPrimary: true, scaleFactor: 2, displayID: 1)
+                ScreenInfo(
+                    index: 0,
+                    name: "Test",
+                    frame: CGRect(x: 0, y: 0, width: 100, height: 100),
+                    visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100),
+                    isPrimary: true,
+                    scaleFactor: 2,
+                    displayID: 1
+                )
             ],
-            screenCapture: stubCapture)
+            screenCapture: stubCapture
+        )
 
         let args = [
             "watch",

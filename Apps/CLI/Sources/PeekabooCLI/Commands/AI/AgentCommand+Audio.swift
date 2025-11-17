@@ -4,8 +4,8 @@
 //
 
 import Darwin
-import Foundation
 import Dispatch
+import Foundation
 import PeekabooCore
 
 @available(macOS 14.0, *)

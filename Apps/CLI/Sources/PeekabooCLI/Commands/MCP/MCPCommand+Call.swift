@@ -62,7 +62,12 @@ extension MCPCommand {
                 )
 
                 if context.wantsJSON {
-                    MCPCallFormatter.outputJSON(response: response, serverName: server, toolName: tool, logger: context.logger)
+                    MCPCallFormatter.outputJSON(
+                        response: response,
+                        serverName: server,
+                        toolName: tool,
+                        logger: context.logger
+                    )
                 } else {
                     MCPCallFormatter.outputHumanReadable(response: response, server: server, toolName: tool)
                 }
@@ -71,12 +76,22 @@ extension MCPCommand {
                     throw ExitCode.failure
                 }
             } catch let error as MCPCommandError {
-                MCPCallFormatter.emitError(message: error.localizedDescription, code: error.errorCode, wantsJSON: context.wantsJSON, logger: context.logger)
+                MCPCallFormatter.emitError(
+                    message: error.localizedDescription,
+                    code: error.errorCode,
+                    wantsJSON: context.wantsJSON,
+                    logger: context.logger
+                )
                 throw ExitCode.failure
             } catch let exit as ExitCode {
                 throw exit
             } catch {
-                MCPCallFormatter.emitError(message: "Failed to call MCP tool: \(error.localizedDescription)", code: .UNKNOWN_ERROR, wantsJSON: context.wantsJSON, logger: context.logger)
+                MCPCallFormatter.emitError(
+                    message: "Failed to call MCP tool: \(error.localizedDescription)",
+                    code: .UNKNOWN_ERROR,
+                    wantsJSON: context.wantsJSON,
+                    logger: context.logger
+                )
                 throw ExitCode.failure
             }
         }
@@ -92,7 +107,10 @@ extension MCPCommand {
                 throw MCPCommandError.serverDisabled(serverName)
             }
 
-            let probe = await context.service.probe(name: serverName, timeoutMs: Int(Self.connectionTimeoutSeconds * 1000))
+            let probe = await context.service.probe(
+                name: serverName,
+                timeoutMs: Int(Self.connectionTimeoutSeconds * 1000)
+            )
 
             guard case .connected = probe else {
                 let reason: String? = {

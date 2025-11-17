@@ -31,11 +31,11 @@ enum ChromeDevToolsServerFactory {
 
     private static func resolveCommandDetails() -> (transport: String, command: String, arguments: [String]) {
         if let local = self.localBinaryPath() {
-            return ("stdio", local, ["--isolated"])
+            ("stdio", local, ["--isolated"])
         } else if self.hasExecutable(named: "pnpm") {
-            return ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
+            ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
         } else {
-            return ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
+            ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
         }
     }
 

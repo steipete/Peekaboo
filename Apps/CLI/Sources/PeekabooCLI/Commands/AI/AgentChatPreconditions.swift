@@ -5,7 +5,7 @@
 
 import Foundation
 
-struct AgentChatPreconditions {
+enum AgentChatPreconditions {
     struct Flags {
         let jsonOutput: Bool
         let quiet: Bool

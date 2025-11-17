@@ -1,7 +1,7 @@
 import Foundation
-@testable import PeekabooAutomation
 import PeekabooFoundation
 import Testing
+@testable import PeekabooAutomation
 
 @Suite("Watch CLI output shape (smoke)")
 struct WatchCLISmokeTests {
@@ -50,7 +50,7 @@ struct WatchCLISmokeTests {
                 heartbeatSeconds: 5,
                 quietMsToIdle: 1000,
                 maxFrames: 800,
-                maxMegabytes: Optional<Int>.none,
+                maxMegabytes: Int?.none,
                 highlightChanges: false,
                 captureFocus: CaptureFocus.auto,
                 resolutionCap: 1440,

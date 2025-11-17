@@ -42,23 +42,23 @@ public protocol ScreenCaptureServiceProtocol: Sendable {
     func hasScreenRecordingPermission() async -> Bool
 }
 
-public extension ScreenCaptureServiceProtocol {
-    func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
+extension ScreenCaptureServiceProtocol {
+    public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
         try await self.captureScreen(displayIndex: displayIndex, visualizerMode: .screenshotFlash)
     }
 
-    func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
+    public func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
         try await self.captureWindow(
             appIdentifier: appIdentifier,
             windowIndex: windowIndex,
             visualizerMode: .screenshotFlash)
     }
 
-    func captureFrontmost() async throws -> CaptureResult {
+    public func captureFrontmost() async throws -> CaptureResult {
         try await self.captureFrontmost(visualizerMode: .screenshotFlash)
     }
 
-    func captureArea(_ rect: CGRect) async throws -> CaptureResult {
+    public func captureArea(_ rect: CGRect) async throws -> CaptureResult {
         try await self.captureArea(rect, visualizerMode: .screenshotFlash)
     }
 }

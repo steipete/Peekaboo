@@ -7,15 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- `peekaboo see --json-output` now includes `description`, `role_description`, and `help` fields for every `ui_elements[]` entry so toolbar icons (like the Wingman extension) and other AX-only descriptions can be located without blind coordinate clicks.
-- GPT-5.1, GPT-5.1 Mini, and GPT-5.1 Nano are now fully supported across the CLI, macOS app, and MCP bridge. `peekaboo agent` defaults to `gpt-5.1`, the app’s AI settings expose the new variants, and all MCP tool banners reflect the upgraded default.
-
-### Changed
-- Commands invoked without arguments (for example `peekaboo agent` or `peekaboo see`) now print their detailed help, including argument/flag tables and curated usage examples, so it is obvious why input is required.
-- CLI help output now hides compatibility aliases such as `--jsonOutput` while still documenting the primary short/long names (`-j`, `--json`), matching the new alias metadata exported by the Commander submodule.
-
-## [3.0.0] - 2025-11-13
+## [3.0.0] - 2025-11-17
 
 ### Added
 - Full GUI automation commands—`see`, `click`, `type`, `press`, `scroll`, `hotkey`, and `swipe`—now ship in the CLI with multi-screen capture so you can identify elements on any display and act on them without leaving the terminal.
@@ -24,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu tooling now enumerates every application menu plus system menu extras, enabling zero-click discovery of keyboard shortcuts and scripted menu activation via `menu list`, `menu list-all`, `menu click`, and `menu click-extra`.
 - Automation sessions remember the most recent `see` run automatically, but you can also pin explicit session IDs and run `.peekaboo.json` scripts via `peekaboo run` to reproduce complex workflows with one command.
 - Rounded out the CLI command surface so every capture, interaction, and maintenance workflow is first-class: `image`, `list`, `tools`, `config`, `permissions`, `learn`, `run`, `sleep`, and `clean` cover capture/config glue, while `window`, `app`, `dock`, `dialog`, `space`, `menu`, and `menubar` provide window, app, and UI chrome management alongside the previously mentioned automation commands.
+- `peekaboo see --json-output` now includes `description`, `role_description`, and `help` fields for every `ui_elements[]` entry so toolbar icons (like the Wingman extension) and other AX-only descriptions can be located without blind coordinate clicks.
+- GPT-5.1, GPT-5.1 Mini, and GPT-5.1 Nano are now fully supported across the CLI, macOS app, and MCP bridge. `peekaboo agent` defaults to `gpt-5.1`, the app’s AI settings expose the new variants, and all MCP tool banners reflect the upgraded default.
 
 ### Integrations
 - Peekaboo runs as both an MCP server and client: it still exposes its native tools to Claude/Cursor, but v3 now ships the Chrome DevTools MCP by default and lets you add or toggle external MCP servers (`peekaboo mcp list/add/test/enable/disable`), so the agent can mix native Mac automation with remote browser, GitHub, or filesystem tools in a single session.
@@ -32,8 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `pnpm` shortcuts for common Swift workflows (`pnpm build`, `pnpm build:cli:release`, `pnpm build:polter`, `pnpm test`, `pnpm test:automation`, `pnpm test:all`, `pnpm lint`, `pnpm format`) so command names match what ships in release docs and both humans and agents rely on the same entry points.
 - Automation test suites now launch the freshly built `.build/debug/peekaboo` binary via `CLITestEnvironment.peekabooBinaryURL()` and suppress negative parsing noise, making CI logs far easier to scan.
 - Documented the safe vs. automation tagging convention and the new command shorthands inside `docs/swift-testing-playbook.md`, so contributors know exactly which suites to run before tagging.
-- `AudioInputService` now relies on Swift observation (`@Observable`) plus structured `Task.sleep` polling instead of Combine timers, keeping v3’s audio capture aligned with Swift 6.2’s concurrency expectations.
+- `AudioInputService` now relies on Swift observation (`@Observable`) plus structured `Task.sleep` polling instead of Combine timers, keeping v3’s audio capture aligned with Swift 6.2’s concurrency expectations.
 - CLI `tools` output now uses `OrderedDictionary`, guaranteeing the same ordering every time you list tools or dump JSON so copy/paste instructions in the README stay accurate.
+
+### Changed
+- Commands invoked without arguments (for example `peekaboo agent` or `peekaboo see`) now print their detailed help, including argument/flag tables and curated usage examples, so it is obvious why input is required.
+- CLI help output now hides compatibility aliases such as `--jsonOutput` while still documenting the primary short/long names (`-j`, `--json`), matching the new alias metadata exported by the Commander submodule.
 
 ## [2.0.3] - 2025-07-03
 

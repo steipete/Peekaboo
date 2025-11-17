@@ -12,8 +12,8 @@ enum AgentMessages {
         static let typedOnly = "Interactive chat currently accepts typed input only."
 
         static let nonInteractiveHelp = """
-Provide a task or run with --chat in an interactive terminal to start the agent chat loop.
-"""
+        Provide a task or run with --chat in an interactive terminal to start the agent chat loop.
+        """
     }
 
     enum Audio {

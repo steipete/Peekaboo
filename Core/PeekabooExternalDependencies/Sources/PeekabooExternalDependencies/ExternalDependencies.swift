@@ -6,8 +6,8 @@
 // Re-export all external dependencies for easy access
 // This centralizes version management and provides a single import point
 
-@_exported import AsyncAlgorithms
 @_exported import Algorithms
+@_exported import AsyncAlgorithms
 @_exported import AXorcist
 @_exported import Commander
 @_exported import Logging

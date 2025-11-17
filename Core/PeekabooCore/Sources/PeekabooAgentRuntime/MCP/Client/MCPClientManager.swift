@@ -660,8 +660,8 @@ extension MCPClientManager {
     public static func defaultChromeDevToolsConfig(
         timeout: TimeInterval = 15.0,
         autoReconnect: Bool = true,
-        enabled: Bool = true
-    ) -> MCPServerConfig {
+        enabled: Bool = true) -> MCPServerConfig
+    {
         let details = self.chromeCommandDetails()
         return MCPServerConfig(
             transport: details.transport,
@@ -671,17 +671,16 @@ extension MCPClientManager {
             enabled: enabled,
             timeout: timeout,
             autoReconnect: autoReconnect,
-            description: "Chrome DevTools automation"
-        )
+            description: "Chrome DevTools automation")
     }
 
     private static func chromeCommandDetails() -> (transport: String, command: String, arguments: [String]) {
         if let local = self.localBinaryPath() {
-            return ("stdio", local, ["--isolated"])
+            ("stdio", local, ["--isolated"])
         } else if self.hasExecutable(named: "pnpm") {
-            return ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
+            ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
         } else {
-            return ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
+            ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
         }
     }
 
@@ -712,8 +711,8 @@ public enum ChromeDevToolsMCPConfig {
     public static func make(
         timeout: TimeInterval = 15.0,
         autoReconnect: Bool = true,
-        enabled: Bool = true
-    ) -> MCPServerConfig {
+        enabled: Bool = true) -> MCPServerConfig
+    {
         let details = Self.commandDetails()
         return MCPServerConfig(
             transport: details.transport,
@@ -723,17 +722,16 @@ public enum ChromeDevToolsMCPConfig {
             enabled: enabled,
             timeout: timeout,
             autoReconnect: autoReconnect,
-            description: "Chrome DevTools automation"
-        )
+            description: "Chrome DevTools automation")
     }
 
     private static func commandDetails() -> (transport: String, command: String, arguments: [String]) {
-        if let local = Self.localBinaryPath() {
-            return ("stdio", local, ["--isolated"])
+        if let local = localBinaryPath() {
+            ("stdio", local, ["--isolated"])
         } else if Self.hasExecutable(named: "pnpm") {
-            return ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
+            ("stdio", "pnpm", ["dlx", "chrome-devtools-mcp@latest", "--", "--isolated"])
         } else {
-            return ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
+            ("stdio", "npx", ["-y", "chrome-devtools-mcp@latest", "--", "--isolated"])
         }
     }
 

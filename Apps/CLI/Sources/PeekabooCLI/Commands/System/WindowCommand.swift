@@ -162,11 +162,10 @@ private func logWindowAction(
     windowInfo: ServiceWindowInfo?
 ) {
     let title = windowInfo?.title ?? "Unknown"
-    let boundsDescription: String
-    if let windowBounds = windowInfo?.bounds {
-        boundsDescription = "bounds=(\(Int(windowBounds.origin.x)),\(Int(windowBounds.origin.y)))x(\(Int(windowBounds.size.width)),\(Int(windowBounds.size.height)))"
+    let boundsDescription = if let windowBounds = windowInfo?.bounds {
+        "bounds=(\(Int(windowBounds.origin.x)),\(Int(windowBounds.origin.y)))x(\(Int(windowBounds.size.width)),\(Int(windowBounds.size.height)))"
     } else {
-        boundsDescription = "bounds=unknown"
+        "bounds=unknown"
     }
     AutomationEventLogger.log(
         .window,
@@ -538,7 +537,9 @@ extension WindowCommand {
                 )
 
                 output(data) {
-                    print("Successfully moved window '\(finalWindowInfo?.title ?? "Untitled")' to (\(self.x), \(self.y))")
+                    print(
+                        "Successfully moved window '\(finalWindowInfo?.title ?? "Untitled")' to (\(self.x), \(self.y))"
+                    )
                 }
 
             } catch {

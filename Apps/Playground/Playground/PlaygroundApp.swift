@@ -305,7 +305,6 @@ struct PlaygroundApp: App {
                 }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
             }
-
         }
 
         WindowGroup("Log Viewer", id: "log-viewer") {

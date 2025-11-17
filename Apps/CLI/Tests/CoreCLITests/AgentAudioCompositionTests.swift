@@ -5,7 +5,10 @@ import Testing
 struct AgentAudioCompositionTests {
     @Test("Prepends provided task with transcript")
     func combinesTaskAndTranscript() {
-        let combined = AgentCommand.composeExecutionTask(providedTask: "Ship the release", transcript: "transcribed text")
+        let combined = AgentCommand.composeExecutionTask(
+            providedTask: "Ship the release",
+            transcript: "transcribed text"
+        )
         #expect(combined.contains("Ship the release"))
         #expect(combined.contains("Audio transcript"))
     }

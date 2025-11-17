@@ -85,7 +85,11 @@ extension MCPCommand {
         }
 
         /// Render the MCP server inventory and health probes as a JSON payload compatible with scripting use.
-        private func outputJSON(serverNames: [String], healthResults: [String: MCPServerHealth], context: MCPCommandContext) async throws {
+        private func outputJSON(
+            serverNames: [String],
+            healthResults: [String: MCPServerHealth],
+            context: MCPCommandContext
+        ) async throws {
             var servers: [String: Any] = [:]
             var healthyCount = 0
 
@@ -191,7 +195,11 @@ extension MCPCommand {
         }
 
         /// Print a human-friendly table of server health, including highlights for defaults and connection state.
-        private func outputFormatted(serverNames: [String], healthResults: [String: MCPServerHealth], context: MCPCommandContext) async {
+        private func outputFormatted(
+            serverNames: [String],
+            healthResults: [String: MCPServerHealth],
+            context: MCPCommandContext
+        ) async {
             var healthyCount = 0
 
             for serverName in serverNames.sorted() {

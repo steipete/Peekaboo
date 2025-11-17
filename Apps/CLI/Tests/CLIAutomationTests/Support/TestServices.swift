@@ -31,8 +31,8 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 
     func captureScreen(
         displayIndex: Int?,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
-    {
+        visualizerMode _: CaptureVisualizerMode
+    ) async throws -> CaptureResult {
         if let handler = self.captureScreenHandler {
             return try await handler(displayIndex)
         }
@@ -42,8 +42,8 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     func captureWindow(
         appIdentifier: String,
         windowIndex: Int?,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
-    {
+        visualizerMode _: CaptureVisualizerMode
+    ) async throws -> CaptureResult {
         if let handler = self.captureWindowHandler {
             return try await handler(appIdentifier, windowIndex)
         }

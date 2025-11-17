@@ -34,7 +34,8 @@ public struct WatchTool: MCPTool {
                 "idle_fps": SchemaBuilder.number(description: "Idle FPS (default 2)"),
                 "active_fps": SchemaBuilder.number(description: "Active FPS (default 8, max 15)"),
                 "threshold_percent": SchemaBuilder.number(description: "Change threshold percent (default 2.5)"),
-                "heartbeat_sec": SchemaBuilder.number(description: "Heartbeat interval seconds (default 5, 0 disables)"),
+                "heartbeat_sec": SchemaBuilder.number(
+                    description: "Heartbeat interval seconds (default 5, 0 disables)"),
                 "quiet_ms": SchemaBuilder.number(description: "Calm period before dropping to idle (default 1000)"),
                 "highlight_changes": SchemaBuilder.boolean(description: "Overlay motion boxes on frames"),
                 "max_frames": SchemaBuilder.number(description: "Soft frame cap (default 800)"),
@@ -44,9 +45,10 @@ public struct WatchTool: MCPTool {
                     description: "fast|quality diffing (default fast)",
                     enum: ["fast", "quality"],
                     default: "fast"),
-                "diff_budget_ms": SchemaBuilder.number(description: "Diff time budget before falling back to fast (default 30 for quality)"),
+                "diff_budget_ms": SchemaBuilder.number(
+                    description: "Diff time budget before falling back to fast (default 30 for quality)"),
                 "output_dir": SchemaBuilder.string(description: "Optional absolute directory for outputs"),
-                "autoclean_minutes": SchemaBuilder.number(description: "Minutes to keep temp outputs (default 120)")
+                "autoclean_minutes": SchemaBuilder.number(description: "Minutes to keep temp outputs (default 120)"),
             ],
             required: [])
     }
@@ -58,18 +60,24 @@ public struct WatchTool: MCPTool {
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
         let request = try WatchRequest(arguments: arguments)
-        let session = WatchCaptureSession(
+        let dependencies = WatchCaptureDependencies(
             screenCapture: self.context.screenCapture,
-            screenService: self.context.screens,
+            screenService: self.context.screens)
+        let configuration = WatchCaptureConfiguration(
             scope: request.scope,
             options: request.options,
             outputRoot: request.outputDirectory,
-            autocleanMinutes: request.autocleanMinutes,
-            managedAutoclean: request.usesDefaultOutput)
+            autoclean: WatchAutocleanConfig(
+                minutes: request.autocleanMinutes,
+                managed: request.usesDefaultOutput))
+        let session = WatchCaptureSession(
+            dependencies: dependencies,
+            configuration: configuration)
         let result = try await session.run()
 
         let summary = """
-        watch kept \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)), contact sheet \(result.contactSheet.path)
+        watch kept \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)),
+        contact sheet \(result.contactSheet.path)
         """
         let meta = ToolEventSummary(
             actionDescription: "Watch Capture",
@@ -96,8 +104,9 @@ private enum WatchMetaBuilder {
             "diff_scale": .string(summary.diffScale),
             "contact_columns": .string("\(summary.contactColumns)"),
             "contact_rows": .string("\(summary.contactRows)"),
-            "contact_thumb_size": .string("\(Int(summary.contactThumbSize.width))x\(Int(summary.contactThumbSize.height))"),
-            "contact_sampled_indexes": .array(summary.contactSampledIndexes.map { .string("\($0)") })
+            "contact_thumb_size": .string(
+                "\(Int(summary.contactThumbSize.width))x\(Int(summary.contactThumbSize.height))"),
+            "contact_sampled_indexes": .array(summary.contactSampledIndexes.map { .string("\($0)") }),
         ])
     }
 }
@@ -133,15 +142,43 @@ private struct WatchRequest {
         let scope: WatchScope
         switch mode {
         case .screen:
-            scope = WatchScope(kind: .screen, screenIndex: input.screenIndex, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+            scope = WatchScope(
+                kind: .screen,
+                screenIndex: input.screenIndex,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: nil)
         case .window:
             let app = input.app ?? "frontmost"
-            scope = WatchScope(kind: .window, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: app, windowIndex: input.windowIndex, region: nil)
+            scope = WatchScope(
+                kind: .window,
+                screenIndex: nil,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: app,
+                windowIndex: input.windowIndex,
+                region: nil)
         case .area:
             let rect = try WatchRequest.parseRegion(input.region)
-            scope = WatchScope(kind: .region, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: rect)
+            scope = WatchScope(
+                kind: .region,
+                screenIndex: nil,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: rect)
         case .frontmost, .multi:
-            scope = WatchScope(kind: .frontmost, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+            scope = WatchScope(
+                kind: .frontmost,
+                screenIndex: nil,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: nil)
         }
 
         let (outputDir, managed) = WatchRequest.resolveOutputDirectory(input.outputDir)

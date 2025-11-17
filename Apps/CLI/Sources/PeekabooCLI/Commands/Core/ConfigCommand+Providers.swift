@@ -12,10 +12,13 @@ enum TimeoutError: Error {
 }
 
 @Sendable
-func withTimeout<T: Sendable>(_ duration: Duration, operation: @escaping @Sendable () async -> T) async -> Result<T, TimeoutError> {
+func withTimeout<T: Sendable>(
+    _ duration: Duration,
+    operation: @escaping @Sendable () async -> T
+) async -> Result<T, TimeoutError> {
     await withTaskGroup(of: Result<T, TimeoutError>.self) { group in
         group.addTask {
-            .success(await operation())
+            await .success(operation())
         }
         group.addTask {
             try? await Task.sleep(for: duration)
@@ -102,10 +105,10 @@ extension ConfigCommand {
 
             var errorDescription: String? {
                 switch self {
-                case .invalidPair(let pair):
-                    return "Invalid header entry '\(pair)'. Use key:value pairs separated by commas."
-                case .emptyKey(let pair):
-                    return "Header key is empty in entry '\(pair)'."
+                case let .invalidPair(pair):
+                    "Invalid header entry '\(pair)'. Use key:value pairs separated by commas."
+                case let .emptyKey(pair):
+                    "Header key is empty in entry '\(pair)'."
                 }
             }
         }
@@ -403,7 +406,7 @@ extension ConfigCommand {
             case .failure:
                 success = false
                 error = "Connection test timed out"
-            case .success(let value):
+            case let .success(value):
                 success = value.0
                 error = value.1
             }
@@ -599,7 +602,7 @@ extension ConfigCommand {
             case .failure:
                 models = []
                 apiError = "Model discovery timed out"
-            case .success(let tuple):
+            case let .success(tuple):
                 if self.discover && provider.type == .openai {
                     models = tuple.models
                     apiError = tuple.error
@@ -667,7 +670,11 @@ extension ConfigCommand {
             }
         }
 
-        private func saveModels(_ models: [String], for providerId: String, existing provider: Configuration.CustomProvider) throws {
+        private func saveModels(
+            _ models: [String],
+            for providerId: String,
+            existing provider: Configuration.CustomProvider
+        ) throws {
             let modelDefinitions = Dictionary(
                 uniqueKeysWithValues: models.map { ($0, Configuration.ModelDefinition(name: $0)) }
             )

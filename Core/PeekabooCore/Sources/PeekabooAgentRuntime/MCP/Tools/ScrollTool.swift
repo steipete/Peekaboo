@@ -19,7 +19,7 @@ public struct ScrollTool: MCPTool {
         Scrolls the mouse wheel in any direction.
         Can target specific elements or scroll at current mouse position.
         Supports smooth scrolling and configurable speed.
-        Peekaboo MCP 3.0.0-beta.2 using openai/gpt-5.1
+        Peekaboo MCP 3.0.0 using openai/gpt-5.1
         and anthropic/claude-sonnet-4.5
         """
     }
