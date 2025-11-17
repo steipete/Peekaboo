@@ -117,6 +117,7 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             let outputDir = try self.resolveOutputDirectory()
             let session = WatchCaptureSession(
                 screenCapture: self.services.screenCapture,
+                screenService: self.services.screens,
                 scope: scope,
                 options: options,
                 outputRoot: outputDir,
@@ -200,7 +201,14 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             let windows = try await WindowServiceBridge.listWindows(
                 windows: self.services.windows,
                 target: .application(identifier))
-            return windows.first?.index
+            let renderable = windows.filter { WindowFiltering.isRenderable($0) }
+            guard !renderable.isEmpty else { return windows.first?.index }
+            let best = renderable.max { lhs, rhs in
+                let lArea = lhs.bounds.width * lhs.bounds.height
+                let rArea = rhs.bounds.width * rhs.bounds.height
+                return lArea < rArea
+            }
+            return best?.index
         } catch {
             return nil
         }
@@ -265,7 +273,7 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             return
         }
 
-        print("🎥 watch captured \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)), contact sheet: \(result.contactSheet.path)")
+        print("🎥 watch captured \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)), contact sheet: \(result.contactSheet.path), diff: \(result.diffAlgorithm) @ \(result.diffScale)")
         for frame in result.frames {
             print("🖼️  \(frame.reason.rawValue) t=\(frame.timestampMs)ms Δ=\(String(format: "%.2f", frame.changePercent))% → \(frame.path)")
         }

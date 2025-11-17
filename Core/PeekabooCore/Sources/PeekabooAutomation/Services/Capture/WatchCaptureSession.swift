@@ -21,6 +21,7 @@ public final class WatchCaptureSession {
     private let outputRoot: URL
     private let autocleanMinutes: Int
     private let fileManager = FileManager.default
+    private let screenService: (any ScreenServiceProtocol)?
 
     private var frames: [WatchFrameInfo] = []
     private var motionIntervals: [WatchMotionInterval] = []
@@ -31,12 +32,14 @@ public final class WatchCaptureSession {
 
     public init(
         screenCapture: any ScreenCaptureServiceProtocol,
+        screenService: (any ScreenServiceProtocol)?,
         scope: WatchScope,
         options: WatchCaptureOptions,
         outputRoot: URL,
         autocleanMinutes: Int)
     {
         self.screenCapture = screenCapture
+        self.screenService = screenService
         self.scope = scope
         self.options = options
         self.outputRoot = outputRoot
@@ -271,7 +274,8 @@ public final class WatchCaptureSession {
             guard let rect = self.scope.region else {
                 throw PeekabooError.captureFailed(reason: "Region missing for watch capture")
             }
-            result = try await self.screenCapture.captureArea(rect)
+            let validated = try self.validateRegion(rect)
+            result = try await self.screenCapture.captureArea(validated)
         }
 
         guard let image = WatchCaptureSession.makeCGImage(from: result.imageData) else {
@@ -399,12 +403,19 @@ public final class WatchCaptureSession {
         else { return }
 
         let deadline = Date().addingTimeInterval(TimeInterval(-self.autocleanMinutes) * 60)
+        var removed = 0
         for url in contents {
             guard let attrs = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
                   let modified = attrs.contentModificationDate else { continue }
             if modified < deadline {
-                try? self.fileManager.removeItem(at: url)
+                if (try? self.fileManager.removeItem(at: url)) != nil {
+                    removed += 1
+                }
             }
+        }
+        if removed > 0 {
+            self.warnings.append(
+                WatchWarning(code: .displayChanged, message: "Autoclean removed \(removed) old watch sessions"))
         }
     }
 
@@ -700,5 +711,35 @@ public final class WatchCaptureSession {
     private func writeJSON<T: Encodable>(_ value: T, to url: URL) throws {
         let data = try JSONEncoder().encode(value)
         try data.write(to: url, options: .atomic)
+    }
+
+    // MARK: - Region validation
+
+    private func validateRegion(_ rect: CGRect) throws -> CGRect {
+        let screens = self.screenCaptureScreens()
+        guard !screens.isEmpty else {
+            throw PeekabooError.invalidInput("No screens available for region capture")
+        }
+
+        // Global coords are expected; find intersection across all screens.
+        var union = CGRect.null
+        for screen in screens {
+            union = union.union(screen.frame)
+        }
+
+        guard rect.intersects(union) else {
+            throw PeekabooError.invalidInput("Region lies outside all screens")
+        }
+
+        let clamped = rect.intersection(union)
+        if clamped != rect {
+            self.warnings.append(
+                WatchWarning(code: .displayChanged, message: "Region adjusted to visible area"))
+        }
+        return clamped
+    }
+
+    private func screenCaptureScreens() -> [ScreenInfo] {
+        self.screenService?.listScreens() ?? []
     }
 }

@@ -60,6 +60,7 @@ public struct WatchTool: MCPTool {
         let request = try WatchRequest(arguments: arguments)
         let session = WatchCaptureSession(
             screenCapture: self.context.screenCapture,
+            screenService: self.context.screens,
             scope: request.scope,
             options: request.options,
             outputRoot: request.outputDirectory,
@@ -77,6 +78,8 @@ public struct WatchTool: MCPTool {
             "frames": .array(result.frames.map { .string($0.path) }),
             "contact": .string(result.contactSheet.path),
             "metadata": .string(result.metadataFile),
+            "diff_algorithm": .string(result.diffAlgorithm),
+            "diff_scale": .string(result.diffScale)
         ])))
     }
 }
