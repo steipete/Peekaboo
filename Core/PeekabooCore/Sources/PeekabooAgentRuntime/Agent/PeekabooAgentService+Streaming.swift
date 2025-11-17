@@ -13,6 +13,7 @@ extension PeekabooAgentService {
         let messages: [ModelMessage]
         let steps: [GenerationStep]
         let usage: Usage?
+        let toolCallCount: Int
     }
 
     struct StreamingLoopConfiguration {
@@ -38,6 +39,7 @@ extension PeekabooAgentService {
         var content: String = ""
         var steps: [GenerationStep] = []
         var usage: Usage?
+        var toolCallCount: Int = 0
     }
 
     func runStreamingLoop(
@@ -87,13 +89,17 @@ extension PeekabooAgentService {
                 currentMessages: &state.messages,
                 stepIndex: stepIndex)
             state.steps.append(step)
+            state.toolCallCount += output.toolCalls.count
         }
+
+        let totalToolCalls = state.toolCallCount
 
         return StreamingLoopOutcome(
             content: state.content,
             messages: state.messages,
             steps: state.steps,
-            usage: state.usage)
+            usage: state.usage,
+            toolCallCount: totalToolCalls)
     }
 
     private struct StreamProcessingOutput {

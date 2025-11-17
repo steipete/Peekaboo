@@ -275,14 +275,26 @@
   2. `polter peekaboo -- dialog click --button "Cancel" --app TextEdit`
 - **Outcome**: After launching TextEdit, creating a new document, running `see` for the session, and sending `cmd+s`, both `dialog list` and `dialog click` succeed and emit `[Dialog]` log entries for evidence.
 
-### ✅ `agent` command – logs emitted by CLI
-- **Logs**: `.artifacts/playground-tools/20251116-200900-agent.log`
-- **Artifacts**: `.artifacts/playground-tools/20251116-200900-agent-list.json`, `.artifacts/playground-tools/20251116-200901-agent-hi.json`, `.artifacts/playground-tools/20251116-200902-agent-toolbar.json`
+### ✅ `agent` command – GPT-5.1 flows
+- **Logs**: `.artifacts/playground-tools/20251117-011345-agent.log`, `.artifacts/playground-tools/20251117-011500-agent-single-click.log`
+- **Artifacts**:
+  - `.artifacts/playground-tools/20251117-010912-agent-list.json`
+  - `.artifacts/playground-tools/20251117-010919-agent-hi.json`
+  - `.artifacts/playground-tools/20251117-010935-agent-single-click.json`
+  - `.artifacts/playground-tools/20251117-011314-agent-single-click.json`
+  - `.artifacts/playground-tools/20251117-012655-agent-hi.json`
 - **Commands**:
-  1. `polter peekaboo -- agent --list-sessions --json-output`
-  2. `polter peekaboo -- agent "Summarize the Playground UI" --dry-run --max-steps 2`
-  3. `polter peekaboo -- agent "Say hi" --max-steps 1`
-- **Findings**: AutomationEventLogger still emits `[Agent]` entries summarizing each run (task, model, duration, dry-run flag), so `playground-log -c Agent` captures evidence even though Playground UI doesn’t log these events itself.
+  1. `polter peekaboo -- agent --model gpt-5.1 --list-sessions --json-output`
+  2. `polter peekaboo -- agent "Say hi to the Playground app." --model gpt-5.1 --max-steps 2 --json-output`
+  3. `polter peekaboo -- agent "Switch to Playground and press the Single Click button once." --model gpt-5.1 --max-steps 4 --json-output`
+  4. Long run via tmux for full tool coverage:
+     ```
+     ./runner tmux new-session -- bash -lc 'polter peekaboo -- agent "Click the Single Click button in Playground." --model gpt-5.1 --max-steps 6 --no-cache | tee .artifacts/playground-tools/20251117-011500-agent-single-click.log'
+     ```
+- **Findings**:
+  - GPT-5.1 works end-to-end; the tmux transcript shows `see`, `app`, and two `click` calls completing with `Task completed ... ⚒ 6 tools`.
+  - JSON output now reports the correct tool count (see `.artifacts/playground-tools/20251117-012655-agent-hi.json`, which shows `toolCallCount: 1` for the `done` tool). Use that artifact to confirm the regression is fixed.
+  - Non-trivial agent runs exceed the runner’s 120 s timeout; always invoke those through `./runner tmux …` so they can finish, then collect the artifacts/logs afterward.
 
 ### ✅ `mcp` command – chrome-devtools navigate/eval
 - **Logs**: `.artifacts/playground-tools/20251116-210340-mcp.log`

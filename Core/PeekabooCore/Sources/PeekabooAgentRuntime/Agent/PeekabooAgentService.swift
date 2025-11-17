@@ -805,7 +805,7 @@ extension PeekabooAgentService {
 
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(context.executionStart)
-        let toolCallCount = outcome.steps.reduce(0) { $0 + $1.toolCalls.count }
+        let toolCallCount = outcome.toolCallCount
 
         try self.saveCompletedSession(
             context: context,

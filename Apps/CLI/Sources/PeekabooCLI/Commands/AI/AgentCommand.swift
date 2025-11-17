@@ -772,24 +772,41 @@ extension AgentCommand {
             print(resumingLine)
         }
 
-        let delegate = self.makeEventDelegate(for: task)
+        let outputDelegate = self.makeDisplayDelegate(for: task)
+        let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)
         do {
             let result = try await agentService.resumeSession(
                 sessionId: sessionId,
                 model: requestedModel,
-                eventDelegate: delegate
+                eventDelegate: streamingDelegate
             )
-            self.displayResult(result, delegate: delegate)
+            self.displayResult(result, delegate: outputDelegate)
         } catch {
             self.printAgentExecutionError("Failed to resume session: \(error.localizedDescription)")
             throw error
         }
     }
 
-    private func makeEventDelegate(for task: String) -> AgentOutputDelegate? {
+    private func makeDisplayDelegate(for task: String) -> AgentOutputDelegate? {
         guard !self.jsonOutput, !self.quiet else { return nil }
         return AgentOutputDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
     }
+
+private func makeStreamingDelegate(using displayDelegate: AgentOutputDelegate?) -> (any AgentEventDelegate)? {
+    if let displayDelegate {
+        return displayDelegate
+    }
+
+    if self.jsonOutput || self.quiet {
+        return SilentAgentEventDelegate()
+    }
+
+    return nil
+}
+
+final class SilentAgentEventDelegate: AgentEventDelegate {
+    func agentDidEmitEvent(_ event: AgentEvent) {}
+}
 
     private func printAgentExecutionError(_ message: String) {
         if self.jsonOutput {
@@ -811,7 +828,8 @@ extension AgentCommand {
         requestedModel: LanguageModel?,
         maxSteps: Int
     ) async throws -> AgentExecutionResult {
-        let delegate = self.makeEventDelegate(for: task)
+        let outputDelegate = self.makeDisplayDelegate(for: task)
+        let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)
         do {
             let result = try await agentService.executeTask(
                 task,
@@ -819,10 +837,10 @@ extension AgentCommand {
                 sessionId: nil,
                 model: requestedModel,
                 dryRun: self.dryRun,
-                eventDelegate: delegate,
+                eventDelegate: streamingDelegate,
                 verbose: self.verbose
             )
-            self.displayResult(result, delegate: delegate)
+            self.displayResult(result, delegate: outputDelegate)
             let duration = String(format: "%.2f", result.metadata.executionTime)
             let sessionId = result.sessionId ?? "none"
             let finalTokens = result.usage?.totalTokens ?? 0
@@ -1151,17 +1169,18 @@ extension AgentCommand {
         let startingSessionId = sessionId
         let runTask = Task { () throws -> AgentExecutionResult in
             if let existingSessionId = startingSessionId {
-                let delegate = self.makeEventDelegate(for: input)
+                let outputDelegate = self.makeDisplayDelegate(for: input)
+                let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)
                 let result = try await agentService.continueSession(
                     sessionId: existingSessionId,
                     userMessage: input,
                     model: requestedModel,
                     maxSteps: self.resolvedMaxSteps,
                     dryRun: self.dryRun,
-                    eventDelegate: delegate,
+                    eventDelegate: streamingDelegate,
                     verbose: self.verbose
                 )
-                self.displayResult(result, delegate: delegate)
+                self.displayResult(result, delegate: outputDelegate)
                 return result
             } else {
                 return try await self.executeAgentTask(

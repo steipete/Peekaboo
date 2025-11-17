@@ -23,7 +23,7 @@ final class SmartLabelPlacer {
 
     private let image: NSImage
     private let imageSize: NSSize
-    private let textDetector: SmartLabelPlacerTextDetecting
+    private let textDetector: any SmartLabelPlacerTextDetecting
     private let fontSize: CGFloat
     private let labelSpacing: CGFloat = 3
     private let cornerInset: CGFloat = 2
@@ -40,7 +40,7 @@ final class SmartLabelPlacer {
         fontSize: CGFloat = 8,
         debugMode: Bool = false,
         logger: Logger = Logger.shared,
-        textDetector: SmartLabelPlacerTextDetecting? = nil
+        textDetector: (any SmartLabelPlacerTextDetecting)? = nil
     ) {
         self.image = image
         self.imageSize = image.size

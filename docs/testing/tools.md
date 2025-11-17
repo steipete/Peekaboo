@@ -83,7 +83,7 @@ read_when:
 ### Automation & Integrations
 | Tool | Playground coverage | Log category | Sample CLI | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
-| `agent` | Run natural-language tasks scoped to Playground (“click the single button”) | Captures whichever sub-tools fire (`Click`, `Text`, etc.) | `polter peekaboo -- agent "Say hi" --max-steps 1` | Verified – agent list + tasks logged 2025-11-16 | `.artifacts/playground-tools/20251116-200900-agent.log` |
+| `agent` | Run natural-language tasks scoped to Playground (“click the single button”) | Captures whichever sub-tools fire (`Click`, `Text`, etc.) | `polter peekaboo -- agent "Say hi" --max-steps 1` | Verified – GPT-5.1 runs logged 2025-11-17 (see notes re: tool count bug) | `.artifacts/playground-tools/20251117-011345-agent.log` |
 | `mcp` | Ensure Playground-focused MCP servers still enumerate & test (esp. Tachikoma) | `MCP` | `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}'` | Verified – chrome-devtools list/navigate/eval captured with `[MCP]` logs (2025-11-16) | `.artifacts/playground-tools/20251116-210340-mcp.log` |
 
 > **Status Legend:** `Not started` = no logs yet, `In progress` = partial run logged, `Blocked` = awaiting fix, `Verified` = passing with log path recorded.
@@ -364,10 +364,16 @@ The following subsections spell out the concrete steps, required Playground surf
 #### `agent`
 - **Scope**: Playground-specific instructions to exercise multiple tools automatically.
 - **Tests**:
-  1. `polter peekaboo -- agent --list-sessions --json-output > .artifacts/playground-tools/20251116-200900-agent-list.json`.
-  2. `polter peekaboo -- agent "Say hi" --max-steps 1 --json-output > .artifacts/playground-tools/20251116-200901-agent-hi.json`.
-  3. `polter peekaboo -- agent "Summarize the Playground UI" --dry-run --max-steps 2 --json-output > .artifacts/playground-tools/20251116-200902-agent-toolbar.json`.
-- **2025-11-16 run**: Commands succeeded again; `[Agent]` log lines recorded in `.artifacts/playground-tools/20251116-200900-agent.log` (task name, model, duration, dry-run flag). Use these artifacts to prove both live and dry-run invocations.
+  1. `polter peekaboo -- agent --model gpt-5.1 --list-sessions --json-output > .artifacts/playground-tools/20251117-010912-agent-list.json`.
+  2. `polter peekaboo -- agent "Say hi to the Playground app." --model gpt-5.1 --max-steps 2 --json-output > .artifacts/playground-tools/20251117-010919-agent-hi.json`.
+  3. `polter peekaboo -- agent "Switch to Playground and press the Single Click button once." --model gpt-5.1 --max-steps 4 --json-output > .artifacts/playground-tools/20251117-010935-agent-single-click.json`.
+  4. For long interactive runs, use tmux: `./runner tmux new-session -- bash -lc 'polter peekaboo -- agent "Click the Single Click button in Playground." --model gpt-5.1 --max-steps 6 --no-cache | tee .artifacts/playground-tools/20251117-011500-agent-single-click.log'`.
+  5. Spot-check metadata: `polter --force peekaboo -- agent "Say hi to Playground again." --model gpt-5.1 --max-steps 2 --json-output > .artifacts/playground-tools/20251117-012655-agent-hi.json`.
+- **2025-11-17 run**:
+  - GPT-5.1 executes happily; Playground `[Agent]` log is captured in `.artifacts/playground-tools/20251117-011345-agent.log`.
+  - Non-tmux invocations hit the runner’s 120 s timeout; move anything beyond quick dry-runs into `./runner tmux ...` so the guardrails don’t kill the agent mid-task.
+  - Manual verification: observed the agent perform `see` + `click` against the Playground “Single Click” button (tmux transcript stored in `.artifacts/playground-tools/20251117-011500-agent-single-click.log`).
+  - JSON mode now reports the correct `toolCallCount` (see `.artifacts/playground-tools/20251117-012655-agent-hi.json` which shows `toolCallCount: 1` for the `done` tool).
 
 #### `mcp`
 - **Steps**:
