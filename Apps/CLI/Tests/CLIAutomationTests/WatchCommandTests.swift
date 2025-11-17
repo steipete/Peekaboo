@@ -124,8 +124,7 @@ struct WatchCommandTests {
         }
         return png
     }
-}
-#endif
+
     @Test("Emits diffDowngraded when SSIM exceeds budget")
     @MainActor
     func emitsDiffDowngradedWarning() async throws {
@@ -229,3 +228,5 @@ struct WatchCommandTests {
         #expect(meta.contactRows == decoded.contactRows)
         #expect(meta.contactSampledIndexes == decoded.contactSampledIndexes)
     }
+}
+#endif
