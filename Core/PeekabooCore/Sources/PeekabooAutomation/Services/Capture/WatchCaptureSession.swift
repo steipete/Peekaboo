@@ -90,13 +90,18 @@ public final class WatchCaptureSession {
             let downscaled = self.makeLumaBuffer(from: cgImage)
             let diff = WatchCaptureSession.computeChange(
                 strategy: self.options.diffStrategy,
+                diffBudgetMs: self.options.diffBudgetMs,
                 previous: lastDiffBuffer,
                 current: downscaled,
                 deltaThreshold: Constants.motionDelta,
                 originalSize: CGSize(width: cgImage.width, height: cgImage.height))
             let changePercent = diff.changePercent
-            let motionBoxes = diff.boundingBox.map { [$0] }
+            let motionBoxes = diff.boundingBoxes
             lastDiffBuffer = downscaled
+            if diff.downgraded {
+                self.warnings.append(
+                    WatchWarning(code: .diffDowngraded, message: "Diff downgraded to fast due to budget"))
+            }
 
             let threshold = self.options.changeThresholdPercent
             let enterActive = changePercent >= threshold
@@ -211,7 +216,8 @@ public final class WatchCaptureSession {
             highlightChanges: self.options.highlightChanges,
             captureFocus: self.options.captureFocus,
             resolutionCap: self.options.resolutionCap,
-            diffStrategy: self.options.diffStrategy)
+            diffStrategy: self.options.diffStrategy,
+            diffBudgetMs: self.options.diffBudgetMs)
 
         let stats = WatchStats(
             durationMs: durationMs,
@@ -296,7 +302,7 @@ public final class WatchCaptureSession {
         reason: WatchFrameInfo.Reason,
         motionBoxes: [CGRect]?) throws -> WatchFrameInfo
     {
-        let fileName = String(format: "frame-%04d.png", index)
+        let fileName = String(format: "keep-%04d.png", self.frames.count + 1)
         let url = self.outputRoot.appendingPathComponent(fileName)
         try WatchCaptureSession.writePNG(image: cgImage, to: url, highlight: self.options.highlightChanges ? motionBoxes : nil)
 
@@ -311,18 +317,22 @@ public final class WatchCaptureSession {
             timestampMs: timestampMs,
             changePercent: changePercent,
             reason: reason,
-            motionBoxes: motionBoxes)
+            motionBoxes: motionBoxes?.isEmpty == false ? motionBoxes : nil)
     }
 
     // MARK: - Contact sheet
 
     private func buildContactSheet() throws -> WatchContactSheet {
         let columns = Constants.contactMaxColumns
+        let maxCells = columns * columns
         let framesToUse: [WatchFrameInfo]
-        if self.frames.count <= columns * columns {
+        let sampledIndexes: [Int]
+        if self.frames.count <= maxCells {
             framesToUse = self.frames
+            sampledIndexes = self.frames.map(\.index)
         } else {
-            framesToUse = WatchCaptureSession.sampleFrames(self.frames, maxCount: columns * columns)
+            framesToUse = WatchCaptureSession.sampleFrames(self.frames, maxCount: maxCells)
+            sampledIndexes = framesToUse.map(\.index)
         }
         let rows = Int(ceil(Double(framesToUse.count) / Double(columns)))
         let thumbSize = CGSize(width: Constants.contactThumb, height: Constants.contactThumb)
@@ -363,7 +373,7 @@ public final class WatchCaptureSession {
             columns: columns,
             rows: rows,
             thumbSize: thumbSize,
-            sampledFrameIndexes: framesToUse.map(\.index))
+            sampledFrameIndexes: sampledIndexes)
     }
 
     // MARK: - Utilities
@@ -464,11 +474,13 @@ public final class WatchCaptureSession {
 
     struct DiffResult {
         let changePercent: Double
-        let boundingBox: CGRect?
+        let boundingBoxes: [CGRect]
+        let downgraded: Bool
     }
 
     nonisolated static func computeChange(
         strategy: WatchCaptureOptions.DiffStrategy,
+        diffBudgetMs: Int?,
         previous: LumaBuffer?,
         current: LumaBuffer,
         deltaThreshold: UInt8,
@@ -477,7 +489,8 @@ public final class WatchCaptureSession {
         guard let previous else {
             return DiffResult(
                 changePercent: 100.0,
-                boundingBox: CGRect(origin: .zero, size: originalSize))
+                boundingBoxes: [CGRect(origin: .zero, size: originalSize)],
+                downgraded: false)
         }
 
         let pixelDiff = self.computePixelDelta(
@@ -486,18 +499,31 @@ public final class WatchCaptureSession {
             deltaThreshold: deltaThreshold,
             originalSize: originalSize)
 
-        let changePercent: Double
+        var changePercent: Double
         switch strategy {
         case .fast:
             changePercent = pixelDiff.changePercent
         case .quality:
-            let ssim = self.computeSSIM(previous: previous, current: current)
-            changePercent = max(0, min(100, (1 - ssim) * 100))
+            if let budget = diffBudgetMs {
+                let start = DispatchTime.now().uptimeNanoseconds
+                let ssim = self.computeSSIM(previous: previous, current: current)
+                let elapsedMs = Int((DispatchTime.now().uptimeNanoseconds - start) / 1_000_000)
+                if elapsedMs > budget {
+                    changePercent = pixelDiff.changePercent
+                    return DiffResult(changePercent: changePercent, boundingBoxes: pixelDiff.boundingBoxes, downgraded: true)
+                } else {
+                    changePercent = max(0, min(100, (1 - ssim) * 100))
+                }
+            } else {
+                let ssim = self.computeSSIM(previous: previous, current: current)
+                changePercent = max(0, min(100, (1 - ssim) * 100))
+            }
         }
 
         return DiffResult(
             changePercent: changePercent,
-            boundingBox: pixelDiff.boundingBox)
+            boundingBoxes: pixelDiff.boundingBoxes,
+            downgraded: false)
     }
 
     nonisolated private static func computePixelDelta(
@@ -507,34 +533,80 @@ public final class WatchCaptureSession {
         originalSize: CGSize) -> DiffResult
     {
         let count = min(previous.pixels.count, current.pixels.count)
-        if count == 0 { return DiffResult(changePercent: 0, boundingBox: nil) }
+        if count == 0 { return DiffResult(changePercent: 0, boundingBoxes: [], downgraded: false) }
 
         var changed = 0
-        var minX = Int.max, minY = Int.max, maxX = -1, maxY = -1
+        var mask = Array(repeating: false, count: count)
         for idx in 0..<count {
             let diff = abs(Int(previous.pixels[idx]) - Int(current.pixels[idx]))
             if diff >= deltaThreshold {
                 changed += 1
-                let x = idx % current.width
-                let y = idx / current.width
-                minX = min(minX, x)
-                minY = min(minY, y)
-                maxX = max(maxX, x)
-                maxY = max(maxY, y)
+                mask[idx] = true
             }
         }
 
         let percent = (Double(changed) / Double(count)) * 100.0
-        if minX == Int.max { return DiffResult(changePercent: percent, boundingBox: nil) }
+        if changed == 0 { return DiffResult(changePercent: percent, boundingBoxes: [], downgraded: false) }
 
-        let scaleX = originalSize.width / CGFloat(current.width)
-        let scaleY = originalSize.height / CGFloat(current.height)
-        let rect = CGRect(
-            x: CGFloat(minX) * scaleX,
-            y: CGFloat(minY) * scaleY,
-            width: CGFloat(maxX - minX + 1) * scaleX,
-            height: CGFloat(maxY - minY + 1) * scaleY)
-        return DiffResult(changePercent: percent, boundingBox: rect)
+        let boxes = self.extractBoundingBoxes(mask: mask, width: current.width, height: current.height, originalSize: originalSize)
+        return DiffResult(changePercent: percent, boundingBoxes: boxes, downgraded: false)
+    }
+
+    /// Extract axis-aligned bounding boxes for connected components in the diff mask.
+    nonisolated private static func extractBoundingBoxes(
+        mask: [Bool],
+        width: Int,
+        height: Int,
+        originalSize: CGSize) -> [CGRect]
+    {
+        var visited = Array(repeating: false, count: mask.count)
+        var boxes: [CGRect] = []
+        let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+        let maxBoxes = 5
+        let minPixels = 1
+
+        func index(_ x: Int, _ y: Int) -> Int { y * width + x }
+
+        for y in 0..<height {
+            for x in 0..<width {
+                let idx = index(x, y)
+                if !mask[idx] || visited[idx] { continue }
+
+                var stack = [(x, y)]
+                visited[idx] = true
+                var minX = x, maxX = x, minY = y, maxY = y
+                var count = 0
+
+                while let (cx, cy) = stack.popLast() {
+                    count += 1
+                    minX = min(minX, cx); maxX = max(maxX, cx)
+                    minY = min(minY, cy); maxY = max(maxY, cy)
+                    for (dx, dy) in directions {
+                        let nx = cx + dx, ny = cy + dy
+                        if nx < 0 || ny < 0 || nx >= width || ny >= height { continue }
+                        let nIdx = index(nx, ny)
+                        if mask[nIdx] && !visited[nIdx] {
+                            visited[nIdx] = true
+                            stack.append((nx, ny))
+                        }
+                    }
+                }
+
+                guard count >= minPixels else { continue }
+
+                let scaleX = originalSize.width / CGFloat(width)
+                let scaleY = originalSize.height / CGFloat(height)
+                let rect = CGRect(
+                    x: CGFloat(minX) * scaleX,
+                    y: CGFloat(minY) * scaleY,
+                    width: CGFloat(maxX - minX + 1) * scaleX,
+                    height: CGFloat(maxY - minY + 1) * scaleY)
+                boxes.append(rect)
+                if boxes.count >= maxBoxes { return boxes }
+            }
+        }
+
+        return boxes
     }
 
     nonisolated static func computeSSIM(previous: LumaBuffer, current: LumaBuffer) -> Double {

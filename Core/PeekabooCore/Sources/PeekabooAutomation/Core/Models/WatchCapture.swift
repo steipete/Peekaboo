@@ -51,6 +51,7 @@ public struct WatchCaptureOptions: Sendable, Equatable {
     public let captureFocus: CaptureFocus
     public let resolutionCap: CGFloat?
     public let diffStrategy: DiffStrategy
+    public let diffBudgetMs: Int?
 
     public enum DiffStrategy: String, Codable, Sendable {
         case fast
@@ -69,7 +70,8 @@ public struct WatchCaptureOptions: Sendable, Equatable {
         highlightChanges: Bool,
         captureFocus: CaptureFocus,
         resolutionCap: CGFloat?,
-        diffStrategy: DiffStrategy)
+        diffStrategy: DiffStrategy,
+        diffBudgetMs: Int?)
     {
         self.duration = duration
         self.idleFps = idleFps
@@ -83,6 +85,7 @@ public struct WatchCaptureOptions: Sendable, Equatable {
         self.captureFocus = captureFocus
         self.resolutionCap = resolutionCap
         self.diffStrategy = diffStrategy
+        self.diffBudgetMs = diffBudgetMs
     }
 }
 
@@ -159,6 +162,7 @@ public struct WatchOptionsSnapshot: Codable, Sendable, Equatable {
     public let captureFocus: CaptureFocus
     public let resolutionCap: CGFloat?
     public let diffStrategy: WatchCaptureOptions.DiffStrategy
+    public let diffBudgetMs: Int?
 }
 
 public struct WatchCaptureResult: Codable, Sendable, Equatable {

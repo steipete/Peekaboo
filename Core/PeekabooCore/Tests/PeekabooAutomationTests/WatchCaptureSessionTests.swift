@@ -10,13 +10,15 @@ struct WatchCaptureSessionTests {
         let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
         let result = WatchCaptureSession.computeChange(
             strategy: .fast,
+            diffBudgetMs: nil,
             previous: prev,
             current: curr,
             deltaThreshold: 10,
             originalSize: CGSize(width: 200, height: 200))
         #expect(result.changePercent > 0)
-        #expect(abs((result.boundingBox?.origin.x ?? 0) - 100) < 0.1)
-        #expect(abs((result.boundingBox?.origin.y ?? 0) - 0) < 0.1)
+        let firstBox = result.boundingBoxes.first
+        #expect(abs((firstBox?.origin.x ?? 0) - 100) < 0.1)
+        #expect(abs((firstBox?.origin.y ?? 0) - 0) < 0.1)
     }
 
     @Test("Quality diff near-zero for identical frames")
@@ -24,12 +26,13 @@ struct WatchCaptureSessionTests {
         let buffer = WatchCaptureSession.LumaBuffer(width: 4, height: 4, pixels: Array(repeating: 64, count: 16))
         let result = WatchCaptureSession.computeChange(
             strategy: .quality,
+            diffBudgetMs: nil,
             previous: buffer,
             current: buffer,
             deltaThreshold: 10,
             originalSize: CGSize(width: 100, height: 100))
         #expect(result.changePercent < 0.01)
-        #expect(result.boundingBox == nil)
+        #expect(result.boundingBoxes.isEmpty)
     }
 
     @Test("Quality diff caps at 100")
@@ -38,6 +41,7 @@ struct WatchCaptureSessionTests {
         let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [255, 255, 255, 255])
         let result = WatchCaptureSession.computeChange(
             strategy: .quality,
+            diffBudgetMs: nil,
             previous: prev,
             current: curr,
             deltaThreshold: 10,

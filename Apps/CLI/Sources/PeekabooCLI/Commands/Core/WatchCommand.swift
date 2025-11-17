@@ -65,7 +65,10 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Diff strategy: fast|quality (default fast)")
     var diffStrategy: String?
 
-    // Output
+    @Option(name: .long, help: "Diff time budget in milliseconds before falling back to fast (default 30 for quality)")
+    var diffBudgetMs: Int?
+
+// Output
     @Option(name: .long, help: "Output directory (defaults to temp watch session)")
     var path: String?
 
@@ -224,6 +227,7 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         let maxFrames = max(self.maxFrames ?? 800, 1)
         let resolutionCap = self.resolutionCap ?? 1440
         let diffStrategy = WatchCaptureOptions.DiffStrategy(rawValue: (self.diffStrategy ?? "fast")) ?? .fast
+        let diffBudgetMs = self.diffBudgetMs ?? (diffStrategy == .quality ? 30 : nil)
 
         let maxMb = self.maxMb.flatMap { $0 > 0 ? $0 : nil }
 
@@ -239,7 +243,8 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             highlightChanges: self.highlightChanges,
             captureFocus: self.captureFocus,
             resolutionCap: resolutionCap,
-            diffStrategy: diffStrategy)
+            diffStrategy: diffStrategy,
+            diffBudgetMs: diffBudgetMs)
     }
 
     private func resolveOutputDirectory() throws -> URL {
@@ -340,6 +345,7 @@ extension WatchCommand: CommanderBindableCommand {
         self.maxMb = try values.decodeOption("maxMb", as: Int.self)
         self.resolutionCap = try values.decodeOption("resolutionCap", as: Double.self)
         self.diffStrategy = values.singleOption("diffStrategy")
+        self.diffBudgetMs = try values.decodeOption("diffBudgetMs", as: Int.self)
         if values.flag("highlightChanges") { self.highlightChanges = true }
         self.path = values.singleOption("path")
         self.autocleanMinutes = try values.decodeOption("autocleanMinutes", as: Int.self)

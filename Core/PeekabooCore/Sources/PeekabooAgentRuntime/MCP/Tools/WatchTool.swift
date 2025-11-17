@@ -44,6 +44,7 @@ public struct WatchTool: MCPTool {
                     description: "fast|quality diffing (default fast)",
                     enum: ["fast", "quality"],
                     default: "fast"),
+                "diff_budget_ms": SchemaBuilder.number(description: "Diff time budget before falling back to fast (default 30 for quality)"),
                 "output_dir": SchemaBuilder.string(description: "Optional absolute directory for outputs"),
                 "autoclean_minutes": SchemaBuilder.number(description: "Minutes to keep temp outputs (default 120)")
             ],
@@ -105,6 +106,7 @@ private struct WatchRequest {
         let resolutionCap = input.resolutionCap ?? 1440
         let diff = WatchCaptureOptions.DiffStrategy(rawValue: input.diffStrategy ?? "fast") ?? .fast
         let autoclean = Int(input.autocleanMinutes ?? 120)
+        let diffBudgetMs = input.diffBudgetMs ?? (diff == .quality ? 30 : nil)
 
         let scope: WatchScope
         switch mode {
@@ -135,7 +137,8 @@ private struct WatchRequest {
             highlightChanges: highlight,
             captureFocus: .auto,
             resolutionCap: resolutionCap,
-            diffStrategy: diff)
+            diffStrategy: diff,
+            diffBudgetMs: diffBudgetMs)
         self.outputDirectory = outputDir
         self.autocleanMinutes = autoclean
     }
@@ -181,6 +184,7 @@ private struct WatchInput: Codable {
     let maxMb: Int?
     let resolutionCap: Double?
     let diffStrategy: String?
+    let diffBudgetMs: Int?
     let outputDir: String?
     let autocleanMinutes: Double?
 }

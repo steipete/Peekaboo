@@ -22,6 +22,7 @@ extension WatchCommand: CommanderSignatureProviding {
                 .commandOption("maxMb", help: "Soft size cap in MB (optional)", long: "max-mb"),
                 .commandOption("resolutionCap", help: "Cap longest side in px (default 1440)", long: "resolution-cap"),
                 .commandOption("diffStrategy", help: "Diff strategy: fast|quality", long: "diff-strategy"),
+                .commandOption("diffBudgetMs", help: "Diff time budget in ms before falling back to fast (default 30 for quality)", long: "diff-budget-ms"),
                 .commandOption("path", help: "Output directory", long: "path"),
                 .commandOption("autocleanMinutes", help: "Minutes before temp sessions auto-clean (default 120)", long: "autoclean-minutes")
             ],
