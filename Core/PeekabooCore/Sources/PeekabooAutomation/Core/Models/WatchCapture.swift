@@ -181,4 +181,5 @@ public struct WatchCaptureResult: Codable, Sendable, Equatable {
     public var contactColumns: Int { self.contactSheet.columns }
     public var contactRows: Int { self.contactSheet.rows }
     public var contactSampledIndexes: [Int] { self.contactSheet.sampledFrameIndexes }
+    public var contactThumbSize: CGSize { self.contactSheet.thumbSize }
 }

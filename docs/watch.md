@@ -46,7 +46,7 @@ Goal: add a long-running, change-aware PNG capture tool (`peekaboo watch`) that 
 
 ## Outputs
 - `frames`: PNG sequence with timestamps, changePercent, keep reason (`first|motion|heartbeat|cap`), and motion boxes when available.
-- `contact.png`: auto grid (max 6 columns; rows inferred). Include contact metadata (cols/rows/thumb size, sampled frame indexes). For large frame counts, sample evenly across the sequence instead of placing every frame, and report the sampled indexes. Contact metadata is also exposed in CLI/MCP responses for agents.
+- `contact.png`: auto grid (max 6 columns; rows inferred). Include contact metadata (cols/rows/thumb size, sampled frame indexes). For large frame counts, sample evenly across the sequence instead of placing every frame, and report the sampled indexes. Contact metadata is also exposed in CLI/MCP responses for agents (grid + thumb size + sampled frame indexes).
 - `metadata.json`: structured schema (see below) including scope, options, stats, per-frame entries, motion intervals, warnings, diff algorithm/scale, autoclean time.
 - CLI/MCP responses share the same `WatchCaptureResult` (see schema); text output mirrors `ImageCommand` log style.
 

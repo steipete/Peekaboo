@@ -35,7 +35,7 @@ Adaptive screenshot capture for agents. Runs up to a set duration, samples at lo
 
 ## Outputs
 - PNG frames: `frame-0001.png`… with timestamps and change percentages.
-- `contact.png`: grid of sampled frames (max 6 columns) with sampled indexes recorded (exposed in CLI/MCP metadata for agents).
+- `contact.png`: grid of sampled frames (max 6 columns) with sampled indexes recorded (exposed in CLI/MCP metadata for agents, including grid and thumb size).
 - `metadata.json`: scope, options, stats, per-frame info, motion intervals, warnings.
 
 ## Notes

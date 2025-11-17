@@ -82,6 +82,7 @@ public struct WatchTool: MCPTool {
             "diff_scale": .string(result.diffScale),
             "contact_columns": .string("\(result.contactColumns)"),
             "contact_rows": .string("\(result.contactRows)"),
+            "contact_thumb_size": .string("\(Int(result.contactThumbSize.width))x\(Int(result.contactThumbSize.height))"),
             "contact_sampled_indexes": .array(result.contactSampledIndexes.map { .string("\($0)") })
         ])))
     }
