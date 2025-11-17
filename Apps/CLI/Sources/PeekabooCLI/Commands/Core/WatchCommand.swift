@@ -201,14 +201,19 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             let windows = try await WindowServiceBridge.listWindows(
                 windows: self.services.windows,
                 target: .application(identifier))
-            let renderable = windows.filter { WindowFiltering.isRenderable($0) }
-            guard !renderable.isEmpty else { return windows.first?.index }
-            let best = renderable.max { lhs, rhs in
-                let lArea = lhs.bounds.width * lhs.bounds.height
-                let rArea = rhs.bounds.width * rhs.bounds.height
-                return lArea < rArea
+            let renderable = WindowFilterHelper.filter(
+                windows: windows,
+                appIdentifier: identifier,
+                mode: .capture,
+                logger: self.logger)
+            if let title = self.windowTitle,
+               let match = renderable.first(where: { $0.title.localizedCaseInsensitiveContains(title) }) {
+                return match.index
             }
-            return best?.index
+            if let preferred = ImageCommand.preferredWindow(from: renderable) {
+                return preferred.index
+            }
+            return renderable.first?.index
         } catch {
             return nil
         }

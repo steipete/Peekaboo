@@ -488,7 +488,7 @@ extension ImageCommand {
         )
     }
 
-    private static func preferredWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
+    static func preferredWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
         guard !windows.isEmpty else {
             return nil
         }
