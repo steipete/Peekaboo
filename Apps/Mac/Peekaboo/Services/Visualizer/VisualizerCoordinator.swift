@@ -139,6 +139,11 @@ extension VisualizerCoordinator {
         }
     }
 
+    func showWatchCapture(in rect: CGRect) async -> Bool {
+        self.logger.debug("🔁 Visualizer: Watch capture recorded for \(rect), suppressing flash")
+        return true
+    }
+
     func showClickFeedback(at point: CGPoint, type: PeekabooFoundation.ClickType) async -> Bool {
         self.logger.info("🖱️ Visualizer: Showing click feedback at \(String(describing: point)), type: \(type)")
 

@@ -186,7 +186,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         return try await body(correlationId)
     }
 
-    public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
+    public func captureScreen(
+        displayIndex: Int?,
+        visualizerMode: CaptureVisualizerMode = .screenshotFlash) async throws -> CaptureResult
+    {
         let metadata: Metadata = ["displayIndex": displayIndex ?? "main"]
         return try await self.performOperation(.screen, metadata: metadata) { correlationId in
             try await self.fallbackRunner.run(
@@ -198,11 +201,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 case .modern:
                     try await self.modernOperator.captureScreen(
                         displayIndex: displayIndex,
-                        correlationId: correlationId)
+                        correlationId: correlationId,
+                        visualizerMode: visualizerMode)
                 case .legacy:
                     try await self.legacyOperator.captureScreen(
                         displayIndex: displayIndex,
-                        correlationId: correlationId)
+                        correlationId: correlationId,
+                        visualizerMode: visualizerMode)
                 }
             }
         }
@@ -243,7 +248,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
      * )
      * ```
      */
-    public func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
+    public func captureWindow(
+        appIdentifier: String,
+        windowIndex: Int?,
+        visualizerMode: CaptureVisualizerMode = .screenshotFlash) async throws -> CaptureResult
+    {
         let metadata: Metadata = [
             "appIdentifier": appIdentifier,
             "windowIndex": windowIndex ?? "frontmost",
@@ -267,6 +276,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return try await self.captureWindow(
                 app: app,
                 windowIndex: windowIndex,
+                visualizerMode: visualizerMode,
                 operation: .window,
                 correlationId: correlationId)
         }
@@ -275,6 +285,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     private func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
+        visualizerMode: CaptureVisualizerMode,
         operation: CaptureOperation,
         correlationId: String) async throws -> CaptureResult
     {
@@ -291,18 +302,22 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 return try await self.modernOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
-                    correlationId: correlationId)
+                    correlationId: correlationId,
+                    visualizerMode: visualizerMode)
             case .legacy:
                 self.logger.debug("Using legacy CGWindowList API", correlationId: correlationId)
                 return try await self.legacyOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
-                    correlationId: correlationId)
+                    correlationId: correlationId,
+                    visualizerMode: visualizerMode)
             }
         }
     }
 
-    public func captureFrontmost() async throws -> CaptureResult {
+    public func captureFrontmost(
+        visualizerMode: CaptureVisualizerMode = .screenshotFlash) async throws -> CaptureResult
+    {
         try await self.performOperation(.frontmost) { correlationId in
             guard let frontmost = NSWorkspace.shared.frontmostApplication else {
                 self.logger.error("No frontmost application found", correlationId: correlationId)
@@ -322,12 +337,16 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return try await self.captureWindow(
                 app: serviceApp,
                 windowIndex: nil,
+                visualizerMode: visualizerMode,
                 operation: .frontmost,
                 correlationId: correlationId)
         }
     }
 
-    public func captureArea(_ rect: CGRect) async throws -> CaptureResult {
+    public func captureArea(
+        _ rect: CGRect,
+        visualizerMode _: CaptureVisualizerMode = .screenshotFlash) async throws -> CaptureResult
+    {
         let metadata: Metadata = [
             "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
         ]
@@ -431,7 +450,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             self.visualizerClient = visualizerClient
         }
 
-        func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
+        func captureScreen(
+            displayIndex: Int?,
+            correlationId: String,
+            visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+        {
             self.logger.debug("Fetching shareable content", correlationId: correlationId)
             let content = try await withTimeout(seconds: 5.0) {
                 try await SCShareableContent.current
@@ -477,7 +500,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 ],
                 correlationId: correlationId)
 
-            _ = await self.visualizerClient.showScreenshotFlash(in: targetDisplay.frame)
+            await self.emitVisualizer(mode: visualizerMode, rect: targetDisplay.frame)
 
             let metadata = CaptureMetadata(
                 size: CGSize(width: image.width, height: image.height),
@@ -494,7 +517,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         func captureWindow(
             app: ServiceApplicationInfo,
             windowIndex: Int?,
-            correlationId: String) async throws -> CaptureResult
+            correlationId: String,
+            visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
         {
             let content = try await withTimeout(seconds: 5.0) {
                 try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
@@ -565,7 +589,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 ],
                 correlationId: correlationId)
 
-            _ = await self.visualizerClient.showScreenshotFlash(in: targetWindow.frame)
+            await self.emitVisualizer(mode: visualizerMode, rect: targetWindow.frame)
 
             let metadata = CaptureMetadata(
                 size: CGSize(width: image.width, height: image.height),
@@ -708,6 +732,15 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return image
         }
 
+        private func emitVisualizer(mode: CaptureVisualizerMode, rect: CGRect) async {
+            switch mode {
+            case .screenshotFlash:
+                _ = await self.visualizerClient.showScreenshotFlash(in: rect)
+            case .watchCapture:
+                _ = await self.visualizerClient.showWatchCapture(in: rect)
+            }
+        }
+
         private nonisolated static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
             let lastIndex = max(totalWindows - 1, 0)
             return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
@@ -725,7 +758,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         func captureWindow(
             app: ServiceApplicationInfo,
             windowIndex: Int?,
-            correlationId: String) async throws -> CaptureResult
+            correlationId: String,
+            visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
         {
             let windowList = CGWindowListCopyWindowInfo(
                 [.optionAll, .excludeDesktopElements],
@@ -859,7 +893,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 metadata: metadata)
         }
 
-        func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
+        func captureScreen(
+            displayIndex: Int?,
+            correlationId: String,
+            visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        {
             self.logger.debug("Using legacy CGWindowList API for screen capture", correlationId: correlationId)
 
             let screens = NSScreen.screens

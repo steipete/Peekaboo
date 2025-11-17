@@ -99,6 +99,8 @@ final class VisualizerEventReceiver {
         let success: Bool = switch event.payload {
         case let .screenshotFlash(rect):
             await self.coordinator.showScreenshotFlash(in: rect)
+        case let .watchCapture(rect):
+            await self.coordinator.showWatchCapture(in: rect)
         case let .clickFeedback(point, type):
             await self.coordinator.showClickFeedback(at: point, type: type)
         case let .typingFeedback(keys, duration, cadence):

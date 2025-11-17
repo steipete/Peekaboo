@@ -21,6 +21,7 @@ import PeekabooProtocols
 
 public enum VisualizerEventKind: String, Codable, Sendable {
     case screenshotFlash
+    case watchCapture
     case clickFeedback
     case typingFeedback
     case scrollFeedback
@@ -52,6 +53,8 @@ public struct VisualizerEvent: Codable, Sendable {
         switch self.payload {
         case .screenshotFlash:
             .screenshotFlash
+        case .watchCapture:
+            .watchCapture
         case .clickFeedback:
             .clickFeedback
         case .typingFeedback:
@@ -85,6 +88,7 @@ public struct VisualizerEvent: Codable, Sendable {
 
     public enum Payload: Codable, Sendable {
         case screenshotFlash(rect: CGRect)
+        case watchCapture(rect: CGRect)
         case clickFeedback(point: CGPoint, type: ClickType)
         case typingFeedback(keys: [String], duration: TimeInterval, cadence: TypingCadence? = nil)
         case scrollFeedback(point: CGPoint, direction: ScrollDirection, amount: Int)

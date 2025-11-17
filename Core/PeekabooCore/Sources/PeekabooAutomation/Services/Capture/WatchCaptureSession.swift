@@ -267,22 +267,27 @@ public final class WatchCaptureSession {
         let result: CaptureResult
         switch self.scope.kind {
         case .screen:
-            result = try await self.screenCapture.captureScreen(displayIndex: self.scope.screenIndex)
+            result = try await self.screenCapture.captureScreen(
+                displayIndex: self.scope.screenIndex,
+                visualizerMode: .watchCapture)
         case .frontmost:
-            result = try await self.screenCapture.captureFrontmost()
+            result = try await self.screenCapture.captureFrontmost(visualizerMode: .watchCapture)
         case .window:
             guard let app = self.scope.applicationIdentifier else {
                 throw PeekabooError.windowNotFound(criteria: "missing application identifier")
             }
             result = try await self.screenCapture.captureWindow(
                 appIdentifier: app,
-                windowIndex: self.scope.windowIndex)
+                windowIndex: self.scope.windowIndex,
+                visualizerMode: .watchCapture)
         case .region:
             guard let rect = self.scope.region else {
                 throw PeekabooError.captureFailed(reason: "Region missing for watch capture")
             }
             let validated = try self.validateRegion(rect)
-            result = try await self.screenCapture.captureArea(validated)
+            result = try await self.screenCapture.captureArea(
+                validated,
+                visualizerMode: .watchCapture)
         }
 
         guard let image = WatchCaptureSession.makeCGImage(from: result.imageData) else {

@@ -29,28 +29,35 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         self.permissionGranted = permissionGranted
     }
 
-    func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
+    func captureScreen(
+        displayIndex: Int?,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+    {
         if let handler = self.captureScreenHandler {
             return try await handler(displayIndex)
         }
         return try await self.makeDefaultCaptureResult(function: #function)
     }
 
-    func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
+    func captureWindow(
+        appIdentifier: String,
+        windowIndex: Int?,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+    {
         if let handler = self.captureWindowHandler {
             return try await handler(appIdentifier, windowIndex)
         }
         return try await self.makeDefaultCaptureResult(function: #function)
     }
 
-    func captureFrontmost() async throws -> CaptureResult {
+    func captureFrontmost(visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
         if let handler = self.captureFrontmostHandler {
             return try await handler()
         }
         return try await self.makeDefaultCaptureResult(function: #function)
     }
 
-    func captureArea(_ rect: CGRect) async throws -> CaptureResult {
+    func captureArea(_ rect: CGRect, visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
         if let handler = self.captureAreaHandler {
             return try await handler(rect)
         }

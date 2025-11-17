@@ -1,33 +1,66 @@
 import CoreGraphics
 import Foundation
 
+public enum CaptureVisualizerMode: Sendable {
+    case screenshotFlash
+    case watchCapture
+}
+
 /// Protocol defining screen capture operations
 @MainActor
 public protocol ScreenCaptureServiceProtocol: Sendable {
     /// Capture the entire screen or a specific display
     /// - Parameter displayIndex: Optional display index (0-based). If nil, captures main display
     /// - Returns: Result containing the captured image and metadata
-    func captureScreen(displayIndex: Int?) async throws -> CaptureResult
+    func captureScreen(
+        displayIndex: Int?,
+        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
 
     /// Capture a specific window from an application
     /// - Parameters:
     ///   - appIdentifier: Application name or bundle ID
     ///   - windowIndex: Optional window index (0-based). If nil, captures frontmost window
     /// - Returns: Result containing the captured image and metadata
-    func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult
+    func captureWindow(
+        appIdentifier: String,
+        windowIndex: Int?,
+        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
 
     /// Capture the frontmost window of the frontmost application
     /// - Returns: Result containing the captured image and metadata
-    func captureFrontmost() async throws -> CaptureResult
+    func captureFrontmost(visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
 
     /// Capture a specific area of the screen
     /// - Parameter rect: The rectangle to capture in screen coordinates
     /// - Returns: Result containing the captured image and metadata
-    func captureArea(_ rect: CGRect) async throws -> CaptureResult
+    func captureArea(
+        _ rect: CGRect,
+        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
 
     /// Check if screen recording permission is granted
     /// - Returns: True if permission is granted
     func hasScreenRecordingPermission() async -> Bool
+}
+
+public extension ScreenCaptureServiceProtocol {
+    func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
+        try await self.captureScreen(displayIndex: displayIndex, visualizerMode: .screenshotFlash)
+    }
+
+    func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
+        try await self.captureWindow(
+            appIdentifier: appIdentifier,
+            windowIndex: windowIndex,
+            visualizerMode: .screenshotFlash)
+    }
+
+    func captureFrontmost() async throws -> CaptureResult {
+        try await self.captureFrontmost(visualizerMode: .screenshotFlash)
+    }
+
+    func captureArea(_ rect: CGRect) async throws -> CaptureResult {
+        try await self.captureArea(rect, visualizerMode: .screenshotFlash)
+    }
 }
 
 /// Result of a capture operation

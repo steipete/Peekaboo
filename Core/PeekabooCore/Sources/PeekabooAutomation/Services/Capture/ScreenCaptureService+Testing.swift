@@ -143,6 +143,11 @@ private final class MockVisualizationClient: VisualizationClientProtocol, @unche
         self.flashes.append(rect)
         return true
     }
+
+    func showWatchCapture(in rect: CGRect) async -> Bool {
+        self.flashes.append(rect)
+        return true
+    }
 }
 
 private struct FixtureApplicationResolver: ApplicationResolving {
@@ -164,7 +169,11 @@ private final class MockModernCaptureOperator: ModernScreenCaptureOperating, Leg
         self.fixtures = fixtures
     }
 
-    func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
+    func captureScreen(
+        displayIndex: Int?,
+        correlationId: String,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+    {
         let display = try fixtures.display(at: displayIndex)
         let metadata = CaptureMetadata(
             size: display.imageSize,
@@ -180,7 +189,8 @@ private final class MockModernCaptureOperator: ModernScreenCaptureOperating, Leg
     func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
-        correlationId: String) async throws -> CaptureResult
+        correlationId: String,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
     {
         let windows = self.fixtures.windows(for: app)
         guard !windows.isEmpty else {

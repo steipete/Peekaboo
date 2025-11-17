@@ -219,19 +219,23 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         self.size = size
     }
 
-    func captureScreen(displayIndex _: Int?) async throws -> CaptureResult {
+    func captureScreen(displayIndex _: Int?, visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
         self.makeResult(mode: .screen)
     }
 
-    func captureWindow(appIdentifier _: String, windowIndex _: Int?) async throws -> CaptureResult {
+    func captureWindow(
+        appIdentifier _: String,
+        windowIndex _: Int?,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+    {
         self.makeResult(mode: .window)
     }
 
-    func captureFrontmost() async throws -> CaptureResult {
+    func captureFrontmost(visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
         self.makeResult(mode: .frontmost)
     }
 
-    func captureArea(_ rect: CGRect) async throws -> CaptureResult {
+    func captureArea(_ rect: CGRect, visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
         let metadata = CaptureMetadata(
             size: rect.size,
             mode: .area,

@@ -154,6 +154,7 @@ struct ScreenCaptureServiceFlowTests {
 private final class StubVisualizationClient: VisualizationClientProtocol, @unchecked Sendable {
     func connect() {}
     func showScreenshotFlash(in rect: CGRect) async -> Bool { false }
+    func showWatchCapture(in rect: CGRect) async -> Bool { false }
 }
 
 @MainActor
@@ -186,7 +187,11 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
         self.fixtures = fixtures
     }
 
-    func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
+    func captureScreen(
+        displayIndex: Int?,
+        correlationId: String,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+    {
         let display = try fixtures.display(at: displayIndex)
         let metadata = CaptureMetadata(
             size: display.imageSize,
@@ -202,7 +207,8 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
     func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
-        correlationId: String) async throws -> CaptureResult
+        correlationId: String,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
     {
         let windows = self.fixtures.windows(for: app)
         guard !windows.isEmpty else {
@@ -255,7 +261,11 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
 private final class TimeoutModernOperator: ModernScreenCaptureOperating, @unchecked Sendable {
     private(set) var captureScreenAttempts = 0
 
-    func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
+    func captureScreen(
+        displayIndex: Int?,
+        correlationId: String,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+    {
         self.captureScreenAttempts += 1
         throw OperationError.timeout(operation: "mock", duration: 0.1)
     }
@@ -263,7 +273,8 @@ private final class TimeoutModernOperator: ModernScreenCaptureOperating, @unchec
     func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
-        correlationId: String) async throws -> CaptureResult
+        correlationId: String,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
     {
         throw OperationError.captureFailed(reason: "Not implemented in TimeoutModernOperator")
     }

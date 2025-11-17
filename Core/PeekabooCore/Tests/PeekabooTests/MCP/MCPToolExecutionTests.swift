@@ -266,15 +266,24 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         self.screenRecordingGranted = screenRecordingGranted
     }
 
-    func captureScreen(displayIndex _: Int?) async throws -> CaptureResult { self.makeResult(mode: .screen) }
+    func captureScreen(
+        displayIndex _: Int?,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+    { self.makeResult(mode: .screen) }
 
-    func captureWindow(appIdentifier _: String, windowIndex _: Int?) async throws -> CaptureResult {
-        self.makeResult(mode: .window)
+    func captureWindow(
+        appIdentifier _: String,
+        windowIndex _: Int?,
+        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+    { self.makeResult(mode: .window) }
+
+    func captureFrontmost(visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
+        self.makeResult(mode: .frontmost)
     }
 
-    func captureFrontmost() async throws -> CaptureResult { self.makeResult(mode: .frontmost) }
-
-    func captureArea(_: CGRect) async throws -> CaptureResult { self.makeResult(mode: .area) }
+    func captureArea(_: CGRect, visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
+        self.makeResult(mode: .area)
+    }
 
     func hasScreenRecordingPermission() async -> Bool { self.screenRecordingGranted }
 

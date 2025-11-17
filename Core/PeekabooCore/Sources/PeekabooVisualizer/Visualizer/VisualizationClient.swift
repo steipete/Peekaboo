@@ -112,6 +112,10 @@ public final class VisualizationClient: @unchecked Sendable {
         return self.dispatch(.screenshotFlash(rect: rect))
     }
 
+    public func showWatchCapture(in rect: CGRect) async -> Bool {
+        self.dispatch(.watchCapture(rect: rect))
+    }
+
     public func showClickFeedback(at point: CGPoint, type: ClickType) async -> Bool {
         self.dispatch(.clickFeedback(point: point, type: type))
     }
@@ -338,6 +342,7 @@ extension VisualizerEvent.Payload {
     fileprivate var eventKindDescription: String {
         switch self {
         case .screenshotFlash: "screenshotFlash"
+        case .watchCapture: "watchCapture"
         case .clickFeedback: "clickFeedback"
         case .typingFeedback: "typingFeedback"
         case .scrollFeedback: "scrollFeedback"

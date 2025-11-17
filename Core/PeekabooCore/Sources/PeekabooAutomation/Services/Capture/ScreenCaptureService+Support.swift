@@ -15,16 +15,30 @@ extension SCWindow: @retroactive @unchecked Sendable {}
 
 @MainActor
 protocol ModernScreenCaptureOperating: Sendable {
-    func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult
-    func captureWindow(app: ServiceApplicationInfo, windowIndex: Int?, correlationId: String) async throws
+    func captureScreen(
+        displayIndex: Int?,
+        correlationId: String,
+        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+    func captureWindow(
+        app: ServiceApplicationInfo,
+        windowIndex: Int?,
+        correlationId: String,
+        visualizerMode: CaptureVisualizerMode) async throws
         -> CaptureResult
     func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult
 }
 
 @MainActor
 protocol LegacyScreenCaptureOperating: Sendable {
-    func captureScreen(displayIndex: Int?, correlationId: String) async throws -> CaptureResult
-    func captureWindow(app: ServiceApplicationInfo, windowIndex: Int?, correlationId: String) async throws
+    func captureScreen(
+        displayIndex: Int?,
+        correlationId: String,
+        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+    func captureWindow(
+        app: ServiceApplicationInfo,
+        windowIndex: Int?,
+        correlationId: String,
+        visualizerMode: CaptureVisualizerMode) async throws
         -> CaptureResult
 }
 
@@ -32,6 +46,7 @@ protocol LegacyScreenCaptureOperating: Sendable {
 protocol VisualizationClientProtocol: Sendable {
     func connect()
     func showScreenshotFlash(in rect: CGRect) async -> Bool
+    func showWatchCapture(in rect: CGRect) async -> Bool
 }
 
 extension VisualizationClient: VisualizationClientProtocol {}
