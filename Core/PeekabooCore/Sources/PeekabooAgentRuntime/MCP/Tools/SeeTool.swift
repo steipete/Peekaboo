@@ -4,6 +4,10 @@ import MCP
 import os.log
 import PeekabooAutomation
 import PeekabooFoundation
+import PeekabooProtocols
+import PeekabooVisualizer
+
+private typealias AutomationDetectedElement = PeekabooAutomation.DetectedElement
 import TachikomaMCP
 
 // MARK: - Annotated Screenshot Rendering Helper
@@ -188,11 +192,13 @@ public struct SeeTool: MCPTool {
             let session = try await self.getOrCreateSession(sessionId: request.sessionId)
             let target = try self.parseCaptureTarget(request.appTarget)
             let screenshotPath = try await self.captureScreenshot(target: target, path: request.path, session: session)
-            let elements = try await self.detectUIElements(target: target, session: session)
-            let annotatedPath = try self.generateAnnotationIfNeeded(
+            let (elements, detectedElements) = try await self.detectUIElements(target: target, session: session)
+            let annotatedPath = try await self.generateAnnotationIfNeeded(
                 annotate: request.annotate,
                 screenshotPath: screenshotPath,
-                elements: elements)
+                elements: elements,
+                detectedElements: detectedElements,
+                session: session)
 
             return try await self.buildToolResponse(
                 session: session,
@@ -268,10 +274,17 @@ public struct SeeTool: MCPTool {
     private func generateAnnotationIfNeeded(
         annotate: Bool,
         screenshotPath: String,
-        elements: [UIElement]) throws -> String?
+        elements: [UIElement],
+        detectedElements: [AutomationDetectedElement],
+        session: UISession) async throws -> String?
     {
         guard annotate else { return nil }
-        return try self.generateAnnotatedScreenshot(originalPath: screenshotPath, elements: elements)
+        let annotated = try self.generateAnnotatedScreenshot(originalPath: screenshotPath, elements: elements)
+        await self.emitAnnotatedScreenshotVisualizer(
+            annotatedPath: annotated,
+            detectedElements: detectedElements,
+            session: session)
+        return annotated
     }
 
     private func makeScreenshotPath(from userProvidedPath: String?) -> String {
@@ -312,10 +325,10 @@ public struct SeeTool: MCPTool {
         try result.imageData.write(to: URL(fileURLWithPath: path))
     }
 
-    private func detectUIElements(target: CaptureTarget, session: UISession) async throws -> [UIElement] {
+    private func detectUIElements(target: CaptureTarget, session: UISession) async throws -> ([UIElement], [AutomationDetectedElement]) {
         guard let screenshotPath = await session.screenshotPath else {
             self.logger.warning("No screenshot available for element detection")
-            return []
+            return ([], [])
         }
 
         let imageData = try Data(contentsOf: URL(fileURLWithPath: screenshotPath))
@@ -327,10 +340,11 @@ public struct SeeTool: MCPTool {
             windowContext: windowContext)
 
         let detectedElements = await MainActor.run { detectionResult.elements.all }
+        await self.emitElementDetectionVisualizer(from: detectedElements)
         let elements = self.convertElements(detectedElements)
         self.logger.info("Detected \(elements.count) UI elements")
         await session.setUIElements(elements)
-        return elements
+        return (elements, detectedElements)
     }
 
     private func windowContext(for target: CaptureTarget) async throws -> WindowContext? {
@@ -352,7 +366,7 @@ public struct SeeTool: MCPTool {
         }
     }
 
-    private func convertElements(_ detected: [DetectedElement]) -> [UIElement] {
+    private func convertElements(_ detected: [AutomationDetectedElement]) -> [UIElement] {
         detected.map { element in
             UIElement(
                 id: element.id,
@@ -422,6 +436,45 @@ public struct SeeTool: MCPTool {
         try AnnotatedScreenshotRenderer(logger: self.logger).render(
             originalPath: originalPath,
             elements: elements)
+    }
+
+    private func emitElementDetectionVisualizer(from detected: [AutomationDetectedElement]) async {
+        guard !detected.isEmpty else { return }
+        let map = Dictionary(uniqueKeysWithValues: detected.map { ($0.id, $0.bounds) })
+        _ = await VisualizationClient.shared.showElementDetection(elements: map)
+    }
+
+    private func emitAnnotatedScreenshotVisualizer(
+        annotatedPath: String,
+        detectedElements: [AutomationDetectedElement],
+        session: UISession) async
+    {
+        guard !detectedElements.isEmpty else { return }
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: annotatedPath)) else { return }
+        let metadata = await session.screenshotMetadata
+        let bounds = metadata?.windowInfo?.bounds
+            ?? metadata?.displayInfo?.bounds
+            ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let protocolElements = await self.convertToVisualizerElements(detectedElements)
+        _ = await VisualizationClient.shared.showAnnotatedScreenshot(
+            imageData: data,
+            elements: protocolElements,
+            windowBounds: bounds)
+    }
+
+    @MainActor
+    private func convertToVisualizerElements(
+        _ detected: [AutomationDetectedElement]) -> [PeekabooProtocols.DetectedElement]
+    {
+        detected.map { element in
+            PeekabooProtocols.DetectedElement(
+                id: element.id,
+                type: element.type,
+                bounds: element.bounds,
+                label: element.label,
+                value: element.value,
+                isEnabled: element.isEnabled)
+        }
     }
 
     @MainActor
