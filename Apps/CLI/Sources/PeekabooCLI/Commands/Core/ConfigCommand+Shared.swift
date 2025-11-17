@@ -11,13 +11,27 @@ import PeekabooFoundation
 @MainActor
 protocol ConfigRuntimeCommand {
     var runtime: CommandRuntime? { get set }
-    var jsonOutput: Bool { get }
-    var logger: Logger { get }
 
     mutating func prepare(using runtime: CommandRuntime)
 }
 
 extension ConfigRuntimeCommand {
+    /// Lazily unwrap the command runtime or crash fast during development.
+    var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
+    }
+
+    var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var jsonOutput: Bool {
+        self.resolvedRuntime.configuration.jsonOutput
+    }
+
     mutating func prepare(using runtime: CommandRuntime) {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
@@ -25,6 +39,18 @@ extension ConfigRuntimeCommand {
 
     var output: ConfigCommandOutput {
         ConfigCommandOutput(logger: self.logger, jsonOutput: self.jsonOutput)
+    }
+
+    var configManager: ConfigurationManager {
+        ConfigurationManager.shared
+    }
+
+    var configPath: String {
+        ConfigurationManager.configPath
+    }
+
+    var credentialsPath: String {
+        ConfigurationManager.credentialsPath
     }
 }
 
@@ -130,5 +156,19 @@ struct JSONValue: Encodable {
 
     private static func encodeArray(_ array: [Any]) -> [JSONValue] {
         array.map { JSONValue($0) }
+    }
+}
+
+func outputJSON(_ value: some Encodable, logger: Logger) {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    do {
+        let data = try encoder.encode(value)
+        if let json = String(data: data, encoding: .utf8) {
+            print(json)
+        }
+    } catch {
+        logger.error("Failed to encode config JSON output: \(error.localizedDescription)")
+        print("{\n  \"success\": false,\n  \"error\": {\n    \"message\": \"Failed to encode JSON response\"\n  }\n}")
     }
 }

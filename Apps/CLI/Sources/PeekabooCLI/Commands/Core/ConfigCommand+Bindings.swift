@@ -1,0 +1,101 @@
+import Commander
+
+@available(macOS 14.0, *)
+extension ConfigCommand.InitCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.InitCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.force = values.flag("force")
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.ShowCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.ShowCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.effective = values.flag("effective")
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.EditCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.EditCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.editor = values.singleOption("editor")
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.ValidateCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.ValidateCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.SetCredentialCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.SetCredentialCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.key = try values.decodePositional(0, label: "key")
+        self.value = try values.decodePositional(1, label: "value")
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.AddProviderCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.AddProviderCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.providerId = try values.decodePositional(0, label: "providerId")
+        self.type = try values.requireOption("type", as: String.self)
+        self.name = try values.requireOption("name", as: String.self)
+        self.baseUrl = try values.requireOption("baseUrl", as: String.self)
+        self.apiKey = try values.requireOption("apiKey", as: String.self)
+        self.description = values.singleOption("description")
+        self.headers = values.singleOption("headers")
+        self.force = values.flag("force")
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.ListProvidersCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.ListProvidersCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.TestProviderCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.TestProviderCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.providerId = try values.decodePositional(0, label: "providerId")
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.RemoveProviderCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.RemoveProviderCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.providerId = try values.decodePositional(0, label: "providerId")
+        self.force = values.flag("force")
+    }
+}
+
+@available(macOS 14.0, *)
+extension ConfigCommand.ModelsProviderCommand: AsyncRuntimeCommand {}
+@MainActor
+extension ConfigCommand.ModelsProviderCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.providerId = try values.decodePositional(0, label: "providerId")
+        self.discover = values.flag("discover")
+    }
+}

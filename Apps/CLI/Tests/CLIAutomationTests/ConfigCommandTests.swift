@@ -72,4 +72,23 @@ struct ConfigCommandTests {
         #expect(command.commandDescription.commandName == "set-credential")
         #expect(command.commandDescription.abstract == "Set an API key or credential securely")
     }
+
+    @Test("AddProviderCommand validates provider IDs")
+    func providerIdValidation() {
+        #expect(ConfigCommand.AddProviderCommand.isValidProviderId("openrouter"))
+        #expect(ConfigCommand.AddProviderCommand.isValidProviderId("acme-123"))
+        #expect(!ConfigCommand.AddProviderCommand.isValidProviderId("spaces not-allowed"))
+        #expect(!ConfigCommand.AddProviderCommand.isValidProviderId("🥸"))
+    }
+
+    @Test("AddProviderCommand parses headers and rejects invalid formats")
+    func headerParsing() throws {
+        let parsed = try ConfigCommand.AddProviderCommand.parseHeaders("X-Key:one,Auth: Bearer")
+        #expect(parsed?["X-Key"] == "one")
+        #expect(parsed?["Auth"] == "Bearer")
+
+        #expect(throws: ConfigCommand.AddProviderCommand.HeaderParseError.self) {
+            _ = try ConfigCommand.AddProviderCommand.parseHeaders("missingColon")
+        }
+    }
 }
