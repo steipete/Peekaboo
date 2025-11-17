@@ -273,7 +273,7 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
             return
         }
 
-        print("🎥 watch captured \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)), contact sheet: \(result.contactSheet.path), diff: \(result.diffAlgorithm) @ \(result.diffScale)")
+        print("🎥 watch captured \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)), contact sheet: \(result.contactSheet.path), diff: \(result.diffAlgorithm) @ \(result.diffScale), grid \(result.contactColumns)x\(result.contactRows)")
         for frame in result.frames {
             print("🖼️  \(frame.reason.rawValue) t=\(frame.timestampMs)ms Δ=\(String(format: "%.2f", frame.changePercent))% → \(frame.path)")
         }

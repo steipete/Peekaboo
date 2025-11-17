@@ -79,7 +79,10 @@ public struct WatchTool: MCPTool {
             "contact": .string(result.contactSheet.path),
             "metadata": .string(result.metadataFile),
             "diff_algorithm": .string(result.diffAlgorithm),
-            "diff_scale": .string(result.diffScale)
+            "diff_scale": .string(result.diffScale),
+            "contact_columns": .string("\(result.contactColumns)"),
+            "contact_rows": .string("\(result.contactRows)"),
+            "contact_sampled_indexes": .array(result.contactSampledIndexes.map { .string("\($0)") })
         ])))
     }
 }

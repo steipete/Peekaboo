@@ -176,4 +176,9 @@ public struct WatchCaptureResult: Codable, Sendable, Equatable {
     public let diffScale: String
     public let options: WatchOptionsSnapshot
     public let warnings: [WatchWarning]
+
+    // Convenience: denormalized contact sheet info for agent/CLI surfaces
+    public var contactColumns: Int { self.contactSheet.columns }
+    public var contactRows: Int { self.contactSheet.rows }
+    public var contactSampledIndexes: [Int] { self.contactSheet.sampledFrameIndexes }
 }

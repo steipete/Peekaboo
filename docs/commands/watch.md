@@ -35,12 +35,13 @@ Adaptive screenshot capture for agents. Runs up to a set duration, samples at lo
 
 ## Outputs
 - PNG frames: `frame-0001.png`… with timestamps and change percentages.
-- `contact.png`: grid of sampled frames (max 6 columns) with sampled indexes recorded.
+- `contact.png`: grid of sampled frames (max 6 columns) with sampled indexes recorded (exposed in CLI/MCP metadata for agents).
 - `metadata.json`: scope, options, stats, per-frame info, motion intervals, warnings.
 
 ## Notes
 - PNG-only; no GIF/MP4.
 - Region coordinates are global display coords; HiDPI-aware.
+- Regions fully off-screen error; straddling regions are clamped to the visible union with a warning.
 - At least the first frame is always kept; heartbeat prevents long gaps.
 - Auto-clean of temp sessions on next run unless a custom `--path` is set.
 
