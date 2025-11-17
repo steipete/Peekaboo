@@ -52,6 +52,11 @@ MCP Server → peekaboo CLI → VisualizerEventStore → Distributed Notificatio
 | `VisualizerEventReceiver` | `Apps/Mac/Peekaboo/Services/Visualizer/VisualizerEventReceiver.swift` | Lives in Peekaboo.app, listens for `boo.peekaboo.visualizer.event`, loads the referenced JSON, and forwards it to `VisualizerCoordinator`. |
 | `VisualizerCoordinator` | `Apps/Mac/Peekaboo/Services/Visualizer/VisualizerCoordinator.swift` | Renders SwiftUI overlays (flashes, ripples, annotations, etc.) and honors user settings such as Reduce Motion. |
 
+## Smoke Testing
+
+- Run `peekaboo visualizer` (new CLI command) to fire every animation in sequence. This is the fastest way to confirm Peekaboo.app is rendering flashes, HUDs, window/app/menu highlights, dialog overlays, and the element-detection visuals. Use it before releases or whenever you tweak visualizer code.
+- Still keep the manual Visualizer Test view handy for ad-hoc previews or stress tests; the smoke command is intentionally short and non-interactive.
+
 ## Transport Storage & Format
 
 - **Directory**: `~/Library/Application Support/PeekabooShared/VisualizerEvents`. Override with `PEEKABOO_VISUALIZER_STORAGE=/custom/path`. When sandboxing the app, set `PEEKABOO_VISUALIZER_APP_GROUP=com.example.group` so the store lives inside the App Group container.

@@ -59,6 +59,7 @@ enum CommandRegistry {
         .init(type: DockCommand.self, category: .system),
         .init(type: DialogCommand.self, category: .system),
         .init(type: SpaceCommand.self, category: .system),
+        .init(type: VisualizerCommand.self, category: .system),
         .init(type: AgentCommand.self, category: .ai),
         .init(type: MCPCommand.self, category: .mcp),
     ]
