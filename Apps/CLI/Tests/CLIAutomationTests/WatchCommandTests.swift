@@ -9,6 +9,44 @@ import Testing
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite("WatchCommand automation", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationActions))
 struct WatchCommandTests {
+    @Test("Region clamp emits warning")
+    @MainActor
+    func regionClampWarning() async throws {
+        let stubCapture = StubScreenCaptureService(permissionGranted: true)
+        let png = WatchCommandTests.makePNG(color: .systemTeal, size: CGSize(width: 50, height: 50))
+        stubCapture.captureAreaHandler = { _ in
+            return CaptureResult(
+                imageData: png,
+                savedPath: nil,
+                metadata: CaptureMetadata(
+                    size: CGSize(width: 50, height: 50),
+                    mode: .area,
+                    applicationInfo: nil,
+                    windowInfo: nil,
+                    displayInfo: nil,
+                    timestamp: Date()))
+        }
+
+        // A region that is partially off-screen will be clamped and produce a warning.
+        let args = [
+            "watch",
+            "--mode", "region",
+            "--region", "-10,-10,40,40",
+            "--duration", "1",
+            "--json-output"
+        ]
+
+        let ctx = TestServicesFactory.makeAutomationTestContext(
+            screens: [
+                ScreenInfo(index: 0, name: "Test", frame: CGRect(x: 0, y: 0, width: 100, height: 100), visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100), isPrimary: true, scaleFactor: 2, displayID: 1)
+            ],
+            screenCapture: stubCapture)
+
+        let result = try await InProcessCommandRunner.run(args, services: ctx.services)
+        #expect(result.exitStatus == 0)
+        let decoded = try JSONDecoder().decode(WatchCaptureResult.self, from: Data(result.stdout.utf8))
+        #expect(decoded.warnings.contains { $0.code == .displayChanged })
+    }
     @Test("Captures and returns contact metadata in JSON")
     @MainActor
     func watchJsonIncludesContactMetadata() async throws {
