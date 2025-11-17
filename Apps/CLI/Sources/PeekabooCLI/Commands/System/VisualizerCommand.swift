@@ -111,9 +111,9 @@ private struct VisualizerSmokeSequence {
         }
     }
 
-    private func step(_ name: String, action: @escaping @MainActor () async -> Bool) async throws {
+    private func step(_ name: String, action: @escaping @MainActor () async -> Void) async throws {
         self.logger.debug("VisualizerSmoke: \(name)")
-        _ = await action()
+        await action()
         try await Task.sleep(for: .milliseconds(250))
     }
 }

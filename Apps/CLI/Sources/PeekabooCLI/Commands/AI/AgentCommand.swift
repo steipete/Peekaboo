@@ -161,7 +161,7 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     }
 
     @MainActor
-    private var services: any PeekabooServiceProviding {
+    var services: any PeekabooServiceProviding {
         self.resolvedRuntime.services
     }
 
@@ -207,7 +207,7 @@ private final class TerminalModeGuard {
     }
 }
 
-private final class EscapeKeyMonitor {
+final class EscapeKeyMonitor {
     private var source: (any DispatchSourceRead)?
     private var terminalGuard: TerminalModeGuard?
     private let handler: @Sendable () async -> ()
@@ -250,12 +250,6 @@ private final class EscapeKeyMonitor {
         self.source = nil
         self.terminalGuard = nil
     }
-}
-
-private enum ChatLaunchStrategy {
-    case none
-    case helpOnly
-    case interactive(initialPrompt: String?)
 }
 
 @available(macOS 14.0, *)
@@ -339,7 +333,16 @@ extension AgentCommand {
             return
         }
 
-        switch self.determineChatLaunchStrategy(capabilities: terminalCapabilities) {
+        let chatPolicy = AgentChatLaunchPolicy()
+        let chatContext = AgentChatLaunchContext(
+            chatFlag: self.chat,
+            hasTaskInput: self.hasTaskInput,
+            listSessions: self.listSessions,
+            normalizedTaskInput: self.normalizedTaskInput,
+            capabilities: terminalCapabilities
+        )
+
+        switch chatPolicy.strategy(for: chatContext) {
         case .helpOnly:
             self.printNonInteractiveChatHelp()
             return
@@ -479,7 +482,7 @@ extension AgentCommand {
         return false
     }
 
-    private func printMissingTaskError(message: String, usage: String) {
+    func printMissingTaskError(message: String, usage: String) {
         if self.jsonOutput {
             let error = ["success": false, "error": message] as [String: Any]
             if let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted),
@@ -493,118 +496,6 @@ extension AgentCommand {
             if !usage.isEmpty {
                 print(usage)
             }
-        }
-    }
-
-    private func buildExecutionTask() async throws -> String? {
-        if self.audio || self.audioFile != nil {
-            return try await self.processAudioInput()
-        }
-
-        guard let providedTask = self.task else {
-            self.printMissingTaskError(message: "Task argument is required", usage: "")
-            return nil
-        }
-        return providedTask
-    }
-
-    private func processAudioInput() async throws -> String? {
-        self.logAudioStartMessage()
-        let audioService = self.services.audioInput
-
-        do {
-            let transcript = try await self.transcribeAudio(using: audioService)
-            self.logTranscriptionSuccess(transcript)
-            return self.composeExecutionTask(with: transcript)
-        } catch {
-            self.logAudioError(error)
-            return nil
-        }
-    }
-
-    private func logAudioStartMessage() {
-        guard !self.jsonOutput && !self.quiet else { return }
-        if let audioPath = self.audioFile {
-            print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
-        } else {
-            let recordingMessage = [
-                "\(TerminalColor.cyan)🎙️ Starting audio recording...",
-                " (Press Ctrl+C to stop)\(TerminalColor.reset)"
-            ].joined()
-            print(recordingMessage)
-        }
-    }
-
-    private func transcribeAudio(using audioService: AudioInputService) async throws -> String {
-        if let audioPath = self.audioFile {
-            let url = URL(fileURLWithPath: audioPath)
-            return try await audioService.transcribeAudioFile(url)
-        } else {
-            try await audioService.startRecording()
-            return try await self.captureMicrophoneAudio(using: audioService)
-        }
-    }
-
-    private func captureMicrophoneAudio(using audioService: AudioInputService) async throws -> String {
-        try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-                signalSource.setEventHandler {
-                    signalSource.cancel()
-                    Task { @MainActor in
-                        do {
-                            let transcript = try await audioService.stopRecording()
-                            continuation.resume(returning: transcript)
-                        } catch {
-                            continuation.resume(throwing: error)
-                        }
-                    }
-                }
-                signalSource.resume()
-            }
-        } onCancel: {
-            Task { @MainActor in
-                _ = try? await audioService.stopRecording()
-            }
-        }
-    }
-
-    private func logTranscriptionSuccess(_ transcript: String) {
-        guard !self.jsonOutput && !self.quiet else { return }
-        let message = [
-            "\(TerminalColor.green)\(AgentDisplayTokens.Status.success) Transcription complete",
-            "\(TerminalColor.reset)"
-        ].joined()
-        print(message)
-        print("\(TerminalColor.gray)Transcript: \(transcript.prefix(100))...\(TerminalColor.reset)")
-    }
-
-    private func composeExecutionTask(with transcript: String) -> String {
-        guard let providedTask = self.task else {
-            return transcript
-        }
-        return "\(providedTask)\n\nAudio transcript:\n\(transcript)"
-    }
-
-    private func logAudioError(_ error: any Error) {
-        if self.jsonOutput {
-            let errorObj = [
-                "success": false,
-                "error": "Audio processing failed: \(error.localizedDescription)"
-            ] as [String: Any]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                print(jsonString)
-            } else {
-                print("{\"success\":false,\"error\":\"Audio processing failed\"}")
-            }
-        } else {
-            let failurePrefix = [
-                "\(TerminalColor.red)\(AgentDisplayTokens.Status.failure)",
-                " Audio processing failed: \(error.localizedDescription)"
-            ].joined()
-            let audioErrorMessage = [failurePrefix, "\(TerminalColor.reset)"].joined()
-            print(audioErrorMessage)
         }
     }
 
@@ -787,28 +678,28 @@ extension AgentCommand {
         }
     }
 
-    private func makeDisplayDelegate(for task: String) -> AgentOutputDelegate? {
+    func makeDisplayDelegate(for task: String) -> AgentOutputDelegate? {
         guard !self.jsonOutput, !self.quiet else { return nil }
         return AgentOutputDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
     }
 
-private func makeStreamingDelegate(using displayDelegate: AgentOutputDelegate?) -> (any AgentEventDelegate)? {
-    if let displayDelegate {
-        return displayDelegate
-    }
+    func makeStreamingDelegate(using displayDelegate: AgentOutputDelegate?) -> (any AgentEventDelegate)? {
+        if let displayDelegate {
+            return displayDelegate
+        }
 
-    if self.jsonOutput || self.quiet {
-        return SilentAgentEventDelegate()
-    }
+        if self.jsonOutput || self.quiet {
+            return SilentAgentEventDelegate()
+        }
 
-    return nil
+        return nil
 }
 
 final class SilentAgentEventDelegate: AgentEventDelegate {
     func agentDidEmitEvent(_ event: AgentEvent) {}
 }
 
-    private func printAgentExecutionError(_ message: String) {
+    func printAgentExecutionError(_ message: String) {
         if self.jsonOutput {
             let error: [String: Any] = ["success": false, "error": message]
             if let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted),
@@ -822,7 +713,7 @@ final class SilentAgentEventDelegate: AgentEventDelegate {
         }
     }
 
-    private func executeAgentTask(
+    func executeAgentTask(
         _ agentService: PeekabooAgentService,
         task: String,
         requestedModel: LanguageModel?,
@@ -866,380 +757,9 @@ final class SilentAgentEventDelegate: AgentEventDelegate {
         self.normalizedTaskInput != nil || self.audio || self.audioFile != nil
     }
 
-    private var resolvedMaxSteps: Int { self.maxSteps ?? 100 }
+    var resolvedMaxSteps: Int { self.maxSteps ?? 100 }
 
-    private func determineChatLaunchStrategy(capabilities: TerminalCapabilities) -> ChatLaunchStrategy {
-        if self.chat {
-            return .interactive(initialPrompt: self.normalizedTaskInput)
-        }
-
-        if self.hasTaskInput || self.listSessions {
-            return .none
-        }
-
-        if capabilities.isInteractive && !capabilities.isPiped && !capabilities.isCI {
-            return .interactive(initialPrompt: nil)
-        }
-
-        return .helpOnly
-    }
-
-    private func ensureChatModePreconditions() -> Bool {
-        if self.jsonOutput {
-            self.printAgentExecutionError("Interactive chat is not available while --json output is enabled.")
-            return false
-        }
-        if self.quiet {
-            self.printAgentExecutionError("Interactive chat requires visible output. Remove --quiet to continue.")
-            return false
-        }
-        if self.dryRun {
-            self.printAgentExecutionError("Interactive chat cannot run in --dry-run mode.")
-            return false
-        }
-        if self.noCache {
-            self.printAgentExecutionError("Interactive chat needs session caching. Remove --no-cache.")
-            return false
-        }
-        if self.audio || self.audioFile != nil {
-            self.printAgentExecutionError("Interactive chat currently accepts typed input only.")
-            return false
-        }
-        return true
-    }
-
-    private func printNonInteractiveChatHelp() {
-        if self.jsonOutput {
-            self
-                .printAgentExecutionError(
-                    "Provide a task or run with --chat in an interactive terminal to start the agent chat loop."
-                )
-            return
-        }
-
-        let hint = [
-            "Interactive chat requires a TTY.",
-            "To force it from scripts: peekaboo agent --chat < prompts.txt",
-            "Provide a task arg or use --chat when piping input.",
-            "",
-        ]
-        hint.forEach { print($0) }
-        self.printChatHelpMenu()
-    }
-
-    @MainActor
-    private func runChatLoop(
-        _ agentService: PeekabooAgentService,
-        requestedModel: LanguageModel?,
-        initialPrompt: String?,
-        capabilities: TerminalCapabilities
-    ) async throws {
-        guard self.ensureChatModePreconditions() else { return }
-
-        if capabilities.isInteractive && !capabilities.isPiped {
-            do {
-                try await self.runTauTUIChatLoop(
-                    agentService,
-                    requestedModel: requestedModel,
-                    initialPrompt: initialPrompt,
-                    capabilities: capabilities
-                )
-                return
-            } catch {
-                self.printAgentExecutionError(
-                    "Failed to launch TauTUI chat: \(error.localizedDescription). Falling back to basic chat.")
-            }
-        }
-
-        try await self.runLineChatLoop(
-            agentService,
-            requestedModel: requestedModel,
-            initialPrompt: initialPrompt,
-            capabilities: capabilities
-        )
-    }
-
-    @MainActor
-    private func runLineChatLoop(
-        _ agentService: PeekabooAgentService,
-        requestedModel: LanguageModel?,
-        initialPrompt: String?,
-        capabilities: TerminalCapabilities
-    ) async throws {
-        var activeSessionId: String?
-        do {
-            activeSessionId = try await self.initialChatSessionId(agentService)
-        } catch {
-            self.printAgentExecutionError(error.localizedDescription)
-            return
-        }
-
-        self.printChatWelcome(
-            sessionId: activeSessionId,
-            modelDescription: self.describeModel(requestedModel)
-        )
-        self.printChatHelpIntro()
-
-        if let seed = initialPrompt {
-            try await self.performChatTurn(
-                seed,
-                agentService: agentService,
-                sessionId: &activeSessionId,
-                requestedModel: requestedModel
-            )
-        }
-
-        while true {
-            guard let line = self.readChatLine(prompt: "> ", capabilities: capabilities) else {
-                if capabilities.isInteractive {
-                    print()
-                }
-                break
-            }
-
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty { continue }
-            if trimmed == "/help" {
-                self.printChatHelpMenu()
-                continue
-            }
-
-            do {
-                try await self.performChatTurn(
-                    trimmed,
-                    agentService: agentService,
-                    sessionId: &activeSessionId,
-                    requestedModel: requestedModel
-                )
-            } catch {
-                self.printAgentExecutionError(error.localizedDescription)
-                break
-            }
-        }
-    }
-
-    @MainActor
-    private func runAgentTurnForTUI(
-        _ input: String,
-        agentService: PeekabooAgentService,
-        sessionId: String?,
-        requestedModel: LanguageModel?,
-        delegate: any AgentEventDelegate
-    ) async throws -> AgentExecutionResult {
-        if let existingSessionId = sessionId {
-            return try await agentService.continueSession(
-                sessionId: existingSessionId,
-                userMessage: input,
-                model: requestedModel,
-                maxSteps: self.resolvedMaxSteps,
-                dryRun: self.dryRun,
-                eventDelegate: delegate,
-                verbose: self.verbose
-            )
-        }
-
-        return try await agentService.executeTask(
-            input,
-            maxSteps: self.resolvedMaxSteps,
-            sessionId: nil,
-            model: requestedModel,
-            dryRun: self.dryRun,
-            eventDelegate: delegate,
-            verbose: self.verbose
-        )
-    }
-
-    @MainActor
-    private func runTauTUIChatLoop(
-        _ agentService: PeekabooAgentService,
-        requestedModel: LanguageModel?,
-        initialPrompt: String?,
-        capabilities: TerminalCapabilities
-    ) async throws {
-        var activeSessionId: String?
-        do {
-            activeSessionId = try await self.initialChatSessionId(agentService)
-        } catch {
-            self.printAgentExecutionError(error.localizedDescription)
-            return
-        }
-
-        let chatUI = AgentChatUI(
-            modelDescription: self.describeModel(requestedModel),
-            sessionId: activeSessionId,
-            helpLines: self.chatHelpLines
-        )
-
-        try chatUI.start()
-        defer { chatUI.stop() }
-
-        var currentRun: Task<AgentExecutionResult, any Error>?
-        chatUI.onCancelRequested = { [weak chatUI] in
-            guard let run = currentRun else { return }
-            if !run.isCancelled {
-                run.cancel()
-                chatUI?.markCancelling()
-            }
-        }
-
-        chatUI.onInterruptRequested = { [weak chatUI] in
-            if let run = currentRun, !run.isCancelled {
-                run.cancel()
-                chatUI?.markCancelling()
-            } else {
-                chatUI?.finishPromptStream()
-            }
-        }
-
-        let promptStream = chatUI.promptStream(initialPrompt: initialPrompt)
-        for await prompt in promptStream {
-            let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty { continue }
-            if trimmed == "/help" {
-                chatUI.showHelpMenu()
-                continue
-            }
-
-            chatUI.beginRun(prompt: trimmed)
-            let tuiDelegate = AgentChatEventDelegate(ui: chatUI)
-
-            currentRun = Task {
-                try await self.runAgentTurnForTUI(
-                    trimmed,
-                    agentService: agentService,
-                    sessionId: activeSessionId,
-                    requestedModel: requestedModel,
-                    delegate: tuiDelegate
-                )
-            }
-
-            do {
-                guard let run = currentRun else { continue }
-                let result = try await run.value
-                if let sessionId = result.sessionId {
-                    activeSessionId = sessionId
-                }
-                chatUI.endRun(result: result, sessionId: activeSessionId)
-            } catch is CancellationError {
-                chatUI.showCancelled()
-            } catch {
-                chatUI.showError(error.localizedDescription)
-            }
-
-            currentRun = nil
-            chatUI.setRunning(false)
-        }
-    }
-
-    private func initialChatSessionId(
-        _ agentService: PeekabooAgentService
-    ) async throws -> String? {
-        if let sessionId = self.resumeSession {
-            guard try await agentService.getSessionInfo(sessionId: sessionId) != nil else {
-                throw PeekabooError.sessionNotFound(sessionId)
-            }
-            return sessionId
-        }
-
-        if self.resume {
-            let sessions = try await agentService.listSessions()
-            guard let mostRecent = sessions.first else {
-                throw PeekabooError.commandFailed("No sessions available to resume.")
-            }
-            return mostRecent.id
-        }
-
-        return nil
-    }
-
-    private func readChatLine(prompt: String, capabilities: TerminalCapabilities) -> String? {
-        if capabilities.isInteractive {
-            fputs(prompt, stdout)
-            fflush(stdout)
-        }
-        return readLine()
-    }
-
-    private func performChatTurn(
-        _ input: String,
-        agentService: PeekabooAgentService,
-        sessionId: inout String?,
-        requestedModel: LanguageModel?
-    ) async throws {
-        let startingSessionId = sessionId
-        let runTask = Task { () throws -> AgentExecutionResult in
-            if let existingSessionId = startingSessionId {
-                let outputDelegate = self.makeDisplayDelegate(for: input)
-                let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)
-                let result = try await agentService.continueSession(
-                    sessionId: existingSessionId,
-                    userMessage: input,
-                    model: requestedModel,
-                    maxSteps: self.resolvedMaxSteps,
-                    dryRun: self.dryRun,
-                    eventDelegate: streamingDelegate,
-                    verbose: self.verbose
-                )
-                self.displayResult(result, delegate: outputDelegate)
-                return result
-            } else {
-                return try await self.executeAgentTask(
-                    agentService,
-                    task: input,
-                    requestedModel: requestedModel,
-                    maxSteps: self.resolvedMaxSteps
-                )
-            }
-        }
-
-        let cancelMonitor = EscapeKeyMonitor { [runTask] in
-            if !runTask.isCancelled {
-                runTask.cancel()
-                await MainActor.run {
-                    print("\n\(TerminalColor.yellow)Esc pressed – cancelling current run...\(TerminalColor.reset)")
-                }
-            }
-        }
-        cancelMonitor.start()
-
-        let result: AgentExecutionResult
-        do {
-            defer { cancelMonitor.stop() }
-            result = try await runTask.value
-        } catch is CancellationError {
-            cancelMonitor.stop()
-            return
-        }
-
-        if let updatedSessionId = result.sessionId {
-            sessionId = updatedSessionId
-        }
-
-        self.printChatTurnSummary(result)
-    }
-
-    private func printChatTurnSummary(_ result: AgentExecutionResult) {
-        guard !self.quiet else { return }
-        let duration = String(format: "%.1fs", result.metadata.executionTime)
-        let sessionFragment = result.sessionId.map { String($0.prefix(8)) } ?? "–"
-        let line = [
-            TerminalColor.dim,
-            "↺ Session ",
-            sessionFragment,
-            ": ",
-            duration,
-            " • ⚒ ",
-            String(result.metadata.toolCallCount),
-            TerminalColor.reset
-        ].joined()
-        print(line)
-    }
-
-    private func describeModel(_ requestedModel: LanguageModel?) -> String {
-        requestedModel?.description ?? "default (gpt-5.1)"
-    }
-
-    private func printChatWelcome(sessionId: String?, modelDescription: String) {
+    func printChatWelcome(sessionId: String?, modelDescription: String) {
         guard !self.quiet else { return }
         let header = [
             TerminalColor.cyan,
@@ -1258,18 +778,18 @@ final class SilentAgentEventDelegate: AgentEventDelegate {
         print()
     }
 
-    private func printChatHelpIntro() {
+    func printChatHelpIntro() {
         guard !self.quiet else { return }
         print("Type /help for chat commands (Ctrl+C to exit).")
         self.printChatHelpMenu()
     }
 
-    private func printChatHelpMenu() {
+    func printChatHelpMenu() {
         guard !self.quiet else { return }
         self.chatHelpLines.forEach { print($0) }
     }
 
-    private var chatHelpLines: [String] {
+    var chatHelpLines: [String] {
         [
             "",
             "Chat commands:",
@@ -1477,424 +997,6 @@ final class SilentAgentEventDelegate: AgentEventDelegate {
         default:
             "provider API key"
         }
-    }
-}
-
-// MARK: - TauTUI Chat Helpers
-
-@MainActor
-private final class AgentChatInput: Component {
-    private let editor = Editor()
-
-    var onSubmit: ((String) -> ())?
-    var onCancel: (() -> ())?
-    var onInterrupt: (() -> ())?
-    var onQueueWhileLocked: (() -> ())?
-
-    var isLocked: Bool = false {
-        didSet {
-            // Keep submit enabled so users can queue prompts while a run is active.
-            if !self.isLocked {
-                self.editor.disableSubmit = false
-            }
-        }
-    }
-
-    init() {
-        self.editor.onSubmit = { [weak self] value in
-            self?.onSubmit?(value)
-        }
-    }
-
-    func render(width: Int) -> [String] {
-        self.editor.render(width: width)
-    }
-
-    func handle(input: TerminalInput) {
-        switch input {
-        case let .key(.character(char), modifiers):
-            if modifiers.contains(.control) {
-                let lower = String(char).lowercased()
-                if lower == "c" || lower == "d" {
-                    self.onInterrupt?()
-                    return
-                }
-            }
-        case .key(.escape, _):
-            if self.isLocked {
-                self.onCancel?()
-                return
-            }
-        case .key(.end, _):
-            if self.isLocked {
-                self.onQueueWhileLocked?()
-                return
-            }
-        default:
-            break
-        }
-
-        self.editor.handle(input: input)
-    }
-
-    func clear() {
-        self.editor.setText("")
-    }
-
-    func currentText() -> String {
-        self.editor.getText()
-    }
-}
-
-@MainActor
-private final class AgentChatUI {
-    var onCancelRequested: (() -> ())?
-    var onInterruptRequested: (() -> ())?
-
-    private let tui: TUI
-    private let messages = Container()
-    private let input = AgentChatInput()
-    private let header: Text
-    private let sessionLine: Text
-    private let helpLines: [String]
-    private let queueContainer = Container()
-    private let queuePreview = Text(text: "", paddingX: 1, paddingY: 0)
-
-    private var promptContinuation: AsyncStream<String>.Continuation?
-    private var loader: Loader?
-    private var assistantBuffer = ""
-    private var assistantComponent: MarkdownComponent?
-    private var thinkingComponent: Text?
-    private var sessionId: String?
-    private var queuedPrompts: [String] = []
-    private var isRunning = false
-
-    init(modelDescription: String, sessionId: String?, helpLines: [String]) {
-        self.tui = TUI(terminal: ProcessTerminal())
-        self.sessionId = sessionId
-        self.helpLines = helpLines
-        self.header = Text(
-            text: "Interactive agent chat – model: \(modelDescription)",
-            paddingX: 1,
-            paddingY: 0
-        )
-        self.sessionLine = Text(
-            text: AgentChatUI.sessionDescription(for: sessionId),
-            paddingX: 1,
-            paddingY: 0
-        )
-
-        self.input.onSubmit = { [weak self] value in
-            self?.handleSubmit(value)
-        }
-        self.input.onCancel = { [weak self] in
-            self?.onCancelRequested?()
-        }
-        self.input.onInterrupt = { [weak self] in
-            self?.onInterruptRequested?()
-        }
-        self.input.onQueueWhileLocked = { [weak self] in
-            self?.queueCurrentInput()
-        }
-    }
-
-    func start() throws {
-        self.tui.addChild(self.header)
-        self.tui.addChild(self.sessionLine)
-        self.tui.addChild(Spacer(lines: 1))
-        self.tui.addChild(self.messages)
-        self.tui.addChild(Spacer(lines: 1))
-        self.tui.addChild(self.queueContainer)
-        self.tui.addChild(self.input)
-        self.tui.setFocus(self.input)
-
-        try self.tui.start()
-        self.showHelpMenu()
-        self.tui.requestRender()
-    }
-
-    func stop() {
-        self.tui.stop()
-    }
-
-    func promptStream(initialPrompt: String?) -> AsyncStream<String> {
-        AsyncStream { continuation in
-            self.promptContinuation = continuation
-            if let seed = initialPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !seed.isEmpty {
-                self.appendUserMessage(seed)
-                continuation.yield(seed)
-            }
-        }
-    }
-
-    func finishPromptStream() {
-        self.promptContinuation?.finish()
-    }
-
-    func beginRun(prompt: String) {
-        self.setRunning(true)
-        self.removeLoader()
-        self.loader = Loader(tui: self.tui, message: "Running…")
-        if let loader {
-            self.messages.addChild(loader)
-        }
-        self.assistantBuffer = ""
-        self.assistantComponent = nil
-        self.thinkingComponent = nil
-        self.requestRender()
-    }
-
-    func endRun(result: AgentExecutionResult, sessionId: String?) {
-        self.loader?.stop()
-        self.loader = nil
-        if let sessionId {
-            self.sessionId = sessionId
-            self.sessionLine.text = AgentChatUI.sessionDescription(for: sessionId)
-        }
-        let summary = self.summaryLine(for: result)
-        let summaryComponent = Text(text: summary, paddingX: 1, paddingY: 0)
-        self.messages.addChild(summaryComponent)
-        self.requestRender()
-    }
-
-    func setRunning(_ running: Bool) {
-        let wasRunning = self.isRunning
-        self.isRunning = running
-        self.input.isLocked = running
-        if !running {
-            self.removeLoader()
-            if wasRunning {
-                self.processNextQueuedPromptIfNeeded()
-            }
-        }
-    }
-
-    private func removeLoader() {
-        guard let loader else { return }
-        loader.stop()
-        self.messages.removeChild(loader)
-        self.loader = nil
-        self.requestRender()
-    }
-
-    func markCancelling() {
-        self.loader?.setMessage("Cancelling…")
-        self.requestRender()
-    }
-
-    func showCancelled() {
-        self.setRunning(false)
-        let cancelled = Text(text: "◼︎ Cancelled", paddingX: 1, paddingY: 0)
-        self.messages.addChild(cancelled)
-        self.requestRender()
-    }
-
-    func showError(_ message: String) {
-        self.setRunning(false)
-        let errorText = Text(
-            text: "✗ \(message)",
-            paddingX: 1,
-            paddingY: 0,
-            background: Text.Background(red: 64, green: 0, blue: 0)
-        )
-        self.messages.addChild(errorText)
-        self.requestRender()
-    }
-
-    func showHelpMenu() {
-        let helpText = self.helpLines.joined(separator: "\n")
-        let help = MarkdownComponent(text: helpText, padding: .init(horizontal: 1, vertical: 0))
-        self.messages.addChild(help)
-    }
-
-    func updateThinking(_ content: String) {
-        let message = "_\(content)_"
-        if let thinkingComponent {
-            thinkingComponent.text = message
-        } else {
-            let component = Text(text: message, paddingX: 1, paddingY: 0)
-            self.thinkingComponent = component
-            self.messages.addChild(component)
-        }
-        self.requestRender()
-    }
-
-    func appendAssistant(_ content: String) {
-        self.assistantBuffer.append(content)
-        let formatted = "**Agent:** \(self.assistantBuffer)"
-        if let assistantComponent {
-            assistantComponent.text = formatted
-        } else {
-            let component = MarkdownComponent(text: formatted, padding: .init(horizontal: 1, vertical: 0))
-            self.assistantComponent = component
-            self.messages.addChild(component)
-        }
-        self.requestRender()
-    }
-
-    func finishStreaming() {
-        if let thinkingComponent {
-            self.messages.removeChild(thinkingComponent)
-            self.thinkingComponent = nil
-        }
-        self.requestRender()
-    }
-
-    func showToolStart(name: String, summary: String?) {
-        let text = summary.flatMap { $0.isEmpty ? nil : $0 } ?? name
-        let component = Text(text: "⚒ \(text)", paddingX: 1, paddingY: 0)
-        self.messages.addChild(component)
-        self.requestRender()
-    }
-
-    func showToolCompletion(name: String, success: Bool, summary: String?) {
-        let prefix = success ? "✓" : "✗"
-        let text = summary.flatMap { $0.isEmpty ? nil : $0 } ?? name
-        let component = Text(text: "\(prefix) \(text)", paddingX: 1, paddingY: 0)
-        self.messages.addChild(component)
-        self.requestRender()
-    }
-
-    func requestRender() {
-        self.tui.requestRender()
-    }
-
-    private func handleSubmit(_ raw: String) {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        if self.isRunning {
-            self.enqueueQueuedPrompt(trimmed)
-            self.input.clear()
-            return
-        }
-
-        self.dispatchPrompt(trimmed)
-    }
-
-    private func queueCurrentInput() {
-        guard self.isRunning else { return }
-        let trimmed = self.input.currentText().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        self.enqueueQueuedPrompt(trimmed)
-        self.input.clear()
-    }
-
-    private func enqueueQueuedPrompt(_ prompt: String) {
-        self.queuedPrompts.append(prompt)
-        self.updateQueuePreview()
-    }
-
-    private func updateQueuePreview() {
-        if self.queuedPrompts.isEmpty {
-            self.queueContainer.clear()
-            self.queuePreview.text = ""
-            self.requestRender()
-            return
-        }
-
-        self.queuePreview.text = self.queuePreviewLine()
-        if self.queueContainer.children.isEmpty {
-            self.queueContainer.addChild(self.queuePreview)
-        }
-        self.requestRender()
-    }
-
-    private func queuePreviewLine() -> String {
-        let joined = self.queuedPrompts.joined(separator: "   ·   ")
-        var summary = "Queued (\(self.queuedPrompts.count)): \(joined)"
-        let limit = 96
-        if summary.count > limit {
-            let index = summary.index(summary.startIndex, offsetBy: max(0, limit - 1))
-            summary = String(summary[..<index]) + "…"
-        }
-        return summary
-    }
-
-    private func processNextQueuedPromptIfNeeded() {
-        guard !self.queuedPrompts.isEmpty else { return }
-        let next = self.queuedPrompts.removeFirst()
-        self.updateQueuePreview()
-        self.dispatchPrompt(next)
-    }
-
-    private func dispatchPrompt(_ text: String) {
-        self.appendUserMessage(text)
-        self.promptContinuation?.yield(text)
-    }
-
-    private func appendUserMessage(_ text: String) {
-        let message = MarkdownComponent(text: "**You:** \(text)", padding: .init(horizontal: 1, vertical: 0))
-        self.messages.addChild(message)
-        self.requestRender()
-    }
-
-    private func summaryLine(for result: AgentExecutionResult) -> String {
-        let duration = String(format: "%.1fs", result.metadata.executionTime)
-        let tools = result.metadata.toolCallCount == 1 ? "1 tool" : "\(result.metadata.toolCallCount) tools"
-        let sessionFragment = self.sessionId.map { String($0.prefix(8)) } ?? "new session"
-        return "✓ Session \(sessionFragment) • \(duration) • \(tools)"
-    }
-
-    private static func sessionDescription(for sessionId: String?) -> String {
-        guard let sessionId else { return "Session: new (will be created on first run)" }
-        return "Session: \(sessionId)"
-    }
-}
-
-@MainActor
-private final class AgentChatEventDelegate: AgentEventDelegate {
-    private weak var ui: AgentChatUI?
-
-    init(ui: AgentChatUI) {
-        self.ui = ui
-    }
-
-    func agentDidEmitEvent(_ event: AgentEvent) {
-        guard let ui else { return }
-        switch event {
-        case .started:
-            break
-        case let .assistantMessage(content):
-            ui.appendAssistant(content)
-        case let .thinkingMessage(content):
-            ui.updateThinking(content)
-        case let .toolCallStarted(name, arguments):
-            let args = parseArguments(arguments)
-            let formatter = self.toolFormatter(for: name)
-            let summary = formatter?.formatStarting(arguments: args) ??
-                name.replacingOccurrences(of: "_", with: " ")
-            ui.showToolStart(name: name, summary: summary)
-        case let .toolCallCompleted(name, result):
-            let summary = self.toolResultSummary(name: name, result: result)
-            let success = self.successFlag(from: result)
-            ui.showToolCompletion(name: name, success: success, summary: summary)
-        case let .error(message):
-            ui.showError(message)
-        case .completed:
-            ui.finishStreaming()
-        }
-    }
-
-    private func toolFormatter(for name: String) -> (any ToolFormatter)? {
-        if let type = ToolType(rawValue: name) {
-            return ToolFormatterRegistry.shared.formatter(for: type)
-        }
-        return nil
-    }
-
-    private func toolResultSummary(name: String, result: String) -> String? {
-        guard let json = parseResult(result) else { return nil }
-        if let summary = ToolEventSummary.from(resultJSON: json)?.shortDescription(toolName: name) {
-            return summary
-        }
-        let formatter = self.toolFormatter(for: name)
-        return formatter?.formatResultSummary(result: json)
-    }
-
-    private func successFlag(from result: String) -> Bool {
-        guard let json = parseResult(result) else { return true }
-        return (json["success"] as? Bool) ?? true
     }
 }
 
