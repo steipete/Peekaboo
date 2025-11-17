@@ -257,6 +257,13 @@ final class PeekabooSettings {
         }
     }
 
+    var watchCaptureHUDEnabled: Bool = true {
+        didSet {
+            self.save()
+            self.updateConfigFile()
+        }
+    }
+
     // MARK: - Realtime Voice Settings
 
     /// The selected voice for realtime conversations
@@ -448,6 +455,7 @@ extension PeekabooSettings {
         self.hotkeyOverlayEnabled = self.userDefaults.bool(forKey: self.namespaced("hotkeyOverlayEnabled"))
         self.appLifecycleEnabled = self.userDefaults.bool(forKey: self.namespaced("appLifecycleEnabled"))
         self.windowOperationEnabled = self.userDefaults.bool(forKey: self.namespaced("windowOperationEnabled"))
+        self.watchCaptureHUDEnabled = self.valueOrDefault(key: "watchCaptureHUDEnabled", defaultValue: true)
         self.menuNavigationEnabled = self.userDefaults.bool(forKey: self.namespaced("menuNavigationEnabled"))
         self.dialogInteractionEnabled = self.userDefaults.bool(forKey: self.namespaced("dialogInteractionEnabled"))
         self.spaceTransitionEnabled = self.userDefaults.bool(forKey: self.namespaced("spaceTransitionEnabled"))
@@ -498,6 +506,7 @@ extension PeekabooSettings {
         self.userDefaults.set(self.hotkeyOverlayEnabled, forKey: "\(self.keyPrefix)hotkeyOverlayEnabled")
         self.userDefaults.set(self.appLifecycleEnabled, forKey: "\(self.keyPrefix)appLifecycleEnabled")
         self.userDefaults.set(self.windowOperationEnabled, forKey: "\(self.keyPrefix)windowOperationEnabled")
+        self.userDefaults.set(self.watchCaptureHUDEnabled, forKey: "\(self.keyPrefix)watchCaptureHUDEnabled")
         self.userDefaults.set(self.menuNavigationEnabled, forKey: "\(self.keyPrefix)menuNavigationEnabled")
         self.userDefaults.set(self.dialogInteractionEnabled, forKey: "\(self.keyPrefix)dialogInteractionEnabled")
         self.userDefaults.set(self.spaceTransitionEnabled, forKey: "\(self.keyPrefix)spaceTransitionEnabled")
@@ -777,7 +786,7 @@ extension PeekabooSettings {
         "screenshotFlashEnabled", "clickAnimationEnabled", "typeAnimationEnabled",
         "scrollAnimationEnabled", "mouseTrailEnabled", "swipePathEnabled",
         "hotkeyOverlayEnabled", "appLifecycleEnabled", "windowOperationEnabled",
-        "menuNavigationEnabled", "dialogInteractionEnabled", "spaceTransitionEnabled",
+        "watchCaptureHUDEnabled", "menuNavigationEnabled", "dialogInteractionEnabled", "spaceTransitionEnabled",
         "ghostEasterEggEnabled",
     ]
 }

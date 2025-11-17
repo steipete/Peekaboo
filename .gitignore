@@ -169,6 +169,10 @@ Core/**/.swiftpm/
 *.temp
 .cache/
 debug
+!docs/debug/
+docs/debug/*
+!docs/debug/visualizer-issues.md
+!docs/debug/watch.md
 *.bak
 *.backup
 *~

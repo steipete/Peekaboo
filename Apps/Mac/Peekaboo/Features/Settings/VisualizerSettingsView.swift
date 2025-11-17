@@ -180,6 +180,18 @@ struct VisualizerSettingsView: View {
             }
             .opacity(self.settings.visualizerEnabled ? 1 : 0.5)
 
+            Section("Watch Capture") {
+                AnimationToggleRow(
+                    title: "Watch Capture HUD",
+                    subtitle: "Pulse indicator for `peekaboo watch` sessions",
+                    icon: "applewatch.watchface",
+                    isOn: self.$settings.watchCaptureHUDEnabled,
+                    isEnabled: self.settings.visualizerEnabled,
+                    animationType: "watch",
+                    settings: self.settings)
+            }
+            .opacity(self.settings.visualizerEnabled ? 1 : 0.5)
+
             // Easter Eggs Section
             Section("Easter Eggs") {
                 AnimationToggleRow(
@@ -297,6 +309,8 @@ struct AnimationToggleRow: View {
             await self.previewSpaceSwitch()
         case "ghost":
             await self.previewGhostFlash(on: screen)
+        case "watch":
+            await self.previewWatchHUD(on: screen)
         default:
             break
         }
@@ -407,6 +421,16 @@ struct AnimationToggleRow: View {
             width: 400,
             height: 300)
         _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
+    }
+
+    @MainActor
+    private func previewWatchHUD(on screen: NSScreen) async {
+        let hudRect = CGRect(
+            x: screen.frame.midX - 170,
+            y: screen.frame.midY - 150,
+            width: 340,
+            height: 70)
+        _ = await self.visualizerCoordinator.showWatchCapture(in: hudRect)
     }
 }
 

@@ -444,6 +444,7 @@ public struct SeeTool: MCPTool {
         _ = await VisualizationClient.shared.showElementDetection(elements: map)
     }
 
+    @MainActor
     private func emitAnnotatedScreenshotVisualizer(
         annotatedPath: String,
         detectedElements: [AutomationDetectedElement],
@@ -452,30 +453,21 @@ public struct SeeTool: MCPTool {
         guard !detectedElements.isEmpty else { return }
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: annotatedPath)) else { return }
         let metadata = await session.screenshotMetadata
-        let bounds = metadata?.windowInfo?.bounds
+        let windowBounds = metadata?.windowInfo?.bounds
             ?? metadata?.displayInfo?.bounds
             ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
-        let protocolElements = await self.convertToVisualizerElements(detectedElements)
+        let screenBounds = VisualizerBoundsConverter.resolveScreenBounds(
+            windowBounds: windowBounds,
+            displayBounds: metadata?.displayInfo?.bounds)
+        let protocolElements = VisualizerBoundsConverter.makeVisualizerElements(
+            from: detectedElements,
+            screenBounds: screenBounds)
         _ = await VisualizationClient.shared.showAnnotatedScreenshot(
             imageData: data,
             elements: protocolElements,
-            windowBounds: bounds)
+            windowBounds: windowBounds)
     }
 
-    @MainActor
-    private func convertToVisualizerElements(
-        _ detected: [AutomationDetectedElement]) -> [PeekabooProtocols.DetectedElement]
-    {
-        detected.map { element in
-            PeekabooProtocols.DetectedElement(
-                id: element.id,
-                type: element.type,
-                bounds: element.bounds,
-                label: element.label,
-                value: element.value,
-                isEnabled: element.isEnabled)
-        }
-    }
 
     @MainActor
     private func buildSummary(

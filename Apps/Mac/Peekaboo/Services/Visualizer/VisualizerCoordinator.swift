@@ -65,6 +65,7 @@ final class VisualizerCoordinator {
     }
 
     private var lastWatchHUDDate = Date.distantPast
+    private var watchHUDSequence = 0
 
     // MARK: - Initialization
 
@@ -142,11 +143,19 @@ extension VisualizerCoordinator {
     }
 
     func showWatchCapture(in rect: CGRect) async -> Bool {
+        guard self.settings?.visualizerEnabled ?? true,
+              self.settings?.watchCaptureHUDEnabled ?? true
+        else {
+            return false
+        }
+
         let now = Date()
         guard now.timeIntervalSince(self.lastWatchHUDDate) >= 1.0 else {
             return true
         }
         self.lastWatchHUDDate = now
+        let sequence = self.watchHUDSequence % WatchCaptureHUDView.Constants.timelineSegments
+        self.watchHUDSequence = (self.watchHUDSequence + 1) % WatchCaptureHUDView.Constants.timelineSegments
 
         let hudSize = CGSize(width: 340, height: 70)
         let screen = self.getTargetScreen(for: CGPoint(x: rect.midX, y: rect.midY))
@@ -158,7 +167,7 @@ extension VisualizerCoordinator {
         let hudRect = CGRect(origin: hudOrigin, size: hudSize)
 
         return await self.animationQueue.enqueue(priority: .low) {
-            await self.displayWatchHUD(in: hudRect)
+            await self.displayWatchHUD(in: hudRect, sequence: sequence)
         }
     }
 
@@ -344,9 +353,10 @@ extension VisualizerCoordinator {
         return true
     }
 
-    private func displayWatchHUD(in rect: CGRect) async -> Bool {
+    private func displayWatchHUD(in rect: CGRect, sequence: Int) async -> Bool {
         guard self.isEnabled() else { return false }
-        let view = WatchCaptureHUDView()
+        guard self.settings?.watchCaptureHUDEnabled ?? true else { return false }
+        let view = WatchCaptureHUDView(sequence: sequence)
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: view,
