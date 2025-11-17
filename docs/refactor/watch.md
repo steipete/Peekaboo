@@ -19,7 +19,7 @@ This doc tracks the next improvements to make `peekaboo watch` sturdier and more
 - **(Done)** Shared metadata helpers: CLI and MCP now share `WatchMetaSummary` for emitting contact/diff metadata.
 
 ## Testing gaps
-- Expand hysteresis/early-stop Swift Testing coverage (enter/exit thresholds, frame/size caps, long idle→active→idle transitions).
+- Expand hysteresis/early-stop Swift Testing coverage (long idle→active→idle transitions and caps). Basic enter/exit quiet-window cases are covered.
 
 ## Docs polish
 - **(Done)** Document MCP meta fields (`contact_columns/contact_rows/contact_sampled_indexes`, `contact_thumb_size`) for agents.
