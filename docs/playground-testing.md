@@ -29,6 +29,7 @@ Before starting tests:
 - Build and launch Playground app
 - Clear any previous test artifacts
 - Open terminal for log monitoring
+- Run `peekaboo visualizer` with Peekaboo.app open to confirm visual feedback is working (treat this as part of the pre-flight check).
 
 ### 2. For Each Command
 
