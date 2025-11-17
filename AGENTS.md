@@ -17,30 +17,7 @@ Shared guardrails distilled from the various `~/Projects/*/AGENTS.md` files (sta
 - Stick to the package manager and runtime mandated by the repo (pnpm-only, bun-only, swift-only, go-only, etc.). Never swap in alternatives without approval.
 - When editing shared guardrail scripts (runners, committer helpers, browser tools, etc.), mirror the same change back into the `agent-scripts` folder so the canonical copy stays current.
 - Ask the user before adding dependencies, changing build tooling, or altering project-wide configuration.
-- Keep the project’s `AGENTS.md` `<tools>
-# TOOLS
-
-Edit guidance: keep the actual tool list inside the `<tools></tools>` block below so downstream AGENTS syncs can copy the block contents verbatim (without wrapping twice).
-
-<tools>
-- `runner`: Bash shim that routes every command through Bun guardrails (timeouts, git policy, safe deletes).
-- `git` / `bin/git`: Git shim that forces git through the guardrails; use `./git --help` to inspect.
-- `scripts/committer`: Stages the files you list and creates the commit safely.
-- `scripts/docs-list.ts`: Walks `docs/`, enforces front-matter, prints summaries; run `tsx scripts/docs-list.ts`.
-- `scripts/browser-tools.ts`: Chrome helper for remote control/screenshot/eval; run `ts-node scripts/browser-tools.ts --help`.
-- `scripts/runner.ts`: Bun implementation backing `runner`; run `bun scripts/runner.ts --help`.
-- `bin/sleep`: Sleep shim that enforces the 30s ceiling; run `bin/sleep --help`.
-- `xcp`: Xcode project/workspace helper; run `xcp --help`.
-- `oracle`: CLI to bundle prompt + files for another AI; run `npx -y @steipete/oracle --help`.
-- `mcporter`: MCP launcher for any registered MCP server; run `npx mcporter`.
-- `iterm`: Full TTY terminal via MCP; run `npx mcporter iterm`.
-- `firecrawl`: MCP-powered site fetcher to Markdown; run `npx mcporter firecrawl`.
-- `XcodeBuildMCP`: MCP wrapper around Xcode tooling; run `npx mcporter XcodeBuildMCP`.
-- `gh`: GitHub CLI for PRs, CI logs, releases, repo queries; run `gh help`.
-</tools>
-
-</tools>
-` block in sync with the full tool list from `TOOLS.md` so downstream repos get the latest tool descriptions.
+- Keep the project’s `AGENTS.md` `<tools></tools>` block in sync with the full tool list from `TOOLS.md` so downstream repos get the latest tool descriptions.
 
 ### tmux & Long Tasks
 - Run any command that could hang (tests, servers, log streams, browser automation) inside tmux using the repository’s preferred entry point.
@@ -51,6 +28,7 @@ Edit guidance: keep the actual tool list inside the `<tools></tools>` block belo
 - Before handing off work, run the full “green gate” for that repo (lint, type-check, tests, doc scripts, etc.). Follow the same command set humans run—no ad-hoc shortcuts.
 - Leave existing watchers running unless the owner tells you to stop them; keep their tmux panes healthy if you started them.
 - Treat every bug fix as a chance to add or extend automated tests that prove the behavior.
+- When someone asks to “fix CI,” use the GitHub CLI (`gh`) to inspect, rerun, and unblock failing workflows on GitHub until they are green.
 
 ### Code Quality & Naming
 - Refactor in place. Never create duplicate files with suffixes such as “V2”, “New”, or “Fixed”; update the canonical file and remove obsolete paths entirely.
