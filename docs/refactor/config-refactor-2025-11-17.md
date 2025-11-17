@@ -1,6 +1,6 @@
-## Config refactor — 2025-11-17
+## Config refactor — 2025-11-17 (updated)
 
-Scope: bring Peekaboo/Tachikoma config UX in line with OpenAI/Codex + Anthropic Max OAuth, add live provider validation, clean up first-run guidance, and expand supported providers (OpenAI, Anthropic, Grok/xAI alias, Gemini) while keeping env-vars untouched.
+Scope: consolidate config/auth logic inside Tachikoma so hosts stay thin. Tachikoma owns credential resolution, storage, validation, OAuth (OpenAI/Codex + Anthropic Max), token refresh, and CLI UX. Hosts (Peekaboo, others) only set the profile directory (e.g., `.peekaboo`) or inject a custom credential provider.
 
 Docs touched (update targets already completed)
 - `docs/commands/config.md`: new surface for `config add` (validate + store), `config login` (OAuth), live validation/timeout flags, updated examples including grok/gemini.
@@ -10,45 +10,56 @@ Docs touched (update targets already completed)
 - `docs/oauth.md`: new file explaining OAuth flows, storage, refresh, beta headers, headless, revoke.
 
 Reasoning highlights
-- Avoid naggy init: show a status/next-steps table instead of per-provider prompts.
-- Never persist env values; only user actions write credentials. Prevent phantom “none” entries.
-- Prefer OAuth where available; fall back to API keys; keep backward compatibility.
-- Validate immediately on add/show/init so users see “ready vs stored (failed)” without trial/error.
-- Normalize Grok/xai to one code path and keep provider list small and clear.
+- Single implementation in Tachikoma re-used by any host; Peekaboo becomes a thin shell.
+- Env values are never copied; only explicit user actions write secrets/tokens. Missing providers are not persisted as “none.”
+- OAuth preferred when available; API keys remain as fallback. Grok canonical ID `grok` with `xai` alias.
+- Live validation/status avoid trial-and-error; no naggy init prompts.
 
 Implementation plan (handoff-ready)
-1) CLI surface
-   - Add `config add <provider> <secret> [--timeout sec]` for openai|anthropic|grok(xai)|gemini.
-   - Add `config login openai` (ChatGPT/Codex OAuth) and `config login anthropic` (Claude Pro/Max OAuth); no API key persisted.
-   - `set-credential` remains as a legacy alias; help should point to `add`.
+1) Tachikoma auth/config core
+   - CredentialStore (file, chmod 600) + CredentialResolver (env ➜ creds ➜ config), alias support (grok/xai).
+   - ProviderId metadata: supportsOAuth, credential keys, validation endpoint.
+   - OAuthManager (PKCE, exchange, refresh) for openai/anthropic; store refresh/access/expiry (+ beta header for Anthropic).
+   - Validators per provider with timeout (default 30s) and result metadata.
 
-2) Validation layer
-   - Shared validator with per-provider strategy and default 30s timeout (overridable on add/show/init).
-   - OpenAI/Codex: GET /v1/models with bearer.
-   - Anthropic: POST /v1/messages (tiny ping, e.g., model claude-3-haiku) or models list; include Max beta header when OAuth.
-   - Grok/xai: GET https://api.x.ai/v1/models with bearer.
-   - Gemini: GET https://generativelanguage.googleapis.com/v1beta/models?key=<key>.
-   - Record lastValidation status + timestamp in credentials metadata (do not write env values).
+2) Provider runtime
+   - OpenAI/Anthropic providers accept AuthToken (apiKey or bearer + optional beta). Prefer OAuth tokens; fallback to API key. Grok/Gemini remain API-key only.
 
-3) Credential resolution order
-   - env ➜ credentials (API key or OAuth tokens) ➜ config; never copy env into files.
-   - Grok canonical ID `grok`; accept `xai` alias and env keys `GROK_API_KEY`, `X_AI_API_KEY`, `XAI_API_KEY`.
+3) Configuration resolution
+   - TachikomaConfiguration loads credentials via resolver (profileDirectoryName overrideable); hosts may inject an in-memory credential provider to avoid disk.
+   - Hosts can still push secrets directly if desired.
 
-4) Runtime usage changes
-   - Providers prefer OAuth tokens; refresh once per request if expired and update credentials; if missing/failed, fall back to API key.
-   - Anthropic requests add beta header in OAuth mode.
+4) CLI (Tachikoma-owned)
+   - `config add <provider> <secret> [--timeout]` (openai|anthropic|grok|gemini) with immediate validation.
+   - `config login <provider>` (openai, anthropic) PKCE, optional no-browser; stores tokens, not API keys.
+   - `config show/init` print status table with live validation; no per-provider prompts.
 
-5) init/show UX
-   - Print provider table: source (env/credentials/oauth), last validation result, age.
-   - If missing providers, show concise “Add one” block with `config add/login` commands; do not write placeholders.
+5) Host wiring (Peekaboo)
+   - Set `TachikomaConfiguration.profileDirectoryName = ".peekaboo"`.
+   - Re-export or shell to Tachikoma config commands for consistent UX.
+   - Remove Peekaboo-local auth/validation logic; rely on Tachikoma resolver/refresh.
 
-6) Tests (increase coverage)
-   - Unit: validator success/failure/timeout per provider; grok alias normalization; credential resolution priority.
-   - Integration: mocked HTTP for add/show with --timeout; OAuth token refresh path (mock endpoints) for openai/anthropic; Anthropic beta header assertion.
-   - CLI snapshot/golden tests for status table outputs (missing, env-only, cred-success, cred-fail).
+6) Tests to add
+   - Unit: validator success/fail/timeout; alias normalization; credential precedence; OAuth refresh updates.
+   - Integration/mock HTTP: login flows, refresh path, status table snapshots (missing/env/cred/oauth).
+   - CLI snapshots for add/login/show/init outputs.
 
 7) Migration/compat
-   - Continue honoring existing credentials keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, X_AI_API_KEY/XAI_API_KEY, GEMINI_API_KEY).
-   - Do not modify `config.json`; credentials file is the only write target for secrets/tokens.
+   - Honor existing keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, GROK/XAI, GEMINI) and new token keys.
+   - No env copying; no config.json writes for secrets.
 
-Open questions: none pending; user approved Swift-only helpers, no API-key persistence for OAuth, and status-first UX without prompt spam.
+Open items
+- Implement the above inside Tachikoma; add a Peekaboo shim that reuses it via profile directory.
+- Add the test coverage once the refactor lands.
+
+## Progress log (2025-11-17)
+- Docs: updated provider/config/oauth references and clarified grok/xai aliasing.
+- Code (earlier iteration): Peekaboo CLI grew `config add/login` and live validation; Tachikoma providers were modified to prefer OAuth tokens. This needs to be replaced by Tachikoma-owned auth/CLI per the updated plan.
+- Blocker to resolve in refactor: TachikomaConfiguration does not currently load Peekaboo credentials; decide on CredentialStore/Resolver in Tachikoma and remove duplicate Peekaboo-layer logic.
+
+## Next steps (for the refactor proper)
+1) Build Tachikoma CredentialStore/Resolver + OAuthManager + validators; add Tachikoma CLI (`config add/login/show/init`).
+2) Adjust providers to consume AuthToken; remove Peekaboo-local auth logic and just set `profileDirectoryName = ".peekaboo"`.
+3) Update Peekaboo CLI to forward/alias Tachikoma commands (or shell out) instead of owning auth logic.
+4) Add tests (unit + mock HTTP + CLI snapshots) as outlined above.
+5) Re-run docs to ensure they match the final code paths.

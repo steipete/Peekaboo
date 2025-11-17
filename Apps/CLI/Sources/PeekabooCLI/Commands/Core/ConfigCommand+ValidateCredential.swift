@@ -2,6 +2,7 @@ import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
+import Tachikoma
 
 @available(macOS 14.0, *)
 @MainActor
@@ -97,19 +98,19 @@ extension ConfigCommand {
             self.prepare(using: runtime)
 
             do {
-                try self.configManager.setCredential(key: self.key, value: self.value)
+                try TKAuthManager.shared.setCredential(key: self.key, value: self.value)
 
                 if self.jsonOutput {
                     let data: [String: Any] = [
                         "message": "Credential set successfully",
                         "key": key,
-                        "path": self.credentialsPath,
+                        "path": ConfigurationManager.credentialsPath,
                     ]
                     let successOutput = SuccessOutput(success: true, data: data)
                     outputJSON(successOutput, logger: self.logger)
                 } else {
                     print("[ok] Credential '\(self.key)' set successfully.")
-                    print("Stored in: \(self.credentialsPath)")
+                    print("Stored in: \(ConfigurationManager.credentialsPath)")
                 }
             } catch {
                 if self.jsonOutput {
