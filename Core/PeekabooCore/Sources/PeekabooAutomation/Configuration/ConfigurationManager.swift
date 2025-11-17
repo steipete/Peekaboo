@@ -623,6 +623,8 @@ public final class ConfigurationManager: @unchecked Sendable {
 
 extension ConfigurationManager {
     public func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
+        try self.validate(provider: provider, id: id)
+
         var config = self.loadConfiguration() ?? Configuration()
         if config.customProviders == nil {
             config.customProviders = [:]
@@ -718,6 +720,46 @@ extension ConfigurationManager {
             return credValue
         }
         return nil
+    }
+
+    private func validate(provider: Configuration.CustomProvider, id: String) throws {
+        guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ConfigurationValidationError.invalidIdentifier("Provider id must not be empty")
+        }
+
+        guard !provider.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ConfigurationValidationError.invalidName("Provider name must not be empty")
+        }
+
+        guard let components = URLComponents(string: provider.options.baseURL),
+              let scheme = components.scheme, !scheme.isEmpty,
+              components.host != nil
+        else {
+            throw ConfigurationValidationError.invalidURL("Base URL must include scheme and host")
+        }
+
+        guard !provider.options.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ConfigurationValidationError.invalidAPIKey("API key must not be empty")
+        }
+
+        if let headers = provider.options.headers {
+            for (key, value) in headers {
+                guard !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw ConfigurationValidationError.invalidHeaders("Header keys must not be empty")
+                }
+                guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw ConfigurationValidationError.invalidHeaders("Header values must not be empty")
+                }
+            }
+        }
+
+        if let models = provider.models {
+            for (name, _) in models {
+                guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw ConfigurationValidationError.invalidModels("Model names must not be empty")
+                }
+            }
+        }
     }
 
     private func testOpenAICompatibleProvider(
@@ -935,6 +977,27 @@ private struct JSONCommentStripper {
 
     private func peek() -> Character? {
         (self.index + 1) < self.characters.count ? self.characters[self.index + 1] : nil
+    }
+}
+
+enum ConfigurationValidationError: LocalizedError {
+    case invalidIdentifier(String)
+    case invalidName(String)
+    case invalidURL(String)
+    case invalidAPIKey(String)
+    case invalidHeaders(String)
+    case invalidModels(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidIdentifier(let msg),
+             .invalidName(let msg),
+             .invalidURL(let msg),
+             .invalidAPIKey(let msg),
+             .invalidHeaders(let msg),
+             .invalidModels(let msg):
+            return msg
+        }
     }
 }
 

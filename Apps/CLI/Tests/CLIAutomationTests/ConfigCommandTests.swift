@@ -148,6 +148,62 @@ struct ConfigCommandTests {
         }
     }
 
+    @Test("Add provider rejects invalid URL", .serialized)
+    func addProviderInvalidURL() async throws {
+        try await self.withTempConfigDir { _ in
+            var command = ConfigCommand.AddProviderCommand()
+            command.providerId = "bad"
+            command.type = "openai"
+            command.name = "Bad"
+            command.baseUrl = "localhost"
+            command.apiKey = "{env:BAD_API_KEY}"
+
+            await #expect(throws: (any Error).self) {
+                try await command.run(using: self.makeRuntime())
+            }
+        }
+    }
+
+    @Test("Remove provider dry-run leaves config intact", .serialized)
+    func removeProviderDryRun() async throws {
+        try await self.withTempConfigDir { _ in
+            var add = ConfigCommand.AddProviderCommand()
+            add.providerId = "keep"
+            add.type = "openai"
+            add.name = "Keep"
+            add.baseUrl = "https://api.keep/v1"
+            add.apiKey = "{env:KEEP_API_KEY}"
+            try await add.run(using: self.makeRuntime())
+
+            var remove = ConfigCommand.RemoveProviderCommand()
+            remove.providerId = "keep"
+            remove.dryRun = true
+            try await remove.run(using: self.makeRuntime())
+
+            let providersAfter = ConfigurationManager.shared.listCustomProviders()
+            #expect(providersAfter["keep"] != nil)
+        }
+    }
+
+    @Test("Validate command fails on malformed config", .serialized)
+    func validateMalformedConfig() async throws {
+        try await self.withTempConfigDir { dir in
+            let badConfig = dir.appendingPathComponent("config.json")
+            try """
+            {
+              "aiProviders": {
+                "providers": "openai/gpt-5.1",
+              }
+            }
+            """.write(to: badConfig, atomically: true, encoding: .utf8)
+
+            var command = ConfigCommand.ValidateCommand()
+            await #expect(throws: (any Error).self) {
+                try await command.run(using: self.makeRuntime())
+            }
+        }
+    }
+
     @Test("Add/remove provider persists to config", .serialized)
     func addAndRemoveProvider() async throws {
         try await self.withTempConfigDir { _ in

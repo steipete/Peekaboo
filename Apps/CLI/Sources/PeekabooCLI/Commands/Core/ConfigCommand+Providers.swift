@@ -12,7 +12,7 @@ enum TimeoutError: Error {
 }
 
 @Sendable
-func withTimeout<T>(_ duration: Duration, operation: @escaping @Sendable () async -> T) async -> Result<T, TimeoutError> {
+func withTimeout<T: Sendable>(_ duration: Duration, operation: @escaping @Sendable () async -> T) async -> Result<T, TimeoutError> {
     await withTaskGroup(of: Result<T, TimeoutError>.self) { group in
         group.addTask {
             .success(await operation())
@@ -388,10 +388,12 @@ extension ConfigCommand {
         mutating func run(using runtime: CommandRuntime) async throws {
             self.prepare(using: runtime)
 
+            let manager = self.configManager
+            let providerId = self.providerId
             let result: Result<(Bool, String?), TimeoutError> = await withTimeout(
                 ConfigCommandTimeouts.network
             ) {
-                await self.configManager.testCustomProvider(id: self.providerId)
+                await manager.testCustomProvider(id: providerId)
             }
 
             let success: Bool
@@ -582,10 +584,12 @@ extension ConfigCommand {
                 throw ExitCode.failure
             }
 
+            let manager = self.configManager
+            let providerId = self.providerId
             let modelResult: Result<(models: [String], error: String?), TimeoutError> = await withTimeout(
                 ConfigCommandTimeouts.network
             ) {
-                await self.configManager.discoverModelsForCustomProvider(id: self.providerId)
+                await manager.discoverModelsForCustomProvider(id: providerId)
             }
 
             let models: [String]
