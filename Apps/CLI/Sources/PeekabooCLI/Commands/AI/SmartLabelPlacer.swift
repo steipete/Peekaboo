@@ -8,16 +8,26 @@ import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
+protocol SmartLabelPlacerTextDetecting: AnyObject {
+    func scoreRegionForLabelPlacement(_ rect: NSRect, in image: NSImage) -> Float
+    func analyzeRegion(_ rect: NSRect, in image: NSImage) -> AcceleratedTextDetector.EdgeDensityResult
+}
+
+extension AcceleratedTextDetector: SmartLabelPlacerTextDetecting {}
+
 /// Handles intelligent label placement for UI element annotations
 final class SmartLabelPlacer {
+    static let defaultScoreRegionPadding: CGFloat = 6
+
     // MARK: - Properties
 
     private let image: NSImage
     private let imageSize: NSSize
-    private let textDetector: AcceleratedTextDetector
+    private let textDetector: SmartLabelPlacerTextDetecting
     private let fontSize: CGFloat
     private let labelSpacing: CGFloat = 3
     private let cornerInset: CGFloat = 2
+    private let scoreRegionPadding: CGFloat
 
     // Label placement debugging
     private let debugMode: Bool
@@ -25,13 +35,20 @@ final class SmartLabelPlacer {
 
     // MARK: - Initialization
 
-    init(image: NSImage, fontSize: CGFloat = 8, debugMode: Bool = false, logger: Logger = Logger.shared) {
+    init(
+        image: NSImage,
+        fontSize: CGFloat = 8,
+        debugMode: Bool = false,
+        logger: Logger = Logger.shared,
+        textDetector: SmartLabelPlacerTextDetecting? = nil
+    ) {
         self.image = image
         self.imageSize = image.size
-        self.textDetector = AcceleratedTextDetector(logger: logger)
+        self.textDetector = textDetector ?? AcceleratedTextDetector(logger: logger)
         self.fontSize = fontSize
         self.debugMode = debugMode
         self.logger = logger
+        self.scoreRegionPadding = Self.defaultScoreRegionPadding
     }
 
     // MARK: - Public Methods
@@ -397,8 +414,18 @@ final class SmartLabelPlacer {
                 height: position.rect.height
             )
 
+            // Expand the sampled area slightly so we avoid busy regions around the label,
+            // not just underneath it. This helps place annotations over calmer backgrounds.
+            // NOTE: this is a critical tweak—by sampling beyond the label bounds we detect noisy
+            // backgrounds that would otherwise not register, which is what keeps labels from
+            // covering “interesting” UI areas (graphs, text blocks, etc.).
+            let scoringRect = Self.clampedRect(
+                imageRect.insetBy(dx: -self.scoreRegionPadding, dy: -self.scoreRegionPadding),
+                within: NSRect(origin: .zero, size: self.imageSize)
+            )
+
             // Score using edge detection
-            var score = self.textDetector.scoreRegionForLabelPlacement(imageRect, in: self.image)
+            var score = self.textDetector.scoreRegionForLabelPlacement(scoringRect, in: self.image)
 
             // Boost score for preferred positions
             if position.type == .externalAbove {
@@ -532,6 +559,18 @@ final class SmartLabelPlacer {
         case internalTopLeft
         case internalTopRight
         case internalCenter
+    }
+}
+
+extension SmartLabelPlacer {
+    /// Returns a rect clamped to the provided bounds. If there is no overlap,
+    /// it returns the original rect to avoid zero-sized inputs.
+    private static func clampedRect(_ rect: NSRect, within bounds: NSRect) -> NSRect {
+        let intersection = rect.intersection(bounds)
+        if intersection.isNull {
+            return rect
+        }
+        return intersection
     }
 }
 
