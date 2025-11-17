@@ -26,7 +26,7 @@ This doc tracks the next improvements to make `peekaboo watch` sturdier and more
 - Add hysteresis/early-stop Swift Testing coverage (enter/exit thresholds, frame/size caps).
 
 ## Docs polish
-- Document MCP meta fields (`contact_columns/contact_rows/contact_sampled_indexes`) explicitly for agents.
+- **(Done)** Document MCP meta fields (`contact_columns/contact_rows/contact_sampled_indexes`, `contact_thumb_size`) for agents.
 
 ## Performance ideas
 - Downscale diff further (128px) when CPU load is high or FPS falls behind; record the downgrade.
