@@ -335,6 +335,7 @@ public final class WatchCaptureSession {
             framesToUse = self.frames
             sampledIndexes = self.frames.map(\.index)
         } else {
+            // Sample evenly to keep contact sheets readable when many frames are kept.
             framesToUse = WatchCaptureSession.sampleFrames(self.frames, maxCount: maxCells)
             sampledIndexes = framesToUse.map(\.index)
         }
@@ -498,12 +499,14 @@ public final class WatchCaptureSession {
         originalSize: CGSize) -> DiffResult
     {
         guard let previous else {
+            // First frame: force 100% change and a full-frame box so downstream logic always keeps it.
             return DiffResult(
                 changePercent: 100.0,
                 boundingBoxes: [CGRect(origin: .zero, size: originalSize)],
                 downgraded: false)
         }
 
+        // Fast path always runs to get bounding boxes; quality may replace change% but keeps the boxes.
         let pixelDiff = self.computePixelDelta(
             previous: previous,
             current: current,
@@ -520,6 +523,7 @@ public final class WatchCaptureSession {
                 let ssim = self.computeSSIM(previous: previous, current: current)
                 let elapsedMs = Int((DispatchTime.now().uptimeNanoseconds - start) / 1_000_000)
                 if elapsedMs > budget {
+                    // Guardrail: fall back to fast diff if SSIM is too slow to keep the session responsive.
                     changePercent = pixelDiff.changePercent
                     return DiffResult(changePercent: changePercent, boundingBoxes: pixelDiff.boundingBoxes, downgraded: true)
                 } else {
@@ -573,8 +577,8 @@ public final class WatchCaptureSession {
         var visited = Array(repeating: false, count: mask.count)
         var boxes: [CGRect] = []
         let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-        let maxBoxes = 5
-        let minPixels = 1
+        let maxBoxes = 5      // Avoid overwhelming overlays
+        let minPixels = 1     // Tiny blobs still count; caller can filter when drawing
 
         func index(_ x: Int, _ y: Int) -> Int { y * width + x }
 
@@ -733,6 +737,7 @@ public final class WatchCaptureSession {
 
         let clamped = rect.intersection(union)
         if clamped != rect {
+            // Clamp instead of failing when partially visible; signal to callers via warning.
             self.warnings.append(
                 WatchWarning(code: .displayChanged, message: "Region adjusted to visible area"))
         }
