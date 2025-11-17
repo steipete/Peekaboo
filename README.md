@@ -91,10 +91,10 @@ Peekaboo vendors three shared dependencies as top-level git submodules:
 
 Clone with `git clone --recursive` or run `git submodule update --init --recursive` after pulling to ensure all three are present.
 
-#### Submodule Details
+#### Submodule Details (updated)
 - `AXorcist` is our accessibility engine: it wraps the macOS AX APIs with type-safe Swift helpers so every command (and agent) can discover UI elements, grant permissions, and drive buttons/text fields without reinventing accessibility plumbing. Because the underlying APIs are macOS-only we keep AXorcist’s CI and release targets scoped to macOS 14+.
-- `Commander` is the shared parser/runtime that replaces Swift Argument Parser across Peekaboo. It provides property-wrapper metadata, a central router, standard CLI flags, and binders that hydrate existing command structs while keeping the runtime @MainActor-friendly. Commander’s CI now spans macOS, Linux, Apple simulators (iOS/tvOS/watchOS/visionOS), and Android (via `--swift-sdk android`) so the parser stays portable without promising Windows support we can’t exercise.
-- `Tachikoma` is the AI provider SDK plus MCP adapters. It defines model enums, capability tables, request/response abstractions, and tool execution so the CLI and agents can swap between OpenAI, Anthropic, Groq, Ollama, etc. using one set of services. Tachikoma mirrors Commander’s matrix: macOS for local development plus Linux, Apple simulators, and Android cross-compiles to ensure every provider build path remains healthy.
+- `Commander` is the shared parser/runtime that replaces Swift Argument Parser across Peekaboo. It provides property-wrapper metadata, a central router, standard CLI flags, and binders that hydrate existing command structs while keeping the runtime @MainActor-friendly. Commander’s CI spans macOS, Linux, Apple simulators (iOS/tvOS/watchOS/visionOS), and Android (via `--swift-sdk android`).
+- `Tachikoma` is the AI provider SDK plus MCP adapters. It now owns all credential/OAuth handling via `TKAuthManager` and exposes the standalone `tk-config` CLI (add/login/status) so hosts can reuse the same auth + validation flows. Peekaboo’s CLI delegates provider auth to Tachikoma; set `TachikomaConfiguration.profileDirectoryName` to `.peekaboo` to share credentials.
 
 ## 🧩 Platform Support
 
