@@ -20,6 +20,7 @@ public final class WatchCaptureSession {
     private let options: WatchCaptureOptions
     private let outputRoot: URL
     private let autocleanMinutes: Int
+    private let managedAutoclean: Bool
     private let fileManager = FileManager.default
     private let screenService: (any ScreenServiceProtocol)?
     private let sessionId = UUID().uuidString
@@ -37,7 +38,8 @@ public final class WatchCaptureSession {
         scope: WatchScope,
         options: WatchCaptureOptions,
         outputRoot: URL,
-        autocleanMinutes: Int)
+        autocleanMinutes: Int,
+        managedAutoclean: Bool)
     {
         self.screenCapture = screenCapture
         self.screenService = screenService
@@ -45,6 +47,7 @@ public final class WatchCaptureSession {
         self.options = options
         self.outputRoot = outputRoot
         self.autocleanMinutes = autocleanMinutes
+        self.managedAutoclean = managedAutoclean
     }
 
     public func run() async throws -> WatchCaptureResult {
@@ -396,6 +399,7 @@ public final class WatchCaptureSession {
     }
 
     private func performAutoclean() {
+        guard self.managedAutoclean else { return }
         let root = self.outputRoot.deletingLastPathComponent()
         guard root.lastPathComponent == "watch-sessions" else { return }
         guard let contents = try? self.fileManager.contentsOfDirectory(

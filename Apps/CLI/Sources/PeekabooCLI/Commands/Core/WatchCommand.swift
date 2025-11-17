@@ -121,7 +121,8 @@ struct WatchCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
                 scope: scope,
                 options: options,
                 outputRoot: outputDir,
-                autocleanMinutes: self.autocleanMinutes ?? 120)
+                autocleanMinutes: self.autocleanMinutes ?? 120,
+                managedAutoclean: self.path == nil)
             let result = try await session.run()
 
             self.output(result)

@@ -64,7 +64,8 @@ public struct WatchTool: MCPTool {
             scope: request.scope,
             options: request.options,
             outputRoot: request.outputDirectory,
-            autocleanMinutes: request.autocleanMinutes)
+            autocleanMinutes: request.autocleanMinutes,
+            managedAutoclean: request.usesDefaultOutput)
         let result = try await session.run()
 
         let summary = """
@@ -95,6 +96,7 @@ private struct WatchRequest {
     let options: WatchCaptureOptions
     let outputDirectory: URL
     let autocleanMinutes: Int
+    let usesDefaultOutput: Bool
 
     init(arguments: ToolArguments) throws {
         let input = try arguments.decode(WatchInput.self)
@@ -129,7 +131,7 @@ private struct WatchRequest {
             scope = WatchScope(kind: .frontmost, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
         }
 
-        let outputDir = WatchRequest.resolveOutputDirectory(input.outputDir)
+        let (outputDir, managed) = WatchRequest.resolveOutputDirectory(input.outputDir)
 
         self.scope = scope
         self.options = WatchCaptureOptions(
@@ -148,6 +150,7 @@ private struct WatchRequest {
             diffBudgetMs: diffBudgetMs)
         self.outputDirectory = outputDir
         self.autocleanMinutes = autoclean
+        self.usesDefaultOutput = managed
     }
 
     private static func parseRegion(_ value: String?) throws -> CGRect {
@@ -161,15 +164,15 @@ private struct WatchRequest {
         return CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
     }
 
-    private static func resolveOutputDirectory(_ custom: String?) -> URL {
+    private static func resolveOutputDirectory(_ custom: String?) -> (URL, Bool) {
         if let custom {
-            return URL(fileURLWithPath: custom, isDirectory: true)
+            return (URL(fileURLWithPath: custom, isDirectory: true), false)
         }
         let temp = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("peekaboo")
             .appendingPathComponent("watch-sessions", isDirectory: true)
             .appendingPathComponent("watch-\(UUID().uuidString)", isDirectory: true)
-        return temp
+        return (temp, true)
     }
 }
 
