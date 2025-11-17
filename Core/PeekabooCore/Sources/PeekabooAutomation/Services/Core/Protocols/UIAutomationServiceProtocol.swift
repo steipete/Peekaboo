@@ -348,16 +348,75 @@ public enum ClickTarget: Sendable {
 
 // ModifierKey is now in PeekabooFoundation
 
+public struct ScrollRequest: Sendable {
+    public var direction: PeekabooFoundation.ScrollDirection
+    public var amount: Int
+    public var target: String?
+    public var smooth: Bool
+    public var delay: Int
+    public var sessionId: String?
+
+    public init(
+        direction: PeekabooFoundation.ScrollDirection,
+        amount: Int,
+        target: String? = nil,
+        smooth: Bool = false,
+        delay: Int = 10,
+        sessionId: String? = nil)
+    {
+        self.direction = direction
+        self.amount = amount
+        self.target = target
+        self.smooth = smooth
+        self.delay = delay
+        self.sessionId = sessionId
+    }
+}
+
 /// Result of waiting for an element
 public struct WaitForElementResult: Sendable {
     public let found: Bool
     public let element: DetectedElement?
     public let waitTime: TimeInterval
+    public let warnings: [String]
 
-    public init(found: Bool, element: DetectedElement?, waitTime: TimeInterval) {
+    public init(found: Bool, element: DetectedElement?, waitTime: TimeInterval, warnings: [String] = []) {
         self.found = found
         self.element = element
         self.waitTime = waitTime
+        self.warnings = warnings
+    }
+
+    public init(found: Bool, element: DetectedElement?, waitTime: TimeInterval) {
+        self.init(found: found, element: element, waitTime: waitTime, warnings: [])
+    }
+}
+
+public struct UIFocusInfo: Sendable {
+    public let role: String
+    public let title: String?
+    public let value: String?
+    public let frame: CGRect
+    public let applicationName: String
+    public let bundleIdentifier: String
+    public let processId: Int
+
+    public init(
+        role: String,
+        title: String?,
+        value: String?,
+        frame: CGRect,
+        applicationName: String,
+        bundleIdentifier: String,
+        processId: Int)
+    {
+        self.role = role
+        self.title = title
+        self.value = value
+        self.frame = frame
+        self.applicationName = applicationName
+        self.bundleIdentifier = bundleIdentifier
+        self.processId = processId
     }
 }
 

@@ -23,13 +23,13 @@ struct ConfigCommandTests {
 
         setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
         #if DEBUG
-        ConfigurationManager.shared.resetForTesting()
+        PeekabooCore.ConfigurationManager.shared.resetForTesting()
         #endif
 
         defer {
             unsetenv("PEEKABOO_CONFIG_DIR")
             #if DEBUG
-            ConfigurationManager.shared.resetForTesting()
+            PeekabooCore.ConfigurationManager.shared.resetForTesting()
             #endif
             try? FileManager.default.removeItem(at: tempDir)
         }
@@ -186,7 +186,7 @@ struct ConfigCommandTests {
             remove.dryRun = true
             try await remove.run(using: self.makeRuntime())
 
-            let providersAfter = ConfigurationManager.shared.listCustomProviders()
+            let providersAfter = PeekabooCore.ConfigurationManager.shared.listCustomProviders()
             #expect(providersAfter["keep"] != nil)
         }
     }
@@ -221,7 +221,7 @@ struct ConfigCommandTests {
             add.apiKey = "{env:LOCAL_API_KEY}"
             try await add.run(using: self.makeRuntime())
 
-            let providersAfterAdd = ConfigurationManager.shared.listCustomProviders()
+            let providersAfterAdd = PeekabooCore.ConfigurationManager.shared.listCustomProviders()
             #expect(providersAfterAdd["local"] != nil)
             #expect(providersAfterAdd["local"]?.options.baseURL == "https://api.local/v1")
 
@@ -230,7 +230,7 @@ struct ConfigCommandTests {
             remove.force = true
             try await remove.run(using: self.makeRuntime())
 
-            let providersAfterRemove = ConfigurationManager.shared.listCustomProviders()
+            let providersAfterRemove = PeekabooCore.ConfigurationManager.shared.listCustomProviders()
             #expect(providersAfterRemove["local"] == nil)
         }
     }

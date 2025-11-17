@@ -4,6 +4,7 @@ import Foundation
 import os.log
 import PeekabooAgentRuntime
 import PeekabooAutomation
+import PeekabooAutomation
 import PeekabooFoundation
 import PeekabooVisualizer
 import Tachikoma
@@ -75,7 +76,7 @@ public final class PeekabooServices {
     public let applications: any ApplicationServiceProtocol
 
     /// Core UI automation service for mouse, keyboard, and accessibility interactions
-    public let automation: any UIAutomationServiceProtocol
+    public let automation: any PeekabooAutomation.UIAutomationServiceProtocol
 
     /// Window management service for positioning, resizing, and organizing windows
     public let windows: any WindowManagementServiceProtocol
@@ -135,7 +136,7 @@ public final class PeekabooServices {
         let screenCap = ScreenCaptureService(loggingService: logging)
         self.logger.debug("\(AgentDisplayTokens.Status.success) ScreenCaptureService initialized")
 
-        let auto = UIAutomationService(sessionManager: sess, loggingService: logging)
+        let auto = UIAutomationService(sessionManager: sess, loggingService: logging, searchPolicy: .balanced)
         self.logger.debug("\(AgentDisplayTokens.Status.success) UIAutomationService initialized")
 
         let windows = WindowManagementService(applicationService: apps)
@@ -203,7 +204,7 @@ public final class PeekabooServices {
         logging: (any LoggingServiceProtocol)? = nil,
         screenCapture: any ScreenCaptureServiceProtocol,
         applications: any ApplicationServiceProtocol,
-        automation: any UIAutomationServiceProtocol,
+        automation: any PeekabooAutomation.UIAutomationServiceProtocol,
         windows: any WindowManagementServiceProtocol,
         menu: any MenuServiceProtocol,
         dock: any DockServiceProtocol,
@@ -244,7 +245,7 @@ public final class PeekabooServices {
         logging: any LoggingServiceProtocol,
         screenCapture: any ScreenCaptureServiceProtocol,
         applications: any ApplicationServiceProtocol,
-        automation: any UIAutomationServiceProtocol,
+        automation: any PeekabooAutomation.UIAutomationServiceProtocol,
         windows: any WindowManagementServiceProtocol,
         menu: any MenuServiceProtocol,
         dock: any DockServiceProtocol,

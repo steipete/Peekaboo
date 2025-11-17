@@ -287,9 +287,16 @@ enum AutomationServiceBridge {
         timeout: TimeInterval,
         sessionId: String?
     ) async throws -> WaitForElementResult {
-        try await Task { @MainActor in
+        let result = try await Task { @MainActor in
             try await automation.waitForElement(target: target, timeout: timeout, sessionId: sessionId)
         }.value
+
+        if !result.warnings.isEmpty {
+            Logger(subsystem: "boo.peekaboo.cli", category: "Automation")
+                .debug("waitForElement warnings: \(result.warnings.joined(separator: ","))")
+        }
+
+        return result
     }
 
     static func click(

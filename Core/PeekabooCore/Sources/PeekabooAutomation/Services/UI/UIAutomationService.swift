@@ -7,6 +7,39 @@ import os.log
 import PeekabooFoundation
 import PeekabooVisualizer
 
+private struct SearchLimits {
+    let maxDepth: Int
+    let maxChildren: Int
+    let timeBudget: TimeInterval
+
+    static func from(policy: SearchPolicy) -> SearchLimits {
+        switch policy {
+        case .balanced:
+            return SearchLimits(maxDepth: 8, maxChildren: 200, timeBudget: 0.15)
+        case .debug:
+            return SearchLimits(maxDepth: 32, maxChildren: 2000, timeBudget: 1.0)
+        }
+    }
+}
+
+public enum SearchPolicy {
+    case balanced
+    case debug
+}
+
+private struct AXSearchResult {
+    let element: Element
+    let frame: CGRect
+    let label: String?
+}
+
+private struct AXSearchOutcome {
+    let element: Element
+    let frame: CGRect
+    let label: String?
+    let warnings: [String]
+}
+
 /**
  * Primary UI automation service orchestrating specialized automation components.
  *
@@ -42,20 +75,24 @@ import PeekabooVisualizer
  */
 @MainActor
 public final class UIAutomationService: UIAutomationServiceProtocol {
-    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "UIAutomationService")
-    private let sessionManager: any SessionManagerProtocol
+    let logger = Logger(subsystem: "boo.peekaboo.core", category: "UIAutomationService")
+    let sessionManager: any SessionManagerProtocol
 
     // Specialized services
-    private let elementDetectionService: ElementDetectionService
-    private let clickService: ClickService
-    private let typeService: TypeService
-    private let scrollService: ScrollService
-    private let hotkeyService: HotkeyService
-    private let gestureService: GestureService
-    private let screenCaptureService: ScreenCaptureService
+    let elementDetectionService: ElementDetectionService
+    let clickService: ClickService
+    let typeService: TypeService
+    let scrollService: ScrollService
+    let hotkeyService: HotkeyService
+    let gestureService: GestureService
+    let screenCaptureService: ScreenCaptureService
 
     // Visualizer client for visual feedback
-    private let visualizerClient = VisualizationClient.shared
+    let visualizerClient = VisualizationClient.shared
+
+    // Search constraints to prevent unbounded AX traversals
+    private var searchLimits: SearchLimits
+    public private(set) var searchPolicy: SearchPolicy
 
     /**
      * Initialize the UI automation service with optional dependency injection.
@@ -98,12 +135,16 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
      */
     public init(
         sessionManager: (any SessionManagerProtocol)? = nil,
-        loggingService: (any LoggingServiceProtocol)? = nil)
+        loggingService: (any LoggingServiceProtocol)? = nil,
+        searchPolicy: SearchPolicy = .balanced)
     {
         let manager = sessionManager ?? SessionManager()
         self.sessionManager = manager
 
         let logger = loggingService ?? LoggingService()
+
+        self.searchPolicy = searchPolicy
+        self.searchLimits = SearchLimits.from(policy: searchPolicy)
 
         // Initialize specialized services
         self.elementDetectionService = ElementDetectionService(sessionManager: manager)
@@ -399,12 +440,12 @@ extension UIAutomationService {
 
     // MARK: - Typing Visualization Helpers
 
-    private func visualizeTypeActions(_ actions: [TypeAction], cadence: TypingCadence) async {
+    func visualizeTypeActions(_ actions: [TypeAction], cadence: TypingCadence) async {
         let keys = self.keySequence(from: actions)
         await self.visualizeTyping(keys: keys, cadence: cadence)
     }
 
-    private func visualizeTyping(keys: [String], cadence: TypingCadence) async {
+    func visualizeTyping(keys: [String], cadence: TypingCadence) async {
         guard !keys.isEmpty else { return }
         _ = await self.visualizerClient.showTypingFeedback(keys: keys, duration: 2.0, cadence: cadence)
     }
@@ -559,64 +600,10 @@ extension UIAutomationService {
         return AXIsProcessTrusted()
     }
 
-    /**
-     * Retrieve information about the currently focused UI element system-wide.
-     *
-     * This method queries the macOS accessibility system to find the element that currently
-     * has keyboard focus anywhere on the system. Returns detailed information about the
-     * focused element including its properties, application context, and screen coordinates.
-     *
-     * - Returns: `UIFocusInfo` containing focus details, or nil if no element has focus
-     *
-     * ## Focus Detection
-     * Uses the accessibility API to query the system-wide focus state:
-     * 1. **System Query**: Queries `kAXFocusedUIElementAttribute` on system-wide element
-     * 2. **Element Analysis**: Extracts role, title, value, and geometric properties
-     * 3. **Application Context**: Identifies the owning application and process
-     * 4. **Coordinate Mapping**: Converts element bounds to screen coordinates
-     *
-     * ## Returned Information
-     * The `UIFocusInfo` structure contains:
-     * - **Element Properties**: role, title, value, and screen frame
-     * - **Application Info**: name, bundle identifier, and process ID
-     * - **Geometric Data**: element bounds in screen coordinates
-     *
-     * ## Use Cases
-     * - **Focus Validation**: Verify expected element has focus before typing
-     * - **Context Awareness**: Understand current input context for automation
-     * - **Debugging**: Diagnose focus issues in automation workflows
-     * - **State Tracking**: Monitor focus changes during complex interactions
-     *
-     * ## Performance
-     * - **Query Time**: 5-20ms for accessibility system query
-     * - **No Caching**: Always queries live system state
-     * - **Thread Safety**: Must be called on main thread
-     *
-     * ## Example
-     * ```swift
-     * if let focusInfo = automation.getFocusedElement() {
-     *     print("Focused element: \(focusInfo.role)")
-     *     print("In application: \(focusInfo.applicationName)")
-     *     print("Element title: \(focusInfo.title ?? "No title")")
-     *     print("At coordinates: \(focusInfo.frame)")
-     *
-     *     // Check if it's a text field before typing
-     *     if focusInfo.role == "AXTextField" {
-     *         try await automation.type(text: "Hello", target: nil, ...)
-     *     }
-     * } else {
-     *     print("No element currently has focus")
-     * }
-     * ```
-     *
-     * - Important: Requires Accessibility permission to query focused elements
-     * - Note: Returns nil if no element has focus or accessibility query fails
-     */
     @MainActor
     public func getFocusedElement() -> UIFocusInfo? {
         self.logger.debug("Getting focused element")
 
-        // Get the system-wide focused element
         let systemWide = AXUIElementCreateSystemWide()
 
         var focusedElement: CFTypeRef?
@@ -632,16 +619,14 @@ extension UIAutomationService {
             return nil
         }
 
-        let axElement = unsafeBitCast(element, to: AXUIElement.self)
+        let axElement = unsafeDowncast(element as AnyObject, to: AXUIElement.self)
         let wrappedElement = Element(axElement)
 
-        // Get element properties
         let role = wrappedElement.role() ?? "Unknown"
         let title = wrappedElement.title()
         let value = wrappedElement.stringValue()
         let frame = wrappedElement.frame() ?? .zero
 
-        // Get application info
         var pid: pid_t = 0
         AXUIElementGetPid(axElement, &pid)
 
@@ -661,42 +646,6 @@ extension UIAutomationService {
 
     // MARK: - Wait for Element
 
-    /**
-     * Wait for a UI element to become available with configurable timeout.
-     *
-     * - Parameters:
-     *   - target: Element target to wait for (element ID, query, or coordinates)
-     *   - timeout: Maximum time to wait in seconds (0.1-60s typical range)
-     *   - sessionId: Session ID for element resolution (required for element ID targeting)
-     * - Returns: `WaitForElementResult` indicating success/failure, found element, and wait time
-     * - Throws: `PeekabooError` if invalid parameters or session not found
-     *
-     * ## Wait Behavior
-     * - Polls every 100ms until element found or timeout reached
-     * - For element IDs: checks session cache for element availability
-     * - For queries: searches accessibility tree for matching elements
-     * - For coordinates: returns immediately (coordinates don't need waiting)
-     *
-     * ## Examples
-     * ```swift
-     * // Wait for button to appear
-     * let result = try await automation.waitForElement(
-     *     target: .elementId("B1"),
-     *     timeout: 5.0,
-     *     sessionId: "session_123"
-     * )
-     * if result.found {
-     *     print("Element found after \(result.waitTime)s")
-     * }
-     *
-     * // Wait for element by text query
-     * let submitResult = try await automation.waitForElement(
-     *     target: .query("Submit"),
-     *     timeout: 3.0,
-     *     sessionId: "session_123"
-     * )
-     * ```
-     */
     public func waitForElement(
         target: ClickTarget,
         timeout: TimeInterval,
@@ -704,9 +653,10 @@ extension UIAutomationService {
     {
         self.logger.debug("Waiting for element - target: \(String(describing: target)), timeout: \(timeout)s")
 
+        var accumulatedWarnings: [String] = []
+
         if case .coordinates = target {
-            let waitTime = 0.0
-            return WaitForElementResult(found: true, element: nil, waitTime: waitTime)
+            return WaitForElementResult(found: true, element: nil, waitTime: 0, warnings: accumulatedWarnings)
         }
 
         let startTime = Date()
@@ -714,116 +664,20 @@ extension UIAutomationService {
         let retryInterval: UInt64 = 100_000_000 // 100ms
 
         while Date() < deadline {
-            if let element = await self.locateElementForWait(target: target, sessionId: sessionId) {
+            let result = await self.locateElementForWait(target: target, sessionId: sessionId)
+            accumulatedWarnings.append(contentsOf: result.warnings)
+            if let element = result.element {
                 let waitTime = Date().timeIntervalSince(startTime)
                 self.logger.debug("Found element for target \(String(describing: target)) after \(waitTime)s")
-                return WaitForElementResult(found: true, element: element, waitTime: waitTime)
+                return WaitForElementResult(found: true, element: element, waitTime: waitTime, warnings: accumulatedWarnings)
             }
 
             try await Task.sleep(nanoseconds: retryInterval)
         }
 
         self.logger.debug("Element not found after \(timeout)s timeout")
-        return WaitForElementResult(found: false, element: nil, waitTime: timeout)
+        return WaitForElementResult(found: false, element: nil, waitTime: timeout, warnings: accumulatedWarnings)
     }
-
-    // MARK: - Private Helpers
-
-    private func locateElementForWait(
-        target: ClickTarget,
-        sessionId: String?) async -> DetectedElement?
-    {
-        switch target {
-        case let .elementId(id):
-            guard let sessionId,
-                  let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
-            else {
-                return nil
-            }
-            return detectionResult.elements.findById(id)
-
-        case let .query(query):
-            if let element = await self.findElementInSession(query: query, sessionId: sessionId) {
-                return element
-            }
-            guard let info = self.findElementByAccessibility(matching: query) else {
-                return nil
-            }
-            return DetectedElement(
-                id: "wait_found",
-                type: .other,
-                label: info.label ?? query,
-                value: nil,
-                bounds: info.frame,
-                isEnabled: true)
-
-        case .coordinates:
-            return nil
-        }
-    }
-
-    private func findElementInSession(query: String, sessionId: String?) async -> DetectedElement? {
-        guard let sessionId,
-              let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
-        else {
-            return nil
-        }
-
-        let queryLower = query.lowercased()
-        return detectionResult.elements.all.first { element in
-            let matches = element.label?.lowercased().contains(queryLower) ?? false ||
-                element.value?.lowercased().contains(queryLower) ?? false
-            return matches && element.isEnabled
-        }
-    }
-
-    @MainActor
-    private func findElementByAccessibility(matching query: String)
-    -> (element: Element, frame: CGRect, label: String?)? {
-        // Find the application at the mouse position
-        guard let app = MouseLocationUtilities.findApplicationAtMouseLocation() else {
-            return nil
-        }
-
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
-
-        return self.searchElementRecursively(in: appElement, matching: query.lowercased())
-    }
-
-    @MainActor
-    private func searchElementRecursively(
-        in element: Element,
-        matching query: String) -> (element: Element, frame: CGRect, label: String?)?
-    {
-        // Check current element
-        let title = element.title()?.lowercased() ?? ""
-        let label = element.label()?.lowercased() ?? ""
-        let value = element.stringValue()?.lowercased() ?? ""
-        let roleDescription = element.roleDescription()?.lowercased() ?? ""
-
-        if title.contains(query) || label.contains(query) ||
-            value.contains(query) || roleDescription.contains(query)
-        {
-            if let frame = element.frame() {
-                let displayLabel = element.title() ?? element.label() ?? element.roleDescription()
-                return (element, frame, displayLabel)
-            }
-        }
-
-        // Search children
-        if let children = element.children() {
-            for child in children {
-                if let found = searchElementRecursively(in: child, matching: query) {
-                    return found
-                }
-            }
-        }
-
-        return nil
-    }
-
-    // MARK: - Find Element
 
     public func findElement(
         matching criteria: UIElementSearchCriteria,
@@ -831,29 +685,23 @@ extension UIAutomationService {
     {
         self.logger.debug("Finding element matching criteria in app: \(appName ?? "any")")
 
-        // Capture screenshot
         let captureResult: CaptureResult
         if let appName {
-            // Try to find the application first
             let appService = ApplicationService()
             _ = try await appService.findApplication(identifier: appName)
 
-            // Capture specific application
             captureResult = try await self.screenCaptureService.captureWindow(
                 appIdentifier: appName,
                 windowIndex: nil)
         } else {
-            // Capture entire screen
             captureResult = try await self.screenCaptureService.captureScreen(displayIndex: nil)
         }
 
-        // Detect elements in the screenshot
         let detectionResult = try await detectElements(
             in: captureResult.imageData,
             sessionId: nil,
             windowContext: nil)
 
-        // Search for matching element
         let allElements = detectionResult.elements.all
 
         for element in allElements {
@@ -879,7 +727,6 @@ extension UIAutomationService {
             }
         }
 
-        // No matching element found
         let description = switch criteria {
         case let .label(label):
             "with label '\(label)'"
@@ -891,105 +738,137 @@ extension UIAutomationService {
 
         throw PeekabooError.elementNotFound("element \(description) in \(appName ?? "screen")")
     }
-}
 
-// MARK: - Scroll Helpers
+    // MARK: - Private Helpers
 
-public struct ScrollRequest {
-    public var direction: PeekabooFoundation.ScrollDirection
-    public var amount: Int
-    public var target: String?
-    public var smooth: Bool
-    public var delay: Int
-    public var sessionId: String?
-
-    public init(
-        direction: PeekabooFoundation.ScrollDirection,
-        amount: Int,
-        target: String? = nil,
-        smooth: Bool = false,
-        delay: Int = 10,
-        sessionId: String? = nil)
+    private func locateElementForWait(
+        target: ClickTarget,
+        sessionId: String?) async -> (element: DetectedElement?, warnings: [String])
     {
-        self.direction = direction
-        self.amount = amount
-        self.target = target
-        self.smooth = smooth
-        self.delay = delay
-        self.sessionId = sessionId
+        switch target {
+        case let .elementId(id):
+            guard let sessionId,
+                  let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+            else {
+                return (nil, [])
+            }
+            return (detectionResult.elements.findById(id), [])
+
+        case let .query(query):
+            if let element = await self.findElementInSession(query: query, sessionId: sessionId) {
+                return (element, [])
+            }
+            guard let info = self.findElementByAccessibility(matching: query) else {
+                return (nil, [])
+            }
+            return (
+                DetectedElement(
+                    id: "wait_found",
+                    type: .other,
+                    label: info.label ?? query,
+                    value: nil,
+                    bounds: info.frame,
+                    isEnabled: true),
+                info.warnings)
+
+        case .coordinates:
+            return (nil, [])
+        }
     }
-}
 
-// MARK: - Supporting Types
+    private func findElementInSession(query: String, sessionId: String?) async -> DetectedElement? {
+        guard let sessionId,
+              let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+        else {
+            return nil
+        }
 
-/**
- * Comprehensive information about a focused UI element for automation workflows.
- *
- * `UIFocusInfo` encapsulates all relevant details about the currently focused UI element,
- * providing both element-specific properties and application context. This information
- * is essential for intelligent automation decisions and focus management.
- *
- * ## Element Properties
- * - **role**: Accessibility role (e.g., "AXTextField", "AXButton", "AXStaticText")
- * - **title**: Element title or accessibility label
- * - **value**: Current element value (text content for text fields)
- * - **frame**: Element bounds in screen coordinates
- *
- * ## Application Context
- * - **applicationName**: Human-readable application name
- * - **bundleIdentifier**: Application bundle ID for precise identification
- * - **processId**: System process ID for the owning application
- *
- * ## Usage Examples
- * ```swift
- * if let focus = automation.getFocusedElement() {
- *     // Check element type before interaction
- *     switch focus.role {
- *     case "AXTextField":
- *         print("Text field focused: \(focus.title ?? "Untitled")")
- *         // Safe to type text
- *     case "AXButton":
- *         print("Button focused: \(focus.title ?? "Untitled")")
- *         // Could trigger with Enter key
- *     default:
- *         print("Other element: \(focus.role)")
- *     }
- *
- *     // Application-specific behavior
- *     if focus.bundleIdentifier == "com.apple.Safari" {
- *         print("Focus is in Safari")
- *     }
- * }
- * ```
- *
- * - Important: All coordinate information is in screen coordinates (not window-relative)
- * - Note: Values may be nil if the element doesn't support that property
- * - Since: PeekabooCore 1.0.0
- */
-public struct UIFocusInfo: Sendable {
-    public let role: String
-    public let title: String?
-    public let value: String?
-    public let frame: CGRect
-    public let applicationName: String
-    public let bundleIdentifier: String
-    public let processId: Int
+        let queryLower = query.lowercased()
+        return detectionResult.elements.all.first { element in
+            let matches = element.label?.lowercased().contains(queryLower) ?? false ||
+                element.value?.lowercased().contains(queryLower) ?? false
+            return matches && element.isEnabled
+        }
+    }
 
-    public init(
-        role: String,
-        title: String?,
-        value: String?,
-        frame: CGRect,
-        applicationName: String,
-        bundleIdentifier: String,
-        processId: Int)
+    private func findElementByAccessibility(matching query: String) -> AXSearchOutcome? {
+        guard let app = MouseLocationUtilities.findApplicationAtMouseLocation() else {
+            return nil
+        }
+
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+
+        let deadline = Date().addingTimeInterval(self.searchLimits.timeBudget)
+        let (result, warnings) = self.searchElementRecursively(
+            in: appElement,
+            matching: query.lowercased(),
+            depth: 0,
+            limits: self.searchLimits,
+            deadline: deadline,
+            warnings: [])
+
+        guard let result else { return nil }
+        return AXSearchOutcome(element: result.element, frame: result.frame, label: result.label, warnings: warnings)
+    }
+
+    private func searchElementRecursively(
+        in element: Element,
+        matching query: String,
+        depth: Int,
+        limits: SearchLimits,
+        deadline: Date,
+        warnings: [String]) -> (result: AXSearchResult?, warnings: [String])
     {
-        self.role = role
-        self.title = title
-        self.value = value
-        self.frame = frame
-        self.applicationName = applicationName
-        self.bundleIdentifier = bundleIdentifier
-        self.processId = processId
+        var currentWarnings = warnings
+
+        if depth > limits.maxDepth {
+            self.logger.debug("AX search aborted: maxDepth reached at depth \(depth)")
+            currentWarnings.append("depth_limit")
+            return (nil, currentWarnings)
+        }
+
+        if Date() > deadline {
+            self.logger.debug("AX search aborted: time budget exceeded")
+            currentWarnings.append("time_budget_exceeded")
+            return (nil, currentWarnings)
+        }
+
+        let title = element.title()?.lowercased() ?? ""
+        let label = element.label()?.lowercased() ?? ""
+        let value = element.stringValue()?.lowercased() ?? ""
+        let roleDescription = element.roleDescription()?.lowercased() ?? ""
+
+        if title.contains(query) || label.contains(query) ||
+            value.contains(query) || roleDescription.contains(query)
+        {
+            if let frame = element.frame() {
+                let displayLabel = element.title() ?? element.label() ?? element.roleDescription()
+                return (AXSearchResult(element: element, frame: frame, label: displayLabel), currentWarnings)
+            }
+        }
+
+        if let children = element.children() {
+            let limitedChildren = children.prefix(limits.maxChildren)
+            for child in limitedChildren {
+                let (found, childWarnings) = searchElementRecursively(
+                    in: child,
+                    matching: query,
+                    depth: depth + 1,
+                    limits: limits,
+                    deadline: deadline,
+                    warnings: currentWarnings)
+                if let found {
+                    return (found, childWarnings)
+                }
+            }
+
+            if children.count > limits.maxChildren {
+                self.logger.debug("AX search truncated children: \(children.count) > \(limits.maxChildren)")
+                currentWarnings.append("child_limit")
+            }
+        }
+
+        return (nil, currentWarnings)
     }
 }

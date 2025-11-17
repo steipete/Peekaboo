@@ -8,11 +8,24 @@ import UniformTypeIdentifiers
 public struct WatchCaptureDependencies {
     public let screenCapture: any ScreenCaptureServiceProtocol
     public let screenService: (any ScreenServiceProtocol)?
+
+    public init(
+        screenCapture: any ScreenCaptureServiceProtocol,
+        screenService: (any ScreenServiceProtocol)? = nil)
+    {
+        self.screenCapture = screenCapture
+        self.screenService = screenService
+    }
 }
 
 public struct WatchAutocleanConfig {
     public let minutes: Int
     public let managed: Bool
+
+    public init(minutes: Int, managed: Bool) {
+        self.minutes = minutes
+        self.managed = managed
+    }
 }
 
 public struct WatchCaptureConfiguration {
@@ -20,6 +33,18 @@ public struct WatchCaptureConfiguration {
     public let options: WatchCaptureOptions
     public let outputRoot: URL
     public let autoclean: WatchAutocleanConfig
+
+    public init(
+        scope: WatchScope,
+        options: WatchCaptureOptions,
+        outputRoot: URL,
+        autoclean: WatchAutocleanConfig)
+    {
+        self.scope = scope
+        self.options = options
+        self.outputRoot = outputRoot
+        self.autoclean = autoclean
+    }
 }
 
 /// Adaptive PNG capture session for agents.
@@ -66,7 +91,7 @@ public final class WatchCaptureSession {
         let timing = self.makeTiming(start: Date())
         try await self.captureFrames(timing: timing)
         self.finalizeActiveInterval(start: timing.start)
-        try self.ensureFallbackFrame(start: timing.start)
+        try await self.ensureFallbackFrame(start: timing.start)
 
         let contact = try self.buildContactSheet()
         let durationMs = self.elapsedMilliseconds(since: timing.start)
