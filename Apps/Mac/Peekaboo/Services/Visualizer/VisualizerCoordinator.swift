@@ -64,6 +64,8 @@ final class VisualizerCoordinator {
         set { UserDefaults.standard.set(newValue, forKey: "PeekabooScreenshotCount") }
     }
 
+    private var lastWatchHUDDate = Date.distantPast
+
     // MARK: - Initialization
 
     init() {
@@ -140,8 +142,24 @@ extension VisualizerCoordinator {
     }
 
     func showWatchCapture(in rect: CGRect) async -> Bool {
-        self.logger.debug("🔁 Visualizer: Watch capture recorded for \(rect), suppressing flash")
-        return true
+        let now = Date()
+        guard now.timeIntervalSince(self.lastWatchHUDDate) >= 1.0 else {
+            return true
+        }
+        self.lastWatchHUDDate = now
+
+        let hudSize = CGSize(width: 340, height: 70)
+        let screen = self.getTargetScreen(for: CGPoint(x: rect.midX, y: rect.midY))
+        var hudOrigin = CGPoint(
+            x: rect.midX - hudSize.width / 2,
+            y: rect.minY + 40)
+        hudOrigin.x = max(screen.frame.minX + 20, min(hudOrigin.x, screen.frame.maxX - hudSize.width - 20))
+        hudOrigin.y = max(screen.frame.minY + 20, min(hudOrigin.y, screen.frame.maxY - hudSize.height - 20))
+        let hudRect = CGRect(origin: hudOrigin, size: hudSize)
+
+        return await self.animationQueue.enqueue(priority: .low) {
+            await self.displayWatchHUD(in: hudRect)
+        }
     }
 
     func showClickFeedback(at point: CGPoint, type: PeekabooFoundation.ClickType) async -> Bool {
@@ -323,6 +341,17 @@ extension VisualizerCoordinator {
             duration: self.scaledDuration(AnimationBaseline.screenshotFlash),
             fadeOut: false)
 
+        return true
+    }
+
+    private func displayWatchHUD(in rect: CGRect) async -> Bool {
+        guard self.isEnabled() else { return false }
+        let view = WatchCaptureHUDView()
+        _ = self.overlayManager.showAnimation(
+            at: rect,
+            content: view,
+            duration: self.scaledDuration(2.4),
+            fadeOut: true)
         return true
     }
 

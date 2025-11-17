@@ -5,6 +5,7 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
+import AppKit
 import PeekabooCore
 import PeekabooFoundation
 import SwiftUI
@@ -83,6 +84,10 @@ struct VisualizerTestView: View {
                         AnimationSection(title: "Core Animations") {
                             AnimationButton("Screenshot Flash") {
                                 await self.testScreenshotFlash()
+                            }
+
+                            AnimationButton("Watch Capture HUD") {
+                                await self.testWatchHUD()
                             }
 
                             AnimationButton("Click Animation") {
@@ -225,6 +230,11 @@ struct VisualizerTestView: View {
 
     func testAppQuit() async {
         _ = await self.coordinator.showAppQuit(appName: "TestApp", iconPath: nil as String?)
+    }
+
+    func testWatchHUD() async {
+        let rect = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        _ = await self.coordinator.showWatchCapture(in: rect)
     }
 
     private func testWindowOperation(_ operation: WindowOperation) async {
