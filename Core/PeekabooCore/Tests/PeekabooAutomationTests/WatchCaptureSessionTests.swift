@@ -48,4 +48,182 @@ struct WatchCaptureSessionTests {
             originalSize: CGSize(width: 100, height: 100))
         #expect(result.changePercent <= 100)
     }
+
+    @Test("Stops at max-frames cap and keeps first frame")
+    @MainActor
+    func respectsFrameCapDuringWatch() async throws {
+        let png = Self.makePNG(size: CGSize(width: 20, height: 20))
+        let capture = StubScreenCaptureService(result: png, size: CGSize(width: 20, height: 20))
+        let screens = StubScreenService()
+        let scope = WatchScope(kind: .frontmost, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+
+        let options = WatchCaptureOptions(
+            duration: 2,
+            idleFps: 5,
+            activeFps: 5,
+            changeThresholdPercent: 0,
+            heartbeatSeconds: 0,
+            quietMsToIdle: 0,
+            maxFrames: 1,
+            maxMegabytes: nil,
+            highlightChanges: false,
+            captureFocus: .auto,
+            resolutionCap: nil,
+            diffStrategy: .fast,
+            diffBudgetMs: nil)
+
+        let output = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("watch-cap-\(UUID().uuidString)", isDirectory: true)
+
+        let session = WatchCaptureSession(
+            screenCapture: capture,
+            screenService: screens,
+            scope: scope,
+            options: options,
+            outputRoot: output,
+            autocleanMinutes: 1,
+            managedAutoclean: false)
+
+        let result = try await session.run()
+        #expect(result.frames.count == 1)
+        #expect(result.warnings.contains { $0.code == .frameCap })
+    }
+
+    @Test("Stops at size cap and emits warning")
+    @MainActor
+    func respectsSizeCapDuringWatch() async throws {
+        let png = Self.makePNG(size: CGSize(width: 50, height: 50))
+        let capture = StubScreenCaptureService(result: png, size: CGSize(width: 50, height: 50))
+        let screens = StubScreenService()
+        let scope = WatchScope(kind: .frontmost, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+
+        let options = WatchCaptureOptions(
+            duration: 2,
+            idleFps: 5,
+            activeFps: 5,
+            changeThresholdPercent: 0,
+            heartbeatSeconds: 0,
+            quietMsToIdle: 0,
+            maxFrames: 100,
+            maxMegabytes: 0, // trigger immediately
+            highlightChanges: false,
+            captureFocus: .auto,
+            resolutionCap: nil,
+            diffStrategy: .fast,
+            diffBudgetMs: nil)
+
+        let output = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("watch-sizecap-\(UUID().uuidString)", isDirectory: true)
+
+        let session = WatchCaptureSession(
+            screenCapture: capture,
+            screenService: screens,
+            scope: scope,
+            options: options,
+            outputRoot: output,
+            autocleanMinutes: 1,
+            managedAutoclean: false)
+
+        let result = try await session.run()
+        #expect(result.warnings.contains { $0.code == .sizeCap })
+    }
+
+    // MARK: - Helpers
+
+    private static func makePNG(size: CGSize) -> Data {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: Int(size.width),
+            height: Int(size.height),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
+            fatalError("Failed to create context")
+        }
+        ctx.setFillColor(CGColor(red: 0.2, green: 0.5, blue: 0.8, alpha: 1))
+        ctx.fill(CGRect(origin: .zero, size: size))
+        guard let image = ctx.makeImage(),
+              let dest = CGImageDestinationCreateWithData(
+                  NSMutableData(),
+                  UTType.png.identifier as CFString,
+                  1,
+                  nil)
+        else {
+            fatalError("Failed to build PNG")
+        }
+        CGImageDestinationAddImage(dest, image, nil)
+        guard CGImageDestinationFinalize(dest) else {
+            fatalError("Failed to finalize PNG")
+        }
+        return dest.data as Data
+    }
+}
+
+// MARK: - Stubs
+
+@MainActor
+private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
+    private let resultData: Data
+    private let size: CGSize
+
+    init(result: Data, size: CGSize) {
+        self.resultData = result
+        self.size = size
+    }
+
+    func captureScreen(displayIndex _: Int?) async throws -> CaptureResult {
+        self.makeResult(mode: .screen)
+    }
+
+    func captureWindow(appIdentifier _: String, windowIndex _: Int?) async throws -> CaptureResult {
+        self.makeResult(mode: .window)
+    }
+
+    func captureFrontmost() async throws -> CaptureResult {
+        self.makeResult(mode: .frontmost)
+    }
+
+    func captureArea(_ rect: CGRect) async throws -> CaptureResult {
+        var meta = self.baseMetadata(mode: .area)
+        meta.displayInfo = DisplayInfo(index: 0, name: "Test", bounds: rect, scaleFactor: 2)
+        return CaptureResult(imageData: self.resultData, savedPath: nil, metadata: meta, warning: nil)
+    }
+
+    func hasScreenRecordingPermission() async -> Bool { true }
+
+    private func makeResult(mode: CaptureMode) -> CaptureResult {
+        CaptureResult(
+            imageData: self.resultData,
+            savedPath: nil,
+            metadata: self.baseMetadata(mode: mode),
+            warning: nil)
+    }
+
+    private func baseMetadata(mode: CaptureMode) -> CaptureMetadata {
+        CaptureMetadata(
+            size: self.size,
+            mode: mode,
+            applicationInfo: nil,
+            windowInfo: nil,
+            displayInfo: DisplayInfo(index: 0, name: "Test", bounds: CGRect(origin: .zero, size: self.size), scaleFactor: 2),
+            timestamp: Date())
+    }
+}
+
+@MainActor
+private final class StubScreenService: ScreenServiceProtocol {
+    func listScreens() -> [ScreenInfo] {
+        [ScreenInfo(index: 0, name: "Test", frame: CGRect(x: 0, y: 0, width: 100, height: 100), visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100), isPrimary: true, scaleFactor: 2, displayID: 1)]
+    }
+
+    func screenContainingWindow(bounds _: CGRect) -> ScreenInfo? { self.listScreens().first }
+
+    func screen(at index: Int) -> ScreenInfo? {
+        self.listScreens().first(where: { $0.index == index })
+    }
+
+    var primaryScreen: ScreenInfo? { self.listScreens().first }
 }

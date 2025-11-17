@@ -19,7 +19,7 @@ This doc tracks the next improvements to make `peekaboo watch` sturdier and more
 - **(Done)** Shared metadata helpers: CLI and MCP now share `WatchMetaSummary` for emitting contact/diff metadata.
 
 ## Testing gaps
-- Expand hysteresis/early-stop Swift Testing coverage for cap scenarios (max-frames/max-mb while mode flips). Idle→active→idle timelines are now covered.
+- Cover cap scenarios (max-frames/max-mb while mode flips) in Swift Testing — stubbed tests exist but are disabled by default via swift-test filtering.
 
 ## Docs polish
 - **(Done)** Document MCP meta fields (`contact_columns/contact_rows/contact_sampled_indexes`, `contact_thumb_size`) for agents.
