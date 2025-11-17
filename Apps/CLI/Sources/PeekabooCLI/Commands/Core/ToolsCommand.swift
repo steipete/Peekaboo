@@ -73,6 +73,7 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
         let nativeTools: [any MCPTool] = [
             ImageTool(context: toolContext),
+            WatchTool(context: toolContext),
             AnalyzeTool(),
             ListTool(context: toolContext),
             PermissionsTool(context: toolContext),
