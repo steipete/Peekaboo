@@ -275,6 +275,7 @@ git push origin update-vX.Y.Z
 - [ ] Documentation updated (README.md, spec.md if needed)
 - [ ] Release preparation script run (`npm run prepare-release`)
 - [ ] Local Swift tests compiled and passed
+- [ ] Visualizer smoke suite run (`peekaboo visualizer` with Peekaboo.app open)
 - [ ] Changes committed and pushed
 - [ ] Git tag created and pushed
 - [ ] Release script run successfully
