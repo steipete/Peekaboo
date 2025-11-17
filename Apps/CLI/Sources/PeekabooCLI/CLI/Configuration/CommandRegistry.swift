@@ -33,6 +33,7 @@ enum CommandRegistry {
     @MainActor
     static let entries: [CommandRegistryEntry] = [
         .init(type: ImageCommand.self, category: .core),
+        .init(type: WatchCommand.self, category: .core),
         .init(type: ListCommand.self, category: .core),
         .init(type: ToolsCommand.self, category: .core),
         .init(type: ConfigCommand.self, category: .core),

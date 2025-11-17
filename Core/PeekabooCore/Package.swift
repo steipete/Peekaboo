@@ -14,9 +14,13 @@ let coreTargetSettings = approachableConcurrencySettings + [
 ]
 
 let includeAutomationTests = ProcessInfo.processInfo.environment["PEEKABOO_INCLUDE_AUTOMATION_TESTS"] == "true"
-let testTargetSettings: [SwiftSetting] = includeAutomationTests
-    ? approachableConcurrencySettings + [.define("PEEKABOO_INCLUDE_AUTOMATION_TESTS")]
-    : approachableConcurrencySettings
+let testTargetSettings: [SwiftSetting] = {
+    var base = approachableConcurrencySettings + [.enableExperimentalFeature("SwiftTesting")]
+    if includeAutomationTests {
+        base.append(.define("PEEKABOO_INCLUDE_AUTOMATION_TESTS"))
+    }
+    return base
+}()
 
 let package = Package(
     name: "PeekabooCore",

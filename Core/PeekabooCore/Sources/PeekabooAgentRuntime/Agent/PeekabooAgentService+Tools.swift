@@ -43,6 +43,18 @@ extension PeekabooAgentService {
             })
     }
 
+    public func createWatchTool() -> AgentTool {
+        let tool = WatchTool(context: self.makeToolContext())
+        return AgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
+                return await convertToolResponseToAgentToolResultAsync(response)
+            })
+    }
+
     // MARK: - UI Automation Tools
 
     public func createClickTool() -> AgentTool {
