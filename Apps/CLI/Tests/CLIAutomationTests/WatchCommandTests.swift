@@ -88,3 +88,45 @@ struct WatchCommandTests {
     }
 }
 #endif
+    @Test("Emits diffDowngraded when SSIM exceeds budget")
+    @MainActor
+    func emitsDiffDowngradedWarning() async throws {
+        let stubCapture = StubScreenCaptureService(permissionGranted: true)
+        // Make SSIM path slow by injecting a large image and low budget.
+        let data = WatchCommandTests.makePNG(color: .systemYellow, size: CGSize(width: 400, height: 400))
+        stubCapture.captureFrontmostHandler = {
+            return CaptureResult(
+                imageData: data,
+                savedPath: nil,
+                metadata: CaptureMetadata(
+                    size: CGSize(width: 400, height: 400),
+                    mode: .frontmost,
+                    applicationInfo: nil,
+                    windowInfo: nil,
+                    displayInfo: nil,
+                    timestamp: Date()))
+        }
+
+        let ctx = TestServicesFactory.makeAutomationTestContext(
+            screens: [
+                ScreenInfo(index: 0, name: "Test", frame: CGRect(x: 0, y: 0, width: 100, height: 100), visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 100), isPrimary: true, scaleFactor: 2, displayID: 1)
+            ],
+            screenCapture: stubCapture)
+
+        let args = [
+            "watch",
+            "--duration", "1",
+            "--idle-fps", "2",
+            "--active-fps", "2",
+            "--threshold", "0.1",
+            "--max-frames", "1",
+            "--diff-strategy", "quality",
+            "--diff-budget-ms", "1",
+            "--json-output"
+        ]
+
+        let result = try await InProcessCommandRunner.run(args, services: ctx.services)
+        #expect(result.exitStatus == 0)
+        let decoded = try JSONDecoder().decode(WatchCaptureResult.self, from: Data(result.stdout.utf8))
+        #expect(decoded.warnings.contains { $0.code == .diffDowngraded })
+    }
