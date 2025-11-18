@@ -32,6 +32,7 @@ final class VisualizerCoordinator {
 
     /// Optimized animation queue with batching and priorities
     private let animationQueue = OptimizedAnimationQueue()
+    private static let animationSlowdownFactor: Double = 3.0
 
     /// Settings reference
     private weak var settings: PeekabooSettings?
@@ -58,6 +59,14 @@ final class VisualizerCoordinator {
         max(0.1, min(2.0, self.settings?.visualizerAnimationSpeed ?? PeekabooSettings.defaultVisualizerAnimationSpeed))
     }
 
+    private var durationScaledAnimationSpeed: Double {
+        self.animationSpeedScale * Self.animationSlowdownFactor
+    }
+
+    private var inverseScaledAnimationSpeed: Double {
+        self.animationSpeedScale / Self.animationSlowdownFactor
+    }
+
     /// Screenshot counter for easter egg (persisted)
     private var screenshotCount: Int {
         get { UserDefaults.standard.integer(forKey: "PeekabooScreenshotCount") }
@@ -75,12 +84,18 @@ final class VisualizerCoordinator {
 
     // MARK: - Helpers
 
-    private func scaledDuration(_ baseline: TimeInterval) -> TimeInterval {
-        baseline * self.animationSpeedScale
+    private func scaledDuration(_ baseline: TimeInterval, applySlowdown: Bool = true) -> TimeInterval {
+        let slowdown = applySlowdown ? Self.animationSlowdownFactor : 1.0
+        return baseline * self.animationSpeedScale * slowdown
     }
 
-    private func scaledDuration(for requested: TimeInterval, minimum baseline: TimeInterval) -> TimeInterval {
-        max(requested, baseline) * self.animationSpeedScale
+    private func scaledDuration(
+        for requested: TimeInterval,
+        minimum baseline: TimeInterval,
+        applySlowdown: Bool = true) -> TimeInterval
+    {
+        let slowdown = applySlowdown ? Self.animationSlowdownFactor : 1.0
+        return max(requested, baseline) * self.animationSpeedScale * slowdown
     }
 
     // MARK: - Settings
@@ -347,7 +362,7 @@ extension VisualizerCoordinator {
         _ = self.overlayManager.showAnimation(
             at: rect,
             content: flashView,
-            duration: self.scaledDuration(AnimationBaseline.screenshotFlash),
+            duration: self.scaledDuration(AnimationBaseline.screenshotFlash, applySlowdown: false),
             fadeOut: false)
 
         return true
@@ -376,7 +391,7 @@ extension VisualizerCoordinator {
         // Create click animation view
         let clickView = ClickAnimationView(
             clickType: type,
-            animationSpeed: self.animationSpeedScale)
+            animationSpeed: self.durationScaledAnimationSpeed)
 
         // Calculate window rect centered on click point
         let size: CGFloat = 200
@@ -409,7 +424,7 @@ extension VisualizerCoordinator {
             keys: keys,
             theme: .modern,
             cadence: cadence,
-            animationSpeed: self.animationSpeedScale)
+            animationSpeed: self.inverseScaledAnimationSpeed)
 
         // Position at bottom center of the screen where mouse is located
         let screen = self.getTargetScreen()
@@ -447,7 +462,7 @@ extension VisualizerCoordinator {
         let scrollView = ScrollAnimationView(
             direction: direction,
             amount: amount,
-            animationSpeed: self.animationSpeedScale)
+            animationSpeed: self.inverseScaledAnimationSpeed)
 
         // Position near scroll point
         let size: CGFloat = 100
