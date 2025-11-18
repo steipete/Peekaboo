@@ -82,9 +82,8 @@ Keep this master file up to date as you notice new rules that recur across repos
 <tools>
 # TOOLS
 
-Edit guidance: keep the actual tool list inside the `<tools></tools>` block below so downstream AGENTS syncs can copy the block contents verbatim (without wrapping twice).
+Edit guidance: keep the actual tool list inside this `<tools></tools>` block so downstream AGENTS syncs can copy it verbatim.
 
-<tools>
 - `runner`: Bash shim that routes every command through Bun guardrails (timeouts, git policy, safe deletes).
 - `git` / `bin/git`: Git shim that forces git through the guardrails; use `./git --help` to inspect.
 - `scripts/committer`: Stages the files you list and creates the commit safely.
@@ -93,14 +92,10 @@ Edit guidance: keep the actual tool list inside the `<tools></tools>` block belo
 - `scripts/runner.ts`: Bun implementation backing `runner`; run `bun scripts/runner.ts --help`.
 - `bin/sleep`: Sleep shim that enforces the 30s ceiling; run `bin/sleep --help`.
 - `xcp`: Xcode project/workspace helper; run `xcp --help`.
-- `oracle`: CLI to bundle prompt + files for another AI; run `npx -y @steipete/oracle --help`.
+- `oracle`: Ask a smart AI to review code and find bugs; you must call `npx -y @steipete/oracle --help` first.
 - `mcporter`: MCP launcher for any registered MCP server; run `npx mcporter`.
 - `iterm`: Full TTY terminal via MCP; run `npx mcporter iterm`.
 - `firecrawl`: MCP-powered site fetcher to Markdown; run `npx mcporter firecrawl`.
 - `XcodeBuildMCP`: MCP wrapper around Xcode tooling; run `npx mcporter XcodeBuildMCP`.
 - `gh`: GitHub CLI for PRs, CI logs, releases, repo queries; run `gh help`.
 </tools>
-
-</tools>
-
-Guideline: ignore any project folders whose names either contain "copy" or end with a number (e.g., `sweetistics copy`, `sweetistics2`, `VibeMeter3`).
