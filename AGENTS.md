@@ -3,6 +3,8 @@
 
 Shared guardrails distilled from the various `~/Projects/*/AGENTS.md` files (state as of **November 15, 2025**). This document highlights the rules that show up again and again; still read the repo-local instructions before making changes.
 
+Usage: In repo copies, the shared content lives inside `<shared>…</shared>` and the tool list inside `<tools>…</tools>`. Keep those tagged blocks identical across repos; anything outside them is repo-local and can be customized freely.
+
 ## Codex Global Instructions
 - Keep the system-wide Codex guidance at `~/.codex/AGENTS.md` (the Codex home; override via `CODEX_HOME` if needed) so every task inherits these rules by default.
 
@@ -30,7 +32,6 @@ Shared guardrails distilled from the various `~/Projects/*/AGENTS.md` files (sta
 - Leave existing watchers running unless the owner tells you to stop them; keep their tmux panes healthy if you started them.
 - Treat every bug fix as a chance to add or extend automated tests that prove the behavior.
 - When someone asks to “fix CI,” use the GitHub CLI (`gh`) to inspect, rerun, and unblock failing workflows on GitHub until they are green.
-- Poltergeist: for short sessions leave it running; if long builds/tests are struggling or SwiftPM contention appears, temporarily stop it (`npm run poltergeist:stop`) while you debug/run suites, then restart (`npm run poltergeist:haunt`) afterward.
 
 ### Code Quality & Naming
 - Refactor in place. Never create duplicate files with suffixes such as “V2”, “New”, or “Fixed”; update the canonical file and remove obsolete paths entirely.
