@@ -51,23 +51,16 @@ Implementation plan (handoff-ready)
 Open items
 - Finalize the Peekaboo-facing UX for `config init/show/add/login` using the Tachikoma AuthManager surface (today Peekaboo still owns legacy config verbs).
 - Decide on canonical naming for xAI/Grok in user-facing docs (`provider id` stays `grok`, canonical env key is `X_AI_API_KEY`, aliases: `XAI_API_KEY`, `GROK_API_KEY`, string id `xai` now maps to Grok).
-- Wire Tachikoma’s config/auth helpers into Tachikoma CLI (or expose as `tk-config`) so hosts don’t re-implement prompts/status tables.
+- Wire Peekaboo CLI to rely on the new Tachikoma `tachikoma config` binary (keep `tk-config` alias for back-compat) instead of owning prompts/status tables.
 - Update migration tracker once the Peekaboo CLI wiring and docs are finished.
 
 ## Progress log
-- 2025-11-18: All Tachikoma tests now green. Fixed Azure OpenAI helper to use per-test URLSession and preserve api-version/api-key/bearer semantics; OpenAI Responses/chat mocks no longer conflict. Mock transcription now returns `"mock transcription"` with word timestamps. Environment isolation now scoped per test (no global unsets), ignore-env flag restored after each helper. Added GROK_API_KEY alias and `xai` string mapping; AuthManager setIgnoreEnvironment now returns previous state for scoped usage.
+- 2025-11-18 (evening): All Tachikoma tests green after introducing the namespaced CLI entry point `tachikoma config …` (binary alias `tk-config`). Status/add/login/init now route through the shared AuthManager; test helpers isolate env per test and scrub per-profile credentials for missing-key assertions. OpenAI transcription tests explicitly pass their configs so keys are honored in mock mode.
+- 2025-11-18 (afternoon): All Tachikoma tests now green. Fixed Azure OpenAI helper to use per-test URLSession and preserve api-version/api-key/bearer semantics; OpenAI Responses/chat mocks no longer conflict. Mock transcription now returns `"mock transcription"` with word timestamps. Environment isolation now scoped per test (no global unsets), ignore-env flag restored after each helper. Added GROK_API_KEY alias and `xai` string mapping; AuthManager setIgnoreEnvironment now returns previous state for scoped usage.
 - 2025-11-17: AuthManager centralization (CredentialStore/Resolver, validators, OAuth PKCE) and provider wiring; docs refreshed for config/oauth/provider surfaces; profile dir override for Peekaboo set to `.peekaboo`; open issues listed above (now resolved).
 
 Next steps (for the refactor proper)
-1) Build Tachikoma CredentialStore/Resolver + OAuthManager + validators; add Tachikoma CLI (`config add/login/show/init`). **Partially done**: core AuthManager + validators in place; CLI surface still to be wired.
-2) Adjust providers to consume AuthToken; remove Peekaboo-local auth logic and just set `profileDirectoryName = ".peekaboo"`. **Auth resolution is centralized; Peekaboo CLI still needs to call into it.**
-3) Update Peekaboo CLI to forward/alias Tachikoma commands (or shell out) instead of owning auth logic. Add init UX that prints “here’s how to configure OpenAI/Anthropic/Gemini/xAI” and surfaces any detected env keys without persisting them.
-4) Add tests (unit + mock HTTP + CLI snapshots) for the new CLI surfaces, OAuth refresh, alias normalization, and status validation.
-5) Re-run docs to ensure they match the final code paths and update the migration tracker once Peekaboo wiring lands.
-
-## Next steps (for the refactor proper)
-1) Build Tachikoma CredentialStore/Resolver + OAuthManager + validators; add Tachikoma CLI (`config add/login/show/init`).
-2) Adjust providers to consume AuthToken; remove Peekaboo-local auth logic and just set `profileDirectoryName = ".peekaboo"`.
-3) Update Peekaboo CLI to forward/alias Tachikoma commands (or shell out) instead of owning auth logic.
-4) Add tests (unit + mock HTTP + CLI snapshots) as outlined above.
-5) Re-run docs to ensure they match the final code paths.
+1) Finish Peekaboo wiring: make `peekaboo config` call into Tachikoma AuthManager (or shell `tachikoma config`) and drop the legacy prompt logic; keep profile dir override `.peekaboo`.
+2) Keep the xAI/Grok naming consistent in user-facing docs while accepting `grok`/`xai` plus `X_AI_API_KEY`/`XAI_API_KEY`/`GROK_API_KEY`.
+3) Add CLI snapshot tests for `tachikoma config init/show/add/login` plus validator timeout cases; add OAuth refresh unit tests.
+4) Update migration tracker once Peekaboo wiring lands and refresh docs for the new flow.
