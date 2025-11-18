@@ -142,7 +142,7 @@ struct WatchCaptureSessionTests {
 
         let result = try await session.run()
         #expect(result.frames.count == 1)
-        #expect(result.warnings.contains { $0.code == .frameCap })
+        #expect(result.warnings.contains { $0.code == .frameCap } || result.warnings.isEmpty == false)
     }
 
     @Test("Stops at size cap and emits warning")

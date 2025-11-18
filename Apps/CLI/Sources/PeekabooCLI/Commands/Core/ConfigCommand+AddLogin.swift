@@ -79,7 +79,11 @@ extension ConfigCommand {
             case .success:
                 self.output.success(message: "[ok] OAuth tokens stored for \(pid.displayName.lowercased())")
             case let .failure(reason):
-                self.output.error(code: "OAUTH_ERROR", message: reason)
+                let message: String = switch reason {
+                case .unsupported: "OAuth not supported for provider"
+                case let .general(text): text
+                }
+                self.output.error(code: "OAUTH_ERROR", message: message)
                 throw ExitCode.failure
             }
         }

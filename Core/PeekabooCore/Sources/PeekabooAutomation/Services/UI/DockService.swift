@@ -3,6 +3,7 @@ import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
+import os
 import PeekabooFoundation
 import PeekabooVisualizer
 
@@ -20,9 +21,11 @@ public enum DockError: Error {
 /// Default implementation of Dock interaction operations using AXorcist
 @MainActor
 public final class DockService: DockServiceProtocol {
-    private let visualizerClient = VisualizationClient.shared
+    private let visualizerClient: VisualizationClient
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "DockService")
 
-    public init() {
+    public init(visualizerClient: VisualizationClient = .shared) {
+        self.visualizerClient = visualizerClient
         Task { @MainActor in
             self.visualizerClient.connect()
         }

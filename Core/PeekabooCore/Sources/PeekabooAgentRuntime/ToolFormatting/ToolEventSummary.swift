@@ -175,10 +175,13 @@ public struct ToolEventSummary: Codable, Sendable {
         if let elementLabel {
             var segments: [String] = []
             if let targetApp { segments.append(targetApp) }
-            segments.append(elementLabel)
+
+            var label = elementLabel
             if let elementRole {
-                segments.append("(\(elementRole))")
+                label += " (\(elementRole))"
             }
+            segments.append(label)
+
             return segments.joined(separator: " · ")
         }
 

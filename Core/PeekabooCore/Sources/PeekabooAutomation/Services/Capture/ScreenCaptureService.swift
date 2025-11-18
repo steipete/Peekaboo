@@ -824,7 +824,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
             let image: CGImage
             do {
-                image = try await self.captureWindowWithCGWindowList(windowID: windowID)
+                image = try self.captureWindowWithCGWindowList(windowID: windowID)
                 self.logger.debug(
                     "Captured window via CGWindowList",
                     metadata: ["windowID": String(windowID)],

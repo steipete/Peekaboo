@@ -2,6 +2,7 @@ import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
+import Tachikoma
 
 @available(macOS 14.0, *)
 @MainActor

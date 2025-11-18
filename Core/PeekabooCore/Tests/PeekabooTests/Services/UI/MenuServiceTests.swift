@@ -5,6 +5,10 @@
 
 import CoreGraphics
 import Testing
+import Foundation
+import os
+import PeekabooAutomation
+import PeekabooFoundation
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
 @testable import PeekabooCore
@@ -157,5 +161,140 @@ struct MenuServiceTests {
 
         let displayTitle = service.resolvedMenuBarTitle(for: placeholderExtra, index: 2)
         #expect(displayTitle == "Menu Bar Item #2")
+    }
+
+    @Test("Traversal budget caps children")
+    func traversalBudgetChildCap() {
+        var budget = MenuTraversalBudget(limits: .init(maxDepth: 4, maxChildren: 2, timeBudget: 5))
+
+        let logger = Logger(subsystem: "test", category: "menu")
+        let first = budget.allowVisit(depth: 1, logger: logger, context: "a")
+        let second = budget.allowVisit(depth: 1, logger: logger, context: "b")
+        let third = budget.allowVisit(depth: 1, logger: logger, context: "c")
+
+        #expect(first)
+        #expect(second)
+        #expect(third == false)
+    }
+
+    @Test("Traversal budget caps time")
+    func traversalBudgetTimeCap() async throws {
+        var budget = MenuTraversalBudget(limits: .init(maxDepth: 4, maxChildren: 10, timeBudget: 0.001))
+        let logger = Logger(subsystem: "test", category: "menu")
+
+        let firstAllowed = budget.allowVisit(depth: 1, logger: logger, context: "start")
+        #expect(firstAllowed)
+        try await Task.sleep(nanoseconds: 2_000_000)
+        let secondAllowed = budget.allowVisit(depth: 1, logger: logger, context: "later")
+        #expect(secondAllowed == false)
+    }
+
+    @Test("Normalized title matching ignores diacritics and whitespace")
+    func normalizedTitleMatching() {
+        let target = "  Résumé  "
+        #expect(titlesMatch(candidate: "resume", target: target))
+        #expect(titlesMatch(candidate: "Résumé", target: target))
+        #expect(titlesMatchPartial(candidate: "My Resume", target: target))
+        #expect(titlesMatch(candidate: "Résumé", target: "resume"))
+    }
+
+    @Test("Normalized title strips accelerators and ellipsis")
+    func normalizedTitleStripsAccelerators() {
+        let target = "&File…"
+        #expect(titlesMatch(candidate: "File...", target: target))
+        #expect(titlesMatch(candidate: "file", target: target))
+        #expect(titlesMatchPartial(candidate: "Recent File", target: target))
+    }
+
+    @Test("Placeholder detection catches GUIDs and numbers")
+    func placeholderDetection() {
+        #expect(isPlaceholderMenuTitle("12345"))
+        #expect(isPlaceholderMenuTitle("bb3cc23c-6950-4e96-8b40-850e09f46934"))
+        #expect(isPlaceholderMenuTitle("Menu Item"))
+        #expect(isPlaceholderMenuTitle("Wi-Fi") == false)
+    }
+
+    @Test("Traversal limits from policy")
+    func traversalLimitPolicy() {
+        let balanced = MenuTraversalLimits.from(policy: .balanced)
+        let debug = MenuTraversalLimits.from(policy: .debug)
+        #expect(balanced.maxDepth < debug.maxDepth)
+        #expect(balanced.maxChildren < debug.maxChildren)
+        #expect(balanced.timeBudget < debug.timeBudget)
+    }
+
+    @Test("Menu cache returns within TTL")
+    @MainActor
+    func menuCacheReturnsWithinTTL() async throws {
+        @MainActor
+        final class FakeAppService: ApplicationServiceProtocol {
+            let app: ServiceApplicationInfo
+            private(set) var lookups = 0
+
+            init(app: ServiceApplicationInfo) {
+                self.app = app
+            }
+
+            func launchApplication(identifier: String) async throws -> ServiceApplicationInfo { app }
+            func activateApplication(identifier: String) async throws {}
+            func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
+                UnifiedToolOutput(
+                    data: ServiceApplicationListData(applications: [app]),
+                    summary: .init(brief: "stub", status: .success),
+                    metadata: .init(duration: 0))
+            }
+            func getFrontmostApplication() async throws -> ServiceApplicationInfo { app }
+            func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
+                lookups += 1
+                return app
+            }
+            func getRunningApplications() async throws -> [ServiceApplicationInfo] { [app] }
+            func listWindows(for appIdentifier: String, timeout: Float?) async throws -> UnifiedToolOutput<ServiceWindowListData> {
+                UnifiedToolOutput(
+                    data: ServiceWindowListData(windows: [], targetApplication: app),
+                    summary: .init(brief: "stub", status: .success),
+                    metadata: .init(duration: 0))
+            }
+            func isApplicationRunning(identifier: String) async -> Bool { true }
+            func quitApplication(identifier: String, force: Bool) async throws -> Bool { true }
+            func hideApplication(identifier: String) async throws {}
+            func unhideApplication(identifier: String) async throws {}
+            func hideOtherApplications(identifier: String) async throws {}
+            func showAllApplications() async throws {}
+        }
+
+        let app = ServiceApplicationInfo(
+            processIdentifier: 1234,
+            bundleIdentifier: "com.test.app",
+            name: "TestApp",
+            bundlePath: nil,
+            isActive: true,
+            isHidden: false,
+            windowCount: 0)
+
+        let fakeService = FakeAppService(app: app)
+        let service = MenuService(
+            applicationService: fakeService,
+            traversalPolicy: .balanced,
+            logger: Logger(subsystem: "test", category: "menu"),
+            visualizerClient: VisualizationClient.shared,
+            partialMatchEnabled: true,
+            cacheTTL: 5)
+
+        // Seed cache manually to avoid AX dependency in unit test
+        let cachedMenu = Menu(title: "File", bundleIdentifier: app.bundleIdentifier, ownerName: app.name, items: [], isEnabled: true)
+        let cachedStructure = MenuStructure(application: app, menus: [cachedMenu])
+        let appId = app.bundleIdentifier ?? "com.test.app"
+        service.menuCache[appId] = (expiresAt: Date().addingTimeInterval(5), structure: cachedStructure)
+
+        let result = try await service.listMenus(for: appId)
+
+        #expect(result.menus.count == 1)
+        #expect(result.menus.first?.title == "File")
+
+        let lookupCount = await fakeService.lookups
+        #expect(lookupCount == 0) // cache hit avoided lookup
+
+        service.clearMenuCache()
     }
 }

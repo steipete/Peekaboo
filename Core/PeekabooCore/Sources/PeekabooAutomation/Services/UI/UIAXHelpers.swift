@@ -1,0 +1,91 @@
+//
+//  UIAXHelpers.swift
+//  PeekabooCore
+//
+
+import AppKit
+import ApplicationServices
+import AXorcist
+import Foundation
+import OSLog
+
+// MARK: - Element helpers
+
+extension Element {
+    @MainActor
+    func menuBar() -> Element? {
+        guard let menuBar = attribute(Attribute<AXUIElement>("AXMenuBar")) else {
+            return nil
+        }
+        return Element(menuBar)
+    }
+
+    @MainActor
+    static func systemWide() -> Element {
+        Element(AXUIElementCreateSystemWide())
+    }
+}
+
+// MARK: - Title helpers
+
+func sanitizedMenuText(_ value: String?) -> String? {
+    guard let value else { return nil }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
+}
+
+func isPlaceholderMenuTitle(_ title: String?) -> Bool {
+    guard let sanitized = sanitizedMenuText(title) else { return true }
+    let lower = sanitized.lowercased()
+    if lower == "unknown" || lower == "item" || lower == "menu item" {
+        return true
+    }
+    if lower.hasPrefix("item-") || lower.hasPrefix("item ") {
+        return true
+    }
+    if lower.hasPrefix("bentobox") || lower.hasPrefix("menubaritem") {
+        return true
+    }
+    if sanitized.range(of: #"^[0-9]+$"#, options: .regularExpression) != nil {
+        return true
+    }
+    if sanitized.range(of: #"^[0-9a-fA-F\-]{8,}$"#, options: .regularExpression) != nil {
+        return true
+    }
+    return false
+}
+
+func normalizedMenuTitle(_ value: String?) -> String? {
+    guard let sanitized = sanitizedMenuText(value) else { return nil }
+
+    // Normalize common accelerator / ellipsis variants
+    let ellipsisReplaced = sanitized
+        .replacingOccurrences(of: "…", with: "")
+        .replacingOccurrences(of: "\u{2026}", with: "")
+        .replacingOccurrences(of: "...", with: "")
+        .replacingOccurrences(of: "&", with: "")
+
+    let strippedAccelerators = ellipsisReplaced
+        .replacingOccurrences(of: #"(&[A-Za-z])|⌘|Ctrl\+|Alt\+|Option\+|Shift\+|⇧|⌃|⌥|⌘"#, with: " ", options: .regularExpression)
+
+    let folded = strippedAccelerators.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+    let collapsed = folded
+        .components(separatedBy: .whitespacesAndNewlines)
+        .filter { !$0.isEmpty }
+        .joined(separator: " ")
+
+    return collapsed.isEmpty ? nil : collapsed
+}
+
+func titlesMatch(candidate: String?, target: String, normalizedTarget: String? = nil) -> Bool {
+    guard let candidateNormalized = normalizedMenuTitle(candidate) else { return false }
+    let targetNormalized = normalizedTarget ?? normalizedMenuTitle(target)
+    return candidateNormalized == targetNormalized
+}
+
+func titlesMatchPartial(candidate: String?, target: String, normalizedTarget: String? = nil) -> Bool {
+    guard let candidateNormalized = normalizedMenuTitle(candidate) else { return false }
+    let targetNormalized = normalizedTarget ?? normalizedMenuTitle(target)
+    guard let targetNormalized else { return false }
+    return candidateNormalized.contains(targetNormalized)
+}

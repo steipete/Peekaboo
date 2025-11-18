@@ -111,7 +111,7 @@ private final class InMemorySessionManager: SessionManagerProtocol {
     }
 
     func getMostRecentSession() async -> String? {
-        self.storedResults.keys.last
+        self.storedResults.keys.sorted().last
     }
 
     func listSessions() async throws -> [SessionInfo] { [] }

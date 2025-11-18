@@ -292,8 +292,7 @@ enum AutomationServiceBridge {
         }.value
 
         if !result.warnings.isEmpty {
-            Logger(subsystem: "boo.peekaboo.cli", category: "Automation")
-                .debug("waitForElement warnings: \(result.warnings.joined(separator: ","))")
+            Logger.shared.debug("waitForElement warnings: \(result.warnings.joined(separator: ","))", category: "Automation")
         }
 
         return result
