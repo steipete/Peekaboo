@@ -26,6 +26,7 @@ read_when:
 | `models` | Enumerate every model Peekaboo knows about (native, providers, or the specific server you pass). | `--provider-id`, `--include-disabled`. |
 
 ## Implementation notes
+- The underlying auth/config plumbing lives in the shared Tachikoma library and the `tachikoma config` CLI; Peekaboo sets `TachikomaConfiguration.profileDirectoryName = ".peekaboo"` so both tools read/write the same `~/.peekaboo/credentials` without copying environment variables.
 - Configuration files are JSON-with-comments: the loader strips `//` / `/* */` comments and interpolates `${VAR}` placeholders before merging with credentials and environment variables (same logic the CLI uses on startup).
 - `add`/`login`/`set-credential` write through `ConfigurationManager.shared`, so they use macOS file permissions + atomic temp-file renames; partial writes won’t corrupt the store even if the process crashes.
 - Provider readiness in `init`/`show` is live-validated with per-provider pings (OpenAI/Codex, Anthropic, Grok/xai, Gemini). Timeouts default to 30s and are caller overridable.
