@@ -15,7 +15,7 @@ Use `peekaboo <command> --help` for inline flag descriptions; this page links to
 
 - [`see`](commands/see.md) – Capture annotated UI maps, produce session IDs, and optionally run AI analysis.
 - [`image`](commands/image.md) – Save raw PNG/JPG captures of screens, windows, or menu bar regions; supports `--analyze` prompts.
-- `watch` – Adaptive PNG capture that watches a screen/window/region, keeps changed frames plus a contact sheet.
+- `capture` – Long-running capture. `capture live` (adaptive PNG frames) replaces watch; `capture video` ingests a video and samples frames. Outputs frames, contact sheet, metadata, optional MP4.
 - [`list`](commands/list.md) – Subcommands: `apps`, `windows`, `screens`, `menubar`, `permissions`.
 - [`tools`](commands/tools.md) – Filter native vs MCP tools; group by server or emit JSON summaries.
 - [`run`](commands/run.md) – Execute `.peekaboo.json` scripts (`--output`, `--no-fail-fast`).

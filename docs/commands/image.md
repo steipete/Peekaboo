@@ -9,7 +9,7 @@ read_when:
 
 `peekaboo image` is the low-level capture command that produces raw PNG/JPG files for windows, screens, menu bar regions, or the current frontmost app. It shares the same session cache as `see`, but skips annotation and element extraction so you can grab pixels quickly or feed them into the built-in AI analyzer.
 
-If you need a longer-running, change-aware capture (idle/active FPS, contact sheet, PNG-only), use `peekaboo watch`.
+If you need a longer-running, change-aware capture (idle/active FPS, contact sheet, PNG or optional MP4), use `peekaboo capture live` (or `capture video` to ingest an existing file).
 
 ## Common tasks
 - Export every connected display (or a single `--screen-index`) before filing UX bugs.

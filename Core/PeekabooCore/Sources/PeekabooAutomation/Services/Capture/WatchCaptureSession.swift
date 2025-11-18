@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -8,13 +9,16 @@ import UniformTypeIdentifiers
 public struct WatchCaptureDependencies {
     public let screenCapture: any ScreenCaptureServiceProtocol
     public let screenService: (any ScreenServiceProtocol)?
+    public let frameSource: (any CaptureFrameSource)?
 
     public init(
         screenCapture: any ScreenCaptureServiceProtocol,
-        screenService: (any ScreenServiceProtocol)? = nil)
+        screenService: (any ScreenServiceProtocol)? = nil,
+        frameSource: (any CaptureFrameSource)? = nil)
     {
         self.screenCapture = screenCapture
         self.screenService = screenService
+        self.frameSource = frameSource
     }
 }
 
@@ -29,28 +33,40 @@ public struct WatchAutocleanConfig {
 }
 
 public struct WatchCaptureConfiguration {
-    public let scope: WatchScope
-    public let options: WatchCaptureOptions
+    public let scope: CaptureScope
+    public let options: CaptureOptions
     public let outputRoot: URL
     public let autoclean: WatchAutocleanConfig
+    public let sourceKind: CaptureSessionResult.Source
+    public let videoIn: String?
+    public let videoOut: String?
+    public let keepAllFrames: Bool
 
     public init(
-        scope: WatchScope,
-        options: WatchCaptureOptions,
+        scope: CaptureScope,
+        options: CaptureOptions,
         outputRoot: URL,
-        autoclean: WatchAutocleanConfig)
+        autoclean: WatchAutocleanConfig,
+        sourceKind: CaptureSessionResult.Source = .live,
+        videoIn: String? = nil,
+        videoOut: String? = nil,
+        keepAllFrames: Bool = false)
     {
         self.scope = scope
         self.options = options
         self.outputRoot = outputRoot
         self.autoclean = autoclean
+        self.sourceKind = sourceKind
+        self.videoIn = videoIn
+        self.videoOut = videoOut
+        self.keepAllFrames = keepAllFrames
     }
 }
 
 /// Adaptive PNG capture session for agents.
 @MainActor
 public final class WatchCaptureSession {
-    private enum Constants {
+    enum Constants {
         static let diffScaleWidth: CGFloat = 256
         static let motionDelta: UInt8 = 18 // luma delta threshold (0-255)
         static let contactMaxColumns = 6
@@ -58,18 +74,25 @@ public final class WatchCaptureSession {
     }
 
     private let screenCapture: any ScreenCaptureServiceProtocol
-    private let scope: WatchScope
-    private let options: WatchCaptureOptions
+    private let scope: CaptureScope
+    private let options: CaptureOptions
     private let outputRoot: URL
     private let autocleanMinutes: Int
     private let managedAutoclean: Bool
     private let fileManager = FileManager.default
     private let screenService: (any ScreenServiceProtocol)?
+    private let frameSource: (any CaptureFrameSource)?
+    private let sourceKind: CaptureSessionResult.Source
+    private let videoIn: String?
+    private let videoOut: String?
+    private let keepAllFrames: Bool
+    private let videoWriterFPS: Double?
     private let sessionId = UUID().uuidString
+    private var videoWriter: VideoWriter?
 
-    private var frames: [WatchFrameInfo] = []
-    private var motionIntervals: [WatchMotionInterval] = []
-    private var warnings: [WatchWarning] = []
+    private var frames: [CaptureFrameInfo] = []
+    private var motionIntervals: [CaptureMotionInterval] = []
+    private var warnings: [CaptureWarning] = []
     private var framesDropped: Int = 0
     private var totalBytes: Int = 0
     private var activeIntervalStart: (index: Int, startMs: Int, maxChange: Double)?
@@ -77,21 +100,40 @@ public final class WatchCaptureSession {
     public init(dependencies: WatchCaptureDependencies, configuration: WatchCaptureConfiguration) {
         self.screenCapture = dependencies.screenCapture
         self.screenService = dependencies.screenService
+        self.frameSource = dependencies.frameSource
         self.scope = configuration.scope
         self.options = configuration.options
         self.outputRoot = configuration.outputRoot
         self.autocleanMinutes = configuration.autoclean.minutes
         self.managedAutoclean = configuration.autoclean.managed
+        self.sourceKind = configuration.sourceKind
+        self.videoIn = configuration.videoIn
+        self.videoOut = configuration.videoOut
+        self.keepAllFrames = configuration.keepAllFrames
+        if let videoSource = dependencies.frameSource as? VideoFrameSource {
+            self.videoWriterFPS = videoSource.effectiveFPS
+        } else {
+            self.videoWriterFPS = configuration.options.activeFps
+        }
     }
 
-    public func run() async throws -> WatchCaptureResult {
+    public func run() async throws -> CaptureSessionResult {
         try self.prepareOutputRoot()
         self.performAutoclean()
+        // videoWriter is created lazily on first saved frame to match actual dimensions.
 
         let timing = self.makeTiming(start: Date())
         try await self.captureFrames(timing: timing)
         self.finalizeActiveInterval(start: timing.start)
         try await self.ensureFallbackFrame(start: timing.start)
+
+        if self.sourceKind == .video, self.frames.count < 2 {
+            throw PeekabooError.captureFailed(reason: "Video input yielded fewer than 2 frames; adjust sampling or trim")
+        }
+
+        if let writer = self.videoWriter {
+            try await writer.finish()
+        }
 
         let contact = try self.buildContactSheet()
         let durationMs = self.elapsedMilliseconds(since: timing.start)
@@ -100,7 +142,10 @@ public final class WatchCaptureSession {
         let optionsSnapshot = self.makeOptionsSnapshot()
         let stats = self.makeStats(durationMs: durationMs)
         let metadataURL = self.outputRoot.appendingPathComponent("metadata.json")
-        let metadata = WatchCaptureResult(
+        let metadata = CaptureSessionResult(
+            source: self.sourceKind,
+            videoIn: self.videoIn,
+            videoOut: self.videoWriter?.finalURL.path,
             frames: self.frames,
             contactSheet: contact,
             metadataFile: metadataURL.path,
@@ -173,10 +218,30 @@ public final class WatchCaptureSession {
 
             let frameStart = Date()
             let cadence = state.activeMode ? timing.cadenceActiveNs : timing.cadenceIdleNs
-            let capture = try await self.captureFrame()
+            guard let capture = try await self.captureFrame() else {
+                // Frame source exhausted (e.g., video input)
+                break
+            }
 
             guard let cgImage = capture.cgImage else {
                 self.framesDropped += 1
+                try await self.sleep(ns: cadence, since: frameStart)
+                continue
+            }
+
+            if self.keepAllFrames {
+                let reason: CaptureFrameInfo.Reason = self.frames.isEmpty ? .first : .motion
+                let saved = try self.saveFrame(
+                    cgImage: cgImage,
+                    context: FrameSaveContext(
+                        capture: capture,
+                        index: state.frameIndex,
+                        timestampMs: Int(elapsedNs / 1_000_000),
+                        changePercent: 0,
+                        reason: reason,
+                        motionBoxes: nil))
+                self.frames.append(saved)
+                state.frameIndex += 1
                 try await self.sleep(ns: cadence, since: frameStart)
                 continue
             }
@@ -221,7 +286,16 @@ public final class WatchCaptureSession {
         let motionBoxes: [CGRect]?
     }
 
-    private func captureFrame() async throws -> CaptureEnvelope {
+    private func captureFrame() async throws -> CaptureEnvelope? {
+        if let source = self.frameSource {
+            guard let output = try await source.nextFrame() else { return nil }
+            guard let image = output.cgImage else {
+                return CaptureEnvelope(cgImage: nil, metadata: output.metadata, motionBoxes: nil)
+            }
+            let capped = self.capResolutionIfNeeded(image)
+            return CaptureEnvelope(cgImage: capped, metadata: output.metadata, motionBoxes: nil)
+        }
+
         let result: CaptureResult
         switch self.scope.kind {
         case .screen:
@@ -368,7 +442,7 @@ public final class WatchCaptureSession {
         now: Date,
         state: SessionState,
         heartbeatNs: UInt64,
-        enterActive: Bool) -> (keep: Bool, reason: WatchFrameInfo.Reason)
+        enterActive: Bool) -> (keep: Bool, reason: CaptureFrameInfo.Reason)
     {
         if state.frameIndex == 0 {
             return (true, .first)
@@ -391,11 +465,24 @@ public final class WatchCaptureSession {
         let index: Int
         let timestampMs: Int
         let changePercent: Double
-        let reason: WatchFrameInfo.Reason
+        let reason: CaptureFrameInfo.Reason
         let motionBoxes: [CGRect]?
     }
 
-    private func saveFrame(cgImage: CGImage, context: FrameSaveContext) throws -> WatchFrameInfo {
+    private func saveFrame(cgImage: CGImage, context: FrameSaveContext) throws -> CaptureFrameInfo {
+        // Create writer lazily on first kept frame so we match the actual frame size.
+        if self.videoOut != nil, self.videoWriter == nil {
+            let fps = self.videoWriterFPS ?? self.options.activeFps
+            self.videoWriter = try VideoWriter(
+                outputPath: self.videoOut ?? self.outputRoot.appendingPathComponent("capture.mp4").path,
+                width: cgImage.width,
+                height: cgImage.height,
+                fps: fps)
+        }
+        if let writer = self.videoWriter {
+            try writer.append(image: cgImage)
+        }
+
         let fileName = String(format: "keep-%04d.png", self.frames.count + 1)
         let url = self.outputRoot.appendingPathComponent(fileName)
         try WatchCaptureSession.writePNG(
@@ -407,7 +494,7 @@ public final class WatchCaptureSession {
             self.totalBytes += data.count
         }
 
-        return WatchFrameInfo(
+        return CaptureFrameInfo(
             index: context.index,
             path: url.path,
             file: fileName,
@@ -422,7 +509,7 @@ public final class WatchCaptureSession {
     private func buildContactSheet() throws -> WatchContactSheet {
         let columns = Constants.contactMaxColumns
         let maxCells = columns * columns
-        let framesToUse: [WatchFrameInfo]
+        let framesToUse: [CaptureFrameInfo]
         let sampledIndexes: [Int]
         if self.frames.count <= maxCells {
             framesToUse = self.frames
@@ -465,7 +552,7 @@ public final class WatchCaptureSession {
         let contactURL = self.outputRoot.appendingPathComponent("contact.png")
         try WatchCaptureSession.writePNG(image: cg, to: contactURL, highlight: nil)
 
-        return WatchContactSheet(
+        return CaptureContactSheet(
             path: contactURL.path,
             file: "contact.png",
             columns: columns,
@@ -522,8 +609,8 @@ public final class WatchCaptureSession {
         }
     }
 
-    private func makeOptionsSnapshot() -> WatchOptionsSnapshot {
-        WatchOptionsSnapshot(
+    private func makeOptionsSnapshot() -> CaptureOptionsSnapshot {
+        CaptureOptionsSnapshot(
             duration: self.options.duration,
             idleFps: self.options.idleFps,
             activeFps: self.options.activeFps,
@@ -590,6 +677,8 @@ public final class WatchCaptureSession {
     }
 
     private func sleep(ns: UInt64, since start: Date) async throws {
+        // For video sources we don't throttle cadence; return immediately.
+        if self.frameSource != nil { return }
         let elapsed = UInt64(Date().timeIntervalSince(start) * 1_000_000_000)
         if ns > elapsed {
             try await Task.sleep(nanoseconds: ns - elapsed)
@@ -862,7 +951,7 @@ public final class WatchCaptureSession {
         return numerator / denominator
     }
 
-    private static func sampleFrames(_ frames: [WatchFrameInfo], maxCount: Int) -> [WatchFrameInfo] {
+    private static func sampleFrames(_ frames: [CaptureFrameInfo], maxCount: Int) -> [CaptureFrameInfo] {
         guard frames.count > maxCount else { return frames }
         let step = Double(frames.count - 1) / Double(maxCount - 1)
         var indexes: [Int] = []

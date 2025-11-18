@@ -44,7 +44,20 @@ extension PeekabooAgentService {
     }
 
     public func createWatchTool() -> AgentTool {
-        let tool = WatchTool(context: self.makeToolContext())
+        // Back-compat alias to capture tool
+        let tool = CaptureTool(context: self.makeToolContext())
+        return AgentTool(
+            name: "watch", // preserve legacy tool name for agents
+            description: tool.description,
+            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
+                return await convertToolResponseToAgentToolResultAsync(response)
+            })
+    }
+
+    public func createCaptureTool() -> AgentTool {
+        let tool = CaptureTool(context: self.makeToolContext())
         return AgentTool(
             name: tool.name,
             description: tool.description,
