@@ -45,7 +45,7 @@ public final class VideoFrameSource: CaptureFrameSource {
         var requested: [CMTime] = []
         while cursor <= end {
             requested.append(cursor)
-            cursor = cursor + interval
+            cursor += interval
         }
         if requested.count < 2 {
             requested.append(end)
@@ -90,8 +90,8 @@ public final class VideoFrameSource: CaptureFrameSource {
     }
 }
 
-private extension CMTime {
-    init(milliseconds: Int) {
+extension CMTime {
+    fileprivate init(milliseconds: Int) {
         self.init(value: CMTimeValue(milliseconds), timescale: 1000)
     }
 }

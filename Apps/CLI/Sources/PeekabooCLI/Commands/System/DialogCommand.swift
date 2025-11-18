@@ -106,7 +106,9 @@ struct DialogCommand: ParsableCommand {
                 }
                 AutomationEventLogger.log(
                     .dialog,
-                    "action=click button='\(result.details["button"] ?? self.button)' window='\(result.details["window"] ?? self.window ?? "unknown")' app='\(self.app ?? "unknown")'"
+                    "action=click button='\(result.details["button"] ?? self.button)' "
+                        + "window='\(result.details["window"] ?? self.window ?? "unknown")' "
+                        + "app='\(self.app ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -203,9 +205,16 @@ struct DialogCommand: ParsableCommand {
                 } else {
                     print("✓ Entered text in '\(result.details["field"] ?? "field")'")
                 }
+                let fieldDescription = result.details["field"]
+                    ?? self.field
+                    ?? self.index.map { "index \($0)" }
+                    ?? "field"
+                let textLength = result.details["text_length"] ?? String(self.text.count)
+                let clearedValue = result.details["cleared"] ?? String(self.clear)
                 AutomationEventLogger.log(
                     .dialog,
-                    "action=input field='\(result.details["field"] ?? self.field ?? self.index.map { "index \($0)" } ?? "field")' chars=\(result.details["text_length"] ?? String(self.text.count)) cleared=\(result.details["cleared"] ?? String(self.clear)) app='\(self.app ?? "unknown")'"
+                    "action=input field='\(fieldDescription)' chars=\(textLength) "
+                        + "cleared=\(clearedValue) app='\(self.app ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -295,9 +304,13 @@ struct DialogCommand: ParsableCommand {
                     if let n = result.details["filename"] { print("  Name: \(n)") }
                     print("  Action: \(result.details["button_clicked"] ?? self.select)")
                 }
+                let resolvedPath = result.details["path"] ?? self.path ?? "unknown"
+                let resolvedName = result.details["filename"] ?? self.name ?? "unknown"
+                let buttonClicked = result.details["button_clicked"] ?? self.select
                 AutomationEventLogger.log(
                     .dialog,
-                    "action=file path='\(result.details["path"] ?? self.path ?? "unknown")' name='\(result.details["filename"] ?? self.name ?? "unknown")' button='\(result.details["button_clicked"] ?? self.select)' app='\(self.app ?? "unknown")'"
+                    "action=file path='\(resolvedPath)' name='\(resolvedName)' "
+                        + "button='\(buttonClicked)' app='\(self.app ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -385,9 +398,11 @@ struct DialogCommand: ParsableCommand {
                     }
                 }
                 let method = result.details["method"] ?? (self.force ? "escape" : "button")
+                let dismissedButton = result.details["button"] ?? "none"
                 AutomationEventLogger.log(
                     .dialog,
-                    "action=dismiss method=\(method) button='\(result.details["button"] ?? "none")' app='\(self.app ?? "unknown")'"
+                    "action=dismiss method=\(method) button='\(dismissedButton)' "
+                        + "app='\(self.app ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -502,9 +517,12 @@ struct DialogCommand: ParsableCommand {
                         elements.staticTexts.forEach { print("  \($0)") }
                     }
                 }
+                let buttonCount = elements.buttons.count
+                let textFieldCount = elements.textFields.count
                 AutomationEventLogger.log(
                     .dialog,
-                    "action=list title='\(elements.dialogInfo.title)' buttons=\(elements.buttons.count) text_fields=\(elements.textFields.count) app='\(self.app ?? "unknown")'"
+                    "action=list title='\(elements.dialogInfo.title)' buttons=\(buttonCount) "
+                        + "text_fields=\(textFieldCount) app='\(self.app ?? "unknown")'"
                 )
 
             } catch let error as DialogError {

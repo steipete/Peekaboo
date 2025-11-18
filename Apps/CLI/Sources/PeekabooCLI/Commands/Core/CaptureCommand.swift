@@ -17,7 +17,8 @@ struct CaptureCommand: ParsableCommand {
                 commandName: "capture",
                 abstract: "Capture live screens/windows or ingest a video and extract frames",
                 subcommands: [CaptureLiveCommand.self, CaptureVideoCommand.self, CaptureWatchAlias.self],
-                showHelpOnEmptyInvocation: true)
+                showHelpOnEmptyInvocation: true
+            )
         }
     }
 }
@@ -41,14 +42,20 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
     @Option(name: .long, help: "Idle FPS during quiet periods (default 2)") var idleFps: Double?
     @Option(name: .long, help: "Active FPS during motion (default 8, max 15)") var activeFps: Double?
     @Option(name: .long, help: "Change threshold percent to enter active mode (default 2.5)") var threshold: Double?
-    @Option(name: .long, help: "Heartbeat keyframe interval in seconds (default 5, 0 disables)") var heartbeatSec: Double?
+    @Option(
+        name: .long,
+        help: "Heartbeat keyframe interval in seconds (default 5, 0 disables)"
+    ) var heartbeatSec: Double?
     @Option(name: .long, help: "Calm period in milliseconds before returning to idle (default 1000)") var quietMs: Int?
     @Flag(name: .long, help: "Overlay motion boxes on kept frames") var highlightChanges = false
     @Option(name: .long, help: "Max frames before stopping (soft cap, default 800)") var maxFrames: Int?
     @Option(name: .long, help: "Max megabytes before stopping (soft cap, optional)") var maxMb: Int?
     @Option(name: .long, help: "Resolution cap (largest dimension, default 1440)") var resolutionCap: Double?
     @Option(name: .long, help: "Diff strategy: fast|quality (default fast)") var diffStrategy: String?
-    @Option(name: .long, help: "Diff time budget in milliseconds before falling back to fast (default 30 when quality)") var diffBudgetMs: Int?
+    @Option(
+        name: .long,
+        help: "Diff time budget in milliseconds before falling back to fast (default 30 when quality)"
+    ) var diffBudgetMs: Int?
 
     // Output
     @Option(name: .long, help: "Output directory (defaults to temp capture session)") var path: String?
@@ -86,7 +93,8 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
             let deps = WatchCaptureDependencies(
                 screenCapture: self.services.screenCapture,
                 screenService: self.services.screens,
-                frameSource: nil)
+                frameSource: nil
+            )
             let config = WatchCaptureConfiguration(
                 scope: scope,
                 options: options,
@@ -95,14 +103,23 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
                 sourceKind: .live,
                 videoIn: nil,
                 videoOut: self.videoOut,
-                keepAllFrames: false)
+                keepAllFrames: false
+            )
             let session = WatchCaptureSession(dependencies: deps, configuration: config)
             let result = try await session.run()
             self.output(result)
-            self.logger.operationComplete("capture_live", success: true, metadata: ["frames_kept": result.stats.framesKept])
+            self.logger.operationComplete(
+                "capture_live",
+                success: true,
+                metadata: ["frames_kept": result.stats.framesKept]
+            )
         } catch {
             self.handleError(error)
-            self.logger.operationComplete("capture_live", success: false, metadata: ["error": error.localizedDescription])
+            self.logger.operationComplete(
+                "capture_live",
+                success: false,
+                metadata: ["error": error.localizedDescription]
+            )
             throw ExitCode(1)
         }
     }
@@ -112,13 +129,37 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         switch mode {
         case .screen:
             let displayInfo = try await self.displayInfo(for: self.screenIndex)
-            return CaptureScope(kind: .screen, screenIndex: displayInfo?.index, displayUUID: displayInfo?.uuid, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+            return CaptureScope(
+                kind: .screen,
+                screenIndex: displayInfo?.index,
+                displayUUID: displayInfo?.uuid,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: nil
+            )
         case .frontmost:
-            return CaptureScope(kind: .frontmost, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+            return CaptureScope(
+                kind: .frontmost,
+                screenIndex: nil,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: nil
+            )
         case .window:
             let identifier = try self.resolveApplicationIdentifier()
             let windowIdx = try await self.resolveWindowIndex(for: identifier)
-            return CaptureScope(kind: .window, screenIndex: nil, displayUUID: nil, windowId: nil, applicationIdentifier: identifier, windowIndex: windowIdx, region: nil)
+            return CaptureScope(
+                kind: .window,
+                screenIndex: nil,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: identifier,
+                windowIndex: windowIdx,
+                region: nil
+            )
         case .area:
             let rect = try self.parseRegion()
             return CaptureScope(kind: .region, region: rect)
@@ -151,8 +192,14 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         do {
             let windows = try await WindowServiceBridge.listWindows(
                 windows: self.services.windows,
-                target: .application(identifier))
-            let renderable = WindowFilterHelper.filter(windows: windows, appIdentifier: identifier, mode: .capture, logger: self.logger)
+                target: .application(identifier)
+            )
+            let renderable = WindowFilterHelper.filter(
+                windows: windows,
+                appIdentifier: identifier,
+                mode: .capture,
+                logger: self.logger
+            )
             if let title = self.windowTitle,
                let match = renderable.first(where: { $0.title.localizedCaseInsensitiveContains(title) }) {
                 return match.index
@@ -195,7 +242,8 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
             captureFocus: self.captureFocus,
             resolutionCap: resolutionCap,
             diffStrategy: diffStrategy,
-            diffBudgetMs: diffBudgetMs)
+            diffBudgetMs: diffBudgetMs
+        )
     }
 
     private func resolveOutputDirectory() throws -> URL {
@@ -216,10 +264,14 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         print("""
         🎥 capture kept \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)),
         contact sheet: \(meta.contactPath), diff: \(meta.diffAlgorithm) @ \(meta.diffScale),
-        grid \(meta.contactColumns)x\(meta.contactRows) thumb \(Int(meta.contactThumbSize.width))x\(Int(meta.contactThumbSize.height))
+        grid \(meta.contactColumns)x\(meta
+            .contactRows) thumb \(Int(meta.contactThumbSize.width))x\(Int(meta.contactThumbSize.height))
         """)
         for frame in result.frames {
-            print("🖼️  \(frame.reason.rawValue) t=\(frame.timestampMs)ms Δ=\(String(format: "%.2f", frame.changePercent))% → \(frame.path)")
+            print(
+                "🖼️  \(frame.reason.rawValue) t=\(frame.timestampMs)ms "
+                    + "Δ=\(String(format: "%.2f", frame.changePercent))% → \(frame.path)"
+            )
         }
         for warning in result.warnings {
             print("⚠️  \(warning.code.rawValue): \(warning.message)")
@@ -230,11 +282,33 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         switch self.captureFocus {
         case .background: return
         case .auto:
-            let options = FocusOptions(autoFocus: true, focusTimeout: nil, focusRetryCount: nil, spaceSwitch: false, bringToCurrentSpace: false)
-            try await ensureFocused(applicationName: appIdentifier, windowTitle: self.windowTitle, options: options, services: self.services)
+            let options = FocusOptions(
+                autoFocus: true,
+                focusTimeout: nil,
+                focusRetryCount: nil,
+                spaceSwitch: false,
+                bringToCurrentSpace: false
+            )
+            try await ensureFocused(
+                applicationName: appIdentifier,
+                windowTitle: self.windowTitle,
+                options: options,
+                services: self.services
+            )
         case .foreground:
-            let options = FocusOptions(autoFocus: true, focusTimeout: nil, focusRetryCount: nil, spaceSwitch: true, bringToCurrentSpace: true)
-            try await ensureFocused(applicationName: appIdentifier, windowTitle: self.windowTitle, options: options, services: self.services)
+            let options = FocusOptions(
+                autoFocus: true,
+                focusTimeout: nil,
+                focusRetryCount: nil,
+                spaceSwitch: true,
+                bringToCurrentSpace: true
+            )
+            try await ensureFocused(
+                applicationName: appIdentifier,
+                windowTitle: self.windowTitle,
+                options: options,
+                services: self.services
+            )
         }
     }
 }
@@ -242,7 +316,11 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
 extension CaptureLiveCommand: ParsableCommand {
     nonisolated(unsafe) static var commandDescription: CommandDescription {
         MainActorCommandDescription.describe {
-            CommandDescription(commandName: "live", abstract: "Capture live screen/window/region with change-aware sampling", version: "1.0.0")
+            CommandDescription(
+                commandName: "live",
+                abstract: "Capture live screen/window/region with change-aware sampling",
+                version: "1.0.0"
+            )
         }
     }
 }
@@ -259,7 +337,8 @@ extension CaptureLiveCommand: CommanderBindableCommand {
         self.windowIndex = try values.decodeOption("windowIndex", as: Int.self)
         self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
         self.region = values.singleOption("region")
-        if let parsedFocus: LiveCaptureFocus = try values.decodeOptionEnum("captureFocus") { self.captureFocus = parsedFocus }
+        if let parsedFocus: LiveCaptureFocus = try values
+            .decodeOptionEnum("captureFocus") { self.captureFocus = parsedFocus }
         self.duration = try values.decodeOption("duration", as: Double.self)
         self.idleFps = try values.decodeOption("idleFps", as: Double.self)
         self.activeFps = try values.decodeOption("activeFps", as: Double.self)
@@ -330,12 +409,14 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
                 everyMs: self.everyMs,
                 startMs: self.startMs,
                 endMs: self.endMs,
-                resolutionCap: self.resolutionCap.map { CGFloat($0) })
+                resolutionCap: self.resolutionCap.map { CGFloat($0) }
+            )
 
             let deps = WatchCaptureDependencies(
                 screenCapture: self.services.screenCapture,
                 screenService: self.services.screens,
-                frameSource: frameSource)
+                frameSource: frameSource
+            )
             let config = WatchCaptureConfiguration(
                 scope: CaptureScope(kind: .frontmost),
                 options: options,
@@ -344,20 +425,29 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
                 sourceKind: .video,
                 videoIn: videoURL.path,
                 videoOut: self.videoOut,
-                keepAllFrames: self.noDiff)
+                keepAllFrames: self.noDiff
+            )
             let session = WatchCaptureSession(dependencies: deps, configuration: config)
             let result = try await session.run()
             self.output(result)
-            self.logger.operationComplete("capture_video", success: true, metadata: ["frames_kept": result.stats.framesKept])
+            self.logger.operationComplete(
+                "capture_video",
+                success: true,
+                metadata: ["frames_kept": result.stats.framesKept]
+            )
         } catch {
             self.handleError(error)
-            self.logger.operationComplete("capture_video", success: false, metadata: ["error": error.localizedDescription])
+            self.logger.operationComplete(
+                "capture_video",
+                success: false,
+                metadata: ["error": error.localizedDescription]
+            )
             throw ExitCode(1)
         }
     }
 
     private func buildOptions() -> CaptureOptions {
-        let maxFrames = max(self.maxFrames ?? 10_000, 1)
+        let maxFrames = max(self.maxFrames ?? 10000, 1)
         let resolutionCap = self.resolutionCap ?? 1440
         let diffStrategy = CaptureOptions.DiffStrategy(rawValue: self.diffStrategy ?? "fast") ?? .fast
         let diffBudgetMs = self.diffBudgetMs ?? (diffStrategy == .quality ? 30 : nil)
@@ -375,7 +465,8 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
             captureFocus: .auto,
             resolutionCap: resolutionCap,
             diffStrategy: diffStrategy,
-            diffBudgetMs: diffBudgetMs)
+            diffBudgetMs: diffBudgetMs
+        )
     }
 
     private func resolveOutputDirectory() throws -> URL {
@@ -394,19 +485,26 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
             return
         }
         print("""
-        🎥 capture(video) kept \(result.stats.framesKept) frames (dropped \(result.stats.framesDropped)), contact sheet: \(meta.contactPath)
+        🎥 capture(video) kept \(result.stats.framesKept) frames (dropped \(result.stats
+            .framesDropped)), contact sheet: \(meta.contactPath)
         """)
         for frame in result.frames {
             print("🖼️  \(frame.reason.rawValue) t=\(frame.timestampMs)ms → \(frame.path)")
         }
-        for warning in result.warnings { print("⚠️  \(warning.code.rawValue): \(warning.message)") }
+        for warning in result.warnings {
+            print("⚠️  \(warning.code.rawValue): \(warning.message)")
+        }
     }
 }
 
 extension CaptureVideoCommand: ParsableCommand {
     nonisolated(unsafe) static var commandDescription: CommandDescription {
         MainActorCommandDescription.describe {
-            CommandDescription(commandName: "video", abstract: "Ingest a video, sample frames, and build contact sheet", version: "1.0.0")
+            CommandDescription(
+                commandName: "video",
+                abstract: "Ingest a video, sample frames, and build contact sheet",
+                version: "1.0.0"
+            )
         }
     }
 }
@@ -465,4 +563,4 @@ extension CaptureWatchAlias: CommanderBindableCommand {
 }
 
 // Back-compat alias for tests/agents
- typealias WatchCommand = CaptureLiveCommand
+typealias WatchCommand = CaptureLiveCommand

@@ -43,9 +43,15 @@ extension ConfigCommand {
             case .success:
                 self.output.success(message: "[ok] Stored and validated \(pid.displayName) credential")
             case let .failure(reason):
-                self.output.error(code: "VALIDATION_FAILED", message: "[warn] Stored credential but validation failed: \(reason)")
+                self.output.error(
+                    code: "VALIDATION_FAILED",
+                    message: "[warn] Stored credential but validation failed: \(reason)"
+                )
             case let .timeout(seconds):
-                self.output.error(code: "VALIDATION_TIMEOUT", message: "[warn] Stored credential but validation timed out after \(Int(seconds))s")
+                self.output.error(
+                    code: "VALIDATION_TIMEOUT",
+                    message: "[warn] Stored credential but validation timed out after \(Int(seconds))s"
+                )
             }
         }
     }
@@ -74,7 +80,11 @@ extension ConfigCommand {
                 throw ExitCode.failure
             }
             let timeout = self.timeoutSeconds > 0 ? self.timeoutSeconds : 30
-            let result = await TKAuthManager.shared.oauthLogin(provider: pid, timeout: timeout, noBrowser: self.noBrowser)
+            let result = await TKAuthManager.shared.oauthLogin(
+                provider: pid,
+                timeout: timeout,
+                noBrowser: self.noBrowser
+            )
             switch result {
             case .success:
                 self.output.success(message: "[ok] OAuth tokens stored for \(pid.displayName.lowercased())")

@@ -30,12 +30,17 @@ extension CaptureLiveCommand: CommanderSignatureProviding {
                 .commandOption("diffStrategy", help: "Diff strategy fast|quality", long: "diff-strategy"),
                 .commandOption("diffBudgetMs", help: "Diff budget ms", long: "diff-budget-ms"),
                 .commandOption("path", help: "Output directory", long: "path"),
-                .commandOption("autocleanMinutes", help: "Minutes before temp sessions auto-clean (default 120)", long: "autoclean-minutes"),
+                .commandOption(
+                    "autocleanMinutes",
+                    help: "Minutes before temp sessions auto-clean (default 120)",
+                    long: "autoclean-minutes"
+                ),
                 .commandOption("videoOut", help: "Optional MP4 output path", long: "video-out")
             ],
             flags: [
                 .commandFlag("highlightChanges", help: "Overlay motion boxes", long: "highlight-changes")
-            ])
+            ]
+        )
     }
 }
 
@@ -58,7 +63,8 @@ extension CaptureVideoCommand: CommanderSignatureProviding {
             ],
             flags: [
                 .commandFlag("noDiff", help: "Keep all sampled frames", long: "no-diff")
-            ])
+            ]
+        )
     }
 }
 

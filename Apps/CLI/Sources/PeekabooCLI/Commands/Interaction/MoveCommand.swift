@@ -174,7 +174,8 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
             )
             AutomationEventLogger.log(
                 .cursor,
-                "move target=\(targetDescription) duration=\(movement.duration)ms steps=\(movement.steps) profile=\(movement.profileName)"
+                "move target=\(targetDescription) duration=\(movement.duration)ms steps=\(movement.steps) "
+                    + "profile=\(movement.profileName)"
             )
 
             // Output results

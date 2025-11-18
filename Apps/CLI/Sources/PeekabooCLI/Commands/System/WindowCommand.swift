@@ -163,7 +163,9 @@ private func logWindowAction(
 ) {
     let title = windowInfo?.title ?? "Unknown"
     let boundsDescription = if let windowBounds = windowInfo?.bounds {
-        "bounds=(\(Int(windowBounds.origin.x)),\(Int(windowBounds.origin.y)))x(\(Int(windowBounds.size.width)),\(Int(windowBounds.size.height)))"
+        let origin = "bounds=(\(Int(windowBounds.origin.x)),\(Int(windowBounds.origin.y)))"
+        let size = "x(\(Int(windowBounds.size.width)),\(Int(windowBounds.size.height)))"
+        origin + size
     } else {
         "bounds=unknown"
     }

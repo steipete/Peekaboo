@@ -65,7 +65,7 @@ public struct WatchCaptureConfiguration {
 
 /// Adaptive PNG capture session for agents.
 @MainActor
-public final class WatchCaptureSession {
+public final class WatchCaptureSession { // swiftlint:disable:this type_body_length
     enum Constants {
         static let diffScaleWidth: CGFloat = 256
         static let motionDelta: UInt8 = 18 // luma delta threshold (0-255)
@@ -128,7 +128,8 @@ public final class WatchCaptureSession {
         try await self.ensureFallbackFrame(start: timing.start)
 
         if self.sourceKind == .video, self.frames.count < 2 {
-            throw PeekabooError.captureFailed(reason: "Video input yielded fewer than 2 frames; adjust sampling or trim")
+            throw PeekabooError
+                .captureFailed(reason: "Video input yielded fewer than 2 frames; adjust sampling or trim")
         }
 
         if let writer = self.videoWriter {

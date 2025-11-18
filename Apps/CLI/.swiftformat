@@ -7,7 +7,7 @@
 --indent 4
 --indentcase false
 --trimwhitespace always
---voidtype tuple
+--voidtype void
 --nospaceoperators ..<, ...
 --ifdef noindent
 --stripunusedargs closure-only

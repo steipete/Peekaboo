@@ -14,7 +14,7 @@ struct ConfigCommandTests {
         )
     }
 
-    private func withTempConfigDir(_ body: @escaping (URL) async throws -> ()) async throws {
+    private func withTempConfigDir(_ body: @escaping (URL) async throws -> Void) async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
             isDirectory: true

@@ -20,7 +20,7 @@ final class VideoWriter {
         let settings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: width,
-            AVVideoHeightKey: height
+            AVVideoHeightKey: height,
         ]
         self.input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
         self.input.expectsMediaDataInRealTime = false
@@ -30,7 +30,7 @@ final class VideoWriter {
             kCVPixelBufferWidthKey as String: width,
             kCVPixelBufferHeightKey as String: height,
             kCVPixelBufferCGImageCompatibilityKey as String: true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
+            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true,
         ]
         self.adaptor = AVAssetWriterInputPixelBufferAdaptor(
             assetWriterInput: self.input,
@@ -63,9 +63,15 @@ final class VideoWriter {
             kCVPixelBufferWidthKey as String: width,
             kCVPixelBufferHeightKey as String: height,
             kCVPixelBufferCGImageCompatibilityKey as String: true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
+            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true,
         ]
-        CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA, attrs as CFDictionary, &pixelBuffer)
+        CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            kCVPixelFormatType_32BGRA,
+            attrs as CFDictionary,
+            &pixelBuffer)
         guard let buffer = pixelBuffer else { return }
 
         CVPixelBufferLockBaseAddress(buffer, [])

@@ -66,7 +66,10 @@ func normalizedMenuTitle(_ value: String?) -> String? {
         .replacingOccurrences(of: "&", with: "")
 
     let strippedAccelerators = ellipsisReplaced
-        .replacingOccurrences(of: #"(&[A-Za-z])|⌘|Ctrl\+|Alt\+|Option\+|Shift\+|⇧|⌃|⌥|⌘"#, with: " ", options: .regularExpression)
+        .replacingOccurrences(
+            of: #"(&[A-Za-z])|⌘|Ctrl\+|Alt\+|Option\+|Shift\+|⇧|⌃|⌥|⌘"#,
+            with: " ",
+            options: .regularExpression)
 
     let folded = strippedAccelerators.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
     let collapsed = folded

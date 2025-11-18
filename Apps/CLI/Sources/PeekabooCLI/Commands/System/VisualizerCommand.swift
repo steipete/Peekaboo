@@ -13,7 +13,10 @@ struct VisualizerCommand: RuntimeOptionsConfigurable {
             CommandDescription(
                 commandName: "visualizer",
                 abstract: "Exercise Peekaboo visual feedback animations",
-                discussion: "Runs a lightweight smoke sequence that fires every visualizer event so you can verify Peekaboo.app is rendering overlays.",
+                discussion: """
+                Runs a lightweight smoke sequence that fires every visualizer event so you can verify
+                Peekaboo.app is rendering overlays.
+                """,
                 showHelpOnEmptyInvocation: false
             )
         }
@@ -123,7 +126,7 @@ private struct VisualizerSmokeSequence {
         }
     }
 
-    private func step(_ name: String, action: @escaping @MainActor () async -> ()) async throws {
+    private func step(_ name: String, action: @escaping @MainActor () async -> Void) async throws {
         self.logger.debug("VisualizerSmoke: \(name)")
         await action()
         try await Task.sleep(for: .milliseconds(250))

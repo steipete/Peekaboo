@@ -21,10 +21,18 @@ struct ProviderStatusReporter {
     private func status(for pid: TKProviderId) async -> String {
         switch self.source(for: pid) {
         case let .env(key, value):
-            let validation = await TKAuthManager.shared.validate(provider: pid, secret: value, timeout: self.timeoutSeconds)
+            let validation = await TKAuthManager.shared.validate(
+                provider: pid,
+                secret: value,
+                timeout: self.timeoutSeconds
+            )
             return self.describe(source: "env \(key)", validation: validation)
         case let .credentials(key, value):
-            let validation = await TKAuthManager.shared.validate(provider: pid, secret: value, timeout: self.timeoutSeconds)
+            let validation = await TKAuthManager.shared.validate(
+                provider: pid,
+                secret: value,
+                timeout: self.timeoutSeconds
+            )
             return self.describe(source: "credentials \(key)", validation: validation)
         case let .missing(reason):
             return reason
@@ -34,11 +42,11 @@ struct ProviderStatusReporter {
     private func describe(source: String, validation: TKValidationResult) -> String {
         switch validation {
         case .success:
-            return "ready (\(source), validated)"
+            "ready (\(source), validated)"
         case let .failure(reason):
-            return "stored (\(source), validation failed: \(reason))"
+            "stored (\(source), validation failed: \(reason))"
         case let .timeout(seconds):
-            return "stored (\(source), validation timed out after \(Int(seconds))s)"
+            "stored (\(source), validation timed out after \(Int(seconds))s)"
         }
     }
 
@@ -60,10 +68,14 @@ struct ProviderStatusReporter {
         let creds = TKAuthManager.shared
         switch pid {
         case .openai:
-            if let v = creds.credentialValue(for: "OPENAI_ACCESS_TOKEN") { return .credentials("OPENAI_ACCESS_TOKEN", v) }
+            if let v = creds
+                .credentialValue(for: "OPENAI_ACCESS_TOKEN") { return .credentials("OPENAI_ACCESS_TOKEN", v) }
             if let v = creds.credentialValue(for: "OPENAI_API_KEY") { return .credentials("OPENAI_API_KEY", v) }
         case .anthropic:
-            if let v = creds.credentialValue(for: "ANTHROPIC_ACCESS_TOKEN") { return .credentials("ANTHROPIC_ACCESS_TOKEN", v) }
+            if let v = creds.credentialValue(for: "ANTHROPIC_ACCESS_TOKEN") { return .credentials(
+                "ANTHROPIC_ACCESS_TOKEN",
+                v
+            ) }
             if let v = creds.credentialValue(for: "ANTHROPIC_API_KEY") { return .credentials("ANTHROPIC_API_KEY", v) }
         case .grok:
             for k in ["GROK_API_KEY", "X_AI_API_KEY", "XAI_API_KEY"] {

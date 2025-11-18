@@ -4,11 +4,10 @@
 //
 
 import CoreGraphics
-import Testing
 import Foundation
 import os
-import PeekabooAutomation
 import PeekabooFoundation
+import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
 @testable import PeekabooCore
@@ -235,26 +234,32 @@ struct MenuServiceTests {
                 self.app = app
             }
 
-            func launchApplication(identifier: String) async throws -> ServiceApplicationInfo { app }
+            func launchApplication(identifier: String) async throws -> ServiceApplicationInfo { self.app }
             func activateApplication(identifier: String) async throws {}
             func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
                 UnifiedToolOutput(
-                    data: ServiceApplicationListData(applications: [app]),
+                    data: ServiceApplicationListData(applications: [self.app]),
                     summary: .init(brief: "stub", status: .success),
                     metadata: .init(duration: 0))
             }
-            func getFrontmostApplication() async throws -> ServiceApplicationInfo { app }
+
+            func getFrontmostApplication() async throws -> ServiceApplicationInfo { self.app }
             func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
-                lookups += 1
-                return app
+                self.lookups += 1
+                return self.app
             }
-            func getRunningApplications() async throws -> [ServiceApplicationInfo] { [app] }
-            func listWindows(for appIdentifier: String, timeout: Float?) async throws -> UnifiedToolOutput<ServiceWindowListData> {
+
+            func getRunningApplications() async throws -> [ServiceApplicationInfo] { [self.app] }
+            func listWindows(
+                for appIdentifier: String,
+                timeout: Float?) async throws -> UnifiedToolOutput<ServiceWindowListData>
+            {
                 UnifiedToolOutput(
-                    data: ServiceWindowListData(windows: [], targetApplication: app),
+                    data: ServiceWindowListData(windows: [], targetApplication: self.app),
                     summary: .init(brief: "stub", status: .success),
                     metadata: .init(duration: 0))
             }
+
             func isApplicationRunning(identifier: String) async -> Bool { true }
             func quitApplication(identifier: String, force: Bool) async throws -> Bool { true }
             func hideApplication(identifier: String) async throws {}
@@ -282,7 +287,12 @@ struct MenuServiceTests {
             cacheTTL: 5)
 
         // Seed cache manually to avoid AX dependency in unit test
-        let cachedMenu = Menu(title: "File", bundleIdentifier: app.bundleIdentifier, ownerName: app.name, items: [], isEnabled: true)
+        let cachedMenu = Menu(
+            title: "File",
+            bundleIdentifier: app.bundleIdentifier,
+            ownerName: app.name,
+            items: [],
+            isEnabled: true)
         let cachedStructure = MenuStructure(application: app, menus: [cachedMenu])
         let appId = app.bundleIdentifier ?? "com.test.app"
         service.menuCache[appId] = (expiresAt: Date().addingTimeInterval(5), structure: cachedStructure)

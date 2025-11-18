@@ -561,7 +561,8 @@ struct AppCommand: ParsableCommand {
                 }
                 AutomationEventLogger.log(
                     .app,
-                    "unhide app=\(appInfo.name) bundle=\(appInfo.bundleIdentifier ?? "unknown") activated=\(self.activate)"
+                    "unhide app=\(appInfo.name) bundle=\(appInfo.bundleIdentifier ?? "unknown") "
+                        + "activated=\(self.activate)"
                 )
 
             } catch {
@@ -759,7 +760,8 @@ struct AppCommand: ParsableCommand {
                 )
                 AutomationEventLogger.log(
                     .app,
-                    "list count=\(filtered.count) includeHidden=\(self.includeHidden) includeBackground=\(self.includeBackground)"
+                    "list count=\(filtered.count) includeHidden=\(self.includeHidden) "
+                        + "includeBackground=\(self.includeBackground)"
                 )
 
                 output(data) {

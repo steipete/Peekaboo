@@ -53,9 +53,9 @@ public final class MenuService: MenuServiceProtocol {
         }
     }
 
-#if DEBUG
+    #if DEBUG
     func clearMenuCache() {
-        menuCache.removeAll()
+        self.menuCache.removeAll()
     }
-#endif
+    #endif
 }

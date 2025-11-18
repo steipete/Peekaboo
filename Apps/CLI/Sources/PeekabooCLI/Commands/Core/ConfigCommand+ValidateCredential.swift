@@ -41,7 +41,8 @@ extension ConfigCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: "Failed to parse configuration file. Check for syntax errors.",
-                        details: "Path: \(self.configPath). Common issues: trailing commas, unclosed comments, invalid JSON syntax."
+                        details: "Path: \(self.configPath). Common issues: trailing commas, unclosed comments, "
+                            + "invalid JSON syntax."
                     )
                     outputJSON(errorOutput, logger: self.logger)
                 } else {

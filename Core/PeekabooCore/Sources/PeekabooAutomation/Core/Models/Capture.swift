@@ -265,7 +265,7 @@ public struct CaptureMetaSummary: Sendable, Equatable {
 
     public static func make(from result: CaptureSessionResult) -> CaptureMetaSummary {
         CaptureMetaSummary(
-            frames: result.frames.map { $0.path },
+            frames: result.frames.map(\.path),
             contactPath: result.contactSheet.path,
             metadataPath: result.metadataFile,
             diffAlgorithm: result.diffAlgorithm,

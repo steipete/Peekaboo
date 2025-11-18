@@ -191,9 +191,12 @@ extension ConfigCommand {
                 print("  Path: \(self.configManager.getLogPath())")
                 print()
                 print("Files:")
-                let configFilePath = FileManager.default.fileExists(atPath: self.configPath) ? self.configPath : "NOT FOUND"
-                let credentialsFilePath = FileManager.default.fileExists(atPath: self.credentialsPath) ? self
-                    .credentialsPath : "NOT FOUND"
+                let configFilePath = FileManager.default.fileExists(atPath: self.configPath)
+                    ? self.configPath
+                    : "NOT FOUND"
+                let credentialsFilePath = FileManager.default.fileExists(atPath: self.credentialsPath)
+                    ? self.credentialsPath
+                    : "NOT FOUND"
 
                 print("  Config File: \(configFilePath)")
                 print("  Credentials: \(credentialsFilePath)")

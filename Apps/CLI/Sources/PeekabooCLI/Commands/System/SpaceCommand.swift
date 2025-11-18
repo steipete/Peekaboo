@@ -396,7 +396,8 @@ struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, Output
             }
             AutomationEventLogger.log(
                 .space,
-                "move_window window_id=\(windowID) space=\(spaceNum) follow=\(self.follow ? 1 : 0) title=\"\(windowInfo.title)\""
+                "move_window window_id=\(windowID) space=\(spaceNum) follow=\(self.follow ? 1 : 0) "
+                    + "title=\"\(windowInfo.title)\""
             )
 
             if self.jsonOutput {

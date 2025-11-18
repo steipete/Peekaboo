@@ -89,12 +89,19 @@ extension MenuService {
             let items = try await listMenuBarItems()
             let normalizedName = normalizedMenuTitle(name)
 
-            if let item = items.first(where: { titlesMatch(candidate: $0.title, target: name, normalizedTarget: normalizedName) }) {
+            if let item = items.first(where: { titlesMatch(
+                candidate: $0.title,
+                target: name,
+                normalizedTarget: normalizedName) })
+            {
                 return try await self.clickMenuBarItem(at: item.index)
             }
 
             if partialMatchEnabled,
-               let item = items.first(where: { titlesMatchPartial(candidate: $0.title, target: name, normalizedTarget: normalizedName) })
+               let item = items.first(where: { titlesMatchPartial(
+                   candidate: $0.title,
+                   target: name,
+                   normalizedTarget: normalizedName) })
             {
                 return try await self.clickMenuBarItem(at: item.index)
             }
@@ -193,7 +200,7 @@ extension MenuService {
             let frame = CGRect(x: x, y: y, width: width, height: height)
             if x < 0 { continue }
 
-            guard windowInfo[kCGWindowNumber as String] as? CGWindowID != nil,
+            guard windowInfo[kCGWindowNumber as String] is CGWindowID,
                   let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t
             else {
                 continue

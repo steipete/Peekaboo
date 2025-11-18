@@ -40,7 +40,8 @@ public struct CaptureTool: MCPTool {
                 "idle_fps": SchemaBuilder.number(description: "Idle FPS (default 2, min 0.1, max 5)"),
                 "active_fps": SchemaBuilder.number(description: "Active FPS (default 8, max 15)"),
                 "threshold_percent": SchemaBuilder.number(description: "Change threshold percent (default 2.5)"),
-                "heartbeat_sec": SchemaBuilder.number(description: "Heartbeat interval seconds (default 5, 0 disables)"),
+                "heartbeat_sec": SchemaBuilder
+                    .number(description: "Heartbeat interval seconds (default 5, 0 disables)"),
                 "quiet_ms": SchemaBuilder.number(description: "Calm period before returning to idle (default 1000)"),
 
                 // Video sampling
@@ -56,8 +57,12 @@ public struct CaptureTool: MCPTool {
                 "max_frames": SchemaBuilder.number(description: "Soft frame cap (default 800)"),
                 "max_mb": SchemaBuilder.number(description: "Soft size cap MB (optional)"),
                 "resolution_cap": SchemaBuilder.number(description: "Cap longest side px (default 1440)"),
-                "diff_strategy": SchemaBuilder.string(description: "fast|quality (default fast)", enum: ["fast", "quality"], default: "fast"),
-                "diff_budget_ms": SchemaBuilder.number(description: "Diff time budget ms before falling back to fast (default 30 for quality)"),
+                "diff_strategy": SchemaBuilder.string(
+                    description: "fast|quality (default fast)",
+                    enum: ["fast", "quality"],
+                    default: "fast"),
+                "diff_budget_ms": SchemaBuilder
+                    .number(description: "Diff time budget ms before falling back to fast (default 30 for quality)"),
                 "output_dir": SchemaBuilder.string(description: "Optional absolute directory for outputs"),
                 "autoclean_minutes": SchemaBuilder.number(description: "Minutes to keep temp outputs (default 120)"),
                 "video_out": SchemaBuilder.string(description: "Optional MP4 output path"),
@@ -134,8 +139,15 @@ private struct CaptureRequest {
         let diffStrategy = CaptureOptions.DiffStrategy(rawValue: input.diffStrategy ?? "fast") ?? .fast
         let diffBudget = input.diffBudgetMs ?? (diffStrategy == .quality ? 30 : nil)
         let highlight = input.highlightChanges ?? false
+        let constraints = CaptureConstraints(
+            highlight: highlight,
+            maxFrames: maxFrames,
+            maxMb: maxMb,
+            resolutionCap: resolutionCap,
+            diffStrategy: diffStrategy,
+            diffBudget: diffBudget)
 
-        let outputDir: URL = if let dir = input.output_dir {
+        let outputDir = if let dir = input.output_dir {
             URL(fileURLWithPath: dir, isDirectory: true)
         } else {
             URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -153,12 +165,7 @@ private struct CaptureRequest {
             self.frameSource = nil
             let opts = CaptureRequest.buildLiveOptions(
                 from: input,
-                highlight: highlight,
-                maxFrames: maxFrames,
-                maxMb: maxMb,
-                resolutionCap: resolutionCap,
-                diffStrategy: diffStrategy,
-                diffBudget: diffBudget)
+                constraints: constraints)
             self.options = opts
             self.keepAllFrames = false
             self.videoIn = nil
@@ -169,7 +176,7 @@ private struct CaptureRequest {
             let videoURL = URL(fileURLWithPath: inputPath)
             let sampleFps = input.sampleFps
             let everyMs = input.everyMs
-            if sampleFps != nil && everyMs != nil {
+            if sampleFps != nil, everyMs != nil {
                 throw PeekabooError.invalidInput("sample_fps and every_ms are mutually exclusive")
             }
             let frameSource = try VideoFrameSource(
@@ -183,13 +190,7 @@ private struct CaptureRequest {
             self.scope = CaptureScope(kind: .frontmost)
             self.keepAllFrames = input.noDiff ?? false
             self.videoIn = videoURL.path
-            let opts = CaptureRequest.buildVideoOptions(
-                highlight: highlight,
-                maxFrames: maxFrames,
-                maxMb: maxMb,
-                resolutionCap: resolutionCap,
-                diffStrategy: diffStrategy,
-                diffBudget: diffBudget)
+            let opts = CaptureRequest.buildVideoOptions(constraints: constraints)
             self.options = opts
         }
     }
@@ -231,8 +232,8 @@ private struct CaptureInput: Codable {
     let videoOut: String?
 }
 
-private extension CaptureRequest {
-    static func resolveScope(from input: CaptureInput) throws -> CaptureScope {
+extension CaptureRequest {
+    fileprivate static func resolveScope(from input: CaptureInput) throws -> CaptureScope {
         let modeStr = input.mode
         let explicitApp = input.app
         let explicitPid = input.pid.flatMap { Int32($0) }
@@ -251,7 +252,14 @@ private extension CaptureRequest {
         switch mode {
         case .screen:
             let screenIndex = input.screen_index
-            return CaptureScope(kind: .screen, screenIndex: screenIndex, displayUUID: nil, windowId: nil, applicationIdentifier: nil, windowIndex: nil, region: nil)
+            return CaptureScope(
+                kind: .screen,
+                screenIndex: screenIndex,
+                displayUUID: nil,
+                windowId: nil,
+                applicationIdentifier: nil,
+                windowIndex: nil,
+                region: nil)
         case .frontmost:
             return CaptureScope(kind: .frontmost)
         case .window:
@@ -263,20 +271,26 @@ private extension CaptureRequest {
             }
             let parts = regionStr.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
             guard parts.count == 4 else { throw PeekabooError.invalidInput("region must be x,y,width,height") }
-            return CaptureScope(kind: .region, region: CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3]))
+            return CaptureScope(
+                kind: .region,
+                region: CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3]))
         case .multi:
             throw PeekabooError.invalidInput("mode multi not supported for capture")
         }
     }
 
-    static func buildLiveOptions(
+    private struct CaptureConstraints {
+        let highlight: Bool
+        let maxFrames: Int
+        let maxMb: Int?
+        let resolutionCap: CGFloat
+        let diffStrategy: CaptureOptions.DiffStrategy
+        let diffBudget: Int?
+    }
+
+    fileprivate static func buildLiveOptions(
         from input: CaptureInput,
-        highlight: Bool,
-        maxFrames: Int,
-        maxMb: Int?,
-        resolutionCap: CGFloat,
-        diffStrategy: CaptureOptions.DiffStrategy,
-        diffBudget: Int?) -> CaptureOptions
+        constraints: CaptureConstraints) -> CaptureOptions
     {
         let duration = max(1, min(input.durationSeconds ?? 60, 180))
         let idle = min(max(input.idleFps ?? 2, 0.1), 5)
@@ -284,8 +298,8 @@ private extension CaptureRequest {
         let threshold = min(max(input.thresholdPercent ?? 2.5, 0), 100)
         let heartbeat = max(input.heartbeatSec ?? 5, 0)
         let quiet = max(Int(input.quietMs ?? 1000), 0)
-        let maxFrames = max(maxFrames, 1)
-        let maxMbAdjusted = maxMb.flatMap { $0 > 0 ? $0 : nil }
+        let maxFrames = max(constraints.maxFrames, 1)
+        let maxMbAdjusted = constraints.maxMb.flatMap { $0 > 0 ? $0 : nil }
         let focus = input.capture_focus.flatMap { CaptureFocus(rawValue: $0) } ?? .auto
 
         return CaptureOptions(
@@ -297,23 +311,18 @@ private extension CaptureRequest {
             quietMsToIdle: quiet,
             maxFrames: maxFrames,
             maxMegabytes: maxMbAdjusted,
-            highlightChanges: highlight,
+            highlightChanges: constraints.highlight,
             captureFocus: focus,
-            resolutionCap: resolutionCap,
-            diffStrategy: diffStrategy,
-            diffBudgetMs: diffBudget)
+            resolutionCap: constraints.resolutionCap,
+            diffStrategy: constraints.diffStrategy,
+            diffBudgetMs: constraints.diffBudget)
     }
 
-    static func buildVideoOptions(
-        highlight: Bool,
-        maxFrames: Int,
-        maxMb: Int?,
-        resolutionCap: CGFloat,
-        diffStrategy: CaptureOptions.DiffStrategy,
-        diffBudget: Int?) -> CaptureOptions
+    fileprivate static func buildVideoOptions(
+        constraints: CaptureConstraints) -> CaptureOptions
     {
-        let maxFrames = max(maxFrames, 1)
-        let maxMbAdjusted = maxMb.flatMap { $0 > 0 ? $0 : nil }
+        let maxFrames = max(constraints.maxFrames, 1)
+        let maxMbAdjusted = constraints.maxMb.flatMap { $0 > 0 ? $0 : nil }
         return CaptureOptions(
             duration: 3600,
             idleFps: 60,
@@ -323,11 +332,11 @@ private extension CaptureRequest {
             quietMsToIdle: 1000,
             maxFrames: maxFrames,
             maxMegabytes: maxMbAdjusted,
-            highlightChanges: highlight,
+            highlightChanges: constraints.highlight,
             captureFocus: .auto,
-            resolutionCap: resolutionCap,
-            diffStrategy: diffStrategy,
-            diffBudgetMs: diffBudget)
+            resolutionCap: constraints.resolutionCap,
+            diffStrategy: constraints.diffStrategy,
+            diffBudgetMs: constraints.diffBudget)
     }
 }
 
@@ -345,7 +354,7 @@ private enum CaptureMetaBuilder {
             "contact_rows": .string("\(summary.contactRows)"),
             "contact_thumb_width": .string("\(summary.contactThumbSize.width)"),
             "contact_thumb_height": .string("\(summary.contactThumbSize.height)"),
-            "contact_sampled_indexes": .array(summary.contactSampledIndexes.map { .string("\($0)") })
+            "contact_sampled_indexes": .array(summary.contactSampledIndexes.map { .string("\($0)") }),
         ]
         return .object(meta)
     }

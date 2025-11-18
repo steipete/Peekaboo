@@ -157,7 +157,8 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
         )
         AutomationEventLogger.log(
             .open,
-            "target=\(result.resolved_target) handler=\(result.handler_app) bundle=\(result.bundle_id ?? "unknown") focused=\(result.focused)"
+            "target=\(result.resolved_target) handler=\(result.handler_app) "
+                + "bundle=\(result.bundle_id ?? "unknown") focused=\(result.focused)"
         )
 
         output(result) {

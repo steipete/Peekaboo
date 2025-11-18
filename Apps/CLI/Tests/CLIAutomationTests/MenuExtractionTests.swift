@@ -498,7 +498,7 @@ struct MenuDialogLocalHarnessTests {
         appName: String,
         menuPath: String,
         duration: TimeInterval = 45,
-        verification: (CodableJSONResponse<MenuClickResult>) -> ()
+        verification: (CodableJSONResponse<MenuClickResult>) -> Void
     ) async throws {
         try self.ensureAppLaunched(appName)
         let start = Date()

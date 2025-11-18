@@ -34,10 +34,10 @@ private final class Loader: Component {
 final class AgentChatInput: Component {
     private let editor = Editor()
 
-    var onSubmit: ((String) -> ())?
-    var onCancel: (() -> ())?
-    var onInterrupt: (() -> ())?
-    var onQueueWhileLocked: (() -> ())?
+    var onSubmit: ((String) -> Void)?
+    var onCancel: (() -> Void)?
+    var onInterrupt: (() -> Void)?
+    var onQueueWhileLocked: (() -> Void)?
 
     var isLocked: Bool = false {
         didSet {
@@ -97,8 +97,8 @@ final class AgentChatInput: Component {
 
 @MainActor
 final class AgentChatUI {
-    var onCancelRequested: (() -> ())?
-    var onInterruptRequested: (() -> ())?
+    var onCancelRequested: (() -> Void)?
+    var onInterruptRequested: (() -> Void)?
 
     private let tui: TUI
     private let messages = Container()

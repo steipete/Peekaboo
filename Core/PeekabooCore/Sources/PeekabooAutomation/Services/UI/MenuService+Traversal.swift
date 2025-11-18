@@ -103,7 +103,11 @@ extension MenuService {
         let normalizedTarget = normalizedMenuTitle(name)
 
         return elements.first { element in
-            if let title = element.title(), titlesMatch(candidate: title, target: name, normalizedTarget: normalizedTarget) {
+            if let title = element.title(), titlesMatch(
+                candidate: title,
+                target: name,
+                normalizedTarget: normalizedTarget)
+            {
                 return true
             }
             if let attrTitle = element.value() as? NSAttributedString,

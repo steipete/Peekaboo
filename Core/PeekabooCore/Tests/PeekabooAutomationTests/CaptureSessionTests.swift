@@ -66,9 +66,9 @@ private struct FakeFrameSource: CaptureFrameSource {
     }
 
     mutating func nextFrame() async throws -> (cgImage: CGImage?, metadata: CaptureMetadata)? {
-        guard remaining > 0 else { return nil }
-        remaining -= 1
-        let image = FakeFrameSource.makeSolidImage(size: size)
+        guard self.remaining > 0 else { return nil }
+        self.remaining -= 1
+        let image = FakeFrameSource.makeSolidImage(size: self.size)
         let meta = CaptureMetadata(size: size, mode: .screen, timestamp: Date())
         return (image, meta)
     }
@@ -97,7 +97,11 @@ private struct NoOpScreenCaptureService: ScreenCaptureServiceProtocol {
         throw PeekabooError.captureFailed(reason: "unused")
     }
 
-    func captureWindow(appIdentifier: String, windowIndex: Int?, visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult {
+    func captureWindow(
+        appIdentifier: String,
+        windowIndex: Int?,
+        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+    {
         throw PeekabooError.captureFailed(reason: "unused")
     }
 

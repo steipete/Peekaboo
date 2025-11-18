@@ -10,8 +10,6 @@ import Tachikoma
 import TachikomaMCP
 import TauTUI
 
-// swiftlint:disable file_length
-
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working
 struct AgentSessionInfo: Codable {
@@ -210,10 +208,10 @@ private final class TerminalModeGuard {
 final class EscapeKeyMonitor {
     private var source: (any DispatchSourceRead)?
     private var terminalGuard: TerminalModeGuard?
-    private let handler: @Sendable () async -> ()
+    private let handler: @Sendable () async -> Void
     private let queue = DispatchQueue(label: "peekaboo.escape.monitor")
 
-    init(handler: @escaping @Sendable () async -> ()) {
+    init(handler: @escaping @Sendable () async -> Void) {
         self.handler = handler
     }
 
@@ -738,7 +736,9 @@ extension AgentCommand {
             let status = result.metadata.context["status"] ?? "completed"
             AutomationEventLogger.log(
                 .agent,
-                "result status=\(status) task='\(task)' model=\(result.metadata.modelName) duration=\(duration)s tools=\(result.metadata.toolCallCount) dry_run=\(self.dryRun) session=\(sessionId) tokens=\(finalTokens)"
+                "result status=\(status) task='\(task)' model=\(result.metadata.modelName) duration=\(duration)s "
+                    + "tools=\(result.metadata.toolCallCount) dry_run=\(self.dryRun) "
+                    + "session=\(sessionId) tokens=\(finalTokens)"
             )
             return result
         } catch {
@@ -1003,5 +1003,3 @@ extension AgentCommand {
 extension AgentCommand: ParsableCommand {}
 
 extension AgentCommand: AsyncRuntimeCommand {}
-
-// swiftlint:enable file_length

@@ -92,7 +92,8 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             )
             AutomationEventLogger.log(
                 .scroll,
-                "direction=\(self.direction) amount=\(self.amount) smooth=\(self.smooth) target=\(self.on ?? "pointer") session=\(sessionId ?? "latest")"
+                "direction=\(self.direction) amount=\(self.amount) smooth=\(self.smooth) "
+                    + "target=\(self.on ?? "pointer") session=\(sessionId ?? "latest")"
             )
 
             // Calculate total ticks for output

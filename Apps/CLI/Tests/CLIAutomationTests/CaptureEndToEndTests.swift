@@ -29,8 +29,8 @@ struct CaptureEndToEndTests {
     }
 }
 
-private extension CommandRuntime {
-    static func mock() -> CommandRuntime {
+extension CommandRuntime {
+    fileprivate static func mock() -> CommandRuntime {
         CommandRuntime(services: PeekabooServicesMock(), configuration: .init(jsonOutput: true))
     }
 }
@@ -43,10 +43,32 @@ private struct PeekabooServicesMock: PeekabooServiceProviding {
 }
 
 private struct ScreenCaptureServiceMock: ScreenCaptureServiceProtocol {
-    func captureScreen(displayIndex: Int?, visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult { throw PeekabooError.captureFailed(reason: "mock") }
-    func captureWindow(appIdentifier: String, windowIndex: Int?, visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult { throw PeekabooError.captureFailed(reason: "mock") }
-    func captureFrontmost(visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult { throw PeekabooError.captureFailed(reason: "mock") }
-    func captureArea(_ rect: CGRect, visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult { throw PeekabooError.captureFailed(reason: "mock") }
+    func captureScreen(
+        displayIndex: Int?,
+        visualizerMode: CaptureVisualizerMode
+    ) async throws -> CaptureResult { throw PeekabooError
+        .captureFailed(reason: "mock")
+    }
+
+    func captureWindow(
+        appIdentifier: String,
+        windowIndex: Int?,
+        visualizerMode: CaptureVisualizerMode
+    ) async throws -> CaptureResult { throw PeekabooError
+        .captureFailed(reason: "mock")
+    }
+
+    func captureFrontmost(visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult { throw PeekabooError
+        .captureFailed(reason: "mock")
+    }
+
+    func captureArea(
+        _ rect: CGRect,
+        visualizerMode: CaptureVisualizerMode
+    ) async throws -> CaptureResult { throw PeekabooError
+        .captureFailed(reason: "mock")
+    }
+
     func hasScreenRecordingPermission() async -> Bool { true }
 }
 
@@ -56,5 +78,14 @@ private struct ScreenServiceMock: ScreenServiceProtocol {
 
 private struct WindowServiceMock: WindowServiceProtocol {
     func listWindows() async throws -> [ServiceWindowInfo] { [] }
-    func focusWindow(applicationName: String, windowIndex: Int?, timeout: TimeInterval?, retryCount: Int?, spaceSwitch: Bool, bringToCurrentSpace: Bool) async throws {}
+    // Signature defined by WindowServiceProtocol; suppress parameter-count lint for the mock implementation.
+    // swiftlint:disable:next function_parameter_count
+    func focusWindow(
+        applicationName: String,
+        windowIndex: Int?,
+        timeout: TimeInterval?,
+        retryCount: Int?,
+        spaceSwitch: Bool,
+        bringToCurrentSpace: Bool
+    ) async throws {}
 }

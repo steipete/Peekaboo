@@ -16,9 +16,9 @@ struct MenuTraversalLimits {
     static func from(policy: SearchPolicy) -> MenuTraversalLimits {
         switch policy {
         case .balanced:
-            return MenuTraversalLimits(maxDepth: 8, maxChildren: 500, timeBudget: 3.0)
+            MenuTraversalLimits(maxDepth: 8, maxChildren: 500, timeBudget: 3.0)
         case .debug:
-            return MenuTraversalLimits(maxDepth: 16, maxChildren: 1500, timeBudget: 10.0)
+            MenuTraversalLimits(maxDepth: 16, maxChildren: 1500, timeBudget: 10.0)
         }
     }
 }
@@ -29,28 +29,32 @@ struct MenuTraversalBudget {
     let limits: MenuTraversalLimits
 
     mutating func allowVisit(depth: Int, logger: Logger, context: String) -> Bool {
-        let elapsed: Duration = menuClock.now - startInstant
-        let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1_000_000_000_000_000_000
-        let budget = limits.timeBudget
+        let elapsed: Duration = menuClock.now - self.startInstant
+        let elapsedSeconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) /
+            1_000_000_000_000_000_000
+        let budget = self.limits.timeBudget
         guard elapsedSeconds <= budget else {
-            logger.warning("Menu traversal aborted after \(String(format: "%.2f", elapsedSeconds))s (budget: \(budget)s) @\(context)")
+            logger
+                .warning(
+                    "Menu traversal aborted after \(String(format: "%.2f", elapsedSeconds))s "
+                        + "(budget: \(budget)s) @\(context)")
             return false
         }
 
-        let maxDepth = limits.maxDepth
+        let maxDepth = self.limits.maxDepth
         guard depth <= maxDepth else {
             logger.warning("Menu traversal depth \(depth) exceeded limit \(maxDepth) @\(context)")
             return false
         }
 
-        let maxChildren = limits.maxChildren
-        let seen = visitedChildren
+        let maxChildren = self.limits.maxChildren
+        let seen = self.visitedChildren
         guard seen < maxChildren else {
             logger.warning("Menu traversal halted after \(seen) children (max: \(maxChildren)) @\(context)")
             return false
         }
 
-        visitedChildren += 1
+        self.visitedChildren += 1
         return true
     }
 }

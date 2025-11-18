@@ -15,9 +15,9 @@ private struct SearchLimits {
     static func from(policy: SearchPolicy) -> SearchLimits {
         switch policy {
         case .balanced:
-            return SearchLimits(maxDepth: 8, maxChildren: 200, timeBudget: 0.15)
+            SearchLimits(maxDepth: 8, maxChildren: 200, timeBudget: 0.15)
         case .debug:
-            return SearchLimits(maxDepth: 32, maxChildren: 2000, timeBudget: 1.0)
+            SearchLimits(maxDepth: 32, maxChildren: 2000, timeBudget: 1.0)
         }
     }
 }
@@ -669,7 +669,11 @@ extension UIAutomationService {
             if let element = result.element {
                 let waitTime = Date().timeIntervalSince(startTime)
                 self.logger.debug("Found element for target \(String(describing: target)) after \(waitTime)s")
-                return WaitForElementResult(found: true, element: element, waitTime: waitTime, warnings: accumulatedWarnings)
+                return WaitForElementResult(
+                    found: true,
+                    element: element,
+                    waitTime: waitTime,
+                    warnings: accumulatedWarnings)
             }
 
             try await Task.sleep(nanoseconds: retryInterval)
@@ -800,35 +804,42 @@ extension UIAutomationService {
         let appElement = Element(axApp)
 
         let deadline = Date().addingTimeInterval(self.searchLimits.timeBudget)
+        let searchContext = SearchContext(
+            query: query.lowercased(),
+            limits: self.searchLimits,
+            deadline: deadline)
         let (result, warnings) = self.searchElementRecursively(
             in: appElement,
-            matching: query.lowercased(),
             depth: 0,
-            limits: self.searchLimits,
-            deadline: deadline,
+            context: searchContext,
             warnings: [])
 
         guard let result else { return nil }
         return AXSearchOutcome(element: result.element, frame: result.frame, label: result.label, warnings: warnings)
     }
 
+    private struct SearchContext {
+        let query: String
+        let limits: SearchLimits
+        let deadline: Date
+    }
+
     private func searchElementRecursively(
         in element: Element,
-        matching query: String,
         depth: Int,
-        limits: SearchLimits,
-        deadline: Date,
+        context: SearchContext,
         warnings: [String]) -> (result: AXSearchResult?, warnings: [String])
     {
         var currentWarnings = warnings
 
+        let limits = context.limits
         if depth > limits.maxDepth {
             self.logger.debug("AX search aborted: maxDepth reached at depth \(depth)")
             currentWarnings.append("depth_limit")
             return (nil, currentWarnings)
         }
 
-        if Date() > deadline {
+        if Date() > context.deadline {
             self.logger.debug("AX search aborted: time budget exceeded")
             currentWarnings.append("time_budget_exceeded")
             return (nil, currentWarnings)
@@ -839,8 +850,8 @@ extension UIAutomationService {
         let value = element.stringValue()?.lowercased() ?? ""
         let roleDescription = element.roleDescription()?.lowercased() ?? ""
 
-        if title.contains(query) || label.contains(query) ||
-            value.contains(query) || roleDescription.contains(query)
+        if title.contains(context.query) || label.contains(context.query) ||
+            value.contains(context.query) || roleDescription.contains(context.query)
         {
             if let frame = element.frame() {
                 let displayLabel = element.title() ?? element.label() ?? element.roleDescription()
@@ -851,12 +862,10 @@ extension UIAutomationService {
         if let children = element.children() {
             let limitedChildren = children.prefix(limits.maxChildren)
             for child in limitedChildren {
-                let (found, childWarnings) = searchElementRecursively(
+                let (found, childWarnings) = self.searchElementRecursively(
                     in: child,
-                    matching: query,
                     depth: depth + 1,
-                    limits: limits,
-                    deadline: deadline,
+                    context: context,
                     warnings: currentWarnings)
                 if let found {
                     return (found, childWarnings)
