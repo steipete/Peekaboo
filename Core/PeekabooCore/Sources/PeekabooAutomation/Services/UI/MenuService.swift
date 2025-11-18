@@ -58,4 +58,41 @@ public final class MenuService: MenuServiceProtocol {
         menuCache.removeAll()
     }
     #endif
+
+    // MARK: MenuServiceProtocol stubs — implemented in extensions
+    public func listMenus(for appIdentifier: String) async throws -> MenuStructure {
+        try await self.listMenusInternal(appIdentifier: appIdentifier)
+    }
+
+    public func listFrontmostMenus() async throws -> MenuStructure {
+        try await self.listFrontmostMenusInternal()
+    }
+
+    public func clickMenuItem(app: String, itemPath: String) async throws {
+        try await self.clickMenuItemInternal(app: app, itemPath: itemPath)
+    }
+
+    public func clickMenuItemByName(app: String, itemName: String) async throws {
+        try await self.clickMenuItemByNameInternal(app: app, itemName: itemName)
+    }
+
+    public func clickMenuExtra(title: String) async throws {
+        try await self.clickMenuExtraInternal(title: title)
+    }
+
+    public func listMenuExtras() async throws -> [MenuExtraInfo] {
+        try await self.listMenuExtrasInternal()
+    }
+
+    public func listMenuBarItems() async throws -> [MenuBarItemInfo] {
+        try await self.listMenuBarItemsInternal()
+    }
+
+    public func clickMenuBarItem(named name: String) async throws -> ClickResult {
+        try await self.clickMenuBarItemNamedInternal(name: name)
+    }
+
+    public func clickMenuBarItem(at index: Int) async throws -> ClickResult {
+        try await self.clickMenuBarItemIndexInternal(index: index)
+    }
 }
