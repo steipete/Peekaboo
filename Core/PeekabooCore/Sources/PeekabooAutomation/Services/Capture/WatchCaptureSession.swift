@@ -461,6 +461,22 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
         return (false, .cap)
     }
 
+    /// Returns a bounded video size that preserves aspect ratio while keeping the longest edge under `maxDimension`.
+    /// If `maxDimension` is nil or smaller than the current image, the original size is returned.
+    public static func scaledVideoSize(for size: CGSize, maxDimension: Int?) -> (width: Int, height: Int) {
+        guard let maxDimension, maxDimension > 0 else {
+            return (Int(size.width), Int(size.height))
+        }
+        let currentMax = Int(max(size.width, size.height))
+        guard currentMax > maxDimension else {
+            return (Int(size.width), Int(size.height))
+        }
+        let scale = Double(maxDimension) / Double(currentMax)
+        let scaledWidth = max(1, Int((Double(size.width) * scale).rounded()))
+        let scaledHeight = max(1, Int((Double(size.height) * scale).rounded()))
+        return (scaledWidth, scaledHeight)
+    }
+
     private struct FrameSaveContext {
         let capture: CaptureEnvelope
         let index: Int
@@ -474,10 +490,13 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
         // Create writer lazily on first kept frame so we match the actual frame size.
         if self.videoOut != nil, self.videoWriter == nil {
             let fps = self.videoWriterFPS ?? self.options.activeFps
+            let size = Self.scaledVideoSize(
+                for: CGSize(width: cgImage.width, height: cgImage.height),
+                maxDimension: self.options.resolutionCap.map { Int($0) })
             self.videoWriter = try VideoWriter(
                 outputPath: self.videoOut ?? self.outputRoot.appendingPathComponent("capture.mp4").path,
-                width: cgImage.width,
-                height: cgImage.height,
+                width: size.width,
+                height: size.height,
                 fps: fps)
         }
         if let writer = self.videoWriter {

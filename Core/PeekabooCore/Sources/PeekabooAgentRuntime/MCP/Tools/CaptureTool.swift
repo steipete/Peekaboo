@@ -279,7 +279,7 @@ extension CaptureRequest {
         }
     }
 
-    private struct CaptureConstraints {
+    fileprivate struct CaptureConstraints {
         let highlight: Bool
         let maxFrames: Int
         let maxMb: Int?

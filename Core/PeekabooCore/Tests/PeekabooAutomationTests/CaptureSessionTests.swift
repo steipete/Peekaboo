@@ -5,6 +5,7 @@ import Testing
 
 @testable import PeekabooCore
 
+@MainActor
 @Suite("CaptureSession with fake frame source")
 struct CaptureSessionTests {
     @Test("keeps all frames and writes contact/metadata")
@@ -56,7 +57,7 @@ struct CaptureSessionTests {
 
 // MARK: - Fakes
 
-private struct FakeFrameSource: CaptureFrameSource {
+private final class FakeFrameSource: CaptureFrameSource {
     private var remaining: Int
     private let size: CGSize
 
@@ -65,7 +66,7 @@ private struct FakeFrameSource: CaptureFrameSource {
         self.size = size
     }
 
-    mutating func nextFrame() async throws -> (cgImage: CGImage?, metadata: CaptureMetadata)? {
+    func nextFrame() async throws -> (cgImage: CGImage?, metadata: CaptureMetadata)? {
         guard self.remaining > 0 else { return nil }
         self.remaining -= 1
         let image = FakeFrameSource.makeSolidImage(size: self.size)
@@ -117,5 +118,19 @@ private struct NoOpScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 private struct NoOpScreenService: ScreenServiceProtocol {
-    func listScreens() -> [ScreenInfo] { [ScreenInfo(index: 0, name: "Mock", frame: .zero)] }
+    func listScreens() -> [ScreenInfo] {
+        [
+            ScreenInfo(
+                index: 0,
+                name: "Mock",
+                frame: .zero,
+                visibleFrame: .zero,
+                isPrimary: true,
+                scaleFactor: 2.0,
+                displayID: 0),
+        ]
+    }
+    func screenContainingWindow(bounds: CGRect) -> ScreenInfo? { self.listScreens().first }
+    func screen(at index: Int) -> ScreenInfo? { self.listScreens().first(where: { $0.index == index }) }
+    var primaryScreen: ScreenInfo? { self.listScreens().first }
 }

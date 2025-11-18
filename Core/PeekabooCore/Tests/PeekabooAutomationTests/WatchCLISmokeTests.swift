@@ -21,6 +21,9 @@ struct WatchCLISmokeTests {
     @Test("Diff metadata is carried through result")
     func diffMetadata() throws {
         let result = WatchCaptureResult(
+            source: .live,
+            videoIn: nil,
+            videoOut: nil,
             frames: [],
             contactSheet: WatchContactSheet(
                 path: "/tmp/contact.png",
