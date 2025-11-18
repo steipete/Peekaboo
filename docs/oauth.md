@@ -13,6 +13,8 @@ Peekaboo supports OAuth for two providers:
 
 These flows avoid storing API keys and instead keep refresh/access tokens in `~/.peekaboo/credentials` (chmod 600).
 
+> Peekaboo shares the same credential layout as Tachikoma. Hosts can swap the profile directory (`TachikomaConfiguration.profileDirectoryName`) but **never copy environment keys into the file**; only explicit `config add`/`config login` writes.
+
 ## What happens during login
 1. Generate PKCE values and open the provider’s authorize URL in the browser (also printed for headless use).
 2. You paste the returned `code` (and `state` when required) into the CLI.

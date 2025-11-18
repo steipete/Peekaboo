@@ -138,7 +138,7 @@ Peekaboo ships many focused commands. Each entry below links to a short doc in `
 #### Core Utilities
 - [`list`](docs/commands/list.md) – Subcommands: `apps`, `windows`, `screens`, `menubar`, `permissions`.
 - [`tools`](docs/commands/tools.md) – Enumerate native + MCP tools; filter by server/source.
-- [`config`](docs/commands/config.md) – Subcommands: `init`, `show`, `edit`, `validate`, `set-credential`, `add-provider`, `list-providers`, `test-provider`, `remove-provider`, `models`.
+- [`config`](docs/commands/config.md) – Subcommands: `init`, `show` (live validation), `add <provider> <secret> [--timeout]`, `login <provider>` (OpenAI/Codex, Anthropic Max OAuth), legacy `set-credential`, `models`.
 - [`permissions`](docs/commands/permissions.md) – `status` (default) and `grant` helpers for Screen Recording, Accessibility, etc.
 - [`learn`](docs/commands/learn.md) – Emit the full agent guide/system prompt/Commander signature dump.
 - [`run`](docs/commands/run.md) – Execute `.peekaboo.json` automation scripts (`--output`, `--no-fail-fast`).
