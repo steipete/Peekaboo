@@ -135,9 +135,9 @@ enum ScreenCaptureAPIResolver {
     }
 }
 
-struct ScreenCaptureFallbackRunner: Sendable {
+struct ScreenCaptureFallbackRunner {
     let apis: [ScreenCaptureAPI]
-    let observer: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)?
+    let observer: ((String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)?
 
     init(apis: [ScreenCaptureAPI], observer: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)? = nil) {
         precondition(!apis.isEmpty, "At least one API must be provided")

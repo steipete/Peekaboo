@@ -44,7 +44,7 @@ import PeekabooVisualizer
 @MainActor
 // swiftlint:disable type_body_length
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
-    struct Dependencies: Sendable {
+    struct Dependencies {
         let visualizerClient: any VisualizationClientProtocol
         let permissionEvaluator: any ScreenRecordingPermissionEvaluating
         let fallbackRunner: ScreenCaptureFallbackRunner
