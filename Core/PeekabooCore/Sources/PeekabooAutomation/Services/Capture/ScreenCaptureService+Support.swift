@@ -157,7 +157,18 @@ struct ScreenCaptureFallbackRunner: Sendable {
                 logger.debug(
                     "Attempting \(operationName) via \(api.description)",
                     correlationId: correlationId)
-                return try await attempt(api)
+                let start = Date()
+                let result = try await attempt(api)
+                let duration = Date().timeIntervalSince(start)
+                let message = "\(operationName) succeeded via \(api.description)"
+                logger.info(
+                    message,
+                    metadata: [
+                        "engine": api.description,
+                        "duration": String(format: "%.2f", duration)
+                    ],
+                    correlationId: correlationId)
+                return result
             } catch {
                 lastError = error
                 let hasFallback = index < (self.apis.count - 1)
