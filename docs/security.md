@@ -17,6 +17,14 @@ Peekaboo ships powerful automation tools (clicking, typing, shell, window manage
   }
   ```
   Env `ALLOW` replaces the config allow list; env `DISABLE` is additive with config `deny`. Deny always wins when a tool appears in both lists. Names are case-insensitive; `kebab-case` or `snake_case` both work.
+- **Disable AI entirely even if keys exist**  
+  ```jsonc
+  {
+    "aiProviders": { "providers": "" },
+    "tools": { "deny": ["image", "analyze", "mcp_agent"] }
+  }
+  ```
+  Empty providers short-circuit every AI call, and the deny list keeps AI-only tools off the registry. Combine with `PEEKABOO_ALLOW_TOOLS`/`PEEKABOO_DISABLE_TOOLS` if you need per-run overrides.
 
 Filters apply everywhere tools are surfaced: CLI `peekaboo tools`, the agent toolset, the MCP server’s tool registry, and external MCP servers registered through Peekaboo.
 
