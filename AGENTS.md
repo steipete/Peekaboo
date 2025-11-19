@@ -91,7 +91,9 @@ Edit guidance: keep the actual tool list inside this `<tools></tools>` block so 
 - `bin/browser-tools`: Compiled Chrome helper for remote control/screenshot/eval—use the binary (`bin/browser-tools --help`). Source lives in `scripts/browser-tools.ts`; edit there before rebuilding.
 - `scripts/runner.ts`: Bun implementation backing `runner`; run `bun scripts/runner.ts --help`.
 - `bin/sleep`: Sleep shim that enforces the 30s ceiling; run `bin/sleep --help`.
-- `xcp`: Xcode project/workspace helper; run `xcp --help`.
+- `xcp`: Xcode project/workspace helper (list/set targets, add/move/delete/rename groups & files, get/set build settings, manage image/data/color assets); run `xcp --help`.
+- `xcodegen`: Generate Xcode projects from YAML specs; run `xcodegen --help`.
+- `lldb`: To debug native apps, run `lldb` inside tmux and attach to the running app to inspect state interactively.
 - `oracle`: Ask a smart AI to review code and find bugs; you must call `npx -y @steipete/oracle --help` first.
 - `mcporter`: MCP launcher for any registered MCP server; run `npx mcporter`.
 - `iterm`: Full TTY terminal via MCP; run `npx mcporter iterm`.
