@@ -6,6 +6,25 @@ import PeekabooFoundation
 import PeekabooVisualizer
 @preconcurrency import ScreenCaptureKit
 
+protocol ScreenCaptureMetricsObserving: Sendable {
+    func record(
+        operation: String,
+        api: ScreenCaptureAPI,
+        duration: TimeInterval,
+        success: Bool,
+        error: (any Error)?)
+}
+
+struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
+    func record(
+        operation _: String,
+        api _: ScreenCaptureAPI,
+        duration _: TimeInterval,
+        success _: Bool,
+        error _: (any Error)?)
+    {}
+}
+
 /**
  * Screen and window capture service with dual API support.
  *
@@ -53,7 +72,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             -> any ModernScreenCaptureOperating
         let makeLegacyOperator: @MainActor @Sendable (CategoryLogger)
             -> any LegacyScreenCaptureOperating
-
         init(
             visualizerClient: any VisualizationClientProtocol,
             permissionEvaluator: any ScreenRecordingPermissionEvaluating,
@@ -75,14 +93,29 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         @MainActor
         static func live(
             environment: [String: String] = ProcessInfo.processInfo.environment,
-            applicationResolver: (any ApplicationResolving)? = nil) -> Dependencies
+            applicationResolver: (any ApplicationResolving)? = nil,
+            metricsObserver: (any ScreenCaptureMetricsObserving)? = nil) -> Dependencies
         {
             let resolver = applicationResolver ?? PeekabooApplicationResolver(applicationService: ApplicationService())
+            let captureObserver: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)?
+            if let metricsObserver {
+                captureObserver = { operation, api, duration, success, error in
+                    metricsObserver.record(
+                        operation: operation,
+                        api: api,
+                        duration: duration,
+                        success: success,
+                        error: error)
+                }
+            } else {
+                captureObserver = nil
+            }
             return Dependencies(
                 visualizerClient: VisualizationClient.shared,
                 permissionEvaluator: ScreenRecordingPermissionChecker(),
-                fallbackRunner: ScreenCaptureFallbackRunner(apis: ScreenCaptureAPIResolver
-                    .resolve(environment: environment)),
+                fallbackRunner: ScreenCaptureFallbackRunner(
+                    apis: ScreenCaptureAPIResolver.resolve(environment: environment),
+                    observer: captureObserver),
                 applicationResolver: resolver,
                 makeModernOperator: { logger, visualizer in
                     ScreenCaptureKitOperator(logger: logger, visualizerClient: visualizer)
@@ -167,6 +200,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             metadata: metadata,
             correlationId: correlationId)
 
+        // Start the logger's perf counter so tools can emit duration metrics even if we bail early.
+        // Must capture the opaque ID up front—endPerformanceMeasurement needs the exact token.
         let measurementId = self.logger.startPerformanceMeasurement(
             operation: operation.metricName,
             correlationId: correlationId)
@@ -824,17 +859,23 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 correlationId: correlationId)
 
             let image: CGImage
-            do {
-                image = try self.captureWindowWithCGWindowList(windowID: windowID)
-                self.logger.debug(
-                    "Captured window via CGWindowList",
-                    metadata: ["windowID": String(windowID)],
-                    correlationId: correlationId)
-            } catch {
-                self.logger.warning(
-                    "CGWindowList capture failed, falling back to SCScreenshotManager",
-                    metadata: ["error": String(describing: error)],
-                    correlationId: correlationId)
+            if self.shouldUseLegacyCGCapture() {
+                do {
+                    image = try self.captureWindowWithCGWindowList(windowID: windowID)
+                    self.logger.debug(
+                        "Captured window via CGWindowList",
+                        metadata: ["windowID": String(windowID)],
+                        correlationId: correlationId)
+                } catch {
+                    self.logger.warning(
+                        "CGWindowList capture failed, falling back to SCScreenshotManager",
+                        metadata: ["error": String(describing: error)],
+                        correlationId: correlationId)
+                    image = try await self.captureWindowWithScreenshotManager(
+                        windowID: windowID,
+                        correlationId: correlationId)
+                }
+            } else {
                 image = try await self.captureWindowWithScreenshotManager(
                     windowID: windowID,
                     correlationId: correlationId)
@@ -1092,6 +1133,18 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 layer: layer,
                 isOnScreen: isOnScreen,
                 sharingState: sharingState)
+        }
+
+        private func shouldUseLegacyCGCapture() -> Bool {
+            #if os(macOS)
+            if #available(macOS 14.0, *) {
+                let env = ProcessInfo.processInfo.environment["PEEKABOO_ALLOW_LEGACY_CAPTURE"]?.lowercased()
+                return env.map { ["1", "true", "yes"].contains($0) } ?? false
+            }
+            return true
+            #else
+            return false
+            #endif
         }
 
         private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
