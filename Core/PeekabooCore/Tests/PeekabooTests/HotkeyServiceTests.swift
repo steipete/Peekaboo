@@ -4,6 +4,7 @@ import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
 @testable import PeekabooCore
+@testable import PeekabooFoundation
 @testable import PeekabooVisualizer
 
 @Suite(
@@ -154,5 +155,29 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "option,b", holdDuration: 100)
         try await service.hotkey(keys: "control,c", holdDuration: 100)
         try await service.hotkey(keys: "alt,d", holdDuration: 100)
+    }
+
+    @Test("Hotkey normalization keeps synonyms")
+    func hotkeyNormalization() async throws {
+        let service = HotkeyService()
+        let normalized = service.normalizeKeysForTesting([
+            "command",
+            "SPACEBAR",
+            "backspace",
+            "Option",
+            "esc",
+            "meta",
+            "cmdOrCtrl",
+            "del",
+        ])
+        #expect(normalized == ["cmd", "space", "delete", "alt", "escape", "cmd", "cmd", "delete"])
+    }
+
+    @Test("Empty hotkey strings throw invalid input")
+    func emptyHotkeyThrows() async {
+        let service = HotkeyService()
+        await #expect(throws: PeekabooError.self) {
+            try await service.hotkey(keys: "   ", holdDuration: 0)
+        }
     }
 }
