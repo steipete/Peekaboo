@@ -1,8 +1,8 @@
 import Foundation
-@testable import PeekabooAgentRuntime
 import PeekabooAutomation
 import Tachikoma
 import Testing
+@testable import PeekabooAgentRuntime
 
 @Suite("Tool filtering")
 struct ToolFilteringTests {
@@ -15,15 +15,14 @@ struct ToolFilteringTests {
                 "allow": ["see", "click"]
               }
             }
-            """)
-        {
-            let filters = ToolFiltering.currentFilters()
-            let tools = makeTools(["see", "click", "type"])
-            var logs: [String] = []
-            let filtered = ToolFiltering.apply(tools, filters: filters, log: { logs.append($0) }).map(\.name)
-            #expect(filtered == ["see", "click"])
-            #expect(logs.contains { $0.contains("type") && $0.contains("allow list") })
-        }
+            """) {
+                let filters = ToolFiltering.currentFilters()
+                let tools = makeTools(["see", "click", "type"])
+                var logs: [String] = []
+                let filtered = ToolFiltering.apply(tools, filters: filters, log: { logs.append($0) }).map(\.name)
+                #expect(filtered == ["see", "click"])
+                #expect(logs.contains { $0.contains("type") && $0.contains("allow list") })
+            }
     }
 
     @Test("Env allow overrides config allow; deny accumulates")
@@ -39,19 +38,18 @@ struct ToolFilteringTests {
             """,
             env: [
                 "PEEKABOO_ALLOW_TOOLS": "see,type",
-                "PEEKABOO_DISABLE_TOOLS": "type"
-            ])
-        {
-            let filters = ToolFiltering.currentFilters()
-            let tools = makeTools(["see", "type", "shell"])
-            var logs: [String] = []
-            let filtered = ToolFiltering.apply(tools, filters: filters, log: { logs.append($0) }).map(\.name)
-            #expect(filtered == ["see"])
-            #expect(filters.deny.contains("type"))
-            #expect(filters.deny.contains("shell"))
-            #expect(logs.contains { $0.contains("type") && $0.contains("environment") })
-            #expect(logs.contains { $0.contains("shell") && $0.contains("config") })
-        }
+                "PEEKABOO_DISABLE_TOOLS": "type",
+            ]) {
+                let filters = ToolFiltering.currentFilters()
+                let tools = makeTools(["see", "type", "shell"])
+                var logs: [String] = []
+                let filtered = ToolFiltering.apply(tools, filters: filters, log: { logs.append($0) }).map(\.name)
+                #expect(filtered == ["see"])
+                #expect(filters.deny.contains("type"))
+                #expect(filters.deny.contains("shell"))
+                #expect(logs.contains { $0.contains("type") && $0.contains("environment") })
+                #expect(logs.contains { $0.contains("shell") && $0.contains("config") })
+            }
     }
 
     @Test("Hyphenated names normalize to snake_case")
@@ -63,14 +61,13 @@ struct ToolFilteringTests {
                 "deny": ["menu-click"]
               }
             }
-            """)
-        {
-            let filters = ToolFiltering.currentFilters()
-            let tools = makeTools(["menu_click", "see"])
-            let names = ToolFiltering.apply(tools, filters: filters, log: nil).map(\.name)
-            #expect(!names.contains("menu_click"))
-            #expect(names.contains("see"))
-        }
+            """) {
+                let filters = ToolFiltering.currentFilters()
+                let tools = makeTools(["menu_click", "see"])
+                let names = ToolFiltering.apply(tools, filters: filters, log: nil).map(\.name)
+                #expect(!names.contains("menu_click"))
+                #expect(names.contains("see"))
+            }
     }
 }
 

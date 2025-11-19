@@ -127,7 +127,7 @@ public final class GestureService {
 
     private func getCurrentMouseLocation() -> CGPoint {
         // Prefer AXorcist InputDriver move-less lookup; fallback to CGEvent location if needed
-        return InputDriver.currentLocation() ?? .zero
+        InputDriver.currentLocation() ?? .zero
     }
 
     private func moveMouseToPoint(_ point: CGPoint) async throws {
@@ -199,7 +199,6 @@ public final class GestureService {
         let delay = Double(path.duration) / 1000.0 / Double(steps)
         try InputDriver.drag(from: start, to: endPoint, button: .left, steps: steps, interStepDelay: delay)
     }
-
 
     private func sleepIfNeeded(_ delay: UInt64) async throws {
         guard delay > 0 else { return }

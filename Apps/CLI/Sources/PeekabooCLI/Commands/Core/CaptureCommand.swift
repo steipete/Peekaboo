@@ -26,7 +26,8 @@ struct CaptureCommand: ParsableCommand {
 // MARK: Live capture
 
 @MainActor
-struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable, CaptureEngineConfigurable {
+struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable,
+CaptureEngineConfigurable {
     // Targeting
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'") var app: String?
     @Option(name: .long, help: "Target application by process ID") var pid: Int32?

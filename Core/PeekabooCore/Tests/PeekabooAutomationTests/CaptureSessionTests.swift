@@ -130,6 +130,7 @@ private struct NoOpScreenService: ScreenServiceProtocol {
                 displayID: 0),
         ]
     }
+
     func screenContainingWindow(bounds: CGRect) -> ScreenInfo? { self.listScreens().first }
     func screen(at index: Int) -> ScreenInfo? { self.listScreens().first(where: { $0.index == index }) }
     var primaryScreen: ScreenInfo? { self.listScreens().first }

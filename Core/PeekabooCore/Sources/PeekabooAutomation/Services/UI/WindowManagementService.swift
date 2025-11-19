@@ -497,7 +497,8 @@ extension WindowManagementService {
         }
 
         self.logger.debug("Checking frontmost app first: \(frontmostApp.name)")
-        guard let runningApp = NSRunningApplication(processIdentifier: frontmostApp.processIdentifier) else { return nil }
+        guard let runningApp = NSRunningApplication(processIdentifier: frontmostApp.processIdentifier)
+        else { return nil }
         let appElement = AXApp(runningApp).element
 
         guard let windows = appElement.windows() else { return nil }

@@ -35,7 +35,8 @@ struct MenuTraversalBudget {
         let budget = self.limits.timeBudget
         guard elapsedSeconds <= budget else {
             logger
-                .warning("Menu traversal aborted after \(String(format: "%.2f", elapsedSeconds))s (budget: \(budget)s) @\(context)")
+                .warning(
+                    "Menu traversal aborted after \(String(format: "%.2f", elapsedSeconds))s (budget: \(budget)s) @\(context)")
             return false
         }
 

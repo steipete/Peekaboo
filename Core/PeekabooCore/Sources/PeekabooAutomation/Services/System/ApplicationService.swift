@@ -398,7 +398,7 @@ extension ApplicationService {
         }
     }
 
-public func unhideApplication(identifier: String) async throws {
+    public func unhideApplication(identifier: String) async throws {
         self.logger.info("Unhiding application: \(identifier)")
         let app = try await findApplication(identifier: identifier)
 

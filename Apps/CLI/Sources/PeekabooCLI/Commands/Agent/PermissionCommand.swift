@@ -217,7 +217,12 @@ extension PermissionCommand {
         /// Legacy (< macOS 14) probe to provoke the Screen Recording prompt.
         /// We intentionally keep CGWindowListCreateImage so older systems see the dialog;
         /// we aren’t modernizing this path yet. It can be disabled via env if needed.
-        @available(macOS, introduced: 10.15, deprecated: 14.0, message: "ScreenCaptureKit handles permission prompts on macOS 14+.")
+        @available(
+            macOS,
+            introduced: 10.15,
+            deprecated: 14.0,
+            message: "ScreenCaptureKit handles permission prompts on macOS 14+."
+        )
         private func triggerLegacyScreenRecordingPrompt() {
             guard #unavailable(macOS 14.0) else {
                 return

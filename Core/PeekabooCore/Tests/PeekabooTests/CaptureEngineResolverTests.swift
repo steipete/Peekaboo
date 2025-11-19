@@ -25,7 +25,7 @@ struct CaptureEngineResolverTests {
     func disableCG() {
         let apis = ScreenCaptureAPIResolver.resolve(environment: [
             "PEEKABOO_CAPTURE_ENGINE": "auto",
-            "PEEKABOO_DISABLE_CGWINDOWLIST": "1"
+            "PEEKABOO_DISABLE_CGWINDOWLIST": "1",
         ])
         #expect(apis == [.modern])
     }

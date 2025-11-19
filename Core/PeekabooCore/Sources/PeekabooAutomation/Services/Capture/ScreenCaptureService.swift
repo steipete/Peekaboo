@@ -97,19 +97,19 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             metricsObserver: (any ScreenCaptureMetricsObserving)? = nil) -> Dependencies
         {
             let resolver = applicationResolver ?? PeekabooApplicationResolver(applicationService: ApplicationService())
-            let captureObserver: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)?
-            if let metricsObserver {
-                captureObserver = { operation, api, duration, success, error in
-                    metricsObserver.record(
-                        operation: operation,
-                        api: api,
-                        duration: duration,
-                        success: success,
-                        error: error)
+            let captureObserver: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)? =
+                if let metricsObserver {
+                    { operation, api, duration, success, error in
+                        metricsObserver.record(
+                            operation: operation,
+                            api: api,
+                            duration: duration,
+                            success: success,
+                            error: error)
+                    }
+                } else {
+                    nil
                 }
-            } else {
-                captureObserver = nil
-            }
             return Dependencies(
                 visualizerClient: VisualizationClient.shared,
                 permissionEvaluator: ScreenRecordingPermissionChecker(),
@@ -1227,16 +1227,16 @@ final class CaptureOutput: NSObject, @unchecked Sendable {
 
             // Add a timeout to ensure the continuation is always resumed
             // Reduced from 10 seconds to 3 seconds for faster failure detection
-        self.timeoutTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-            await MainActor.run {
-                guard let self else { return }
-                // Timeout funnels through the same finish() to guarantee exactly-once resume.
-                self.finish(.failure(OperationError.timeout(
-                    operation: "CaptureOutput.waitForImage",
-                    duration: 3.0)))
+            self.timeoutTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                await MainActor.run {
+                    guard let self else { return }
+                    // Timeout funnels through the same finish() to guarantee exactly-once resume.
+                    self.finish(.failure(OperationError.timeout(
+                        operation: "CaptureOutput.waitForImage",
+                        duration: 3.0)))
+                }
             }
-        }
         }
     }
 

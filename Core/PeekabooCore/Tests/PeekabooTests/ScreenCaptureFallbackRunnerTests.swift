@@ -19,9 +19,10 @@ struct ScreenCaptureFallbackRunnerTests {
         let value: Int = try await runner.run(
             operationName: "test",
             logger: logger,
-            correlationId: "c1") { _ in
-                42
-            }
+            correlationId: "c1")
+        { _ in
+            42
+        }
 
         #expect(value == 42)
         #expect(events.count == 1)
@@ -48,11 +49,12 @@ struct ScreenCaptureFallbackRunnerTests {
         let value: String = try await runner.run(
             operationName: "test",
             logger: logger,
-            correlationId: "c2") { api in
-                call += 1
-                if call == 1 { throw Dummy.fail }
-                return "ok_\(api.rawValue)"
-            }
+            correlationId: "c2")
+        { api in
+            call += 1
+            if call == 1 { throw Dummy.fail }
+            return "ok_\(api.rawValue)"
+        }
 
         #expect(value == "ok_legacy")
         #expect(events.count == 2)

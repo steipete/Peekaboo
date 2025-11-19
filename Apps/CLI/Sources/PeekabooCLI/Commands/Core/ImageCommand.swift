@@ -19,7 +19,8 @@ private typealias CaptureFocus = PeekabooCore.CaptureFocus
 
 @MainActor
 
-struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable, CaptureEngineConfigurable {
+struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable,
+CaptureEngineConfigurable {
     @Option(name: .long, help: "Target application name, bundle ID, 'PID:12345', 'menubar', or 'frontmost'")
     var app: String?
 

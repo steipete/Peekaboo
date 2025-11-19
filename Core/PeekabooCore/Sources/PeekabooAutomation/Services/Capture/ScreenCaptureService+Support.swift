@@ -3,11 +3,11 @@
 //  PeekabooCore
 //
 
+@preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooFoundation
 import PeekabooVisualizer
-@preconcurrency import AXorcist
 @preconcurrency import ScreenCaptureKit
 
 extension SCShareableContent: @retroactive @unchecked Sendable {}
@@ -87,8 +87,8 @@ enum ScreenCaptureAPIResolver {
     static func resolve(environment: [String: String]) -> [ScreenCaptureAPI] {
         // New selector (preferred): PEEKABOO_CAPTURE_ENGINE
         if let value = environment["PEEKABOO_CAPTURE_ENGINE"]?.lowercased() {
-            return Self.postProcess(
-                apis: Self.resolveValue(value),
+            return self.postProcess(
+                apis: self.resolveValue(value),
                 environment: environment)
         }
 
@@ -108,15 +108,15 @@ enum ScreenCaptureAPIResolver {
     private static func resolveValue(_ value: String) -> [ScreenCaptureAPI] {
         switch value {
         case "auto":
-            return [.modern, .legacy]
+            [.modern, .legacy]
         case "modern", "modern-only", "sckit", "sc", "screen-capture-kit", "sck":
-            return [.modern]
+            [.modern]
         case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
-            return [.legacy]
+            [.legacy]
         case "true", "1", "yes":
-            return [.modern, .legacy]
+            [.modern, .legacy]
         default:
-            return [.modern, .legacy]
+            [.modern, .legacy]
         }
     }
 
@@ -139,7 +139,10 @@ struct ScreenCaptureFallbackRunner {
     let apis: [ScreenCaptureAPI]
     let observer: ((String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)?
 
-    init(apis: [ScreenCaptureAPI], observer: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)? = nil) {
+    init(
+        apis: [ScreenCaptureAPI],
+        observer: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)? = nil)
+    {
         precondition(!apis.isEmpty, "At least one API must be provided")
         self.apis = apis
         self.observer = observer
@@ -167,7 +170,7 @@ struct ScreenCaptureFallbackRunner {
                     message,
                     metadata: [
                         "engine": api.description,
-                        "duration": String(format: "%.2f", duration)
+                        "duration": String(format: "%.2f", duration),
                     ],
                     correlationId: correlationId)
                 self.observer?(operationName, api, duration, true, nil)

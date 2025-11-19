@@ -642,11 +642,11 @@ extension DialogService {
 
     private func mapSpecialKey(code: CGKeyCode) -> String? {
         switch code {
-        case 0x24: return "return"
-        case 0x35: return "escape"
-        case 0x33: return "delete"
-        case 0x30: return "tab"
-        default: return nil
+        case 0x24: "return"
+        case 0x35: "escape"
+        case 0x33: "delete"
+        case 0x30: "tab"
+        default: nil
         }
     }
 
@@ -941,7 +941,9 @@ extension DialogService {
     }
 }
 #else
-private extension DialogService {
-    static var typeCharacterHandler: (String) throws -> Void { { text in try InputDriver.type(text, delayPerCharacter: 0) } }
+extension DialogService {
+    fileprivate static var typeCharacterHandler: (String) throws -> Void { { text in try InputDriver.type(
+        text,
+        delayPerCharacter: 0) } }
 }
 #endif

@@ -66,7 +66,11 @@ private struct VisualizerSmokeSequence {
         }
 
         try await self.step("Typing indicator") {
-            _ = await client.showTypingFeedback(keys: ["H", "i", "!"], duration: 1.5, cadence: .human(wordsPerMinute: 60))
+            _ = await client.showTypingFeedback(
+                keys: ["H", "i", "!"],
+                duration: 1.5,
+                cadence: .human(wordsPerMinute: 60)
+            )
         }
 
         try await self.step("Scroll indicator") {
@@ -74,7 +78,11 @@ private struct VisualizerSmokeSequence {
         }
 
         try await self.step("Mouse movement trail") {
-            _ = await client.showMouseMovement(from: point, to: CGPoint(x: point.x + 180, y: point.y + 120), duration: 0.8)
+            _ = await client.showMouseMovement(
+                from: point,
+                to: CGPoint(x: point.x + 180, y: point.y + 120),
+                duration: 0.8
+            )
         }
 
         try await self.step("Swipe gesture") {
