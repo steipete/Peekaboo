@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import AXorcist
 import Observation
 import PeekabooCore
 import SwiftUI
@@ -112,12 +113,10 @@ public struct InspectorView: View {
     }
 
     private func checkPermissions(prompt: Bool = false) {
-        let accessEnabled: Bool
-        if prompt {
-            let options: NSDictionary = ["AXTrustedCheckOptionPrompt": true]
-            accessEnabled = AXIsProcessTrustedWithOptions(options)
+        let accessEnabled = if prompt {
+            AXPermissionHelpers.askForAccessibilityIfNeeded()
         } else {
-            accessEnabled = AXIsProcessTrusted()
+            AXPermissionHelpers.hasAccessibilityPermissions()
         }
 
         let newStatus: PermissionStatus = accessEnabled ? .granted : .denied

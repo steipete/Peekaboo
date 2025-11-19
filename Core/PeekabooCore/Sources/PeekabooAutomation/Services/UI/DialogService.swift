@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import AXorcist
 import Foundation
 import os.log
@@ -375,10 +374,9 @@ extension DialogService {
             }
         }
 
-        if let globalWindows: [AXUIElement] = systemWide.attribute(Attribute<[AXUIElement]>("AXWindows")) {
-            for rawWindow in globalWindows {
-                let element = Element(rawWindow)
-                if let candidate = self.resolveDialogCandidate(in: element, matching: title) {
+        if let globalWindows = systemWide.windows() {
+            for window in globalWindows {
+                if let candidate = self.resolveDialogCandidate(in: window, matching: title) {
                     return candidate
                 }
             }
@@ -496,9 +494,9 @@ extension DialogService {
                 continue
             }
 
-            if let windowMatch = self.windowIdentityService.findWindow(byID: CGWindowID(windowInfo.windowID)),
+            if let windowHandle = self.windowIdentityService.findWindow(byID: CGWindowID(windowInfo.windowID)),
                let candidate = self.resolveDialogCandidate(
-                   in: windowMatch.window,
+                   in: windowHandle.element,
                    matching: windowTitle ?? windowInfo.title)
             {
                 return candidate
@@ -872,8 +870,8 @@ extension DialogService {
         if let children = element.children() {
             sheets.append(contentsOf: children.filter { $0.role() == "AXSheet" })
         }
-        if let axSheets: [AXUIElement] = element.attribute(Attribute<[AXUIElement]>("AXSheets")) {
-            sheets.append(contentsOf: axSheets.map(Element.init))
+        if let attachedSheets = element.sheets() {
+            sheets.append(contentsOf: attachedSheets)
         }
         return sheets
     }
@@ -930,78 +928,20 @@ extension DialogService {
     }
 
     @MainActor
-    private func typeCharacter(_ char: Character) throws {
-        if let (keyCode, needsShift) = DialogKeyMap.characters[char] {
-            let modifiers: CGEventFlags = needsShift ? .maskShift : []
-            self.pressKey(keyCode, modifiers: modifiers)
-        } else {
-            self.postUnicodeCharacter(char)
-        }
-    }
-
-    private func postUnicodeCharacter(_ char: Character) {
-        let str = String(char)
-        let utf16 = Array(str.utf16)
-        guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) else {
-            return
-        }
-        utf16.withUnsafeBufferPointer { buffer in
-            keyDown.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
-        }
-        keyDown.post(tap: .cghidEventTap)
+    func typeCharacter(_ char: Character) throws {
+        try DialogService.typeCharacterHandler(String(char))
     }
 }
 
-private enum DialogKeyMap {
-    static let characters: [Character: (CGKeyCode, Bool)] = [
-        "a": (0x00, false), "A": (0x00, true),
-        "b": (0x0B, false), "B": (0x0B, true),
-        "c": (0x08, false), "C": (0x08, true),
-        "d": (0x02, false), "D": (0x02, true),
-        "e": (0x0E, false), "E": (0x0E, true),
-        "f": (0x03, false), "F": (0x03, true),
-        "g": (0x05, false), "G": (0x05, true),
-        "h": (0x04, false), "H": (0x04, true),
-        "i": (0x22, false), "I": (0x22, true),
-        "j": (0x26, false), "J": (0x26, true),
-        "k": (0x28, false), "K": (0x28, true),
-        "l": (0x25, false), "L": (0x25, true),
-        "m": (0x2E, false), "M": (0x2E, true),
-        "n": (0x2D, false), "N": (0x2D, true),
-        "o": (0x1F, false), "O": (0x1F, true),
-        "p": (0x23, false), "P": (0x23, true),
-        "q": (0x0C, false), "Q": (0x0C, true),
-        "r": (0x0F, false), "R": (0x0F, true),
-        "s": (0x01, false), "S": (0x01, true),
-        "t": (0x11, false), "T": (0x11, true),
-        "u": (0x20, false), "U": (0x20, true),
-        "v": (0x09, false), "V": (0x09, true),
-        "w": (0x0D, false), "W": (0x0D, true),
-        "x": (0x07, false), "X": (0x07, true),
-        "y": (0x10, false), "Y": (0x10, true),
-        "z": (0x06, false), "Z": (0x06, true),
-        "0": (0x1D, false), ")": (0x1D, true),
-        "1": (0x12, false), "!": (0x12, true),
-        "2": (0x13, false), "@": (0x13, true),
-        "3": (0x14, false), "#": (0x14, true),
-        "4": (0x15, false), "$": (0x15, true),
-        "5": (0x17, false), "%": (0x17, true),
-        "6": (0x16, false), "^": (0x16, true),
-        "7": (0x1A, false), "&": (0x1A, true),
-        "8": (0x1C, false), "*": (0x1C, true),
-        "9": (0x19, false), "(": (0x19, true),
-        " ": (0x31, false),
-        ".": (0x2F, false),
-        ",": (0x2B, false),
-        "/": (0x2C, false),
-        "\\": (0x2A, false),
-        "-": (0x1B, false),
-        "_": (0x1B, true),
-        "=": (0x18, false),
-        "+": (0x18, true),
-        ":": (0x29, true),
-        ";": (0x29, false),
-        "'": (0x27, false),
-        "\"": (0x27, true),
-    ]
+#if DEBUG
+extension DialogService {
+    /// Test hook to override character typing without sending real events.
+    static var typeCharacterHandler: (String) throws -> Void = { text in
+        try InputDriver.type(text, delayPerCharacter: 0)
+    }
 }
+#else
+private extension DialogService {
+    static var typeCharacterHandler: (String) throws -> Void { { text in try InputDriver.type(text, delayPerCharacter: 0) } }
+}
+#endif

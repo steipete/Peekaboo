@@ -1,4 +1,5 @@
 import AVFoundation
+import AXorcist
 import CoreGraphics
 import Foundation
 import os.log
@@ -31,9 +32,8 @@ public final class PermissionsService {
         // Check if Accessibility permission is granted
         self.logger.debug("Checking accessibility permission")
 
-        // Check if we have accessibility permission
-        let options = ["AXTrustedCheckOptionPrompt": false] as CFDictionary
-        let hasPermission = AXIsProcessTrustedWithOptions(options)
+        // Check if we have accessibility permission through AXorcist helper
+        let hasPermission = AXPermissionHelpers.hasAccessibilityPermissions()
 
         self.logger.info("Accessibility permission: \(hasPermission)")
         return hasPermission

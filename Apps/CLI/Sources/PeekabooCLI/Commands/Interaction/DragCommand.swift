@@ -231,20 +231,24 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             return try await self.findTrashPoint()
         }
 
-        return try await Task { @MainActor
-            in
-            guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: appName).first else {
+        let appInfo = try await self.resolveApplication(appName, services: self.services)
+
+        return try await Task { @MainActor in
+            guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
                 throw PeekabooError.appNotFound(appName)
             }
 
-            let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
-            guard let windowElement = appElement.focusedWindow() else {
-                throw PeekabooError.windowNotFound(criteria: "No focused window for \(app.localizedName ?? appName)")
+            let axApp = AXApp(runningApp)
+            guard let windowElement = axApp.element.focusedWindow() ?? axApp.element.windows()?.first else {
+                throw PeekabooError.windowNotFound(
+                    criteria: "No accessible window for \(appInfo.name)"
+                )
             }
 
             guard let frame = windowElement.frame() else {
-                throw PeekabooError
-                    .windowNotFound(criteria: "Window bounds unavailable for \(app.localizedName ?? appName)")
+                throw PeekabooError.windowNotFound(
+                    criteria: "Window bounds unavailable for \(appInfo.name)"
+                )
             }
 
             return CGPoint(x: frame.midX, y: frame.midY)
@@ -274,7 +278,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             guard let dockApp = apps.first(where: { $0.bundleIdentifier == "com.apple.dock" }) else {
                 return nil
             }
-            return Element(AXUIElementCreateApplication(dockApp.processIdentifier))
+            return AXApp(dockApp).element
         }
     }
 }
@@ -340,3 +344,5 @@ extension DragCommand: CommanderBindableCommand {
         self.focusOptions = try values.makeFocusOptions()
     }
 }
+
+extension DragCommand: ApplicationResolver {}

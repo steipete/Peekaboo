@@ -24,8 +24,8 @@ struct WindowIdentityUtilitiesTests {
     func getWindowIDFromNil() {
         let service = WindowIdentityService()
 
-        // Create a dummy AXUIElement that's not a window
-        let systemWide = AXUIElementCreateSystemWide()
+        // Create a dummy Element that's not a window
+        let systemWide = Element.systemWide()
         let result = service.getWindowID(from: systemWide)
 
         #expect(result == nil)
@@ -243,9 +243,9 @@ struct WindowIdentityUtilitiesTests {
 
         if let firstWindow = windows.first {
             // Try to find it back
-            let element = service.findWindow(byID: firstWindow.windowID, in: finder)
+            let handle = service.findWindow(byID: firstWindow.windowID, in: finder)
 
-            if element != nil {
+            if handle != nil {
                 // Successfully found the window element
                 #expect(true)
             } else {

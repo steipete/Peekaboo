@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
@@ -597,51 +596,36 @@ extension UIAutomationService {
 
     public func hasAccessibilityPermission() async -> Bool {
         self.logger.debug("Checking accessibility permission")
-        return AXIsProcessTrusted()
+        return AXPermissionHelpers.hasAccessibilityPermissions()
     }
 
     @MainActor
     public func getFocusedElement() -> UIFocusInfo? {
         self.logger.debug("Getting focused element")
 
-        let systemWide = AXUIElementCreateSystemWide()
+        let systemWide = Element.systemWide()
 
-        var focusedElement: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(
-            systemWide,
-            kAXFocusedUIElementAttribute as CFString,
-            &focusedElement)
-
-        guard result == .success,
-              let element = focusedElement
-        else {
+        guard let focusedElement = systemWide.focusedUIElement() else {
             self.logger.debug("No focused element found")
             return nil
         }
 
-        let axElement = unsafeDowncast(element as AnyObject, to: AXUIElement.self)
-        let wrappedElement = Element(axElement)
+        let role = focusedElement.role() ?? "Unknown"
+        let title = focusedElement.title()
+        let value = focusedElement.stringValue()
+        let frame = focusedElement.frame() ?? .zero
 
-        let role = wrappedElement.role() ?? "Unknown"
-        let title = wrappedElement.title()
-        let value = wrappedElement.stringValue()
-        let frame = wrappedElement.frame() ?? .zero
-
-        var pid: pid_t = 0
-        AXUIElementGetPid(axElement, &pid)
-
-        let app = NSRunningApplication(processIdentifier: pid)
-        let appName = app?.localizedName ?? "Unknown"
-        let bundleId = app?.bundleIdentifier ?? "Unknown"
+        let pid = focusedElement.pid()
+        let app = pid.flatMap { AXApp(pid: $0) }
 
         return UIFocusInfo(
             role: role,
             title: title,
             value: value,
             frame: frame,
-            applicationName: appName,
-            bundleIdentifier: bundleId,
-            processId: Int(pid))
+            applicationName: app?.localizedName ?? "Unknown",
+            bundleIdentifier: app?.bundleIdentifier ?? "Unknown",
+            processId: pid.map(Int.init) ?? 0)
     }
 
     // MARK: - Wait for Element

@@ -1,4 +1,5 @@
 import AppKit
+import AXorcist
 import PeekabooFoundation
 import Testing
 @testable import PeekabooAgentRuntime
@@ -51,12 +52,10 @@ struct PermissionsServiceTests {
         _ = hasPermission
     }
 
-    @Test("Accessibility permission matches AXIsProcessTrusted", .tags(.fast))
+    @Test("Accessibility permission matches AXPermissionHelpers", .tags(.fast))
     func accessibilityPermissionWithTrustedCheck() {
-        // Compare our check with direct AX API
-        // Use CFDictionary for options to avoid bridging issues
-        let options = ["AXTrustedCheckOptionPrompt": false]
-        let isTrusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
+        // Compare our check with the AXorcist helper to ensure parity.
+        let isTrusted = AXPermissionHelpers.hasAccessibilityPermissions()
         let hasPermission = self.permissionsService.checkAccessibilityPermission()
 
         // These should match

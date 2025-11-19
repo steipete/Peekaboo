@@ -177,24 +177,26 @@ public final class FocusManagementService {
             try await self.handleSpaceFocus(windowID: windowID, bringToCurrentSpace: options.bringToCurrentSpace)
         }
 
-        // Find the window's AXUIElement
-        guard let (windowElement, app) = windowIdentityService.findWindow(byID: windowID) else {
+        // Find the window handle (app + element)
+        guard let handle = windowIdentityService.findWindow(byID: windowID) else {
             throw FocusError.axElementNotFound(windowID)
         }
 
+        let runningApp = handle.app.application
+
         // Activate the application
-        if !app.isActive {
-            app.activate()
+        if !runningApp.isActive {
+            runningApp.activate()
 
             // Wait for activation
             try await self.waitForCondition(
                 timeout: 2.0,
                 interval: 0.1,
-                condition: { app.isActive })
+                condition: { runningApp.isActive })
         }
 
         // Focus the window
-        try await self.focusWindowElement(windowElement, windowID: windowID, options: options)
+        try await self.focusWindowElement(handle.element, windowID: windowID, options: options)
     }
 
     // MARK: - Private Helpers

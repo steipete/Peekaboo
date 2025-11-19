@@ -18,7 +18,7 @@ public struct WindowIdentityInfo: Sendable {
     public let axIdentifier: String?
 
     public var isRenderable: Bool {
-        self.bounds.width >= 50 && self.bounds.height >= 50 && self.alpha > 0
+        self.layer == 0 && self.bounds.width >= 50 && self.bounds.height >= 50 && self.alpha > 0
     }
 
     public var windowLayer: Int { self.layer } // Backward compatibility
@@ -83,22 +83,20 @@ public final class WindowIdentityService {
 
     // MARK: - CGWindowID Extraction
 
-    public func getWindowID(from windowElement: AXUIElement) -> CGWindowID? {
-        self.resolver.windowID(from: windowElement)
-    }
-
     public func getWindowID(from element: Element) -> CGWindowID? {
         self.resolver.windowID(from: element)
     }
 
-    // MARK: - AXUIElement Lookup
+    // MARK: - AX Lookup
 
-    public func findWindow(byID windowID: CGWindowID, in app: NSRunningApplication) -> Element? {
-        self.resolver.findWindow(by: windowID, in: app)
+    public func findWindow(byID windowID: CGWindowID, in app: NSRunningApplication) -> AXWindowHandle? {
+        guard let element = self.resolver.findWindow(by: windowID, in: app) else { return nil }
+        return AXWindowHandle(app: AXApp(app), element: element)
     }
 
-    public func findWindow(byID windowID: CGWindowID) -> (window: Element, app: NSRunningApplication)? {
-        self.resolver.findWindow(by: windowID)
+    public func findWindow(byID windowID: CGWindowID) -> AXWindowHandle? {
+        guard let result = self.resolver.findWindow(by: windowID) else { return nil }
+        return AXWindowHandle(app: AXApp(result.app), element: result.window)
     }
 
     // MARK: - Window Information
@@ -107,7 +105,7 @@ public final class WindowIdentityService {
         guard let info = self.resolver.windowInfo(windowID: windowID) else { return nil }
 
         // Compute AX identifier lazily.
-        let axIdentifier = self.resolver.findWindow(by: windowID)?.window.identifier()
+        let axIdentifier = self.findWindow(byID: windowID)?.element.identifier()
 
         return WindowIdentityInfo(
             windowID: info.windowID,

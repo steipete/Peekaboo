@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import AXorcist
 import Commander
 import Foundation
@@ -451,9 +450,12 @@ struct AppCommand: ParsableCommand {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 let appInfo = try await resolveApplication(appIdentifier, services: self.services)
 
+                guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
+                    throw PeekabooError.appNotFound(appIdentifier)
+                }
+
                 await MainActor.run {
-                    let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
-                    _ = element.hideApplication()
+                    _ = AXApp(runningApp).element.hideApplication()
                 }
 
                 let data = [
@@ -528,9 +530,12 @@ struct AppCommand: ParsableCommand {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 let appInfo = try await resolveApplication(appIdentifier, services: self.services)
 
+                guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
+                    throw PeekabooError.appNotFound(appIdentifier)
+                }
+
                 await MainActor.run {
-                    let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
-                    _ = element.unhideApplication()
+                    _ = AXApp(runningApp).element.unhideApplication()
                 }
 
                 // Activate if requested

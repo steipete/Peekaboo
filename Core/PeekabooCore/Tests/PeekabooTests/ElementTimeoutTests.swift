@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import AXorcist
 import Foundation
 import Testing
@@ -14,36 +13,28 @@ struct ElementTimeoutTests {
     @MainActor
     func testSetMessagingTimeout() async throws {
         // Given - Get an element for a running app
-        guard let finder = NSWorkspace.shared.runningApplications
-            .first(where: { $0.bundleIdentifier == "com.apple.finder" })
-        else {
-            Issue.record("Finder not running - skipping test")
+        guard let finderApp = self.finderApplication() else {
             return
         }
 
-        let axApp = AXUIElementCreateApplication(finder.processIdentifier)
-        let element = Element(axApp)
+        let element = finderApp.element
 
         // When setting timeout
         element.setMessagingTimeout(1.0)
 
         // Then - no crash and method completes
-        #expect(CFGetTypeID(element.underlyingElement) == AXUIElementGetTypeID())
+        #expect(element.role() == AXRoleNames.kAXApplicationRole)
     }
 
     @Test("Windows with timeout returns windows")
     @MainActor
     func windowsWithTimeoutReturnsWindows() async throws {
         // Given - Get Finder element
-        guard let finder = NSWorkspace.shared.runningApplications
-            .first(where: { $0.bundleIdentifier == "com.apple.finder" })
-        else {
-            Issue.record("Finder not running - skipping test")
+        guard let finderApp = self.finderApplication() else {
             return
         }
 
-        let axApp = AXUIElementCreateApplication(finder.processIdentifier)
-        let element = Element(axApp)
+        let element = finderApp.element
 
         // When getting windows with timeout
         let windows = element.windowsWithTimeout(timeout: 2.0)
@@ -66,15 +57,11 @@ struct ElementTimeoutTests {
     @MainActor
     func elementChildrenBasicAccess() async throws {
         // Given - Get Finder element
-        guard let finder = NSWorkspace.shared.runningApplications
-            .first(where: { $0.bundleIdentifier == "com.apple.finder" })
-        else {
-            Issue.record("Finder not running - skipping test")
+        guard let finderApp = self.finderApplication() else {
             return
         }
 
-        let axApp = AXUIElementCreateApplication(finder.processIdentifier)
-        let element = Element(axApp)
+        let element = finderApp.element
 
         // When getting children (using basic API)
         let children = element.children()
@@ -96,15 +83,11 @@ struct ElementTimeoutTests {
     @MainActor
     func elementMenuBarWithTimeout() async throws {
         // Given - Get Finder element
-        guard let finder = NSWorkspace.shared.runningApplications
-            .first(where: { $0.bundleIdentifier == "com.apple.finder" })
-        else {
-            Issue.record("Finder not running - skipping test")
+        guard let finderApp = self.finderApplication() else {
             return
         }
 
-        let axApp = AXUIElementCreateApplication(finder.processIdentifier)
-        let element = Element(axApp)
+        let element = finderApp.element
 
         // When getting menu bar with timeout
         let menuBar = element.menuBarWithTimeout(timeout: 2.0)
@@ -112,7 +95,7 @@ struct ElementTimeoutTests {
         // Then - Finder should have a menu bar when it's frontmost
         // Note: This might be nil if Finder is not active, which is okay
         if let menuBarElement = menuBar {
-            #expect(CFGetTypeID(menuBarElement.underlyingElement) == AXUIElementGetTypeID())
+            #expect(menuBarElement.role() == AXRoleNames.kAXMenuBarRole)
         }
     }
 
@@ -120,15 +103,11 @@ struct ElementTimeoutTests {
     @MainActor
     func elementFocusBasicAccess() async throws {
         // Given - Get Finder element
-        guard let finder = NSWorkspace.shared.runningApplications
-            .first(where: { $0.bundleIdentifier == "com.apple.finder" })
-        else {
-            Issue.record("Finder not running - skipping test")
+        guard let finderApp = self.finderApplication() else {
             return
         }
 
-        let axApp = AXUIElementCreateApplication(finder.processIdentifier)
-        let element = Element(axApp)
+        let element = finderApp.element
 
         // When getting focused element (using basic API)
         let focusedElement = element.focusedUIElement()
@@ -136,7 +115,7 @@ struct ElementTimeoutTests {
         // Then - might have a focused element or might be nil
         // This is environment-dependent, so we just verify no crash
         if let focused = focusedElement {
-            #expect(CFGetTypeID(focused.underlyingElement) == AXUIElementGetTypeID())
+            #expect(focused.role() != nil)
         }
 
         // Test passes if we get here without crashing
@@ -147,15 +126,11 @@ struct ElementTimeoutTests {
     @MainActor
     func elementAttributeBasicAccess() async throws {
         // Given - Get Finder element
-        guard let finder = NSWorkspace.shared.runningApplications
-            .first(where: { $0.bundleIdentifier == "com.apple.finder" })
-        else {
-            Issue.record("Finder not running - skipping test")
+        guard let finderApp = self.finderApplication() else {
             return
         }
 
-        let axApp = AXUIElementCreateApplication(finder.processIdentifier)
-        let element = Element(axApp)
+        let element = finderApp.element
 
         // When getting title attribute (using basic API)
         let title = element.title()
@@ -173,15 +148,11 @@ struct ElementTimeoutTests {
     @MainActor
     func multipleMenuItemsWithTimeout() async throws {
         // Given
-        guard let app = NSWorkspace.shared.runningApplications.first(where: {
-            $0.bundleIdentifier == "com.apple.finder"
-        }) else {
-            Issue.record("Finder not running - skipping test")
+        guard let finderApp = self.finderApplication() else {
             return
         }
 
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let element = Element(axApp)
+        let element = finderApp.element
 
         // When getting menu bar
         guard let menuBar = element.menuBarWithTimeout(timeout: 2.0) else {
@@ -201,7 +172,7 @@ struct ElementTimeoutTests {
 
         // Test that menu items are valid Elements
         for menuItem in menuItems {
-            #expect(CFGetTypeID(menuItem.underlyingElement) == AXUIElementGetTypeID())
+            #expect(menuItem.role() != nil)
         }
     }
 
@@ -209,15 +180,11 @@ struct ElementTimeoutTests {
     @MainActor
     func timeoutConfigurationAffectsBehavior() async throws {
         // Given - Get Finder element
-        guard let finder = NSWorkspace.shared.runningApplications
-            .first(where: { $0.bundleIdentifier == "com.apple.finder" })
-        else {
-            Issue.record("Finder not running - skipping test")
+        guard let finderApp = self.finderApplication() else {
             return
         }
 
-        let axApp = AXUIElementCreateApplication(finder.processIdentifier)
-        let element = Element(axApp)
+        let element = finderApp.element
 
         // Test different timeout values
         let shortTimeout: Float = 0.1
@@ -236,5 +203,16 @@ struct ElementTimeoutTests {
 
         // Test passes if we complete without crashing
         #expect(Bool(true))
+    }
+
+    @MainActor
+    private func finderApplication() -> AXApp? {
+        guard let finder = NSWorkspace.shared.runningApplications
+            .first(where: { $0.bundleIdentifier == "com.apple.finder" })
+        else {
+            Issue.record("Finder not running - skipping test")
+            return nil
+        }
+        return AXApp(finder)
     }
 }

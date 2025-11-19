@@ -1,5 +1,6 @@
 import Algorithms
 import AppKit
+import AXorcist
 import SwiftUI
 
 struct ContentView: View {
@@ -125,7 +126,7 @@ struct ContentView: View {
     }
 
     private func checkAccessibilityPermission() {
-        self.accessibilityPermission = AXIsProcessTrusted()
+        self.accessibilityPermission = AXPermissionHelpers.hasAccessibilityPermissions()
         self.addLog("Accessibility permission: \(self.accessibilityPermission)")
     }
 

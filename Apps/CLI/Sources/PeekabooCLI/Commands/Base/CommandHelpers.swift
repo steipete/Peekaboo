@@ -1,35 +1,9 @@
 import AppKit
-import ApplicationServices
 import AXorcist
 import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
-
-// MARK: - Element Extensions for System UI
-
-extension Element {
-    @MainActor
-    func menuBar() -> Element? {
-        guard let menuBar = attribute(Attribute<AXUIElement>("AXMenuBar")) else {
-            return nil
-        }
-        return Element(menuBar)
-    }
-
-    @MainActor
-    static func systemWide() -> Element {
-        Element(AXUIElementCreateSystemWide())
-    }
-
-    @MainActor
-    func focusedApplication() -> Element? {
-        guard let app = attribute(Attribute<AXUIElement>("AXFocusedApplication")) else {
-            return nil
-        }
-        return Element(app)
-    }
-}
 
 // MARK: - Action Extensions
 
@@ -54,6 +28,6 @@ func findApplication(
         throw PeekabooError.appNotFound(identifier)
     }
 
-    let element = Element(AXUIElementCreateApplication(runningApp.processIdentifier))
-    return (app: element, runningApp: runningApp)
+    let axApp = AXApp(runningApp)
+    return (app: axApp.element, runningApp: runningApp)
 }

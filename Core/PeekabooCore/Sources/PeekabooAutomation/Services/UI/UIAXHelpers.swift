@@ -4,27 +4,9 @@
 //
 
 import AppKit
-import ApplicationServices
 import AXorcist
 import Foundation
 import OSLog
-
-// MARK: - Element helpers
-
-extension Element {
-    @MainActor
-    func menuBar() -> Element? {
-        guard let menuBar = attribute(Attribute<AXUIElement>("AXMenuBar")) else {
-            return nil
-        }
-        return Element(menuBar)
-    }
-
-    @MainActor
-    static func systemWide() -> Element {
-        Element(AXUIElementCreateSystemWide())
-    }
-}
 
 // MARK: - Title helpers
 

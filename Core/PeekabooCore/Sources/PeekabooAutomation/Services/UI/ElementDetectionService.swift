@@ -308,7 +308,7 @@ extension ElementDetectionService {
         if let title {
             if let matching = orderedWindows.first(where: {
                 $0.title?.localizedCaseInsensitiveContains(title) == true
-            }), let element = self.windowIdentityService.findWindow(byID: matching.windowID)?.window {
+            }), let element = self.windowIdentityService.findWindow(byID: matching.windowID)?.element {
                 let fallbackTarget = app.localizedName ?? "app"
                 let fallbackTitle = matching.title ?? "Untitled"
                 self.logger.info("Using CG fallback window '\(fallbackTitle)' for \(fallbackTarget)")
@@ -321,7 +321,7 @@ extension ElementDetectionService {
         }
 
         for info in orderedWindows {
-            if let element = self.windowIdentityService.findWindow(byID: info.windowID)?.window {
+            if let element = self.windowIdentityService.findWindow(byID: info.windowID)?.element {
                 let fallbackTarget = app.localizedName ?? "app"
                 let fallbackTitle = info.title ?? "Untitled"
                 self.logger.info("Using CG fallback window '\(fallbackTitle)' for \(fallbackTarget)")
@@ -369,7 +369,7 @@ extension ElementDetectionService {
             }
 
             guard let windowInfo = targetWindowInfo,
-                  let element = self.windowIdentityService.findWindow(byID: CGWindowID(windowInfo.windowID))?.window
+                  let element = self.windowIdentityService.findWindow(byID: CGWindowID(windowInfo.windowID))?.element
             else {
                 self.logger.warning("Window service fallback could not resolve AX window for \(identifier)")
                 return nil

@@ -1,4 +1,4 @@
-import ApplicationServices
+import AXorcist
 import Commander
 import CoreGraphics
 import Foundation
@@ -217,7 +217,12 @@ extension PermissionCommand {
         /// Legacy (< macOS 14) probe to provoke the Screen Recording prompt.
         /// We intentionally keep CGWindowListCreateImage so older systems see the dialog;
         /// we aren’t modernizing this path yet. It can be disabled via env if needed.
+        @available(macOS, introduced: 10.15, deprecated: 14.0, message: "ScreenCaptureKit handles permission prompts on macOS 14+.")
         private func triggerLegacyScreenRecordingPrompt() {
+            guard #unavailable(macOS 14.0) else {
+                return
+            }
+
             let enableLegacy = ProcessInfo.processInfo.environment["PEEKABOO_ALLOW_LEGACY_CAPTURE"]?.lowercased()
             let allowed = enableLegacy.map { ["1", "true", "yes"].contains($0) } ?? true
             if !allowed { return }
@@ -324,8 +329,7 @@ extension PermissionCommand {
                 print("Opening System Settings to Accessibility permissions...\n")
             }
 
-            let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-            return AXIsProcessTrustedWithOptions(options)
+            return AXPermissionHelpers.askForAccessibilityIfNeeded()
         }
 
         private func renderAccessibilityResult(granted: Bool) {

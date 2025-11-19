@@ -113,7 +113,7 @@ custom_rules:
     name: "No Direct AX/CG Event APIs in PeekabooCore"
     regex: "\\bAXUIElement\\b|\\bCGEvent\\b"
     message: "Use AXorcist abstractions (Element/InputDriver/AXWindowResolver) instead of direct AXUIElement/CGEvent."
-    severity: warning
+    severity: error
   no_ui_appservices_import:
     included: "Core/PeekabooCore/Sources/PeekabooAutomation/Services/UI"
     regex: "^import\\s+ApplicationServices"
