@@ -1,12 +1,38 @@
 import Foundation
+import os.log
 import PeekabooAutomation
 import Tachikoma
 import TachikomaMCP
 
 /// Normalized allow/deny lists used when exposing tools.
 public struct ToolFilters: Sendable {
+    public enum AllowSource: Sendable {
+        case env
+        case config
+        case none
+    }
+
+    public enum DenySource: Sendable {
+        case env
+        case config
+    }
+
     public let allow: Set<String>
     public let deny: Set<String>
+    public let allowSource: AllowSource
+    public let denySources: [String: DenySource]
+
+    public init(
+        allow: Set<String>,
+        deny: Set<String>,
+        allowSource: AllowSource,
+        denySources: [String: DenySource])
+    {
+        self.allow = allow
+        self.deny = deny
+        self.allowSource = allowSource
+        self.denySources = denySources
+    }
 }
 
 @usableFromInline
@@ -25,19 +51,41 @@ enum ToolFiltering {
         let allowList = envAllow?.map(self.normalize) ?? configAllow.map(self.normalize)
         let denyList = (configDeny + (envDeny ?? [])).map(self.normalize)
 
+        var denySources: [String: ToolFilters.DenySource] = [:]
+        for name in configDeny.map(self.normalize) {
+            denySources[name] = .config
+        }
+        for name in (envDeny ?? []).map(self.normalize) {
+            denySources[name] = .env
+        }
+
+        let allowSource: ToolFilters.AllowSource = envAllow != nil
+            ? .env
+            : (allowList.isEmpty ? .none : .config)
+
         return ToolFilters(
             allow: Set(allowList),
-            deny: Set(denyList))
+            deny: Set(denyList),
+            allowSource: allowSource,
+            denySources: denySources)
     }
 
     /// Filter AgentTool list.
-    static func apply(_ tools: [AgentTool], filters: ToolFilters) -> [AgentTool] {
-        self.apply(tools, filters: filters) { $0.name }
+    static func apply(
+        _ tools: [AgentTool],
+        filters: ToolFilters,
+        log: ((String) -> Void)? = nil) -> [AgentTool]
+    {
+        self.apply(tools, filters: filters, log: log) { $0.name }
     }
 
     /// Filter MCPTool list.
-    static func apply(_ tools: [any MCPTool], filters: ToolFilters) -> [any MCPTool] {
-        self.apply(tools, filters: filters) { $0.name }
+    static func apply(
+        _ tools: [any MCPTool],
+        filters: ToolFilters,
+        log: ((String) -> Void)? = nil) -> [any MCPTool]
+    {
+        self.apply(tools, filters: filters, log: log) { $0.name }
     }
 
     // MARK: - Helpers
@@ -45,6 +93,7 @@ enum ToolFiltering {
     private static func apply<T>(
         _ tools: [T],
         filters: ToolFilters,
+        log: ((String) -> Void)?,
         nameProvider: (T) -> String) -> [T]
     {
         let allow = filters.allow
@@ -53,12 +102,40 @@ enum ToolFiltering {
         // First, enforce allow list if present
         var filtered: [T] = tools
         if !allow.isEmpty {
-            filtered = filtered.filter { allow.contains(self.normalize(nameProvider($0))) }
+            filtered = filtered.filter { tool in
+                let name = self.normalize(nameProvider(tool))
+                if allow.contains(name) {
+                    return true
+                } else {
+                    if let log {
+                        let source = switch filters.allowSource {
+                        case .env: "environment (PEEKABOO_ALLOW_TOOLS)"
+                        case .config: "config (tools.allow)"
+                        case .none: "allow list"
+                        }
+                        log("Tool '\(name)' not exposed because allow list from \(source) excludes it.")
+                    }
+                    return false
+                }
+            }
         }
 
         // Then remove any denies
         if !deny.isEmpty {
-            filtered = filtered.filter { !deny.contains(self.normalize(nameProvider($0))) }
+            filtered = filtered.filter { tool in
+                let name = self.normalize(nameProvider(tool))
+                if deny.contains(name) {
+                    if let log {
+                        let source = filters.denySources[name] == .env
+                            ? "environment (PEEKABOO_DISABLE_TOOLS)"
+                            : "config (tools.deny)"
+                        log("Tool '\(name)' disabled via \(source); dropped.")
+                    }
+                    return false
+                }
+
+                return true
+            }
         }
 
         return filtered

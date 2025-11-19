@@ -19,8 +19,10 @@ struct ToolFilteringTests {
         {
             let filters = ToolFiltering.currentFilters()
             let tools = makeTools(["see", "click", "type"])
-            let filtered = ToolFiltering.apply(tools, filters: filters).map(\.name)
+            var logs: [String] = []
+            let filtered = ToolFiltering.apply(tools, filters: filters, log: { logs.append($0) }).map(\.name)
             #expect(filtered == ["see", "click"])
+            #expect(logs.contains { $0.contains("type") && $0.contains("allow list") })
         }
     }
 
@@ -42,10 +44,13 @@ struct ToolFilteringTests {
         {
             let filters = ToolFiltering.currentFilters()
             let tools = makeTools(["see", "type", "shell"])
-            let filtered = ToolFiltering.apply(tools, filters: filters).map(\.name)
+            var logs: [String] = []
+            let filtered = ToolFiltering.apply(tools, filters: filters, log: { logs.append($0) }).map(\.name)
             #expect(filtered == ["see"])
             #expect(filters.deny.contains("type"))
             #expect(filters.deny.contains("shell"))
+            #expect(logs.contains { $0.contains("type") && $0.contains("environment") })
+            #expect(logs.contains { $0.contains("shell") && $0.contains("config") })
         }
     }
 
@@ -62,7 +67,7 @@ struct ToolFilteringTests {
         {
             let filters = ToolFiltering.currentFilters()
             let tools = makeTools(["menu_click", "see"])
-            let names = ToolFiltering.apply(tools, filters: filters).map(\.name)
+            let names = ToolFiltering.apply(tools, filters: filters, log: nil).map(\.name)
             #expect(!names.contains("menu_click"))
             #expect(names.contains("see"))
         }

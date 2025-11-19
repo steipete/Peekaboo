@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 import PeekabooAutomation
 import Tachikoma
 
@@ -156,7 +157,13 @@ public enum ToolRegistry {
         // Get all agent tools
         let agentTools = agentService.createAgentTools()
         let filters = ToolFiltering.currentFilters()
-        let filteredTools = ToolFiltering.apply(agentTools, filters: filters)
+        let filteredTools = ToolFiltering.apply(
+            agentTools,
+            filters: filters,
+            log: { message in
+                Logger(subsystem: "boo.peekaboo.tools", category: "registry")
+                    .notice("\(message, privacy: .public)")
+            })
 
         // Convert AgentTools to PeekabooToolDefinitions
         return filteredTools.compactMap { agentTool in

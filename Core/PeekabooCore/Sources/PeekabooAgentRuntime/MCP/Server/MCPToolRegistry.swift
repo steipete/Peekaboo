@@ -104,7 +104,10 @@ public final class MCPToolRegistry {
         }
 
         let filters = ToolFiltering.currentFilters()
-        let filtered = ToolFiltering.apply(discovered, filters: filters)
+        let registryLogger = self.logger
+        let filtered = ToolFiltering.apply(discovered, filters: filters) { message in
+            registryLogger.notice("\(message, privacy: .public)")
+        }
 
         for tool in filtered {
             self.externalTools[tool.name] = tool

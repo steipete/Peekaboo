@@ -127,6 +127,7 @@ public actor PeekabooMCPServer {
 
         let filters = ToolFiltering.currentFilters()
 
+        let logger = self.logger
         let nativeTools: [any MCPTool] = ToolFiltering.apply([
             // Core tools
             ImageTool(context: context),
@@ -159,7 +160,9 @@ public actor PeekabooMCPServer {
             DockTool(context: context),
             DialogTool(context: context),
             SpaceTool(context: context),
-        ], filters: filters)
+        ], filters: filters, log: { message in
+            logger.notice("\(message, privacy: .public)")
+        })
 
         await self.toolRegistry.register(nativeTools)
 

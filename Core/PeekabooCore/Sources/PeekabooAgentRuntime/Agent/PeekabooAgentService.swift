@@ -694,7 +694,12 @@ extension PeekabooAgentService {
         }
 
         let filters = ToolFiltering.currentFilters()
-        let filtered = ToolFiltering.apply(tools, filters: filters)
+        let filtered = ToolFiltering.apply(
+            tools,
+            filters: filters,
+            log: { [logger] message in
+                logger.notice("\(message, privacy: .public)")
+            })
 
         self.logToolsetDetails(filtered, model: model)
         return filtered
