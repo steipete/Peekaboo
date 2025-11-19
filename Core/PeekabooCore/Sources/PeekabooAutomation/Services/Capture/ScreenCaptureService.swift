@@ -34,7 +34,8 @@ import PeekabooVisualizer
  * ```
  *
  * ## API Control
- * Use `PEEKABOO_USE_MODERN_CAPTURE=true` to prefer ScreenCaptureKit with automatic legacy fallback.
+ * Use `PEEKABOO_CAPTURE_ENGINE=auto|modern|sckit|classic|cg` (preferred) or
+ * `PEEKABOO_USE_MODERN_CAPTURE=true/false` (legacy) to control engine selection.
  *
  * - Important: Requires Screen Recording permission
  * - Note: Performance 20-150ms depending on operation and display size
@@ -1125,9 +1126,34 @@ private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Senda
 // MARK: - Capture Output Handler
 
 @MainActor
-private final class CaptureOutput: NSObject, @unchecked Sendable {
+final class CaptureOutput: NSObject, @unchecked Sendable {
     private var continuation: CheckedContinuation<CGImage, any Error>?
     private var timeoutTask: Task<Void, Never>?
+
+    @MainActor
+    fileprivate func finish(_ result: Result<CGImage, any Error>) {
+        // Single exit hatch for all completion paths: ensures timeout is canceled and continuation
+        // is resumed exactly once, eliminating the racey scatter of resumes that existed before.
+        // Cancel any pending timeout
+        self.timeoutTask?.cancel()
+        self.timeoutTask = nil
+
+        guard let cont = self.continuation else { return }
+        self.continuation = nil
+        switch result {
+        case let .success(image):
+            cont.resume(returning: image)
+        case let .failure(error):
+            cont.resume(throwing: error)
+        }
+    }
+
+    @MainActor
+    fileprivate func setContinuation(_ cont: CheckedContinuation<CGImage, any Error>) {
+        // Tests inject their own continuation; production uses waitForImage().
+        self.continuation = cont
+    }
+
     deinit {
         // Cancel timeout task first to prevent race condition
         timeoutTask?.cancel()
@@ -1147,18 +1173,16 @@ private final class CaptureOutput: NSObject, @unchecked Sendable {
 
             // Add a timeout to ensure the continuation is always resumed
             // Reduced from 10 seconds to 3 seconds for faster failure detection
-            self.timeoutTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-                await MainActor.run {
-                    guard let self else { return }
-                    if let cont = self.continuation {
-                        cont.resume(throwing: OperationError.timeout(
-                            operation: "CaptureOutput.waitForImage",
-                            duration: 3.0))
-                        self.continuation = nil
-                    }
-                }
+        self.timeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+            await MainActor.run {
+                guard let self else { return }
+                // Timeout funnels through the same finish() to guarantee exactly-once resume.
+                self.finish(.failure(OperationError.timeout(
+                    operation: "CaptureOutput.waitForImage",
+                    duration: 3.0)))
             }
+        }
         }
     }
 
@@ -1173,10 +1197,7 @@ private final class CaptureOutput: NSObject, @unchecked Sendable {
         guard let imageBuffer = sampleBuffer.imageBuffer else {
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if let cont = self.continuation {
-                    cont.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
-                    self.continuation = nil
-                }
+                self.finish(.failure(OperationError.captureFailed(reason: "No image buffer in sample")))
             }
             return
         }
@@ -1186,31 +1207,45 @@ private final class CaptureOutput: NSObject, @unchecked Sendable {
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if let cont = self.continuation {
-                    cont.resume(
-                        throwing: OperationError.captureFailed(
-                            reason: "Failed to create CGImage from buffer"))
-                    self.continuation = nil
-                }
+                self.finish(.failure(OperationError.captureFailed(
+                    reason: "Failed to create CGImage from buffer")))
             }
             return
         }
 
         Task { @MainActor [weak self] in
             guard let self else { return }
-            // Cancel timeout task since we received a frame
-            self.timeoutTask?.cancel()
-            self.timeoutTask = nil
-
-            if let cont = self.continuation {
-                cont.resume(returning: cgImage)
-                self.continuation = nil
-            }
+            self.finish(.success(cgImage))
         }
     }
 }
 
 extension CaptureOutput: SCStreamOutput {}
+
+extension CaptureOutput: SCStreamDelegate {
+    nonisolated func stream(_ stream: SCStream, didStopWithError error: any Error) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.finish(.failure(error))
+        }
+    }
+}
+
+#if DEBUG
+extension CaptureOutput {
+    /// Test-only hook to inject the continuation used by `waitForImage()`.
+    @MainActor
+    func injectContinuation(_ cont: CheckedContinuation<CGImage, any Error>) {
+        self.setContinuation(cont)
+    }
+
+    /// Test-only hook to drive completion of the continuation.
+    @MainActor
+    func injectFinish(_ result: Result<CGImage, any Error>) {
+        self.finish(result)
+    }
+}
+#endif
 
 // MARK: - Extensions
 

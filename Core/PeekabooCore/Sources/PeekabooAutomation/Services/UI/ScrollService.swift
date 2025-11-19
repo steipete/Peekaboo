@@ -89,19 +89,10 @@ public final class ScrollService {
     }
 
     private func postScrollTick(context: ScrollExecutionContext, tickSize: Int) throws {
-        guard let event = CGEvent(
-            scrollWheelEvent2Source: nil,
-            units: .pixel,
-            wheelCount: 2,
-            wheel1: Int32(context.deltas.deltaY * tickSize),
-            wheel2: Int32(context.deltas.deltaX * tickSize),
-            wheel3: 0)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create scroll event")
-        }
-
-        event.location = context.startingPoint
-        event.post(tap: .cghidEventTap)
+        try InputDriver.scroll(
+            deltaX: Double(context.deltas.deltaX * tickSize),
+            deltaY: Double(context.deltas.deltaY * tickSize),
+            at: context.startingPoint)
     }
 
     private func sleepBetweenTicks(context: ScrollExecutionContext) async throws {
@@ -125,13 +116,13 @@ public final class ScrollService {
     private func getScrollDeltas(for direction: PeekabooFoundation.ScrollDirection) -> (deltaX: Int, deltaY: Int) {
         switch direction {
         case .up:
-            (0, 5)
+            (0, 50)
         case .down:
-            (0, -5)
+            (0, -50)
         case .left:
-            (5, 0)
+            (50, 0)
         case .right:
-            (-5, 0)
+            (-50, 0)
         }
     }
 
@@ -169,8 +160,7 @@ public final class ScrollService {
             return nil
         }
 
-        let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
-        let appElement = Element(axApp)
+        let appElement = AXApp(frontApp).element
 
         return self.searchScrollableElement(in: appElement, matching: query.lowercased())
     }
@@ -205,21 +195,11 @@ public final class ScrollService {
     }
 
     private func getCurrentMouseLocation() -> CGPoint {
-        CGEvent(source: nil)?.location ?? CGPoint.zero
+        InputDriver.currentLocation() ?? .zero
     }
 
     private func moveMouseToPoint(_ point: CGPoint) async throws {
-        guard let moveEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .mouseMoved,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create move event")
-        }
-
-        moveEvent.post(tap: .cghidEventTap)
-
+        try InputDriver.move(to: point)
         // Small delay after move
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
     }

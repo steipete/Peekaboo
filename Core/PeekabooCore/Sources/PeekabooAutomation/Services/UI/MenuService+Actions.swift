@@ -69,8 +69,10 @@ extension MenuService {
                 "Menu path depth \(pathComponents.count) exceeds limit \(traversalLimits.maxDepth)")
         }
 
-        let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
+            throw NotFoundError.application(appInfo.name)
+        }
+        let appElement = AXApp(runningApp).element
 
         guard let menuBar = appElement.menuBar() else {
             var context = ErrorContext()

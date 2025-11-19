@@ -44,7 +44,7 @@ private enum ScreenCaptureBridge {
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
 @MainActor
-struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsConfigurable {
+struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsConfigurable, CaptureEngineConfigurable {
     @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
 
@@ -74,6 +74,12 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     @Option(help: "Analyze captured content with AI")
     var analyze: String?
+
+    @Option(
+        name: .long,
+        help: "Capture engine: auto|modern|sckit|classic|cg (default: auto). modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList; auto tries SC then falls back when allowed."
+    )
+    var captureEngine: String?
 
     @Flag(name: .customLong("no-web-focus"), help: "Skip web-content focus fallback when no text fields are detected")
     var noWebFocus = false

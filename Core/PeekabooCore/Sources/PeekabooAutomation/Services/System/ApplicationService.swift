@@ -377,8 +377,10 @@ extension ApplicationService {
         self.logger.info("Hiding application: \(identifier)")
         let app = try await findApplication(identifier: identifier)
 
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(identifier)
+        }
+        let appElement = AXApp(runningApp).element
 
         do {
             try appElement.performAction(Attribute<String>("AXHide"))
@@ -388,7 +390,6 @@ extension ApplicationService {
             _ = error.asPeekabooError(context: "AX hide action failed for \(app.name)")
             // Fallback to NSRunningApplication method
             self.logger.debug("Using NSRunningApplication fallback")
-            // Create NSRunningApplication and hide it
             let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
             if let runningApp {
                 runningApp.hide()
@@ -397,22 +398,21 @@ extension ApplicationService {
         }
     }
 
-    public func unhideApplication(identifier: String) async throws {
+public func unhideApplication(identifier: String) async throws {
         self.logger.info("Unhiding application: \(identifier)")
         let app = try await findApplication(identifier: identifier)
 
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(identifier)
+        }
+        let appElement = AXApp(runningApp).element
 
         do {
             try appElement.performAction(Attribute<String>("AXUnhide"))
             self.logger.debug("Unhidden via AX action: \(app.name)")
         } catch {
-            // Log the error but use fallback
             _ = error.asPeekabooError(context: "AX unhide action failed for \(app.name)")
-            // Fallback to activating the app if unhide fails
             self.logger.debug("Using activate fallback")
-            // Create NSRunningApplication and activate it
             let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
             if let runningApp {
                 runningApp.activate()
@@ -425,8 +425,10 @@ extension ApplicationService {
         self.logger.info("Hiding other applications except: \(identifier)")
         let app = try await findApplication(identifier: identifier)
 
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(identifier)
+        }
+        let appElement = AXApp(runningApp).element
 
         do {
             // Use custom attribute for hide others action
@@ -602,8 +604,10 @@ extension ApplicationService {
 
     @MainActor
     private func getWindowCount(for app: NSRunningApplication) -> Int {
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            return 0
+        }
+        let appElement = AXApp(runningApp).element
 
         if let windows = appElement.windows(), !windows.isEmpty {
             let renderable = windows.filter { window -> Bool in
@@ -903,8 +907,10 @@ private struct WindowEnumerationContext {
     }
 
     private func fetchAXWindows() -> AXWindowResult {
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            return AXWindowResult(windows: [], timedOut: false)
+        }
+        let appElement = AXApp(runningApp).element
         appElement.setMessagingTimeout(self.axTimeout)
         defer { appElement.setMessagingTimeout(0) }
 

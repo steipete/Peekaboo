@@ -98,7 +98,7 @@ struct WindowIdentityUtilitiesTests {
             ownerPID: 1234,
             applicationName: "TestApp",
             bundleIdentifier: "com.test.app",
-            windowLayer: 0,
+            layer: 0,
             alpha: 1.0,
             axIdentifier: "test-ax-id")
 
@@ -125,7 +125,7 @@ struct WindowIdentityUtilitiesTests {
             ownerPID: 1,
             applicationName: "App",
             bundleIdentifier: nil,
-            windowLayer: 0,
+            layer: 0,
             alpha: 1.0,
             axIdentifier: nil)
 
@@ -138,7 +138,7 @@ struct WindowIdentityUtilitiesTests {
             ownerPID: 1,
             applicationName: "App",
             bundleIdentifier: nil,
-            windowLayer: 5,
+            layer: 5,
             alpha: 0.5,
             axIdentifier: nil)
 
@@ -154,7 +154,7 @@ struct WindowIdentityUtilitiesTests {
             ownerPID: 1,
             applicationName: "App",
             bundleIdentifier: nil,
-            windowLayer: 10,
+            layer: 10,
             alpha: 1.0,
             axIdentifier: nil)
 
@@ -167,7 +167,7 @@ struct WindowIdentityUtilitiesTests {
             ownerPID: 1,
             applicationName: "App",
             bundleIdentifier: nil,
-            windowLayer: 0,
+            layer: 0,
             alpha: 1.0,
             axIdentifier: nil)
 
@@ -180,7 +180,7 @@ struct WindowIdentityUtilitiesTests {
             ownerPID: 1,
             applicationName: "App",
             bundleIdentifier: nil,
-            windowLayer: 1001,
+            layer: 1001,
             alpha: 1.0,
             axIdentifier: nil)
 

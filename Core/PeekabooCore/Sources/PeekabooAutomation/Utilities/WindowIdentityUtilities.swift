@@ -1,273 +1,11 @@
-/// Window Identity Utilities
-///
-/// This file provides utilities for managing window identities and bridging between
-/// different window identification systems in macOS:
-///
-/// - **CGWindowID**: CoreGraphics window identifier (stable for window lifetime)
-/// - **AXUIElement**: Accessibility API window reference
-/// - **Window Information**: Comprehensive window metadata
-///
-/// ## Key Features
-///
-/// 1. **Window ID Extraction**: Convert AXUIElement to CGWindowID using private API
-/// 2. **Window Lookup**: Find AXUIElement by CGWindowID across applications
-/// 3. **Window Information**: Get comprehensive window metadata from CGWindowID
-/// 4. **State Verification**: Check if windows exist and are on screen
-///
-/// ## Usage Examples
-///
-/// ```swift
-/// let service = WindowIdentityService()
-///
-/// // Extract CGWindowID from AXUIElement
-/// if let windowID = service.getWindowID(from: axElement) {
-///     print("Window ID: \(windowID)")
-/// }
-///
-/// // Find AXUIElement by CGWindowID
-/// if let (window, app) = service.findWindow(byID: windowID) {
-///     window.focusWindow()
-/// }
-///
-/// // Get window information
-/// if let info = service.getWindowInfo(windowID: windowID) {
-///     print("Window '\(info.title ?? "Untitled")' at \(info.bounds)")
-/// }
-/// ```
-///
-/// ## Implementation Notes
-///
-/// - Uses private `_AXUIElementGetWindow` API for ID extraction (may change between macOS versions)
-/// - Window IDs are stable for the window's lifetime but not across app restarts
-/// - CGWindowID 0 is a valid window ID (despite common misconceptions)
-
 import AppKit
 import AXorcist
+import CoreGraphics
 import Foundation
 import os.log
 
-// Logger for window identity utilities
-private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowIdentity")
-
-// MARK: - Private API Declaration
-
-/// Private API to extract CGWindowID from an AXUIElement
-/// - Warning: This is a private API that may change between macOS versions
-@_silgen_name("_AXUIElementGetWindow")
-func _AXUIElementGetWindow(_ element: AXUIElement, _ windowID: inout CGWindowID) -> AXError
-
-// MARK: - Window Identity Service
-
-/// Service for managing window identities and bridging between CGWindowID and AXUIElement
-@MainActor
-public final class WindowIdentityService {
-    public init() {}
-
-    // MARK: - CGWindowID Extraction
-
-    /// Extract CGWindowID from an AXUIElement window
-    public func getWindowID(from windowElement: AXUIElement) -> CGWindowID? {
-        // Extract CGWindowID from an AXUIElement window
-        var windowID: CGWindowID = 0
-        let result = _AXUIElementGetWindow(windowElement, &windowID)
-
-        guard result == .success else {
-            // Failed to get CGWindowID from AXUIElement
-            logger.error("Failed to get window ID from AXUIElement, error: \(result.rawValue)")
-            return nil
-        }
-
-        return windowID
-    }
-
-    /// Extract CGWindowID from an Element (AXorcist wrapper)
-    public func getWindowID(from element: Element) -> CGWindowID? {
-        // Get the underlying AXUIElement
-        let axElement: AXUIElement = element.underlyingElement
-
-        // Try to get window ID from the element
-        var windowID: CGWindowID = 0
-        let result = _AXUIElementGetWindow(axElement, &windowID)
-
-        if result == .success {
-            return windowID
-        }
-
-        // If not a window, try to find parent window
-        // Note: AXorcist doesn't expose window property, so we try role check
-        if let role = element.role(), role == "AXWindow" {
-            return getWindowID(from: axElement)
-        }
-
-        // Log the failure for debugging
-        logger.error("Failed to get window ID, error: \(result.rawValue), role: \(element.role() ?? "nil")")
-
-        return nil
-    }
-
-    // MARK: - AXUIElement Lookup
-
-    /// Find AXUIElement window by CGWindowID
-    public func findWindow(byID windowID: CGWindowID, in app: NSRunningApplication) -> Element? {
-        // Find AXUIElement window by CGWindowID
-        let appElement = AXUIElementCreateApplication(app.processIdentifier)
-        let element = Element(appElement)
-
-        // Get all windows for this application
-        guard let windows = element.windows() else {
-            return nil
-        }
-
-        // Check each window's ID
-        for window in windows {
-            if let currentID = getWindowID(from: window) {
-                if currentID == windowID {
-                    return window
-                }
-            }
-        }
-
-        return nil
-    }
-
-    /// Find AXUIElement window by CGWindowID across all applications
-    public func findWindow(byID windowID: CGWindowID) -> (window: Element, app: NSRunningApplication)? {
-        // Try CoreGraphics lookup first for fast owner resolution
-        let options: CGWindowListOption = [.optionIncludingWindow]
-        if let windowInfoList = CGWindowListCopyWindowInfo(options, windowID) as? [[String: Any]],
-           let windowInfo = windowInfoList.first,
-           let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
-           let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == ownerPID }),
-           let window = findWindow(byID: windowID, in: app)
-        {
-            return (window, app)
-        }
-
-        // Fallback: enumerate all running applications via AX (works without Screen Recording permission)
-        for app in NSWorkspace.shared.runningApplications {
-            if let window = findWindow(byID: windowID, in: app) {
-                return (window, app)
-            }
-        }
-
-        return nil
-    }
-
-    // MARK: - Window Information
-
-    /// Get comprehensive window information using CGWindowID
-    public func getWindowInfo(windowID: CGWindowID) -> WindowIdentityInfo? {
-        // Get window info from CoreGraphics
-        let options: CGWindowListOption = [.optionIncludingWindow]
-        guard let windowInfoList = CGWindowListCopyWindowInfo(options, windowID) as? [[String: Any]],
-              let windowInfo = windowInfoList.first
-        else {
-            return nil
-        }
-
-        // Extract information
-        let title = windowInfo[kCGWindowName as String] as? String
-        let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t ?? 0
-        let windowLayer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
-        let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
-
-        // Get bounds
-        var bounds: CGRect = .zero
-        if let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any] {
-            bounds = CGRect(
-                x: boundsDict["X"] as? CGFloat ?? 0,
-                y: boundsDict["Y"] as? CGFloat ?? 0,
-                width: boundsDict["Width"] as? CGFloat ?? 0,
-                height: boundsDict["Height"] as? CGFloat ?? 0)
-        }
-
-        // Get AX identifier if available
-        var axIdentifier: String?
-        if let result = findWindow(byID: windowID) {
-            axIdentifier = result.window.identifier()
-        }
-
-        // Get application info
-        let runningApps = NSWorkspace.shared.runningApplications
-        let app = runningApps.first(where: { $0.processIdentifier == ownerPID })
-
-        return WindowIdentityInfo(
-            windowID: windowID,
-            title: title,
-            bounds: bounds,
-            ownerPID: ownerPID,
-            applicationName: app?.localizedName,
-            bundleIdentifier: app?.bundleIdentifier,
-            windowLayer: windowLayer,
-            alpha: alpha,
-            axIdentifier: axIdentifier)
-    }
-
-    // MARK: - Window State Verification
-
-    /// Check if a window still exists
-    public func windowExists(windowID: CGWindowID) -> Bool {
-        // CGWindowListCopyWindowInfo with .optionIncludingWindow requires the window ID as the second parameter
-        // and will return info only for that specific window
-        let options: CGWindowListOption = [.optionIncludingWindow]
-        if let windowList = CGWindowListCopyWindowInfo(options, windowID) as NSArray?,
-           !windowList.isEmpty
-        {
-            return true
-        }
-
-        // Fallback: attempt AX-based lookup when CG data isn't available (e.g., missing Screen Recording)
-        return findWindow(byID: windowID) != nil
-    }
-
-    /// Check if a window is on screen (not minimized)
-    public func isWindowOnScreen(windowID: CGWindowID) -> Bool {
-        // Check if a window is on screen (not minimized)
-        let options: CGWindowListOption = [.optionIncludingWindow, .optionOnScreenOnly]
-        guard let windowInfoList = CGWindowListCopyWindowInfo(options, windowID) as? [[String: Any]] else {
-            return false
-        }
-        return !windowInfoList.isEmpty
-    }
-
-    /// Get all windows for a specific application
-    public func getWindows(for app: NSRunningApplication) -> [WindowIdentityInfo] {
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let windowInfoList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
-            return []
-        }
-
-        let targetBundle = app.bundleIdentifier
-        let targetName = app.localizedName
-
-        return windowInfoList.compactMap { windowInfo in
-            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
-                return nil
-            }
-
-            let ownerApp = NSRunningApplication(processIdentifier: ownerPID)
-            let sameProcess = ownerPID == app.processIdentifier
-            let ownerBundle = ownerApp?.bundleIdentifier
-            let ownerName = ownerApp?.localizedName ?? (windowInfo[kCGWindowOwnerName as String] as? String)
-            let sameBundle = targetBundle != nil && (ownerBundle == targetBundle
-                || ownerBundle?.hasPrefix(targetBundle!) == true)
-            let sameName = targetName != nil && ownerName?.localizedCaseInsensitiveContains(targetName!) == true
-
-            guard sameProcess || sameBundle || sameName else {
-                return nil
-            }
-
-            guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID else {
-                return nil
-            }
-
-            return getWindowInfo(windowID: windowID)
-        }
-    }
-}
-
-// MARK: - Window Identity Information
-
+/// Thin wrapper around AXorcist's AXWindowResolver to keep Peekaboo APIs stable
+/// while de-duplicating AX/CG window logic.
 public struct WindowIdentityInfo: Sendable {
     public let windowID: CGWindowID
     public let title: String?
@@ -275,10 +13,43 @@ public struct WindowIdentityInfo: Sendable {
     public let ownerPID: pid_t
     public let applicationName: String?
     public let bundleIdentifier: String?
-    public let windowLayer: Int
+    public let layer: Int
     public let alpha: CGFloat
     public let axIdentifier: String?
 
+    public var isRenderable: Bool {
+        self.bounds.width >= 50 && self.bounds.height >= 50 && self.alpha > 0
+    }
+
+    public var windowLayer: Int { self.layer } // Backward compatibility
+
+    public var isMainWindow: Bool { self.layer == 0 && self.alpha > 0 }
+
+    public var isDialog: Bool { self.layer >= 10 && self.layer < 1000 }
+
+    public init(
+        windowID: CGWindowID,
+        title: String?,
+        bounds: CGRect,
+        ownerPID: pid_t,
+        applicationName: String?,
+        bundleIdentifier: String?,
+        layer: Int,
+        alpha: CGFloat,
+        axIdentifier: String?)
+    {
+        self.windowID = windowID
+        self.title = title
+        self.bounds = bounds
+        self.ownerPID = ownerPID
+        self.applicationName = applicationName
+        self.bundleIdentifier = bundleIdentifier
+        self.layer = layer
+        self.alpha = alpha
+        self.axIdentifier = axIdentifier
+    }
+
+    // Convenience to preserve older label windowLayer
     public init(
         windowID: CGWindowID,
         title: String?,
@@ -290,45 +61,124 @@ public struct WindowIdentityInfo: Sendable {
         alpha: CGFloat,
         axIdentifier: String?)
     {
-        self.windowID = windowID
-        self.title = title
-        self.bounds = bounds
-        self.ownerPID = ownerPID
-        self.applicationName = applicationName
-        self.bundleIdentifier = bundleIdentifier
-        self.windowLayer = windowLayer
-        self.alpha = alpha
-        self.axIdentifier = axIdentifier
+        self.init(
+            windowID: windowID,
+            title: title,
+            bounds: bounds,
+            ownerPID: ownerPID,
+            applicationName: applicationName,
+            bundleIdentifier: bundleIdentifier,
+            layer: windowLayer,
+            alpha: alpha,
+            axIdentifier: axIdentifier)
+    }
+}
+
+@MainActor
+public final class WindowIdentityService {
+    private let resolver = AXWindowResolver()
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowIdentity")
+
+    public init() {}
+
+    // MARK: - CGWindowID Extraction
+
+    public func getWindowID(from windowElement: AXUIElement) -> CGWindowID? {
+        self.resolver.windowID(from: windowElement)
     }
 
-    /// Check if this window is likely the main/document window
-    public var isMainWindow: Bool {
-        // Main windows are typically on layer 0
-        windowLayer == 0 && alpha == 1.0
+    public func getWindowID(from element: Element) -> CGWindowID? {
+        self.resolver.windowID(from: element)
     }
 
-    /// Check if this window is likely a dialog or sheet
-    public var isDialog: Bool {
-        // Dialogs are often on higher layers
-        windowLayer > 0 && windowLayer < 1000
+    // MARK: - AXUIElement Lookup
+
+    public func findWindow(byID windowID: CGWindowID, in app: NSRunningApplication) -> Element? {
+        self.resolver.findWindow(by: windowID, in: app)
     }
 
-    /// Heuristic indicating whether the window is actually visible/contentful.
-    public var isRenderable: Bool {
-        // Ignore utility strips such as toolbars or palette windows
-        if bounds.width < 50 || bounds.height < 50 {
-            return false
+    public func findWindow(byID windowID: CGWindowID) -> (window: Element, app: NSRunningApplication)? {
+        self.resolver.findWindow(by: windowID)
+    }
+
+    // MARK: - Window Information
+
+    public func getWindowInfo(windowID: CGWindowID) -> WindowIdentityInfo? {
+        guard let info = self.resolver.windowInfo(windowID: windowID) else { return nil }
+
+        // Compute AX identifier lazily.
+        let axIdentifier = self.resolver.findWindow(by: windowID)?.window.identifier()
+
+        return WindowIdentityInfo(
+            windowID: info.windowID,
+            title: info.title,
+            bounds: info.bounds,
+            ownerPID: info.ownerPID,
+            applicationName: info.applicationName,
+            bundleIdentifier: info.bundleIdentifier,
+            layer: info.layer,
+            alpha: info.alpha,
+            axIdentifier: axIdentifier)
+    }
+
+    /// List windows for a running application using CGWindow metadata.
+    public func getWindows(for app: NSRunningApplication) -> [WindowIdentityInfo] {
+        guard let windowDicts = WindowInfoHelper.getWindows(for: app.processIdentifier) else {
+            return []
         }
 
-        if alpha <= 0 {
-            return false
+        return windowDicts.compactMap { dict in
+            guard let id = dict[kCGWindowNumber as String] as? Int else { return nil }
+            let title = dict[kCGWindowName as String] as? String
+            let ownerPID = dict[kCGWindowOwnerPID as String] as? Int ?? Int(app.processIdentifier)
+            let layer = dict[kCGWindowLayer as String] as? Int ?? 0
+            let alpha = dict[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+            var boundsRect: CGRect = .zero
+            if let bounds = dict[kCGWindowBounds as String] as? [String: CGFloat] {
+                boundsRect = CGRect(
+                    x: bounds["X"] ?? 0,
+                    y: bounds["Y"] ?? 0,
+                    width: bounds["Width"] ?? 0,
+                    height: bounds["Height"] ?? 0)
+            }
+
+            return WindowIdentityInfo(
+                windowID: CGWindowID(id),
+                title: title,
+                bounds: boundsRect,
+                ownerPID: pid_t(ownerPID),
+                applicationName: app.localizedName,
+                bundleIdentifier: app.bundleIdentifier,
+                layer: layer,
+                alpha: alpha,
+                axIdentifier: nil)
+        }
+    }
+
+    // MARK: - Existence
+
+    public func windowExists(windowID: CGWindowID) -> Bool {
+        self.resolver.windowExists(windowID: windowID)
+    }
+
+    public func isWindowOnScreen(windowID: CGWindowID) -> Bool {
+        self.windowExists(windowID: windowID)
+    }
+
+    // MARK: - AX attribute helpers
+
+    public func windowIDFromAttribute(_ attribute: Any?) -> CGWindowID? {
+        if let number = attribute as? NSNumber {
+            return CGWindowID(number.intValue)
         }
 
-        // Layer 0 windows are normal document windows; higher layers are usually HUD/utility.
-        if windowLayer != 0 {
-            return false
+        if let dict = attribute as? [String: Any],
+           let windowNumber = dict[kCGWindowNumber as String] as? Int
+        {
+            return CGWindowID(windowNumber)
         }
 
-        return true
+        self.logger.debug("windowIDFromAttribute: unsupported attribute \(String(describing: attribute))")
+        return nil
     }
 }

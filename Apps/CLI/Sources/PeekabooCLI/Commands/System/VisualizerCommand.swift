@@ -54,31 +54,31 @@ private struct VisualizerSmokeSequence {
         let point = CGPoint(x: primaryRect.midX, y: primaryRect.midY)
 
         try await self.step("Screenshot flash") {
-            await client.showScreenshotFlash(in: primaryRect)
+            _ = await client.showScreenshotFlash(in: primaryRect)
         }
 
         try await self.step("Watch capture HUD") {
-            await client.showWatchCapture(in: primaryRect)
+            _ = await client.showWatchCapture(in: primaryRect)
         }
 
         try await self.step("Click ripple") {
-            await client.showClickFeedback(at: point, type: .single)
+            _ = await client.showClickFeedback(at: point, type: .single)
         }
 
         try await self.step("Typing indicator") {
-            await client.showTypingFeedback(keys: ["H", "i", "!"], duration: 1.5, cadence: .human(wordsPerMinute: 60))
+            _ = await client.showTypingFeedback(keys: ["H", "i", "!"], duration: 1.5, cadence: .human(wordsPerMinute: 60))
         }
 
         try await self.step("Scroll indicator") {
-            await client.showScrollFeedback(at: point, direction: .down, amount: 3)
+            _ = await client.showScrollFeedback(at: point, direction: .down, amount: 3)
         }
 
         try await self.step("Mouse movement trail") {
-            await client.showMouseMovement(from: point, to: CGPoint(x: point.x + 180, y: point.y + 120), duration: 0.8)
+            _ = await client.showMouseMovement(from: point, to: CGPoint(x: point.x + 180, y: point.y + 120), duration: 0.8)
         }
 
         try await self.step("Swipe gesture") {
-            await client.showSwipeGesture(
+            _ = await client.showSwipeGesture(
                 from: CGPoint(x: point.x - 120, y: point.y),
                 to: CGPoint(x: point.x + 120, y: point.y),
                 duration: 0.6
@@ -86,27 +86,27 @@ private struct VisualizerSmokeSequence {
         }
 
         try await self.step("Hotkey heads-up display") {
-            await client.showHotkeyDisplay(keys: ["Cmd", "Shift", "T"], duration: 1.2)
+            _ = await client.showHotkeyDisplay(keys: ["Cmd", "Shift", "T"], duration: 1.2)
         }
 
         try await self.step("Window move overlay") {
-            await client.showWindowOperation(.move, windowRect: primaryRect, duration: 0.7)
+            _ = await client.showWindowOperation(.move, windowRect: primaryRect, duration: 0.7)
         }
 
         try await self.step("App launch icon bounce") {
-            await client.showAppLaunch(appName: "Visualizer Smoke Test", iconPath: nil)
+            _ = await client.showAppLaunch(appName: "Visualizer Smoke Test", iconPath: nil)
         }
 
         try await self.step("App quit animation") {
-            await client.showAppQuit(appName: "Visualizer Smoke Test", iconPath: nil)
+            _ = await client.showAppQuit(appName: "Visualizer Smoke Test", iconPath: nil)
         }
 
         try await self.step("Menu breadcrumb highlight") {
-            await client.showMenuNavigation(menuPath: ["File", "New", "Window"])
+            _ = await client.showMenuNavigation(menuPath: ["File", "New", "Window"])
         }
 
         try await self.step("Dialog interaction highlight") {
-            await client.showDialogInteraction(
+            _ = await client.showDialogInteraction(
                 element: .button,
                 elementRect: CGRect(origin: point, size: CGSize(width: 160, height: 40)),
                 action: .clickButton
@@ -114,7 +114,7 @@ private struct VisualizerSmokeSequence {
         }
 
         try await self.step("Space switch indicator") {
-            await client.showSpaceSwitch(from: 1, to: 2, direction: .right)
+            _ = await client.showSpaceSwitch(from: 1, to: 2, direction: .right)
         }
 
         try await self.step("Element detection overlay") {
@@ -122,7 +122,7 @@ private struct VisualizerSmokeSequence {
                 "B1": CGRect(x: primaryRect.minX + 20, y: primaryRect.minY + 20, width: 140, height: 44),
                 "T1": CGRect(x: primaryRect.midX - 80, y: primaryRect.midY, width: 200, height: 40)
             ]
-            await client.showElementDetection(elements: sampleElements)
+            _ = await client.showElementDetection(elements: sampleElements)
         }
     }
 

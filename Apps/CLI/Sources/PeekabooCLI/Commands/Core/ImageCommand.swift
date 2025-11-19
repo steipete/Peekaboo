@@ -19,7 +19,7 @@ private typealias CaptureFocus = PeekabooCore.CaptureFocus
 
 @MainActor
 
-struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
+struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable, CaptureEngineConfigurable {
     @Option(name: .long, help: "Target application name, bundle ID, 'PID:12345', 'menubar', or 'frontmost'")
     var app: String?
 
@@ -40,6 +40,12 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
 
     @Option(name: .long, help: "Screen index for screen captures")
     var screenIndex: Int?
+
+    @Option(
+        name: .long,
+        help: "Capture engine: auto|modern|sckit|classic|cg (default: auto). modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList; auto tries SC then falls back when allowed."
+    )
+    var captureEngine: String?
 
     @Option(name: .long, help: "Image format: png or jpg")
     var format: PeekabooCore.ImageFormat = .png

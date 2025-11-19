@@ -144,7 +144,7 @@ struct FocusUtilitiesTests {
             ownerPID: 1,
             applicationName: "TestApp",
             bundleIdentifier: "com.example.test",
-            windowLayer: 0,
+            layer: 0,
             alpha: 1.0,
             axIdentifier: nil)
 
@@ -157,7 +157,7 @@ struct FocusUtilitiesTests {
             ownerPID: 1,
             applicationName: "TestApp",
             bundleIdentifier: "com.example.test",
-            windowLayer: 0,
+            layer: 0,
             alpha: 1.0,
             axIdentifier: nil)
 
@@ -170,11 +170,11 @@ struct FocusUtilitiesTests {
             ownerPID: 1,
             applicationName: "TestApp",
             bundleIdentifier: "com.example.test",
-            windowLayer: 5,
+            layer: 5,
             alpha: 0.5,
             axIdentifier: nil)
 
-        #expect(overlayWindow.isRenderable == false)
+        #expect(overlayWindow.isRenderable == true)
     }
 
     // MARK: - FocusError Tests

@@ -347,8 +347,10 @@ extension WindowManagementService {
 
     @MainActor
     private func findFirstWindow(for app: ServiceApplicationInfo) throws -> Element {
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(app.name)
+        }
+        let appElement = AXApp(runningApp).element
 
         guard let windows = appElement.windows(), !windows.isEmpty else {
             throw NotFoundError.window(app: app.name)
@@ -364,8 +366,10 @@ extension WindowManagementService {
 
     @MainActor
     private func findWindowByIndex(for app: ServiceApplicationInfo, index: Int) throws -> Element {
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(app.name)
+        }
+        let appElement = AXApp(runningApp).element
 
         guard let windows = appElement.windows() else {
             throw NotFoundError.window(app: app.name)
@@ -437,8 +441,10 @@ extension WindowManagementService {
     private func findWindowByTitleInApp(_ titleSubstring: String, app: ServiceApplicationInfo) throws -> Element {
         self.logger.info("Searching for window with title containing: '\(titleSubstring)' in app: \(app.name)")
 
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(app.name)
+        }
+        let appElement = AXApp(runningApp).element
 
         guard let windows = appElement.windows() else {
             throw NotFoundError.window(app: app.name)
@@ -459,8 +465,8 @@ extension WindowManagementService {
     @MainActor
     private func findWindowById(_ id: Int, in apps: [ServiceApplicationInfo]) throws -> Element {
         for app in apps {
-            let axApp = AXUIElementCreateApplication(app.processIdentifier)
-            let appElement = Element(axApp)
+            guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else { continue }
+            let appElement = AXApp(runningApp).element
 
             guard let windows = appElement.windows() else { continue }
             for window in windows {
@@ -491,8 +497,8 @@ extension WindowManagementService {
         }
 
         self.logger.debug("Checking frontmost app first: \(frontmostApp.name)")
-        let axApp = AXUIElementCreateApplication(frontmostApp.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: frontmostApp.processIdentifier) else { return nil }
+        let appElement = AXApp(runningApp).element
 
         guard let windows = appElement.windows() else { return nil }
         for window in windows where window.title()?.localizedCaseInsensitiveContains(titleSubstring) == true {
@@ -520,8 +526,8 @@ extension WindowManagementService {
                 continue
             }
 
-            let axApp = AXUIElementCreateApplication(app.processIdentifier)
-            let appElement = Element(axApp)
+            guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else { continue }
+            let appElement = AXApp(runningApp).element
 
             guard let windows = appElement.windows() else { continue }
             totalWindows += windows.count

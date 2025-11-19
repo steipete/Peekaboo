@@ -84,16 +84,28 @@ enum ScreenCaptureAPI: String, Sendable, CaseIterable {
 
 enum ScreenCaptureAPIResolver {
     static func resolve(environment: [String: String]) -> [ScreenCaptureAPI] {
-        guard let value = environment["PEEKABOO_USE_MODERN_CAPTURE"]?.lowercased() else {
-            return [.modern, .legacy]
+        // New selector (preferred): PEEKABOO_CAPTURE_ENGINE
+        if let value = environment["PEEKABOO_CAPTURE_ENGINE"]?.lowercased() {
+            return Self.resolveValue(value)
         }
 
+        // Back-compat selector: PEEKABOO_USE_MODERN_CAPTURE (bool-ish)
+        if let value = environment["PEEKABOO_USE_MODERN_CAPTURE"]?.lowercased() {
+            return Self.resolveValue(value)
+        }
+
+        return [.modern, .legacy]
+    }
+
+    private static func resolveValue(_ value: String) -> [ScreenCaptureAPI] {
         switch value {
-        case "false", "0", "no", "legacy", "legacy-only":
-            return [.legacy]
-        case "modern-only":
+        case "auto":
+            return [.modern, .legacy]
+        case "modern", "modern-only", "sckit", "sc", "screen-capture-kit", "sck":
             return [.modern]
-        case "true", "1", "yes", "modern":
+        case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
+            return [.legacy]
+        case "true", "1", "yes":
             return [.modern, .legacy]
         default:
             return [.modern, .legacy]

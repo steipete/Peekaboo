@@ -1,6 +1,11 @@
 import Commander
 import Foundation
 
+/// Commands that can specify a preferred capture engine.
+protocol CaptureEngineConfigurable {
+    var captureEngine: String? { get }
+}
+
 @MainActor
 enum CommanderRuntimeExecutor {
     static func resolveAndRun(arguments: [String]) async throws {
@@ -15,6 +20,11 @@ enum CommanderRuntimeExecutor {
         )
 
         if var runtimeCommand = command as? any AsyncRuntimeCommand {
+            if let capturePreference = (command as? CaptureEngineConfigurable)?.captureEngine,
+               !capturePreference.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            {
+                setenv("PEEKABOO_CAPTURE_ENGINE", capturePreference, 1)
+            }
             let runtimeOptions = try CommanderCLIBinder.makeRuntimeOptions(from: resolved.parsedValues)
             let runtime = CommandRuntime.makeDefault(options: runtimeOptions)
             try await runtimeCommand.run(using: runtime)

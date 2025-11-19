@@ -1,4 +1,5 @@
 import AppKit
+@preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
 import os.log
@@ -125,14 +126,12 @@ public final class GestureService {
     // MARK: - Private Methods
 
     private func getCurrentMouseLocation() -> CGPoint {
-        CGEvent(source: nil)?.location ?? CGPoint.zero
+        // Prefer AXorcist InputDriver move-less lookup; fallback to CGEvent location if needed
+        return InputDriver.currentLocation() ?? .zero
     }
 
     private func moveMouseToPoint(_ point: CGPoint) async throws {
-        let event = try self.makeMouseEvent(type: .mouseMoved, position: point)
-        event.post(tap: .cghidEventTap)
-
-        // Small delay after move
+        try InputDriver.move(to: point)
         try await Task.sleep(nanoseconds: 10_000_000) // 10ms
     }
 
@@ -184,17 +183,10 @@ public final class GestureService {
         button: CGMouseButton,
         eventFlags: CGEventFlags) async throws
     {
-        try await self.moveMouseToPoint(start)
-        try self.postMouseEvent(type: .leftMouseDown, at: start, button: button, flags: eventFlags)
-
-        let delay = self.stepDelay(duration: path.duration, steps: path.points.count)
-        for point in path.points {
-            try self.postMouseEvent(type: .leftMouseDragged, at: point, button: button, flags: eventFlags)
-            try await self.sleepIfNeeded(delay)
-        }
-
         let endPoint = path.points.last ?? start
-        try self.postMouseEvent(type: .leftMouseUp, at: endPoint, button: button, flags: eventFlags)
+        let steps = max(path.points.count, 2)
+        let interStepDelay = Double(path.duration) / 1000.0 / Double(steps)
+        try InputDriver.drag(from: start, to: endPoint, button: .left, steps: steps, interStepDelay: interStepDelay)
     }
 
     private func performDrag(
@@ -202,47 +194,12 @@ public final class GestureService {
         start: CGPoint,
         eventFlags: CGEventFlags) async throws
     {
-        try await self.moveMouseToPoint(start)
-        try self.postMouseEvent(type: .leftMouseDown, at: start, flags: eventFlags)
-
-        let delay = self.stepDelay(duration: path.duration, steps: path.points.count)
-        for point in path.points {
-            try self.postMouseEvent(type: .leftMouseDragged, at: point, flags: eventFlags)
-            try await self.sleepIfNeeded(delay)
-        }
-
         let endPoint = path.points.last ?? start
-        try self.postMouseEvent(type: .leftMouseUp, at: endPoint, flags: eventFlags)
+        let steps = max(path.points.count, 2)
+        let delay = Double(path.duration) / 1000.0 / Double(steps)
+        try InputDriver.drag(from: start, to: endPoint, button: .left, steps: steps, interStepDelay: delay)
     }
 
-    private func postMouseEvent(
-        type: CGEventType,
-        at point: CGPoint,
-        button: CGMouseButton = .left,
-        flags: CGEventFlags = []) throws
-    {
-        let event = try self.makeMouseEvent(type: type, position: point, button: button, flags: flags)
-        event.post(tap: .cghidEventTap)
-    }
-
-    private func makeMouseEvent(
-        type: CGEventType,
-        position: CGPoint,
-        button: CGMouseButton = .left,
-        flags: CGEventFlags = []) throws -> CGEvent
-    {
-        guard let event = CGEvent(
-            mouseEventSource: nil,
-            mouseType: type,
-            mouseCursorPosition: position,
-            mouseButton: button)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-
-        event.flags = flags
-        return event
-    }
 
     private func sleepIfNeeded(_ delay: UInt64) async throws {
         guard delay > 0 else { return }
@@ -285,21 +242,9 @@ public final class GestureService {
     private func playPath(_ points: [CGPoint], duration: Int) async throws {
         guard !points.isEmpty else { return }
         let delay = self.stepDelay(duration: duration, steps: points.count)
-
         for point in points {
-            guard let moveEvent = CGEvent(
-                mouseEventSource: nil,
-                mouseType: .mouseMoved,
-                mouseCursorPosition: point,
-                mouseButton: .left)
-            else {
-                throw PeekabooError.operationError(message: "Failed to create event")
-            }
-            moveEvent.post(tap: .cghidEventTap)
-
-            if delay > 0 {
-                try await Task.sleep(nanoseconds: delay)
-            }
+            try InputDriver.move(to: point)
+            if delay > 0 { try await Task.sleep(nanoseconds: delay) }
         }
     }
 }

@@ -800,8 +800,7 @@ extension UIAutomationService {
             return nil
         }
 
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        let appElement = AXApp(app).element
 
         let deadline = Date().addingTimeInterval(self.searchLimits.timeBudget)
         let searchContext = SearchContext(

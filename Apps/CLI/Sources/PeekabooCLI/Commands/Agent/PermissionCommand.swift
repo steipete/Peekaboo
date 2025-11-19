@@ -191,16 +191,16 @@ extension PermissionCommand {
         }
 
         private func handleLegacyPrompt() -> AgentPermissionActionResult {
+            if #available(macOS 14.0, *) {
+                // Should never reach on modern macOS; keep for completeness.
+                return self.handleModernPrompt()
+            }
+
             if !self.jsonOutput {
                 print("Attempting screen capture to trigger permission prompt...")
             }
 
-            _ = CGWindowListCreateImage(
-                CGRect(x: 0, y: 0, width: 1, height: 1),
-                .optionAll,
-                kCGNullWindowID,
-                .nominalResolution
-            )
+            self.triggerLegacyScreenRecordingPrompt()
 
             if !self.jsonOutput {
                 self.printLegacyGuidance()
@@ -211,6 +211,21 @@ extension PermissionCommand {
                 already_granted: false,
                 prompt_triggered: true,
                 granted: nil
+            )
+        }
+
+        /// Legacy (< macOS 14) probe to provoke the Screen Recording prompt.
+        /// We intentionally keep CGWindowListCreateImage so older systems see the dialog;
+        /// we aren’t modernizing this path yet.
+        private func triggerLegacyScreenRecordingPrompt() {
+            // Guarded by the availability check above; on macOS 14+ this helper is never executed,
+            // which suppresses the deprecation warning without altering behaviour on older hosts.
+            // Intentionally deprecated API; acceptable for pre-14 fallback.
+            _ = CGWindowListCreateImage(
+                CGRect(x: 0, y: 0, width: 1, height: 1),
+                .optionAll,
+                kCGNullWindowID,
+                .nominalResolution
             )
         }
 

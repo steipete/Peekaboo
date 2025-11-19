@@ -267,21 +267,8 @@ public final class DockService: DockServiceProtocol {
         _ = await self.visualizerClient.showClickFeedback(at: center, type: .right)
 
         // Perform right-click
-        let rightMouseDown = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .rightMouseDown,
-            mouseCursorPosition: center,
-            mouseButton: .right)
-
-        let rightMouseUp = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .rightMouseUp,
-            mouseCursorPosition: center,
-            mouseButton: .right)
-
-        rightMouseDown?.post(tap: .cghidEventTap)
+        try InputDriver.click(at: center, button: .right, count: 1)
         usleep(50000) // 50ms
-        rightMouseUp?.post(tap: .cghidEventTap)
 
         // If menu item specified, wait for menu and click it
         if let targetMenuItem = menuItem {
@@ -394,7 +381,7 @@ public final class DockService: DockServiceProtocol {
             return nil
         }
 
-        return Element(AXUIElementCreateApplication(dockApp.processIdentifier))
+        return AXApp(dockApp).element
     }
 
     @MainActor
@@ -476,7 +463,7 @@ public final class DockService: DockServiceProtocol {
         captureOutput: Bool = false) async throws -> String
     {
         try await withCheckedThrowingContinuation { continuation in
-            Task {
+            do {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: launchPath)
                 process.arguments = arguments
@@ -487,30 +474,23 @@ public final class DockService: DockServiceProtocol {
                 }
                 process.standardError = pipe
 
-                do {
-                    try process.run()
-                    process.waitUntilExit()
+                try process.run()
+                process.waitUntilExit()
 
-                    if process.terminationStatus != 0 {
-                        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                        let error = String(data: data, encoding: .utf8) ?? "Unknown error"
-                        continuation
-                            .resume(throwing: PeekabooError
-                                .operationError(message: "Command execution failed: \(error)"))
-                        return
-                    } else if captureOutput {
-                        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                        let output = String(data: data, encoding: .utf8) ?? ""
-                        continuation.resume(returning: output)
-                        return
-                    } else {
-                        continuation.resume(returning: "")
-                        return
-                    }
-                } catch {
-                    continuation.resume(throwing: error)
-                    return
+                if process.terminationStatus != 0 {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let error = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    continuation.resume(throwing: PeekabooError
+                        .operationError(message: "Command execution failed: \(error)"))
+                } else if captureOutput {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: data, encoding: .utf8) ?? ""
+                    continuation.resume(returning: output)
+                } else {
+                    continuation.resume(returning: "")
                 }
+            } catch {
+                continuation.resume(throwing: error)
             }
         }
     }

@@ -26,7 +26,7 @@ struct CaptureCommand: ParsableCommand {
 // MARK: Live capture
 
 @MainActor
-struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
+struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable, CaptureEngineConfigurable {
     // Targeting
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'") var app: String?
     @Option(name: .long, help: "Target application by process ID") var pid: Int32?
@@ -36,6 +36,10 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
     @Option(name: .long, help: "Screen index for screen captures") var screenIndex: Int?
     @Option(name: .long, help: "Region to capture as x,y,width,height (global display coordinates)") var region: String?
     @Option(name: .long, help: "Window focus behavior") var captureFocus: LiveCaptureFocus = .auto
+    @Option(
+        name: .long,
+        help: "Capture engine: auto|modern|sckit|classic|cg (default: auto). modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList; auto tries SC then falls back when allowed."
+    ) var captureEngine: String?
 
     // Behavior
     @Option(name: .long, help: "Duration in seconds (default 60, max 180)") var duration: Double?

@@ -64,13 +64,20 @@ struct VideoWriterTests {
         let result = try await session.run()
 
         let asset = AVAsset(url: URL(fileURLWithPath: videoOut))
-        let track = try #require(asset.tracks(withMediaType: .video).first)
-        let natural = track.naturalSize.applying(track.preferredTransform)
+        let tracks = try await asset.loadTracks(withMediaType: .video)
+        let track = try #require(tracks.first)
+
+        let naturalSize = try await track.load(.naturalSize)
+        let preferredTransform = try await track.load(.preferredTransform)
+        let natural = naturalSize.applying(preferredTransform)
         let width = Int(abs(natural.width.rounded()))
         let height = Int(abs(natural.height.rounded()))
+
+        let nominalFrameRate = try await track.load(.nominalFrameRate)
+
         #expect(width == 1440)
         #expect(height == 720)
-        #expect(abs(Double(track.nominalFrameRate) - 12) < 0.5)
+        #expect(abs(Double(nominalFrameRate) - 12) < 0.5)
         #expect(result.videoOut?.hasSuffix("capture.mp4") == true)
     }
 }

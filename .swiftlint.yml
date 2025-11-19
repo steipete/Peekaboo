@@ -105,6 +105,21 @@ disabled_rules:
   - file_name
   - todo
   
+# Custom rules
+custom_rules:
+  no_direct_ax_in_peekaboo:
+    included: "Core/PeekabooCore"
+    excluded: "Core/PeekabooCore/Tests"
+    name: "No Direct AX/CG Event APIs in PeekabooCore"
+    regex: "\\bAXUIElement\\b|\\bCGEvent\\b"
+    message: "Use AXorcist abstractions (Element/InputDriver/AXWindowResolver) instead of direct AXUIElement/CGEvent."
+    severity: warning
+  no_ui_appservices_import:
+    included: "Core/PeekabooCore/Sources/PeekabooAutomation/Services/UI"
+    regex: "^import\\s+ApplicationServices"
+    message: "Import AX/CG bindings via AXorcist; avoid direct ApplicationServices in UI services."
+    severity: warning
+
 # Rule configurations
 force_cast: warning
 force_try: warning

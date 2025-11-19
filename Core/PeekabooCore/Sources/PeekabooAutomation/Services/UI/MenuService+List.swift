@@ -17,8 +17,10 @@ extension MenuService {
         }
 
         let appInfo = try await applicationService.findApplication(identifier: appIdentifier)
-        let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
-        let appElement = Element(axApp)
+        guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
+            throw NotFoundError.application(appIdentifier)
+        }
+        let appElement = AXApp(runningApp).element
 
         let menuBar = try self.menuBar(for: appElement, appInfo: appInfo)
         var budget = MenuTraversalBudget(limits: traversalLimits)

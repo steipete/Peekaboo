@@ -142,8 +142,8 @@ public final class ClickService {
             return nil
         }
 
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        let axApp = AXApp(app)
+        let appElement = axApp.element
 
         // Search recursively
         return self.searchElement(in: appElement, matching: queryLower)
@@ -175,198 +175,24 @@ public final class ClickService {
         return nil
     }
 
-    /// Perform actual click at coordinates
+    /// Perform actual click at coordinates using AXorcist InputDriver.
     private func performClick(at point: CGPoint, clickType: ClickType) async throws {
-        // Perform actual click at coordinates
         self.logger.debug("Performing \(clickType) click at (\(point.x), \(point.y))")
 
-        // Create mouse events based on click type
         switch clickType {
         case .single:
-            try await self.performSingleClick(at: point, button: .left)
+            try InputDriver.click(at: point, button: .left, count: 1)
         case .right:
-            try await self.performSingleClick(at: point, button: .right)
+            try InputDriver.click(at: point, button: .right, count: 1)
         case .double:
-            try await self.performDoubleClick(at: point)
+            try InputDriver.click(at: point, button: .left, count: 2)
         }
-    }
-
-    private func performSingleClick(at point: CGPoint, button: CGMouseButton) async throws {
-        // Move mouse to position
-        guard let moveEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .mouseMoved,
-            mouseCursorPosition: point,
-            mouseButton: button)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-        moveEvent.post(tap: .cghidEventTap)
-
-        // Small delay
-        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-
-        // Mouse down
-        let downType: CGEventType = switch button {
-        case .left: .leftMouseDown
-        case .right: .rightMouseDown
-        case .center: .otherMouseDown
-        @unknown default: .leftMouseDown
-        }
-
-        guard let downEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: downType,
-            mouseCursorPosition: point,
-            mouseButton: button)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-        downEvent.post(tap: .cghidEventTap)
-
-        // Small delay
-        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-
-        // Mouse up
-        let upType: CGEventType = switch button {
-        case .left: .leftMouseUp
-        case .right: .rightMouseUp
-        case .center: .otherMouseUp
-        @unknown default: .leftMouseUp
-        }
-
-        guard let upEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: upType,
-            mouseCursorPosition: point,
-            mouseButton: button)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-        upEvent.post(tap: .cghidEventTap)
-    }
-
-    private func performDoubleClick(at point: CGPoint) async throws {
-        // Move to position
-        guard let moveEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .mouseMoved,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-        moveEvent.post(tap: .cghidEventTap)
-
-        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-
-        // Create double click event
-        guard let downEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .leftMouseDown,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-
-        downEvent.setIntegerValueField(.mouseEventClickState, value: 2)
-        downEvent.post(tap: .cghidEventTap)
-
-        guard let upEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .leftMouseUp,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-
-        upEvent.setIntegerValueField(.mouseEventClickState, value: 2)
-        upEvent.post(tap: .cghidEventTap)
-    }
-
-    private func performTripleClick(at point: CGPoint) async throws {
-        // Move to position
-        guard let moveEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .mouseMoved,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-        moveEvent.post(tap: .cghidEventTap)
-
-        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-
-        // Create triple click event
-        guard let downEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .leftMouseDown,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-
-        downEvent.setIntegerValueField(.mouseEventClickState, value: 3)
-        downEvent.post(tap: .cghidEventTap)
-
-        guard let upEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .leftMouseUp,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-
-        upEvent.setIntegerValueField(.mouseEventClickState, value: 3)
-        upEvent.post(tap: .cghidEventTap)
     }
 
     private func performForceClick(at point: CGPoint) async throws {
-        // Force click is simulated with a longer press
-        guard let moveEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .mouseMoved,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-        moveEvent.post(tap: .cghidEventTap)
-
+        try InputDriver.move(to: point)
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-
-        // Mouse down
-        guard let downEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .leftMouseDown,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-
-        // Set pressure for force click
-        downEvent.setDoubleValueField(.mouseEventPressure, value: 2.0)
-        downEvent.post(tap: .cghidEventTap)
-
-        // Hold for force click duration
-        try await Task.sleep(nanoseconds: 500_000_000) // 500ms
-
-        // Mouse up
-        guard let upEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .leftMouseUp,
-            mouseCursorPosition: point,
-            mouseButton: .left)
-        else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-        upEvent.post(tap: .cghidEventTap)
+        try InputDriver.pressHold(at: point, button: .left, duration: 0.5)
     }
 }
 

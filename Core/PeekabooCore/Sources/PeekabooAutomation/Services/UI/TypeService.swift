@@ -180,8 +180,7 @@ public final class TypeService {
             return nil
         }
 
-        let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
-        let appElement = Element(axApp)
+        let appElement = AXApp(frontApp).element
 
         return self.searchTextFields(in: appElement, matching: query.lowercased())
     }
@@ -216,12 +215,10 @@ public final class TypeService {
     private func clearCurrentField() async throws {
         self.logger.debug("Clearing current field")
 
-        // Select all (Cmd+A)
-        try await self.pressKey(code: kVK_ANSI_A, flags: .maskCommand)
+        try InputDriver.hotkey(keys: ["cmd", "a"])
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
 
-        // Delete
-        try await self.pressKey(code: kVK_Delete, flags: [])
+        try InputDriver.tapKey(.delete)
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
     }
 
@@ -264,60 +261,47 @@ public final class TypeService {
     }
 
     private func typeCharacter(_ char: Character) async throws {
-        let string = String(char)
-
-        // Create keyboard event
-        guard let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-
-        // Set the character
-        var unicodeChars = Array(string.utf16)
-        keyDownEvent.keyboardSetUnicodeString(stringLength: unicodeChars.count, unicodeString: &unicodeChars)
-
-        // Post key down
-        keyDownEvent.post(tap: .cghidEventTap)
-
-        // Create key up event
-        guard let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-
-        keyUpEvent.keyboardSetUnicodeString(stringLength: unicodeChars.count, unicodeString: &unicodeChars)
-        keyUpEvent.post(tap: .cghidEventTap)
+        try InputDriver.type(String(char), delayPerCharacter: 0)
     }
 
     private func typeSpecialKey(_ key: String) async throws {
-        let virtualKey = self.mapSpecialKeyToVirtualCode(key)
-
-        if virtualKey == 0xFFFF {
+        guard let hotkey = self.mapSpecialKey(key) else {
             throw PeekabooError.invalidInput("Unknown special key: '\(key)'")
         }
-
-        try await self.pressKey(code: virtualKey, flags: [])
+        try InputDriver.hotkey(keys: [hotkey])
     }
 
-    private func pressKey(code: CGKeyCode, flags: CGEventFlags) async throws {
-        // Key down
-        guard let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true) else {
-            throw PeekabooError.operationError(message: "Failed to create event")
+    private func mapSpecialKey(_ key: String) -> String? {
+        switch key.lowercased() {
+        case "return", "enter": "return"
+        case "escape", "esc": "escape"
+        case "tab": "tab"
+        case "space", "spacebar": "space"
+        case "delete", "backspace": "delete"
+        case "forwarddelete": "forwarddelete"
+        case "up": "up"
+        case "down": "down"
+        case "left": "left"
+        case "right": "right"
+        case "pageup": "pageup"
+        case "pagedown": "pagedown"
+        case "home": "home"
+        case "end": "end"
+        case "f1": "f1"
+        case "f2": "f2"
+        case "f3": "f3"
+        case "f4": "f4"
+        case "f5": "f5"
+        case "f6": "f6"
+        case "f7": "f7"
+        case "f8": "f8"
+        case "f9": "f9"
+        case "f10": "f10"
+        case "f11": "f11"
+        case "f12": "f12"
+        default:
+            nil
         }
-        keyDownEvent.flags = flags
-        keyDownEvent.post(tap: .cghidEventTap)
-
-        // Small delay
-        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
-
-        // Key up
-        guard let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false) else {
-            throw PeekabooError.operationError(message: "Failed to create event")
-        }
-        keyUpEvent.flags = flags
-        keyUpEvent.post(tap: .cghidEventTap)
-    }
-
-    private func mapSpecialKeyToVirtualCode(_ key: String) -> CGKeyCode {
-        SpecialKeyMapping.value(for: key)
     }
 }
 

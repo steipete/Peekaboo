@@ -196,7 +196,7 @@ extension ElementDetectionService {
         for app: NSRunningApplication,
         context: WindowContext?) async throws -> WindowResolution
     {
-        let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
+        let appElement = AXApp(app).element
         // Chrome and other multi-process apps occasionally return an empty window list unless we set
         // an explicit AX messaging timeout, so prefer the guarded helper.
         let axWindows = appElement.windowsWithTimeout() ?? []

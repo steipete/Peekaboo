@@ -234,8 +234,7 @@ extension DialogService {
             self.logger.debug("Force dismissing with Escape key")
 
             // Press Escape
-            let escape = CGEvent(keyboardEventSource: nil, virtualKey: 0x35, keyDown: true) // Escape
-            escape?.post(tap: .cghidEventTap)
+            try? InputDriver.tapKey(.escape)
 
             self.logger.info("\(AgentDisplayTokens.Status.success) Dialog dismissed with Escape key")
             return DialogActionResult(
@@ -350,7 +349,7 @@ extension DialogService {
 
         var focusedAppElement: Element? = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) ?? {
             if let frontmost = NSWorkspace.shared.frontmostApplication {
-                return Element(AXUIElementCreateApplication(frontmost.processIdentifier))
+                return AXApp(frontmost).element
             }
             return nil
         }()
@@ -359,7 +358,7 @@ extension DialogService {
            let appName,
            let targetApp = self.runningApplication(matching: appName)
         {
-            focusedAppElement = Element(AXUIElementCreateApplication(targetApp.processIdentifier))
+            focusedAppElement = AXApp(targetApp).element
         }
 
         guard let focusedApp = focusedAppElement else {
@@ -386,7 +385,7 @@ extension DialogService {
         }
 
         for app in NSWorkspace.shared.runningApplications {
-            let axApp = Element(AXUIElementCreateApplication(app.processIdentifier))
+            let axApp = AXApp(app).element
             let appWindows = axApp.windowsWithTimeout() ?? []
             for window in appWindows {
                 if let candidate = self.resolveDialogCandidate(in: window, matching: title) {
@@ -505,7 +504,8 @@ extension DialogService {
                 return candidate
             }
 
-            let axApp = Element(AXUIElementCreateApplication(app.processIdentifier))
+            guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else { continue }
+            let axApp = AXApp(runningApp).element
             guard let appWindows = axApp.windowsWithTimeout() else { continue }
 
             if let match = appWindows.first(where: {
@@ -617,31 +617,57 @@ extension DialogService {
     private func clearFieldIfNeeded(_ field: Element, shouldClear: Bool) throws {
         guard shouldClear else { return }
         self.logger.debug("Clearing existing text")
-        self.pressKey(0x00, modifiers: .maskCommand) // Cmd+A
-        self.pressKey(0x33) // Delete
+        try? InputDriver.hotkey(keys: ["cmd", "a"])
+        try? InputDriver.tapKey(.delete)
         usleep(50000)
     }
 
     private func typeTextValue(_ text: String, delay: useconds_t) throws {
         self.logger.debug("Typing text into field")
-        for char in text {
-            try self.typeCharacter(char)
-            usleep(delay)
-        }
+        try InputDriver.type(text, delayPerCharacter: Double(delay) / 1_000_000.0)
     }
 
     private func pressKey(_ virtualKey: CGKeyCode, modifiers: CGEventFlags = []) {
-        guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: true) else {
+        if let special = self.mapSpecialKey(code: virtualKey) {
+            var keys = self.modifierKeys(from: modifiers)
+            keys.append(special)
+            try? InputDriver.hotkey(keys: keys, holdDuration: 0.05)
             return
         }
-        keyDown.flags = modifiers
-        keyDown.post(tap: .cghidEventTap)
+        if let character = self.mapCharacter(code: virtualKey) {
+            var keys = self.modifierKeys(from: modifiers)
+            keys.append(character)
+            try? InputDriver.hotkey(keys: keys, holdDuration: 0.05)
+            return
+        }
+    }
 
-        guard let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: false) else {
-            return
+    private func mapSpecialKey(code: CGKeyCode) -> String? {
+        switch code {
+        case 0x24: return "return"
+        case 0x35: return "escape"
+        case 0x33: return "delete"
+        case 0x30: return "tab"
+        default: return nil
         }
-        keyUp.flags = modifiers
-        keyUp.post(tap: .cghidEventTap)
+    }
+
+    private func mapCharacter(code: CGKeyCode) -> String? {
+        let mapping: [CGKeyCode: String] = [
+            0x00: "a",
+            0x05: "g",
+        ]
+        return mapping[code]
+    }
+
+    private func modifierKeys(from flags: CGEventFlags) -> [String] {
+        var keys: [String] = []
+        if flags.contains(.maskCommand) { keys.append("cmd") }
+        if flags.contains(.maskShift) { keys.append("shift") }
+        if flags.contains(.maskAlternate) { keys.append("alt") }
+        if flags.contains(.maskControl) { keys.append("ctrl") }
+        if flags.contains(.maskSecondaryFn) { keys.append("fn") }
+        return keys
     }
 
     @MainActor
@@ -802,8 +828,9 @@ extension DialogService {
                 continue
             }
 
-            let appElement = Element(AXUIElementCreateApplication(pid_t(ownerPid.intValue)))
-            guard let windows = appElement.windowsWithTimeout() else { continue }
+            guard let appElement = AXApp(pid: pid_t(ownerPid.intValue))?.element,
+                  let windows = appElement.windowsWithTimeout()
+            else { continue }
 
             if let matchingWindow = windows.first(where: {
                 let axTitle = $0.title() ?? ""

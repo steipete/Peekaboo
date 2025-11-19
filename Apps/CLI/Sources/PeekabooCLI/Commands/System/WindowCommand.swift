@@ -162,12 +162,13 @@ private func logWindowAction(
     windowInfo: ServiceWindowInfo?
 ) {
     let title = windowInfo?.title ?? "Unknown"
-    let boundsDescription = if let windowBounds = windowInfo?.bounds {
+    let boundsDescription: String
+    if let windowBounds = windowInfo?.bounds {
         let origin = "bounds=(\(Int(windowBounds.origin.x)),\(Int(windowBounds.origin.y)))"
         let size = "x(\(Int(windowBounds.size.width)),\(Int(windowBounds.size.height)))"
-        origin + size
+        boundsDescription = "\(origin)\(size)"
     } else {
-        "bounds=unknown"
+        boundsDescription = "bounds=unknown"
     }
     AutomationEventLogger.log(
         .window,

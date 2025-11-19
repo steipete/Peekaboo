@@ -247,8 +247,14 @@ actor TestExpectation {
                 throw TestError.timeout
             }
 
-            try await group.next()
-            group.cancelAll()
+            do {
+                try await group.next()
+                group.cancelAll()
+            } catch {
+                await self.failAllWaiters(error)
+                group.cancelAll()
+                throw error
+            }
         }
     }
 
@@ -258,6 +264,13 @@ actor TestExpectation {
         } else {
             self.waiters.append(continuation)
         }
+    }
+
+    private func failAllWaiters(_ error: Error) {
+        for waiter in self.waiters {
+            waiter.resume(throwing: error)
+        }
+        self.waiters.removeAll()
     }
 }
 
