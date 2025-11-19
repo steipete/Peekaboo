@@ -23,6 +23,7 @@ enum CommanderRuntimeExecutor {
             if let capturePreference = (command as? CaptureEngineConfigurable)?.captureEngine,
                !capturePreference.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             {
+                // Respect explicit engine choice; also allow disabling CG globally.
                 setenv("PEEKABOO_CAPTURE_ENGINE", capturePreference, 1)
             }
             let runtimeOptions = try CommanderCLIBinder.makeRuntimeOptions(from: resolved.parsedValues)
