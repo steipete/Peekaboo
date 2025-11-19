@@ -216,10 +216,15 @@ extension PermissionCommand {
 
         /// Legacy (< macOS 14) probe to provoke the Screen Recording prompt.
         /// We intentionally keep CGWindowListCreateImage so older systems see the dialog;
-        /// we aren’t modernizing this path yet.
+        /// we aren’t modernizing this path yet. On macOS 15+ this only runs when explicitly enabled.
         private func triggerLegacyScreenRecordingPrompt() {
             // Guarded by the availability check above; on macOS 14+ this helper is never executed,
             // which suppresses the deprecation warning without altering behaviour on older hosts.
+            if #available(macOS 15, *) {
+                let enableLegacy = ProcessInfo.processInfo.environment["PEEKABOO_ALLOW_LEGACY_CAPTURE"]?.lowercased()
+                let allowed = enableLegacy.map { ["1", "true", "yes"].contains($0) } ?? false
+                if !allowed { return }
+            }
             // Intentionally deprecated API; acceptable for pre-14 fallback.
             _ = CGWindowListCreateImage(
                 CGRect(x: 0, y: 0, width: 1, height: 1),

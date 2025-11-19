@@ -36,6 +36,8 @@ import PeekabooVisualizer
  * ## API Control
  * Use `PEEKABOO_CAPTURE_ENGINE=auto|modern|sckit|classic|cg` (preferred) or
  * `PEEKABOO_USE_MODERN_CAPTURE=true/false` (legacy) to control engine selection.
+ * On macOS 15+, legacy CG fallback is disabled unless explicitly allowed via
+ * `PEEKABOO_ALLOW_LEGACY_CAPTURE=1` or `--capture-engine classic|cg`.
  *
  * - Important: Requires Screen Recording permission
  * - Note: Performance 20-150ms depending on operation and display size
@@ -1023,6 +1025,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 configuration: self.makeScreenshotConfiguration())
         }
 
+        @available(macOS, obsoleted: 15.0)
         @MainActor
         private func captureWindowWithCGWindowList(windowID: CGWindowID) throws -> CGImage {
             let imageOptions: CGWindowImageOption = [
