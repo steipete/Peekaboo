@@ -27,7 +27,7 @@ Aliases:
 - auto: `auto`
 
 ## Current policy (Nov 2025)
-- Default: `auto` = try ScreenCaptureKit, fallback to CG.
+- Default: `auto` = try ScreenCaptureKit first, fallback to CG if SC fails.
 - You can force SC-only via env `PEEKABOO_DISABLE_CGWINDOWLIST=1`.
 - You can force classic/CG via `--capture-engine classic|cg` or `PEEKABOO_CAPTURE_ENGINE=classic`.
 
