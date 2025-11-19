@@ -38,10 +38,10 @@ read_when:
 - **Peekaboo:** keep CLI + automation tests as integration guard; backfill contract tests around menu/dock/dialog heuristics once they are peeled off raw AX APIs.
 
 ## Immediate next steps (suggested order)
-1) Gate CG fallback: on macOS 15+ run ScreenCaptureKit only (unless an explicit env enables CG); on 13/14 keep auto fallback. Mark CG helpers `@available(..., obsoleted: 15)` and add an env switch to dogfood SC-only.
-2) Finish AX facade adoption: scrub remaining direct `AXUIElement` uses in Peekaboo services; rely on `AXApp`/`AXWindowHandle`/Element helpers.
-3) Move timeout helpers into AXorcist (`withAXTimeout` via `AXTimeoutPolicy`) and delete Peekaboo’s legacy timeout extension.
-4) Tests: add AXorcist unit tests for AppLocator, AXWindowResolver, timeout policy, and InputDriver edge cases; keep Peekaboo integration tests as guardrails.
-5) Observability: add lightweight timing/engine hook in AXorcist so Peekaboo can log engine choice and duration without extra deps; then tighten lint (warning → error) once migration completes.
+1) Gate CG fallback: on macOS 15+ run ScreenCaptureKit only (unless an explicit env enables CG); on 13/14 keep auto fallback. Mark CG helpers `@available(..., obsoleted: 15)` and add an env switch to dogfood SC-only. **(done: env/flag honored, CG helper annotated)**
+2) Finish AX facade adoption: scrub remaining direct `AXUIElement` uses in Peekaboo services; rely on `AXApp`/`AXWindowHandle`/Element helpers. **(in progress)**
+3) Move timeout helpers into AXorcist (`withAXTimeout` via `AXTimeoutPolicy`) and delete Peekaboo’s legacy timeout extension. **(done)**
+4) Tests: add AXorcist unit tests for AppLocator, AXWindowResolver, timeout policy, and InputDriver edge cases; keep Peekaboo integration tests as guardrails. **(todo)**
+5) Observability: add lightweight timing/engine hook in AXorcist so Peekaboo can log engine choice and duration without extra deps; then tighten lint (warning → error) once migration completes. **(partial: capture engine logging added in fallback runner)**
 
 Notes: keep AXorcist hot paths allocation-free; avoid adding async layers unless the underlying API blocks. Use `@testable import AXorcist` for the new unit tests and mirror any helper edits into `agent-scripts` if touched.
