@@ -210,9 +210,13 @@ final class AgentChatUI {
     }
 
     func showHelpMenu() {
-        let helpText = self.helpLines.joined(separator: "\n")
-        let help = MarkdownComponent(text: helpText, padding: .init(horizontal: 1, vertical: 0))
-        self.messages.addChild(help)
+        // Render each line separately so the bullets always appear on their own lines,
+        // even when terminals collapse single newlines in a single Text component.
+        for line in self.helpLines {
+            let helpLine = Text(text: line, paddingX: 1, paddingY: 0)
+            self.messages.addChild(helpLine)
+        }
+        self.requestRender()
     }
 
     func showCancelled() {
