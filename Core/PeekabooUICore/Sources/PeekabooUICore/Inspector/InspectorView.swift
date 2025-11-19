@@ -28,6 +28,14 @@ public struct InspectorView: View {
     @State private var permissionCheckTimer: Timer?
 
     private let configuration: InspectorConfiguration
+    @MainActor
+    private static var permissionStatusProvider: () -> Bool = {
+        AXPermissionHelpers.hasAccessibilityPermissions()
+    }
+    @MainActor
+    private static var permissionPromptProvider: () -> Bool = {
+        AXPermissionHelpers.askForAccessibilityIfNeeded()
+    }
 
     public enum PermissionStatus {
         case checking
@@ -114,9 +122,9 @@ public struct InspectorView: View {
 
     private func checkPermissions(prompt: Bool = false) {
         let accessEnabled = if prompt {
-            AXPermissionHelpers.askForAccessibilityIfNeeded()
+            InspectorView.permissionPromptProvider()
         } else {
-            AXPermissionHelpers.hasAccessibilityPermissions()
+            InspectorView.permissionStatusProvider()
         }
 
         let newStatus: PermissionStatus = accessEnabled ? .granted : .denied
@@ -161,8 +169,34 @@ public struct InspectorView: View {
         self.permissionCheckTimer = nil
     }
 
-    private func openOverlayWindow() {
+private func openOverlayWindow() {
         // This would be implemented by the host application
         // as it needs to manage actual window creation
     }
 }
+
+#if DEBUG
+@MainActor
+extension InspectorView {
+    static func setPermissionProvidersForTesting(
+        check: @escaping () -> Bool,
+        prompt: @escaping () -> Bool)
+    {
+        self.permissionStatusProvider = check
+        self.permissionPromptProvider = prompt
+    }
+
+    static func resetPermissionProvidersForTesting() {
+        self.permissionStatusProvider = { AXPermissionHelpers.hasAccessibilityPermissions() }
+        self.permissionPromptProvider = { AXPermissionHelpers.askForAccessibilityIfNeeded() }
+    }
+
+    mutating func test_checkPermissions(prompt: Bool) {
+        self.checkPermissions(prompt: prompt)
+    }
+
+    func test_permissionStatus() -> PermissionStatus {
+        self.permissionStatus
+    }
+}
+#endif

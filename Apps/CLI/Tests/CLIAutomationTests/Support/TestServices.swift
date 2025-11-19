@@ -252,8 +252,10 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         )
     }
 
+    var accessibilityPermissionGranted = true
+
     func hasAccessibilityPermission() async -> Bool {
-        true
+        self.accessibilityPermissionGranted
     }
 
     func waitForElement(
