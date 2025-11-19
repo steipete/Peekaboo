@@ -86,24 +86,21 @@ enum ScreenCaptureAPIResolver {
     static func resolve(environment: [String: String]) -> [ScreenCaptureAPI] {
         // New selector (preferred): PEEKABOO_CAPTURE_ENGINE
         if let value = environment["PEEKABOO_CAPTURE_ENGINE"]?.lowercased() {
-            return Self.filterForPlatform(
+            return Self.postProcess(
                 apis: Self.resolveValue(value),
-                rawValue: value,
                 environment: environment)
         }
 
         // Back-compat selector: PEEKABOO_USE_MODERN_CAPTURE (bool-ish)
         if let value = environment["PEEKABOO_USE_MODERN_CAPTURE"]?.lowercased() {
-            return Self.filterForPlatform(
+            return Self.postProcess(
                 apis: Self.resolveValue(value),
-                rawValue: value,
                 environment: environment)
         }
 
-        // Default: modern then legacy (per OS guard applied at call site)
-        return Self.filterForPlatform(
+        // Default: modern then legacy
+        return Self.postProcess(
             apis: [.modern, .legacy],
-            rawValue: "auto",
             environment: environment)
     }
 
@@ -122,41 +119,18 @@ enum ScreenCaptureAPIResolver {
         }
     }
 
-    /// Strip legacy on macOS 15+ unless explicitly requested.
-    private static func filterForPlatform(
+    /// Apply global disables (e.g., SC-only dogfooding), but honor explicit classic choices.
+    private static func postProcess(
         apis: [ScreenCaptureAPI],
-        rawValue: String,
         environment: [String: String]) -> [ScreenCaptureAPI]
     {
-        #if os(macOS)
-        if #available(macOS 15, *) {
-            let allowLegacy = Self.allowLegacyOnNewOS(rawValue: rawValue, environment: environment)
-            if !allowLegacy {
-                let filtered = apis.filter { $0 != .legacy }
-                return filtered.isEmpty ? [.modern] : filtered
-            }
-        }
-        #endif
-        return apis
-    }
-
-    private static func allowLegacyOnNewOS(rawValue: String, environment: [String: String]) -> Bool {
-        // Explicit request via engine string (classic/cg/legacy) wins.
-        let legacyWords: Set<String> = ["classic", "cg", "legacy", "legacy-only"]
-        if legacyWords.contains(rawValue) { return true }
-
-        // Env override for debugging/dogfooding.
-        if let value = environment["PEEKABOO_ALLOW_LEGACY_CAPTURE"]?.lowercased() {
-            return ["1", "true", "yes"].contains(value)
-        }
-
-        // Developer opt-out: force SC-only everywhere.
         if let value = environment["PEEKABOO_DISABLE_CGWINDOWLIST"]?.lowercased(),
            ["1", "true", "yes"].contains(value)
         {
-            return false
+            let filtered = apis.filter { $0 != .legacy }
+            return filtered.isEmpty ? [.modern] : filtered
         }
-        return false
+        return apis
     }
 }
 

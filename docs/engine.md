@@ -27,8 +27,9 @@ Aliases:
 - auto: `auto`
 
 ## Current policy (Nov 2025)
-- macOS 13/14: auto = try SC, fallback to CG on failure.
-- macOS 15+: SC only by default; legacy CG is disabled unless you explicitly set `PEEKABOO_ALLOW_LEGACY_CAPTURE=1` or use `--capture-engine classic|cg`.
+- Default: `auto` = try ScreenCaptureKit, fallback to CG.
+- You can force SC-only via env `PEEKABOO_DISABLE_CGWINDOWLIST=1`.
+- You can force classic/CG via `--capture-engine classic|cg` or `PEEKABOO_CAPTURE_ENGINE=classic`.
 
 ## Logging & telemetry
 - ScreenCaptureService logs which engine was attempted and when fallback occurs.
