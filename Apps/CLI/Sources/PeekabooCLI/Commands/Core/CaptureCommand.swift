@@ -26,8 +26,7 @@ struct CaptureCommand: ParsableCommand {
 // MARK: Live capture
 
 @MainActor
-struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable,
-CaptureEngineConfigurable {
+struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
     // Targeting
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'") var app: String?
     @Option(name: .long, help: "Target application by process ID") var pid: Int32?
@@ -408,7 +407,7 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
             let outputDir = try self.resolveOutputDirectory()
             let options = self.buildOptions()
             let videoURL = URL(fileURLWithPath: self.input)
-            let frameSource = try VideoFrameSource(
+            let frameSource = try await VideoFrameSource(
                 url: videoURL,
                 sampleFps: self.sampleFps,
                 everyMs: self.everyMs,

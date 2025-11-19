@@ -13,12 +13,14 @@ struct CommandRuntimeOptions: Sendable {
     var verbose = false
     var jsonOutput = false
     var logLevel: LogLevel?
+    var captureEnginePreference: String?
 
     func makeConfiguration() -> CommandRuntime.Configuration {
         CommandRuntime.Configuration(
             verbose: self.verbose,
             jsonOutput: self.jsonOutput,
-            logLevel: self.logLevel
+            logLevel: self.logLevel,
+            captureEnginePreference: self.captureEnginePreference
         )
     }
 }
@@ -32,6 +34,7 @@ struct CommandRuntime {
         var verbose: Bool
         var jsonOutput: Bool
         var logLevel: LogLevel?
+        var captureEnginePreference: String?
     }
 
     let configuration: Configuration

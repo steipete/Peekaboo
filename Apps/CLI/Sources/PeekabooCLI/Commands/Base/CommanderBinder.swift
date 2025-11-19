@@ -45,6 +45,11 @@ enum CommanderCLIBinder {
         if let level: LogLevel = try values.decodeOption("logLevel", as: LogLevel.self) {
             options.logLevel = level
         }
+        if let captureEngine = values.singleOption("captureEngine")?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !captureEngine.isEmpty {
+            options.captureEnginePreference = captureEngine
+        }
         return options
     }
 }

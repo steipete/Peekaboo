@@ -17,10 +17,15 @@ public final class VideoFrameSource: CaptureFrameSource {
         everyMs: Int?,
         startMs: Int?,
         endMs: Int?,
-        resolutionCap: CGFloat?) throws
+        resolutionCap: CGFloat?) async throws
     {
         let asset = AVAsset(url: url)
-        let duration = asset.duration
+        let duration: CMTime
+        if #available(macOS 13.0, *) {
+            duration = try await asset.load(.duration)
+        } else {
+            duration = asset.duration
+        }
         guard duration.isNumeric, duration.seconds > 0 else {
             throw PeekabooError.captureFailed(reason: "Video has no duration")
         }

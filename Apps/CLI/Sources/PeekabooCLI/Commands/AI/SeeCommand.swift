@@ -44,7 +44,7 @@ private enum ScreenCaptureBridge {
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
 @MainActor
-struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsConfigurable, CaptureEngineConfigurable {
+struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsConfigurable {
     @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
 

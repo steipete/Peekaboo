@@ -76,7 +76,7 @@ public struct CaptureTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        let request = try CaptureRequest(arguments: arguments)
+        let request = try await CaptureRequest(arguments: arguments)
         let dependencies = WatchCaptureDependencies(
             screenCapture: self.context.screenCapture,
             screenService: self.context.screens,
@@ -128,7 +128,7 @@ private struct CaptureRequest {
     let videoIn: String?
     let videoOut: String?
 
-    init(arguments: ToolArguments) throws {
+    init(arguments: ToolArguments) async throws {
         let input = try arguments.decode(CaptureInput.self)
         self.source = CaptureSessionResult.Source(rawValue: input.source ?? "live") ?? .live
 
@@ -179,7 +179,7 @@ private struct CaptureRequest {
             if sampleFps != nil, everyMs != nil {
                 throw PeekabooError.invalidInput("sample_fps and every_ms are mutually exclusive")
             }
-            let frameSource = try VideoFrameSource(
+            let frameSource = try await VideoFrameSource(
                 url: videoURL,
                 sampleFps: sampleFps,
                 everyMs: everyMs,

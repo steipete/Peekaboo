@@ -200,7 +200,9 @@ extension PermissionCommand {
                 print("Attempting screen capture to trigger permission prompt...")
             }
 
-            self.triggerLegacyScreenRecordingPrompt()
+            if #unavailable(macOS 14.0) {
+                self.triggerLegacyScreenRecordingPrompt()
+            }
 
             if !self.jsonOutput {
                 self.printLegacyGuidance()
