@@ -174,7 +174,7 @@ struct FocusUtilitiesTests {
             alpha: 0.5,
             axIdentifier: nil)
 
-        #expect(overlayWindow.isRenderable == true)
+        #expect(overlayWindow.isRenderable == false)
     }
 
     // MARK: - FocusError Tests

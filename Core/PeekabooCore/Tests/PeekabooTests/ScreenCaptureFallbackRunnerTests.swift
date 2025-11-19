@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import PeekabooAutomation
 
@@ -6,14 +7,18 @@ struct ScreenCaptureFallbackRunnerTests {
     @MainActor
     @Test("success on first engine records observer")
     func successFirstEngine() async throws {
-        var events: [(String, ScreenCaptureAPI, TimeInterval, Bool, Error?)] = []
+        let logger = CategoryLogger(service: LoggingService(subsystem: "test.logger"), category: "test")
+        var events: [(String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?)] = []
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy]) { op, api, duration, success, error in
-            events.append((op, api, duration, success, error))
+            // Observer may run off the actor executor; hop explicitly so array mutation stays deterministic.
+            MainActor.assumeIsolated {
+                events.append((op, api, duration, success, error))
+            }
         }
 
         let value: Int = try await runner.run(
             operationName: "test",
-            logger: CategoryLogger(service: LoggingService.shared, category: "test"),
+            logger: logger,
             correlationId: "c1") { _ in
                 42
             }
@@ -23,22 +28,26 @@ struct ScreenCaptureFallbackRunnerTests {
         #expect(events.first?.1 == .modern)
         #expect(events.first?.3 == true)
         #expect(events.first?.4 == nil)
-        #expect(events.first?.2 >= 0)
+        #expect((events.first?.2 ?? 0) >= 0)
     }
 
     @MainActor
     @Test("fallback to legacy records both events")
     func fallbackRecordsEvents() async throws {
         enum Dummy: Error { case fail }
+        let logger = CategoryLogger(service: LoggingService(subsystem: "test.logger"), category: "test")
         var call = 0
-        var events: [(String, ScreenCaptureAPI, TimeInterval, Bool, Error?)] = []
+        var events: [(String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?)] = []
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy]) { op, api, duration, success, error in
-            events.append((op, api, duration, success, error))
+            // Observer may run off the actor executor; hop explicitly so array mutation stays deterministic.
+            MainActor.assumeIsolated {
+                events.append((op, api, duration, success, error))
+            }
         }
 
         let value: String = try await runner.run(
             operationName: "test",
-            logger: CategoryLogger(service: LoggingService.shared, category: "test"),
+            logger: logger,
             correlationId: "c2") { api in
                 call += 1
                 if call == 1 { throw Dummy.fail }

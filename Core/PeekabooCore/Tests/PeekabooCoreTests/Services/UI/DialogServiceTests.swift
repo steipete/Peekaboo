@@ -179,4 +179,31 @@ struct DialogServiceTests {
         #expect(elements.staticTexts.count == 1)
         #expect(elements.staticTexts[0] == "Please enter your credentials")
     }
+
+    @Test("Character typing delegates through handler")
+    @MainActor
+    func typeCharacterUsesHandler() async throws {
+        let service = DialogService()
+        var captured: String?
+        DialogService.typeCharacterHandler = { captured = $0 }
+        defer { DialogService.typeCharacterHandler = { text in try InputDriver.type(text, delayPerCharacter: 0) } }
+
+        try service.typeCharacter("Z")
+        #expect(captured == "Z")
+    }
+
+    @Test("typeCharacter called repeatedly uses handler each time")
+    @MainActor
+    func typeCharacterMultipleCalls() async throws {
+        let service = DialogService()
+        var calls: [String] = []
+        DialogService.typeCharacterHandler = { calls.append($0) }
+        defer { DialogService.typeCharacterHandler = { text in try InputDriver.type(text, delayPerCharacter: 0) } }
+
+        try service.typeCharacter("A")
+        try service.typeCharacter("b")
+        try service.typeCharacter("1")
+
+        #expect(calls == ["A", "b", "1"])
+    }
 }
