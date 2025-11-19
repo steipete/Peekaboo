@@ -137,10 +137,12 @@ enum ScreenCaptureAPIResolver {
 
 struct ScreenCaptureFallbackRunner: Sendable {
     let apis: [ScreenCaptureAPI]
+    let observer: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)?
 
-    init(apis: [ScreenCaptureAPI]) {
+    init(apis: [ScreenCaptureAPI], observer: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)? = nil) {
         precondition(!apis.isEmpty, "At least one API must be provided")
         self.apis = apis
+        self.observer = observer
     }
 
     @MainActor
@@ -168,9 +170,12 @@ struct ScreenCaptureFallbackRunner: Sendable {
                         "duration": String(format: "%.2f", duration)
                     ],
                     correlationId: correlationId)
+                self.observer?(operationName, api, duration, true, nil)
                 return result
             } catch {
                 lastError = error
+                // We don't have a scoped start time here; treat duration as 0 for failed attempts.
+                self.observer?(operationName, api, 0, false, error)
                 let hasFallback = index < (self.apis.count - 1)
                 if self.shouldFallback(after: error, api: api, hasFallback: hasFallback) {
                     logger.warning(
