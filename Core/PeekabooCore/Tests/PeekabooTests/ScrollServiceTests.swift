@@ -135,4 +135,13 @@ struct ScrollServiceTests {
         // Negative amounts should be treated as absolute values
         try await service.scroll(self.makeRequest(direction: .up, amount: -5))
     }
+
+    @Test("Scroll deltas remain bounded")
+    func scrollDeltasAreSmall() async throws {
+        let service = ScrollService()
+        #expect(service.deltasForTesting(direction: .up) == (0, 5))
+        #expect(service.deltasForTesting(direction: .down) == (0, -5))
+        #expect(service.deltasForTesting(direction: .left) == (5, 0))
+        #expect(service.deltasForTesting(direction: .right) == (-5, 0))
+    }
 }

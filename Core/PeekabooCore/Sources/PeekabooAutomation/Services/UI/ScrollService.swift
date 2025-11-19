@@ -116,13 +116,13 @@ public final class ScrollService {
     private func getScrollDeltas(for direction: PeekabooFoundation.ScrollDirection) -> (deltaX: Int, deltaY: Int) {
         switch direction {
         case .up:
-            (0, 50)
+            (0, 5)
         case .down:
-            (0, -50)
+            (0, -5)
         case .left:
-            (50, 0)
+            (5, 0)
         case .right:
-            (-50, 0)
+            (-5, 0)
         }
     }
 
@@ -204,6 +204,15 @@ public final class ScrollService {
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
     }
 }
+
+#if DEBUG
+extension ScrollService {
+    /// Test hook to inspect computed scroll deltas without sending events.
+    func deltasForTesting(direction: PeekabooFoundation.ScrollDirection) -> (Int, Int) {
+        self.getScrollDeltas(for: direction)
+    }
+}
+#endif
 
 private struct ScrollExecutionContext {
     let startingPoint: CGPoint
