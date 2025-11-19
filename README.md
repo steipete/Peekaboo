@@ -1490,6 +1490,8 @@ See [docs/pblog-guide.md](docs/pblog-guide.md) and [docs/logging-profiles/README
 
 For full configuration + environment variable tables, see [docs/configuration.md](docs/configuration.md).
 
+- **Limit exposed tools**: set `PEEKABOO_DISABLE_TOOLS="shell,window"` or `PEEKABOO_ALLOW_TOOLS="see,click"` for a one-off run, or add `{"tools":{"allow":[...],"deny":[...]}}` to `~/.peekaboo/config.json`. Env `ALLOW` replaces the config allow list; denies are additive. Details and per-tool risk notes live in [docs/security.md](docs/security.md).
+
 ## 🎨 Setting Up Local AI with Ollama
 
 Need fully local models or Ultrathink experimentation? Follow the dedicated playbook in [docs/ollama.md](docs/ollama.md) for installation, recommended models, environment variables, and troubleshooting tips. At runtime you can point Peekaboo at your Ollama server with `PEEKABOO_AI_PROVIDERS="ollama/llama3.3" peekaboo agent "…"`.

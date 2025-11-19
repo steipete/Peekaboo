@@ -32,6 +32,8 @@ Peekaboo resolves settings in this order (highest → lowest):
 | Log Level | `logging.level` | `PEEKABOO_LOG_LEVEL` | `trace`, `debug`, `info`, `warn`, `error`, `fatal` (default `info`). |
 | Log Path | `logging.path` | `PEEKABOO_LOG_FILE` | Custom log destination (default `/tmp/peekaboo-mcp.log` for MCP; CLI uses stderr). |
 | CLI Binary Path | - | `PEEKABOO_CLI_PATH` | Override bundled CLI when testing custom builds. |
+| Tool allow-list | `tools.allow` | `PEEKABOO_ALLOW_TOOLS` | CSV or space list. If set, only these tools are exposed (env replaces config). |
+| Tool deny-list | `tools.deny` | `PEEKABOO_DISABLE_TOOLS` | CSV or space list. Always removed; env list is additive with config. |
 
 ## API Key Storage
 
@@ -54,6 +56,7 @@ Peekaboo resolves settings in this order (highest → lowest):
 
 - `PEEKABOO_LOG_LEVEL=debug` (or `trace`) surfaces verbose telemetry.
 - `PEEKABOO_LOG_FILE=/tmp/peekaboo.log` persists logs for sharing.
+- Tool filters: env `PEEKABOO_ALLOW_TOOLS` replaces config `tools.allow`; env `PEEKABOO_DISABLE_TOOLS` is additive with `tools.deny`. Deny wins if a tool appears in both. See [docs/security.md](security.md) for examples and risk guidance.
 
 ## Setting Variables
 

@@ -693,8 +693,11 @@ extension PeekabooAgentService {
             }
         }
 
-        self.logToolsetDetails(tools, model: model)
-        return tools
+        let filters = ToolFiltering.currentFilters()
+        let filtered = ToolFiltering.apply(tools, filters: filters)
+
+        self.logToolsetDetails(filtered, model: model)
+        return filtered
     }
 
     private func logToolsetDetails(_ tools: [AgentTool], model: LanguageModel) {

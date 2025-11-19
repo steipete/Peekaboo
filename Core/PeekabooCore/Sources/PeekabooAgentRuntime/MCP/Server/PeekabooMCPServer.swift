@@ -125,7 +125,9 @@ public actor PeekabooMCPServer {
         // Register all Peekaboo tools
         let context = self.toolContext
 
-        await self.toolRegistry.register([
+        let filters = ToolFiltering.currentFilters()
+
+        let nativeTools: [any MCPTool] = ToolFiltering.apply([
             // Core tools
             ImageTool(context: context),
             AnalyzeTool(),
@@ -157,7 +159,9 @@ public actor PeekabooMCPServer {
             DockTool(context: context),
             DialogTool(context: context),
             SpaceTool(context: context),
-        ])
+        ], filters: filters)
+
+        await self.toolRegistry.register(nativeTools)
 
         let toolCount = await self.toolRegistry.allTools().count
         self.logger.info("Registered \(toolCount) tools")

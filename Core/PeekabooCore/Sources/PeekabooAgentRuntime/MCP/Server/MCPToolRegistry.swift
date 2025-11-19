@@ -92,15 +92,23 @@ public final class MCPToolRegistry {
         // Get external tools from all servers
         let externalToolsByServer = await clientManager.getExternalToolsByServer()
 
+        var discovered: [any MCPTool] = []
         for (serverName, serverTools) in externalToolsByServer {
             for toolInfo in serverTools {
                 let externalTool = ExternalMCPTool(
                     serverName: serverName,
                     originalTool: toolInfo,
                     clientManager: clientManager)
-                self.externalTools[externalTool.name] = externalTool
-                self.logger.debug("Registered external tool: \(externalTool.name)")
+                discovered.append(externalTool)
             }
+        }
+
+        let filters = ToolFiltering.currentFilters()
+        let filtered = ToolFiltering.apply(discovered, filters: filters)
+
+        for tool in filtered {
+            self.externalTools[tool.name] = tool
+            self.logger.debug("Registered external tool: \(tool.name)")
         }
 
         self.logger

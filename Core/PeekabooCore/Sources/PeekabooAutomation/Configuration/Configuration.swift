@@ -12,6 +12,7 @@ public struct Configuration: Codable {
     public var logging: LoggingConfig?
     public var agent: AgentConfig?
     public var visualizer: VisualizerConfig?
+    public var tools: ToolConfig?
     public var customProviders: [String: CustomProvider]?
     public var mcpClients: [String: MCPClientConfig]?
     public var toolDisplay: ToolDisplayConfig?
@@ -22,6 +23,7 @@ public struct Configuration: Codable {
         logging: LoggingConfig? = nil,
         agent: AgentConfig? = nil,
         visualizer: VisualizerConfig? = nil,
+        tools: ToolConfig? = nil,
         customProviders: [String: CustomProvider]? = nil,
         mcpClients: [String: MCPClientConfig]? = nil,
         toolDisplay: ToolDisplayConfig? = nil)
@@ -31,6 +33,7 @@ public struct Configuration: Codable {
         self.logging = logging
         self.agent = agent
         self.visualizer = visualizer
+        self.tools = tools
         self.customProviders = customProviders
         self.mcpClients = mcpClients
         self.toolDisplay = toolDisplay
@@ -186,6 +189,20 @@ public struct Configuration: Codable {
             self.dialogInteractionEnabled = dialogInteractionEnabled
             self.spaceTransitionEnabled = spaceTransitionEnabled
             self.ghostEasterEggEnabled = ghostEasterEggEnabled
+        }
+    }
+
+    /// Tool filtering configuration.
+    ///
+    /// Lets users restrict which tools are exposed to agents and MCP clients.
+    /// Both arrays are case-insensitive; names can use `snake_case` or `kebab-case`.
+    public struct ToolConfig: Codable {
+        public var allow: [String]?
+        public var deny: [String]?
+
+        public init(allow: [String]? = nil, deny: [String]? = nil) {
+            self.allow = allow
+            self.deny = deny
         }
     }
 

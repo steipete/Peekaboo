@@ -155,9 +155,11 @@ public enum ToolRegistry {
 
         // Get all agent tools
         let agentTools = agentService.createAgentTools()
+        let filters = ToolFiltering.currentFilters()
+        let filteredTools = ToolFiltering.apply(agentTools, filters: filters)
 
         // Convert AgentTools to PeekabooToolDefinitions
-        return agentTools.compactMap { agentTool in
+        return filteredTools.compactMap { agentTool in
             self.convertAgentToolToDefinition(agentTool)
         }
     }
