@@ -94,6 +94,7 @@ enum ScreenCaptureAPIResolver {
             return Self.resolveValue(value)
         }
 
+        // Default: modern then legacy (per OS guard applied at call site)
         return [.modern, .legacy]
     }
 

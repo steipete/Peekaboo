@@ -38,10 +38,10 @@ read_when:
 - **Peekaboo:** keep CLI + automation tests as integration guard; backfill contract tests around menu/dock/dialog heuristics once they are peeled off raw AX APIs.
 
 ## Immediate next steps (suggested order)
-1) Ship `AXApp`/`AXWindowHandle` facades in AXorcist; swap Peekaboo services to use them (eliminates most lint hits).
-2) Move Peekaboo timeout wrapper into AXorcist (`withAXTimeout`) and delete `Element+Timeout.swift` residue.
-3) Replace PermissionCommand’s CGWindowList probe with a ScreenCaptureKit-based permission provocation (or an InputDriver.currentLocation noop) to drop the deprecation warning.
-4) Add AXorcist tests for AppLocator/window resolver; wire Peekaboo tests to rely on those models instead of duplicating fixtures.
-5) Tighten lint once migration is done (warning → error) to keep the boundary enforced.
+1) Gate CG fallback: on macOS 15+ run ScreenCaptureKit only (unless an explicit env enables CG); on 13/14 keep auto fallback. Mark CG helpers `@available(..., obsoleted: 15)` and add an env switch to dogfood SC-only.
+2) Finish AX facade adoption: scrub remaining direct `AXUIElement` uses in Peekaboo services; rely on `AXApp`/`AXWindowHandle`/Element helpers.
+3) Move timeout helpers into AXorcist (`withAXTimeout` via `AXTimeoutPolicy`) and delete Peekaboo’s legacy timeout extension.
+4) Tests: add AXorcist unit tests for AppLocator, AXWindowResolver, timeout policy, and InputDriver edge cases; keep Peekaboo integration tests as guardrails.
+5) Observability: add lightweight timing/engine hook in AXorcist so Peekaboo can log engine choice and duration without extra deps; then tighten lint (warning → error) once migration completes.
 
 Notes: keep AXorcist hot paths allocation-free; avoid adding async layers unless the underlying API blocks. Use `@testable import AXorcist` for the new unit tests and mirror any helper edits into `agent-scripts` if touched.
