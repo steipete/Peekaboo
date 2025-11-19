@@ -42,6 +42,6 @@ read_when:
 2) Finish AX facade adoption: scrub remaining direct `AXUIElement` uses in Peekaboo services; rely on `AXApp`/`AXWindowHandle`/Element helpers. **(in progress)**
 3) Move timeout helpers into AXorcist (`withAXTimeout` via `AXTimeoutPolicy`) and delete Peekaboo’s legacy timeout extension. **(done)**
 4) Tests: add AXorcist unit tests for AppLocator, AXWindowResolver, timeout policy, and InputDriver edge cases; keep Peekaboo integration tests as guardrails. **(todo)**
-5) Observability: add lightweight timing/engine hook in AXorcist so Peekaboo can log engine choice and duration without extra deps; then tighten lint (warning → error) once migration completes. **(partial: capture engine logging added in fallback runner)**
+5) Observability: add lightweight timing/engine hook in AXorcist so Peekaboo can log engine choice and duration without extra deps; then tighten lint (warning → error) once migration completes. **(done: fallback runner observer + logging)** — tighten lint after AX scrub.
 
 Notes: keep AXorcist hot paths allocation-free; avoid adding async layers unless the underlying API blocks. Use `@testable import AXorcist` for the new unit tests and mirror any helper edits into `agent-scripts` if touched.
