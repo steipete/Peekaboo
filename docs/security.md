@@ -25,6 +25,12 @@ Filters apply everywhere tools are surfaced: CLI `peekaboo tools`, the agent too
 - **Critical / high risk** – should usually be disabled in untrusted contexts  
   - `shell`: can run arbitrary commands; disable unless you fully trust the model and prompts.
   - `dialog_click`, `dialog_input`: can confirm destructive dialogs.
+- **Requires AI network access** – these call out to the configured language/vision provider whenever used  
+  - `image` (when passed `--analyze`/`question`) and MCP `image` tool.  
+  - `analyze` (CLI/MCP) – always uploads the file to the active AI provider.  
+  - `peekaboo agent …` / `MCPAgentTool` – the planning loop streams prompts/responses to GPT‑5.1 (or whichever model you configured).  
+  - Any audio capture path (`AudioInputService`, voice command helpers) that transcribes speech through `PeekabooAIService`.  
+  Disable by clearing `PEEKABOO_AI_PROVIDERS`, removing API keys, or adding these names to your deny list when running offline.
 - **Medium risk** – can manipulate apps or data  
   - `click`, `type`, `press`, `scroll`, `swipe`, `drag`, `move`, `hotkey`: can trigger actions in foreground apps.  
   - `window`, `app`, `menu_click`, `dock_launch`, `space`: can close apps, move windows, switch spaces.  
