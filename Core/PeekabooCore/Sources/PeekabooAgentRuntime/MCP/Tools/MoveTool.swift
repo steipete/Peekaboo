@@ -4,8 +4,8 @@ import os.log
 import TachikomaMCP
 
 #if canImport(AppKit)
-@preconcurrency import AXorcist
 import AppKit
+@preconcurrency import AXorcist
 import PeekabooAutomation
 #endif
 

@@ -1,7 +1,7 @@
+@preconcurrency import AXorcist
 import Foundation
 import MCP
 import os.log
-@preconcurrency import AXorcist
 import PeekabooAutomation
 import TachikomaMCP
 

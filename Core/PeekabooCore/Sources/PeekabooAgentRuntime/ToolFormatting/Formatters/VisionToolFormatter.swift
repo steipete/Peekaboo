@@ -11,13 +11,13 @@ public class VisionToolFormatter: BaseToolFormatter {
     override public func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .see:
-            return self.formatSeeResult(result)
+            self.formatSeeResult(result)
         case .screenshot:
-            return self.formatScreenshotResult(result)
+            self.formatScreenshotResult(result)
         case .windowCapture:
-            return self.formatWindowCaptureResult(result)
+            self.formatWindowCaptureResult(result)
         default:
-            return super.formatResultSummary(result: result)
+            super.formatResultSummary(result: result)
         }
     }
 
@@ -39,7 +39,8 @@ public class VisionToolFormatter: BaseToolFormatter {
             }
 
             if parts.isEmpty,
-               let path = arguments["path"] as? String {
+               let path = arguments["path"] as? String
+            {
                 let filename = URL(fileURLWithPath: path).lastPathComponent
                 parts.append(filename)
             }

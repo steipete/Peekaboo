@@ -32,6 +32,7 @@ public struct InspectorView: View {
     private static var permissionStatusProvider: () -> Bool = {
         AXPermissionHelpers.hasAccessibilityPermissions()
     }
+
     @MainActor
     private static var permissionPromptProvider: () -> Bool = {
         AXPermissionHelpers.askForAccessibilityIfNeeded()
@@ -169,7 +170,7 @@ public struct InspectorView: View {
         self.permissionCheckTimer = nil
     }
 
-private func openOverlayWindow() {
+    private func openOverlayWindow() {
         // This would be implemented by the host application
         // as it needs to manage actual window creation
     }
