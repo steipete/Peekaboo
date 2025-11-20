@@ -272,36 +272,40 @@ public final class TypeService {
     }
 
     private func mapSpecialKey(_ key: String) -> String? {
-        switch key.lowercased() {
-        case "return", "enter": "return"
-        case "escape", "esc": "escape"
-        case "tab": "tab"
-        case "space", "spacebar": "space"
-        case "delete", "backspace": "delete"
-        case "forwarddelete": "forwarddelete"
-        case "up": "up"
-        case "down": "down"
-        case "left": "left"
-        case "right": "right"
-        case "pageup": "pageup"
-        case "pagedown": "pagedown"
-        case "home": "home"
-        case "end": "end"
-        case "f1": "f1"
-        case "f2": "f2"
-        case "f3": "f3"
-        case "f4": "f4"
-        case "f5": "f5"
-        case "f6": "f6"
-        case "f7": "f7"
-        case "f8": "f8"
-        case "f9": "f9"
-        case "f10": "f10"
-        case "f11": "f11"
-        case "f12": "f12"
-        default:
-            nil
-        }
+        let normalized = key.lowercased()
+        let mapping: [String: String] = [
+            "return": "return",
+            "enter": "return",
+            "escape": "escape",
+            "esc": "escape",
+            "tab": "tab",
+            "space": "space",
+            "spacebar": "space",
+            "delete": "delete",
+            "backspace": "delete",
+            "forwarddelete": "forwarddelete",
+            "up": "up",
+            "down": "down",
+            "left": "left",
+            "right": "right",
+            "pageup": "pageup",
+            "pagedown": "pagedown",
+            "home": "home",
+            "end": "end",
+            "f1": "f1",
+            "f2": "f2",
+            "f3": "f3",
+            "f4": "f4",
+            "f5": "f5",
+            "f6": "f6",
+            "f7": "f7",
+            "f8": "f8",
+            "f9": "f9",
+            "f10": "f10",
+            "f11": "f11",
+            "f12": "f12",
+        ]
+        return mapping[normalized]
     }
 }
 

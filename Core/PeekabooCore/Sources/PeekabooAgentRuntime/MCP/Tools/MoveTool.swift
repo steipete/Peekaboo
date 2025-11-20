@@ -4,6 +4,7 @@ import os.log
 import TachikomaMCP
 
 #if canImport(AppKit)
+@preconcurrency import AXorcist
 import AppKit
 import PeekabooAutomation
 #endif
@@ -223,7 +224,9 @@ public struct MoveTool: MCPTool {
 
     private func performMovement(to location: CGPoint, request: MoveRequest) async throws -> MovementExecution {
         let automation = self.context.automation
-        let currentLocation = CGEvent(source: nil)?.location ?? .zero
+        let currentLocation = await MainActor.run {
+            InputDriver.currentLocation() ?? .zero
+        }
         let distance = hypot(location.x - currentLocation.x, location.y - currentLocation.y)
         let movement = self.resolveMovementParameters(for: request, distance: distance)
 

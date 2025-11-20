@@ -2,17 +2,31 @@ import Foundation
 import Testing
 @testable import PeekabooAutomation
 
+private struct FallbackEvent {
+    let operation: String
+    let api: ScreenCaptureAPI
+    let duration: TimeInterval
+    let success: Bool
+    let error: (any Error)?
+}
+
 @Suite("ScreenCaptureFallbackRunner")
 struct ScreenCaptureFallbackRunnerTests {
     @MainActor
     @Test("success on first engine records observer")
     func successFirstEngine() async throws {
         let logger = CategoryLogger(service: LoggingService(subsystem: "test.logger"), category: "test")
-        var events: [(String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?)] = []
+        var events: [FallbackEvent] = []
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy]) { op, api, duration, success, error in
             // Observer may run off the actor executor; hop explicitly so array mutation stays deterministic.
             MainActor.assumeIsolated {
-                events.append((op, api, duration, success, error))
+                events.append(
+                    FallbackEvent(
+                        operation: op,
+                        api: api,
+                        duration: duration,
+                        success: success,
+                        error: error))
             }
         }
 
@@ -26,10 +40,10 @@ struct ScreenCaptureFallbackRunnerTests {
 
         #expect(value == 42)
         #expect(events.count == 1)
-        #expect(events.first?.1 == .modern)
-        #expect(events.first?.3 == true)
-        #expect(events.first?.4 == nil)
-        #expect((events.first?.2 ?? 0) >= 0)
+        #expect(events.first?.api == .modern)
+        #expect(events.first?.success == true)
+        #expect(events.first?.error == nil)
+        #expect((events.first?.duration ?? 0) >= 0)
     }
 
     @MainActor
@@ -38,11 +52,17 @@ struct ScreenCaptureFallbackRunnerTests {
         enum Dummy: Error { case fail }
         let logger = CategoryLogger(service: LoggingService(subsystem: "test.logger"), category: "test")
         var call = 0
-        var events: [(String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?)] = []
+        var events: [FallbackEvent] = []
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy]) { op, api, duration, success, error in
             // Observer may run off the actor executor; hop explicitly so array mutation stays deterministic.
             MainActor.assumeIsolated {
-                events.append((op, api, duration, success, error))
+                events.append(
+                    FallbackEvent(
+                        operation: op,
+                        api: api,
+                        duration: duration,
+                        success: success,
+                        error: error))
             }
         }
 
@@ -58,10 +78,10 @@ struct ScreenCaptureFallbackRunnerTests {
 
         #expect(value == "ok_legacy")
         #expect(events.count == 2)
-        #expect(events[0].1 == .modern)
-        #expect(events[0].3 == false)
-        #expect(events[0].4 is Dummy)
-        #expect(events[1].1 == .legacy)
-        #expect(events[1].3 == true)
+        #expect(events[0].api == .modern)
+        #expect(events[0].success == false)
+        #expect(events[0].error is Dummy)
+        #expect(events[1].api == .legacy)
+        #expect(events[1].success == true)
     }
 }

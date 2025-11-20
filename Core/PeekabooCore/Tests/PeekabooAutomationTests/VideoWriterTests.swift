@@ -21,7 +21,7 @@ struct VideoWriterTests {
         #expect(unchanged.height == 2000)
     }
 
-    @Test("video sessions bound output size and preserve fps") // swiftlint:disable:this function_body_length
+    @Test("video sessions bound output size and preserve fps")
     func videoSessionBuildsBoundedMP4() async throws {
         let frameSize = CGSize(width: 4000, height: 2000)
         let frameSource = FakeFrameSource(frameCount: 5, size: frameSize)

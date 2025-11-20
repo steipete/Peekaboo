@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation

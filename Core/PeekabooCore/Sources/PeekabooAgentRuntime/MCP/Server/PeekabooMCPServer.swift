@@ -128,41 +128,44 @@ public actor PeekabooMCPServer {
         let filters = ToolFiltering.currentFilters()
 
         let logger = self.logger
-        let nativeTools: [any MCPTool] = ToolFiltering.apply([
-            // Core tools
-            ImageTool(context: context),
-            AnalyzeTool(),
-            ListTool(context: context),
-            PermissionsTool(context: context),
-            SleepTool(),
+        let nativeTools: [any MCPTool] = ToolFiltering.apply(
+            [
+                // Core tools
+                ImageTool(context: context),
+                AnalyzeTool(),
+                ListTool(context: context),
+                PermissionsTool(context: context),
+                SleepTool(),
 
-            // UI automation tools
-            SeeTool(context: context),
-            ClickTool(context: context),
-            TypeTool(context: context),
-            ScrollTool(context: context),
-            HotkeyTool(context: context),
-            SwipeTool(context: context),
-            DragTool(context: context),
-            MoveTool(context: context),
+                // UI automation tools
+                SeeTool(context: context),
+                ClickTool(context: context),
+                TypeTool(context: context),
+                ScrollTool(context: context),
+                HotkeyTool(context: context),
+                SwipeTool(context: context),
+                DragTool(context: context),
+                MoveTool(context: context),
 
-            // App management tools
-            AppTool(context: context),
-            WindowTool(context: context),
-            MenuTool(context: context),
+                // App management tools
+                AppTool(context: context),
+                WindowTool(context: context),
+                MenuTool(context: context),
 
-            // System tools
-            // RunTool(), // Removed: Security risk - allows arbitrary script execution
-            // CleanTool(), // Removed: Internal maintenance tool, not for external use
+                // System tools
+                // RunTool(), // Removed: Security risk - allows arbitrary script execution
+                // CleanTool(), // Removed: Internal maintenance tool, not for external use
 
-            // Advanced tools
-            MCPAgentTool(context: context),
-            DockTool(context: context),
-            DialogTool(context: context),
-            SpaceTool(context: context),
-        ], filters: filters, log: { message in
-            logger.notice("\(message, privacy: .public)")
-        })
+                // Advanced tools
+                MCPAgentTool(context: context),
+                DockTool(context: context),
+                DialogTool(context: context),
+                SpaceTool(context: context),
+            ],
+            filters: filters,
+            log: { message in
+                logger.notice("\(message, privacy: .public)")
+            })
 
         await self.toolRegistry.register(nativeTools)
 

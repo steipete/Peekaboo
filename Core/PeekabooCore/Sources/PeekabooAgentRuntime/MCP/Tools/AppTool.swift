@@ -1,7 +1,7 @@
-import CoreGraphics
 import Foundation
 import MCP
 import os.log
+@preconcurrency import AXorcist
 import PeekabooAutomation
 import TachikomaMCP
 
@@ -496,12 +496,10 @@ private struct AppToolActions {
     }
 
     private func cycleApplications() {
-        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: false)
-        keyDown?.flags = .maskCommand
-        keyUp?.flags = .maskCommand
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+        do {
+            try InputDriver.hotkey(keys: ["cmd", "tab"], holdDuration: 0.05)
+        } catch {
+            self.logger.error("Failed to send Cmd+Tab: \(error, privacy: .public)")
+        }
     }
 }

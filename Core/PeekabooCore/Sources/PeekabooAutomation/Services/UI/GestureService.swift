@@ -39,7 +39,7 @@ public final class GestureService {
             duration: duration,
             steps: steps,
             profile: profile)
-        try await self.performSwipe(path: path, start: from, button: .left, eventFlags: [])
+        try await self.performSwipe(path: path, start: from, button: .left)
 
         self.logger.debug("Swipe completed")
     }
@@ -68,14 +68,13 @@ public final class GestureService {
 
         try self.ensurePositiveSteps(steps, action: "Drag")
 
-        let eventFlags = self.parseModifierKeys(modifiers)
         let path = self.buildGesturePath(
             from: from,
             to: to,
             duration: duration,
             steps: steps,
             profile: profile)
-        try await self.performDrag(path: path, start: from, eventFlags: eventFlags)
+        try await self.performDrag(path: path, start: from)
 
         self.logger.debug("Drag completed")
     }
@@ -126,39 +125,8 @@ public final class GestureService {
     // MARK: - Private Methods
 
     private func getCurrentMouseLocation() -> CGPoint {
-        // Prefer AXorcist InputDriver move-less lookup; fallback to CGEvent location if needed
+        // Prefer AXorcist InputDriver move-less lookup; default to .zero when unavailable
         InputDriver.currentLocation() ?? .zero
-    }
-
-    private func moveMouseToPoint(_ point: CGPoint) async throws {
-        try InputDriver.move(to: point)
-        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
-    }
-
-    private func parseModifierKeys(_ modifierString: String?) -> CGEventFlags {
-        guard let modString = modifierString else { return [] }
-
-        var flags: CGEventFlags = []
-        let modifiers = modString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-
-        for modifier in modifiers {
-            switch modifier {
-            case "cmd", "command":
-                flags.insert(.maskCommand)
-            case "ctrl", "control":
-                flags.insert(.maskControl)
-            case "alt", "option":
-                flags.insert(.maskAlternate)
-            case "shift":
-                flags.insert(.maskShift)
-            case "fn", "function":
-                flags.insert(.maskSecondaryFn)
-            default:
-                self.logger.warning("Unknown modifier: \(modifier)")
-            }
-        }
-
-        return flags
     }
 
     private func describeGesture(name: String, details: [String]) -> String {
@@ -180,8 +148,7 @@ public final class GestureService {
     private func performSwipe(
         path: HumanMousePath,
         start: CGPoint,
-        button: CGMouseButton,
-        eventFlags: CGEventFlags) async throws
+        button: CGMouseButton) async throws
     {
         let endPoint = path.points.last ?? start
         let steps = max(path.points.count, 2)
@@ -191,8 +158,7 @@ public final class GestureService {
 
     private func performDrag(
         path: HumanMousePath,
-        start: CGPoint,
-        eventFlags: CGEventFlags) async throws
+        start: CGPoint) async throws
     {
         let endPoint = path.points.last ?? start
         let steps = max(path.points.count, 2)

@@ -50,7 +50,7 @@ public final class VideoFrameSource: CaptureFrameSource {
         var requested: [CMTime] = []
         while cursor <= end {
             requested.append(cursor)
-            cursor = cursor + interval
+            cursor = CMTimeAdd(cursor, interval)
         }
         if requested.count < 2 {
             requested.append(end)
