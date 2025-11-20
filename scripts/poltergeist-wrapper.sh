@@ -13,9 +13,7 @@ cd "$PROJECT_DIR"
 
 POLTER_DIR="$(cd "$PROJECT_DIR/../poltergeist" && pwd)"
 CLI_TS="$POLTER_DIR/src/cli.ts"
-CLI_JS="$POLTER_DIR/dist/cli.js"
 POLTER_TS="$POLTER_DIR/src/polter.ts"
-POLTER_JS="$POLTER_DIR/dist/polter.js"
 
 # Ensure Node can resolve Poltergeist dependencies even when invoked outside pnpm context
 export NODE_PATH="${NODE_PATH:-$POLTER_DIR/node_modules}"
@@ -43,26 +41,19 @@ if $IS_POLTERGEIST_COMMAND; then
     set -- "$@" --config "$PROJECT_DIR/poltergeist.config.json"
   fi
 
-  # Run poltergeist CLI (daemon/status/project/etc).
+  # Run poltergeist CLI (daemon/status/project/etc) straight from source so we
+  # always pick up local changes without rebuilding dist artifacts.
   if { [ "$1" = "panel" ] || { [ "$1" = "status" ] && [ "$2" = "panel" ]; }; }; then
     exec pnpm --dir "$POLTER_DIR" exec tsx --watch "$CLI_TS" "$@"
   else
-    if [ -f "$CLI_JS" ]; then
-      exec pnpm --dir "$POLTER_DIR" exec node "$CLI_JS" "$@"
-    else
-      exec pnpm --dir "$POLTER_DIR" exec tsx "$CLI_TS" "$@"
-    fi
+    exec pnpm --dir "$POLTER_DIR" exec tsx "$CLI_TS" "$@"
   fi
 else
   # Route to the standalone polter entrypoint for executable targets (e.g., `peekaboo agent`).
-  if [ -f "$POLTER_JS" ]; then
-    exec node "$POLTER_JS" "$@"
+  TSX_BIN="$POLTER_DIR/node_modules/.bin/tsx"
+  if [ -x "$TSX_BIN" ]; then
+    exec "$TSX_BIN" "$POLTER_TS" "$@"
   else
-    TSX_BIN="$POLTER_DIR/node_modules/.bin/tsx"
-    if [ -x "$TSX_BIN" ]; then
-      exec "$TSX_BIN" "$POLTER_TS" "$@"
-    else
-      exec pnpm --dir "$POLTER_DIR" exec tsx "$POLTER_TS" "$@"
-    fi
+    exec pnpm --dir "$POLTER_DIR" exec tsx "$POLTER_TS" "$@"
   fi
 fi
