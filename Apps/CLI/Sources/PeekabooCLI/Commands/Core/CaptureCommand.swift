@@ -38,7 +38,11 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
     @Option(name: .long, help: "Window focus behavior") var captureFocus: LiveCaptureFocus = .auto
     @Option(
         name: .long,
-        help: "Capture engine: auto|modern|sckit|classic|cg (default: auto). modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList; auto tries SC then falls back when allowed."
+        help: """
+        Capture engine: auto|modern|sckit|classic|cg (default: auto).
+        modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList;
+        auto tries SC then falls back when allowed.
+        """
     ) var captureEngine: String?
 
     // Behavior

@@ -77,7 +77,11 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     @Option(
         name: .long,
-        help: "Capture engine: auto|modern|sckit|classic|cg (default: auto). modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList; auto tries SC then falls back when allowed."
+        help: """
+        Capture engine: auto|modern|sckit|classic|cg (default: auto).
+        modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList;
+        auto tries SC then falls back when allowed.
+        """
     )
     var captureEngine: String?
 
