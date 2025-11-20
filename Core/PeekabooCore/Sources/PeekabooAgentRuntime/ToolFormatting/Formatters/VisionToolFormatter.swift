@@ -11,13 +11,43 @@ public class VisionToolFormatter: BaseToolFormatter {
     override public func formatResultSummary(result: [String: Any]) -> String {
         switch toolType {
         case .see:
-            self.formatSeeResult(result)
+            return self.formatSeeResult(result)
         case .screenshot:
-            self.formatScreenshotResult(result)
+            return self.formatScreenshotResult(result)
         case .windowCapture:
-            self.formatWindowCaptureResult(result)
+            return self.formatWindowCaptureResult(result)
         default:
-            super.formatResultSummary(result: result)
+            return super.formatResultSummary(result: result)
+        }
+    }
+
+    override public func formatCompactSummary(arguments: [String: Any]) -> String {
+        switch self.toolType {
+        case .see, .screenshot, .windowCapture:
+            var parts: [String] = []
+
+            if let target = self.describeCaptureTarget(arguments["app_target"] as? String) {
+                parts.append(target)
+            }
+
+            if let annotate = arguments["annotate"] as? Bool, annotate {
+                parts.append("annotated")
+            }
+
+            if let question = arguments["question"] as? String, !question.isEmpty {
+                parts.append("Q: \(self.truncate(question, maxLength: 40))")
+            }
+
+            if parts.isEmpty,
+               let path = arguments["path"] as? String {
+                let filename = URL(fileURLWithPath: path).lastPathComponent
+                parts.append(filename)
+            }
+
+            return parts.joined(separator: " · ")
+
+        default:
+            return super.formatCompactSummary(arguments: arguments)
         }
     }
 
@@ -153,6 +183,41 @@ public class VisionToolFormatter: BaseToolFormatter {
     }
 
     // MARK: - Helper Methods
+
+    private func describeCaptureTarget(_ raw: String?) -> String? {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return "Screen"
+        }
+
+        let lower = raw.lowercased()
+        if lower.hasPrefix("screen:") {
+            let index = raw.dropFirst("screen:".count)
+            return "Screen \(index)"
+        }
+
+        switch lower {
+        case "screen":
+            return "Screen"
+        case "frontmost":
+            return "Frontmost window"
+        case "menubar":
+            return "Menu bar"
+        default:
+            break
+        }
+
+        if lower.hasPrefix("pid:") {
+            let pid = raw.dropFirst(4)
+            return "PID \(pid)"
+        }
+
+        let parts = raw.split(separator: ":", maxSplits: 1)
+        if parts.count == 2 {
+            return "\(parts[0]) window \(parts[1])"
+        }
+
+        return raw
+    }
 
     private func extractCaptureContext(from result: [String: Any]) -> String {
         if let app = ToolResultExtractor.string("app", from: result), app != "entire screen" {
