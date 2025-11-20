@@ -109,11 +109,17 @@ final class AgentChatUI {
     private let queueContainer = Container()
     private let queuePreview = Text(text: "", paddingX: 1, paddingY: 0)
 
+    // Palette for consistent styling
+    private let accentBlue = MarkdownComponent.Foreground(red: 90, green: 160, blue: 255)
+    private let successGreen = MarkdownComponent.Foreground(red: 80, green: 180, blue: 120)
+    private let failureRed = MarkdownComponent.Foreground(red: 220, green: 90, blue: 90)
+    private let thinkingGray = MarkdownComponent.Foreground(red: 150, green: 150, blue: 150)
+
     private var promptContinuation: AsyncStream<String>.Continuation?
     private var loader: Loader?
     private var assistantBuffer = ""
     private var assistantComponent: MarkdownComponent?
-    private var thinkingComponent: Text?
+    private var thinkingBlocks: [MarkdownComponent] = []
     private var sessionId: String?
     private var queuedPrompts: [String] = []
     private var isRunning = false
@@ -190,7 +196,7 @@ final class AgentChatUI {
         }
         self.assistantBuffer = ""
         self.assistantComponent = nil
-        self.thinkingComponent = nil
+        self.thinkingBlocks.removeAll()
         self.requestRender()
     }
 
@@ -233,30 +239,33 @@ final class AgentChatUI {
         self.requestRender()
     }
 
-    func showToolStart(name: String, summary: String?) {
-        let text = summary.flatMap { $0.isEmpty ? nil : $0 } ?? name
-        let component = Text(text: "⚒ \(text)", paddingX: 1, paddingY: 0)
-        self.messages.addChild(component)
+    func showToolStart(name: String, summary: String?, icon: String?, displayName: String?) {
+        let label = displayName ?? name
+        let detail = summary.flatMap { $0.isEmpty ? nil : $0 }
+        let body = detail.map { "**\(label)** – \($0)" } ?? "**\(label)**"
+        let content = ["⚒", icon, body].compactMap { $0 }.joined(separator: " ")
+        self.messages.addChild(self.colorLine(content, color: self.accentBlue))
         self.requestRender()
     }
 
-    func showToolCompletion(name: String, success: Bool, summary: String?) {
+    func showToolCompletion(name: String, success: Bool, summary: String?, icon: String?, displayName: String?) {
         let prefix = success ? "✓" : "✗"
-        let text = summary.flatMap { $0.isEmpty ? nil : $0 } ?? name
-        let component = Text(text: "\(prefix) \(text)", paddingX: 1, paddingY: 0)
-        self.messages.addChild(component)
+        let color = success ? self.successGreen : self.failureRed
+        let label = displayName ?? name
+        let detail = summary.flatMap { $0.isEmpty ? nil : $0 }
+        let body = detail.map { "**\(label)** – \($0)" } ?? "**\(label)**"
+        let content = [prefix, icon, body].compactMap { $0 }.joined(separator: " ")
+        self.messages.addChild(self.colorLine(content, color: color))
         self.requestRender()
     }
 
     func updateThinking(_ content: String) {
-        let message = "_\(content)_"
-        if let thinkingComponent {
-            thinkingComponent.text = message
-        } else {
-            let component = Text(text: message, paddingX: 1, paddingY: 0)
-            self.thinkingComponent = component
-            self.messages.addChild(component)
-        }
+        let component = MarkdownComponent(
+            text: "*\(content)*",
+            padding: .init(horizontal: 1, vertical: 0),
+            foreground: self.thinkingGray)
+        self.thinkingBlocks.append(component)
+        self.messages.addChild(component)
         self.requestRender()
     }
 
@@ -274,10 +283,6 @@ final class AgentChatUI {
     }
 
     func finishStreaming() {
-        if let thinkingComponent {
-            self.messages.removeChild(thinkingComponent)
-            self.thinkingComponent = nil
-        }
         self.requestRender()
     }
 
@@ -300,6 +305,10 @@ final class AgentChatUI {
 
     func requestRender() {
         self.tui.requestRender()
+    }
+
+    private func colorLine(_ text: String, color: MarkdownComponent.Foreground) -> MarkdownComponent {
+        MarkdownComponent(text: text, padding: .init(horizontal: 1, vertical: 0), foreground: color)
     }
 
     private func removeLoader() {
@@ -415,13 +424,24 @@ final class AgentChatEventDelegate: AgentEventDelegate {
         case let .toolCallStarted(name, arguments):
             let args = self.parseArguments(arguments)
             let formatter = self.toolFormatter(for: name)
+            let toolType = ToolType(rawValue: name)
             let summary = formatter?.formatStarting(arguments: args) ??
                 name.replacingOccurrences(of: "_", with: " ")
-            ui.showToolStart(name: name, summary: summary)
+            ui.showToolStart(
+                name: name,
+                summary: summary,
+                icon: toolType?.icon,
+                displayName: toolType?.displayName)
         case let .toolCallCompleted(name, result):
             let summary = self.toolResultSummary(name: name, result: result)
             let success = self.successFlag(from: result)
-            ui.showToolCompletion(name: name, success: success, summary: summary)
+            let toolType = ToolType(rawValue: name)
+            ui.showToolCompletion(
+                name: name,
+                success: success,
+                summary: summary,
+                icon: toolType?.icon,
+                displayName: toolType?.displayName)
         case let .error(message):
             ui.showError(message)
         case .completed:

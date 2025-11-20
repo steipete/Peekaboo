@@ -205,7 +205,8 @@ extension AgentOutputDelegate {
             print("\n\(TerminalColor.gray)", terminator: "")
         }
 
-        print(content)
+        // Render thinking in italic gray so it stands apart from streamed assistant text.
+        print("\(TerminalColor.gray)\(TerminalColor.italic)\(content)\(TerminalColor.reset)")
         fflush(stdout)
     }
 
