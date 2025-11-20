@@ -1,6 +1,37 @@
-# AGENTS.MD
+# Repository Guidelines
 
-READ ~/Projects/agent-scripts/{AGENTS.MD,TOOLS.MD} BEFORE ANYTHING (skip if files missing).
+## Start Here
+- Read `~/Projects/agent-scripts/{AGENTS.MD,TOOLS.MD}` before making changes (skip if missing).
+- This repo uses git submodules (`AXorcist/`, `Commander/`, `Tachikoma/`, `TauTUI/`); update them in their home repos first, then bump pointers here.
 
-Peekaboo notes:
-- This repo uses submodules (AXorcist, Commander, Tachikoma, TauTUI). Update submodules in their own repos first, then bump pointers here.
+## Project Structure & Modules
+- `Apps/CLI` contains the SwiftPM package for the command-line tool; commands live under `Apps/CLI/Sources`, and unit/integration tests under `Apps/CLI/Tests`.
+- `Apps/Mac`, `Apps/peekaboo`, and `Apps/PeekabooInspector` host the macOS app and related tooling; open `Apps/Peekaboo.xcworkspace` for Xcode work.
+- Shared logic sits in `Core/PeekabooCore` (automation, agent runtime, visualizer). Keep new utilities there rather than duplicating in apps.
+- Git submodules provide foundational pieces: `AXorcist/` (AX automation), `Commander/` (CLI parsing), `Tachikoma/` (AI providers/MCP), and `TauTUI/`. Update them upstream first, then bump the pointers here.
+- Documentation lives in `docs/`; assets and marketing material are in `assets/`.
+
+## Build, Test, and Development Commands
+- Always route tools through `./runner` (already baked into package scripts). Use pnpm (Corepack-enabled).
+- Build the CLI: `pnpm run build:cli` (debug) or `pnpm run build:swift:all` (universal release). For arm64-only: `pnpm run build:swift`.
+- Rapid rebuilds while editing Swift: `pnpm run poltergeist:haunt` → check with `pnpm run poltergeist:status`, stop via `pnpm run poltergeist:rest`.
+- Validate before handoff: `pnpm run lint` (SwiftLint), `pnpm run format` (SwiftFormat check/fix), then `pnpm run test:safe`. Full automation/UI tests: `pnpm run test:automation` or `pnpm run test:all`.
+- Tachikoma live provider checks: `pnpm run tachikoma:test:integration`.
+
+## Coding Style & Naming Conventions
+- Swift 6.2, 4-space indent, 120-column wrap; explicit `self` is required (SwiftFormat enforces). Run `pnpm run format` before committing.
+- SwiftLint config lives in `.swiftlint.yml`; keep new code typed (avoid `Any`), prefer small scoped extensions over large files.
+- Follow existing module boundaries: automation APIs in `PeekabooAutomation`, agent glue in `PeekabooAgentRuntime`, UI feedback in `PeekabooVisualizer`.
+
+## Testing Guidelines
+- Add regression tests alongside fixes in `Apps/CLI/Tests` (XCTest naming: `ThingTests`). Use `PEEKABOO_INCLUDE_AUTOMATION_TESTS=true` env only when automation permissions are available.
+- For local end-to-end runs, ensure macOS Screen Recording and Accessibility are granted (`peekaboo permissions status|grant`).
+
+## Commit & Pull Request Guidelines
+- Conventional Commits (`feat|fix|chore|docs|test|refactor|build|ci|style|perf`); scope optional: `feat(cli): add capture retry`.
+- Use `./scripts/committer "type(scope): summary" <paths…>` to stage and create commits; avoid raw `git add`.
+- PRs should summarize intent, list test commands executed, mention doc updates, and include screenshots or terminal snippets when behavior changes.
+
+## Security & Configuration Tips
+- Secrets and provider tokens live under `~/.peekaboo` (managed by Tachikoma); never commit credentials or sample keys.
+- Respect permissions flows documented in `docs/permissions.md`; avoid editing derived artifacts—regenerate via the provided scripts instead.
