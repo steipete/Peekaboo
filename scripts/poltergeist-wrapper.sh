@@ -14,41 +14,55 @@ cd "$PROJECT_DIR"
 POLTER_DIR="$(cd "$PROJECT_DIR/../poltergeist" && pwd)"
 CLI_TS="$POLTER_DIR/src/cli.ts"
 CLI_JS="$POLTER_DIR/dist/cli.js"
+POLTER_TS="$POLTER_DIR/src/polter.ts"
+POLTER_JS="$POLTER_DIR/dist/polter.js"
 
-# Auto-append --config if the caller didn't provide one so the CLI reads
-# Peekaboo's poltergeist.config.json even though we execute from the Poltergeist repo.
-NEEDS_CONFIG=true
-for arg in "$@"; do
-  if [[ "$arg" == "--config" || "$arg" == "-c" ]]; then
-    NEEDS_CONFIG=false
-    break
+# Ensure Node can resolve Poltergeist dependencies even when invoked outside pnpm context
+export NODE_PATH="${NODE_PATH:-$POLTER_DIR/node_modules}"
+
+# Determine whether to route to the poltergeist CLI (daemon/status/etc)
+# or the standalone polter entrypoint (used for targets like `peekaboo`).
+COMMAND="${1:-}"
+IS_POLTERGEIST_COMMAND=false
+
+case "$COMMAND" in
+  daemon|start|haunt|stop|rest|restart|pause|resume|status|logs|wait|panel|project|init|list|clean|version|polter|-h|--help|"")
+    IS_POLTERGEIST_COMMAND=true
+    ;;
+esac
+
+if $IS_POLTERGEIST_COMMAND; then
+  # Auto-append --config so poltergeist commands read Peekaboo's config when invoked from elsewhere.
+  ADD_CONFIG_FLAG=true
+  for arg in "$@"; do
+    case "$arg" in
+      -c|--config|--config=*) ADD_CONFIG_FLAG=false ;;
+    esac
+  done
+  if $ADD_CONFIG_FLAG; then
+    set -- "$@" --config "$PROJECT_DIR/poltergeist.config.json"
   fi
-done
 
-if [[ "$NEEDS_CONFIG" == "true" ]]; then
-  set -- "$@" --config "$PROJECT_DIR/poltergeist.config.json"
-fi
-
-# Always run against the Peekaboo config (not the Poltergeist repo itself)
-CONFIG_PATH="$PROJECT_DIR/poltergeist.config.json"
-ADD_CONFIG_FLAG=true
-for arg in "$@"; do
-  case "$arg" in
-    -c|--config) ADD_CONFIG_FLAG=false ;;
-    --config=*) ADD_CONFIG_FLAG=false ;;
-  esac
-done
-if $ADD_CONFIG_FLAG; then
-  set -- "$@" --config "$CONFIG_PATH"
-fi
-
-# Run directly from TypeScript sources using tsx in the Poltergeist repo.
-if { [ "$1" = "panel" ] || { [ "$1" = "status" ] && [ "$2" = "panel" ]; }; }; then
-  exec pnpm --dir "$POLTER_DIR" exec tsx --watch "$CLI_TS" "$@"
-else
-  if [ -f "$CLI_JS" ]; then
-    exec pnpm --dir "$POLTER_DIR" exec node "$CLI_JS" "$@"
+  # Run poltergeist CLI (daemon/status/project/etc).
+  if { [ "$1" = "panel" ] || { [ "$1" = "status" ] && [ "$2" = "panel" ]; }; }; then
+    exec pnpm --dir "$POLTER_DIR" exec tsx --watch "$CLI_TS" "$@"
   else
-    exec pnpm --dir "$POLTER_DIR" exec tsx "$CLI_TS" "$@"
+    if [ -f "$CLI_JS" ]; then
+      exec pnpm --dir "$POLTER_DIR" exec node "$CLI_JS" "$@"
+    else
+      exec pnpm --dir "$POLTER_DIR" exec tsx "$CLI_TS" "$@"
+    fi
+  fi
+else
+  # Route to the standalone polter entrypoint for executable targets (e.g., `peekaboo agent`).
+  if [ -f "$POLTER_JS" ]; then
+    exec node "$POLTER_JS" "$@"
+  else
+    TSX_BIN="$POLTER_DIR/node_modules/.bin/tsx"
+    if [ -x "$TSX_BIN" ]; then
+      exec "$TSX_BIN" "$POLTER_TS" "$@"
+    else
+      exec pnpm --dir "$POLTER_DIR" exec tsx "$POLTER_TS" "$@"
+    fi
   fi
 fi
