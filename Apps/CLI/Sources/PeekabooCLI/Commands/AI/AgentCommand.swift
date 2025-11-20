@@ -789,17 +789,23 @@ extension AgentCommand {
         self.chatHelpLines.forEach { print($0) }
     }
 
+    private var chatHelpText: String {
+        """
+
+        Chat commands:
+          • Type any prompt and press Return to run it.
+          • /help  Show this menu again.
+          • Esc    Cancel the active run (if one is in progress).
+          • Ctrl+C Cancel when running; exit immediately when idle.
+          • Ctrl+D Exit when idle (EOF).
+
+        """
+    }
+
     var chatHelpLines: [String] {
-        [
-            "",
-            "Chat commands:",
-            "  • Type any prompt and press Return to run it.",
-            "  • /help  Show this menu again.",
-            "  • Esc    Cancel the active run (if one is in progress).",
-            "  • Ctrl+C Cancel when running; exit immediately when idle.",
-            "  • Ctrl+D Exit when idle (EOF).",
-            ""
-        ]
+        self.chatHelpText
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
     }
 
     private func printCapabilityFlag(_ label: String, supported: Bool, detail: String? = nil) {

@@ -243,7 +243,7 @@ final class AgentChatUI {
         let label = displayName ?? name
         let detail = summary.flatMap { $0.isEmpty ? nil : $0 }
         let body = detail.map { "**\(label)** – \($0)" } ?? "**\(label)**"
-        let content = ["⚒", icon, body].compactMap { $0 }.joined(separator: " ")
+        let content = ["⚒", icon, body].compactMap(\.self).joined(separator: " ")
         self.messages.addChild(self.colorLine(content, color: self.accentBlue))
         self.requestRender()
     }
@@ -254,7 +254,7 @@ final class AgentChatUI {
         let label = displayName ?? name
         let detail = summary.flatMap { $0.isEmpty ? nil : $0 }
         let body = detail.map { "**\(label)** – \($0)" } ?? "**\(label)**"
-        let content = [prefix, icon, body].compactMap { $0 }.joined(separator: " ")
+        let content = [prefix, icon, body].compactMap(\.self).joined(separator: " ")
         self.messages.addChild(self.colorLine(content, color: color))
         self.requestRender()
     }
@@ -263,7 +263,8 @@ final class AgentChatUI {
         let component = MarkdownComponent(
             text: "*\(content)*",
             padding: .init(horizontal: 1, vertical: 0),
-            foreground: self.thinkingGray)
+            foreground: self.thinkingGray
+        )
         self.thinkingBlocks.append(component)
         self.messages.addChild(component)
         self.requestRender()
@@ -431,7 +432,8 @@ final class AgentChatEventDelegate: AgentEventDelegate {
                 name: name,
                 summary: summary,
                 icon: toolType?.icon,
-                displayName: toolType?.displayName)
+                displayName: toolType?.displayName
+            )
         case let .toolCallCompleted(name, result):
             let summary = self.toolResultSummary(name: name, result: result)
             let success = self.successFlag(from: result)
@@ -441,7 +443,8 @@ final class AgentChatEventDelegate: AgentEventDelegate {
                 success: success,
                 summary: summary,
                 icon: toolType?.icon,
-                displayName: toolType?.displayName)
+                displayName: toolType?.displayName
+            )
         case let .error(message):
             ui.showError(message)
         case .completed:

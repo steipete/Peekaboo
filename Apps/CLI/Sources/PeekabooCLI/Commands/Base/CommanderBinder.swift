@@ -47,7 +47,7 @@ enum CommanderCLIBinder {
         }
         if let captureEngine = values.singleOption("captureEngine")?
             .trimmingCharacters(in: .whitespacesAndNewlines),
-           !captureEngine.isEmpty {
+            !captureEngine.isEmpty {
             options.captureEnginePreference = captureEngine
         }
         return options

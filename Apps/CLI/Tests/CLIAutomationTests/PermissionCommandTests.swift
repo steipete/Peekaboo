@@ -15,7 +15,8 @@ struct PermissionCommandTests {
         let services = await MainActor.run {
             TestServicesFactory.makePeekabooServices(
                 automation: automation,
-                screenCapture: screenCapture)
+                screenCapture: screenCapture
+            )
         }
 
         let result = try await InProcessCommandRunner.run([
@@ -26,7 +27,8 @@ struct PermissionCommandTests {
         let data = Data(result.stdout.utf8)
         let permissions = try JSONDecoder().decode(
             [PermissionHelpers.PermissionInfo].self,
-            from: data)
+            from: data
+        )
 
         #expect(permissions.count == 2)
         if let screenRecording = permissions.first(where: { $0.name == "Screen Recording" }) {
@@ -53,7 +55,8 @@ struct PermissionCommandTests {
         let services = await MainActor.run {
             TestServicesFactory.makePeekabooServices(
                 automation: automation,
-                screenCapture: screenCapture)
+                screenCapture: screenCapture
+            )
         }
 
         let result = try await InProcessCommandRunner.run([
