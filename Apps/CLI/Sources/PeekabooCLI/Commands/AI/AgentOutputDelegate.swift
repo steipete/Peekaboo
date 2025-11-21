@@ -20,6 +20,7 @@ final class AgentOutputDelegate: PeekabooCore.AgentEventDelegate {
     // Tool tracking
     private var currentTool: String?
     private var toolStartTimes: [String: Date] = [:]
+    private var lastToolArguments: [String: [String: Any]] = [:]
     private var toolCallCount = 0
     private var totalTokens = 0
 
@@ -53,6 +54,9 @@ extension AgentOutputDelegate {
         case let .toolCallStarted(name, arguments):
             self.handleToolCallStarted(name: name, arguments: arguments)
 
+        case let .toolCallUpdated(name, arguments):
+            self.handleToolCallUpdated(name: name, arguments: arguments)
+
         case let .toolCallCompleted(name, result):
             self.handleToolCallCompleted(name: name, result: result)
 
@@ -67,6 +71,9 @@ extension AgentOutputDelegate {
 
         case let .completed(summary, usage):
             self.handleCompleted(summary: summary, usage: usage)
+
+        case .queueDrained:
+            break
         }
     }
 
@@ -90,6 +97,7 @@ extension AgentOutputDelegate {
         self.currentTool = name
         self.toolStartTimes[name] = Date()
         self.toolCallCount += 1
+        self.lastToolArguments[name] = args
 
         let args = parseArguments(arguments)
         let (formatter, toolType) = self.toolFormatter(for: name)
@@ -122,6 +130,45 @@ extension AgentOutputDelegate {
             rawArguments: arguments,
             formatter: formatter
         )
+    }
+
+    private func handleToolCallUpdated(name: String, arguments: String) {
+        guard self.outputMode != .quiet else { return }
+        guard !self.shouldSkipCommunicationOutput(for: ToolType(rawValue: name)) else { return }
+
+        let args = parseArguments(arguments)
+        if let previous = self.lastToolArguments[name], self.dictionariesEqual(previous, args) {
+            return // no change; avoid spamming the log
+        }
+        let diffSummary = self.diffSummary(for: name, newArgs: args)
+        let (formatter, _ /* toolType */) = self.toolFormatter(for: name)
+
+        switch self.outputMode {
+        case .minimal:
+            if let diffSummary {
+                print(" ↻ \(diffSummary)", terminator: "")
+            } else {
+                print(" ↻", terminator: "")
+            }
+        case .verbose:
+            let clean = self.cleanToolPrefix(formatter.formatStarting(arguments: args))
+            if let diffSummary {
+                print("↻ Updated args: \(diffSummary) (\(clean))")
+            } else {
+                print("↻ Updated args: \(clean)")
+            }
+        default:
+            let clean = self.cleanToolPrefix(formatter.formatStarting(arguments: args))
+            if let diffSummary {
+                print(" \(TerminalColor.blue)↻\(TerminalColor.reset) \(diffSummary)", terminator: "")
+            } else {
+                print(" \(TerminalColor.blue)↻\(TerminalColor.reset) \(clean)", terminator: "")
+            }
+        }
+
+        self.lastToolArguments[name] = args
+
+        fflush(stdout)
     }
 
     private func handleToolCallCompleted(name: String, result: String) {
@@ -423,6 +470,70 @@ extension AgentOutputDelegate {
             return (ToolFormatterRegistry.shared.formatter(for: type), type)
         }
         return (UnknownToolFormatter(toolName: name), nil)
+    }
+
+    /// Produce a compact diff summary between previous and new arguments for the same tool name.
+    private func diffSummary(for toolName: String, newArgs: [String: Any]) -> String? {
+        guard let previous = self.lastToolArguments[toolName] else { return nil }
+
+        var changes: [String] = []
+        for (key, newValue) in newArgs {
+            guard let prevValue = previous[key] else {
+                changes.append("+\(key)")
+                continue
+            }
+            if !self.valuesEqual(prevValue, newValue) {
+                let rendered = self.renderValue(newValue)
+                changes.append("\(key): \(rendered)")
+            }
+            if changes.count >= 3 { break }
+        }
+
+        if changes.isEmpty {
+            return nil
+        }
+
+        return changes.joined(separator: ", ")
+    }
+
+    private func valuesEqual(_ lhs: Any, _ rhs: Any) -> Bool {
+        switch (lhs, rhs) {
+        case let (l as String, r as String): return l == r
+        case let (l as Int, r as Int): return l == r
+        case let (l as Double, r as Double): return l == r
+        case let (l as Bool, r as Bool): return l == r
+        default:
+            return false
+        }
+    }
+
+    private func dictionariesEqual(_ lhs: [String: Any], _ rhs: [String: Any]) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (key, lval) in lhs {
+            guard let rval = rhs[key], self.valuesEqual(lval, rval) else { return false }
+        }
+        return true
+    }
+
+    private func renderValue(_ value: Any) -> String {
+        switch value {
+        case let str as String:
+            let max = 40
+            if str.count > max {
+                let idx = str.index(str.startIndex, offsetBy: max)
+                return String(str[..<idx]) + "…"
+            }
+            return str
+        case let num as Int: return String(num)
+        case let num as Double: return String(format: "%.3f", num)
+        case let bool as Bool: return bool ? "true" : "false"
+        default:
+            if let data = try? JSONSerialization.data(withJSONObject: ["v": value], options: []),
+               let text = String(data: data, encoding: .utf8) {
+                return text.replacingOccurrences(of: "{\"v\":", with: "").trimmingCharacters(in: CharacterSet(charactersIn: "}"))
+            }
+            return "…"
+        }
     }
 
     private func resultSummary(

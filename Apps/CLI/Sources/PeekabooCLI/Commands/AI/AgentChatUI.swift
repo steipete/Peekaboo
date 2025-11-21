@@ -124,17 +124,17 @@ final class AgentChatUI {
     private var queuedPrompts: [String] = []
     private var isRunning = false
 
-    init(modelDescription: String, sessionId: String?, helpLines: [String]) {
+    init(modelDescription: String, sessionId: String?, queueMode: QueueMode, helpLines: [String]) {
         self.tui = TUI(terminal: ProcessTerminal())
         self.sessionId = sessionId
         self.helpLines = helpLines
         self.header = Text(
-            text: "Interactive agent chat – model: \(modelDescription)",
+            text: "Interactive agent chat – model: \(modelDescription) • queue: \(queueMode == .all ? \"all\" : \"one-at-a-time\")",
             paddingX: 1,
             paddingY: 0
         )
         self.sessionLine = Text(
-            text: AgentChatUI.sessionDescription(for: sessionId),
+            text: AgentChatUI.sessionDescription(for: sessionId, queueMode: queueMode),
             paddingX: 1,
             paddingY: 0
         )
@@ -256,6 +256,15 @@ final class AgentChatUI {
         let body = detail.map { "**\(label)** – \($0)" } ?? "**\(label)**"
         let content = [prefix, icon, body].compactMap(\.self).joined(separator: " ")
         self.messages.addChild(self.colorLine(content, color: color))
+        self.requestRender()
+    }
+
+    func showToolUpdate(name: String, summary: String?, icon: String?, displayName: String?) {
+        let label = displayName ?? name
+        let detail = summary.flatMap { $0.isEmpty ? nil : $0 }
+        let body = detail.map { "**\(label)** – \($0)" } ?? "**\(label)**"
+        let content = ["↻", icon, body].compactMap(\.self).joined(separator: " ")
+        self.messages.addChild(self.colorLine(content, color: self.accentBlue))
         self.requestRender()
     }
 
@@ -397,9 +406,10 @@ final class AgentChatUI {
         return "✓ Session \(sessionFragment) • \(duration) • \(tools)"
     }
 
-    private static func sessionDescription(for sessionId: String?) -> String {
-        guard let sessionId else { return "Session: new (will be created on first run)" }
-        return "Session: \(sessionId)"
+    private static func sessionDescription(for sessionId: String?, queueMode: QueueMode) -> String {
+        let base = sessionId.map { "Session: \($0)" } ?? "Session: new (will be created on first run)"
+        let mode = queueMode == .all ? "queue: all" : "queue: one-at-a-time"
+        return "\(base) • \(mode)"
     }
 }
 
@@ -408,6 +418,7 @@ final class AgentChatUI {
 @MainActor
 final class AgentChatEventDelegate: AgentEventDelegate {
     private weak var ui: AgentChatUI?
+    private var lastToolArguments: [String: [String: Any]] = [:]
 
     init(ui: AgentChatUI) {
         self.ui = ui
@@ -424,6 +435,7 @@ final class AgentChatEventDelegate: AgentEventDelegate {
             ui.updateThinking(content)
         case let .toolCallStarted(name, arguments):
             let args = self.parseArguments(arguments)
+            self.lastToolArguments[name] = args
             let formatter = self.toolFormatter(for: name)
             let toolType = ToolType(rawValue: name)
             let summary = formatter?.formatStarting(arguments: args) ??
@@ -445,10 +457,29 @@ final class AgentChatEventDelegate: AgentEventDelegate {
                 icon: toolType?.icon,
                 displayName: toolType?.displayName
             )
+        case let .toolCallUpdated(name, arguments):
+            let args = self.parseArguments(arguments)
+            if let previous = self.lastToolArguments[name], self.dictionariesEqual(previous, args) {
+                break // skip no-op updates
+            }
+            let formatter = self.toolFormatter(for: name)
+            let toolType = ToolType(rawValue: name)
+            let summary = self.diffSummary(for: name, newArgs: args)
+                ?? formatter?.formatStarting(arguments: args)
+                ?? name.replacingOccurrences(of: "_", with: " ")
+            ui.showToolUpdate(
+                name: name,
+                summary: summary,
+                icon: toolType?.icon,
+                displayName: toolType?.displayName
+            )
+            self.lastToolArguments[name] = args
         case let .error(message):
             ui.showError(message)
         case .completed:
             ui.finishStreaming()
+        case .queueDrained:
+            break
         }
     }
 
@@ -487,5 +518,60 @@ final class AgentChatEventDelegate: AgentEventDelegate {
     private func successFlag(from result: String) -> Bool {
         guard let json = self.parseResult(result) else { return true }
         return (json["success"] as? Bool) ?? true
+    }
+
+    /// Minimal diff between previous and new args for the same tool name.
+    private func diffSummary(for toolName: String, newArgs: [String: Any]) -> String? {
+        guard let previous = self.lastToolArguments[toolName] else { return nil }
+
+        var changes: [String] = []
+        for (key, newValue) in newArgs {
+            guard let prevValue = previous[key] else {
+                changes.append("+\(key)")
+                continue
+            }
+            if !self.valuesEqual(prevValue, newValue) {
+                let rendered = self.renderValue(newValue)
+                changes.append("\(key): \(rendered)")
+            }
+            if changes.count >= 3 { break }
+        }
+
+        if changes.isEmpty { return nil }
+        return changes.joined(separator: ", ")
+    }
+
+    private func valuesEqual(_ lhs: Any, _ rhs: Any) -> Bool {
+        switch (lhs, rhs) {
+        case let (l as String, r as String): return l == r
+        case let (l as Int, r as Int): return l == r
+        case let (l as Double, r as Double): return l == r
+        case let (l as Bool, r as Bool): return l == r
+        default: return false
+        }
+    }
+
+    private func dictionariesEqual(_ lhs: [String: Any], _ rhs: [String: Any]) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (key, lval) in lhs {
+            guard let rval = rhs[key], self.valuesEqual(lval, rval) else { return false }
+        }
+        return true
+    }
+
+    private func renderValue(_ value: Any) -> String {
+        switch value {
+        case let str as String:
+            let max = 32
+            if str.count > max {
+                let idx = str.index(str.startIndex, offsetBy: max)
+                return String(str[..<idx]) + "…"
+            }
+            return str
+        case let num as Int: return String(num)
+        case let num as Double: return String(format: "%.3f", num)
+        case let bool as Bool: return bool ? "true" : "false"
+        default: return "…"
+        }
     }
 }

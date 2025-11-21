@@ -10,9 +10,11 @@ public enum AgentEvent: Sendable {
     case assistantMessage(content: String)
     case thinkingMessage(content: String) // New case for thinking/reasoning content
     case toolCallStarted(name: String, arguments: String)
+    case toolCallUpdated(name: String, arguments: String)
     case toolCallCompleted(name: String, result: String)
     case error(message: String)
     case completed(summary: String, usage: Usage?)
+    case queueDrained
 }
 
 /// Protocol for receiving agent events

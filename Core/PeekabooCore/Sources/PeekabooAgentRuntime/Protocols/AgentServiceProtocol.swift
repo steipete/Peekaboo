@@ -17,6 +17,7 @@ public protocol AgentServiceProtocol: Sendable {
         _ task: String,
         maxSteps: Int,
         dryRun: Bool,
+        queueMode: QueueMode,
         eventDelegate: (any AgentEventDelegate)?) async throws -> AgentExecutionResult
 
     /// Execute a task with audio content
@@ -30,6 +31,7 @@ public protocol AgentServiceProtocol: Sendable {
         audioContent: AudioContent,
         maxSteps: Int,
         dryRun: Bool,
+        queueMode: QueueMode,
         eventDelegate: (any AgentEventDelegate)?) async throws -> AgentExecutionResult
 
     /// Clean up any cached sessions or resources

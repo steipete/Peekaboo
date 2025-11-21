@@ -132,6 +132,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         _ task: String,
         maxSteps: Int = 20,
         dryRun: Bool = false,
+        queueMode: QueueMode = .oneAtATime,
         eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
     {
         try await self.executeTask(
@@ -140,6 +141,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             sessionId: nil,
             model: nil,
             dryRun: dryRun,
+            queueMode: queueMode,
             eventDelegate: eventDelegate,
             verbose: self.isVerbose)
     }
@@ -149,6 +151,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         audioContent: AudioContent,
         maxSteps: Int = 20,
         dryRun: Bool = false,
+        queueMode: QueueMode = .oneAtATime,
         eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
     {
         if dryRun {
@@ -164,6 +167,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             return try await self.executeAudioStreamingTask(
                 input: input,
                 maxSteps: maxSteps,
+                queueMode: queueMode,
                 eventDelegate: eventDelegate)
         }
 
@@ -199,6 +203,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         sessionId: String? = nil,
         model: LanguageModel? = nil,
         dryRun: Bool = false,
+        queueMode: QueueMode = .oneAtATime,
         eventDelegate: (any AgentEventDelegate)? = nil,
         verbose: Bool = false) async throws -> AgentExecutionResult
     {
@@ -274,6 +279,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 model: selectedModel,
                 maxSteps: maxSteps,
                 streamingDelegate: streamingDelegate,
+                queueMode: queueMode,
+                pendingUserMessages: [],
                 eventHandler: eventHandler)
 
             // Send completion event with usage information
@@ -315,6 +322,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             model: selectedModel,
             maxSteps: 20,
             streamingDelegate: dummyDelegate,
+            queueMode: .oneAtATime,
             eventHandler: nil)
     }
 
@@ -366,6 +374,7 @@ extension PeekabooAgentService {
     private func executeAudioStreamingTask(
         input: String,
         maxSteps: Int,
+        queueMode: QueueMode,
         eventDelegate: any AgentEventDelegate) async throws -> AgentExecutionResult
     {
         let unsafeDelegate = UnsafeTransfer<any AgentEventDelegate>(eventDelegate)
@@ -404,6 +413,7 @@ extension PeekabooAgentService {
             model: self.defaultLanguageModel,
             maxSteps: maxSteps,
             streamingDelegate: streamingDelegate,
+            queueMode: queueMode,
             eventHandler: eventHandler)
 
         await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -418,6 +428,7 @@ extension PeekabooAgentService {
         model: LanguageModel? = nil,
         maxSteps: Int = 20,
         dryRun: Bool = false,
+        queueMode: QueueMode = .oneAtATime,
         eventDelegate: (any AgentEventDelegate)? = nil,
         verbose: Bool = false) async throws -> AgentExecutionResult
     {
@@ -476,6 +487,8 @@ extension PeekabooAgentService {
                 model: selectedModel,
                 maxSteps: maxSteps,
                 streamingDelegate: streamingDelegate,
+                queueMode: queueMode,
+                pendingUserMessages: [],
                 eventHandler: eventHandler)
 
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -795,6 +808,7 @@ extension PeekabooAgentService {
         model: LanguageModel,
         maxSteps: Int = 20,
         streamingDelegate: StreamingEventDelegate,
+        queueMode: QueueMode = .oneAtATime,
         eventHandler: EventHandler? = nil) async throws -> AgentExecutionResult
     {
         _ = streamingDelegate
@@ -810,7 +824,8 @@ extension PeekabooAgentService {
         let outcome = try await self.runStreamingLoop(
             configuration: configuration,
             maxSteps: maxSteps,
-            initialMessages: context.messages)
+            initialMessages: context.messages,
+            queueMode: queueMode)
 
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(context.executionStart)

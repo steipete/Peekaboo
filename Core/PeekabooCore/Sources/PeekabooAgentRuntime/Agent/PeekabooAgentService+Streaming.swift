@@ -45,7 +45,9 @@ extension PeekabooAgentService {
     func runStreamingLoop(
         configuration: StreamingLoopConfiguration,
         maxSteps: Int,
-        initialMessages: [ModelMessage]) async throws -> StreamingLoopOutcome
+        initialMessages: [ModelMessage],
+        queueMode: QueueMode = .oneAtATime,
+        pendingUserMessages: [ModelMessage] = []) async throws -> StreamingLoopOutcome
     {
         var state = StreamingLoopState(messages: initialMessages)
         let toolContext = ToolHandlingContext(
@@ -54,8 +56,19 @@ extension PeekabooAgentService {
             eventHandler: configuration.eventHandler,
             sessionId: configuration.sessionId)
 
+        // Queue of pending user messages (set by caller). For now, this is empty
+        // and will be injected by higher-level chat loop when we add that support.
+        var queuedMessages: [ModelMessage] = pendingUserMessages
+
         for stepIndex in 0..<maxSteps {
             self.logStreamingStepStart(stepIndex, tools: configuration.tools)
+
+            // If queue mode is "all" and we have queued messages, inject them
+            // before the next turn so the model sees them together.
+            if queueMode == .all && !queuedMessages.isEmpty {
+                state.messages.append(contentsOf: queuedMessages)
+                queuedMessages.removeAll()
+            }
 
             let streamResult = try await streamText(
                 model: configuration.model,
@@ -90,6 +103,12 @@ extension PeekabooAgentService {
                 stepIndex: stepIndex)
             state.steps.append(step)
             state.toolCallCount += output.toolCalls.count
+
+            // If queue mode is one-at-a-time, inject exactly one queued message (if any)
+            if queueMode == .oneAtATime, let next = queuedMessages.first {
+                state.messages.append(next)
+                queuedMessages.removeFirst()
+            }
         }
 
         let totalToolCalls = state.toolCallCount
@@ -150,6 +169,7 @@ extension PeekabooAgentService {
     {
         var stepText = ""
         var stepToolCalls: [AgentToolCall] = []
+        var seenToolCallIds = Set<String>()
         var isThinking = false
         var usage: Usage?
 
@@ -176,6 +196,7 @@ extension PeekabooAgentService {
                     try await self.handleToolCallDelta(
                         toolCall,
                         stepToolCalls: &stepToolCalls,
+                        seenToolCallIds: &seenToolCallIds,
                         eventHandler: eventHandler)
                 }
 
@@ -223,17 +244,102 @@ extension PeekabooAgentService {
     private func handleToolCallDelta(
         _ toolCall: AgentToolCall,
         stepToolCalls: inout [AgentToolCall],
+        seenToolCallIds: inout Set<String>,
         eventHandler: EventHandler?) async throws
     {
         if self.isVerbose {
             self.logger.debug("Received tool call: \(toolCall.name) with ID: \(toolCall.id)")
         }
-        stepToolCalls.append(toolCall)
+        let isFirstOccurrence = seenToolCallIds.insert(toolCall.id).inserted
+
+        // Keep the latest version of this tool call so downstream handlers see current args
+        if let existingIndex = stepToolCalls.firstIndex(where: { $0.id == toolCall.id }) {
+            stepToolCalls[existingIndex] = toolCall
+        } else {
+            stepToolCalls.append(toolCall)
+        }
 
         guard let eventHandler else { return }
+
         let argumentsData = try JSONEncoder().encode(toolCall.arguments)
-        let argumentsJSON = String(data: argumentsData, encoding: .utf8) ?? "{}"
-        await eventHandler.send(.toolCallStarted(name: toolCall.name, arguments: argumentsJSON))
+        var argumentsJSON = self.redactedPreview(from: argumentsData)
+
+        // Avoid flooding the UI/logs with huge payloads; cap at 320 chars
+        let maxPreviewLength = 320
+        if argumentsJSON.count > maxPreviewLength {
+            let endIndex = argumentsJSON.index(argumentsJSON.startIndex, offsetBy: maxPreviewLength)
+            argumentsJSON = String(argumentsJSON[..<endIndex]) + "…"
+        }
+
+        if isFirstOccurrence {
+            await eventHandler.send(.toolCallStarted(name: toolCall.name, arguments: argumentsJSON))
+        } else {
+            await eventHandler.send(.toolCallUpdated(name: toolCall.name, arguments: argumentsJSON))
+        }
+    }
+
+    /// Redact obviously sensitive fields before previewing tool-call arguments.
+    /// - Masks values for keys containing token/secret/key/password/auth.
+    /// - Also masks inline patterns like sk-XXXX and Bearer headers.
+    private func redactedPreview(from data: Data) -> String {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data),
+            let redacted = self.redactSensitiveValues(object),
+            let cleaned = try? JSONSerialization.data(withJSONObject: redacted),
+            var text = String(data: cleaned, encoding: .utf8)
+        else {
+            return self.regexRedact(String(data: data, encoding: .utf8) ?? "{}")
+        }
+
+        text = self.regexRedact(text)
+        return text
+    }
+
+    private func redactSensitiveValues(_ value: Any) -> Any? {
+        switch value {
+        case let dict as [String: Any]:
+            var copy: [String: Any] = [:]
+            for (key, v) in dict {
+                let lowerKey = key.lowercased()
+                let isSensitive = lowerKey.contains("token") ||
+                    lowerKey.contains("secret") ||
+                    lowerKey.contains("password") ||
+                    lowerKey.contains("key") ||
+                    lowerKey.contains("auth") ||
+                    lowerKey.contains("cookie") ||
+                    lowerKey.contains("authorization")
+                if isSensitive {
+                    copy[key] = "***"
+                } else if let redacted = self.redactSensitiveValues(v) {
+                    copy[key] = redacted
+                }
+            }
+            return copy
+        case let array as [Any]:
+            return array.compactMap { self.redactSensitiveValues($0) }
+        case let str as String:
+            if str.lowercased().contains("bearer ") { return "Bearer ***" }
+            if str.lowercased().contains("api_key") { return "***" }
+            return str
+        default:
+            return value
+        }
+    }
+
+    private func regexRedact(_ text: String) -> String {
+        let patterns = [
+            "(?i)sk-[a-z0-9_-]{10,}",
+            "(?i)bearer\\s+[a-z0-9._-]{8,}",
+            "(?i)api[_-]?key\\s*[:=]\\s*[a-z0-9._-]{6,}",
+            "(?i)sess[a-z0-9]{12,}",
+            "(?i)token\\s*[:=]\\s*[a-z0-9._-]{12,}"
+        ]
+
+        var output = text
+        for pattern in patterns {
+            output = output.replacingOccurrences(of: pattern, with: "***", options: .regularExpression)
+        }
+        return output
     }
 
     private func handleReasoningDelta(_ content: String?, eventHandler: EventHandler?) async {

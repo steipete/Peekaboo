@@ -5,6 +5,7 @@ import Foundation
 import Logging
 import PeekabooCore
 import PeekabooFoundation
+import PeekabooAgentRuntime
 import Spinner
 import Tachikoma
 import TachikomaMCP
@@ -97,6 +98,9 @@ struct AgentCommand: RuntimeOptionsConfigurable {
 
     @Option(name: .long, help: "Maximum number of steps the agent can take")
     var maxSteps: Int?
+
+    @Option(name: .long, help: "Queue mode for queued prompts: one-at-a-time (default) or all")
+    var queueMode: String?
 
     @Option(name: .long, help: "AI model to use (allowed: gpt-5.1 or claude-sonnet-4.5)")
     var model: String?
@@ -340,6 +344,14 @@ extension AgentCommand {
             capabilities: terminalCapabilities
         )
 
+        let queueMode: QueueMode
+        do {
+            queueMode = try self.resolvedQueueMode()
+        } catch {
+            self.printAgentExecutionError(error.localizedDescription)
+            return
+        }
+
         switch chatPolicy.strategy(for: chatContext) {
         case .helpOnly:
             self.printNonInteractiveChatHelp()
@@ -349,7 +361,8 @@ extension AgentCommand {
                 peekabooAgent,
                 requestedModel: requestedModel,
                 initialPrompt: initialPrompt,
-                capabilities: terminalCapabilities
+                capabilities: terminalCapabilities,
+                queueMode: queueMode
             )
             return
         case .none:
@@ -368,7 +381,8 @@ extension AgentCommand {
             peekabooAgent,
             task: executionTask,
             requestedModel: requestedModel,
-            maxSteps: self.maxSteps ?? 100
+            maxSteps: self.maxSteps ?? 100,
+            queueMode: queueMode
         )
     }
 
@@ -715,7 +729,8 @@ extension AgentCommand {
         _ agentService: PeekabooAgentService,
         task: String,
         requestedModel: LanguageModel?,
-        maxSteps: Int
+        maxSteps: Int,
+        queueMode: QueueMode
     ) async throws -> AgentExecutionResult {
         let outputDelegate = self.makeDisplayDelegate(for: task)
         let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)
@@ -726,6 +741,7 @@ extension AgentCommand {
                 sessionId: nil,
                 model: requestedModel,
                 dryRun: self.dryRun,
+                queueMode: queueMode,
                 eventDelegate: streamingDelegate,
                 verbose: self.verbose
             )
@@ -759,7 +775,22 @@ extension AgentCommand {
 
     var resolvedMaxSteps: Int { self.maxSteps ?? 100 }
 
-    func printChatWelcome(sessionId: String?, modelDescription: String) {
+    private func resolvedQueueMode() throws -> QueueMode {
+        guard let raw = self.queueMode?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return .oneAtATime
+        }
+
+        switch raw.lowercased() {
+        case "one", "one-at-a-time", "single", "sequential", "1":
+            return .oneAtATime
+        case "all", "batch", "together":
+            return .all
+        default:
+            throw PeekabooError.invalidInput("Invalid queue mode '\(raw)'. Use one-at-a-time or all.")
+        }
+    }
+
+    func printChatWelcome(sessionId: String?, modelDescription: String, queueMode: QueueMode) {
         guard !self.quiet else { return }
         let header = [
             TerminalColor.cyan,
@@ -767,7 +798,9 @@ extension AgentCommand {
             "Interactive agent chat",
             TerminalColor.reset,
             " – model: ",
-            modelDescription
+            modelDescription,
+            " • queue: ",
+            queueMode == .all ? "all" : "one-at-a-time"
         ].joined()
         print(header)
         if let sessionId {

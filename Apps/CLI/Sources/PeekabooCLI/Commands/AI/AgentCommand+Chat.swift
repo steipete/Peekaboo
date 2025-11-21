@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import PeekabooAgentRuntime
 import PeekabooCore
 import PeekabooFoundation
 import Tachikoma
@@ -51,7 +52,8 @@ extension AgentCommand {
         _ agentService: PeekabooAgentService,
         requestedModel: LanguageModel?,
         initialPrompt: String?,
-        capabilities: TerminalCapabilities
+        capabilities: TerminalCapabilities,
+        queueMode: QueueMode
     ) async throws {
         guard self.ensureChatModePreconditions() else { return }
 
@@ -61,7 +63,8 @@ extension AgentCommand {
                     agentService,
                     requestedModel: requestedModel,
                     initialPrompt: initialPrompt,
-                    capabilities: capabilities
+                    capabilities: capabilities,
+                    queueMode: queueMode
                 )
                 return
             } catch {
@@ -74,7 +77,8 @@ extension AgentCommand {
             agentService,
             requestedModel: requestedModel,
             initialPrompt: initialPrompt,
-            capabilities: capabilities
+            capabilities: capabilities,
+            queueMode: queueMode
         )
     }
 
@@ -83,7 +87,8 @@ extension AgentCommand {
         _ agentService: PeekabooAgentService,
         requestedModel: LanguageModel?,
         initialPrompt: String?,
-        capabilities: TerminalCapabilities
+        capabilities: TerminalCapabilities,
+        queueMode: QueueMode
     ) async throws {
         var activeSessionId: String?
         do {
@@ -95,17 +100,19 @@ extension AgentCommand {
 
         self.printChatWelcome(
             sessionId: activeSessionId,
-            modelDescription: self.describeModel(requestedModel)
+            modelDescription: self.describeModel(requestedModel),
+            queueMode: queueMode
         )
         self.printChatHelpIntro()
 
         if let seed = initialPrompt {
-            try await self.performChatTurn(
-                seed,
-                agentService: agentService,
-                sessionId: &activeSessionId,
-                requestedModel: requestedModel
-            )
+                try await self.performChatTurn(
+                    seed,
+                    agentService: agentService,
+                    sessionId: &activeSessionId,
+                    requestedModel: requestedModel,
+                    queueMode: queueMode
+                )
         }
 
         while true {
@@ -123,12 +130,16 @@ extension AgentCommand {
                 continue
             }
 
+            // If queueMode=all, batch any queued prompts gathered while a run was active
+            let batchedPrompt = trimmed
+
             do {
                 try await self.performChatTurn(
-                    trimmed,
+                    batchedPrompt,
                     agentService: agentService,
                     sessionId: &activeSessionId,
-                    requestedModel: requestedModel
+                    requestedModel: requestedModel,
+                    queueMode: queueMode
                 )
             } catch {
                 self.printAgentExecutionError(error.localizedDescription)
@@ -142,7 +153,8 @@ extension AgentCommand {
         _ agentService: PeekabooAgentService,
         requestedModel: LanguageModel?,
         initialPrompt: String?,
-        capabilities: TerminalCapabilities
+        capabilities: TerminalCapabilities,
+        queueMode: QueueMode
     ) async throws {
         var activeSessionId: String?
         do {
@@ -155,6 +167,7 @@ extension AgentCommand {
         let chatUI = AgentChatUI(
             modelDescription: self.describeModel(requestedModel),
             sessionId: activeSessionId,
+            queueMode: queueMode,
             helpLines: self.chatHelpLines
         )
 
@@ -188,16 +201,26 @@ extension AgentCommand {
                 continue
             }
 
+            // For queueMode=all, batch any queued prompts into this turn
+            let batchedPrompt: String
+            if queueMode == .all {
+                let extras = chatUI.drainQueuedPrompts()
+                batchedPrompt = ([trimmed] + extras).joined(separator: "\n\n")
+            } else {
+                batchedPrompt = trimmed
+            }
+
             chatUI.beginRun(prompt: trimmed)
             let tuiDelegate = AgentChatEventDelegate(ui: chatUI)
 
             let sessionForRun = activeSessionId
             currentRun = Task { @MainActor in
                 try await self.runAgentTurnForTUI(
-                    trimmed,
+                    batchedPrompt,
                     agentService: agentService,
                     sessionId: sessionForRun,
                     requestedModel: requestedModel,
+                    queueMode: queueMode,
                     delegate: tuiDelegate
                 )
             }
@@ -226,6 +249,7 @@ extension AgentCommand {
         agentService: PeekabooAgentService,
         sessionId: String?,
         requestedModel: LanguageModel?,
+        queueMode: QueueMode,
         delegate: any AgentEventDelegate
     ) async throws -> AgentExecutionResult {
         if let existingSessionId = sessionId {
@@ -235,6 +259,7 @@ extension AgentCommand {
                 model: requestedModel,
                 maxSteps: self.resolvedMaxSteps,
                 dryRun: self.dryRun,
+                queueMode: queueMode,
                 eventDelegate: delegate,
                 verbose: self.verbose
             )
@@ -246,6 +271,7 @@ extension AgentCommand {
             sessionId: nil,
             model: requestedModel,
             dryRun: self.dryRun,
+            queueMode: queueMode,
             eventDelegate: delegate,
             verbose: self.verbose
         )
@@ -284,7 +310,8 @@ extension AgentCommand {
         _ input: String,
         agentService: PeekabooAgentService,
         sessionId: inout String?,
-        requestedModel: LanguageModel?
+        requestedModel: LanguageModel?,
+        queueMode: QueueMode
     ) async throws {
         let startingSessionId = sessionId
         let runTask = Task { () throws -> AgentExecutionResult in
@@ -297,6 +324,7 @@ extension AgentCommand {
                     model: requestedModel,
                     maxSteps: self.resolvedMaxSteps,
                     dryRun: self.dryRun,
+                    queueMode: queueMode,
                     eventDelegate: streamingDelegate,
                     verbose: self.verbose
                 )
@@ -307,7 +335,8 @@ extension AgentCommand {
                     agentService,
                     task: input,
                     requestedModel: requestedModel,
-                    maxSteps: self.resolvedMaxSteps
+                    maxSteps: self.resolvedMaxSteps,
+                    queueMode: queueMode
                 )
             }
         }
