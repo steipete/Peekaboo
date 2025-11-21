@@ -106,13 +106,14 @@ extension AgentCommand {
         self.printChatHelpIntro()
 
         if let seed = initialPrompt {
-                try await self.performChatTurn(
-                    seed,
-                    agentService: agentService,
-                    sessionId: &activeSessionId,
-                    requestedModel: requestedModel,
-                    queueMode: queueMode
-                )
+            try await self.performChatTurn(
+                seed,
+                agentService: agentService,
+                sessionId: &activeSessionId,
+                requestedModel: requestedModel,
+                queueMode: queueMode,
+                queuedWhileRunning: &queuedWhileRunning
+            )
         }
 
         while true {
@@ -311,16 +312,27 @@ extension AgentCommand {
         agentService: PeekabooAgentService,
         sessionId: inout String?,
         requestedModel: LanguageModel?,
-        queueMode: QueueMode
+        queueMode: QueueMode,
+        queuedWhileRunning: inout [String]
     ) async throws {
         let startingSessionId = sessionId
         let runTask = Task { () throws -> AgentExecutionResult in
+            // Batch queued prompts when queueMode is all
+            let batchedInput: String
+            if queueMode == .all {
+                let extras = queuedWhileRunning
+                queuedWhileRunning.removeAll()
+                batchedInput = ([input] + extras).joined(separator: "\n\n")
+            } else {
+                batchedInput = input
+            }
+
             if let existingSessionId = startingSessionId {
-                let outputDelegate = self.makeDisplayDelegate(for: input)
+                let outputDelegate = self.makeDisplayDelegate(for: batchedInput)
                 let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)
                 let result = try await agentService.continueSession(
                     sessionId: existingSessionId,
-                    userMessage: input,
+                    userMessage: batchedInput,
                     model: requestedModel,
                     maxSteps: self.resolvedMaxSteps,
                     dryRun: self.dryRun,
@@ -333,7 +345,7 @@ extension AgentCommand {
             } else {
                 return try await self.executeAgentTask(
                     agentService,
-                    task: input,
+                    task: batchedInput,
                     requestedModel: requestedModel,
                     maxSteps: self.resolvedMaxSteps,
                     queueMode: queueMode
