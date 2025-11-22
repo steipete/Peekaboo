@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import MCP
 import PeekabooFoundation
 import TachikomaMCP
@@ -193,6 +194,7 @@ private enum MCPToolTestHelpers {
 private final class MockAutomationService: UIAutomationServiceProtocol {
     private let accessibilityGranted: Bool
     var lastCadence: TypingCadence?
+    var lastClickTarget: ClickTarget?
 
     init(accessibilityGranted: Bool) {
         self.accessibilityGranted = accessibilityGranted
@@ -204,7 +206,9 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         throw PeekabooError.notImplemented("mock detectElements")
     }
 
-    func click(target _: ClickTarget, clickType _: ClickType, sessionId _: String?) async throws {}
+    func click(target: ClickTarget, clickType _: ClickType, sessionId _: String?) async throws {
+        self.lastClickTarget = target
+    }
 
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, sessionId _: String?) async
     throws {}
@@ -462,6 +466,130 @@ struct MCPToolErrorHandlingTests {
             #expect(milliseconds == 25)
         } else {
             Issue.record("Expected linear cadence, got \(cadence)")
+        }
+    }
+
+    @Test("Type tool falls back to latest session when session is omitted")
+    func typeToolUsesLatestSessionWhenMissingSessionId() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+
+        try await MCPToolTestHelpers.withContext(automation: automation) {
+            // Older session that should NOT be picked
+            let oldSession = await UISessionManager.shared.createSession()
+            await oldSession.setUIElements([
+                UIElement(
+                    id: "old",
+                    elementId: "old",
+                    role: "textField",
+                    title: "Old",
+                    label: "Old",
+                    value: nil,
+                    description: nil,
+                    help: nil,
+                    roleDescription: nil,
+                    identifier: "old-id",
+                    frame: CGRect(x: 0, y: 0, width: 10, height: 10),
+                    isActionable: true),
+            ])
+
+            // Ensure timestamps differ
+            try await Task.sleep(nanoseconds: 1_000_000)
+
+            // Newest session that should be selected by fallback
+            let newSession = await UISessionManager.shared.createSession()
+            let targetElement = UIElement(
+                id: "new",
+                elementId: "new",
+                role: "textField",
+                title: "Target",
+                label: "Target",
+                value: nil,
+                description: nil,
+                help: nil,
+                roleDescription: nil,
+                identifier: "target-field",
+                frame: CGRect(x: 50, y: 50, width: 20, height: 20),
+                isActionable: true)
+            await newSession.setUIElements([targetElement])
+
+            let tool = TypeTool()
+            let response = try await tool.execute(arguments: ToolArguments(raw: [
+                "on": targetElement.id,
+                "text": "hi",
+            ]))
+
+            #expect(response.isError == false)
+
+            // Cleanup
+            await UISessionManager.shared.removeSession(id: oldSession.id)
+            await UISessionManager.shared.removeSession(id: newSession.id)
+        }
+    }
+
+    @Test("Click tool falls back to latest session when session is omitted")
+    func clickToolUsesLatestSessionWhenMissingSessionId() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+
+        try await MCPToolTestHelpers.withContext(automation: automation) {
+            // Older session should be ignored
+            let oldSession = await UISessionManager.shared.createSession()
+            await oldSession.setUIElements([
+                UIElement(
+                    id: "old",
+                    elementId: "old",
+                    role: "button",
+                    title: "Old",
+                    label: "Old",
+                    value: nil,
+                    description: nil,
+                    help: nil,
+                    roleDescription: nil,
+                    identifier: "old-id",
+                    frame: CGRect(x: 0, y: 0, width: 10, height: 10),
+                    isActionable: true),
+            ])
+
+            try await Task.sleep(nanoseconds: 1_000_000)
+
+            // Newest session should be used
+            let newSession = await UISessionManager.shared.createSession()
+            let targetElement = UIElement(
+                id: "new",
+                elementId: "new",
+                role: "button",
+                title: "Target",
+                label: "Target",
+                value: nil,
+                description: nil,
+                help: nil,
+                roleDescription: nil,
+                identifier: "target-button",
+                frame: CGRect(x: 100, y: 200, width: 40, height: 20),
+                isActionable: true)
+            await newSession.setUIElements([targetElement])
+
+            let tool = ClickTool()
+            let response = try await tool.execute(arguments: ToolArguments(raw: [
+                "on": targetElement.id,
+            ]))
+
+            #expect(response.isError == false)
+
+            let lastClick = await MainActor.run { automation.lastClickTarget }
+            guard let clickTarget = lastClick else {
+                Issue.record("Expected automation click to be invoked")
+                return
+            }
+            switch clickTarget {
+            case let .coordinates(point):
+                #expect(Int(point.x) == 120)
+                #expect(Int(point.y) == 210)
+            default:
+                Issue.record("Expected coordinate click target")
+            }
+
+            await UISessionManager.shared.removeSession(id: oldSession.id)
+            await UISessionManager.shared.removeSession(id: newSession.id)
         }
     }
 }
