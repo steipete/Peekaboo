@@ -56,6 +56,20 @@ jobs:
             git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
           fi
 
+      - name: Compute SwiftPM cache key (PeekabooCore)
+        id: cache-key-core
+        env:
+          CACHE_PREFIX: ${{ runner.os }}-spm-core-
+        run: |
+          set -euo pipefail
+          if [ -f Core/PeekabooCore/Package.resolved ]; then
+            HASH=$(shasum Core/PeekabooCore/Package.resolved | awk '{print $1}')
+          else
+            echo "Package.resolved missing, falling back to commit SHA"
+            HASH=${GITHUB_SHA}
+          fi
+          echo "key=${CACHE_PREFIX}${HASH}" >> "$GITHUB_OUTPUT"
+
       - name: Cache SwiftPM (PeekabooCore)
         uses: actions/cache@v4
         with:
@@ -63,7 +77,7 @@ jobs:
             ~/.swiftpm
             ~/.cache/org.swift.swiftpm
             Core/PeekabooCore/.build
-          key: ${{ runner.os }}-spm-core-${{ hashFiles('Core/PeekabooCore/Package.resolved') }}
+          key: ${{ steps.cache-key-core.outputs.key }}
           restore-keys: |
             ${{ runner.os }}-spm-core-
 
@@ -144,6 +158,20 @@ jobs:
             git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
           fi
 
+      - name: Compute SwiftPM cache key (CLI)
+        id: cache-key-cli
+        env:
+          CACHE_PREFIX: ${{ runner.os }}-spm-cli-
+        run: |
+          set -euo pipefail
+          if [ -f Apps/CLI/Package.resolved ]; then
+            HASH=$(shasum Apps/CLI/Package.resolved | awk '{print $1}')
+          else
+            echo "Package.resolved missing, falling back to commit SHA"
+            HASH=${GITHUB_SHA}
+          fi
+          echo "key=${CACHE_PREFIX}${HASH}" >> "$GITHUB_OUTPUT"
+
       - name: Cache SwiftPM (CLI)
         uses: actions/cache@v4
         with:
@@ -151,7 +179,7 @@ jobs:
             ~/.swiftpm
             ~/.cache/org.swift.swiftpm
             Apps/CLI/.build
-          key: ${{ runner.os }}-spm-cli-${{ hashFiles('Apps/CLI/Package.resolved') }}
+          key: ${{ steps.cache-key-cli.outputs.key }}
           restore-keys: |
             ${{ runner.os }}-spm-cli-
 
@@ -237,6 +265,20 @@ jobs:
             git clone --branch approachable-concurrency --depth 1 https://github.com/steipete/swift-argument-parser.git /Users/steipete/Projects/swift-argument-parser
           fi
 
+      - name: Compute SwiftPM cache key (Tachikoma)
+        id: cache-key-tachikoma
+        env:
+          CACHE_PREFIX: ${{ runner.os }}-spm-tachikoma-
+        run: |
+          set -euo pipefail
+          if [ -f Tachikoma/Package.resolved ]; then
+            HASH=$(shasum Tachikoma/Package.resolved | awk '{print $1}')
+          else
+            echo "Package.resolved missing, falling back to commit SHA"
+            HASH=${GITHUB_SHA}
+          fi
+          echo "key=${CACHE_PREFIX}${HASH}" >> "$GITHUB_OUTPUT"
+
       - name: Cache SwiftPM (Tachikoma)
         uses: actions/cache@v4
         with:
@@ -244,7 +286,7 @@ jobs:
             ~/.swiftpm
             ~/.cache/org.swift.swiftpm
             Tachikoma/.build
-          key: ${{ runner.os }}-spm-tachikoma-${{ hashFiles('Tachikoma/Package.resolved') }}
+          key: ${{ steps.cache-key-tachikoma.outputs.key }}
           restore-keys: |
             ${{ runner.os }}-spm-tachikoma-
 
