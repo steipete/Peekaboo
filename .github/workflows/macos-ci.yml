@@ -285,10 +285,59 @@ jobs:
         run: |
           "$SWIFT_BIN" test --filter unit
 
+  mac-apps:
+    name: Build macOS apps (Peekaboo + Inspector)
+    runs-on: macos-latest
+    needs: [peekaboo-cli, tachikoma]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Select Xcode 26.1.1 (if present) or fallback to default
+        run: |
+          set -euo pipefail
+          for candidate in /Applications/Xcode_26.1.1.app /Applications/Xcode_26.1.app /Applications/Xcode.app; do
+            if [[ -d "$candidate" ]]; then
+              sudo xcode-select -s "$candidate"
+              echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
+              break
+            fi
+          done
+          /usr/bin/xcodebuild -version
+
+      - name: Install Swift 6.2 toolchain
+        run: |
+          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain" ]; then
+            curl -L "${SWIFT_TOOLCHAIN_URL}" -o /tmp/swift-toolchain.pkg
+            sudo installer -pkg /tmp/swift-toolchain.pkg -target /
+          fi
+
+      - name: Build Peekaboo app (Xcode)
+        working-directory: Apps
+        run: |
+          xcodebuild -workspace Peekaboo.xcworkspace \
+            -scheme Peekaboo \
+            -configuration Debug \
+            -sdk macosx \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath /tmp/DerivedData-Peekaboo
+
+      - name: Build Inspector app (Xcode)
+        working-directory: Apps/PeekabooInspector
+        run: |
+          xcodebuild -project Inspector.xcodeproj \
+            -scheme Inspector \
+            -configuration Debug \
+            -sdk macosx \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath /tmp/DerivedData-Inspector
+
   lint:
     name: SwiftLint (core + CLI)
     runs-on: macos-latest
-    needs: [peekaboo-cli, tachikoma]
+    needs: [peekaboo-cli, tachikoma, mac-apps]
     steps:
       - uses: actions/checkout@v4
 
