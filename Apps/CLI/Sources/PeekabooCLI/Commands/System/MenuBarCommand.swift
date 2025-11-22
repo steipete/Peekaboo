@@ -1,4 +1,5 @@
 import AXorcist
+import CoreGraphics
 import Commander
 import Foundation
 import PeekabooCore
@@ -55,9 +56,6 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
     @Flag(help: "Include raw debug fields (window owner/layer) in JSON output")
     var includeRawDebug: Bool = false
-
-    @Flag(help: "Include raw debug fields (window owner/layer) in JSON output")
-    var includeRawDebug: Bool = false
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -94,7 +92,10 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         let startTime = Date()
 
         do {
-            let menuBarItems = try await MenuServiceBridge.listMenuBarItems(menu: self.services.menu)
+            self.logger.debug("Listing menu bar items includeRawDebug=\(self.includeRawDebug)")
+            let menuBarItems = try await MenuServiceBridge.listMenuBarItems(
+                menu: self.services.menu,
+                includeRaw: self.includeRawDebug)
 
             if self.jsonOutput {
                 let output = ListJSONOutput(
@@ -105,14 +106,18 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                             raw_title: item.rawTitle,
                             bundle_id: item.bundleIdentifier,
                             owner_name: item.ownerName,
-                            identifier: item.identifier,
-                            ax_identifier: item.axIdentifier,
-                            ax_description: item.axDescription,
-                            index: item.index,
-                            isVisible: item.isVisible,
-                            description: item.description
-                        )
-                    },
+                        identifier: item.identifier,
+                        ax_identifier: item.axIdentifier,
+                        ax_description: item.axDescription,
+                        raw_window_id: item.rawWindowID,
+                        raw_window_layer: item.rawWindowLayer,
+                        raw_owner_pid: item.rawOwnerPID,
+                        raw_source: item.rawSource,
+                    index: item.index,
+                    isVisible: item.isVisible,
+                    description: item.description
+                )
+            },
                     executionTime: Date().timeIntervalSince(startTime)
                 )
                 outputSuccessCodable(data: output, logger: self.outputLogger)
@@ -209,6 +214,10 @@ private struct JSONMenuBarItem: Codable {
     let identifier: String?
     let ax_identifier: String?
     let ax_description: String?
+    let raw_window_id: CGWindowID?
+    let raw_window_layer: Int?
+    let raw_owner_pid: pid_t?
+    let raw_source: String?
     let index: Int
     let isVisible: Bool
     let description: String?
@@ -240,5 +249,6 @@ extension MenuBarCommand: CommanderBindableCommand {
         self.action = try values.decodePositional(0, label: "action")
         self.itemName = try values.decodeOptionalPositional(1, label: "itemName")
         self.index = try values.decodeOption("index", as: Int.self)
+        self.includeRawDebug = values.flag("includeRawDebug")
     }
 }

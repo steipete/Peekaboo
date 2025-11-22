@@ -10,42 +10,6 @@ import CoreGraphics
 import Foundation
 import PeekabooFoundation
 
-// MARK: - CGS private helpers (mirrored from Ice)
-
-private struct CGSWindowListOption: OptionSet {
-    let rawValue: UInt32
-    static let onScreen     = CGSWindowListOption(rawValue: 1 << 0)
-    static let menuBarItems = CGSWindowListOption(rawValue: 1 << 1)
-    static let activeSpace  = CGSWindowListOption(rawValue: 1 << 2)
-}
-
-private func cgsMenuBarWindowIDs(onScreen: Bool = false, activeSpace: Bool = false) -> [CGWindowID] {
-    typealias CGSConnectionID = UInt32
-    typealias CGSMainConnectionFunc = @convention(c) () -> CGSConnectionID
-    typealias CGSCopyWindowsFunc = @convention(c) (CGSConnectionID, Int32, UInt32) -> CFArray?
-
-    guard
-        let cgHandle = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW),
-        let mainConnSym = dlsym(cgHandle, "CGSMainConnectionID"),
-        let copyWinSym = dlsym(cgHandle, "CGSCopyWindowsWithOptions")
-    else {
-        return []
-    }
-
-    let mainConnection = unsafeBitCast(mainConnSym, to: CGSMainConnectionFunc.self)
-    let copyWindows = unsafeBitCast(copyWinSym, to: CGSCopyWindowsFunc.self)
-
-    let cid = mainConnection()
-    var opts: CGSWindowListOption = .menuBarItems
-    if onScreen { opts.insert(.onScreen) }
-    if activeSpace { opts.insert(.activeSpace) }
-
-    guard let raw = copyWindows(cid, 0, opts.rawValue) as? [UInt32] else {
-        return []
-    }
-    return raw.map { CGWindowID($0) }
-}
-
 @MainActor
 extension MenuService {
     public func clickMenuExtra(title: String) async throws {
@@ -91,14 +55,15 @@ extension MenuService {
 
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
         let axExtras = self.getMenuBarItemsViaAccessibility()
-        let windowExtras = self.getMenuBarItemsViaWindows()
+        let appAXExtras = self.getMenuBarItemsFromAppsAX()
+        let windowExtras = self.enrichWindowExtrasWithAXHitTest(self.getMenuBarItemsViaWindows())
         let controlCenterExtras = self.getMenuBarItemsFromControlCenterAX()
         return Self.mergeMenuExtras(
-            accessibilityExtras: axExtras,
+            accessibilityExtras: axExtras + appAXExtras,
             fallbackExtras: windowExtras + controlCenterExtras)
     }
 
-    public func listMenuBarItems() async throws -> [MenuBarItemInfo] {
+    public func listMenuBarItems(includeRaw: Bool = false) async throws -> [MenuBarItemInfo] {
         let extras = try await listMenuExtras()
 
         return extras.indexed().map { index, extra in
@@ -114,7 +79,11 @@ extension MenuService {
                 frame: CGRect(origin: extra.position, size: .zero),
                 identifier: extra.identifier,
                 axIdentifier: extra.identifier,
-                axDescription: extra.rawTitle)
+                axDescription: extra.rawTitle,
+                rawWindowID: includeRaw ? extra.windowID : nil,
+                rawWindowLayer: includeRaw ? extra.windowLayer : nil,
+                rawOwnerPID: includeRaw ? extra.ownerPID : nil,
+                rawSource: includeRaw ? extra.source : nil)
         }
     }
 
@@ -125,7 +94,7 @@ extension MenuService {
                 elementDescription: "Menu bar item: \(name)",
                 location: nil)
         } catch {
-            let items = try await listMenuBarItems()
+            let items = try await listMenuBarItems(includeRaw: false)
             let normalizedName = normalizedMenuTitle(name)
 
             if let item = items.first(where: { titlesMatch(
@@ -221,10 +190,12 @@ extension MenuService {
 
         // Preferred path: CGS menuBarItems window list (private API, mirrored from Ice).
         let cgsIDs = cgsMenuBarWindowIDs(onScreen: true, activeSpace: true)
-        self.logger.debug("CGS menuBarItems returned \(cgsIDs.count) ids")
-        if !cgsIDs.isEmpty {
+        let legacyIDs = cgsProcessMenuBarWindowIDs(onScreenOnly: true)
+        let combinedIDs = Array(Set(cgsIDs + legacyIDs))
+        self.logger.debug("CGS menuBarItems returned \(cgsIDs.count) ids; processMenuBar returned \(legacyIDs.count); combined \(combinedIDs.count)")
+        if !combinedIDs.isEmpty {
             // Use CGWindow metadata per window ID to resolve owner/bundle.
-            for id in cgsIDs {
+            for id in combinedIDs {
                 if let item = self.makeMenuExtra(from: id) {
                     items.append(item)
                 } else {
@@ -281,6 +252,24 @@ extension MenuService {
         var bundleID: String?
         if let app = NSRunningApplication(processIdentifier: ownerPID) {
             bundleID = app.bundleIdentifier
+            // If window title is empty, prefer localized app name for display.
+            if windowTitle.isEmpty, let appName = app.localizedName {
+                return MenuExtraInfo(
+                    title: self.makeMenuExtraDisplayName(
+                        rawTitle: appName,
+                        ownerName: appName,
+                        bundleIdentifier: bundleID),
+                    rawTitle: windowTitle.isEmpty ? appName : windowTitle,
+                    bundleIdentifier: bundleID,
+                    ownerName: appName,
+                    position: CGPoint(x: x + width / 2, y: y + height / 2),
+                    isVisible: true,
+                    identifier: bundleID ?? windowTitle,
+                    windowID: windowID,
+                    windowLayer: windowLayer,
+                    ownerPID: ownerPID,
+                    source: info == nil ? "cgs" : "cgwindow")
+            }
         }
 
         if bundleID == "com.apple.finder", windowTitle.isEmpty {
@@ -298,7 +287,11 @@ extension MenuService {
             ownerName: ownerName,
             position: CGPoint(x: x + width / 2, y: y + height / 2),
             isVisible: true,
-            identifier: bundleID ?? windowTitle)
+            identifier: bundleID ?? windowTitle,
+            windowID: windowID,
+            windowLayer: windowLayer,
+            ownerPID: ownerPID,
+            source: info == nil ? "cgs" : "cgwindow")
     }
 
     /// Attempt to pull status items hosted inside Control Center/system UI via accessibility.
@@ -367,7 +360,8 @@ extension MenuService {
                     ownerName: host.localizedName,
                     position: position,
                     isVisible: true,
-                    identifier: identifier)
+                    identifier: identifier,
+                    source: "ax-control-center")
                 items.append(info)
             }
         }
@@ -426,7 +420,130 @@ extension MenuService {
                 ownerName: nil,
                 position: position,
                 isVisible: true,
-                identifier: identifier)
+                identifier: identifier,
+                source: "ax-menubar")
+        }
+    }
+
+    /// Sweep AX trees of all running apps to find menu bar/status items that expose AX titles or identifiers.
+    private func getMenuBarItemsFromAppsAX() -> [MenuExtraInfo] {
+        let running = NSWorkspace.shared.runningApplications
+        var results: [MenuExtraInfo] = []
+        let commonMenuTitles: Set<String> = [
+            "apple", "file", "edit", "view", "window", "help", "history", "bookmarks", "navigate", "tab", "tools",
+            "cut", "copy", "paste", "format"
+        ]
+
+        func collectElements(from element: Element, depth: Int = 0, limit: Int = 4) -> [Element] {
+            if depth > limit { return [] }
+            var list: [Element] = []
+            if let children = element.children() {
+                for child in children {
+                    list.append(child)
+                    list.append(contentsOf: collectElements(from: child, depth: depth + 1, limit: limit))
+                }
+            }
+            return list
+        }
+
+        for app in running {
+            let axApp = AXApp(app).element
+            let candidates = collectElements(from: axApp)
+            for extra in candidates {
+                let role = extra.role() ?? ""
+                let subrole = extra.subrole() ?? ""
+                let isStatusLike = role == "AXStatusItem" || subrole == "AXStatusItem" || subrole == "AXMenuExtra"
+                if !isStatusLike { continue }
+
+                let baseTitle = extra.title() ?? extra.help() ?? extra.descriptionText() ?? ""
+                let identifier = extra.identifier()
+                let nonPlaceholder = !isPlaceholderMenuTitle(baseTitle) || (identifier?.isEmpty == false)
+                guard nonPlaceholder else { continue }
+
+                // Prefer stable identifier/help over child-derived titles to avoid menu-item leakage.
+                var effectiveTitle: String = sanitizedMenuText(identifier)
+                    ?? sanitizedMenuText(extra.help())
+                    ?? sanitizedMenuText(baseTitle)
+                    ?? baseTitle
+
+                // Fallbacks to app name when placeholder/short/common menu words.
+                if isPlaceholderMenuTitle(effectiveTitle) ||
+                    effectiveTitle.count <= 2 ||
+                    commonMenuTitles.contains(effectiveTitle.lowercased()) {
+                    effectiveTitle = app.localizedName ?? effectiveTitle
+                }
+
+                let position = extra.position() ?? .zero
+                // Restrict to top-of-screen positions to avoid stray elements.
+                if position != .zero && position.y > 100 { continue }
+
+                // Avoid duplicating children of a status item: require that this element itself is status-like.
+                let childrenRoles = (extra.children() ?? []).compactMap { $0.role() }
+                if !isStatusLike && childrenRoles.contains(where: { $0 == "AXMenuItem" }) {
+                    continue
+                }
+
+                let info = MenuExtraInfo(
+                    title: self.makeMenuExtraDisplayName(
+                        rawTitle: effectiveTitle,
+                        ownerName: app.localizedName,
+                        bundleIdentifier: app.bundleIdentifier,
+                        identifier: identifier),
+                    rawTitle: baseTitle,
+                    bundleIdentifier: app.bundleIdentifier,
+                    ownerName: app.localizedName,
+                    position: position,
+                    isVisible: true,
+                    identifier: identifier,
+                    ownerPID: app.processIdentifier,
+                    source: "ax-app")
+                results.append(info)
+            }
+        }
+
+        return results
+    }
+
+    /// Hit-test window extras to attach AX identifiers/titles when CGS gives only placeholders.
+    private func enrichWindowExtrasWithAXHitTest(_ extras: [MenuExtraInfo]) -> [MenuExtraInfo] {
+        return extras.map { extra in
+            guard extra.identifier == nil || isPlaceholderMenuTitle(extra.title) || isPlaceholderMenuTitle(extra.rawTitle),
+                  extra.position != .zero
+            else { return extra }
+
+            guard let hit = Element.elementAtPoint(extra.position) else {
+                return extra
+            }
+
+            let role = hit.role() ?? ""
+            let subrole = hit.subrole() ?? ""
+            let isStatusLike = role == "AXStatusItem" || subrole == "AXStatusItem" || subrole == "AXMenuExtra"
+            if !isStatusLike { return extra }
+
+                let hitTitle = sanitizedMenuText(hit.identifier())
+                    ?? sanitizedMenuText(hit.help())
+                    ?? sanitizedMenuText(hit.title())
+                    ?? hit.descriptionText()
+                    ?? extra.title
+                    ?? extra.rawTitle
+            let hitIdentifier = hit.identifier() ?? extra.identifier
+
+            return MenuExtraInfo(
+                title: self.makeMenuExtraDisplayName(
+                    rawTitle: hitTitle,
+                    ownerName: extra.ownerName,
+                    bundleIdentifier: extra.bundleIdentifier,
+                    identifier: hitIdentifier),
+                rawTitle: hitTitle,
+                bundleIdentifier: extra.bundleIdentifier,
+                ownerName: extra.ownerName,
+                position: extra.position,
+                isVisible: extra.isVisible,
+                identifier: hitIdentifier,
+                windowID: extra.windowID,
+                windowLayer: extra.windowLayer,
+                ownerPID: extra.ownerPID,
+                source: extra.source ?? "cgs-hit")
         }
     }
 
@@ -640,7 +757,11 @@ extension MenuExtraInfo {
             ownerName: self.ownerName ?? candidate.ownerName,
             position: self.preferredPosition(comparedTo: candidate),
             isVisible: self.isVisible || candidate.isVisible,
-            identifier: self.identifier ?? candidate.identifier)
+            identifier: self.identifier ?? candidate.identifier,
+            windowID: self.windowID ?? candidate.windowID,
+            windowLayer: self.windowLayer ?? candidate.windowLayer,
+            ownerPID: self.ownerPID ?? candidate.ownerPID,
+            source: self.source ?? candidate.source)
     }
 
     private static func preferredTitle(primary: MenuExtraInfo, secondary: MenuExtraInfo) -> String? {

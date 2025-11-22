@@ -883,7 +883,7 @@ final class StubMenuService: MenuServiceProtocol {
         self.menuExtras
     }
 
-    func listMenuBarItems() async throws -> [MenuBarItemInfo] {
+    func listMenuBarItems(includeRaw: Bool) async throws -> [MenuBarItemInfo] {
         []
     }
 

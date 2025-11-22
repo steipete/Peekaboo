@@ -45,8 +45,9 @@ public protocol MenuServiceProtocol: Sendable {
     func listMenuExtras() async throws -> [MenuExtraInfo]
 
     /// List all menu bar items (status items) - compatibility method
+    /// - Parameter includeRaw: Include raw debug metadata (window/layer/owner) if available.
     /// - Returns: Array of menu bar item information
-    func listMenuBarItems() async throws -> [MenuBarItemInfo]
+    func listMenuBarItems(includeRaw: Bool) async throws -> [MenuBarItemInfo]
 
     /// Click a menu bar item by name - compatibility method
     /// - Parameter name: Name of the menu bar item
@@ -225,6 +226,18 @@ public struct MenuBarItemInfo: Sendable, Codable {
     /// AXDescription or help text, if available.
     public let axDescription: String?
 
+    /// Raw window ID (CGS/CGWindow) if requested for debugging.
+    public let rawWindowID: CGWindowID?
+
+    /// Raw window layer if available (e.g., 24/25 for menu extras).
+    public let rawWindowLayer: Int?
+
+    /// Owning process ID for the backing window, if known.
+    public let rawOwnerPID: pid_t?
+
+    /// Source used to collect the item (e.g., "cgs", "cgwindow", "ax-control-center").
+    public let rawSource: String?
+
     public init(
         title: String?,
         index: Int,
@@ -236,7 +249,11 @@ public struct MenuBarItemInfo: Sendable, Codable {
         frame: CGRect? = nil,
         identifier: String? = nil,
         axIdentifier: String? = nil,
-        axDescription: String? = nil)
+        axDescription: String? = nil,
+        rawWindowID: CGWindowID? = nil,
+        rawWindowLayer: Int? = nil,
+        rawOwnerPID: pid_t? = nil,
+        rawSource: String? = nil)
     {
         self.title = title
         self.rawTitle = rawTitle
@@ -249,6 +266,10 @@ public struct MenuBarItemInfo: Sendable, Codable {
         self.identifier = identifier
         self.axIdentifier = axIdentifier
         self.axDescription = axDescription
+        self.rawWindowID = rawWindowID
+        self.rawWindowLayer = rawWindowLayer
+        self.rawOwnerPID = rawOwnerPID
+        self.rawSource = rawSource
     }
 }
 
@@ -275,6 +296,18 @@ public struct MenuExtraInfo: Sendable {
     /// Optional accessibility identifier for the extra, if known.
     public let identifier: String?
 
+    /// Raw CGWindow ID backing the menu extra if available.
+    public let windowID: CGWindowID?
+
+    /// Raw window layer (e.g., 24/25) if available.
+    public let windowLayer: Int?
+
+    /// Owning process ID backing the menu extra, if known.
+    public let ownerPID: pid_t?
+
+    /// Source used to collect the item (cgs, cgwindow, ax-control-center, ax-menubar).
+    public let source: String?
+
     public init(
         title: String,
         rawTitle: String? = nil,
@@ -282,7 +315,11 @@ public struct MenuExtraInfo: Sendable {
         ownerName: String? = nil,
         position: CGPoint,
         isVisible: Bool = true,
-        identifier: String? = nil)
+        identifier: String? = nil,
+        windowID: CGWindowID? = nil,
+        windowLayer: Int? = nil,
+        ownerPID: pid_t? = nil,
+        source: String? = nil)
     {
         self.title = title
         self.rawTitle = rawTitle
@@ -291,5 +328,9 @@ public struct MenuExtraInfo: Sendable {
         self.position = position
         self.isVisible = isVisible
         self.identifier = identifier
+        self.windowID = windowID
+        self.windowLayer = windowLayer
+        self.ownerPID = ownerPID
+        self.source = source
     }
 }

@@ -586,9 +586,11 @@ enum MenuServiceBridge {
         }.value
     }
 
-    static func listMenuBarItems(menu: any MenuServiceProtocol) async throws -> [MenuBarItemInfo] {
+    static func listMenuBarItems(menu: any MenuServiceProtocol, includeRaw: Bool = false) async throws
+        -> [MenuBarItemInfo]
+    {
         try await Task { @MainActor in
-            try await menu.listMenuBarItems()
+            try await menu.listMenuBarItems(includeRaw: includeRaw)
         }.value
     }
 

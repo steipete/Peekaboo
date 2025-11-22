@@ -62,3 +62,9 @@ Observed:
 Result: PASS/FAIL
 Notes: <details>
 ```
+
+### Latest menubar scan (2025-11-22)
+- Built CLI: `Apps/CLI/.build/release/peekaboo` (includes raw-debug flag + CGS bridges).
+- Command: `peekaboo menubar list --json-output --include-raw-debug --log-level debug`.
+- Output (post-filtering): 23 items. Trimmy now appears once (title “Trimmy”, source `ax-app`, raw_title “Cut”), CGS items remain Control Center/Notification Center only.
+- Implication: We surfaced Trimmy via AX status sweep, but CGS still can’t see it. Need to improve title fidelity (use identifier/help) and confirm we’re not just picking a menu child. Continue hit-test/AX correlation.
