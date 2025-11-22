@@ -12,7 +12,15 @@ struct ConfigGuidanceSnapshotTests {
             .map { $0.replacingOccurrences(of: "{path}", with: "/tmp/config.json") }
             .joined(separator: "\n")
 
-        let snapshot = try String(contentsOfFile: "Apps/CLI/Tests/CLIAutomationTests/__snapshots__/config_init.txt")
+        guard let snapshotURL = Bundle.module.url(
+            forResource: "config_init",
+            withExtension: "txt"
+        ) else {
+            Issue.record("Snapshot file config_init.txt not found in test bundle")
+            return
+        }
+
+        let snapshot = try String(contentsOf: snapshotURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         #expect(rendered.trimmingCharacters(in: .whitespacesAndNewlines) == snapshot)
     }

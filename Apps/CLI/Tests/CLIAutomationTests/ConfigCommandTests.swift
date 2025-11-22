@@ -22,12 +22,16 @@ struct ConfigCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("PEEKABOO_CONFIG_NONINTERACTIVE", "1", 1)
+        setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", "1", 1)
         #if DEBUG
         PeekabooCore.ConfigurationManager.shared.resetForTesting()
         #endif
 
         defer {
             unsetenv("PEEKABOO_CONFIG_DIR")
+            unsetenv("PEEKABOO_CONFIG_NONINTERACTIVE")
+            unsetenv("PEEKABOO_CONFIG_DISABLE_MIGRATION")
             #if DEBUG
             PeekabooCore.ConfigurationManager.shared.resetForTesting()
             #endif
@@ -48,15 +52,19 @@ struct ConfigCommandTests {
 
         // Check subcommands
         let subcommands = command.commandDescription.subcommands
-        #expect(subcommands.count == 10)
+        #expect(subcommands.count == 12)
         let hasInit = subcommands.contains { $0 == ConfigCommand.InitCommand.self }
         #expect(hasInit)
+        let hasAdd = subcommands.contains { $0 == ConfigCommand.AddCommand.self }
+        #expect(hasAdd)
         let hasShow = subcommands.contains { $0 == ConfigCommand.ShowCommand.self }
         #expect(hasShow)
         let hasEdit = subcommands.contains { $0 == ConfigCommand.EditCommand.self }
         #expect(hasEdit)
         let hasValidate = subcommands.contains { $0 == ConfigCommand.ValidateCommand.self }
         #expect(hasValidate)
+        let hasLogin = subcommands.contains { $0 == ConfigCommand.LoginCommand.self }
+        #expect(hasLogin)
         let hasSetCredential = subcommands.contains { $0 == ConfigCommand.SetCredentialCommand.self }
         #expect(hasSetCredential)
         let hasAddProvider = subcommands.contains { $0 == ConfigCommand.AddProviderCommand.self }
@@ -195,13 +203,7 @@ struct ConfigCommandTests {
     func validateMalformedConfig() async throws {
         try await self.withTempConfigDir { dir in
             let badConfig = dir.appendingPathComponent("config.json")
-            try """
-            {
-              "aiProviders": {
-                "providers": "openai/gpt-5.1",
-              }
-            }
-            """.write(to: badConfig, atomically: true, encoding: .utf8)
+            try "{ invalid json".write(to: badConfig, atomically: true, encoding: .utf8)
 
             var command = ConfigCommand.ValidateCommand()
             await #expect(throws: (any Error).self) {

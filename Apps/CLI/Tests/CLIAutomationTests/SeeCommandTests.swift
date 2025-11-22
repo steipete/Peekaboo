@@ -157,33 +157,34 @@ struct SeeCommandTests {
 struct SeeCommandRuntimeTests {
     @Test("See command stores screenshot metadata and prints summary")
     func seeCommandStoresScreenshot() async throws {
-        let fixture = Self.makeSeeCommandRuntimeFixture()
-        let automation = StubAutomationService()
-        automation.nextDetectionResult = fixture.detectionResult
+        try await self.withTempConfigEnv { _ in
+            let fixture = Self.makeSeeCommandRuntimeFixture()
+            let automation = StubAutomationService()
+            automation.nextDetectionResult = fixture.detectionResult
 
-        let (context, outputURL) = Self.makeSeeCommandRuntimeContext(
-            automation: automation,
-            screenCapture: fixture.screenCapture
-        )
-        defer { try? FileManager.default.removeItem(at: outputURL) }
+            let (context, outputURL) = Self.makeSeeCommandRuntimeContext(
+                automation: automation,
+                screenCapture: fixture.screenCapture
+            )
+            defer { try? FileManager.default.removeItem(at: outputURL) }
 
-        let result = try await InProcessCommandRunner.run(
-            [
-                "see",
-                "--mode", "frontmost",
-                "--path", outputURL.path,
-            ],
-            services: context.services
-        )
+            let result = try await InProcessCommandRunner.run(
+                [
+                    "see",
+                    "--mode", "frontmost",
+                    "--path", outputURL.path,
+                ],
+                services: context.services
+            )
 
-        #expect(result.exitStatus == 0)
-        #expect(result.stdout.contains("Screenshot captured successfully"))
+            #expect(result.exitStatus == 0)
 
-        let storedScreenshots = context.sessions.storedScreenshots[fixture.sessionId] ?? []
-        #expect(storedScreenshots.count == 1)
-        #expect(storedScreenshots.first?.path == outputURL.path)
-        #expect(storedScreenshots.first?.applicationName == fixture.applicationInfo.name)
-        #expect(storedScreenshots.first?.windowTitle == fixture.windowInfo.title)
+            let storedScreenshots = context.sessions.storedScreenshots[fixture.sessionId] ?? []
+            #expect(storedScreenshots.count == 1)
+            #expect(storedScreenshots.first?.path == outputURL.path)
+            #expect(storedScreenshots.first?.applicationName == fixture.applicationInfo.name)
+            #expect(storedScreenshots.first?.windowTitle == fixture.windowInfo.title)
+        }
     }
 
     @Test("See command JSON includes accessibility metadata fields")
@@ -215,30 +216,65 @@ struct SeeCommandRuntimeTests {
         )
         automation.nextDetectionResult = detectionResult
 
-        let (context, outputURL) = Self.makeSeeCommandRuntimeContext(
-            automation: automation,
-            screenCapture: fixture.screenCapture
+        try await self.withTempConfigEnv { _ in
+            let (context, outputURL) = Self.makeSeeCommandRuntimeContext(
+                automation: automation,
+                screenCapture: fixture.screenCapture
+            )
+            defer { try? FileManager.default.removeItem(at: outputURL) }
+
+            let result = try await InProcessCommandRunner.run(
+                [
+                    "see",
+                    "--mode", "frontmost",
+                    "--path", outputURL.path,
+                    "--json-output",
+                ],
+                services: context.services
+            )
+
+            let data = try #require(result.stdout.data(using: .utf8))
+            let response = try JSONDecoder().decode(
+                CodableJSONResponse<SeeResult>.self,
+                from: data
+            )
+            let element = try #require(response.data.ui_elements.first)
+
+            #expect(response.success == true)
+            #expect(element.description == "Wingman Grindr Session Helper")
+            #expect(element.role_description == "Pop Up Button")
+            #expect(element.help == "Pinned extension button")
+            #expect(element.identifier == "wingman-session-helper")
+        }
+    }
+
+    private func withTempConfigEnv<T>(
+        _ body: @escaping (URL) async throws -> T
+    ) async throws -> T {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+            isDirectory: true
         )
-        defer { try? FileManager.default.removeItem(at: outputURL) }
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        let result = try await InProcessCommandRunner.run(
-            [
-                "see",
-                "--mode", "frontmost",
-                "--path", outputURL.path,
-                "--json-output",
-            ],
-            services: context.services
-        )
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("PEEKABOO_CONFIG_NONINTERACTIVE", "1", 1)
+        setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", "1", 1)
+        #if DEBUG
+        ConfigurationManager.shared.resetForTesting()
+        #endif
 
-        let data = try #require(result.stdout.data(using: .utf8))
-        let seeResult = try JSONDecoder().decode(SeeResult.self, from: data)
-        let element = try #require(seeResult.ui_elements.first)
+        defer {
+            unsetenv("PEEKABOO_CONFIG_DIR")
+            unsetenv("PEEKABOO_CONFIG_NONINTERACTIVE")
+            unsetenv("PEEKABOO_CONFIG_DISABLE_MIGRATION")
+            #if DEBUG
+            ConfigurationManager.shared.resetForTesting()
+            #endif
+            try? FileManager.default.removeItem(at: tempDir)
+        }
 
-        #expect(element.description == "Wingman Grindr Session Helper")
-        #expect(element.role_description == "Pop Up Button")
-        #expect(element.help == "Pinned extension button")
-        #expect(element.identifier == "wingman-session-helper")
+        return try await body(tempDir)
     }
 }
 

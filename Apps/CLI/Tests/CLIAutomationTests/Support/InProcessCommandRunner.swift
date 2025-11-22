@@ -1,6 +1,13 @@
 import Foundation
+import Darwin
 import PeekabooCore
 @testable import PeekabooCLI
+
+private actor InProcessRunGate {
+    func run<T>(_ operation: @Sendable () async throws -> T) async rethrows -> T {
+        try await operation()
+    }
+}
 
 struct CommandRunResult {
     let stdout: String
@@ -36,25 +43,31 @@ struct CommandExecutionError: Error, CustomStringConvertible {
 }
 
 enum InProcessCommandRunner {
+    private static let gate = InProcessRunGate()
+
     static func run(
         _ arguments: [String],
         services: PeekabooServices,
         spaceService: (any SpaceCommandSpaceService)? = nil
     ) async throws -> CommandRunResult {
-        try await CommandRuntime.withInjectedServices(services) {
-            if let spaceService {
-                try await SpaceCommandEnvironment.withSpaceService(spaceService) {
+        try await self.gate.run {
+            try await CommandRuntime.withInjectedServices(services) {
+                if let spaceService {
+                    try await SpaceCommandEnvironment.withSpaceService(spaceService) {
+                        try await self.execute(arguments: arguments)
+                    }
+                } else {
                     try await self.execute(arguments: arguments)
                 }
-            } else {
-                try await self.execute(arguments: arguments)
             }
         }
     }
 
     /// Run the CLI using the default shared services (no overrides).
     static func runWithSharedServices(_ arguments: [String]) async throws -> CommandRunResult {
-        try await self.execute(arguments: arguments)
+        try await self.gate.run {
+            try await self.execute(arguments: arguments)
+        }
     }
 
     /// Convenience helper for tests that rely on the shared service stack and expect specific exit codes.
@@ -97,6 +110,10 @@ enum InProcessCommandRunner {
     private static func redirectOutput(
         _ body: () async throws -> Int32
     ) async throws -> (Int32, Data, Data) {
+        // Prevent writes to closed pipes from crashing the test runner.
+        let previousSigpipeHandler = signal(SIGPIPE, SIG_IGN)
+        defer { _ = signal(SIGPIPE, previousSigpipeHandler) }
+
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
 
@@ -111,26 +128,56 @@ enum InProcessCommandRunner {
 
         do {
             let status = try await body()
-            let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            stdoutPipe.fileHandleForReading.closeFile()
-            stderrPipe.fileHandleForReading.closeFile()
             dup2(originalStdout, STDOUT_FILENO)
             dup2(originalStderr, STDERR_FILENO)
             close(originalStdout)
             close(originalStderr)
+
+            let stdoutData = self.drainNonBlocking(stdoutPipe.fileHandleForReading)
+            let stderrData = self.drainNonBlocking(stderrPipe.fileHandleForReading)
+            stdoutPipe.fileHandleForReading.closeFile()
+            stderrPipe.fileHandleForReading.closeFile()
             return (status, stdoutData, stderrData)
         } catch {
-            _ = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-            _ = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            stdoutPipe.fileHandleForReading.closeFile()
-            stderrPipe.fileHandleForReading.closeFile()
             dup2(originalStdout, STDOUT_FILENO)
             dup2(originalStderr, STDERR_FILENO)
             close(originalStdout)
             close(originalStderr)
+
+            _ = self.drainNonBlocking(stdoutPipe.fileHandleForReading)
+            _ = self.drainNonBlocking(stderrPipe.fileHandleForReading)
+            stdoutPipe.fileHandleForReading.closeFile()
+            stderrPipe.fileHandleForReading.closeFile()
             throw error
         }
+    }
+
+    private static func drainNonBlocking(_ handle: FileHandle) -> Data {
+        let fd = handle.fileDescriptor
+        let flags = fcntl(fd, F_GETFL)
+        if flags != -1 {
+            _ = fcntl(fd, F_SETFL, flags | O_NONBLOCK)
+        }
+
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        var data = Data()
+
+        while true {
+            let bytesRead = read(fd, &buffer, buffer.count)
+            if bytesRead > 0 {
+                data.append(buffer, count: bytesRead)
+                continue
+            }
+            if bytesRead == 0 {
+                break // EOF
+            }
+            if errno == EAGAIN || errno == EWOULDBLOCK {
+                break // no more data right now
+            }
+            break // other error; bail out
+        }
+
+        return data
     }
 }
 

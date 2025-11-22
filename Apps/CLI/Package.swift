@@ -85,6 +85,9 @@ if includeAutomationTests {
                 .product(name: "Subprocess", package: "swift-subprocess"),
             ],
             path: "Tests/CLIAutomationTests",
+            resources: [
+                .process("__snapshots__"),
+            ],
             swiftSettings: swiftTestingSettings)
     )
 }

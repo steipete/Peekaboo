@@ -9,6 +9,6 @@ struct AgentCommandBasicTests {
         // Verify the command configuration
         let config = AgentCommand.commandDescription
         #expect(config.commandName == "agent")
-        #expect(config.abstract == "Execute complex automation tasks using AI agent")
+        #expect(config.abstract == "Execute complex automation tasks using the Peekaboo agent")
     }
 }

@@ -433,7 +433,7 @@ extension ImageCommand {
             return try self.selectWindowIndex(from: windows, appIdentifier: identifier)
         } catch let error as PeekabooError {
             switch error {
-            case .permissionDeniedAccessibility, .windowNotFound:
+            case .permissionDeniedAccessibility:
                 self.logger.debug(
                     "Window enumeration unavailable; falling back to capture heuristics",
                     metadata: ["reason": error.localizedDescription]

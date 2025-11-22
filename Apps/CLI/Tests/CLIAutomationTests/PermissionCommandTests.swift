@@ -4,7 +4,7 @@ import Testing
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Permissions Command Tests", .tags(.permissions))
+@Suite("Permissions Command Tests", .serialized, .tags(.permissions))
 struct PermissionCommandTests {
     @Test("permissions command emits JSON with stub statuses")
     func permissionsJSONOutput() async throws {
@@ -24,21 +24,28 @@ struct PermissionCommandTests {
             "--json-output"
         ], services: services)
 
-        let data = Data(result.stdout.utf8)
-        let permissions = try JSONDecoder().decode(
-            [PermissionHelpers.PermissionInfo].self,
-            from: data
+        let output = result.combinedOutput
+        guard let jsonStart = output.firstIndex(where: { $0 == "{" || $0 == "[" }) else {
+            Issue.record("Permissions output did not contain JSON: \(output)")
+            return
+        }
+
+        let jsonString = String(output[jsonStart...])
+        let payload = try JSONDecoder().decode(
+            CodableJSONResponse<[PermissionHelpers.PermissionInfo]>.self,
+            from: Data(jsonString.utf8)
         )
 
-        #expect(permissions.count == 2)
-        if let screenRecording = permissions.first(where: { $0.name == "Screen Recording" }) {
+        #expect(payload.success == true)
+        #expect(payload.data.count == 2)
+        if let screenRecording = payload.data.first(where: { $0.name == "Screen Recording" }) {
             #expect(screenRecording.isGranted == false)
             #expect(screenRecording.isRequired == true)
         } else {
             Issue.record("Missing screen recording entry")
         }
 
-        if let accessibility = permissions.first(where: { $0.name == "Accessibility" }) {
+        if let accessibility = payload.data.first(where: { $0.name == "Accessibility" }) {
             #expect(accessibility.isGranted == false)
             #expect(accessibility.isRequired == false)
         } else {
@@ -64,9 +71,8 @@ struct PermissionCommandTests {
         ], services: services)
 
         let output = result.combinedOutput
-        #expect(output.contains("Screen Recording"))
-        #expect(output.contains("Accessibility"))
-        #expect(output.contains("System Settings > Privacy & Security > Accessibility"))
+        #expect(output.contains("Screen Recording (Required): Granted"))
+        #expect(output.contains("Accessibility (Optional): Not Granted"))
     }
 }
 #endif

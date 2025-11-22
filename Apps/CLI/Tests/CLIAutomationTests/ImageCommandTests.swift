@@ -538,26 +538,26 @@ struct ImageCommandTests {
             screenCapture: captureService
         )
 
-        var command = try ImageCommand.parse([
-            "--app", appName,
-            "--window-title", "Nonexistent",
-            "--path", Self.makeTempCapturePath("notes.png"),
-        ])
-        command.captureFocus = .background
-
-        let runtime = CommandRuntime(
-            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+        let result = try await InProcessCommandRunner.run(
+            [
+                "image",
+                "--app", appName,
+                "--window-title", "Nonexistent",
+                "--capture-focus", "background",
+                "--path", Self.makeTempCapturePath("notes.png"),
+                "--json-output",
+            ],
             services: services
         )
 
-        do {
-            try await command.run(using: runtime)
-            Issue.record("Expected windowNotFound error")
-        } catch PeekabooError.windowNotFound {
-            // expected
-        } catch {
-            Issue.record("Expected windowNotFound, received: \(error)")
-        }
+        #expect(result.exitStatus == 1)
+
+        let response = try JSONDecoder().decode(
+            JSONResponse.self,
+            from: Data(result.combinedOutput.utf8)
+        )
+        #expect(response.success == false)
+        #expect(response.error?.code == ErrorCode.WINDOW_NOT_FOUND.rawValue)
     }
 
     @Test("Skips windows marked non-shareable", .tags(.imageCapture))
@@ -637,22 +637,25 @@ struct ImageCommandTests {
             screenCapture: captureService
         )
 
-        var command = try ImageCommand.parse(["--app", appName, "--path", Self.makeTempCapturePath("overlay.png")])
-        command.captureFocus = .background
-
-        let runtime = CommandRuntime(
-            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+        let result = try await InProcessCommandRunner.run(
+            [
+                "image",
+                "--app", appName,
+                "--capture-focus", "background",
+                "--path", Self.makeTempCapturePath("overlay.png"),
+                "--json-output",
+            ],
             services: services
         )
 
-        do {
-            try await command.run(using: runtime)
-            Issue.record("Expected windowNotFound error")
-        } catch PeekabooError.windowNotFound {
-            // expected
-        } catch {
-            Issue.record("Expected windowNotFound, received: \(error)")
-        }
+        #expect(result.exitStatus == 1)
+
+        let response = try JSONDecoder().decode(
+            JSONResponse.self,
+            from: Data(result.combinedOutput.utf8)
+        )
+        #expect(response.success == false)
+        #expect(response.error?.code == ErrorCode.WINDOW_NOT_FOUND.rawValue)
     }
 
     private static func makeTempCapturePath(_ suffix: String) -> String {
