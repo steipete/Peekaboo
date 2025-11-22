@@ -20,10 +20,7 @@ struct MenuCommandIntegrationTests {
         )
 
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
-        let response = try JSONDecoder().decode(
-            CodableJSONResponse<MenuListData>.self,
-            from: Data(output.utf8)
-        )
+        let response = try self.decodeJSON(CodableJSONResponse<MenuListData>.self, from: output)
 
         #expect(response.success == true)
         #expect(response.data.menu_structure.first?.title == "File")
@@ -56,10 +53,7 @@ struct MenuCommandIntegrationTests {
         )
 
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
-        let response = try JSONDecoder().decode(
-            CodableJSONResponse<MenuClickResult>.self,
-            from: Data(output.utf8)
-        )
+        let response = try self.decodeJSON(CodableJSONResponse<MenuClickResult>.self, from: output)
 
         #expect(response.success == true)
         #expect(response.data.menu_path == "File > New")
@@ -165,3 +159,18 @@ struct MenuCommandIntegrationTests {
     }
 }
 #endif
+
+// MARK: - JSON Helpers
+
+extension MenuCommandIntegrationTests {
+    /// Trim any progress/preamble characters emitted by the test runner and decode from the first JSON token.
+    fileprivate func decodeJSON<T: Decodable>(_ type: T.Type, from output: String) throws -> T {
+        guard let start = output.firstIndex(where: { $0 == "{" || $0 == "[" }) else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: [], debugDescription: "No JSON object found in output: \(output)")
+            )
+        }
+        let json = String(output[start...])
+        return try JSONDecoder().decode(T.self, from: Data(json.utf8))
+    }
+}
