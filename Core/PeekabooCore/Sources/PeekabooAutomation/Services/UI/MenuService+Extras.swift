@@ -188,6 +188,12 @@ extension MenuService {
     private func getMenuBarItemsViaWindows() -> [MenuExtraInfo] {
         var items: [MenuExtraInfo] = []
 
+        // Preferred: call LSUIElement helper (AppKit context) to get WindowServer view like Ice.
+        if let helperItems = self.getMenuBarItemsViaHelper(), !helperItems.isEmpty {
+            self.logger.debug("MenuService helper returned \(helperItems.count) items")
+            return helperItems
+        }
+
         // Preferred path: CGS menuBarItems window list (private API, mirrored from Ice).
         let cgsIDs = cgsMenuBarWindowIDs(onScreen: true, activeSpace: true)
         let legacyIDs = cgsProcessMenuBarWindowIDs(onScreenOnly: true)
@@ -219,6 +225,41 @@ extension MenuService {
             }
         }
 
+        return items
+    }
+
+    /// Invoke the LSUIElement helper (if built) to enumerate menu bar windows from a GUI context.
+    private func getMenuBarItemsViaHelper() -> [MenuExtraInfo]? {
+        let helperPath = "\(FileManager.default.currentDirectoryPath)/Helpers/MenuBarHelper/build/MenubarHelper.app/Contents/MacOS/menubar-helper"
+        guard FileManager.default.isExecutableFile(atPath: helperPath) else {
+            return nil
+        }
+
+        let process = Process()
+        process.launchPath = helperPath
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        do {
+            try process.run()
+        } catch {
+            self.logger.debug("Failed to run menubar helper: \(error.localizedDescription)")
+            return nil
+        }
+
+        process.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let windows = json["windows"] as? [[String: Any]]
+        else { return nil }
+
+        var items: [MenuExtraInfo] = []
+        for windowInfo in windows {
+            guard let windowID = windowInfo["CGSWindowID"] as? UInt32 else { continue }
+            if let item = self.makeMenuExtra(from: CGWindowID(windowID), info: windowInfo) {
+                items.append(item)
+            }
+        }
         return items
     }
 
