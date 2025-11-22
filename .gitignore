@@ -223,6 +223,9 @@ screenshot-*.png
 Screenshot*.png
 capture_*.png
 peekaboo_*.png
+!Apps/Mac/Peekaboo/Assets.xcassets/MenuIcon.imageset/peekaboo_menu_18.png
+!Apps/Mac/Peekaboo/Assets.xcassets/MenuIcon.imageset/peekaboo_menu_36.png
+!Apps/Mac/Peekaboo/Assets.xcassets/MenuIcon.imageset/peekaboo_menu_54.png
 
 # Temporary test files
 test.peekaboo.json
