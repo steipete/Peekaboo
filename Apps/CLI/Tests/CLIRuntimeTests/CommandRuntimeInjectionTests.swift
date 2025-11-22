@@ -53,6 +53,7 @@ final class RecordingPeekabooServices: PeekabooServiceProviding {
     var dialogs: any DialogServiceProtocol { self.base.dialogs }
     var sessions: any SessionManagerProtocol { self.base.sessions }
     var files: any FileServiceProtocol { self.base.files }
+    var clipboard: any ClipboardServiceProtocol { self.base.clipboard }
     var configuration: PeekabooCore.ConfigurationManager { self.base.configuration }
     var process: any ProcessServiceProtocol { self.base.process }
     var permissions: PermissionsService { self.base.permissions }

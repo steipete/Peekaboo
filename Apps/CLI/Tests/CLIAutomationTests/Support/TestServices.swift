@@ -783,6 +783,47 @@ final class StubScreenService: ScreenServiceProtocol {
 }
 
 @MainActor
+final class StubClipboardService: ClipboardServiceProtocol {
+    var current: ClipboardReadResult?
+    var slots: [String: ClipboardReadResult] = [:]
+
+    func get(prefer _: UTType?) throws -> ClipboardReadResult? {
+        self.current
+    }
+
+    func set(_ request: ClipboardWriteRequest) throws -> ClipboardReadResult {
+        guard let primary = request.representations.first else {
+            throw ClipboardServiceError.writeFailed("No representations provided")
+        }
+        let result = ClipboardReadResult(
+            utiIdentifier: primary.utiIdentifier,
+            data: primary.data,
+            textPreview: request.alsoText)
+        self.current = result
+        return result
+    }
+
+    func clear() {
+        self.current = nil
+    }
+
+    func save(slot: String) throws {
+        guard let current else {
+            throw ClipboardServiceError.empty
+        }
+        self.slots[slot] = current
+    }
+
+    func restore(slot: String) throws -> ClipboardReadResult {
+        guard let saved = self.slots[slot] else {
+            throw ClipboardServiceError.slotNotFound(slot)
+        }
+        self.current = saved
+        return saved
+    }
+}
+
+@MainActor
 final class StubMenuService: MenuServiceProtocol {
     var menusByApp: [String: MenuStructure]
     var frontmostMenus: MenuStructure?
@@ -1120,6 +1161,7 @@ enum TestServicesFactory {
         dock: any DockServiceProtocol = StubDockService(),
         sessions: any SessionManagerProtocol = StubSessionManager(),
         files: any FileServiceProtocol = StubFileService(),
+        clipboard: any ClipboardServiceProtocol = StubClipboardService(),
         process: any ProcessServiceProtocol = StubProcessService(),
         screens: [ScreenInfo] = [],
         automation: any UIAutomationServiceProtocol = StubAutomationService(),
@@ -1137,6 +1179,7 @@ enum TestServicesFactory {
             dialogs: dialogs,
             sessions: sessions,
             files: files,
+            clipboard: clipboard,
             process: process,
             permissions: PermissionsService(),
             audioInput: AudioInputService(aiService: PeekabooAIService()),
@@ -1164,6 +1207,7 @@ enum TestServicesFactory {
         dialogs: any DialogServiceProtocol = StubDialogService(),
         dock: any DockServiceProtocol = StubDockService(),
         files: any FileServiceProtocol = StubFileService(),
+        clipboard: any ClipboardServiceProtocol = StubClipboardService(),
         process: any ProcessServiceProtocol = StubProcessService(),
         screens: [ScreenInfo] = [],
         screenCapture: any ScreenCaptureServiceProtocol = StubScreenCaptureService()
@@ -1176,6 +1220,7 @@ enum TestServicesFactory {
             dock: dock,
             sessions: sessions,
             files: files,
+            clipboard: clipboard,
             process: process,
             screens: screens,
             automation: automation,
