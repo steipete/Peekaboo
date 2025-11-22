@@ -10,7 +10,7 @@
     "hostname": "steipete-mbp.localdomain",
     "isActive": true,
     "startTime": "2025-11-22T11:35:16.435Z",
-    "lastHeartbeat": "2025-11-22T11:55:46.580Z"
+    "lastHeartbeat": "2025-11-22T11:58:56.600Z"
   },
   "appInfo": {
     "outputPath": "Apps/PeekabooInspector/.build/debug/PeekabooInspector",
