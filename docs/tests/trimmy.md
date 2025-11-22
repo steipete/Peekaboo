@@ -1,0 +1,64 @@
+# Trimmy Manual Test Plan (with Peekaboo clipboard tool)
+
+Goal: Validate Trimmy’s clipboard flattening via Peekaboo without `peekaboo run`. Use the `peekaboo clipboard` tool for all clipboard interactions.
+
+## Prereqs
+- Peekaboo CLI built at `Apps/CLI/.build/release/peekaboo`.
+- Trimmy running with Accessibility permission.
+- Peekaboo granted Screen Recording + Accessibility.
+- Target app for paste checks: TextEdit.
+- Locate Trimmy menubar index: `peekaboo menubar list --json-output | jq '.items[] | select(.title|contains("Trimmy")) | .index'`
+
+## Manual Steps
+1) Auto-Trim ON (baseline)  
+   - `peekaboo clipboard --action set --text "ls \\\n | wc -l\n"`  
+   - Wait ~0.3s; `peekaboo clipboard --action get` → expect `ls | wc -l`.
+
+2) Auto-Trim OFF path  
+   - `peekaboo menubar click --index <idx>` → `peekaboo click "Auto-Trim"` (toggle off).  
+   - Reseat text as above; wait; `get` should stay multi-line.  
+   - Toggle Auto-Trim back on.
+
+3) Aggressiveness Low vs High  
+   - Open Settings → Aggressiveness tab: menubar click → “Settings…” → “Aggressiveness”.  
+   - Low: `peekaboo click "Low (safer)"`; seed `echo "hi"\nprint status\n`; expect unchanged.  
+   - High: `peekaboo click "High (more eager)"`; reseed; expect single-line `echo "hi" print status`.
+
+4) Box-drawing stripping  
+   - Ensure “Remove box drawing chars” enabled (General tab).  
+   - Seed `│ ls -la \\\n│ | grep foo\n`; expect `ls -la | grep foo`.
+
+5) Keep blank lines  
+   - Enable “Keep blank lines”.  
+   - Seed `echo one\n\necho two\n`; expect blank line preserved.
+
+6) Prompt stripping  
+   - Seed `$ brew install foo\n$ brew update\n`; expect `brew install foo brew update`.
+
+7) Safety valve (>10 lines)  
+   - Seed 12-line blob (e.g., `yes line | head -n 12 | paste -sd '\n'` piping into clipboard set).  
+   - Expect no flattening.
+
+8) Paste Trimmed vs Original  
+   - Frontmost TextEdit: `open -a TextEdit`.  
+   - Seed multi-line command.  
+   - Menubar click → “Paste Trimmed to TextEdit”; verify via `osascript -e 'tell app "TextEdit" to get text of document 1'`.  
+   - Menubar click → “Paste Original …”; verify untrimmed text and clipboard restored (`peekaboo clipboard --action get` matches original).
+
+9) Clipboard slots  
+   - `peekaboo clipboard --action save --slot original`  
+   - `peekaboo clipboard --action set --text "temp"`  
+   - `peekaboo clipboard --action restore --slot original`; `get` should match saved content.
+
+## Debug Log Template
+Append per-run notes here:
+```
+[YYYY-MM-DD HH:MM] Step: <name>
+Commands:
+  peekaboo clipboard --action set --text "..."
+Observed:
+  clipboard get -> "<value>"
+  UI state: Auto-Trim <on/off>, Aggressiveness <Low/Normal/High>
+Result: PASS/FAIL
+Notes: <details>
+```
