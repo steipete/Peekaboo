@@ -52,6 +52,12 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
     @Option(help: "Index of the menu bar item (0-based)")
     var index: Int?
+
+    @Flag(help: "Include raw debug fields (window owner/layer) in JSON output")
+    var includeRawDebug: Bool = false
+
+    @Flag(help: "Include raw debug fields (window owner/layer) in JSON output")
+    var includeRawDebug: Bool = false
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -100,6 +106,8 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                             bundle_id: item.bundleIdentifier,
                             owner_name: item.ownerName,
                             identifier: item.identifier,
+                            ax_identifier: item.axIdentifier,
+                            ax_description: item.axDescription,
                             index: item.index,
                             isVisible: item.isVisible,
                             description: item.description
@@ -199,6 +207,8 @@ private struct JSONMenuBarItem: Codable {
     let bundle_id: String?
     let owner_name: String?
     let identifier: String?
+    let ax_identifier: String?
+    let ax_description: String?
     let index: Int
     let isVisible: Bool
     let description: String?

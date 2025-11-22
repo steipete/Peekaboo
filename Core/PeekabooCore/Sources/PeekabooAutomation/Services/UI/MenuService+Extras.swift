@@ -10,6 +10,42 @@ import CoreGraphics
 import Foundation
 import PeekabooFoundation
 
+// MARK: - CGS private helpers (mirrored from Ice)
+
+private struct CGSWindowListOption: OptionSet {
+    let rawValue: UInt32
+    static let onScreen     = CGSWindowListOption(rawValue: 1 << 0)
+    static let menuBarItems = CGSWindowListOption(rawValue: 1 << 1)
+    static let activeSpace  = CGSWindowListOption(rawValue: 1 << 2)
+}
+
+private func cgsMenuBarWindowIDs(onScreen: Bool = false, activeSpace: Bool = false) -> [CGWindowID] {
+    typealias CGSConnectionID = UInt32
+    typealias CGSMainConnectionFunc = @convention(c) () -> CGSConnectionID
+    typealias CGSCopyWindowsFunc = @convention(c) (CGSConnectionID, Int32, UInt32) -> CFArray?
+
+    guard
+        let cgHandle = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW),
+        let mainConnSym = dlsym(cgHandle, "CGSMainConnectionID"),
+        let copyWinSym = dlsym(cgHandle, "CGSCopyWindowsWithOptions")
+    else {
+        return []
+    }
+
+    let mainConnection = unsafeBitCast(mainConnSym, to: CGSMainConnectionFunc.self)
+    let copyWindows = unsafeBitCast(copyWinSym, to: CGSCopyWindowsFunc.self)
+
+    let cid = mainConnection()
+    var opts: CGSWindowListOption = .menuBarItems
+    if onScreen { opts.insert(.onScreen) }
+    if activeSpace { opts.insert(.activeSpace) }
+
+    guard let raw = copyWindows(cid, 0, opts.rawValue) as? [UInt32] else {
+        return []
+    }
+    return raw.map { CGWindowID($0) }
+}
+
 @MainActor
 extension MenuService {
     public func clickMenuExtra(title: String) async throws {
@@ -56,9 +92,10 @@ extension MenuService {
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
         let axExtras = self.getMenuBarItemsViaAccessibility()
         let windowExtras = self.getMenuBarItemsViaWindows()
+        let controlCenterExtras = self.getMenuBarItemsFromControlCenterAX()
         return Self.mergeMenuExtras(
             accessibilityExtras: axExtras,
-            fallbackExtras: windowExtras)
+            fallbackExtras: windowExtras + controlCenterExtras)
     }
 
     public func listMenuBarItems() async throws -> [MenuBarItemInfo] {
@@ -75,7 +112,9 @@ extension MenuService {
                 bundleIdentifier: extra.bundleIdentifier,
                 ownerName: extra.ownerName,
                 frame: CGRect(origin: extra.position, size: .zero),
-                identifier: extra.identifier)
+                identifier: extra.identifier,
+                axIdentifier: extra.identifier,
+                axDescription: extra.rawTitle)
         }
     }
 
@@ -180,57 +219,157 @@ extension MenuService {
     private func getMenuBarItemsViaWindows() -> [MenuExtraInfo] {
         var items: [MenuExtraInfo] = []
 
+        // Preferred path: CGS menuBarItems window list (private API, mirrored from Ice).
+        let cgsIDs = cgsMenuBarWindowIDs(onScreen: true, activeSpace: true)
+        self.logger.debug("CGS menuBarItems returned \(cgsIDs.count) ids")
+        if !cgsIDs.isEmpty {
+            // Use CGWindow metadata per window ID to resolve owner/bundle.
+            for id in cgsIDs {
+                if let item = self.makeMenuExtra(from: id) {
+                    items.append(item)
+                } else {
+                    self.logger.debug("CGS menu item window \(id) had no metadata")
+                }
+            }
+            return items
+        } else {
+            self.logger.debug("CGS menuBarItems returned 0 ids; falling back to CGWindowList")
+        }
+
+        // Fallback: public CGWindowList heuristics.
         let windowList = CGWindowListCopyWindowInfo(
             [.optionAll, .excludeDesktopElements],
             kCGNullWindowID) as? [[String: Any]] ?? []
 
         for windowInfo in windowList {
-            let windowLayer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
-            guard windowLayer == 25 else { continue }
-
-            guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
-                  let x = boundsDict["X"] as? CGFloat,
-                  let y = boundsDict["Y"] as? CGFloat,
-                  let width = boundsDict["Width"] as? CGFloat,
-                  let height = boundsDict["Height"] as? CGFloat
-            else {
-                continue
+            guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID else { continue }
+            if let item = self.makeMenuExtra(from: windowID, info: windowInfo) {
+                items.append(item)
             }
+        }
 
-            let frame = CGRect(x: x, y: y, width: width, height: height)
-            if x < 0 { continue }
+        return items
+    }
 
-            guard windowInfo[kCGWindowNumber as String] is CGWindowID,
-                  let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t
-            else {
-                continue
+    private func makeMenuExtra(from windowID: CGWindowID, info: [String: Any]? = nil) -> MenuExtraInfo? {
+        let windowInfo: [String: Any]
+        if let info {
+            windowInfo = info
+        } else if let refreshed = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowID) as? [[String: Any]],
+                  let first = refreshed.first {
+            windowInfo = first
+        } else {
+            return nil
+        }
+
+        let windowLayer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
+        if !(windowLayer == 24 || windowLayer == 25) { return nil }
+
+        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+              let x = boundsDict["X"] as? CGFloat,
+              let y = boundsDict["Y"] as? CGFloat,
+              let width = boundsDict["Width"] as? CGFloat,
+              let height = boundsDict["Height"] as? CGFloat
+        else {
+            return nil
+        }
+
+        guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else { return nil }
+        let ownerName = windowInfo[kCGWindowOwnerName as String] as? String ?? "Unknown"
+        let windowTitle = windowInfo[kCGWindowName as String] as? String ?? ""
+
+        var bundleID: String?
+        if let app = NSRunningApplication(processIdentifier: ownerPID) {
+            bundleID = app.bundleIdentifier
+        }
+
+        if bundleID == "com.apple.finder", windowTitle.isEmpty {
+            return nil
+        }
+
+        let titleOrOwner = windowTitle.isEmpty ? ownerName : windowTitle
+        let friendlyTitle = self.makeMenuExtraDisplayName(
+            rawTitle: titleOrOwner, ownerName: ownerName, bundleIdentifier: bundleID)
+
+        return MenuExtraInfo(
+            title: friendlyTitle,
+            rawTitle: titleOrOwner,
+            bundleIdentifier: bundleID,
+            ownerName: ownerName,
+            position: CGPoint(x: x + width / 2, y: y + height / 2),
+            isVisible: true,
+            identifier: bundleID ?? windowTitle)
+    }
+
+    /// Attempt to pull status items hosted inside Control Center/system UI via accessibility.
+    private func getMenuBarItemsFromControlCenterAX() -> [MenuExtraInfo] {
+        let hostBundleIDs = [
+            "com.apple.controlcenter",
+            "com.apple.systemuiserver",
+        ]
+        let hosts = NSWorkspace.shared.runningApplications.filter { app in
+            if let bid = app.bundleIdentifier {
+                return hostBundleIDs.contains(bid)
             }
+            return false
+        }
 
-            let ownerName = windowInfo[kCGWindowOwnerName as String] as? String ?? "Unknown"
-            let windowTitle = windowInfo[kCGWindowName as String] as? String ?? ""
-
-            var bundleID: String?
-            if let app = NSRunningApplication(processIdentifier: ownerPID) {
-                bundleID = app.bundleIdentifier
+        func collectElements(from element: Element, depth: Int = 0, limit: Int = 6) -> [Element] {
+            if depth > limit { return [] }
+            var results: [Element] = []
+            if let children = element.children() {
+                for child in children {
+                    results.append(child)
+                    results.append(contentsOf: collectElements(from: child, depth: depth + 1, limit: limit))
+                }
             }
+            return results
+        }
 
-            if bundleID == "com.apple.finder", windowTitle.isEmpty {
-                continue
+        var items: [MenuExtraInfo] = []
+
+        for host in hosts {
+            let axApp = AXApp(host).element
+            let candidates = collectElements(from: axApp)
+            for extra in candidates {
+                let baseTitle = extra.title() ?? extra.help() ?? extra.descriptionText() ?? "Unknown"
+                let identifier = extra.identifier()
+                let hasIdentifier = identifier?.isEmpty == false
+                let hasNonPlaceholderTitle = !isPlaceholderMenuTitle(baseTitle)
+                if !hasIdentifier && !hasNonPlaceholderTitle {
+                    continue
+                }
+
+                var effectiveTitle = baseTitle
+                if isPlaceholderMenuTitle(effectiveTitle),
+                   let children = extra.children()
+                {
+                    if let childDerived = children
+                        .compactMap({ sanitizedMenuText($0.title()) ?? sanitizedMenuText($0.descriptionText()) })
+                        .first(where: { !isPlaceholderMenuTitle($0) })
+                    {
+                        effectiveTitle = childDerived
+                    } else if let ident = sanitizedMenuText(identifier), !ident.isEmpty {
+                        effectiveTitle = ident
+                    }
+                }
+
+                let position = extra.position() ?? .zero
+
+                let info = MenuExtraInfo(
+                    title: self.makeMenuExtraDisplayName(
+                        rawTitle: effectiveTitle,
+                        ownerName: host.localizedName,
+                        bundleIdentifier: host.bundleIdentifier,
+                        identifier: identifier),
+                    rawTitle: baseTitle,
+                    bundleIdentifier: host.bundleIdentifier,
+                    ownerName: host.localizedName,
+                    position: position,
+                    isVisible: true,
+                    identifier: identifier)
+                items.append(info)
             }
-
-            let titleOrOwner = windowTitle.isEmpty ? ownerName : windowTitle
-            let friendlyTitle = self.makeMenuExtraDisplayName(
-                rawTitle: titleOrOwner, ownerName: ownerName, bundleIdentifier: bundleID)
-
-            let item = MenuExtraInfo(
-                title: friendlyTitle,
-                rawTitle: titleOrOwner,
-                bundleIdentifier: bundleID,
-                ownerName: ownerName,
-                position: CGPoint(x: frame.midX, y: frame.midY),
-                isVisible: true)
-
-            items.append(item)
         }
 
         return items
@@ -243,13 +382,21 @@ extension MenuService {
             return []
         }
 
-        let menuBarItems = menuBar.children() ?? []
-        guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
-            return []
+        func flattenExtras(_ element: Element) -> [Element] {
+            guard let children = element.children() else { return [] }
+            var results: [Element] = []
+            for child in children {
+                if child.role() == "AXMenuBarItem" || child.role() == "AXGroup" {
+                    results.append(child)
+                }
+                results.append(contentsOf: flattenExtras(child))
+            }
+            return results
         }
 
-        let extras = menuExtrasGroup.children() ?? []
-        return extras.compactMap { extra in
+        let candidates = flattenExtras(menuBar)
+
+        return candidates.compactMap { extra in
             let baseTitle = extra.title() ?? extra.help() ?? extra.descriptionText() ?? "Unknown"
             var effectiveTitle = baseTitle
             if isPlaceholderMenuTitle(effectiveTitle),
@@ -260,6 +407,9 @@ extension MenuService {
                     .first(where: { !isPlaceholderMenuTitle($0) })
                 {
                     effectiveTitle = childDerived
+                }
+                else if let ident = sanitizedMenuText(extra.identifier()), !ident.isEmpty {
+                    effectiveTitle = ident
                 }
             }
             let position = extra.position() ?? .zero
@@ -287,7 +437,10 @@ extension MenuService {
         var merged = [MenuExtraInfo]()
 
         func upsert(_ extra: MenuExtraInfo) {
-            if let index = merged.firstIndex(where: { $0.position.distance(to: extra.position) < 5 }) {
+            let bothHavePosition = extra.position != .zero && merged.first(where: { $0.position != .zero }) != nil
+            if bothHavePosition,
+               let index = merged.firstIndex(where: { $0.position.distance(to: extra.position) < 5 })
+            {
                 merged[index] = merged[index].merging(with: extra)
             } else {
                 merged.append(extra)

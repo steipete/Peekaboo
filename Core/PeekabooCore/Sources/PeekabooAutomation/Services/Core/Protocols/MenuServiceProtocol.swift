@@ -219,6 +219,12 @@ public struct MenuBarItemInfo: Sendable, Codable {
     /// Accessibility identifier or other stable identifier if available.
     public let identifier: String?
 
+    /// AXIdentifier, if available from accessibility traversal.
+    public let axIdentifier: String?
+
+    /// AXDescription or help text, if available.
+    public let axDescription: String?
+
     public init(
         title: String?,
         index: Int,
@@ -228,7 +234,9 @@ public struct MenuBarItemInfo: Sendable, Codable {
         bundleIdentifier: String? = nil,
         ownerName: String? = nil,
         frame: CGRect? = nil,
-        identifier: String? = nil)
+        identifier: String? = nil,
+        axIdentifier: String? = nil,
+        axDescription: String? = nil)
     {
         self.title = title
         self.rawTitle = rawTitle
@@ -239,6 +247,8 @@ public struct MenuBarItemInfo: Sendable, Codable {
         self.description = description
         self.frame = frame
         self.identifier = identifier
+        self.axIdentifier = axIdentifier
+        self.axDescription = axDescription
     }
 }
 
