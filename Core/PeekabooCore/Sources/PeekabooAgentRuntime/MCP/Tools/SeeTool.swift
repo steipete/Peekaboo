@@ -617,6 +617,10 @@ actor UISession {
         self.lastAccessedAt = Date()
     }
 
+    func markAccessed() {
+        self.lastAccessedAt = Date()
+    }
+
     func getElement(byId id: String) -> UIElement? {
         self.uiElements.first { $0.id == id }
     }
@@ -643,8 +647,29 @@ actor UISessionManager {
         return session
     }
 
-    func getSession(id: String) -> UISession? {
-        self.sessions[id]
+    func getSession(id: String) async -> UISession? {
+        guard let session = self.sessions[id] else { return nil }
+        await session.markAccessed()
+        return session
+    }
+
+    func getMostRecentSession() async -> UISession? {
+        var newest: (session: UISession, lastAccessed: Date)?
+
+        for session in self.sessions.values {
+            let accessed = await session.lastAccessedAt
+            if let current = newest {
+                if accessed > current.lastAccessed {
+                    newest = (session, accessed)
+                }
+            } else {
+                newest = (session, accessed)
+            }
+        }
+
+        guard let session = newest?.session else { return nil }
+        await session.markAccessed()
+        return session
     }
 
     func removeSession(id: String) {

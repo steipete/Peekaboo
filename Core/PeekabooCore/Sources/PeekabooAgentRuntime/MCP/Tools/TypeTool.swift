@@ -81,9 +81,7 @@ public struct TypeTool: MCPTool {
             return await UISessionManager.shared.getSession(id: sessionId)
         }
 
-        // Get most recent session
-        // For now, return nil - in a real implementation we'd track the most recent session
-        return nil
+        return await UISessionManager.shared.getMostRecentSession()
     }
 
     private func parseRequest(arguments: ToolArguments) throws -> TypeRequest {
