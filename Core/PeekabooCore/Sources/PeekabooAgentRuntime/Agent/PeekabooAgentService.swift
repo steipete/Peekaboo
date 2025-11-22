@@ -280,7 +280,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 maxSteps: maxSteps,
                 streamingDelegate: streamingDelegate,
                 queueMode: queueMode,
-                pendingUserMessages: [],
                 eventHandler: eventHandler)
 
             // Send completion event with usage information
@@ -488,7 +487,6 @@ extension PeekabooAgentService {
                 maxSteps: maxSteps,
                 streamingDelegate: streamingDelegate,
                 queueMode: queueMode,
-                pendingUserMessages: [],
                 eventHandler: eventHandler)
 
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))

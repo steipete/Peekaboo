@@ -106,14 +106,15 @@ final class AgentChatUI {
     private let header: Text
     private let sessionLine: Text
     private let helpLines: [String]
+    private let queueMode: QueueMode
     private let queueContainer = Container()
     private let queuePreview = Text(text: "", paddingX: 1, paddingY: 0)
 
-    // Palette for consistent styling
-    private let accentBlue = MarkdownComponent.Foreground(red: 90, green: 160, blue: 255)
-    private let successGreen = MarkdownComponent.Foreground(red: 80, green: 180, blue: 120)
-    private let failureRed = MarkdownComponent.Foreground(red: 220, green: 90, blue: 90)
-    private let thinkingGray = MarkdownComponent.Foreground(red: 150, green: 150, blue: 150)
+    // Palette for consistent styling (ANSI colors)
+    private let accentBlue = AnsiStyling.color(39)
+    private let successGreen = AnsiStyling.color(82)
+    private let failureRed = AnsiStyling.color(203)
+    private let thinkingGray = AnsiStyling.color(246)
 
     private var promptContinuation: AsyncStream<String>.Continuation?
     private var loader: Loader?
@@ -128,8 +129,10 @@ final class AgentChatUI {
         self.tui = TUI(terminal: ProcessTerminal())
         self.sessionId = sessionId
         self.helpLines = helpLines
+        self.queueMode = queueMode
+        let queueLabel = queueMode == .all ? "all" : "one-at-a-time"
         self.header = Text(
-            text: "Interactive agent chat – model: \(modelDescription) • queue: \(queueMode == .all ? \"all\" : \"one-at-a-time\")",
+            text: "Interactive agent chat – model: \(modelDescription) • queue: \(queueLabel)",
             paddingX: 1,
             paddingY: 0
         )
@@ -205,7 +208,7 @@ final class AgentChatUI {
         self.loader = nil
         if let sessionId {
             self.sessionId = sessionId
-            self.sessionLine.text = AgentChatUI.sessionDescription(for: sessionId)
+            self.sessionLine.text = AgentChatUI.sessionDescription(for: sessionId, queueMode: self.queueMode)
         }
         let summary = self.summaryLine(for: result)
         let summaryComponent = Text(text: summary, paddingX: 1, paddingY: 0)
@@ -272,7 +275,7 @@ final class AgentChatUI {
         let component = MarkdownComponent(
             text: "*\(content)*",
             padding: .init(horizontal: 1, vertical: 0),
-            foreground: self.thinkingGray
+            defaultTextStyle: .init(color: self.thinkingGray)
         )
         self.thinkingBlocks.append(component)
         self.messages.addChild(component)
@@ -317,8 +320,11 @@ final class AgentChatUI {
         self.tui.requestRender()
     }
 
-    private func colorLine(_ text: String, color: MarkdownComponent.Foreground) -> MarkdownComponent {
-        MarkdownComponent(text: text, padding: .init(horizontal: 1, vertical: 0), foreground: color)
+    private func colorLine(_ text: String, color: @escaping AnsiStyling.Style) -> MarkdownComponent {
+        MarkdownComponent(
+            text: text,
+            padding: .init(horizontal: 1, vertical: 0),
+            defaultTextStyle: .init(color: color))
     }
 
     private func removeLoader() {
@@ -386,6 +392,13 @@ final class AgentChatUI {
         let next = self.queuedPrompts.removeFirst()
         self.updateQueuePreview()
         self.dispatchPrompt(next)
+    }
+
+    func drainQueuedPrompts() -> [String] {
+        let queued = self.queuedPrompts
+        self.queuedPrompts.removeAll()
+        self.updateQueuePreview()
+        return queued
     }
 
     private func dispatchPrompt(_ text: String) {

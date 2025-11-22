@@ -31,6 +31,7 @@ struct EnhancedErrorIntegrationTests {
             "Run shell command 'nonexistentcommand123 --help'",
             maxSteps: 10,
             dryRun: false,
+            queueMode: .oneAtATime,
             eventDelegate: delegate
         )
 
@@ -63,6 +64,7 @@ struct EnhancedErrorIntegrationTests {
             "Launch app 'Safary'", // Typo
             maxSteps: 10,
             dryRun: false,
+            queueMode: .oneAtATime,
             eventDelegate: delegate
         )
 
@@ -94,6 +96,7 @@ struct EnhancedErrorIntegrationTests {
             "Click on 'NonExistentButton123'",
             maxSteps: 10,
             dryRun: false,
+            queueMode: .oneAtATime,
             eventDelegate: delegate
         )
 
@@ -125,6 +128,7 @@ struct EnhancedErrorIntegrationTests {
             "Type 'Hello World' without clicking anywhere first",
             maxSteps: 10,
             dryRun: false,
+            queueMode: .oneAtATime,
             eventDelegate: delegate
         )
 
@@ -158,6 +162,7 @@ struct EnhancedErrorIntegrationTests {
             "Press hotkey 'cmd+shift+a'", // Wrong format
             maxSteps: 10,
             dryRun: false,
+            queueMode: .oneAtATime,
             eventDelegate: delegate
         )
 

@@ -90,6 +90,7 @@ extension AgentCommand {
         capabilities: TerminalCapabilities,
         queueMode: QueueMode
     ) async throws {
+        var queuedWhileRunning: [String] = []
         var activeSessionId: String?
         do {
             activeSessionId = try await self.initialChatSessionId(agentService)
@@ -140,7 +141,8 @@ extension AgentCommand {
                     agentService: agentService,
                     sessionId: &activeSessionId,
                     requestedModel: requestedModel,
-                    queueMode: queueMode
+                    queueMode: queueMode,
+                    queuedWhileRunning: &queuedWhileRunning
                 )
             } catch {
                 self.printAgentExecutionError(error.localizedDescription)
@@ -316,16 +318,14 @@ extension AgentCommand {
         queuedWhileRunning: inout [String]
     ) async throws {
         let startingSessionId = sessionId
+        var batchedInput = input
+        if queueMode == .all {
+            let extras = queuedWhileRunning
+            queuedWhileRunning.removeAll()
+            batchedInput = ([input] + extras).joined(separator: "\n\n")
+        }
+
         let runTask = Task { () throws -> AgentExecutionResult in
-            // Batch queued prompts when queueMode is all
-            let batchedInput: String
-            if queueMode == .all {
-                let extras = queuedWhileRunning
-                queuedWhileRunning.removeAll()
-                batchedInput = ([input] + extras).joined(separator: "\n\n")
-            } else {
-                batchedInput = input
-            }
 
             if let existingSessionId = startingSessionId {
                 let outputDelegate = self.makeDisplayDelegate(for: batchedInput)

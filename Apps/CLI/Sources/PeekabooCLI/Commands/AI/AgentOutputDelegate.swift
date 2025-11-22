@@ -97,9 +97,9 @@ extension AgentOutputDelegate {
         self.currentTool = name
         self.toolStartTimes[name] = Date()
         self.toolCallCount += 1
-        self.lastToolArguments[name] = args
 
         let args = parseArguments(arguments)
+        self.lastToolArguments[name] = args
         let (formatter, toolType) = self.toolFormatter(for: name)
 
         var displayName = toolType?.displayName ?? name.replacingOccurrences(of: "_", with: " ").capitalized
