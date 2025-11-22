@@ -171,6 +171,11 @@ extension MenuCommandIntegrationTests {
             )
         }
         let json = String(output[start...])
-        return try JSONDecoder().decode(T.self, from: Data(json.utf8))
+        do {
+            return try JSONDecoder().decode(T.self, from: Data(json.utf8))
+        } catch {
+            Issue.record("Failed to decode JSON.\nRaw output:\n\(output)")
+            throw error
+        }
     }
 }
