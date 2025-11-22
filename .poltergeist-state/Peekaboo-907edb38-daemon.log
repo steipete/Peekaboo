@@ -2625,3 +2625,51 @@ Last output:
 2025-11-22T11:46:56.514Z DEBUG: State updated for Playground.app
 2025-11-22T11:46:56.514Z DEBUG: Created temp file for Inspector.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Inspector.app.state.48258.6d24497b3b76338d.tmp
 2025-11-22T11:46:56.514Z DEBUG: State updated for Inspector.app
+2025-11-22T11:47:06.512Z DEBUG: Created temp file for Peekaboo: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Peekaboo.state.48258.acbb0a25705f9722.tmp
+2025-11-22T11:47:06.513Z DEBUG: State updated for Peekaboo
+2025-11-22T11:47:06.513Z DEBUG: Created temp file for Commander: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Commander.state.48258.1d0a6915cbb12998.tmp
+2025-11-22T11:47:06.513Z DEBUG: State updated for Commander
+2025-11-22T11:47:06.513Z DEBUG: Created temp file for AXorcist: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-AXorcist.state.48258.586a681c1c3b2b51.tmp
+2025-11-22T11:47:06.514Z DEBUG: State updated for AXorcist
+2025-11-22T11:47:06.514Z DEBUG: Created temp file for Tachikoma: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Tachikoma.state.48258.c4055c4a36c6480b.tmp
+2025-11-22T11:47:06.514Z DEBUG: State updated for Tachikoma
+2025-11-22T11:47:06.514Z DEBUG: Created temp file for TauTUI: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-TauTUI.state.48258.d32d1505cc41b6e5.tmp
+2025-11-22T11:47:06.515Z DEBUG: State updated for TauTUI
+2025-11-22T11:47:06.515Z DEBUG: Created temp file for Peekaboo.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Peekaboo.app.state.48258.2fa97fe583f1f1b8.tmp
+2025-11-22T11:47:06.515Z DEBUG: State updated for Peekaboo.app
+2025-11-22T11:47:06.515Z DEBUG: Created temp file for Playground.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Playground.app.state.48258.21fa8ed3b74a056e.tmp
+2025-11-22T11:47:06.516Z DEBUG: State updated for Playground.app
+2025-11-22T11:47:06.516Z DEBUG: Created temp file for Inspector.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Inspector.app.state.48258.d606de01a49f0dcb.tmp
+2025-11-22T11:47:06.516Z DEBUG: State updated for Inspector.app
+2025-11-22T11:47:16.513Z DEBUG: Created temp file for Peekaboo: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Peekaboo.state.48258.b384f16ee020be9c.tmp
+2025-11-22T11:47:16.514Z DEBUG: State updated for Peekaboo
+2025-11-22T11:47:16.514Z DEBUG: Created temp file for Commander: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Commander.state.48258.d7a3a502fbdf2fb5.tmp
+2025-11-22T11:47:16.514Z DEBUG: State updated for Commander
+2025-11-22T11:47:16.514Z DEBUG: Created temp file for AXorcist: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-AXorcist.state.48258.7747e58f6ee728bd.tmp
+2025-11-22T11:47:16.515Z DEBUG: State updated for AXorcist
+2025-11-22T11:47:16.515Z DEBUG: Created temp file for Tachikoma: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Tachikoma.state.48258.d7e6013a384c1226.tmp
+2025-11-22T11:47:16.515Z DEBUG: State updated for Tachikoma
+2025-11-22T11:47:16.516Z DEBUG: Created temp file for TauTUI: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-TauTUI.state.48258.32c258229bf701a1.tmp
+2025-11-22T11:47:16.516Z DEBUG: State updated for TauTUI
+2025-11-22T11:47:16.516Z DEBUG: Created temp file for Peekaboo.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Peekaboo.app.state.48258.ee1da284bf307644.tmp
+2025-11-22T11:47:16.517Z DEBUG: State updated for Peekaboo.app
+2025-11-22T11:47:16.517Z DEBUG: Created temp file for Playground.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Playground.app.state.48258.d76c91cc9712ac9a.tmp
+2025-11-22T11:47:16.517Z DEBUG: State updated for Playground.app
+2025-11-22T11:47:16.517Z DEBUG: Created temp file for Inspector.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Inspector.app.state.48258.98617aba7a49d57f.tmp
+2025-11-22T11:47:16.518Z DEBUG: State updated for Inspector.app
+2025-11-22T11:47:26.515Z DEBUG: Created temp file for Peekaboo: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Peekaboo.state.48258.e5d3e5627aa49e29.tmp
+2025-11-22T11:47:26.515Z DEBUG: State updated for Peekaboo
+2025-11-22T11:47:26.515Z DEBUG: Created temp file for Commander: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Commander.state.48258.c480af62600a3701.tmp
+2025-11-22T11:47:26.516Z DEBUG: State updated for Commander
+2025-11-22T11:47:26.516Z DEBUG: Created temp file for AXorcist: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-AXorcist.state.48258.c76b8042d34c5fbb.tmp
+2025-11-22T11:47:26.516Z DEBUG: State updated for AXorcist
+2025-11-22T11:47:26.517Z DEBUG: Created temp file for Tachikoma: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Tachikoma.state.48258.20073fb6ae662423.tmp
+2025-11-22T11:47:26.517Z DEBUG: State updated for Tachikoma
+2025-11-22T11:47:26.517Z DEBUG: Created temp file for TauTUI: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-TauTUI.state.48258.a9d92892f2143f59.tmp
+2025-11-22T11:47:26.517Z DEBUG: State updated for TauTUI
+2025-11-22T11:47:26.517Z DEBUG: Created temp file for Peekaboo.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Peekaboo.app.state.48258.1209949605b90075.tmp
+2025-11-22T11:47:26.517Z DEBUG: State updated for Peekaboo.app
+2025-11-22T11:47:26.517Z DEBUG: Created temp file for Playground.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Playground.app.state.48258.d4cd7b00fdc6a905.tmp
+2025-11-22T11:47:26.518Z DEBUG: State updated for Playground.app
+2025-11-22T11:47:26.518Z DEBUG: Created temp file for Inspector.app: /Users/steipete/Projects/Peekaboo/.poltergeist-state/.Peekaboo-907edb38-Inspector.app.state.48258.41bde6e1da5213e8.tmp
+2025-11-22T11:47:26.520Z DEBUG: State updated for Inspector.app
