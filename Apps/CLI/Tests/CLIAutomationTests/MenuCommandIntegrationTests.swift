@@ -73,6 +73,31 @@ struct MenuCommandIntegrationTests {
         context: MenuTestContext,
         allowedExitStatuses: Set<Int32> = [0]
     ) async throws -> CommandRunResult {
+        // Point configuration loading at a clean temp dir so stray user configs don't
+        // pollute stdout with validation warnings that break JSON decoding.
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-menu-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempConfig = tempDir.appendingPathComponent("config.json")
+        try "{}".write(to: tempConfig, atomically: true, encoding: .utf8)
+
+        let previousConfigDir = getenv("PEEKABOO_CONFIG_DIR").map { String(cString: $0) }
+        let previousDisableMigration = getenv("PEEKABOO_CONFIG_DISABLE_MIGRATION").map { String(cString: $0) }
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", "1", 1)
+        defer {
+            if let previousConfigDir {
+                setenv("PEEKABOO_CONFIG_DIR", previousConfigDir, 1)
+            } else {
+                unsetenv("PEEKABOO_CONFIG_DIR")
+            }
+            if let previousDisableMigration {
+                setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", previousDisableMigration, 1)
+            } else {
+                unsetenv("PEEKABOO_CONFIG_DISABLE_MIGRATION")
+            }
+        }
+
         let result = try await InProcessCommandRunner.run(arguments, services: context.services)
         try result.validateExitStatus(allowedExitCodes: allowedExitStatuses, arguments: arguments)
         return result

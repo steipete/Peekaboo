@@ -31,3 +31,14 @@ func findApplication(
     let axApp = AXApp(runningApp)
     return (app: axApp.element, runningApp: runningApp)
 }
+
+// MARK: - Error Bridging
+
+/// Commander emits its own `ValidationError` type; bridge it to the shared protocol so
+/// test helpers (and callers) can pattern match on `any ValidationError` uniformly.
+extension Commander.ValidationError: PeekabooFoundation.ValidationError {
+    public var fieldName: String { "input" }
+    public var failedRule: String { self.description }
+    public var invalidValue: String? { nil }
+    public var errorCode: String { "VALIDATION" }
+}

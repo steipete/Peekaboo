@@ -224,7 +224,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         return CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
     }
 
-    private func buildOptions() throws -> CaptureOptions {
+    func buildOptions() throws -> CaptureOptions {
         let duration = max(1, min(self.duration ?? 60, 180))
         let idle = min(max(self.idleFps ?? 2, 0.1), 5)
         let active = min(max(self.activeFps ?? 8, 0.5), 15)
@@ -254,7 +254,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         )
     }
 
-    private func resolveOutputDirectory() throws -> URL {
+    func resolveOutputDirectory() throws -> URL {
         if let path { return URL(fileURLWithPath: path, isDirectory: true) }
         let temp = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("peekaboo")
@@ -443,6 +443,16 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
                 success: true,
                 metadata: ["frames_kept": result.stats.framesKept]
             )
+        } catch let validation as Commander.ValidationError {
+            // Surface validation issues directly so tests can assert on them without the
+            // generic ExitCode wrapper.
+            self.handleError(validation)
+            self.logger.operationComplete(
+                "capture_video",
+                success: false,
+                metadata: ["error": validation.localizedDescription]
+            )
+            throw validation
         } catch {
             self.handleError(error)
             self.logger.operationComplete(
@@ -454,7 +464,7 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
         }
     }
 
-    private func buildOptions() -> CaptureOptions {
+    func buildOptions() -> CaptureOptions {
         let maxFrames = max(self.maxFrames ?? 10000, 1)
         let resolutionCap = self.resolutionCap ?? 1440
         let diffStrategy = CaptureOptions.DiffStrategy(rawValue: self.diffStrategy ?? "fast") ?? .fast
@@ -477,7 +487,7 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
         )
     }
 
-    private func resolveOutputDirectory() throws -> URL {
+    func resolveOutputDirectory() throws -> URL {
         if let path { return URL(fileURLWithPath: path, isDirectory: true) }
         let temp = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("peekaboo")

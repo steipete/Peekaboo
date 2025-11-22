@@ -314,15 +314,17 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
 extension TypeCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.text = try values.decodeOptionalPositional(0, label: "text")
-        self.textOption = values.singleOption("text")
+        // Commander labels options by property name, so prefer that label and fall back to the
+        // custom long name for safety.
+        self.textOption = values.singleOption("textOption") ?? values.singleOption("text")
         self.session = values.singleOption("session")
         if let delay: Int = try values.decodeOption("delay", as: Int.self) {
             self.delay = delay
         }
-        if let wpm: Int = try values.decodeOption("wpm", as: Int.self) {
+        if let wpm: Int = try values.decodeOption("wordsPerMinute", as: Int.self) ?? values.decodeOption("wpm", as: Int.self) {
             self.wordsPerMinute = wpm
         }
-        if let profile = values.singleOption("profile") {
+        if let profile = values.singleOption("profileOption") ?? values.singleOption("profile") {
             self.profileOption = profile
         }
         self.tab = try values.decodeOption("tab", as: Int.self)
