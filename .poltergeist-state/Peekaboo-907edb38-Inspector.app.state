@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "projectPath": "/Users/steipete/Projects/Peekaboo",
+  "projectName": "Peekaboo",
+  "target": "Inspector.app",
+  "targetType": "executable",
+  "configPath": "/Users/steipete/Projects/Peekaboo/.poltergeist.json",
+  "process": {
+    "pid": 48258,
+    "hostname": "steipete-mbp.localdomain",
+    "isActive": true,
+    "startTime": "2025-11-22T11:35:16.435Z",
+    "lastHeartbeat": "2025-11-22T11:46:56.514Z"
+  },
+  "appInfo": {
+    "outputPath": "Apps/PeekabooInspector/.build/debug/PeekabooInspector",
+    "iconPath": "./assets/icon_512x512@2x.png"
+  }
+}

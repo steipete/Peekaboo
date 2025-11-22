@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "projectPath": "/Users/steipete/Projects/Peekaboo",
+  "projectName": "Peekaboo",
+  "target": "AXorcist",
+  "targetType": "test",
+  "configPath": "/Users/steipete/Projects/Peekaboo/.poltergeist.json",
+  "process": {
+    "pid": 48258,
+    "hostname": "steipete-mbp.localdomain",
+    "isActive": true,
+    "startTime": "2025-11-22T11:35:16.433Z",
+    "lastHeartbeat": "2025-11-22T11:46:56.512Z"
+  }
+}

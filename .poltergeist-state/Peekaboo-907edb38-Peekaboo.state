@@ -1,0 +1,58 @@
+{
+  "version": "1.0",
+  "projectPath": "/Users/steipete/Projects/Peekaboo",
+  "projectName": "Peekaboo",
+  "target": "Peekaboo",
+  "targetType": "executable",
+  "configPath": "/Users/steipete/Projects/Peekaboo/.poltergeist.json",
+  "process": {
+    "pid": 48258,
+    "hostname": "steipete-mbp.localdomain",
+    "isActive": true,
+    "startTime": "2025-11-22T11:43:15.750Z",
+    "lastHeartbeat": "2025-11-22T11:46:56.511Z"
+  },
+  "appInfo": {
+    "outputPath": "/Users/steipete/Projects/Peekaboo/peekaboo",
+    "iconPath": "./assets/icon_512x512@2x.png"
+  },
+  "lastBuild": {
+    "targetName": "Peekaboo",
+    "status": "success",
+    "timestamp": "2025-11-22T11:43:17.758Z",
+    "gitHash": "2e039b8e4",
+    "builder": "Executable",
+    "duration": 2010,
+    "buildTime": 2.01
+  },
+  "buildStats": {
+    "successfulBuilds": [
+      {
+        "duration": 2010,
+        "timestamp": "2025-11-22T11:43:17.758Z"
+      }
+    ],
+    "averageDuration": 2010,
+    "minDuration": 2010,
+    "maxDuration": 2010
+  },
+  "postBuildResults": {
+    "Swift tests": {
+      "name": "Swift tests",
+      "status": "success",
+      "summary": "Swift tests: success [1s]",
+      "startedAt": "2025-11-22T11:43:17.759Z",
+      "trigger": "success",
+      "lines": [
+        "􀟈  Test run started.",
+        "􀄵  Testing Library Version: 1400",
+        "􀄵  Target Platform: arm64e-apple-macos14.0",
+        "􁁛  Test run with 0 tests in 0 suites passed after 0.001 seconds.",
+        "[runner] exit 0 in 1.7s"
+      ],
+      "completedAt": "2025-11-22T11:43:19.824Z",
+      "durationMs": 2065,
+      "exitCode": 0
+    }
+  }
+}
