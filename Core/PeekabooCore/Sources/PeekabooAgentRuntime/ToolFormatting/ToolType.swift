@@ -68,6 +68,7 @@ public enum ToolType: String, CaseIterable, Sendable {
 
     case shell
     case wait
+    case clipboard
     case copyToClipboard = "copy_to_clipboard"
     case pasteFromClipboard = "paste_from_clipboard"
     case listSpaces = "list_spaces"
@@ -99,7 +100,8 @@ public enum ToolType: String, CaseIterable, Sendable {
             .dock
         case .findElement, .listElements, .focused:
             .element
-        case .shell, .wait, .copyToClipboard, .pasteFromClipboard, .listSpaces, .switchSpace, .moveWindowToSpace:
+        case .shell, .wait, .clipboard, .copyToClipboard, .pasteFromClipboard, .listSpaces, .switchSpace,
+             .moveWindowToSpace:
             .system
         case .taskCompleted, .needMoreInformation, .needInfo:
             .completion
@@ -159,6 +161,7 @@ public enum ToolType: String, CaseIterable, Sendable {
         case .taskCompleted: "Task Completed"
         case .needMoreInformation: "Need More Information"
         case .needInfo: "Need Information"
+        case .clipboard: "Clipboard"
         case .copyToClipboard: "Copy to Clipboard"
         case .pasteFromClipboard: "Paste from Clipboard"
         case .listSpaces: "List Spaces"

@@ -3,7 +3,8 @@ import Foundation
 import PackageDescription
 
 let packageDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-let infoPlistPath = packageDirectory.appendingPathComponent("Sources/Resources/Info.plist").path
+let infoPlistPath = ProcessInfo.processInfo.environment["PEEKABOO_CLI_INFO_PLIST_PATH"] ??
+    packageDirectory.appendingPathComponent("Sources/Resources/Info.plist").path
 
 let concurrencyBaseSettings: [SwiftSetting] = [
     .enableExperimentalFeature("StrictConcurrency"),

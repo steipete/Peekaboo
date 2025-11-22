@@ -153,6 +153,7 @@ public actor PeekabooMCPServer {
                 MenuTool(context: context),
 
                 // System tools
+                ClipboardTool(context: context),
                 // RunTool(), // Removed: Security risk - allows arbitrary script execution
                 // CleanTool(), // Removed: Internal maintenance tool, not for external use
 

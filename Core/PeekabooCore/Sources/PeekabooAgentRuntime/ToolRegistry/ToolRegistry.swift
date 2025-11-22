@@ -129,6 +129,20 @@ public enum ToolRegistry {
             ],
             agentGuidance: "Use single quotes around the entire command and escape internal " +
                 "quotes when interacting via shells."),
+        "clipboard": ToolOverride(
+            category: .system,
+            abstract: "Read/write the macOS clipboard (text, images, files) with save/restore slots.",
+            discussion: """
+            Use `action: set` with text, filePath/imagePath, or base64+uti to write the clipboard.
+            Use `action: get` to read it (optionally prefer a UTI or write binary to outputPath).
+            `save`/`restore` keep user content safe while automating; `clear` empties the pasteboard.
+            """,
+            examples: [
+                "peekaboo clipboard set --text \"hello world\"",
+                "peekaboo clipboard get --output /tmp/clip.bin",
+                "peekaboo clipboard save --slot original && peekaboo clipboard clear && peekaboo clipboard restore --slot original",
+            ],
+            agentGuidance: "Use save/restore when a workflow might overwrite the user's clipboard."),
     ]
 
     // MARK: - Registry Access
@@ -207,7 +221,7 @@ public enum ToolRegistry {
             .dialog
         case "dock_launch", "list_dock":
             .dock
-        case "shell":
+        case "shell", "clipboard", "copy_to_clipboard", "paste_from_clipboard":
             .system
         case "done", "need_info":
             .completion

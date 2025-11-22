@@ -166,7 +166,8 @@ private enum MCPToolTestHelpers {
                 sessions: services.sessions,
                 screens: services.screens,
                 agent: services.agent,
-                permissions: services.permissions)
+                permissions: services.permissions,
+                clipboard: services.clipboard)
         }
     }
 

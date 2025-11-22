@@ -309,6 +309,12 @@ public class SystemToolFormatter: BaseToolFormatter {
             }
             return "[menu] Pasting from clipboard..."
 
+        case .clipboard:
+            if let action = arguments["action"] as? String {
+                return "[clip] \(action.capitalized) clipboard..."
+            }
+            return "[clip] Working with clipboard..."
+
         default:
             return super.formatStarting(arguments: arguments)
         }
@@ -365,6 +371,9 @@ public class SystemToolFormatter: BaseToolFormatter {
                 return "\(AgentDisplayTokens.Status.failure) Clipboard is empty"
             }
             return "\(AgentDisplayTokens.Status.failure) Failed to paste: \(error)"
+
+        case .clipboard:
+            return "\(AgentDisplayTokens.Status.failure) Clipboard error: \(error)"
 
         default:
             return super.formatError(error: error, result: result)

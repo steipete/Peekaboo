@@ -781,6 +781,7 @@ extension PeekabooAgentService {
         // System tools
         agentTools.append(createPermissionsTool())
         agentTools.append(createSleepTool())
+        agentTools.append(createClipboardTool())
 
         // Shell tool
         agentTools.append(createShellTool())

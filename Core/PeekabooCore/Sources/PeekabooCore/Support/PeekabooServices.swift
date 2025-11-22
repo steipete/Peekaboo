@@ -95,6 +95,9 @@ public final class PeekabooServices {
     /// File system operations service for reading, writing, and manipulating files
     public let files: any FileServiceProtocol
 
+    /// Clipboard service for reading/writing pasteboard contents
+    public let clipboard: any ClipboardServiceProtocol
+
     /// Configuration management for user preferences and API keys
     public let configuration: ConfigurationManager
 
@@ -167,6 +170,9 @@ public final class PeekabooServices {
         self.files = FileService()
         self.logger.debug("\(AgentDisplayTokens.Status.success) FileService initialized")
 
+        self.clipboard = ClipboardService()
+        self.logger.debug("\(AgentDisplayTokens.Status.success) ClipboardService initialized")
+
         self.configuration = ConfigurationManager.shared
         self.logger.debug("\(AgentDisplayTokens.Status.success) ConfigurationManager initialized")
 
@@ -210,6 +216,7 @@ public final class PeekabooServices {
         dialogs: any DialogServiceProtocol,
         sessions: any SessionManagerProtocol,
         files: any FileServiceProtocol,
+        clipboard: any ClipboardServiceProtocol,
         process: any ProcessServiceProtocol,
         permissions: PermissionsService? = nil,
         audioInput: AudioInputService? = nil,
@@ -228,6 +235,7 @@ public final class PeekabooServices {
         self.dialogs = dialogs
         self.sessions = sessions
         self.files = files
+        self.clipboard = clipboard
         self.process = process
         self.permissions = permissions ?? PermissionsService()
         self.audioInput = audioInput ?? AudioInputService(aiService: PeekabooAIService())
@@ -251,6 +259,7 @@ public final class PeekabooServices {
         dialogs: any DialogServiceProtocol,
         sessions: any SessionManagerProtocol,
         files: any FileServiceProtocol,
+        clipboard: any ClipboardServiceProtocol,
         process: any ProcessServiceProtocol,
         permissions: PermissionsService,
         audioInput: AudioInputService,
@@ -268,6 +277,7 @@ public final class PeekabooServices {
         self.dialogs = dialogs
         self.sessions = sessions
         self.files = files
+        self.clipboard = clipboard
         self.process = process
         self.permissions = permissions
         self.audioInput = audioInput

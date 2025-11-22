@@ -14,6 +14,7 @@ public protocol PeekabooServiceProviding: AnyObject, Sendable {
     var dialogs: any DialogServiceProtocol { get }
     var sessions: any SessionManagerProtocol { get }
     var files: any FileServiceProtocol { get }
+    var clipboard: any ClipboardServiceProtocol { get }
     var configuration: ConfigurationManager { get }
     var process: any ProcessServiceProtocol { get }
     var permissions: PermissionsService { get }

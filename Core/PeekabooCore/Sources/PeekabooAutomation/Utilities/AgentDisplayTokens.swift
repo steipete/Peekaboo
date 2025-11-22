@@ -56,6 +56,7 @@ public enum AgentDisplayTokens {
         "list_dock": "[dock]",
         "dock_click": "[dock]",
         "dock_launch": "[dock]",
+        "clipboard": "[clip]",
         "copy_to_clipboard": "[clip]",
         "paste_from_clipboard": "[clip]",
         "move": "[move]",

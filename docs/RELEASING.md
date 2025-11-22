@@ -14,7 +14,7 @@ read_when:
 **Scope:** Main Peekaboo repo plus submodules `/AXorcist`, `/Commander`, `/Tachikoma`, `/TauTUI`. Each has its own `CHANGELOG.md` and must be released in lock-step.
 
 ## 0) Version + metadata prep
-- [ ] Bump versions: `package.json`, `version.json`, `Apps/CLI/Sources/PeekabooCLI/Version.swift`, app Info.plists, and all MCP server/tool banners (`Core/PeekabooCore/Sources/PeekabooAgentRuntime/MCP/**`).
+- [ ] Bump versions: `package.json`, `version.json`, app Info.plists (CLI + macOS targets), and all MCP server/tool banners (`Core/PeekabooCore/Sources/PeekabooAgentRuntime/MCP/**`).
 - [ ] Cut `CHANGELOG.md`: move items from **Unreleased** into the new 3.x section with the correct date.
 - [ ] Align docs that mention the version (`docs/tui.md`, `docs/playground-test-result.md`, `AGENTS.md`, any beta strings).
 - [ ] Submodules: bump versions + changelogs in AXorcist, Commander, Tachikoma, TauTUI before updating submodule SHAs here.
