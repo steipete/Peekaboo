@@ -102,6 +102,12 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Migrate from legacy configuration if needed
     public func migrateIfNeeded() throws {
+        // Allow tests or automation to disable migration to isolate temporary config roots.
+        if let disable = ProcessInfo.processInfo.environment["PEEKABOO_CONFIG_DISABLE_MIGRATION"],
+           disable.lowercased() == "1" || disable.lowercased() == "true" {
+            return
+        }
+
         // Migrate from legacy configuration if needed
         let fileManager = FileManager.default
 
