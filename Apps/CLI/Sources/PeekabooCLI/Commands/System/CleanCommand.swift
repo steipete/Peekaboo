@@ -5,7 +5,7 @@ import PeekabooCore
 /// Clean up session cache and temporary files
 @available(macOS 14.0, *)
 @MainActor
-struct CleanCommand: OutputFormattable {
+struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
     static let commandDescription = CommandDescription(
         commandName: "clean",
         abstract: "Clean up session cache and temporary files",
@@ -40,6 +40,7 @@ struct CleanCommand: OutputFormattable {
     @Flag(help: "Show what would be deleted without actually deleting")
     var dryRun = false
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -51,7 +52,14 @@ struct CleanCommand: OutputFormattable {
     private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-    private var configuration: CommandRuntime.Configuration { self.resolvedRuntime.configuration }
+    private var configuration: CommandRuntime.Configuration {
+        if let runtime {
+            return runtime.configuration
+        }
+        // During bare parsing in unit tests no runtime is injected; fall back
+        // to the parsed runtime options so flags like --json-output are visible.
+        return self.runtimeOptions.makeConfiguration()
+    }
     var jsonOutput: Bool { self.configuration.jsonOutput }
 
     @MainActor

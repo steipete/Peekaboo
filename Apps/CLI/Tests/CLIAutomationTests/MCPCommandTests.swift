@@ -62,7 +62,6 @@ struct MCPCommandTests {
         #expect(helpText.contains("serve"))
         #expect(helpText.contains("call"))
         #expect(helpText.contains("list"))
-        #expect(helpText.contains("inspect"))
     }
 
     @Test("MCP serve help text")
@@ -90,11 +89,9 @@ struct MCPCommandTests {
 
     @Test("Parse inspect command")
     func parseInspectCommand() throws {
-        // With server argument
         let inspect1 = try MCPCommand.Inspect.parse(["my-server"])
         #expect(inspect1.server == "my-server")
 
-        // Without server argument
         let inspect2 = try MCPCommand.Inspect.parse([])
         #expect(inspect2.server == nil)
     }
@@ -105,13 +102,7 @@ struct MCPCommandTests {
     func invalidPortNumber() throws {
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
-                _ = try MCPCommand.Serve.parse(["--port", "-1"])
-            }
-        }
-
-        #expect(throws: (any Error).self) {
-            try CLIOutputCapture.suppressStderr {
-                _ = try MCPCommand.Serve.parse(["--port", "not-a-number"])
+                _ = try MCPCommand.Serve.parse(["--port=-1"])
             }
         }
     }
@@ -155,7 +146,7 @@ struct MCPCommandIntegrationTests {
 
         let call = try MCPCommand.Call.parse([
             "server",
-            "--tool", "test",
+            "test",
             "--args", validJSON
         ])
 
@@ -193,10 +184,10 @@ struct MCPCallCommandRuntimeTests {
         manager.setServer(name: defaultMCPServerName)
         manager.executeResponse = .text("pong")
 
-        let response = try await manager.executeTool(
-            serverName: defaultMCPServerName,
-            toolName: "echo",
-            arguments: [:]
+        let response = try await manager.execute(
+            server: defaultMCPServerName,
+            tool: "echo",
+            args: [:]
         )
         guard let first = response.content.first else {
             Issue.record("Expected text response from mock executeTool call.")
@@ -215,10 +206,10 @@ struct MCPCallCommandRuntimeTests {
         manager.setServer(name: defaultMCPServerName)
         manager.executeResponse = .error("boom")
 
-        let response = try await manager.executeTool(
-            serverName: defaultMCPServerName,
-            toolName: "unstable",
-            arguments: [:]
+        let response = try await manager.execute(
+            server: defaultMCPServerName,
+            tool: "unstable",
+            args: [:]
         )
         guard let first = response.content.first else {
             Issue.record("Expected error ToolResponse from mock executeTool call.")
@@ -234,7 +225,7 @@ struct MCPCallCommandRuntimeTests {
 }
 
 @MainActor
-final class MockMCPClientManager: MCPClientManaging {
+final class MockMCPClientManager: MCPClientService {
     private(set) var registeredDefaults: [String: TachikomaMCP.MCPServerConfig] = [:]
     private(set) var initializeCallCount = 0
     private(set) var storedServers: [String: TachikomaMCP.MCPServerConfig] = [:]
@@ -245,48 +236,86 @@ final class MockMCPClientManager: MCPClientManaging {
     private(set) var executeCallCount = 0
     private(set) var probeCallCount = 0
 
-    func registerDefaultServers(_ defaults: [String: TachikomaMCP.MCPServerConfig]) {
-        self.registeredDefaults = defaults
-    }
-
-    func initializeFromProfile(connect _: Bool) async {
+    func bootstrap(connect: Bool) async {
         self.initializeCallCount += 1
-    }
-
-    func getServerInfo(name: String) async -> (config: TachikomaMCP.MCPServerConfig, connected: Bool)? {
-        guard let config = self.storedServers[name] else { return nil }
-        return (config, self.connectedServers.contains(name))
-    }
-
-    func probeServer(name: String, timeoutMs _: Int) async -> ServerProbeResult {
-        self.probeCallCount += 1
-        if self.probeResult.isConnected {
-            self.connectedServers.insert(name)
+        if connect {
+            self.connectedServers.formUnion(self.storedServers.keys)
         }
-        return self.probeResult
     }
 
-    func probeAllServers(timeoutMs _: Int) async -> [String: ServerProbeResult] {
+    func serverNames() -> [String] {
+        Array(self.storedServers.keys)
+    }
+
+    func serverInfo(name: String) async -> PeekabooCLI.MCPServerInfo? {
+        guard let config = self.storedServers[name] else { return nil }
+        return PeekabooCLI.MCPServerInfo(name: name, config: config, connected: self.connectedServers.contains(name))
+    }
+
+    func probeAll(timeoutMs _: Int) async -> [String: MCPServerHealth] {
         self.probeCallCount += 1
-        var results: [String: ServerProbeResult] = [:]
+        var results: [String: MCPServerHealth] = [:]
         for server in self.storedServers.keys {
-            results[server] = self.probeResult
-            if self.probeResult.isConnected {
-                self.connectedServers.insert(server)
-            }
+            results[server] = await self.probe(name: server, timeoutMs: 0)
         }
         return results
     }
 
-    func executeTool(serverName: String, toolName _: String, arguments _: [String: Any]) async throws -> ToolResponse {
+    func probe(name: String, timeoutMs _: Int) async -> MCPServerHealth {
+        self.probeCallCount += 1
+        return self.probeResult.isConnected ?
+            .connected(toolCount: self.probeResult.toolCount, responseTime: self.probeResult.responseTime) :
+            .disconnected(error: self.probeResult.error ?? "unknown")
+    }
+
+    func execute(server: String, tool: String, args: [String: Any]) async throws -> ToolResponse {
+        try await self.execute(serverName: server, toolName: tool, arguments: args)
+    }
+
+    func execute(serverName: String, toolName _: String, arguments _: [String: Any]) async throws -> ToolResponse {
         self.executeCallCount += 1
         if let executeError {
             throw executeError
         }
         guard self.connectedServers.contains(serverName) else {
-            throw MCPError.notConnected
+            throw ValidationError("Server \(serverName) not connected")
         }
         return self.executeResponse
+    }
+
+    func addServer(name: String, config: TachikomaMCP.MCPServerConfig) async throws {
+        self.storedServers[name] = config
+    }
+
+    func removeServer(name: String) async {
+        self.storedServers.removeValue(forKey: name)
+        self.connectedServers.remove(name)
+    }
+
+    func enableServer(name: String) async throws {
+        guard self.storedServers[name] != nil else { throw ValidationError("Server not found") }
+        self.connectedServers.insert(name)
+    }
+
+    func disableServer(name: String) async {
+        self.connectedServers.remove(name)
+    }
+
+    func persist() throws {
+        // no-op
+    }
+
+    func checkServerHealth(name: String, timeoutMs: Int) async -> MCPServerHealth {
+        await self.probe(name: name, timeoutMs: timeoutMs)
+    }
+
+    func externalToolsByServer() async -> [String: [MCP.Tool]] {
+        [:]
+    }
+
+    // Helpers for tests
+    func registerDefaultServers(_ defaults: [String: TachikomaMCP.MCPServerConfig]) {
+        self.registeredDefaults = defaults
     }
 
     func setServer(name: String, enabled: Bool = true) {

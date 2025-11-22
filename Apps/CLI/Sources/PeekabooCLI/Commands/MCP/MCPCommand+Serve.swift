@@ -59,3 +59,14 @@ extension MCPCommand {
 @MainActor
 extension MCPCommand.Serve: ParsableCommand {}
 extension MCPCommand.Serve: AsyncRuntimeCommand {}
+
+extension MCPCommand.Serve: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        if let transportOption = values.singleOption("transport") {
+            self.transport = transportOption
+        }
+        if let portOption = try values.decodeOption("port", as: Int.self) {
+            self.port = portOption
+        }
+    }
+}

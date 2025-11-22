@@ -159,12 +159,13 @@ struct PressCommandIntegrationTests {
 
     @Test("Press command rejects invalid keys at parse time")
     func pressCommandRejectsInvalidKeys() throws {
-        // These should fail during parsing
+        // These should fail during validation
         let invalidKeys = ["invalid_key", "notakey", "xyz"]
 
         for invalidKey in invalidKeys {
+            var command = try PressCommand.parse([invalidKey])
             #expect(throws: (any Error).self) {
-                _ = try PressCommand.parse([invalidKey])
+                try command.validate()
             }
         }
     }

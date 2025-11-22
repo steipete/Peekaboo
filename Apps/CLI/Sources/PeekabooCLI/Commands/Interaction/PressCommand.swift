@@ -6,7 +6,7 @@ import PeekabooFoundation
 /// Press individual keys or key sequences
 @available(macOS 14.0, *)
 @MainActor
-struct PressCommand: ErrorHandlingCommand, OutputFormattable {
+struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
     @Argument(help: "Key(s) to press")
     var keys: [String]
 
@@ -24,18 +24,28 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable {
 
     @OptionGroup var focusOptions: FocusCommandOptions
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
-        guard let runtime else {
-            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        if let runtime {
+            return runtime
         }
-        return runtime
+        // Parsing-only code paths in tests may access runtime-dependent helpers; default lazily.
+        return CommandRuntime.makeDefault(options: self.runtimeOptions)
+    }
+
+    private var configuration: CommandRuntime.Configuration {
+        if let runtime {
+            return runtime.configuration
+        }
+        // Unit tests may parse without a runtime; fall back to parsed runtime options.
+        return self.runtimeOptions.makeConfiguration()
     }
 
     private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var jsonOutput: Bool { self.configuration.jsonOutput }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

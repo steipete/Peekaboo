@@ -3,7 +3,7 @@ import Foundation
 
 @available(macOS 14.0, *)
 @MainActor
-struct SleepCommand: OutputFormattable {
+struct SleepCommand: OutputFormattable, RuntimeOptionsConfigurable {
     nonisolated(unsafe) static var commandDescription: CommandDescription {
         MainActorCommandDescription.describe {
             CommandDescription(
@@ -17,6 +17,7 @@ struct SleepCommand: OutputFormattable {
     @Argument(help: "Duration to sleep in milliseconds")
     var duration: Int
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -25,9 +26,17 @@ struct SleepCommand: OutputFormattable {
         return runtime
     }
 
+    private var configuration: CommandRuntime.Configuration {
+        if let runtime {
+            return runtime.configuration
+        }
+        // Unit tests exercise parsing without injecting a runtime; fall back to parsed flags.
+        return self.runtimeOptions.makeConfiguration()
+    }
+
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var jsonOutput: Bool { self.configuration.jsonOutput }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

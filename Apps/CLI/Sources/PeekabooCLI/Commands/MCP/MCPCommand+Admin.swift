@@ -269,3 +269,9 @@ extension MCPCommand.Disable: AsyncRuntimeCommand {}
 @MainActor
 extension MCPCommand.Inspect: ParsableCommand {}
 extension MCPCommand.Inspect: AsyncRuntimeCommand {}
+
+extension MCPCommand.Inspect: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.server = try values.decodeOptionalPositional(0, label: "server")
+    }
+}
