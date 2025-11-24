@@ -41,6 +41,14 @@ fi
 
 files=("$@")
 
+# Disallow "." because it stages the entire repository and defeats the helper's safety guardrails.
+for file in "${files[@]}"; do
+  if [ "$file" = "." ]; then
+    printf 'Error: "." is not allowed; list specific paths instead\n' >&2
+    exit 1
+  fi
+done
+
 last_commit_error=''
 
 run_git_commit() {
