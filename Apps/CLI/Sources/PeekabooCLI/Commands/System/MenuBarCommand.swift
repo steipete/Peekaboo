@@ -1,6 +1,6 @@
 import AXorcist
-import CoreGraphics
 import Commander
+import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -95,7 +95,8 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             self.logger.debug("Listing menu bar items includeRawDebug=\(self.includeRawDebug)")
             let menuBarItems = try await MenuServiceBridge.listMenuBarItems(
                 menu: self.services.menu,
-                includeRaw: self.includeRawDebug)
+                includeRaw: self.includeRawDebug
+            )
 
             if self.jsonOutput {
                 let output = ListJSONOutput(
@@ -106,18 +107,18 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                             raw_title: item.rawTitle,
                             bundle_id: item.bundleIdentifier,
                             owner_name: item.ownerName,
-                        identifier: item.identifier,
-                        ax_identifier: item.axIdentifier,
-                        ax_description: item.axDescription,
-                        raw_window_id: item.rawWindowID,
-                        raw_window_layer: item.rawWindowLayer,
-                        raw_owner_pid: item.rawOwnerPID,
-                        raw_source: item.rawSource,
-                    index: item.index,
-                    isVisible: item.isVisible,
-                    description: item.description
-                )
-            },
+                            identifier: item.identifier,
+                            ax_identifier: item.axIdentifier,
+                            ax_description: item.axDescription,
+                            raw_window_id: item.rawWindowID,
+                            raw_window_layer: item.rawWindowLayer,
+                            raw_owner_pid: item.rawOwnerPID,
+                            raw_source: item.rawSource,
+                            index: item.index,
+                            isVisible: item.isVisible,
+                            description: item.description
+                        )
+                    },
                     executionTime: Date().timeIntervalSince(startTime)
                 )
                 outputSuccessCodable(data: output, logger: self.outputLogger)

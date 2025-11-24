@@ -798,7 +798,8 @@ final class StubClipboardService: ClipboardServiceProtocol {
         let result = ClipboardReadResult(
             utiIdentifier: primary.utiIdentifier,
             data: primary.data,
-            textPreview: request.alsoText)
+            textPreview: request.alsoText
+        )
         self.current = result
         return result
     }

@@ -189,7 +189,7 @@ struct MenuCommandIntegrationTests {
 
 extension MenuCommandIntegrationTests {
     /// Trim any progress/preamble characters emitted by the test runner and decode from the first JSON token.
-    fileprivate func decodeJSON<T: Decodable>(_ type: T.Type, from output: String) throws -> T {
+    private func decodeJSON<T: Decodable>(_ type: T.Type, from output: String) throws -> T {
         guard let start = output.firstIndex(where: { $0 == "{" || $0 == "[" }) else {
             throw DecodingError.dataCorrupted(
                 .init(codingPath: [], debugDescription: "No JSON object found in output: \(output)")

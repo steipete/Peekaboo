@@ -1,5 +1,5 @@
-import Foundation
 import Darwin
+import Foundation
 import PeekabooCore
 @testable import PeekabooCLI
 

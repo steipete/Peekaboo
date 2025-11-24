@@ -2,6 +2,5 @@
 // either one at a time per turn, or all queued together before the next turn.
 public enum QueueMode: String, Sendable {
     case oneAtATime = "one-at-a-time"
-    case all = "all"
+    case all
 }
-

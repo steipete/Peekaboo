@@ -3,9 +3,9 @@ import Darwin
 import Dispatch
 import Foundation
 import Logging
+import PeekabooAgentRuntime
 import PeekabooCore
 import PeekabooFoundation
-import PeekabooAgentRuntime
 import Spinner
 import Tachikoma
 import TachikomaMCP

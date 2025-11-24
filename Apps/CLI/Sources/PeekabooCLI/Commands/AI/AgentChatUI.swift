@@ -324,7 +324,8 @@ final class AgentChatUI {
         MarkdownComponent(
             text: text,
             padding: .init(horizontal: 1, vertical: 0),
-            defaultTextStyle: .init(color: color))
+            defaultTextStyle: .init(color: color)
+        )
     }
 
     private func removeLoader() {
@@ -556,11 +557,11 @@ final class AgentChatEventDelegate: AgentEventDelegate {
 
     private func valuesEqual(_ lhs: Any, _ rhs: Any) -> Bool {
         switch (lhs, rhs) {
-        case let (l as String, r as String): return l == r
-        case let (l as Int, r as Int): return l == r
-        case let (l as Double, r as Double): return l == r
-        case let (l as Bool, r as Bool): return l == r
-        default: return false
+        case let (l as String, r as String): l == r
+        case let (l as Int, r as Int): l == r
+        case let (l as Double, r as Double): l == r
+        case let (l as Bool, r as Bool): l == r
+        default: false
         }
     }
 

@@ -60,6 +60,7 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
         // to the parsed runtime options so flags like --json-output are visible.
         return self.runtimeOptions.makeConfiguration()
     }
+
     var jsonOutput: Bool { self.configuration.jsonOutput }
 
     @MainActor

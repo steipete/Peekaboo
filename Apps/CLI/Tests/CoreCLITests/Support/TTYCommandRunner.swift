@@ -79,7 +79,7 @@ struct TTYCommandRunner {
             }
             let waitDeadline = Date().addingTimeInterval(1.5)
             while proc.isRunning, Date() < waitDeadline {
-                usleep(80_000)
+                usleep(80000)
             }
             if proc.isRunning {
                 if let pgid = processGroup {
@@ -128,7 +128,7 @@ struct TTYCommandRunner {
             if let byteDeadline = afterFirstByteDeadline, now >= byteDeadline { break }
             if afterFirstByteDeadline == nil, now >= primaryDeadline { break }
 
-            usleep(60_000)
+            usleep(60000)
         }
 
         guard let text = String(data: buffer, encoding: .utf8), !text.isEmpty else {
@@ -137,6 +137,7 @@ struct TTYCommandRunner {
 
         return Result(text: text)
     }
+
     // swiftlint:enable cyclomatic_complexity function_body_length
 
     static func which(_ tool: String) -> String? {
@@ -166,7 +167,7 @@ struct TTYCommandRunner {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let path = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines),
-              !path.isEmpty else { return nil }
+            !path.isEmpty else { return nil }
         return path
     }
 
