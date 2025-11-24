@@ -65,7 +65,7 @@ extension PeekabooAgentService {
 
             // If queue mode is "all" and we have queued messages, inject them
             // before the next turn so the model sees them together.
-            if queueMode == .all && !queuedMessages.isEmpty {
+            if queueMode == .all, !queuedMessages.isEmpty {
                 state.messages.append(contentsOf: queuedMessages)
                 queuedMessages.removeAll()
             }
@@ -332,7 +332,7 @@ extension PeekabooAgentService {
             "(?i)bearer\\s+[a-z0-9._-]{8,}",
             "(?i)api[_-]?key\\s*[:=]\\s*[a-z0-9._-]{6,}",
             "(?i)sess[a-z0-9]{12,}",
-            "(?i)token\\s*[:=]\\s*[a-z0-9._-]{12,}"
+            "(?i)token\\s*[:=]\\s*[a-z0-9._-]{12,}",
         ]
 
         var output = text

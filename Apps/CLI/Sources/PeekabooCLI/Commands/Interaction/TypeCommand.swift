@@ -321,7 +321,10 @@ extension TypeCommand: CommanderBindableCommand {
         if let delay: Int = try values.decodeOption("delay", as: Int.self) {
             self.delay = delay
         }
-        if let wpm: Int = try values.decodeOption("wordsPerMinute", as: Int.self) ?? values.decodeOption("wpm", as: Int.self) {
+        if let wpm: Int = try values.decodeOption("wordsPerMinute", as: Int.self) ?? values.decodeOption(
+            "wpm",
+            as: Int.self
+        ) {
             self.wordsPerMinute = wpm
         }
         if let profile = values.singleOption("profileOption") ?? values.singleOption("profile") {

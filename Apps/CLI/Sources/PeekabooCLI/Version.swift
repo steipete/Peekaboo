@@ -36,7 +36,7 @@ private enum VersionMetadata {
             gitCommit: "unknown",
             gitCommitDate: "unknown",
             gitBranch: "unknown",
-            buildDate: iso8601Now()
+            buildDate: self.iso8601Now()
         )
     }
 
@@ -51,7 +51,7 @@ private enum VersionMetadata {
         let commit = info["PeekabooGitCommit"] as? String ?? "unknown"
         let commitDate = info["PeekabooGitCommitDate"] as? String ?? "unknown"
         let branch = info["PeekabooGitBranch"] as? String ?? "unknown"
-        let buildDate = info["PeekabooBuildDate"] as? String ?? iso8601Now()
+        let buildDate = info["PeekabooBuildDate"] as? String ?? self.iso8601Now()
 
         return Values(
             current: display,
@@ -63,25 +63,25 @@ private enum VersionMetadata {
     }
 
     private static func valuesFromWorkingCopy() -> Values? {
-        let root = repositoryRoot()
+        let root = self.repositoryRoot()
         guard FileManager.default.fileExists(atPath: root.path) else { return nil }
 
-        let versionString = workingCopyVersion(root: root) ?? "0.0.0"
-        var commit = git(["rev-parse", "--short", "HEAD"], root: root) ?? "unknown"
-        let diffStatus = git(["status", "--porcelain"], root: root) ?? ""
+        let versionString = self.workingCopyVersion(root: root) ?? "0.0.0"
+        var commit = self.git(["rev-parse", "--short", "HEAD"], root: root) ?? "unknown"
+        let diffStatus = self.git(["status", "--porcelain"], root: root) ?? ""
         if !diffStatus.isEmpty {
             commit += "-dirty"
         }
 
-        let commitDate = git(["show", "-s", "--format=%ci", "HEAD"], root: root) ?? "unknown"
-        let branch = git(["rev-parse", "--abbrev-ref", "HEAD"], root: root) ?? "unknown"
+        let commitDate = self.git(["show", "-s", "--format=%ci", "HEAD"], root: root) ?? "unknown"
+        let branch = self.git(["rev-parse", "--abbrev-ref", "HEAD"], root: root) ?? "unknown"
 
         return Values(
             current: "Peekaboo \(versionString)",
             gitCommit: commit,
             gitCommitDate: commitDate,
             gitBranch: branch,
-            buildDate: iso8601Now()
+            buildDate: self.iso8601Now()
         )
     }
 

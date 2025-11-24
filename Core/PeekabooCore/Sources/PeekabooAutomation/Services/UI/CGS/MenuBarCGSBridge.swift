@@ -8,12 +8,13 @@ import Foundation
 // Option bits (mirrored from Ice)
 private struct CGSWindowListOption: OptionSet {
     let rawValue: UInt32
-    static let onScreen     = CGSWindowListOption(rawValue: 1 << 0)
+    static let onScreen = CGSWindowListOption(rawValue: 1 << 0)
     static let menuBarItems = CGSWindowListOption(rawValue: 1 << 1)
-    static let activeSpace  = CGSWindowListOption(rawValue: 1 << 2)
+    static let activeSpace = CGSWindowListOption(rawValue: 1 << 2)
 }
 
 // MARK: - Dynamic loading helpers
+
 // MARK: - Dynamic loading helpers
 
 private func loadCGSHandle() -> UnsafeMutableRawPointer? {
@@ -71,10 +72,14 @@ func cgsMenuBarWindowIDs(onScreen: Bool = false, activeSpace: Bool = false) -> [
 func cgsProcessMenuBarWindowIDs(onScreenOnly: Bool = true) -> [CGWindowID] {
     typealias CGSConnectionID = Int32
     typealias CGSMainConnectionFunc = @convention(c) () -> CGSConnectionID
-    typealias CGSGetWindowCountFunc = @convention(c) (CGSConnectionID, CGSConnectionID, UnsafeMutablePointer<Int32>) -> Int32
+    typealias CGSGetWindowCountFunc = @convention(c) (CGSConnectionID, CGSConnectionID, UnsafeMutablePointer<Int32>)
+        -> Int32
     typealias CGSGetProcessMenuBarWindowListFunc = @convention(c) (
         CGSConnectionID, CGSConnectionID, Int32, UnsafeMutablePointer<CGWindowID>, UnsafeMutablePointer<Int32>) -> Int32
-    typealias CGSGetOnScreenWindowCountFunc = @convention(c) (CGSConnectionID, CGSConnectionID, UnsafeMutablePointer<Int32>) -> Int32
+    typealias CGSGetOnScreenWindowCountFunc = @convention(c) (
+        CGSConnectionID,
+        CGSConnectionID,
+        UnsafeMutablePointer<Int32>) -> Int32
     typealias CGSGetOnScreenWindowListFunc = @convention(c) (
         CGSConnectionID, CGSConnectionID, Int32, UnsafeMutablePointer<CGWindowID>, UnsafeMutablePointer<Int32>) -> Int32
     typealias CGSCopySpacesForWindowsFunc = @convention(c) (CGSConnectionID, UInt32, CFArray) -> Unmanaged<CFArray>?
@@ -115,7 +120,7 @@ func cgsProcessMenuBarWindowIDs(onScreenOnly: Bool = true) -> [CGWindowID] {
     // Active space filter to mirror Ice.
     let activeSpace = getActiveSpace(mainConn())
     ids = ids.filter { windowID in
-        guard let spaces = copySpaces(mainConn(), 1 << 0 /*includes current*/, [windowID] as CFArray)?
+        guard let spaces = copySpaces(mainConn(), 1 << 0 /* includes current */, [windowID] as CFArray)?
             .takeRetainedValue() as? [UInt32]
         else { return true }
         return spaces.contains(activeSpace)
@@ -142,7 +147,7 @@ private func cgsIsWindowOnActiveSpace(_ windowID: CGWindowID) -> Bool {
 
     let cid = mainConn()
     let activeSpace = getActiveSpace(cid)
-    guard let spaces = copySpaces(cid, 1 << 0 /*includes current*/, [windowID] as CFArray)?
+    guard let spaces = copySpaces(cid, 1 << 0 /* includes current */, [windowID] as CFArray)?
         .takeRetainedValue() as? [UInt32]
     else { return true }
     return spaces.contains(activeSpace)

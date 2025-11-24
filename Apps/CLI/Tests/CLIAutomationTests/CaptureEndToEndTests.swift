@@ -1,6 +1,6 @@
+import Commander
 import Foundation
 import PeekabooCore
-import Commander
 import Testing
 
 @testable import PeekabooCLI

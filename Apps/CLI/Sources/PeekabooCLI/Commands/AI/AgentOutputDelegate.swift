@@ -141,7 +141,7 @@ extension AgentOutputDelegate {
             return // no change; avoid spamming the log
         }
         let diffSummary = self.diffSummary(for: name, newArgs: args)
-        let (formatter, _ /* toolType */) = self.toolFormatter(for: name)
+        let (formatter, _ /* toolType */ ) = self.toolFormatter(for: name)
 
         switch self.outputMode {
         case .minimal:
@@ -498,12 +498,12 @@ extension AgentOutputDelegate {
 
     private func valuesEqual(_ lhs: Any, _ rhs: Any) -> Bool {
         switch (lhs, rhs) {
-        case let (l as String, r as String): return l == r
-        case let (l as Int, r as Int): return l == r
-        case let (l as Double, r as Double): return l == r
-        case let (l as Bool, r as Bool): return l == r
+        case let (l as String, r as String): l == r
+        case let (l as Int, r as Int): l == r
+        case let (l as Double, r as Double): l == r
+        case let (l as Bool, r as Bool): l == r
         default:
-            return false
+            false
         }
     }
 
@@ -530,7 +530,8 @@ extension AgentOutputDelegate {
         default:
             if let data = try? JSONSerialization.data(withJSONObject: ["v": value], options: []),
                let text = String(data: data, encoding: .utf8) {
-                return text.replacingOccurrences(of: "{\"v\":", with: "").trimmingCharacters(in: CharacterSet(charactersIn: "}"))
+                return text.replacingOccurrences(of: "{\"v\":", with: "")
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "}"))
             }
             return "…"
         }

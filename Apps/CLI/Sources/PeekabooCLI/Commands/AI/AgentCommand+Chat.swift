@@ -326,7 +326,6 @@ extension AgentCommand {
         }
 
         let runTask = Task { () throws -> AgentExecutionResult in
-
             if let existingSessionId = startingSessionId {
                 let outputDelegate = self.makeDisplayDelegate(for: batchedInput)
                 let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)

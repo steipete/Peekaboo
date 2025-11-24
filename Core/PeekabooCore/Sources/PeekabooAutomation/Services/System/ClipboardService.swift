@@ -91,20 +91,24 @@ public final class ClipboardService: ClipboardServiceProtocol {
     public func get(prefer uti: UTType?) throws -> ClipboardReadResult? {
         guard let types = self.pasteboard.types, !types.isEmpty else { return nil }
 
-        let targetType: NSPasteboard.PasteboardType
-        if let uti, let preferred = types.first(where: { $0.rawValue == uti.identifier }) {
-            targetType = preferred
+        let targetType: NSPasteboard.PasteboardType = if let uti,
+                                                         let preferred = types
+                                                             .first(where: { $0.rawValue == uti.identifier })
+        {
+            preferred
         } else if let stringType = types.first(where: { $0 == .string || $0 == .init("public.utf8-plain-text") }) {
-            targetType = stringType
+            stringType
         } else {
-            targetType = types[0]
+            types[0]
         }
 
         let data: Data?
         var textPreview: String?
 
         if targetType == .string, let string = self.pasteboard.string(forType: .string) {
-            let normalized = string.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
+            let normalized = string.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(
+                of: "\r",
+                with: "\n")
             data = normalized.data(using: .utf8)
             textPreview = Self.makePreview(normalized)
         } else {
@@ -147,15 +151,14 @@ public final class ClipboardService: ClipboardServiceProtocol {
         }
 
         let primary = request.representations.first!
-        let preview: String?
-        if let text = request.alsoText {
-            preview = Self.makePreview(text)
+        let preview: String? = if let text = request.alsoText {
+            Self.makePreview(text)
         } else if primary.utiIdentifier == UTType.plainText.identifier,
                   let string = String(data: primary.data, encoding: .utf8)
         {
-            preview = Self.makePreview(string)
+            Self.makePreview(string)
         } else {
-            preview = nil
+            nil
         }
 
         return ClipboardReadResult(

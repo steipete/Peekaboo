@@ -182,7 +182,6 @@ docs/debug/*
 # Build artifacts and derived data
 .artifacts/
 .derived-data/
-.derivedData/
 
 # Crush directory
 .crush/

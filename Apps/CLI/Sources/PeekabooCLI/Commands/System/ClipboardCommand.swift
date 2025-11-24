@@ -20,7 +20,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
                   restore Restore a previously saved slot.
                   load    Shortcut for set with --file-path.
                 """,
-                showHelpOnEmptyInvocation: true)
+                showHelpOnEmptyInvocation: true
+            )
         }
     }
 
@@ -121,7 +122,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: output,
             slot: nil,
-            textPreview: result.textPreview)
+            textPreview: result.textPreview
+        )
 
         self.output(payload) {
             if let text = String(data: result.data, encoding: .utf8) {
@@ -129,7 +131,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             } else if let output {
                 print("📋 Saved \(result.data.count) bytes (\(result.utiIdentifier)) to \(output)")
             } else {
-                print("📋 Clipboard contains \(result.data.count) bytes of \(result.utiIdentifier); use --output to save.")
+                print(
+                    "📋 Clipboard contains \(result.data.count) bytes of \(result.utiIdentifier); use --output to save."
+                )
             }
         }
     }
@@ -143,7 +147,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: nil,
             slot: nil,
-            textPreview: result.textPreview)
+            textPreview: result.textPreview
+        )
 
         self.output(payload) {
             print("✅ Set clipboard (\(result.utiIdentifier), \(result.data.count) bytes)")
@@ -162,7 +167,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: path,
             slot: nil,
-            textPreview: result.textPreview)
+            textPreview: result.textPreview
+        )
 
         self.output(payload) {
             print("✅ Loaded \(result.data.count) bytes (\(result.utiIdentifier)) from \(path) into clipboard")
@@ -171,7 +177,14 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
     private func handleClear() {
         self.services.clipboard.clear()
-        let payload = ClipboardCommandResult(action: "clear", uti: nil, size: nil, filePath: nil, slot: nil, textPreview: nil)
+        let payload = ClipboardCommandResult(
+            action: "clear",
+            uti: nil,
+            size: nil,
+            filePath: nil,
+            slot: nil,
+            textPreview: nil
+        )
         self.output(payload) {
             print("🧹 Cleared clipboard")
         }
@@ -180,7 +193,14 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
     private func handleSave() throws {
         let slotName = self.slot ?? "0"
         try self.services.clipboard.save(slot: slotName)
-        let payload = ClipboardCommandResult(action: "save", uti: nil, size: nil, filePath: nil, slot: slotName, textPreview: nil)
+        let payload = ClipboardCommandResult(
+            action: "save",
+            uti: nil,
+            size: nil,
+            filePath: nil,
+            slot: slotName,
+            textPreview: nil
+        )
         self.output(payload) {
             print("💾 Saved clipboard to slot \"\(slotName)\"")
         }
@@ -195,7 +215,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: nil,
             slot: slotName,
-            textPreview: result.textPreview)
+            textPreview: result.textPreview
+        )
         self.output(payload) {
             print("♻️  Restored slot \"\(slotName)\" (\(result.utiIdentifier), \(result.data.count) bytes)")
         }
@@ -210,7 +231,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
                     ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: Data(text.utf8)),
                 ],
                 alsoText: self.alsoText,
-                allowLarge: self.allowLarge)
+                allowLarge: self.allowLarge
+            )
         }
 
         if let path = overridePath ?? self.filePath ?? self.imagePath {
@@ -220,7 +242,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             return ClipboardWriteRequest(
                 representations: [ClipboardRepresentation(utiIdentifier: uti.identifier, data: data)],
                 alsoText: self.alsoText,
-                allowLarge: self.allowLarge)
+                allowLarge: self.allowLarge
+            )
         }
 
         if let b64 = self.dataBase64, let utiId = self.uti {
@@ -230,7 +253,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             return ClipboardWriteRequest(
                 representations: [ClipboardRepresentation(utiIdentifier: utiId, data: data)],
                 alsoText: self.alsoText,
-                allowLarge: self.allowLarge)
+                allowLarge: self.allowLarge
+            )
         }
 
         throw ValidationError("Provide --text, --file-path/--image-path, or --data-base64 with --uti")

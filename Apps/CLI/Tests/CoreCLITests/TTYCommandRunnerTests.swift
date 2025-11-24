@@ -26,7 +26,8 @@ struct TTYCommandRunnerTests {
         let result = try runner.run(
             binary: scriptURL.path,
             send: "",
-            options: .init(rows: 5, cols: 40, timeout: 0.8, extraArgs: []))
+            options: .init(rows: 5, cols: 40, timeout: 0.8, extraArgs: [])
+        )
 
         guard let childPID = Self.extractChildPID(result.text) else {
             Issue.record("Did not capture child PID from PTY output. Output: \(result.text)")

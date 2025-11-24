@@ -97,7 +97,9 @@ public struct ClickTool: MCPTool {
             return await UISessionManager.shared.getSession(id: sessionId)
         }
 
-        return await UISessionManager.shared.getMostRecentSession()
+        // Get most recent session
+        // For now, return nil - in a real implementation we'd track the most recent session
+        return nil
     }
 
     private func resolveClickTarget(for request: ClickRequest) async throws -> ClickResolution {

@@ -36,7 +36,8 @@ public struct ClipboardTool: MCPTool {
                 "dataBase64": SchemaBuilder.string(description: "Base64-encoded data to copy"),
                 "uti": SchemaBuilder.string(description: "Uniform Type Identifier for dataBase64 or to force type"),
                 "prefer": SchemaBuilder.string(description: "Preferred UTI when reading clipboard"),
-                "outputPath": SchemaBuilder.string(description: "When reading, path to write binary data. Use '-' for stdout."),
+                "outputPath": SchemaBuilder
+                    .string(description: "When reading, path to write binary data. Use '-' for stdout."),
                 "slot": SchemaBuilder.string(description: "Save/restore slot name (default: \"0\")"),
                 "alsoText": SchemaBuilder.string(description: "Optional plain text companion when setting binary data"),
                 "allowLarge": SchemaBuilder.boolean(description: "Allow writes larger than the 10 MB guard"),
@@ -113,7 +114,7 @@ public struct ClipboardTool: MCPTool {
     @MainActor
     private func handleLoad(arguments: ToolArguments) throws -> ToolResponse {
         // Alias for set; validation occurs in makeWriteRequest.
-        return try self.handleSet(arguments: arguments)
+        try self.handleSet(arguments: arguments)
     }
 
     @MainActor

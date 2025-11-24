@@ -412,7 +412,7 @@ private struct ScrollAccessibilityConfigurator: NSViewRepresentable {
             scrollView.contentView.setAccessibilityIdentifier("\(id)-clip")
             scrollView.documentView?.setAccessibilityIdentifier("\(id)-content")
 
-            NSAccessibility.post(element: scrollView, notification: .layoutChanged)
+            NSAccessibility.post(notification: .layoutChanged, for: scrollView)
         }
     }
 }
