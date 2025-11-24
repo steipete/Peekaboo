@@ -90,31 +90,28 @@ extension AgentCommand {
         capabilities: TerminalCapabilities,
         queueMode: QueueMode
     ) async throws {
-        var queuedWhileRunning: [String] = []
-        var activeSessionId: String?
+        var turnContext = ChatTurnContext(
+            sessionId: nil,
+            requestedModel: requestedModel,
+            queueMode: queueMode,
+            queuedWhileRunning: []
+        )
         do {
-            activeSessionId = try await self.initialChatSessionId(agentService)
+            turnContext.sessionId = try await self.initialChatSessionId(agentService)
         } catch {
             self.printAgentExecutionError(error.localizedDescription)
             return
         }
 
         self.printChatWelcome(
-            sessionId: activeSessionId,
+            sessionId: turnContext.sessionId,
             modelDescription: self.describeModel(requestedModel),
             queueMode: queueMode
         )
         self.printChatHelpIntro()
 
         if let seed = initialPrompt {
-            try await self.performChatTurn(
-                seed,
-                agentService: agentService,
-                sessionId: &activeSessionId,
-                requestedModel: requestedModel,
-                queueMode: queueMode,
-                queuedWhileRunning: &queuedWhileRunning
-            )
+            try await self.performChatTurn(seed, agentService: agentService, context: &turnContext)
         }
 
         while true {
@@ -136,14 +133,7 @@ extension AgentCommand {
             let batchedPrompt = trimmed
 
             do {
-                try await self.performChatTurn(
-                    batchedPrompt,
-                    agentService: agentService,
-                    sessionId: &activeSessionId,
-                    requestedModel: requestedModel,
-                    queueMode: queueMode,
-                    queuedWhileRunning: &queuedWhileRunning
-                )
+                try await self.performChatTurn(batchedPrompt, agentService: agentService, context: &turnContext)
             } catch {
                 self.printAgentExecutionError(error.localizedDescription)
                 break
@@ -217,14 +207,17 @@ extension AgentCommand {
             let tuiDelegate = AgentChatEventDelegate(ui: chatUI)
 
             let sessionForRun = activeSessionId
+            let tuiContext = AgentRunContext(
+                sessionId: sessionForRun,
+                requestedModel: requestedModel,
+                queueMode: queueMode,
+                delegate: tuiDelegate
+            )
             currentRun = Task { @MainActor in
                 try await self.runAgentTurnForTUI(
                     batchedPrompt,
                     agentService: agentService,
-                    sessionId: sessionForRun,
-                    requestedModel: requestedModel,
-                    queueMode: queueMode,
-                    delegate: tuiDelegate
+                    context: tuiContext
                 )
             }
 
@@ -246,15 +239,23 @@ extension AgentCommand {
         }
     }
 
+    struct AgentRunContext {
+        var sessionId: String?
+        var requestedModel: LanguageModel?
+        var queueMode: QueueMode
+        var delegate: any AgentEventDelegate
+    }
+
     @MainActor
     private func runAgentTurnForTUI(
         _ input: String,
         agentService: PeekabooAgentService,
-        sessionId: String?,
-        requestedModel: LanguageModel?,
-        queueMode: QueueMode,
-        delegate: any AgentEventDelegate
+        context: AgentRunContext
     ) async throws -> AgentExecutionResult {
+        let sessionId = context.sessionId
+        let requestedModel = context.requestedModel
+        let queueMode = context.queueMode
+        let delegate = context.delegate
         if let existingSessionId = sessionId {
             return try await agentService.continueSession(
                 sessionId: existingSessionId,
@@ -309,19 +310,25 @@ extension AgentCommand {
         return readLine()
     }
 
+    struct ChatTurnContext {
+        var sessionId: String?
+        var requestedModel: LanguageModel?
+        var queueMode: QueueMode
+        var queuedWhileRunning: [String]
+    }
+
     private func performChatTurn(
         _ input: String,
         agentService: PeekabooAgentService,
-        sessionId: inout String?,
-        requestedModel: LanguageModel?,
-        queueMode: QueueMode,
-        queuedWhileRunning: inout [String]
+        context: inout ChatTurnContext
     ) async throws {
-        let startingSessionId = sessionId
+        let startingSessionId = context.sessionId
+        let queueMode = context.queueMode
+        let requestedModel = context.requestedModel
         var batchedInput = input
         if queueMode == .all {
-            let extras = queuedWhileRunning
-            queuedWhileRunning.removeAll()
+            let extras = context.queuedWhileRunning
+            context.queuedWhileRunning.removeAll()
             batchedInput = ([input] + extras).joined(separator: "\n\n")
         }
 
@@ -372,7 +379,7 @@ extension AgentCommand {
         }
 
         if let updatedSessionId = result.sessionId {
-            sessionId = updatedSessionId
+            context.sessionId = updatedSessionId
         }
 
         self.printChatTurnSummary(result)

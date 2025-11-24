@@ -127,8 +127,9 @@ public enum ToolRegistry {
                 "peekaboo shell \"open -a Safari\"",
                 "peekaboo shell --command 'bash -lc \"whoami\"'",
             ],
-            agentGuidance: "Use single quotes around the entire command and escape internal " +
-                "quotes when interacting via shells."),
+            agentGuidance: """
+            Use single quotes around the entire command and escape internal quotes when interacting via shells.
+            """),
         "clipboard": ToolOverride(
             category: .system,
             abstract: "Read/write the macOS clipboard (text, images, files) with save/restore slots.",
@@ -140,7 +141,9 @@ public enum ToolRegistry {
             examples: [
                 "peekaboo clipboard set --text \"hello world\"",
                 "peekaboo clipboard get --output /tmp/clip.bin",
-                "peekaboo clipboard save --slot original && peekaboo clipboard clear && peekaboo clipboard restore --slot original",
+                "peekaboo clipboard save --slot original && " +
+                    "peekaboo clipboard clear && " +
+                    "peekaboo clipboard restore --slot original",
             ],
             agentGuidance: "Use save/restore when a workflow might overwrite the user's clipboard."),
     ]

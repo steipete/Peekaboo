@@ -192,9 +192,11 @@ extension MenuService {
         let cgsIDs = cgsMenuBarWindowIDs(onScreen: true, activeSpace: true)
         let legacyIDs = cgsProcessMenuBarWindowIDs(onScreenOnly: true)
         let combinedIDs = Array(Set(cgsIDs + legacyIDs))
-        self.logger
-            .debug(
-                "CGS menuBarItems returned \(cgsIDs.count) ids; processMenuBar returned \(legacyIDs.count); combined \(combinedIDs.count)")
+        self.logger.debug(
+            """
+            CGS menuBarItems returned \(cgsIDs.count) ids; processMenuBar returned \(legacyIDs.count);
+            combined \(combinedIDs.count)
+            """)
         if !combinedIDs.isEmpty {
             // Use CGWindow metadata per window ID to resolve owner/bundle.
             for id in combinedIDs {
@@ -527,9 +529,9 @@ extension MenuService {
             let hitTitle = sanitizedMenuText(hit.identifier())
                 ?? sanitizedMenuText(hit.help())
                 ?? sanitizedMenuText(hit.title())
-                ?? hit.descriptionText()
-                ?? extra.title
+                ?? Optional(hit.descriptionText())
                 ?? extra.rawTitle
+                ?? extra.title
             let hitIdentifier = hit.identifier() ?? extra.identifier
 
             return MenuExtraInfo(
@@ -558,7 +560,7 @@ extension MenuService {
         var merged = [MenuExtraInfo]()
 
         func upsert(_ extra: MenuExtraInfo) {
-            let bothHavePosition = extra.position != .zero && merged.first(where: { $0.position != .zero }) != nil
+            let bothHavePosition = extra.position != .zero && merged.contains(where: { $0.position != .zero })
             if bothHavePosition,
                let index = merged.firstIndex(where: { $0.position.distance(to: extra.position) < 5 })
             {

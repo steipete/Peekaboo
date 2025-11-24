@@ -22,28 +22,27 @@ struct TTYCommandRunner {
         case timedOut
     }
 
-    // swiftlint:disable cyclomatic_complexity function_body_length
     func run(binary: String, send script: String, options: Options = Options()) throws -> Result {
         guard let resolved = Self.which(binary) else { throw Error.binaryNotFound(binary) }
 
-        var masterFD: Int32 = -1
-        var slaveFD: Int32 = -1
+        var primaryFD: Int32 = -1
+        var secondaryFD: Int32 = -1
         var term = termios()
         var win = winsize(ws_row: options.rows, ws_col: options.cols, ws_xpixel: 0, ws_ypixel: 0)
-        guard openpty(&masterFD, &slaveFD, nil, &term, &win) == 0 else {
+        guard openpty(&primaryFD, &secondaryFD, nil, &term, &win) == 0 else {
             throw Error.launchFailed("openpty failed")
         }
-        _ = fcntl(masterFD, F_SETFL, O_NONBLOCK)
+        _ = fcntl(primaryFD, F_SETFL, O_NONBLOCK)
 
-        let master = FileHandle(fileDescriptor: masterFD, closeOnDealloc: true)
-        let slave = FileHandle(fileDescriptor: slaveFD, closeOnDealloc: true)
+        let primaryHandle = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: true)
+        let secondaryHandle = FileHandle(fileDescriptor: secondaryFD, closeOnDealloc: true)
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: resolved)
         proc.arguments = options.extraArgs
-        proc.standardInput = slave
-        proc.standardOutput = slave
-        proc.standardError = slave
+        proc.standardInput = secondaryHandle
+        proc.standardOutput = secondaryHandle
+        proc.standardError = secondaryHandle
         proc.environment = ["PATH": Self.enrichedPath()]
 
         var didLaunch = false
@@ -63,11 +62,11 @@ struct TTYCommandRunner {
             cleanedUp = true
 
             if didLaunch, proc.isRunning {
-                try? master.write(contentsOf: Data("/exit\n".utf8))
+                try? primaryHandle.write(contentsOf: Data("/exit\n".utf8))
             }
 
-            try? master.close()
-            try? slave.close()
+            try? primaryHandle.close()
+            try? secondaryHandle.close()
 
             guard didLaunch else { return }
 
@@ -95,7 +94,7 @@ struct TTYCommandRunner {
 
         func send(_ text: String) throws {
             guard let data = text.data(using: .utf8) else { return }
-            try master.write(contentsOf: data)
+            try primaryHandle.write(contentsOf: data)
         }
 
         let primaryDeadline = Date().addingTimeInterval(options.timeout)
@@ -103,7 +102,7 @@ struct TTYCommandRunner {
         var buffer = Data()
         func readChunk() {
             var tmp = [UInt8](repeating: 0, count: 8192)
-            let n = Darwin.read(masterFD, &tmp, tmp.count)
+            let n = Darwin.read(primaryFD, &tmp, tmp.count)
             if n > 0 { buffer.append(contentsOf: tmp.prefix(n)) }
         }
 
@@ -137,8 +136,6 @@ struct TTYCommandRunner {
 
         return Result(text: text)
     }
-
-    // swiftlint:enable cyclomatic_complexity function_body_length
 
     static func which(_ tool: String) -> String? {
         if let path = runWhich(tool) { return path }
