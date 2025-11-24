@@ -54,6 +54,13 @@ extension ImageCommand: CommanderSignatureProviding {
                     help: "Analyze the captured image with AI",
                     long: "analyze"
                 ),
+            ],
+            flags: [
+                .commandFlag(
+                    "retina",
+                    help: "Capture at native Retina resolution instead of 1x logical",
+                    long: "retina"
+                ),
             ]
         )
     }

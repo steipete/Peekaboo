@@ -304,7 +304,9 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
                 displayIndex: self.scope.screenIndex,
                 visualizerMode: .watchCapture)
         case .frontmost:
-            result = try await self.screenCapture.captureFrontmost(visualizerMode: .watchCapture)
+            result = try await self.screenCapture.captureFrontmost(
+                visualizerMode: .watchCapture,
+                scale: .logical1x)
         case .window:
             guard let app = self.scope.applicationIdentifier else {
                 throw PeekabooError.windowNotFound(criteria: "missing application identifier")

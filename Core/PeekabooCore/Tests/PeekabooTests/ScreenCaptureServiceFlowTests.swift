@@ -60,8 +60,35 @@ struct ScreenCaptureServiceFlowTests {
 
         #expect(result.metadata.displayInfo?.name == "External")
         #expect(result.metadata.size == CGSize(width: 2560, height: 1440))
-        #expect(result.imageData == fixtures.displays[1].imageData)
         #expect(logging.loggedEntries.isEmpty == false)
+    }
+
+    @Test("captureScreen respects scale preference")
+    func captureScreenRespectsScalePreference() async throws {
+        let retinaDisplay = ScreenCaptureService.TestFixtures.Display(
+            name: "Retina",
+            bounds: CGRect(x: 0, y: 0, width: 1200, height: 800),
+            scaleFactor: 2.0,
+            imageSize: CGSize(width: 2400, height: 1600),
+            imageData: ScreenCaptureService.TestFixtures.makeImage(width: 20, height: 20, color: .systemIndigo))
+        let fixtures = ScreenCaptureService.TestFixtures(displays: [retinaDisplay])
+        let service = ScreenCaptureService.makeTestService(fixtures: fixtures)
+
+        let logical = try await service.captureScreen(
+            displayIndex: 0,
+            visualizerMode: .screenshotFlash,
+            scale: .logical1x)
+
+        #expect(logical.metadata.size == CGSize(width: 1200, height: 800))
+        #expect(logical.metadata.displayInfo?.scaleFactor == 1.0)
+
+        let native = try await service.captureScreen(
+            displayIndex: 0,
+            visualizerMode: .screenshotFlash,
+            scale: .native)
+
+        #expect(native.metadata.size == CGSize(width: 2400, height: 1600))
+        #expect(native.metadata.displayInfo?.scaleFactor == 2.0)
     }
 
     @Test("captureWindow resolves applications via fixtures")
@@ -74,6 +101,28 @@ struct ScreenCaptureServiceFlowTests {
         #expect(result.metadata.windowInfo?.title == "Logs")
         #expect(result.metadata.applicationInfo?.bundleIdentifier == "com.peekaboo.testapp")
         #expect(result.metadata.windowInfo?.index == 1)
+    }
+
+    @Test("captureWindow scales when requested")
+    func captureWindowRespectsScale() async throws {
+        let fixtures = self.makeFixtures()
+        let service = ScreenCaptureService.makeTestService(fixtures: fixtures)
+
+        let logical = try await service.captureWindow(
+            appIdentifier: "com.peekaboo.testapp",
+            windowIndex: 0,
+            visualizerMode: .screenshotFlash,
+            scale: .logical1x)
+        #expect(logical.metadata.size == CGSize(width: 900, height: 700))
+        #expect(logical.metadata.displayInfo?.scaleFactor == 1.0)
+
+        let native = try await service.captureWindow(
+            appIdentifier: "com.peekaboo.testapp",
+            windowIndex: 0,
+            visualizerMode: .screenshotFlash,
+            scale: .native)
+        #expect(native.metadata.size == CGSize(width: 900 * 2, height: 700 * 2))
+        #expect(native.metadata.displayInfo?.scaleFactor == 2.0)
     }
 
     @Test("permission denial surfaces permission error")
@@ -190,25 +239,33 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
     func captureScreen(
         displayIndex: Int?,
         correlationId: String,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         let display = try fixtures.display(at: displayIndex)
+        let scaleFactor = scale == .native ? display.scaleFactor : 1.0
+        let outputSize = CGSize(width: display.bounds.width * scaleFactor, height: display.bounds.height * scaleFactor)
         let metadata = CaptureMetadata(
-            size: display.imageSize,
+            size: outputSize,
             mode: .screen,
             displayInfo: DisplayInfo(
                 index: displayIndex ?? 0,
                 name: display.name,
                 bounds: display.bounds,
-                scaleFactor: display.scaleFactor))
-        return CaptureResult(imageData: display.imageData, metadata: metadata)
+                scaleFactor: scale == .native ? display.scaleFactor : 1.0))
+        let imageData = ScreenCaptureService.TestFixtures.makeImage(
+            width: Int(outputSize.width),
+            height: Int(outputSize.height),
+            color: .systemTeal)
+        return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
     func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
         correlationId: String,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         let windows = self.fixtures.windows(for: app)
         guard !windows.isEmpty else {
@@ -226,8 +283,15 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
             target = windows[0]
         }
 
+        let scaleFactor = scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0
+        let outputSize = CGSize(width: target.bounds.width * scaleFactor, height: target.bounds.height * scaleFactor)
+        let imageData = ScreenCaptureService.TestFixtures.makeImage(
+            width: Int(outputSize.width),
+            height: Int(outputSize.height),
+            color: .systemGreen)
+
         let metadata = CaptureMetadata(
-            size: target.bounds.size,
+            size: outputSize,
             mode: .window,
             applicationInfo: app,
             windowInfo: ServiceWindowInfo(
@@ -238,22 +302,31 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
                 isMainWindow: true,
                 windowLevel: 0,
                 alpha: 1.0,
-                index: windowIndex ?? 0))
-        return CaptureResult(imageData: target.imageData, metadata: metadata)
+                index: windowIndex ?? 0),
+            displayInfo: DisplayInfo(
+                index: 0,
+                name: self.fixtures.displays.first?.name,
+                bounds: self.fixtures.displays.first?.bounds ?? target.bounds,
+                scaleFactor: scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0))
+        return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
-    func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
+    func captureArea(_ rect: CGRect, correlationId: String, scale: CaptureScalePreference) async throws -> CaptureResult {
         let width = max(1, Int(rect.width.rounded()))
         let height = max(1, Int(rect.height.rounded()))
-        let imageData = self.fixtures.displays.first?.imageData ?? Data(count: width * height * 4)
+        let scaleFactor = scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0
+        let imageData = ScreenCaptureService.TestFixtures.makeImage(
+            width: Int(CGFloat(width) * scaleFactor),
+            height: Int(CGFloat(height) * scaleFactor),
+            color: .systemGray)
         let metadata = CaptureMetadata(
-            size: CGSize(width: rect.width, height: rect.height),
+            size: CGSize(width: CGFloat(width) * scaleFactor, height: CGFloat(height) * scaleFactor),
             mode: .area,
             displayInfo: DisplayInfo(
                 index: 0,
                 name: self.fixtures.displays.first?.name,
                 bounds: rect,
-                scaleFactor: self.fixtures.displays.first?.scaleFactor ?? 1.0))
+                scaleFactor: scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0))
         return CaptureResult(imageData: imageData, metadata: metadata)
     }
 }
@@ -264,7 +337,8 @@ private final class TimeoutModernOperator: ModernScreenCaptureOperating, @unchec
     func captureScreen(
         displayIndex: Int?,
         correlationId: String,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode,
+        scale _: CaptureScalePreference) async throws -> CaptureResult
     {
         self.captureScreenAttempts += 1
         throw OperationError.timeout(operation: "mock", duration: 0.1)
@@ -274,12 +348,13 @@ private final class TimeoutModernOperator: ModernScreenCaptureOperating, @unchec
         app: ServiceApplicationInfo,
         windowIndex: Int?,
         correlationId: String,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode,
+        scale _: CaptureScalePreference) async throws -> CaptureResult
     {
         throw OperationError.captureFailed(reason: "Not implemented in TimeoutModernOperator")
     }
 
-    func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
+    func captureArea(_ rect: CGRect, correlationId: String, scale _: CaptureScalePreference) async throws -> CaptureResult {
         throw OperationError.captureFailed(reason: "Not implemented in TimeoutModernOperator")
     }
 }

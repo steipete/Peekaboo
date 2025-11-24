@@ -19,14 +19,16 @@ protocol ModernScreenCaptureOperating: Sendable {
     func captureScreen(
         displayIndex: Int?,
         correlationId: String,
-        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
     func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
         correlationId: String,
-        visualizerMode: CaptureVisualizerMode) async throws
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws
         -> CaptureResult
-    func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult
+    func captureArea(_ rect: CGRect, correlationId: String, scale: CaptureScalePreference) async throws -> CaptureResult
 }
 
 @MainActor
@@ -34,12 +36,14 @@ protocol LegacyScreenCaptureOperating: Sendable {
     func captureScreen(
         displayIndex: Int?,
         correlationId: String,
-        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
     func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
         correlationId: String,
-        visualizerMode: CaptureVisualizerMode) async throws
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws
         -> CaptureResult
 }
 

@@ -31,6 +31,7 @@ struct ImageCommandTests {
         #expect(command.path == nil)
         #expect(command.app == nil)
         #expect(command.captureFocus == .auto)
+        #expect(command.retina == false)
         #expect(command.jsonOutput == false)
     }
 
@@ -179,6 +180,13 @@ struct ImageCommandTests {
 
         #expect(command.analyze == "Describe the UI")
         #expect(command.jsonOutput == true)
+    }
+
+    @Test("Command with retina flag", .tags(.fast))
+    func imageCommandWithRetinaFlag() throws {
+        let command = try ImageCommand.parse(["--retina"])
+
+        #expect(command.retina == true)
     }
 
     // MARK: - Parameterized Command Tests

@@ -6,6 +6,14 @@ public enum CaptureVisualizerMode: Sendable {
     case watchCapture
 }
 
+/// Preferred output scale for captures
+public enum CaptureScalePreference: Sendable {
+    /// Store images at logical 1x resolution (default)
+    case logical1x
+    /// Store images at the display's native pixel scale (e.g., 2x on Retina)
+    case native
+}
+
 /// Protocol defining screen capture operations
 @MainActor
 public protocol ScreenCaptureServiceProtocol: Sendable {
@@ -14,7 +22,8 @@ public protocol ScreenCaptureServiceProtocol: Sendable {
     /// - Returns: Result containing the captured image and metadata
     func captureScreen(
         displayIndex: Int?,
-        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
 
     /// Capture a specific window from an application
     /// - Parameters:
@@ -24,18 +33,22 @@ public protocol ScreenCaptureServiceProtocol: Sendable {
     func captureWindow(
         appIdentifier: String,
         windowIndex: Int?,
-        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
 
     /// Capture the frontmost window of the frontmost application
     /// - Returns: Result containing the captured image and metadata
-    func captureFrontmost(visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+    func captureFrontmost(
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
 
     /// Capture a specific area of the screen
     /// - Parameter rect: The rectangle to capture in screen coordinates
     /// - Returns: Result containing the captured image and metadata
     func captureArea(
         _ rect: CGRect,
-        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
 
     /// Check if screen recording permission is granted
     /// - Returns: True if permission is granted
@@ -44,22 +57,26 @@ public protocol ScreenCaptureServiceProtocol: Sendable {
 
 extension ScreenCaptureServiceProtocol {
     public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
-        try await self.captureScreen(displayIndex: displayIndex, visualizerMode: .screenshotFlash)
+        try await self.captureScreen(
+            displayIndex: displayIndex,
+            visualizerMode: .screenshotFlash,
+            scale: .logical1x)
     }
 
     public func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
         try await self.captureWindow(
             appIdentifier: appIdentifier,
             windowIndex: windowIndex,
-            visualizerMode: .screenshotFlash)
+            visualizerMode: .screenshotFlash,
+            scale: .logical1x)
     }
 
     public func captureFrontmost() async throws -> CaptureResult {
-        try await self.captureFrontmost(visualizerMode: .screenshotFlash)
+        try await self.captureFrontmost(visualizerMode: .screenshotFlash, scale: .logical1x)
     }
 
     public func captureArea(_ rect: CGRect) async throws -> CaptureResult {
-        try await self.captureArea(rect, visualizerMode: .screenshotFlash)
+        try await self.captureArea(rect, visualizerMode: .screenshotFlash, scale: .logical1x)
     }
 }
 

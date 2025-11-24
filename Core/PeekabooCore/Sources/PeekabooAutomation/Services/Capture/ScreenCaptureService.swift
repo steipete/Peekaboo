@@ -224,7 +224,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
     public func captureScreen(
         displayIndex: Int?,
-        visualizerMode: CaptureVisualizerMode = .screenshotFlash) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode = .screenshotFlash,
+        scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
         let metadata: Metadata = ["displayIndex": displayIndex ?? "main"]
         return try await self.performOperation(.screen, metadata: metadata) { correlationId in
@@ -238,12 +239,14 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     try await self.modernOperator.captureScreen(
                         displayIndex: displayIndex,
                         correlationId: correlationId,
-                        visualizerMode: visualizerMode)
+                        visualizerMode: visualizerMode,
+                        scale: scale)
                 case .legacy:
                     try await self.legacyOperator.captureScreen(
                         displayIndex: displayIndex,
                         correlationId: correlationId,
-                        visualizerMode: visualizerMode)
+                        visualizerMode: visualizerMode,
+                        scale: scale)
                 }
             }
         }
@@ -287,7 +290,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     public func captureWindow(
         appIdentifier: String,
         windowIndex: Int?,
-        visualizerMode: CaptureVisualizerMode = .screenshotFlash) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode = .screenshotFlash,
+        scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
         let metadata: Metadata = [
             "appIdentifier": appIdentifier,
@@ -313,6 +317,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 app: app,
                 windowIndex: windowIndex,
                 visualizerMode: visualizerMode,
+                scale: scale,
                 operation: .window,
                 correlationId: correlationId)
         }
@@ -322,6 +327,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         app: ServiceApplicationInfo,
         windowIndex: Int?,
         visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference,
         operation: CaptureOperation,
         correlationId: String) async throws -> CaptureResult
     {
@@ -339,20 +345,23 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     app: app,
                     windowIndex: windowIndex,
                     correlationId: correlationId,
-                    visualizerMode: visualizerMode)
+                    visualizerMode: visualizerMode,
+                    scale: scale)
             case .legacy:
                 self.logger.debug("Using legacy CGWindowList API", correlationId: correlationId)
                 return try await self.legacyOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
                     correlationId: correlationId,
-                    visualizerMode: visualizerMode)
+                    visualizerMode: visualizerMode,
+                    scale: scale)
             }
         }
     }
 
     public func captureFrontmost(
-        visualizerMode: CaptureVisualizerMode = .screenshotFlash) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode = .screenshotFlash,
+        scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
         try await self.performOperation(.frontmost) { correlationId in
             guard let frontmost = NSWorkspace.shared.frontmostApplication else {
@@ -374,6 +383,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 app: serviceApp,
                 windowIndex: nil,
                 visualizerMode: visualizerMode,
+                scale: scale,
                 operation: .frontmost,
                 correlationId: correlationId)
         }
@@ -381,14 +391,15 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
     public func captureArea(
         _ rect: CGRect,
-        visualizerMode _: CaptureVisualizerMode = .screenshotFlash) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode = .screenshotFlash,
+        scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
         let metadata: Metadata = [
             "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
         ]
 
         return try await self.performOperation(.area, metadata: metadata) { correlationId in
-            try await self.modernOperator.captureArea(rect, correlationId: correlationId)
+            try await self.modernOperator.captureArea(rect, correlationId: correlationId, scale: scale)
         }
     }
 
@@ -489,7 +500,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         func captureScreen(
             displayIndex: Int?,
             correlationId: String,
-            visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+            visualizerMode: CaptureVisualizerMode,
+            scale: CaptureScalePreference) async throws -> CaptureResult
         {
             self.logger.debug("Fetching shareable content", correlationId: correlationId)
             let content = try await withTimeout(seconds: 5.0) {
@@ -523,7 +535,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 correlationId: correlationId)
 
             let image = try await RetryHandler.withRetry(policy: .standard) {
-                try await self.createScreenshot(of: targetDisplay)
+                try await self.createScreenshot(of: targetDisplay, scale: scale)
             }
 
             let imageData = try image.pngData()
@@ -545,7 +557,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     index: displayIndex ?? 0,
                     name: targetDisplay.displayID.description,
                     bounds: targetDisplay.frame,
-                    scaleFactor: 2.0))
+                    scaleFactor: self.outputScale(for: targetDisplay, preference: scale)))
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
@@ -554,7 +566,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             app: ServiceApplicationInfo,
             windowIndex: Int?,
             correlationId: String,
-            visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+            visualizerMode: CaptureVisualizerMode,
+            scale: CaptureScalePreference) async throws -> CaptureResult
         {
             let content = try await withTimeout(seconds: 5.0) {
                 try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
@@ -611,8 +624,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 ],
                 correlationId: correlationId)
 
+            let targetDisplay = self.display(for: targetWindow, displays: content.displays)
+            let targetScale = targetDisplay.map { self.nativeScale(for: $0) } ?? 1.0
             let image = try await RetryHandler.withRetry(policy: .standard) {
-                try await self.createScreenshot(of: targetWindow)
+                try await self.createScreenshot(of: targetWindow, scale: scale, targetScale: targetScale)
             }
 
             let imageData = try image.pngData()
@@ -645,7 +660,15 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     alpha: 1.0,
                     index: resolvedIndex,
                     layer: 0,
-                    isOnScreen: targetWindow.isOnScreen))
+                    isOnScreen: targetWindow.isOnScreen),
+                displayInfo: targetDisplay.map { display in
+                    let displayScale = scale == .native ? self.nativeScale(for: display) : 1.0
+                    return DisplayInfo(
+                        index: content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0,
+                        name: display.displayID.description,
+                        bounds: display.frame,
+                        scaleFactor: displayScale)
+                })
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
@@ -673,7 +696,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 isOnScreen: window.isOnScreen)
         }
 
-        func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
+        func captureArea(_ rect: CGRect, correlationId: String, scale: CaptureScalePreference) async throws -> CaptureResult {
             self.logger.debug("Finding display containing rect", correlationId: correlationId)
             let content = try await SCShareableContent.current
             guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
@@ -695,9 +718,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             let filter = SCContentFilter(display: display, excludingWindows: [])
 
             let config = SCStreamConfiguration()
+            let scaleFactor = self.outputScale(for: display, preference: scale)
             config.sourceRect = rect
-            config.width = Int(rect.width)
-            config.height = Int(rect.height)
+            config.width = Int(rect.width * scaleFactor)
+            config.height = Int(rect.height * scaleFactor)
             config.showsCursor = false
 
             let image = try await RetryHandler.withRetry(policy: .standard) {
@@ -713,28 +737,36 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     index: 0,
                     name: display.displayID.description,
                     bounds: display.frame,
-                    scaleFactor: 2.0))
+                    scaleFactor: scaleFactor))
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
 
-        private func createScreenshot(of display: SCDisplay) async throws -> CGImage {
+        private func createScreenshot(of display: SCDisplay, scale: CaptureScalePreference) async throws -> CGImage {
             let filter = SCContentFilter(display: display, excludingWindows: [])
             let config = SCStreamConfiguration()
-            config.width = Int(display.width)
-            config.height = Int(display.height)
-            config.sourceRect = CGRect(x: 0, y: 0, width: CGFloat(display.width), height: CGFloat(display.height))
+            let nativeScale = self.nativeScale(for: display)
+            let targetScale = scale == .native ? nativeScale : 1.0
+            let logicalSize = display.frame.size
+            config.width = Int(logicalSize.width * targetScale)
+            config.height = Int(logicalSize.height * targetScale)
+            config.sourceRect = CGRect(origin: .zero, size: logicalSize)
             config.captureResolution = .best
             config.showsCursor = false
 
             return try await self.captureWithStream(filter: filter, configuration: config)
         }
 
-        private func createScreenshot(of window: SCWindow) async throws -> CGImage {
+        private func createScreenshot(
+            of window: SCWindow,
+            scale: CaptureScalePreference,
+            targetScale: CGFloat) async throws -> CGImage
+        {
             let filter = SCContentFilter(desktopIndependentWindow: window)
             let config = SCStreamConfiguration()
-            config.width = Int(window.frame.width)
-            config.height = Int(window.frame.height)
+            let scaleValue = scale == .native ? targetScale : 1.0
+            config.width = Int(window.frame.width * scaleValue)
+            config.height = Int(window.frame.height * scaleValue)
             config.captureResolution = .best
             config.showsCursor = false
 
@@ -781,6 +813,32 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             let lastIndex = max(totalWindows - 1, 0)
             return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
         }
+
+        private func outputScale(for display: SCDisplay, preference: CaptureScalePreference) -> CGFloat {
+            let nativeScale = self.nativeScale(for: display)
+            switch preference {
+            case .native:
+                return nativeScale
+            case .logical1x:
+                return 1.0
+            }
+        }
+
+        private func nativeScale(for display: SCDisplay) -> CGFloat {
+            let width = CGFloat(display.width)
+            let frameWidth = display.frame.width
+            guard frameWidth > 0 else { return 1.0 }
+            let scale = width / frameWidth
+            return scale > 0 ? scale : 1.0
+        }
+
+        private func scaleFactor(for window: SCWindow, displays: [SCDisplay]) -> CGFloat {
+            self.display(for: window, displays: displays).map { self.nativeScale(for: $0) } ?? 1.0
+        }
+
+        private func display(for window: SCWindow, displays: [SCDisplay]) -> SCDisplay? {
+            displays.first(where: { $0.frame.intersects(window.frame) })
+        }
     }
 
     @MainActor
@@ -795,7 +853,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             app: ServiceApplicationInfo,
             windowIndex: Int?,
             correlationId: String,
-            visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+            visualizerMode _: CaptureVisualizerMode,
+            scale: CaptureScalePreference) async throws -> CaptureResult
         {
             let windowList = CGWindowListCopyWindowInfo(
                 [.optionAll, .excludeDesktopElements],
@@ -882,8 +941,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             }
 
             let imageData: Data
+            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: self.scaleFactor(for: bounds))
             do {
-                imageData = try image.pngData()
+                imageData = try scaledImage.pngData()
             } catch {
                 throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
             }
@@ -908,7 +968,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             }
 
             let metadata = CaptureMetadata(
-                size: CGSize(width: image.width, height: image.height),
+                size: CGSize(width: scaledImage.width, height: scaledImage.height),
                 mode: .window,
                 applicationInfo: ServiceApplicationInfo(
                     processIdentifier: app.processIdentifier,
@@ -928,7 +988,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     isOnScreen: targetWindow[kCGWindowIsOnscreen as String] as? Bool ?? true,
                     sharingState: (targetWindow[kCGWindowSharingState as String] as? Int).flatMap {
                         WindowSharingState(rawValue: $0)
-                    }))
+                    }),
+                displayInfo: DisplayInfo(
+                    index: resolvedIndex,
+                    name: nil,
+                    bounds: bounds,
+                    scaleFactor: self.outputScale(for: scale, fallback: self.scaleFactor(for: bounds))))
 
             return CaptureResult(
                 imageData: imageData,
@@ -938,7 +1003,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         func captureScreen(
             displayIndex: Int?,
             correlationId: String,
-            visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+            visualizerMode _: CaptureVisualizerMode,
+            scale: CaptureScalePreference) async throws -> CaptureResult
         {
             self.logger.debug("Using legacy CGWindowList API for screen capture", correlationId: correlationId)
 
@@ -965,9 +1031,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 displayIndex: displayIndex ?? 0,
                 correlationId: correlationId)
 
+            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scaleFactor)
+
             let imageData: Data
             do {
-                imageData = try image.pngData()
+                imageData = try scaledImage.pngData()
             } catch {
                 throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
             }
@@ -975,7 +1043,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             self.logger.debug(
                 "Legacy screenshot created",
                 metadata: [
-                    "imageSize": "\(image.width)x\(image.height)",
+                    "imageSize": "\(scaledImage.width)x\(scaledImage.height)",
                     "dataSize": imageData.count,
                 ],
                 correlationId: correlationId)
@@ -987,7 +1055,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     index: displayIndex ?? 0,
                     name: "Display \(displayIndex ?? 0)",
                     bounds: screenBounds,
-                    scaleFactor: scaleFactor))
+                    scaleFactor: self.outputScale(for: scale, fallback: scaleFactor)))
 
             return CaptureResult(
                 imageData: imageData,
@@ -1145,6 +1213,51 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             #else
             return false
             #endif
+        }
+
+        private func maybeDownscale(
+            _ image: CGImage,
+            scale: CaptureScalePreference,
+            fallbackScale: CGFloat) -> CGImage
+        {
+            guard scale == .logical1x, fallbackScale > 1 else {
+                return image
+            }
+
+            let targetSize = CGSize(
+                width: CGFloat(image.width) / fallbackScale,
+                height: CGFloat(image.height) / fallbackScale)
+            let colorSpace = image.colorSpace ?? CGColorSpaceCreateDeviceRGB()
+            guard let context = CGContext(
+                data: nil,
+                width: Int(targetSize.width.rounded()),
+                height: Int(targetSize.height.rounded()),
+                bitsPerComponent: image.bitsPerComponent,
+                bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: image.bitmapInfo.rawValue)
+            else {
+                return image
+            }
+            context.interpolationQuality = .high
+            context.draw(image, in: CGRect(origin: .zero, size: targetSize))
+            return context.makeImage() ?? image
+        }
+
+        private func outputScale(for preference: CaptureScalePreference, fallback: CGFloat) -> CGFloat {
+            switch preference {
+            case .native:
+                return fallback
+            case .logical1x:
+                return 1.0
+            }
+        }
+
+        private func scaleFactor(for bounds: CGRect) -> CGFloat {
+            if let screen = NSScreen.screens.first(where: { $0.frame.contains(bounds) }) {
+                return screen.backingScaleFactor
+            }
+            return NSScreen.main?.backingScaleFactor ?? 1.0
         }
 
         private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {

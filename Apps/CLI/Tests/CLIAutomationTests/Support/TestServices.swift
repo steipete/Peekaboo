@@ -20,10 +20,10 @@ func stubUnimplemented(_ function: StaticString = #function) -> Never {
 final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     var permissionGranted: Bool
     var defaultCaptureResult: CaptureResult?
-    var captureScreenHandler: ((Int?) async throws -> CaptureResult)?
-    var captureWindowHandler: ((String, Int?) async throws -> CaptureResult)?
-    var captureFrontmostHandler: (() async throws -> CaptureResult)?
-    var captureAreaHandler: ((CGRect) async throws -> CaptureResult)?
+    var captureScreenHandler: ((Int?, CaptureScalePreference) async throws -> CaptureResult)?
+    var captureWindowHandler: ((String, Int?, CaptureScalePreference) async throws -> CaptureResult)?
+    var captureFrontmostHandler: ((CaptureScalePreference) async throws -> CaptureResult)?
+    var captureAreaHandler: ((CGRect, CaptureScalePreference) async throws -> CaptureResult)?
 
     init(permissionGranted: Bool = true) {
         self.permissionGranted = permissionGranted
@@ -31,10 +31,11 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 
     func captureScreen(
         displayIndex: Int?,
-        visualizerMode _: CaptureVisualizerMode
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference
     ) async throws -> CaptureResult {
         if let handler = self.captureScreenHandler {
-            return try await handler(displayIndex)
+            return try await handler(displayIndex, scale)
         }
         return try await self.makeDefaultCaptureResult(function: #function)
     }
@@ -42,24 +43,32 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     func captureWindow(
         appIdentifier: String,
         windowIndex: Int?,
-        visualizerMode _: CaptureVisualizerMode
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference
     ) async throws -> CaptureResult {
         if let handler = self.captureWindowHandler {
-            return try await handler(appIdentifier, windowIndex)
+            return try await handler(appIdentifier, windowIndex, scale)
         }
         return try await self.makeDefaultCaptureResult(function: #function)
     }
 
-    func captureFrontmost(visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
+    func captureFrontmost(
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference
+    ) async throws -> CaptureResult {
         if let handler = self.captureFrontmostHandler {
-            return try await handler()
+            return try await handler(scale)
         }
         return try await self.makeDefaultCaptureResult(function: #function)
     }
 
-    func captureArea(_ rect: CGRect, visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
+    func captureArea(
+        _ rect: CGRect,
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference
+    ) async throws -> CaptureResult {
         if let handler = self.captureAreaHandler {
-            return try await handler(rect)
+            return try await handler(rect, scale)
         }
         return try await self.makeDefaultCaptureResult(function: #function)
     }

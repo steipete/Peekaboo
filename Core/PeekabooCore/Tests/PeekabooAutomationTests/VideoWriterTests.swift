@@ -125,23 +125,35 @@ private final class FakeFrameSource: CaptureFrameSource {
 }
 
 private struct NoOpScreenCaptureService: ScreenCaptureServiceProtocol {
-    func captureScreen(displayIndex: Int?, visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult {
+    func captureScreen(
+        displayIndex: Int?,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
         throw PeekabooError.captureFailed(reason: "unused")
     }
 
     func captureWindow(
         appIdentifier: String,
         windowIndex: Int?,
-        visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         throw PeekabooError.captureFailed(reason: "unused")
     }
 
-    func captureFrontmost(visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult {
+    func captureFrontmost(
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
         throw PeekabooError.captureFailed(reason: "unused")
     }
 
-    func captureArea(_ rect: CGRect, visualizerMode: CaptureVisualizerMode) async throws -> CaptureResult {
+    func captureArea(
+        _ rect: CGRect,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
         throw PeekabooError.captureFailed(reason: "unused")
     }
 

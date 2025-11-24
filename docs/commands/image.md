@@ -23,6 +23,7 @@ If you need a longer-running, change-aware capture (idle/active FPS, contact she
 | `--mode screen|window|frontmost|multi` | Override the auto mode picker (defaults to `window` when a target is given, otherwise `frontmost`). `multi` grabs every window for the target app or, if no app is set, every display. |
 | `--screen-index <n>` | Limit screen captures to a single 0-based display. |
 | `--path <file>` | Force the output path; if omitted, filenames land in the CWD using sanitized app/window names plus an ISO8601 timestamp. |
+| `--retina` | Store captures at native Retina scale (2x on HiDPI). Omit for the default 1x logical resolution to save space and speed. |
 | `--format png|jpg` | Emit PNG (default) or re-encode to JPEG at ~92% quality. |
 | `--capture-focus auto|background|foreground` | `auto` focuses the target app without switching Spaces, `foreground` brings it forward and pulls it onto the current Space, `background` skips all focus juggling. |
 | `--analyze "prompt"` | Send the saved file to the configured AI provider and include `{provider,model,text}` in the output payload. |

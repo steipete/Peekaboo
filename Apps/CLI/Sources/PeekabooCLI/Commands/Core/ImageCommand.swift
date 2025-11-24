@@ -41,6 +41,9 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Screen index for screen captures")
     var screenIndex: Int?
 
+    @Flag(name: .long, help: "Capture at native Retina scale (default stores 1x logical resolution)")
+    var retina: Bool = false
+
     @Option(
         name: .long,
         help: """
@@ -73,6 +76,8 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
     var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
     var outputLogger: Logger { self.logger }
+
+    private var captureScale: CaptureScalePreference { self.retina ? .native : .logical1x }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -195,7 +200,10 @@ extension ImageCommand {
 
     private func captureScreens() async throws -> [SavedFile] {
         if let index = self.screenIndex {
-            let result = try await ImageCaptureBridge.captureScreen(services: self.services, displayIndex: index)
+            let result = try await ImageCaptureBridge.captureScreen(
+                services: self.services,
+                displayIndex: index,
+                scale: self.captureScale)
             let saved = try self.saveCaptureResult(result, preferredName: "screen\(index)", index: nil)
             return [saved]
         }
@@ -205,7 +213,10 @@ extension ImageCommand {
 
         var savedFiles: [SavedFile] = []
         for (ordinal, displayIndex) in indexes.indexed() {
-            let result = try await ImageCaptureBridge.captureScreen(services: self.services, displayIndex: displayIndex)
+            let result = try await ImageCaptureBridge.captureScreen(
+                services: self.services,
+                displayIndex: displayIndex,
+                scale: self.captureScale)
             let saved = try self.saveCaptureResult(result, preferredName: "screen\(displayIndex)", index: ordinal)
             savedFiles.append(saved)
         }
@@ -219,7 +230,8 @@ extension ImageCommand {
         let result = try await ImageCaptureBridge.captureWindow(
             services: self.services,
             appIdentifier: identifier,
-            windowIndex: resolvedWindowIndex
+            windowIndex: resolvedWindowIndex,
+            scale: self.captureScale
         )
 
         let saved = try self.saveCaptureResult(
@@ -251,7 +263,8 @@ extension ImageCommand {
             let result = try await ImageCaptureBridge.captureWindow(
                 services: self.services,
                 appIdentifier: identifier,
-                windowIndex: window.index
+                windowIndex: window.index,
+                scale: self.captureScale
             )
 
             let saved = try self.saveCaptureResult(
@@ -267,7 +280,9 @@ extension ImageCommand {
     }
 
     private func captureFrontmost() async throws -> [SavedFile] {
-        let result = try await ImageCaptureBridge.captureFrontmost(services: self.services)
+        let result = try await ImageCaptureBridge.captureFrontmost(
+            services: self.services,
+            scale: self.captureScale)
         let saved = try self.saveCaptureResult(result, preferredName: "frontmost", index: nil)
         return [saved]
     }
@@ -281,7 +296,10 @@ extension ImageCommand {
         let originY = screen.frame.origin.y + screen.frame.size.height - menuBarHeight
         let rect = CGRect(x: screen.frame.origin.x, y: originY, width: screen.frame.width, height: menuBarHeight)
 
-        let result = try await ImageCaptureBridge.captureArea(services: self.services, rect: rect)
+        let result = try await ImageCaptureBridge.captureArea(
+            services: self.services,
+            rect: rect,
+            scale: self.captureScale)
         let saved = try self.saveCaptureResult(result, preferredName: "menubar", index: nil)
         return [saved]
     }
@@ -584,32 +602,53 @@ extension ImageFormat {
 private enum ImageCaptureBridge {
     static func captureScreen(
         services: any PeekabooServiceProviding,
-        displayIndex: Int?
+        displayIndex: Int?,
+        scale: CaptureScalePreference
     ) async throws -> CaptureResult {
         try await Task { @MainActor in
-            try await services.screenCapture.captureScreen(displayIndex: displayIndex)
+            try await services.screenCapture.captureScreen(
+                displayIndex: displayIndex,
+                visualizerMode: .screenshotFlash,
+                scale: scale)
         }.value
     }
 
     static func captureWindow(
         services: any PeekabooServiceProviding,
         appIdentifier: String,
-        windowIndex: Int?
+        windowIndex: Int?,
+        scale: CaptureScalePreference
     ) async throws -> CaptureResult {
         try await Task { @MainActor in
-            try await services.screenCapture.captureWindow(appIdentifier: appIdentifier, windowIndex: windowIndex)
+            try await services.screenCapture.captureWindow(
+                appIdentifier: appIdentifier,
+                windowIndex: windowIndex,
+                visualizerMode: .screenshotFlash,
+                scale: scale)
         }.value
     }
 
-    static func captureFrontmost(services: any PeekabooServiceProviding) async throws -> CaptureResult {
+    static func captureFrontmost(
+        services: any PeekabooServiceProviding,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
         try await Task { @MainActor in
-            try await services.screenCapture.captureFrontmost()
+            try await services.screenCapture.captureFrontmost(
+                visualizerMode: .screenshotFlash,
+                scale: scale)
         }.value
     }
 
-    static func captureArea(services: any PeekabooServiceProviding, rect: CGRect) async throws -> CaptureResult {
+    static func captureArea(
+        services: any PeekabooServiceProviding,
+        rect: CGRect,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
         try await Task { @MainActor in
-            try await services.screenCapture.captureArea(rect)
+            try await services.screenCapture.captureArea(
+                rect,
+                visualizerMode: .screenshotFlash,
+                scale: scale)
         }.value
     }
 }
@@ -648,5 +687,6 @@ extension ImageCommand: CommanderBindableCommand {
             self.captureFocus = parsedFocus
         }
         self.analyze = values.singleOption("analyze")
+        self.retina = values.flag("retina")
     }
 }

@@ -269,20 +269,27 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
 
     func captureScreen(
         displayIndex _: Int?,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode,
+        scale _: CaptureScalePreference) async throws -> CaptureResult
     { self.makeResult(mode: .screen) }
 
     func captureWindow(
         appIdentifier _: String,
         windowIndex _: Int?,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode,
+        scale _: CaptureScalePreference) async throws -> CaptureResult
     { self.makeResult(mode: .window) }
 
-    func captureFrontmost(visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
+    func captureFrontmost(
+        visualizerMode _: CaptureVisualizerMode,
+        scale _: CaptureScalePreference) async throws -> CaptureResult {
         self.makeResult(mode: .frontmost)
     }
 
-    func captureArea(_: CGRect, visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult {
+    func captureArea(
+        _: CGRect,
+        visualizerMode _: CaptureVisualizerMode,
+        scale _: CaptureScalePreference) async throws -> CaptureResult {
         self.makeResult(mode: .area)
     }
 

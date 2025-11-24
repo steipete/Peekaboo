@@ -172,25 +172,36 @@ private final class MockModernCaptureOperator: ModernScreenCaptureOperating, Leg
     func captureScreen(
         displayIndex: Int?,
         correlationId: String,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         let display = try fixtures.display(at: displayIndex)
+        let logicalSize = display.bounds.size
+        let scaleFactor = scale == .native ? display.scaleFactor : 1.0
+        let outputSize = CGSize(width: logicalSize.width * scaleFactor, height: logicalSize.height * scaleFactor)
+        let imageData = await MainActor.run {
+            ScreenCaptureService.TestFixtures.makeImage(
+                width: Int(outputSize.width),
+                height: Int(outputSize.height),
+                color: .systemBlue)
+        }
         let metadata = CaptureMetadata(
-            size: display.imageSize,
+            size: outputSize,
             mode: .screen,
             displayInfo: DisplayInfo(
                 index: displayIndex ?? 0,
                 name: display.name,
                 bounds: display.bounds,
-                scaleFactor: display.scaleFactor))
-        return CaptureResult(imageData: display.imageData, metadata: metadata)
+                scaleFactor: scale == .native ? display.scaleFactor : 1.0))
+        return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
     func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
         correlationId: String,
-        visualizerMode _: CaptureVisualizerMode) async throws -> CaptureResult
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         let windows = self.fixtures.windows(for: app)
         guard !windows.isEmpty else {
@@ -208,8 +219,17 @@ private final class MockModernCaptureOperator: ModernScreenCaptureOperating, Leg
             target = windows[0]
         }
 
+        let scaleFactor = scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0
+        let outputSize = CGSize(width: target.bounds.width * scaleFactor, height: target.bounds.height * scaleFactor)
+        let imageData = await MainActor.run {
+            ScreenCaptureService.TestFixtures.makeImage(
+                width: Int(outputSize.width),
+                height: Int(outputSize.height),
+                color: .systemGreen)
+        }
+
         let metadata = CaptureMetadata(
-            size: target.bounds.size,
+            size: outputSize,
             mode: .window,
             applicationInfo: app,
             windowInfo: ServiceWindowInfo(
@@ -220,24 +240,33 @@ private final class MockModernCaptureOperator: ModernScreenCaptureOperating, Leg
                 isMainWindow: true,
                 windowLevel: 0,
                 alpha: 1.0,
-                index: windowIndex ?? 0))
-        return CaptureResult(imageData: target.imageData, metadata: metadata)
+                index: windowIndex ?? 0),
+            displayInfo: DisplayInfo(
+                index: 0,
+                name: self.fixtures.displays.first?.name,
+                bounds: self.fixtures.displays.first?.bounds ?? target.bounds,
+                scaleFactor: scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0))
+        return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
-    func captureArea(_ rect: CGRect, correlationId: String) async throws -> CaptureResult {
+    func captureArea(_ rect: CGRect, correlationId: String, scale: CaptureScalePreference) async throws -> CaptureResult {
         let width = max(1, Int(rect.width.rounded()))
         let height = max(1, Int(rect.height.rounded()))
+        let scaleFactor = scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0
         let imageData = await MainActor.run {
-            ScreenCaptureService.TestFixtures.makeImage(width: width, height: height, color: .systemGray)
+            ScreenCaptureService.TestFixtures.makeImage(
+                width: Int(CGFloat(width) * scaleFactor),
+                height: Int(CGFloat(height) * scaleFactor),
+                color: .systemGray)
         }
         let metadata = CaptureMetadata(
-            size: CGSize(width: rect.width, height: rect.height),
+            size: CGSize(width: CGFloat(width) * scaleFactor, height: CGFloat(height) * scaleFactor),
             mode: .area,
             displayInfo: DisplayInfo(
                 index: 0,
                 name: self.fixtures.displays.first?.name,
                 bounds: rect,
-                scaleFactor: self.fixtures.displays.first?.scaleFactor ?? 1.0))
+                scaleFactor: scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0))
         return CaptureResult(imageData: imageData, metadata: metadata)
     }
 }
