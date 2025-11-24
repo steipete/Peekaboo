@@ -273,7 +273,7 @@
     {
       "label": "Changelog",
       "placement": "summary",
-      "command": "node -e \"const fs=require('fs');const md=fs.readFileSync('CHANGELOG.md','utf8').split(/\\\\r?\\\\n/);const start=md.findIndex((l)=>l.startsWith('## '));const end=md.findIndex((l,i)=>i>start&&l.startsWith('## '));const chunk=md.slice(start,end>0?end:md.length);const out=chunk.map((l)=>{if(/^#+\\\\s*/.test(l))return l.replace(/^#+\\\\s*/,'').toUpperCase();if(/^\\\\s*-\\\\s+/.test(l))return '• '+l.replace(/^\\\\s*-\\\\s+/,'');return l.trim();}).filter(Boolean);console.log(out.slice(0,50).join('\\\\n'));\"",
+      "command": "node -e \"const fs=require('fs');const lines=fs.readFileSync('CHANGELOG.md','utf8').split(/\\\\r?\\\\n/);const start=lines.findIndex((l)=>l.startsWith('## '));if(start<0){process.exit(0);}const end=lines.findIndex((l,i)=>i>start&&l.startsWith('## '));const slice=lines.slice(start,end>0?end:lines.length);const headingLine=slice[0]||'## Changelog';const heading=headingLine.replace(/^##\\\\s*/,'').trim();const bullets=slice.filter((l)=>l.trim().startsWith('- ')).length;console.log('@count: '+heading+' · '+bullets);console.log(slice.slice(0,50).join('\\\\n'));\"",
       "refreshSeconds": 600,
       "timeoutSeconds": 5,
       "maxLines": 50,
