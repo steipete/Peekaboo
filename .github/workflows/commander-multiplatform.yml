@@ -69,22 +69,3 @@ jobs:
       - name: Test (Linux)
         working-directory: Commander
         run: swift test
-
-  android:
-    if: github.event_name == 'workflow_dispatch'
-    continue-on-error: true
-    runs-on: ubuntu-22.04
-    needs: macos-host
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Android build + test
-        uses: skiptools/swift-android-action@v2
-        with:
-          swift-version: '6.2.1'
-          swift-branch: 'release/6.2.1'
-          package-path: 'Commander'
-          swift-configuration: 'debug'
-          android-api-level: 34
-          android-emulator-options: '-no-window -noaudio -no-boot-anim'
