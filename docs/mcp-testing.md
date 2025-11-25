@@ -276,6 +276,12 @@ Test that all tools are properly exposed:
    - Implement request/response recording
    - Create replay functionality
 
+## Recent test snapshot (Nov 2025)
+- Hot-reload via Reloaderoo works against a local Server build when proxied through Claude Code.
+- `image` tool captures frontmost window with correct metadata; `list` returns apps/windows/status.
+- `analyze` requires `PEEKABOO_AI_PROVIDERS` at server start; no per-call provider override yet.
+- Confirmed tool inventory: image, analyze, list, see, click, type, scroll, hotkey, swipe, run, sleep, clean, agent, app, window, menu, permissions, move, drag, dialog, space, dock.
+
 ## Conclusion
 
 Testing MCP servers effectively requires a combination of tools and approaches. While the MCP Inspector provides excellent interactive testing, tools like Reloaderoo (once installation issues are resolved) will enable more efficient development workflows with hot-reload capabilities. Direct integration with Claude Code remains the gold standard for production testing.
