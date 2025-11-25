@@ -1,4 +1,4 @@
-# Peekaboo MCP: Lightning-fast macOS Screenshots & GUI Automation 🚀
+# Peekaboo 🚀 - Lightning-fast macOS screenshots & GUI automation (MCP + CLI)
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
