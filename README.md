@@ -1,6 +1,6 @@
 # Peekaboo 🫣 - Mac automation that sees the screen and does the clicks.
 
-![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
+![Peekaboo Banner](assets/peekaboo.png)
 
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
