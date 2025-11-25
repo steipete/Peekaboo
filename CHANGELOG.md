@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-- _Nothing yet._
+### Added
+- `peekaboo hotkey` now accepts the key combo as a positional argument (in addition to `--keys`), covering quick one-liners like `peekaboo hotkey "cmd,shift,t"` or `peekaboo hotkey "cmd space"` without forcing a flag.
 
 ## [3.0.0-beta1] - 2025-11-25
 

@@ -6,8 +6,11 @@ import PeekabooCore
 @available(macOS 14.0, *)
 @MainActor
 struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
+    @Argument(help: "Keys to press (comma-separated or space-separated)")
+    var keysArgument: String?
+
     @Option(help: "Keys to press (comma-separated or space-separated)")
-    var keys: String
+    var keysOption: String?
 
     @Option(help: "Delay between key press and release in milliseconds")
     var holdDuration: Int = 50
@@ -29,6 +32,9 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    var resolvedKeys: String? {
+        self.keysArgument ?? self.keysOption
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
@@ -38,12 +44,16 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
 
         do {
             // Parse key names - support both comma-separated and space-separated
-            let keyNames: [String] = if self.keys.contains(",") {
+            guard let keysString = self.resolvedKeys else {
+                throw ValidationError("No keys specified")
+            }
+
+            let keyNames: [String] = if keysString.contains(",") {
                 // Comma-separated format: "cmd,c" or "cmd, c"
-                self.keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                keysString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
             } else {
                 // Space-separated format: "cmd c" or "cmd a"
-                self.keys.split(separator: " ").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                keysString.split(separator: " ").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
             }
 
             guard !keyNames.isEmpty else {
@@ -51,7 +61,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             }
 
             // Convert key names to comma-separated format for the service
-            let keysString = keyNames.joined(separator: ",")
+            let keysCsv = keyNames.joined(separator: ",")
 
             // Get session if available
             let sessionId: String? = if let providedSession = session {
@@ -72,7 +82,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             // Perform hotkey using the automation service
             try await AutomationServiceBridge.hotkey(
                 automation: self.services.automation,
-                keys: keysString,
+                keys: keysCsv,
                 holdDuration: self.holdDuration
             )
 
@@ -122,6 +132,8 @@ extension HotkeyCommand: ParsableCommand {
                     multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
 
                     EXAMPLES:
+                      peekaboo hotkey "cmd,c"               # Copy (comma-separated, positional)
+                      peekaboo hotkey "cmd space"           # Spotlight (space-separated, positional)
                       peekaboo hotkey --keys "cmd,c"          # Copy (comma-separated)
                       peekaboo hotkey --keys "cmd c"          # Copy (space-separated)
                       peekaboo hotkey --keys "cmd,v"          # Paste
@@ -150,7 +162,11 @@ extension HotkeyCommand: AsyncRuntimeCommand {}
 @MainActor
 extension HotkeyCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.keys = try values.requireOption("keys", as: String.self)
+        self.keysArgument = values.positional.first
+        self.keysOption = values.singleOption("keys")
+        guard self.resolvedKeys != nil else {
+            throw CommanderBindingError.missingArgument(label: "keys")
+        }
         if let hold: Int = try values.decodeOption("holdDuration", as: Int.self) {
             self.holdDuration = hold
         }

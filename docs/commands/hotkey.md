@@ -7,12 +7,12 @@ read_when:
 
 # `peekaboo hotkey`
 
-`hotkey` presses multiple keys at once (Cmd+C, Cmd+Shift+T, etc.). It accepts comma- or space-separated tokens, normalizes them to lowercase, then hands the joined list to `AutomationServiceBridge.hotkey`.
+`hotkey` presses multiple keys at once (Cmd+C, Cmd+Shift+T, etc.). It accepts comma- or space-separated tokens either positionally or via `--keys`, normalizes them to lowercase, then hands the joined list to `AutomationServiceBridge.hotkey`.
 
 ## Key options
 | Flag | Description |
 | --- | --- |
-| `--keys "cmd,c"` | Required list of keys. Use commas or spaces; modifiers (`cmd`, `alt`, `ctrl`, `shift`, `fn`) can be mixed with letters/numbers/special keys. |
+| `keys` / `--keys "cmd,c"` | List of keys (positional or `--keys`). Use commas or spaces; modifiers (`cmd`, `alt`, `ctrl`, `shift`, `fn`) can be mixed with letters/numbers/special keys. |
 | `--hold-duration <ms>` | Milliseconds to hold the combo before releasing (default `50`). |
 | `--session <id>` | Optional session to determine which app should be focused beforehand. |
 | Focus flags | All `FocusCommandOptions` flags apply; focus only runs when a session is available. |
@@ -25,7 +25,7 @@ read_when:
 ## Examples
 ```bash
 # Copy the current selection
-polter peekaboo -- hotkey --keys "cmd,c"
+polter peekaboo -- hotkey "cmd,c"
 
 # Reopen the last closed tab in Safari
 polter peekaboo -- hotkey --keys "cmd,shift,t" --session $(jq -r '.data.session_id' /tmp/see.json)
