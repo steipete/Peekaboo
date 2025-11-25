@@ -10,11 +10,6 @@ concurrency:
   group: macos-ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  SWIFT_TOOLCHAIN_ID: swift-6.2.1-RELEASE
-  SWIFT_TOOLCHAIN_NAME: swift-6.2.1-RELEASE
-  SWIFT_TOOLCHAIN_URL: https://download.swift.org/swift-6.2.1-release/xcode/swift-6.2.1-RELEASE/swift-6.2.1-RELEASE-osx.pkg
-
 jobs:
   peekaboo-core:
     name: PeekabooCore build & tests
@@ -89,42 +84,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-core-
 
-      - name: Install Swift 6.2 toolchain
-        run: |
-          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain" ]; then
-            curl -L "${SWIFT_TOOLCHAIN_URL}" -o /tmp/swift-toolchain.pkg
-            sudo installer -pkg /tmp/swift-toolchain.pkg -target /
-          fi
-
-      - name: Show Swift toolchain version
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
-
-      - name: Export Swift toolchain binary
-        run: |
-          echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
-
-      - name: Export Swift runtime library path
-        run: |
-          RUNTIME_PATH="/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/lib/swift/macosx"
-          echo "SWIFT_RUNTIME_LIB=${RUNTIME_PATH}" >> "$GITHUB_ENV"
-          if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
-            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
-          else
-            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}" >> "$GITHUB_ENV"
-          fi
-
       - name: Show Xcode version
         run: xcodebuild -version
+
+      - name: Show Swift toolchain version
+        run: swift --version
 
       - name: Build PeekabooCore
         working-directory: Core/PeekabooCore
         run: |
-          "$SWIFT_BIN" build --configuration debug
+          swift build --configuration debug
 
       - name: Run focused Swift tests
         working-directory: Core/PeekabooCore
         run: |
-          "$SWIFT_BIN" test --no-parallel --filter ScreenCaptureServiceFlowTests
+          swift test --no-parallel --filter ScreenCaptureServiceFlowTests
 
   peekaboo-cli:
     name: Peekaboo CLI build & tests
@@ -191,15 +165,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-cli-
 
-      - name: Install Swift 6.2 toolchain
-        run: |
-          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain" ]; then
-            curl -L "${SWIFT_TOOLCHAIN_URL}" -o /tmp/swift-toolchain.pkg
-            sudo installer -pkg /tmp/swift-toolchain.pkg -target /
-          fi
-
       - name: Show Swift toolchain version
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
+        run: swift --version
 
       - name: Export Swift toolchain binary
         run: |
