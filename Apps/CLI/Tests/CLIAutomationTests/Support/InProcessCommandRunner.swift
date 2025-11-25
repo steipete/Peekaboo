@@ -71,7 +71,7 @@ enum InProcessCommandRunner {
             throw TestSkipped("Automation CLI tests require RUN_AUTOMATION_READ=true or RUN_AUTOMATION_ACTIONS=true")
         }
 
-        try await self.gate.run {
+        return try await self.gate.run {
             try await self.execute(arguments: arguments)
         }
     }
