@@ -11,9 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SWIFT_TOOLCHAIN_ID: swift-6.2-RELEASE
-  SWIFT_TOOLCHAIN_NAME: swift
-  SWIFT_TOOLCHAIN_URL: https://download.swift.org/swift-6.2-release/xcode/swift-6.2-RELEASE/swift-6.2-RELEASE-osx.pkg
+  SWIFT_TOOLCHAIN_ID: swift-6.2.1-RELEASE
+  SWIFT_TOOLCHAIN_NAME: swift-6.2.1-RELEASE
+  SWIFT_TOOLCHAIN_URL: https://download.swift.org/swift-6.2.1-release/xcode/swift-6.2.1-RELEASE/swift-6.2.1-RELEASE-osx.pkg
 
 jobs:
   peekaboo-core:
@@ -28,6 +28,11 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 1
+
+      - name: Install Bun runtime
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "latest"
 
       - name: Docs lint
         run: ./runner node scripts/docs-lint.mjs
