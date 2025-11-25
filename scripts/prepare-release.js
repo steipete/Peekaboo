@@ -129,24 +129,10 @@ function checkDependencies() {
 
   // Check if node_modules exists
   if (!existsSync(join(projectRoot, 'node_modules'))) {
-    log('Installing dependencies...', colors.yellow);
-    if (!execWithOutput('npm install', 'npm install')) {
+    log('Installing dependencies with pnpm...', colors.yellow);
+    if (!execWithOutput('pnpm install --frozen-lockfile', 'pnpm install')) {
       logError('Failed to install dependencies');
       return false;
-    }
-  }
-
-  // Check for outdated dependencies
-  const outdated = exec('npm outdated --json', { allowFailure: true });
-  if (outdated) {
-    try {
-      const outdatedPkgs = JSON.parse(outdated);
-      const count = Object.keys(outdatedPkgs).length;
-      if (count > 0) {
-        logWarning(`${count} outdated dependencies found (run 'npm outdated' for details)`);
-      }
-    } catch {
-      // Ignore parse errors
     }
   }
   
@@ -702,33 +688,25 @@ function checkVersionConsistency() {
   logStep('Version Consistency Check');
 
   const packageJsonPath = join(projectRoot, 'package.json');
-  const packageLockPath = join(projectRoot, 'package-lock.json');
-  
+  const versionJsonPath = join(projectRoot, 'version.json');
+
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
   const packageVersion = packageJson.version;
-  
-  // Check package-lock.json
-  if (!existsSync(packageLockPath)) {
-    logError('package-lock.json not found');
+
+  if (!existsSync(versionJsonPath)) {
+    logError('version.json not found');
     return false;
   }
-  
-  const packageLock = JSON.parse(readFileSync(packageLockPath, 'utf8'));
-  const lockVersion = packageLock.version;
-  
-  if (packageVersion !== lockVersion) {
-    logError(`Version mismatch: package.json has ${packageVersion}, package-lock.json has ${lockVersion}`);
-    logError('Run "npm install" to update package-lock.json');
+
+  const versionJson = JSON.parse(readFileSync(versionJsonPath, 'utf8'));
+  const versionFileVersion = versionJson.version;
+
+  if (packageVersion !== versionFileVersion) {
+    logError(`Version mismatch: package.json has ${packageVersion}, version.json has ${versionFileVersion}`);
     return false;
   }
-  
-  // Also check that the package name matches in package-lock
-  if (packageLock.packages && packageLock.packages[''] && packageLock.packages[''].version !== packageVersion) {
-    logError(`Version mismatch in package-lock.json packages section`);
-    return false;
-  }
-  
-  logSuccess(`Version ${packageVersion} is consistent across package.json and package-lock.json`);
+
+  logSuccess(`Version ${packageVersion} matches version.json`);
   return true;
 }
 
@@ -743,6 +721,7 @@ function checkRequiredFields() {
     'description': 'Package description',
     'main': 'Main entry point',
     'type': 'Module type',
+    'bin': 'CLI entry points',
     'scripts': 'Scripts section',
     'repository': 'Repository information',
     'keywords': 'Keywords for npm search',
@@ -788,12 +767,12 @@ function checkRequiredFields() {
 function buildAndVerifyPackage() {
   logStep('Build and Package Verification');
 
-  // Build everything
-  if (!execWithOutput('npm run build:all', 'Full build (TypeScript + Swift)')) {
-    logError('Build failed');
+  // Build universal Swift binary (stamps Info.plist and writes ./peekaboo)
+  if (!execWithOutput('pnpm run build:swift:all', 'Swift universal build')) {
+    logError('Swift build failed');
     return false;
   }
-  logSuccess('Build completed successfully');
+  logSuccess('Swift build completed successfully');
 
   // Create package
   log('Creating npm package...', colors.cyan);
@@ -812,8 +791,8 @@ function buildAndVerifyPackage() {
 
   // Verify critical files are included
   const requiredFiles = [
-    'dist/index.js',
     'peekaboo',
+    'peekaboo-mcp.js',
     'README.md',
     'LICENSE'
   ];
@@ -894,13 +873,6 @@ function buildAndVerifyPackage() {
   }
   log(`Package version: ${version}`, colors.cyan);
 
-  // Integration tests
-  if (!execWithOutput('npm run test:integration', 'Integration tests')) {
-    logError('Integration tests failed');
-    return false;
-  }
-  logSuccess('Integration tests passed');
-
   return true;
 }
 
@@ -912,17 +884,12 @@ async function main() {
     checkGitStatus,
     checkRequiredFields,
     checkDependencies,
-    checkSecurityAudit,
     checkVersionAvailability,
     checkVersionConsistency,
     checkChangelog,
-    checkTypeScript,
-    checkTypeScriptDeclarations,
     checkSwift,
     buildAndVerifyPackage,
-    checkSwiftCLIIntegration,
-    checkPackageSize,
-    checkMCPServerSmoke
+    checkPackageSize
   ];
 
   for (const check of checks) {

@@ -11,13 +11,6 @@ overrides:
 importers:
 
   .:
-    dependencies:
-      '@steipete/oracle':
-        specifier: link:../oracle
-        version: link:../oracle
-      oracle:
-        specifier: link:../oracle
-        version: link:../oracle
     devDependencies:
       chrome-devtools-mcp:
         specifier: 0.10.1

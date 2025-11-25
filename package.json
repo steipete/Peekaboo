@@ -1,11 +1,19 @@
 {
-  "name": "peekaboo",
+  "name": "@steipete/peekaboo-mcp",
   "version": "3.0.0-beta1",
-  "private": true,
-  "description": "Peekaboo - Lightning-fast macOS Screenshots & GUI Automation",
-  "comments": [
-    "This package.json is for build scripts only.",
-    "The TypeScript server has been removed - all MCP functionality is now in Swift."
+  "description": "macOS automation MCP server with screen capture, UI interaction, and AI analysis",
+  "private": false,
+  "type": "module",
+  "main": "peekaboo-mcp.js",
+  "bin": {
+    "peekaboo": "peekaboo",
+    "peekaboo-mcp": "peekaboo-mcp.js"
+  },
+  "files": [
+    "peekaboo",
+    "peekaboo-mcp.js",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build:cli": "./runner swift build --package-path Apps/CLI",
@@ -38,8 +46,8 @@
     "poltergeist:rest": "./runner ./scripts/poltergeist-wrapper.sh rest",
     "poltergeist:status": "./runner ./scripts/poltergeist-wrapper.sh status",
     "poltergeist:logs": "./runner ./scripts/poltergeist-wrapper.sh logs",
-    "poltergeist:panel": "./scripts/poltergeist-wrapper.sh panel",
-    "oracle": "./runner pnpm -C ../oracle oracle"
+    "oracle": "./runner pnpm -C ../oracle oracle",
+    "postinstall": "chmod +x peekaboo peekaboo-mcp.js 2>/dev/null || true"
   },
   "repository": {
     "type": "git",
@@ -51,10 +59,20 @@
     "url": "https://github.com/steipete/peekaboo/issues"
   },
   "homepage": "https://github.com/steipete/peekaboo#readme",
-  "dependencies": {
-    "@steipete/oracle": "link:../oracle",
-    "oracle": "link:../oracle"
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "macos",
+    "automation",
+    "screen-capture",
+    "ai"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
   },
+  "os": ["darwin"],
+  "cpu": ["x64", "arm64"],
+  "dependencies": {},
   "devDependencies": {
     "chrome-devtools-mcp": "0.10.1"
   }
