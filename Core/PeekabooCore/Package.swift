@@ -71,6 +71,7 @@ let package = Package(
             name: "PeekabooAutomationTests",
             dependencies: [
                 "PeekabooAutomation",
+                "PeekabooCore",
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
             ],
             path: "Tests/PeekabooAutomationTests",
