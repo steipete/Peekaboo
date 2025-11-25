@@ -46,6 +46,19 @@ peekaboo "Open Notes and create a TODO list with three items"
 
 # Run as an MCP server (Claude/Cursor)
 npx -y @steipete/peekaboo-mcp
+
+# Minimal Claude Desktop config snippet (Developer → Edit Config):
+# {
+#   "mcpServers": {
+#     "peekaboo": {
+#       "command": "npx",
+#       "args": ["-y", "@steipete/peekaboo-mcp"],
+#       "env": {
+#         "PEEKABOO_AI_PROVIDERS": "openai/gpt-5.1,anthropic/claude-opus-4"
+#       }
+#     }
+#   }
+# }
 ```
 
 | Command | Key flags / subcommands | What it does |
