@@ -340,6 +340,12 @@ peekaboo list permissions
 peekaboo click "Button" --no-auto-focus
 ```
 
+## Implementation notes (internal)
+- Window identity prefers `CGWindowID`, with `AXIdentifier`/title/index as fallbacks; sessions persist the ID for follow-up commands.
+- Space management uses CGS APIs (`CGSCopySpaces`, `CGSManagedDisplaySetCurrentSpace`, add/remove windows to spaces) via `SpaceUtilities`.
+- Focus pipeline: resolve window → ensure it exists → detect space → switch or move → bring app frontmost → focus window → verify → run command. Flags map to helpers (`--space-switch`, `--move-here`, retries/timeouts).
+- Tests live in CLI/Core; keep them in sync when changing SpaceUtilities or focus options.
+
 ## Technical Details
 
 ### Implementation
