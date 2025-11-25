@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import CoreGraphics
 import Foundation
 import PeekabooFoundation
