@@ -29,6 +29,9 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
+      - name: Docs lint
+        run: ./runner node scripts/docs-lint.mjs
+
       - name: Select Xcode 26.1.1 (if present) or fallback to default
         run: |
           set -euo pipefail
