@@ -54,19 +54,34 @@ jobs:
           sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" homebrew/peekaboo.rb
           sed -i "s|version \".*\"|version \"${VERSION}\"|" homebrew/peekaboo.rb
 
+      - name: Detect tap token
+        run: |
+          if [ -n "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+            echo "HOMEBREW_TAP_TOKEN_SET=true" >> "$GITHUB_ENV"
+          else
+            echo "HOMEBREW_TAP_TOKEN_SET=false" >> "$GITHUB_ENV"
+          fi
+
       - name: Checkout homebrew tap
         uses: actions/checkout@v4
+        if: env.HOMEBREW_TAP_TOKEN_SET == 'true'
         with:
           repository: steipete/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: homebrew-tap
 
+      - name: Skip tap update (missing HOMEBREW_TAP_TOKEN)
+        if: env.HOMEBREW_TAP_TOKEN_SET == 'false'
+        run: echo "::warning::HOMEBREW_TAP_TOKEN not set; skipping tap update."
+
       - name: Copy updated formula to tap
+        if: env.HOMEBREW_TAP_TOKEN_SET == 'true'
         run: |
           mkdir -p homebrew-tap/Formula
           cp homebrew/peekaboo.rb homebrew-tap/Formula/
 
       - name: Commit and push to tap
+        if: env.HOMEBREW_TAP_TOKEN_SET == 'true'
         run: |
           cd homebrew-tap
           git config user.name "GitHub Actions"
@@ -78,7 +93,7 @@ jobs:
           git push
 
       - name: Update formula in main repo
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && env.HOMEBREW_TAP_TOKEN_SET == 'true'
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
