@@ -24,11 +24,11 @@ private enum VersionMetadata {
     }
 
     static func resolve() -> Values {
-        if let info = valuesFromInfoDictionary() {
-            return info
-        }
         if let workingCopy = valuesFromWorkingCopy() {
             return workingCopy
+        }
+        if let info = valuesFromInfoDictionary() {
+            return info
         }
 
         return Values(
