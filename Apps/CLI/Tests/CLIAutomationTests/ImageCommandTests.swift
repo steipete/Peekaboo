@@ -762,7 +762,8 @@ struct ImageCommandTests {
             visibleFrame: CGRect(x: 0, y: 0, width: 1200, height: 800),
             isPrimary: true,
             scaleFactor: scale,
-            displayID: 1)
+            displayID: 1
+        )
     }
 
     private static func makeScreenCaptureResult(size: CGSize, scale: CGFloat) -> CaptureResult {
@@ -773,7 +774,8 @@ struct ImageCommandTests {
                 index: 0,
                 name: "Retina",
                 bounds: CGRect(origin: .zero, size: CGSize(width: size.width / scale, height: size.height / scale)),
-                scaleFactor: scale)
+                scaleFactor: scale
+            )
         )
         return CaptureResult(
             imageData: Data(repeating: 0xCD, count: 16),

@@ -311,7 +311,11 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
         return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
-    func captureArea(_ rect: CGRect, correlationId: String, scale: CaptureScalePreference) async throws -> CaptureResult {
+    func captureArea(
+        _ rect: CGRect,
+        correlationId: String,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
         let width = max(1, Int(rect.width.rounded()))
         let height = max(1, Int(rect.height.rounded()))
         let scaleFactor = scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0
@@ -354,7 +358,11 @@ private final class TimeoutModernOperator: ModernScreenCaptureOperating, @unchec
         throw OperationError.captureFailed(reason: "Not implemented in TimeoutModernOperator")
     }
 
-    func captureArea(_ rect: CGRect, correlationId: String, scale _: CaptureScalePreference) async throws -> CaptureResult {
+    func captureArea(
+        _ rect: CGRect,
+        correlationId: String,
+        scale _: CaptureScalePreference) async throws -> CaptureResult
+    {
         throw OperationError.captureFailed(reason: "Not implemented in TimeoutModernOperator")
     }
 }

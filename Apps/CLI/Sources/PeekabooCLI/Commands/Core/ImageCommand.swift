@@ -203,7 +203,8 @@ extension ImageCommand {
             let result = try await ImageCaptureBridge.captureScreen(
                 services: self.services,
                 displayIndex: index,
-                scale: self.captureScale)
+                scale: self.captureScale
+            )
             let saved = try self.saveCaptureResult(result, preferredName: "screen\(index)", index: nil)
             return [saved]
         }
@@ -216,7 +217,8 @@ extension ImageCommand {
             let result = try await ImageCaptureBridge.captureScreen(
                 services: self.services,
                 displayIndex: displayIndex,
-                scale: self.captureScale)
+                scale: self.captureScale
+            )
             let saved = try self.saveCaptureResult(result, preferredName: "screen\(displayIndex)", index: ordinal)
             savedFiles.append(saved)
         }
@@ -282,7 +284,8 @@ extension ImageCommand {
     private func captureFrontmost() async throws -> [SavedFile] {
         let result = try await ImageCaptureBridge.captureFrontmost(
             services: self.services,
-            scale: self.captureScale)
+            scale: self.captureScale
+        )
         let saved = try self.saveCaptureResult(result, preferredName: "frontmost", index: nil)
         return [saved]
     }
@@ -299,7 +302,8 @@ extension ImageCommand {
         let result = try await ImageCaptureBridge.captureArea(
             services: self.services,
             rect: rect,
-            scale: self.captureScale)
+            scale: self.captureScale
+        )
         let saved = try self.saveCaptureResult(result, preferredName: "menubar", index: nil)
         return [saved]
     }
@@ -609,7 +613,8 @@ private enum ImageCaptureBridge {
             try await services.screenCapture.captureScreen(
                 displayIndex: displayIndex,
                 visualizerMode: .screenshotFlash,
-                scale: scale)
+                scale: scale
+            )
         }.value
     }
 
@@ -624,31 +629,34 @@ private enum ImageCaptureBridge {
                 appIdentifier: appIdentifier,
                 windowIndex: windowIndex,
                 visualizerMode: .screenshotFlash,
-                scale: scale)
+                scale: scale
+            )
         }.value
     }
 
     static func captureFrontmost(
         services: any PeekabooServiceProviding,
-        scale: CaptureScalePreference) async throws -> CaptureResult
-    {
+        scale: CaptureScalePreference
+    ) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureFrontmost(
                 visualizerMode: .screenshotFlash,
-                scale: scale)
+                scale: scale
+            )
         }.value
     }
 
     static func captureArea(
         services: any PeekabooServiceProviding,
         rect: CGRect,
-        scale: CaptureScalePreference) async throws -> CaptureResult
-    {
+        scale: CaptureScalePreference
+    ) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureArea(
                 rect,
                 visualizerMode: .screenshotFlash,
-                scale: scale)
+                scale: scale
+            )
         }.value
     }
 }

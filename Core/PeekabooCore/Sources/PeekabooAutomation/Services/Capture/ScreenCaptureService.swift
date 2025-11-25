@@ -696,7 +696,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 isOnScreen: window.isOnScreen)
         }
 
-        func captureArea(_ rect: CGRect, correlationId: String, scale: CaptureScalePreference) async throws -> CaptureResult {
+        func captureArea(
+            _ rect: CGRect,
+            correlationId: String,
+            scale: CaptureScalePreference) async throws -> CaptureResult
+        {
             self.logger.debug("Finding display containing rect", correlationId: correlationId)
             let content = try await SCShareableContent.current
             guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
@@ -1246,10 +1250,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
         private func outputScale(for preference: CaptureScalePreference, fallback: CGFloat) -> CGFloat {
             switch preference {
-            case .native:
-                return fallback
-            case .logical1x:
-                return 1.0
+            case .native: return fallback
+            case .logical1x: return 1.0
             }
         }
 
