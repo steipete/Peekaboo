@@ -168,32 +168,18 @@ jobs:
       - name: Show Swift toolchain version
         run: swift --version
 
-      - name: Export Swift toolchain binary
-        run: |
-          echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
-
-      - name: Export Swift runtime library path
-        run: |
-          RUNTIME_PATH="/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/lib/swift/macosx"
-          echo "SWIFT_RUNTIME_LIB=${RUNTIME_PATH}" >> "$GITHUB_ENV"
-          if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
-            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
-          else
-            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}" >> "$GITHUB_ENV"
-          fi
-
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build CLI target
         working-directory: Apps/CLI
         run: |
-          "$SWIFT_BIN" build --configuration debug
+          swift build --configuration debug
 
       - name: Run CLI unit tests (skip automation)
         working-directory: Apps/CLI
         run: |
-          "$SWIFT_BIN" test --no-parallel -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
+          swift test --no-parallel -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
 
   tachikoma:
     name: Tachikoma build & tests
