@@ -67,7 +67,7 @@ npx -y @steipete/peekaboo-mcp
 | [dialog](docs/commands/dialog.md) | `list`, `click`, `input`, `file`, `dismiss` | Drive system dialogs (open/save/etc.) |
 | [image](docs/commands/image.md) | `--mode screen/window/menu`, `--retina`, `--analyze` | Screenshot screen/window/menu bar (+analyze) |
 | [list](docs/commands/list.md) | `apps`, `windows`, `screens`, `menubar`, `permissions` | Enumerate apps, windows, screens, permissions |
-| [tools](docs/commands/tools.md) | `--source native|mcp`, `--server <name>` | Inspect native + MCP tools |
+| [tools](docs/commands/tools.md) | `--source native\|mcp`, `--server <name>` | Inspect native + MCP tools |
 | [config](docs/commands/config.md) | `init`, `show`, `add`, `login`, `models` | Manage credentials/providers/settings |
 | [permissions](docs/commands/permissions.md) | `status`, `grant` | Check/grant required macOS permissions |
 | [run](docs/commands/run.md) | `.peekaboo.json`, `--output`, `--no-fail-fast` | Execute `.peekaboo.json` automation scripts |
