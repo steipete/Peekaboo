@@ -4,6 +4,17 @@
 
 ### Added
 - Tool allow/deny filters now log when a tool is hidden, including whether the rule came from environment variables or config, and tests cover the messaging.
+- `peekaboo image --retina` captures at native HiDPI scale (2x on Retina) with scale-aware bounds in the capture pipeline, plus docs and tests to lock in the behavior.
+- Peekaboo now inherits Tachikoma’s Azure OpenAI provider and refreshed model catalog (GPT‑5.1 family as default, updated Grok/Gemini 2.5 IDs), and the `tk-config` helper is exposed through the provider config flow for easier credential setup.
+
+### Changed
+- Provider configuration now prefers environment overrides while still loading stored credentials, matching the latest Tachikoma behavior and keeping CI/config files in sync.
+
+### Fixed
+- Menubar automation uses a bundled LSUIElement helper before CGS fallbacks, improving detection of menu extras on macOS 26+.
+- Agent MCP tools (see/click/drag/type/scroll) default to the latest `see` session when none is pinned, so follow‑up actions work without re-running `see`.
+- MCP Responses image payloads are normalized (URL/base64) to align with the schema; manual testing guidance updated.
+- Restored Playground target build on macOS 15 so local examples compile again.
 
 ## [3.0.0] - 2025-11-17
 
