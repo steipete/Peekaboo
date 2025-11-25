@@ -551,7 +551,7 @@ Most importantly, it's completely optional - the CLI and MCP continue to work pe
 - [ ] All agent actions have visual feedback
 - [ ] Zero performance impact when disabled
 - [ ] < 5% CPU usage during animations
-- [ ] Works on all macOS versions (14.0+)
+- [ ] Works on all macOS versions (15.0+)
 - [ ] Graceful fallback without Peekaboo.app
 - [ ] Delightful user experience
 - [ ] Professional appearance

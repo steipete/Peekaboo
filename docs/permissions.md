@@ -9,7 +9,7 @@ read_when:
 
 ## Requirements
 
-- **macOS 14.0+ (Sonoma)** – core automation APIs depend on Sonoma.
+- **macOS 15.0+ (Sequoia)** – core automation APIs depend on Sequoia.
 - **Screen Recording (required)** – enables CGWindow capture and multi-app automation.
 - **Accessibility (recommended)** – improves window focus, menu interaction, and dialog control.
 

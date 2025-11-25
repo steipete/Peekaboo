@@ -93,7 +93,7 @@ Only skip the profile on customer-facing demo hardware or other locked-down syst
 
 3. **Install via System Settings**:
    - **macOS 15 (Sequoia) and later**: Go to System Settings > General > Device Management
-   - **macOS 14 (Sonoma) and earlier**: Go to System Settings > Privacy & Security > Profiles
+   - **macOS 15 (Sequoia) and earlier**: Go to System Settings > Privacy & Security > Profiles
    - Click on "Peekaboo Private Data Logging"
    - Click "Install..." and authenticate
 
@@ -300,7 +300,7 @@ This keeps sudo active for 60 minutes after each use.
 ### Profile not appearing in System Settings
 - Make sure you're looking in the right place:
   - macOS 15+: General > Device Management
-  - macOS 14 and earlier: Privacy & Security > Profiles
+  - macOS 15 and earlier: Privacy & Security > Profiles
 - Try downloading and opening the profile again
 
 ## Summary

@@ -11,7 +11,7 @@ This guide explains how to install the Peekaboo MCP server in Claude Desktop app
 
 ## Prerequisites
 
-1. **macOS 14.0 (Sonoma) or later**
+1. **macOS 15.0 (Sequoia) or later**
 2. **Claude Desktop** installed from [claude.ai/download](https://claude.ai/download)
 3. **Peekaboo CLI** built and working
 

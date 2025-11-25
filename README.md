@@ -111,7 +111,7 @@ Set providers via `PEEKABOO_AI_PROVIDERS` or `peekaboo config add`.
 - Service API reference: [docs/service-api-reference.md](docs/service-api-reference.md)
 
 ## Development basics
-- Requirements: macOS 14+, Xcode 16+/Swift 6.2, Node 20+ (Corepack/pnpm).
+- Requirements: macOS 15+, Xcode 16+/Swift 6.2, Node 20+ (Corepack/pnpm).
 - Install deps: `pnpm install` then `pnpm run build:cli` or `pnpm run test:safe`.
 - Lint/format: `pnpm run lint && pnpm run format`.
 
