@@ -76,10 +76,9 @@ struct TypeCommandTests {
         do {
             try command.validate()
             Issue.record("Expected validation failure for WPM outside allowed range")
-        } catch is any ValidationError {
-            // expected
         } catch {
-            Issue.record("Unexpected error: \(error)")
+            let description = String(describing: error)
+            #expect(description.contains("--wpm must be between 80 and 220"))
         }
     }
 
@@ -89,10 +88,9 @@ struct TypeCommandTests {
         do {
             try command.validate()
             Issue.record("Expected validation failure for linear profile with WPM")
-        } catch is any ValidationError {
-            // expected
         } catch {
-            Issue.record("Unexpected error: \(error)")
+            let description = String(describing: error)
+            #expect(description.contains("--wpm is only valid when --profile human"))
         }
     }
 

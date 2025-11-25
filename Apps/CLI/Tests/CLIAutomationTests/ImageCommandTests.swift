@@ -422,7 +422,7 @@ struct ImageCommandTests {
         let captureResult = Self.makeCaptureResult(app: appInfo, window: terminal)
         let captureService = StubScreenCaptureService(permissionGranted: true)
         var recordedWindowIndex: Int?
-        captureService.captureWindowHandler = { identifier, index in
+        captureService.captureWindowHandler = { identifier, index, _ in
             #expect(identifier == appName)
             recordedWindowIndex = index
             return captureResult
@@ -485,7 +485,7 @@ struct ImageCommandTests {
         let captureResult = Self.makeCaptureResult(app: appInfo, window: logs)
         let captureService = StubScreenCaptureService(permissionGranted: true)
         var recordedWindowIndex: Int?
-        captureService.captureWindowHandler = { _, index in
+        captureService.captureWindowHandler = { _, index, _ in
             recordedWindowIndex = index
             return captureResult
         }
@@ -661,7 +661,7 @@ struct ImageCommandTests {
         let captureResult = Self.makeCaptureResult(app: appInfo, window: visible)
         let captureService = StubScreenCaptureService(permissionGranted: true)
         var recordedWindowIndex: Int?
-        captureService.captureWindowHandler = { _, index in
+        captureService.captureWindowHandler = { _, index, _ in
             recordedWindowIndex = index
             return captureResult
         }

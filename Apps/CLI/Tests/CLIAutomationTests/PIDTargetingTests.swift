@@ -61,8 +61,8 @@ struct PIDTargetingTests {
         }
     }
 
-    @Test("Case-sensitive PID prefix")
-    func caseSensitivePIDPrefix() async throws {
+    @Test("PID prefix matching is case-insensitive")
+    func pidPrefixCaseInsensitivity() async throws {
         // Get any running application
         let runningApps = NSWorkspace.shared.runningApplications
         guard let testApp = runningApps.first(where: { $0.localizedName != nil && $0.activationPolicy != .prohibited })
@@ -74,27 +74,15 @@ struct PIDTargetingTests {
         let pid = testApp.processIdentifier
         let applicationService = await MainActor.run { ApplicationService() }
 
-        // ApplicationService expects exact "PID:" prefix
-        let validIdentifier = "PID:\(pid)"
-        let invalidVariations = ["pid:\(pid)", "Pid:\(pid)", "pId:\(pid)"]
+        // ApplicationService treats the PID prefix in a case-insensitive manner
+        let variations = ["PID:\(pid)", "pid:\(pid)", "Pid:\(pid)", "pId:\(pid)"]
 
-        // Valid PID format should work
-        do {
-            let foundApp = try await applicationService.findApplication(identifier: validIdentifier)
-            #expect(foundApp.processIdentifier == pid)
-        } catch {
-            Issue.record("Failed to find application with valid PID format: \(error)")
-        }
-
-        // Invalid variations should not be treated as PID format, will try name matching
-        for identifier in invalidVariations {
+        for identifier in variations {
             do {
-                // These will attempt to find an app by name matching "pid:123" etc.
-                // which should fail unless there's an app with that exact name
-                _ = try await applicationService.findApplication(identifier: identifier)
-                Issue.record("Expected to fail finding app with identifier '\(identifier)' but succeeded")
+                let foundApp = try await applicationService.findApplication(identifier: identifier)
+                #expect(foundApp.processIdentifier == pid)
             } catch {
-                // Expected to fail - these are not valid PID formats
+                Issue.record("Failed to find application with PID variation '\(identifier)': \(error)")
             }
         }
     }

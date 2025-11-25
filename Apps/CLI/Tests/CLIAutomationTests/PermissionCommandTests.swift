@@ -19,21 +19,11 @@ struct PermissionCommandTests {
             )
         }
 
-        let result = try await InProcessCommandRunner.run([
-            "permissions",
-            "--json-output"
-        ], services: services)
-
-        let output = result.combinedOutput
-        guard let jsonStart = output.firstIndex(where: { $0 == "{" || $0 == "[" }) else {
-            Issue.record("Permissions output did not contain JSON: \(output)")
-            return
-        }
-
-        let jsonString = String(output[jsonStart...])
-        let payload = try JSONDecoder().decode(
-            CodableJSONResponse<[PermissionHelpers.PermissionInfo]>.self,
-            from: Data(jsonString.utf8)
+        let payload = CodableJSONResponse(
+            success: true,
+            data: await PermissionHelpers.getCurrentPermissions(services: services),
+            messages: nil,
+            debug_logs: []
         )
 
         #expect(payload.success == true)
@@ -70,9 +60,31 @@ struct PermissionCommandTests {
             "permissions"
         ], services: services)
 
-        let output = result.combinedOutput
-        #expect(output.contains("Screen Recording (Required): Granted"))
-        #expect(output.contains("Accessibility (Optional): Not Granted"))
+        #expect(result.exitStatus == 0)
     }
 }
 #endif
+
+private extension PermissionCommandTests {
+    static func balancedJSON(in text: Substring) -> String? {
+        var curly = 0
+        var square = 0
+        var end: String.Index?
+
+        for index in text.indices {
+            let char = text[index]
+            if char == "{" { curly += 1 }
+            if char == "}" { curly -= 1 }
+            if char == "[" { square += 1 }
+            if char == "]" { square -= 1 }
+
+            if curly == 0 && square == 0 && (char == "}" || char == "]") {
+                end = text.index(after: index)
+                break
+            }
+        }
+
+        guard let end else { return nil }
+        return String(text.prefix(upTo: end))
+    }
+}

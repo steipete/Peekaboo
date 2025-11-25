@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import Foundation
 import PeekabooFoundation
+import UniformTypeIdentifiers
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
