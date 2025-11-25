@@ -1,9 +1,10 @@
 ---
-summary: 'Poltergeist usage tips for Peekaboo'
+summary: 'Poltergeist usage, migration highlights, and watchman exclusion tips'
 read_when:
   - Tuning local rebuild performance
   - Disabling specific Poltergeist targets
   - Debugging CLI vs. mac app rebuilds
+  - Migrating Poltergeist configs or tightening Watchman excludes
 ---
 
 # Poltergeist Tips & Recommendations
@@ -55,3 +56,13 @@ read_when:
 - **Preflight builds:** teach the mac builder to run a fast `swift build --target PeekabooCore` (or similar) before firing the full Xcode pipeline; if nothing in shared libs changed, skip the expensive app build entirely.
 - **Prompt-friendly status:** emit a terse status summary (e.g., `Peekaboo-queue.status`) whenever `StateManager.updateBuildStatus` runs so shells/Starship can show “CLI ✅ · mac 💤” directly in PS1.
 - **Auto-disable idle targets:** track each target’s last launch/build timestamp; if a target sits idle for N hours, disable it and log a hint. The next `polter <target>` call would re-enable it. Keeps the daemon lean during CLI-only days.
+
+## Implementation highlights (generic target system)
+- Config now uses a **`targets` array** (no more `cli`/`mac` sections) and `poltergeist --target <name>` for selection; `poltergeist list` shows available targets.
+- Builders are pluggable (executable/app) with shared watch logic; migration scripts live in the Poltergeist repo (`scripts/migrate-to-generic-targets.sh`).
+- Peekaboo’s `poltergeist.config.json` has been migrated; keep using the new format for any tweaks.
+
+## Watchman exclusion system (performance)
+- Defaults ignore build/output/deps/IDE caches (`.build`, `DerivedData`, `node_modules`, `Pods`, `vendor`, `*.app`, etc.).
+- Custom excludes: set in `poltergeist.config.json` under `watchman.excludeDirs` and toggle defaults via `watchman.useDefaultExclusions` (true by default).
+- Poltergeist writes `.watchmanconfig` and applies subscription-level excludes, reducing recrawls and CPU. If Watchman thrashes, re-run haunt to regenerate the config and confirm excludes cover any new heavy directories.
