@@ -65,15 +65,15 @@ Full reference lives in `docs/commands/`.
 Set providers via `PEEKABOO_AI_PROVIDERS` or `peekaboo config add`.
 
 ## Learn more
-- Command reference: `docs/commands/`
-- Architecture: `docs/ARCHITECTURE.md`
-- Building from source: `docs/building.md`
-- Testing guide: `docs/testing/tools.md`
-- MCP setup: `docs/commands/mcp.md`
-- Permissions: `docs/permissions.md`
-- Ollama/local models: `docs/ollama.md`
-- Agent chat loop: `docs/agent-chat.md`
-- Service API reference: `docs/service-api-reference.md`
+- Command reference: [docs/commands/](docs/commands/)
+- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Building from source: [docs/building.md](docs/building.md)
+- Testing guide: [docs/testing/tools.md](docs/testing/tools.md)
+- MCP setup: [docs/commands/mcp.md](docs/commands/mcp.md)
+- Permissions: [docs/permissions.md](docs/permissions.md)
+- Ollama/local models: [docs/ollama.md](docs/ollama.md)
+- Agent chat loop: [docs/agent-chat.md](docs/agent-chat.md)
+- Service API reference: [docs/service-api-reference.md](docs/service-api-reference.md)
 
 ## Development basics
 - Requirements: macOS 14+, Xcode 16+/Swift 6.2, Node 20+ (Corepack/pnpm).
