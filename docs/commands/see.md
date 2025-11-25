@@ -70,3 +70,10 @@ polter peekaboo -- see --app "Google Chrome" --json-output \
 - If the CLI reports **blind typing**, re-run `see` with `--app <Name>` so we can autofocus the app before typing.
 - Missing text fields after the fallback usually means the page is shielding its inputs from AX entirely; in that case rely on the Browser MCP DOM or image-based hit tests.
 - For repeatable local tests, run `RUN_LOCAL_TESTS=true swift test --filter SeeCommandPlaygroundTests` to exercise the Playground fixtures mentioned in `docs/research/interaction-debugging.md`.
+
+## Smart label placement (`--annotate`)
+- The `SmartLabelPlacer` generates external label candidates (above/below/sides/corners) for each element, filters out overlaps/out-of-bounds positions, then scores remaining spots via `AcceleratedTextDetector.scoreRegionForLabelPlacement` to prefer calm regions. Internal placements are a last-resort fallback.
+- Edge-aware scoring samples a padded rectangle (6 px halo, clamped to the image) so the chosen region stays clean once text is drawn; above/below placements get slight bonuses to reduce sideways clutter.
+- Preferred orientations nudge horizontally tight elements toward vertical labels when scores tie.
+- Tests: `Apps/CLI/Tests/CoreCLITests/SmartLabelPlacerTests.swift` (run with `./runner swift test --package-path Apps/CLI --filter SmartLabelPlacerTests`).
+- Manual validation: `polter peekaboo -- see --app Playground --annotate --path /tmp/see.png --json-output` then inspect the annotated PNG; if labels cover dense UI, capture the repro and adjust padding/scoring before committing.
