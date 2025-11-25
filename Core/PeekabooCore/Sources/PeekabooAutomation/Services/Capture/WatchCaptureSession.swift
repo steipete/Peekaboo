@@ -302,7 +302,8 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
         case .screen:
             result = try await self.screenCapture.captureScreen(
                 displayIndex: self.scope.screenIndex,
-                visualizerMode: .watchCapture)
+                visualizerMode: .watchCapture,
+                scale: .logical1x)
         case .frontmost:
             result = try await self.screenCapture.captureFrontmost(
                 visualizerMode: .watchCapture,
@@ -314,7 +315,8 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
             result = try await self.screenCapture.captureWindow(
                 appIdentifier: app,
                 windowIndex: self.scope.windowIndex,
-                visualizerMode: .watchCapture)
+                visualizerMode: .watchCapture,
+                scale: .logical1x)
         case .region:
             guard let rect = self.scope.region else {
                 throw PeekabooError.captureFailed(reason: "Region missing for watch capture")
@@ -322,7 +324,8 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
             let validated = try self.validateRegion(rect)
             result = try await self.screenCapture.captureArea(
                 validated,
-                visualizerMode: .watchCapture)
+                visualizerMode: .watchCapture,
+                scale: .logical1x)
         }
 
         guard let image = WatchCaptureSession.makeCGImage(from: result.imageData) else {

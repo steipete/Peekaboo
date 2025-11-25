@@ -940,6 +940,17 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     correlationId: correlationId)
             }
 
+            let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
+                            let x = boundsDict["X"] as? CGFloat,
+                            let y = boundsDict["Y"] as? CGFloat,
+                            let width = boundsDict["Width"] as? CGFloat,
+                            let height = boundsDict["Height"] as? CGFloat
+            {
+                CGRect(x: x, y: y, width: width, height: height)
+            } else {
+                CGRect(x: 0, y: 0, width: image.width, height: image.height)
+            }
+
             let imageData: Data
             let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: self.scaleFactor(for: bounds))
             do {
@@ -955,17 +966,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     "dataSize": imageData.count,
                 ],
                 correlationId: correlationId)
-
-            let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
-                            let x = boundsDict["X"] as? CGFloat,
-                            let y = boundsDict["Y"] as? CGFloat,
-                            let width = boundsDict["Width"] as? CGFloat,
-                            let height = boundsDict["Height"] as? CGFloat
-            {
-                CGRect(x: x, y: y, width: width, height: height)
-            } else {
-                CGRect(x: 0, y: 0, width: image.width, height: image.height)
-            }
 
             let metadata = CaptureMetadata(
                 size: CGSize(width: scaledImage.width, height: scaledImage.height),
