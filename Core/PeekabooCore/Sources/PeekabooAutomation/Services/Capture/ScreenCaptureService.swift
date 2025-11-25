@@ -161,6 +161,16 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
     }
 
+    private struct WindowCaptureOptions {
+        let visualizerMode: CaptureVisualizerMode
+        let scale: CaptureScalePreference
+    }
+
+    private struct CaptureInvocationContext {
+        let operation: CaptureOperation
+        let correlationId: String
+    }
+
     public convenience init(loggingService: any LoggingServiceProtocol) {
         self.init(loggingService: loggingService, dependencies: .live())
     }
@@ -316,45 +326,41 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return try await self.captureWindow(
                 app: app,
                 windowIndex: windowIndex,
-                visualizerMode: visualizerMode,
-                scale: scale,
-                operation: .window,
-                correlationId: correlationId)
+                options: WindowCaptureOptions(visualizerMode: visualizerMode, scale: scale),
+                context: CaptureInvocationContext(operation: .window, correlationId: correlationId))
         }
     }
 
     private func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
-        visualizerMode: CaptureVisualizerMode,
-        scale: CaptureScalePreference,
-        operation: CaptureOperation,
-        correlationId: String) async throws -> CaptureResult
+        options: WindowCaptureOptions,
+        context: CaptureInvocationContext) async throws -> CaptureResult
     {
         try await self.fallbackRunner.run(
-            operationName: operation.metricName,
+            operationName: context.operation.metricName,
             logger: self.logger,
-            correlationId: correlationId)
+            correlationId: context.correlationId)
         { api in
             switch api {
             case .modern:
                 self.logger.debug(
                     "Using ScreenCaptureKit window capture path",
-                    correlationId: correlationId)
+                    correlationId: context.correlationId)
                 return try await self.modernOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
-                    correlationId: correlationId,
-                    visualizerMode: visualizerMode,
-                    scale: scale)
+                    correlationId: context.correlationId,
+                    visualizerMode: options.visualizerMode,
+                    scale: options.scale)
             case .legacy:
-                self.logger.debug("Using legacy CGWindowList API", correlationId: correlationId)
+                self.logger.debug("Using legacy CGWindowList API", correlationId: context.correlationId)
                 return try await self.legacyOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
-                    correlationId: correlationId,
-                    visualizerMode: visualizerMode,
-                    scale: scale)
+                    correlationId: context.correlationId,
+                    visualizerMode: options.visualizerMode,
+                    scale: options.scale)
             }
         }
     }
@@ -382,10 +388,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return try await self.captureWindow(
                 app: serviceApp,
                 windowIndex: nil,
-                visualizerMode: visualizerMode,
-                scale: scale,
-                operation: .frontmost,
-                correlationId: correlationId)
+                options: WindowCaptureOptions(visualizerMode: visualizerMode, scale: scale),
+                context: CaptureInvocationContext(operation: .frontmost, correlationId: correlationId))
         }
     }
 
@@ -1250,8 +1254,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
         private func outputScale(for preference: CaptureScalePreference, fallback: CGFloat) -> CGFloat {
             switch preference {
-            case .native: return fallback
-            case .logical1x: return 1.0
+            case .native: fallback
+            case .logical1x: 1.0
             }
         }
 
