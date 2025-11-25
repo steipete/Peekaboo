@@ -49,7 +49,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
     private let permissions: PermissionsService
 
     // Timeout for accessibility API calls to prevent hangs
-    private static let axTimeout: Float = 2.0 // 2 seconds instead of default 6 seconds
+    // AX can be sluggish on some apps (e.g., Arc); allow more headroom.
+    private static let axTimeout: Float = 10.0
 
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
