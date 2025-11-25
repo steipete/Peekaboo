@@ -55,6 +55,35 @@ npx -y @steipete/peekaboo-mcp
 
 Full reference lives in `docs/commands/`.
 
+| Command | What it does | Docs |
+| --- | --- | --- |
+| see | Capture and annotate UI, return session + element IDs | [docs/commands/see.md](docs/commands/see.md) |
+| click | Click by element ID, label, or coordinates | [docs/commands/click.md](docs/commands/click.md) |
+| type | Enter text with pacing options | [docs/commands/type.md](docs/commands/type.md) |
+| press | Special keys and sequences | [docs/commands/press.md](docs/commands/press.md) |
+| hotkey | Modifier combos (cmd/ctrl/alt/shift) | [docs/commands/hotkey.md](docs/commands/hotkey.md) |
+| scroll | Scroll views or elements | [docs/commands/scroll.md](docs/commands/scroll.md) |
+| swipe | Smooth gesture-style drags | [docs/commands/swipe.md](docs/commands/swipe.md) |
+| drag | Drag-and-drop between elements/coords | [docs/commands/drag.md](docs/commands/drag.md) |
+| move | Position the cursor without clicking | [docs/commands/move.md](docs/commands/move.md) |
+| window | Move/resize/focus windows and Spaces | [docs/commands/window.md](docs/commands/window.md) |
+| app | Launch, quit, relaunch, switch apps | [docs/commands/app.md](docs/commands/app.md) |
+| space | List or switch macOS Spaces | [docs/commands/space.md](docs/commands/space.md) |
+| menu | List/click app menus and extras | [docs/commands/menu.md](docs/commands/menu.md) |
+| menubar | Target status-bar items by name/index | [docs/commands/menubar.md](docs/commands/menubar.md) |
+| dock | Interact with Dock items | [docs/commands/dock.md](docs/commands/dock.md) |
+| dialog | Drive system dialogs (open/save/etc.) | [docs/commands/dialog.md](docs/commands/dialog.md) |
+| image | Screenshot screen/window/menu bar (+analyze) | [docs/commands/image.md](docs/commands/image.md) |
+| list | Enumerate apps, windows, screens, permissions | [docs/commands/list.md](docs/commands/list.md) |
+| tools | Inspect native + MCP tools | [docs/commands/tools.md](docs/commands/tools.md) |
+| config | Manage credentials/providers/settings | [docs/commands/config.md](docs/commands/config.md) |
+| permissions | Check/grant required macOS permissions | [docs/commands/permissions.md](docs/commands/permissions.md) |
+| run | Execute `.peekaboo.json` automation scripts | [docs/commands/run.md](docs/commands/run.md) |
+| sleep | Millisecond delays between steps | [docs/commands/sleep.md](docs/commands/sleep.md) |
+| clean | Prune sessions and caches | [docs/commands/clean.md](docs/commands/clean.md) |
+| agent | Natural-language multi-step automation | [docs/commands/agent.md](docs/commands/agent.md) |
+| mcp | Manage external MCP servers and serve Peekaboo | [docs/commands/mcp.md](docs/commands/mcp.md) |
+
 ## Models and providers
 - OpenAI: GPT-5.1 (default) and GPT-4.1/4o vision
 - Anthropic: Claude 4.x
