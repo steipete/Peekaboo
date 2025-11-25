@@ -683,7 +683,7 @@ function buildAndVerifyPackage() {
   logStep('Build and Package Verification');
 
   // Build universal Swift binary (stamps Info.plist and writes ./peekaboo)
-  if (!execWithOutput('pnpm run build:swift:all', 'Swift universal build')) {
+  if (!execWithOutput('./scripts/build-swift-universal.sh', 'Swift universal build')) {
     logError('Swift build failed');
     return false;
   }
