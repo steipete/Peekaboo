@@ -568,6 +568,71 @@ struct ImageCommandTests {
         #expect(response.error?.code == ErrorCode.WINDOW_NOT_FOUND.rawValue)
     }
 
+    @Test("Defaults to 1x logical scale", .tags(.imageCapture))
+    func imageCommandUsesLogicalScaleByDefault() async throws {
+        let screens = [Self.makeScreenInfo(scale: 2.0)]
+        let captureResult = Self.makeScreenCaptureResult(size: CGSize(width: 1200, height: 800), scale: 1.0)
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedScale: CaptureScalePreference?
+        captureService.captureScreenHandler = { _, scale in
+            recordedScale = scale
+            return captureResult
+        }
+
+        let services = TestServicesFactory.makePeekabooServices(
+            screens: screens,
+            screenCapture: captureService
+        )
+
+        var command = try ImageCommand.parse([
+            "--mode", "screen",
+            "--path", Self.makeTempCapturePath("logical.png"),
+            "--json-output",
+        ])
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+
+        #expect(recordedScale == .logical1x)
+    }
+
+    @Test("Retina flag opts into native scale", .tags(.imageCapture))
+    func imageCommandHonorsRetinaFlag() async throws {
+        let screens = [Self.makeScreenInfo(scale: 2.0)]
+        let captureResult = Self.makeScreenCaptureResult(size: CGSize(width: 2400, height: 1600), scale: 2.0)
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedScale: CaptureScalePreference?
+        captureService.captureScreenHandler = { _, scale in
+            recordedScale = scale
+            return captureResult
+        }
+
+        let services = TestServicesFactory.makePeekabooServices(
+            screens: screens,
+            screenCapture: captureService
+        )
+
+        var command = try ImageCommand.parse([
+            "--mode", "screen",
+            "--retina",
+            "--path", Self.makeTempCapturePath("retina.png"),
+            "--json-output",
+        ])
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+
+        #expect(recordedScale == .native)
+    }
+
     @Test("Skips windows marked non-shareable", .tags(.imageCapture))
     func imageCommandSkipsNonShareableWindows() async throws {
         let appName = "Console"
@@ -685,6 +750,33 @@ struct ImageCommandTests {
         )
         return CaptureResult(
             imageData: Data(repeating: 0xAB, count: 32),
+            metadata: metadata
+        )
+    }
+
+    private static func makeScreenInfo(scale: CGFloat) -> ScreenInfo {
+        ScreenInfo(
+            index: 0,
+            name: "Retina",
+            frame: CGRect(x: 0, y: 0, width: 1200, height: 800),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1200, height: 800),
+            isPrimary: true,
+            scaleFactor: scale,
+            displayID: 1)
+    }
+
+    private static func makeScreenCaptureResult(size: CGSize, scale: CGFloat) -> CaptureResult {
+        let metadata = CaptureMetadata(
+            size: size,
+            mode: .screen,
+            displayInfo: DisplayInfo(
+                index: 0,
+                name: "Retina",
+                bounds: CGRect(origin: .zero, size: CGSize(width: size.width / scale, height: size.height / scale)),
+                scaleFactor: scale)
+        )
+        return CaptureResult(
+            imageData: Data(repeating: 0xCD, count: 16),
             metadata: metadata
         )
     }
