@@ -153,7 +153,7 @@ Common helpers:
 
 - **Space/window telemetry:** continue refining `SpaceCommand` outputs so CLI/app/agent logs include explicit display + Space IDs for every focused window.
 - **Right-button swipes:** `SwipeCommand` currently rejects `--right-button`; hooking that path up through `AutomationServiceBridge.swipe` is tracked separately.
-- **Inspector unification:** Peekaboo.app, CLI overlays, and `docs/interaction-debugging.md` fixtures should share a single component catalog so new detectors (e.g., hidden web fields) land once and benefit all surfaces.
+- **Inspector unification:** Peekaboo.app, CLI overlays, and `docs/research/interaction-debugging.md` fixtures should share a single component catalog so new detectors (e.g., hidden web fields) land once and benefit all surfaces.
 - **MCP inspect tooling:** `peekaboo mcp inspect` is a stub today; once the inspector is implemented, document its flags under `docs/commands/mcp.md` and surface it in the CLI help output.
 
 For flag-level behavior, troubleshooting steps, and real-world examples, refer to the per-command docs in `docs/commands/`. This spec focuses on how the pieces fit together; the command docs capture day-to-day usage.

@@ -36,3 +36,8 @@ polter peekaboo -- list windows --app "Google Chrome" --include-details bounds,i
 # Pipe the current display layout into jq for scripting
 polter peekaboo -- list screens --json-output | jq '.data.screens[] | {name, size: .frame}'
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

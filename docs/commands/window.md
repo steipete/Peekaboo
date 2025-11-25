@@ -36,3 +36,8 @@ polter peekaboo -- window resize --app Safari -w 1200 --height 800
 # Focus Terminal even if it lives on another Space
 polter peekaboo -- window focus --app Terminal --space-switch
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

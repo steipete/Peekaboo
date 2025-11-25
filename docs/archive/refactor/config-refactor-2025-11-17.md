@@ -6,6 +6,7 @@ read_when:
 ---
 
 ## Config refactor — 2025-11-17 (updated)
+_Status: Archived · Focus: config CLI/runtime refactor checklist._
 
 Scope: consolidate config/auth logic inside Tachikoma so hosts stay thin. Tachikoma owns credential resolution, storage, validation, OAuth (OpenAI/Codex + Anthropic Max), token refresh, and CLI UX. Hosts (Peekaboo, others) only set the profile directory (e.g., `.peekaboo`) or inject a custom credential provider.
 

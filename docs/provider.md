@@ -9,6 +9,10 @@ read_when:
 
 This document explains how to configure AI providers in Peekaboo, including built-ins (OpenAI, Anthropic, Grok/xAI, Gemini) and custom OpenAI-/Anthropic-compatible endpoints.
 
+See also:
+- `providers/README.md` for capability comparison and links to provider-specific docs.
+- `providers/openai.md`, `providers/anthropic.md`, `providers/grok.md`, `providers/ollama.md` for deep dives and current status.
+
 ## Overview
 
 Peekaboo supports custom AI providers through configuration-based setup. This allows you to:

@@ -6,6 +6,7 @@ read_when:
 ---
 
 ## MCPCommand Split Notes (Nov 17, 2025)
+_Status: Archived · Focus: decomposing MCPCommand and normalizing formatting/errors._
 
 - Broke the 1.2K-line `MCPCommand.swift` into per-subcommand files plus small helpers (`MCPDefaults`, `MCPCallTypes`, `MCPCallFormatter`, `MCPArgumentParsing`, `MCPClientManaging`) to localize responsibilities and cut duplication.
 - Behavior remains the same; the next improvement should be introducing an `MCPClientService` facade (wrapping `TachikomaMCPClientManager`) and a shared `MCPContext` to eliminate leftover `RuntimeStorage` boilerplate and make mocking straightforward.

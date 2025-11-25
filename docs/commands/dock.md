@@ -34,3 +34,8 @@ polter peekaboo -- dock right-click --app Finder --select "New Window"
 # Hide the Dock before recording a video
 polter peekaboo -- dock hide
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

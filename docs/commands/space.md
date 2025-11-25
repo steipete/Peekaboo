@@ -33,3 +33,8 @@ polter peekaboo -- space move-window --app Safari --to 3 --follow
 # Switch back to Space 1
 polter peekaboo -- space switch --to 1
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

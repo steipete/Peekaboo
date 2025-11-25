@@ -6,6 +6,7 @@ read_when:
 ---
 
 ## ConfigCommand Split Plan (Nov 17, 2025)
+_Status: Archived · Focus: breaking ConfigCommand into smaller, testable units._
 
 - Add execution tests per subcommand: run against temp config/credentials paths, assert file writes, JSON output fields, and exit codes; cover add/list/remove/test/models flows and edit/validate happy/sad paths.
 - Unify error/output surface: centralize codes/messages in a helper so JSON/text stay consistent and duplication drops across subcommands.

@@ -22,3 +22,8 @@ The `capture` MCP tool (source = `live` or `video`) returns text plus meta entri
 Notes:
 - Paths are absolute in MCP responses; `metadata.json` stores basenames for portability.
 - `capture` replaces the old `watch` tool; a `watch` alias may exist internally for compatibility but is no longer documented.
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

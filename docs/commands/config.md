@@ -58,3 +58,8 @@ polter peekaboo -- config add gemini ya29...
 polter peekaboo -- config login openai
 polter peekaboo -- config login anthropic
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

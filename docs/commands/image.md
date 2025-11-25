@@ -46,3 +46,8 @@ polter peekaboo -- image --mode screen --analyze "Summarize the key UI differenc
 # Snapshot only the menu bar icons without stealing focus from the active Space
 polter peekaboo -- image --app menubar --capture-focus background
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

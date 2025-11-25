@@ -54,3 +54,8 @@ polter peekaboo -- agent "Install the nightly build" --dry-run
 # Resume the last session and quiet the spinner output
 polter peekaboo -- agent --resume --quiet
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

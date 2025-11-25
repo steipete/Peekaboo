@@ -39,3 +39,8 @@ polter peekaboo -- menubar click "Wi-Fi"
 # Click the third item regardless of name and capture JSON output
 polter peekaboo -- menubar click --index 3 --json-output
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

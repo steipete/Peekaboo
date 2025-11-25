@@ -37,3 +37,8 @@ polter peekaboo -- press tab tab return
 # Walk a dialog down three rows with headroom between repetitions
 polter peekaboo -- press down --count 3 --delay 200
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

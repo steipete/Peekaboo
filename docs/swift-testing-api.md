@@ -1,8 +1,8 @@
 ---
-summary: 'Review https://developer.apple.com/documentation/testing llms-full.txt guidance'
+summary: 'Apple Swift Testing API reference notes (llms-full excerpt)'
 read_when:
-  - 'planning work related to https://developer.apple.com/documentation/testing llms-full.txt'
-  - 'debugging or extending features described here'
+  - 'reviewing Apple’s official Swift Testing API docs'
+  - 'checking API details while implementing or debugging tests'
 ---
 
 # https://developer.apple.com/documentation/testing llms-full.txt
@@ -7031,4 +7031,3 @@ A type representing a test or suite.
 Declare a test suite.
 
 Current page is Test(\_:\_:)
-

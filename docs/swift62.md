@@ -1,8 +1,8 @@
 ---
-summary: 'Review  guidance'
+summary: 'Swift 6.2 upgrade notes for Peekaboo'
 read_when:
-  - 'planning work related to '
-  - 'debugging or extending features described here'
+  - 'upgrading toolchains or code to Swift 6.2'
+  - 'debugging Swift 6.2 concurrency/warning changes in Peekaboo'
 ---
 
 #

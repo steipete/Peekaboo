@@ -7,6 +7,7 @@ read_when:
 ---
 
 # AXorcist Boundary & API Refactor (Nov 18, 2025)
+_Status: Archived · Focus: keeping AXorcist lean and pushing heuristics to Peekaboo._
 
 ## Current snapshot
 - InputDriver now hosts all click/drag/scroll/hotkey paths for Peekaboo UI services; Peekaboo no longer posts CGEvents directly.

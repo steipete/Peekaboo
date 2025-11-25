@@ -43,3 +43,8 @@ polter peekaboo -- drag --from-coords "80,80" --to-coords "420,260" --profile hu
 # Range-select items by holding Shift
 polter peekaboo -- drag --from row_1 --to row_5 --modifiers shift
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

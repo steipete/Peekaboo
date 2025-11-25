@@ -44,3 +44,8 @@ polter peekaboo -- open https://example.com --json-output
 - Handler selection order: explicit `--bundle-id` → `--app` (bundle lookup, `.app` path, or common app directories) → system default handler. Invalid selectors throw `NotFoundError.application`.
 - Execution: builds `NSWorkspace.OpenConfiguration` with `activates = !noFocus`, polls up to 10s when `--wait-until-ready`, and still succeeds if activation fails (logs a warning).
 - Output shape (JSON): includes success flag, original + resolved target, handler app name + bundle id, PID, readiness, and focus state.
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

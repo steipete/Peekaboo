@@ -6,6 +6,7 @@ read_when:
 ---
 
 ## AgentCommand Split Lessons (Nov 17, 2025)
+_Status: Archived · Focus: chat/audio flow extraction and cleanup._
 
 - Trimmed `AgentCommand.swift` by extracting chat + audio flows and a `AgentChatLaunchPolicy` for clearer responsibilities and testing.
 - Kept visibility wider than ideal to share helpers; future refactor should move UI helpers (`AgentChatUI`, delegates) and output factories into their own types instead of relaxing access control.

@@ -42,3 +42,8 @@ polter peekaboo -- swipe --from-coords 80,640 --to-coords 820,320 --profile huma
 # Mix coordinate → element drag using the most recent session
 polter peekaboo -- swipe --from-coords 400,400 --to drawer_toggle
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

@@ -37,3 +37,8 @@ polter peekaboo -- scroll --direction up --amount 2 --on table_orders
 # Smooth horizontal pan inside Keynote without switching Spaces
 polter peekaboo -- scroll --direction right --smooth --app Keynote --space-switch
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

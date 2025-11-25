@@ -6,6 +6,7 @@ read_when:
 ---
 
 # Open command + app launch test refactor (WIP)
+_Status: Archived · Focus: harmonizing open/app launch behavior and tests._
 
 ## Current state (Nov 14, 2025)
 

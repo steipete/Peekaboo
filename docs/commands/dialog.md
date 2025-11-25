@@ -36,3 +36,8 @@ polter peekaboo -- dialog input --text hunter2 --field "Password" --clear --app 
 # Choose a file in an open panel and confirm
 polter peekaboo -- dialog file --path ~/Downloads --name report.pdf --select Open
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

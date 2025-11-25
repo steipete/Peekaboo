@@ -49,3 +49,8 @@ peekaboo clipboard --action restore --slot original
 - Binary reads without `--output` return a summary; use `--output -` to pipe data.
 - Slot saves are in-memory only and reset when Peekaboo quits.
 - Size guard: writes larger than 10 MB require `--allow-large`.
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

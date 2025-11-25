@@ -31,3 +31,8 @@ polter peekaboo -- run scripts/safari-login.peekaboo.json --json-output
 # Capture results for later inspection but keep executing even if a step flakes
 polter peekaboo -- run ./flows/regression.peekaboo.json --no-fail-fast --output /tmp/regression-results.json
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

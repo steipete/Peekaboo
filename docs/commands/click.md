@@ -39,3 +39,8 @@ polter peekaboo -- click "Allow" --wait-for 8000 --space-switch
 # Issue a right-click at raw coordinates
 polter peekaboo -- click --coords 1024,88 --right --no-auto-focus
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

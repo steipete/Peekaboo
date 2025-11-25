@@ -6,6 +6,7 @@ read_when:
 ---
 
 # Tool Result Metadata Refactor Plan
+_Status: Archived · Focus: richer ToolResponse formatting and summaries._
 
 ## Current Status
 - `ToolEventSummary` struct + helpers live in `ToolEventSummary.swift`; pointer direction math handled in `PointerDirection.swift`.

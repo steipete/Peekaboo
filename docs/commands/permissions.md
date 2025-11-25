@@ -31,3 +31,8 @@ polter peekaboo -- permissions --json-output | jq '.data[] | select(.status != "
 # Hand someone clear remediation steps
 polter peekaboo -- permissions grant
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

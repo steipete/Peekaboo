@@ -34,3 +34,8 @@ polter peekaboo -- menu list --app Finder --include-disabled
 # Capture the current menu + menu extras as JSON (with coordinates)
 polter peekaboo -- menu list-all --include-frames --json-output > /tmp/menu.json
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

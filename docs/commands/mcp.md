@@ -40,3 +40,8 @@ polter peekaboo -- mcp add chrome-devtools-local --transport stdio -- env API_TO
 # Call a remote tool with JSON args and see the structured response
 polter peekaboo -- mcp call claude-code --tool edit_file --args '{"path":"main.swift"}' --json-output
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

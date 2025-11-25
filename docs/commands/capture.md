@@ -61,3 +61,8 @@ peekaboo capture video /path/to/demo.mov --every-ms 500 --no-diff
 - Quick smokes:  
   - `peekaboo capture live --mode screen --duration 5 --active-fps 8 --threshold 0` → frames > 0, contact sheet exists.  
   - `peekaboo capture video /path/demo.mov --sample-fps 2 --start-ms 5000 --video-out /tmp/demo.mp4` → ≥2 kept frames and MP4 written.
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

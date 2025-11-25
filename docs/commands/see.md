@@ -69,4 +69,4 @@ polter peekaboo -- see --app "Google Chrome" --json-output \
 
 - If the CLI reports **blind typing**, re-run `see` with `--app <Name>` so we can autofocus the app before typing.
 - Missing text fields after the fallback usually means the page is shielding its inputs from AX entirely; in that case rely on the Browser MCP DOM or image-based hit tests.
-- For repeatable local tests, run `RUN_LOCAL_TESTS=true swift test --filter SeeCommandPlaygroundTests` to exercise the Playground fixtures mentioned in `docs/interaction-debugging.md`.
+- For repeatable local tests, run `RUN_LOCAL_TESTS=true swift test --filter SeeCommandPlaygroundTests` to exercise the Playground fixtures mentioned in `docs/research/interaction-debugging.md`.

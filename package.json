@@ -27,6 +27,7 @@
     "format": "pnpm run format:swift",
     "prepare-release": "./runner node scripts/prepare-release.js",
     "docs:list": "./runner node scripts/docs-list.mjs",
+    "lint:docs": "./runner node scripts/docs-lint.mjs",
     "polter": "FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules script -q /dev/null ./runner node ../poltergeist/dist/polter.js",
     "polter:dev": "cd /Users/steipete/Projects/Peekaboo && FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules ./runner pnpm --dir ../poltergeist exec tsx ../poltergeist/src/polter.ts",
     "peekaboo": "FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules script -q /dev/null ./scripts/poltergeist-wrapper.sh peekaboo",

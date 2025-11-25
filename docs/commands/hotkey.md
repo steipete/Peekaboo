@@ -33,3 +33,8 @@ polter peekaboo -- hotkey --keys "cmd,shift,t" --session $(jq -r '.data.session_
 # Trigger Spotlight without needing a session
 polter peekaboo -- hotkey --keys "cmd space" --no-auto-focus
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

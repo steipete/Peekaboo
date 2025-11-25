@@ -6,6 +6,7 @@ read_when:
 ---
 
 ## MenuService refactor — 2025-11-18
+_Status: Archived · Focus: MenuService traversal budgets and cleanup._
 
 Context
 - Split the 1k-line MenuService into focused extensions (List/Actions/Extras/Traversal) plus helper models and traversal limits; added traversalPolicy/init hook and bounded traversal budget.

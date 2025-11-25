@@ -33,3 +33,8 @@ polter peekaboo -- clean --older-than 12 --dry-run
 SESSION=$(polter peekaboo -- see --json-output | jq -r '.data.session_id')
 polter peekaboo -- clean --session "$SESSION"
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

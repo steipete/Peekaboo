@@ -37,3 +37,8 @@ polter peekaboo -- app quit --all --except "Finder,Terminal"
 # Cycle to the next app exactly once
 polter peekaboo -- app switch --cycle
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

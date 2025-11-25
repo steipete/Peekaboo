@@ -47,3 +47,8 @@ polter peekaboo -- type "status report ready" --wpm 140
 # Linear profile with fixed 10ms delay
 polter peekaboo -- type "fast" --profile linear --delay 10
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

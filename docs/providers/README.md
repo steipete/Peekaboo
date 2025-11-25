@@ -13,3 +13,14 @@ read_when:
 - **Ollama** — `ollama.md`: local model configuration; `ollama-models.md` for model catalog notes.
 
 Use these with `docs/provider.md` for global provider configuration syntax and env var reference.
+
+## Capability quick-compare
+
+| Provider | Tools | Vision | Streaming | Local/offline | Auth |
+| --- | --- | --- | --- | --- | --- |
+| OpenAI | Yes (function/tool calling) | Yes (gpt-4o/4.1) | Yes | No | API key |
+| Anthropic | Yes | Yes (Sonnet/Opus vision) | Yes (SSE) | No | API key or OAuth (Claude Pro/Max) |
+| Grok | Yes | Limited | Yes | No | API key |
+| Ollama | Yes (via local server) | Model-dependent | Yes | **Yes** (local) | None (local daemon) |
+
+See individual pages for model lists, quirks, and test coverage expectations.

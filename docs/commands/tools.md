@@ -36,3 +36,8 @@ polter peekaboo -- tools --mcp-only --group-by-server
 # Produce a JSON blob for an agent integration test
 polter peekaboo -- tools --json-output > /tmp/tools.json
 ```
+
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

@@ -7,6 +7,7 @@ read_when:
 ---
 
 # Agent Improvements (pi-mono learnings)
+_Status: Archived · Focus: streaming/tool-call UX and queue mode roadmap._
 
 This note captures concrete ideas to port from `pi-mono` (pi-coding-agent, pi-agent, pi-ai, pi-tui) into Peekaboo. Use as a grab-bag when planning the next agent/CLI pass.
 
