@@ -20,6 +20,7 @@ Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI auto
 - Multi-provider AI: GPT-5.1 family, Claude 4.x, Grok 4-fast (vision), Gemini 2.5, and local Ollama models.
 - MCP server for Claude Desktop and Cursor plus a native CLI; the same tools in both.
 - Configurable, testable workflows with reproducible sessions and strict typing.
+- Requires macOS Screen Recording + Accessibility permissions (see [docs/permissions.md](docs/permissions.md)).
 
 ## Install
 - macOS app + CLI (Homebrew):
