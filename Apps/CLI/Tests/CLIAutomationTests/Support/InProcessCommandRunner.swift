@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import PeekabooCore
+import Testing
 @testable import PeekabooCLI
 
 private actor InProcessRunGate {
@@ -65,6 +66,11 @@ enum InProcessCommandRunner {
 
     /// Run the CLI using the default shared services (no overrides).
     static func runWithSharedServices(_ arguments: [String]) async throws -> CommandRunResult {
+        // Hard-stop automation that would drive the real UI unless explicitly enabled.
+        guard CLITestEnvironment.runAutomationRead || CLITestEnvironment.runAutomationActions else {
+            throw TestSkipped("Automation CLI tests require RUN_AUTOMATION_READ=true or RUN_AUTOMATION_ACTIONS=true")
+        }
+
         try await self.gate.run {
             try await self.execute(arguments: arguments)
         }
