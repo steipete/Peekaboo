@@ -836,7 +836,7 @@ process.on('unhandledRejection', (reason, promise) => {
 ```json
 {
   "name": "@steipete/peekaboo-mcp",
-  "version": "3.0.0",
+  "version": "3.0.0-beta1",
   "description": "macOS automation MCP server with screen capture, UI interaction, and AI analysis",
   "type": "module",
   "main": "peekaboo-mcp.js",

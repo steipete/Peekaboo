@@ -38,7 +38,7 @@ public struct MCPAgentTool: MCPTool {
         - "Open TextEdit, write 'Hello World', and save the document"
 
         Requires OPENAI_API_KEY environment variable to be set.
-        Peekaboo MCP 3.0.0 using openai/gpt-5.1 and anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta1 using openai/gpt-5.1 and anthropic/claude-sonnet-4.5
         """
     }
 

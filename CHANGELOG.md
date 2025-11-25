@@ -4,7 +4,7 @@
 
 - _Nothing yet._
 
-## [3.0.0] - 2025-11-25
+## [3.0.0-beta1] - 2025-11-25
 
 ### Added
 - Tool allow/deny filters now log when a tool is hidden, including whether the rule came from environment variables or config, and tests cover the messaging.
