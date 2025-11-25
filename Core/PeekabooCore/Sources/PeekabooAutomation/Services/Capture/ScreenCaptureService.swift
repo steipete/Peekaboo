@@ -1341,20 +1341,25 @@ final class CaptureOutput: NSObject, @unchecked Sendable {
 
     /// Suspend until the next captured frame arrives, throwing if the stream stalls.
     func waitForImage() async throws -> CGImage {
-        try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
 
-            // Add a timeout to ensure the continuation is always resumed
-            // Reduced from 10 seconds to 3 seconds for faster failure detection
-            self.timeoutTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-                await MainActor.run {
-                    guard let self else { return }
-                    // Timeout funnels through the same finish() to guarantee exactly-once resume.
-                    self.finish(.failure(OperationError.timeout(
-                        operation: "CaptureOutput.waitForImage",
-                        duration: 3.0)))
+                // Add a timeout to ensure the continuation is always resumed.
+                self.timeoutTask = Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                    await MainActor.run {
+                        guard let self else { return }
+                        self.finish(.failure(OperationError.timeout(
+                            operation: "CaptureOutput.waitForImage",
+                            duration: 3.0)))
+                    }
                 }
+            }
+        } onCancel: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.finish(.failure(CancellationError()))
             }
         }
     }
