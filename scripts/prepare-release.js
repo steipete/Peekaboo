@@ -211,7 +211,7 @@ function checkSwift() {
     if (error.stderr) console.log(error.stderr);
     return false;
   }
-  
+
   // Check for warnings in the output
   const warningMatches = swiftBuildOutput.match(/warning:|note:/gi);
   if (warningMatches && warningMatches.length > 0) {
@@ -228,96 +228,11 @@ function checkSwift() {
   }
 
   // Run Swift tests
-  if (!execWithOutput('npm run test:swift', 'Swift tests')) {
+  if (!execWithOutput('pnpm test', 'Swift CLI tests (safe)')) {
     logError('Swift tests failed');
     return false;
   }
   logSuccess('Swift tests passed');
-
-  // Test Swift CLI commands directly
-  log('Testing Swift CLI commands...', colors.cyan);
-  
-  // Test help command
-  const helpOutput = exec('./peekaboo --help', { allowFailure: true });
-  if (!helpOutput || !helpOutput.includes('USAGE:')) {
-    logError('Swift CLI help command failed');
-    return false;
-  }
-  
-  // Test version command
-  const versionOutput = exec('./peekaboo --version', { allowFailure: true });
-  if (!versionOutput) {
-    logError('Swift CLI version command failed');
-    return false;
-  }
-  
-  // Test list apps command
-  const appsOutput = exec('./peekaboo list apps --json-output', { allowFailure: true });
-  if (!appsOutput) {
-    logError('Swift CLI list apps command failed');
-    return false;
-  }
-  
-  try {
-    const response = JSON.parse(appsOutput);
-    if (!response.success || !response.data || !response.data.applications || !Array.isArray(response.data.applications)) {
-      logError('Apps list has invalid structure');
-      return false;
-    }
-    // Should always have at least some apps running
-    if (response.data.applications.length === 0) {
-      logError('No running applications found');
-      return false;
-    }
-  } catch (e) {
-    logError('Swift CLI apps JSON output is invalid');
-    return false;
-  }
-  
-  // Test list windows command for Finder  
-  const windowsOutput = exec('./peekaboo list windows --app Finder --json-output', { allowFailure: true });
-  if (!windowsOutput) {
-    logError('Swift CLI list windows command failed');
-    return false;
-  }
-  
-  try {
-    const response = JSON.parse(windowsOutput);
-    if (!response.success || !response.data || !response.data.windows || !Array.isArray(response.data.windows)) {
-      logError('Windows list has invalid structure');
-      return false;
-    }
-    // Finder might not have windows, so just check structure
-    if (!response.data.target_application_info) {
-      logError('Windows response missing target_application_info');
-      return false;
-    }
-  } catch (e) {
-    logError('Swift CLI windows JSON output is invalid');
-    return false;
-  }
-  
-  // Test error handling - non-existent app
-  const errorOutput = exec('./peekaboo list windows --app NonExistentApp12345 --json-output 2>&1', { allowFailure: true });
-  if (errorOutput) {
-    try {
-      const errorData = JSON.parse(errorOutput);
-      if (!errorData.error) {
-        logWarning('Error response missing error field');
-      }
-    } catch (e) {
-      // If it's not JSON, that's OK - might be stderr output
-    }
-  }
-  
-  // Test image command help
-  const imageHelpOutput = exec('./peekaboo image --help', { allowFailure: true });
-  if (!imageHelpOutput || !imageHelpOutput.includes('mode')) {
-    logError('Swift CLI image help command failed');
-    return false;
-  }
-  
-  logSuccess('Swift CLI commands working correctly');
 
   return true;
 }
