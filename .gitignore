@@ -132,6 +132,7 @@ timeline.xctimeline
 /DerivedData/**/*.app
 /Apps/Mac/build/*.app
 /Apps/Mac/DerivedData/**/*.app
+/Apps/peekaboo
 *.ipa
 *.dSYM.zip
 *.dSYM
