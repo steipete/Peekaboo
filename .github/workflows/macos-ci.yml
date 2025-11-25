@@ -119,7 +119,7 @@ jobs:
       - name: Run focused Swift tests
         working-directory: Core/PeekabooCore
         run: |
-          "$SWIFT_BIN" test --filter ScreenCaptureServiceFlowTests
+          "$SWIFT_BIN" test --no-parallel --filter ScreenCaptureServiceFlowTests
 
   peekaboo-cli:
     name: Peekaboo CLI build & tests
@@ -221,7 +221,7 @@ jobs:
       - name: Run CLI unit tests (skip automation)
         working-directory: Apps/CLI
         run: |
-          "$SWIFT_BIN" test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
+          "$SWIFT_BIN" test --no-parallel -Xswiftc -DPEEKABOO_SKIP_AUTOMATION
 
   tachikoma:
     name: Tachikoma build & tests
@@ -328,7 +328,7 @@ jobs:
       - name: Run Tachikoma unit tests
         working-directory: Tachikoma
         run: |
-          "$SWIFT_BIN" test --filter unit
+          "$SWIFT_BIN" test --no-parallel --filter unit
 
   mac-apps:
     name: Build macOS apps (Peekaboo + Inspector)
