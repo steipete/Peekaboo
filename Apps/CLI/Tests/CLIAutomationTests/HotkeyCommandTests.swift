@@ -71,4 +71,9 @@ import Testing
         let positionalSpace = try HotkeyCommand.parse(["cmd shift t"])
         #expect(positionalSpace.resolvedKeys == "cmd shift t")
     }
+
+    @Test func positionalOverridesOption() async throws {
+        let command = try HotkeyCommand.parse(["cmd,space", "--keys", "cmd,c"])
+        #expect(command.resolvedKeys == "cmd,space")
+    }
 }
