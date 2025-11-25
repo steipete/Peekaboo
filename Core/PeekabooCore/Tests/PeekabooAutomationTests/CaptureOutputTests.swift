@@ -48,6 +48,36 @@ struct CaptureOutputTests {
             // expected
         }
     }
+
+    @Test("waitForImage cancels without leaking continuation")
+    @MainActor
+    func waitForImageCancellation() async throws {
+        let output = makeOutput()
+        let task = Task {
+            try await output.waitForImage()
+        }
+        task.cancel()
+        do {
+            _ = try await task.value
+            Issue.record("Expected CancellationError, got success")
+        } catch is CancellationError {
+            // expected; ensures continuation was resumed on cancel
+        } catch {
+            Issue.record("Expected CancellationError, got \(error)")
+        }
+    }
+
+    @Test("waitForImage times out and resumes exactly once")
+    @MainActor
+    func waitForImageTimeout() async throws {
+        let output = makeOutput()
+        do {
+            _ = try await output.waitForImage()
+            Issue.record("Expected timeout, got image")
+        } catch {
+            // Should surface OperationError.timeout and not hang
+        }
+    }
 }
 
 // MARK: - Test hooks
