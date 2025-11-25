@@ -1,5 +1,5 @@
 {
-  "name": "@steipete/peekaboo-mcp",
+  "name": "@steipete/peekaboo",
   "version": "3.0.0-beta1",
   "description": "macOS automation MCP server with screen capture, UI interaction, and AI analysis",
   "private": false,
