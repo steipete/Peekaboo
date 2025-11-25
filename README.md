@@ -47,14 +47,6 @@ peekaboo "Open Notes and create a TODO list with three items"
 npx -y @steipete/peekaboo-mcp
 ```
 
-## Core commands (CLI)
-- see — annotate UI elements and create a session
-- click, type, press, scroll, hotkey, swipe, drag, move
-- menu, menubar, window, app, space, dock, dialog
-- image, list, tools, config, permissions, run, sleep, clean, agent, mcp
-
-Full reference lives in `docs/commands/`.
-
 | Command | What it does | Docs |
 | --- | --- | --- |
 | see | Capture and annotate UI, return session + element IDs | [docs/commands/see.md](docs/commands/see.md) |
