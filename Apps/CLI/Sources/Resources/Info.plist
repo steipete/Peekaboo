@@ -2,25 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIdentifier</key>
-    <string>boo.peekaboo.peekaboo</string>
-    <key>CFBundleName</key>
-    <string>Peekaboo</string>
-    <key>CFBundleVersion</key>
-    <string>3.0.0</string>
-    <key>CFBundleShortVersionString</key>
-    <string>3.0.0</string>
-    <key>NSScreenCaptureUsageDescription</key>
-    <string>Peekaboo needs screen recording permission to capture screenshots and analyze window content.</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>Peekaboo needs to send Apple events to control applications and automate tasks.</string>
-    <key>NSAccessibilityUsageDescription</key>
-    <string>Peekaboo needs accessibility permission to interact with user interface elements.</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2025 Peter Steinberger. All rights reserved.</string>
+	<key>CFBundleIdentifier</key>
+	<string>boo.peekaboo.peekaboo</string>
+	<key>CFBundleName</key>
+	<string>Peekaboo</string>
+	<key>CFBundleShortVersionString</key>
+	<string>3.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>3.0.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>Peekaboo needs accessibility permission to interact with user interface elements.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Peekaboo needs to send Apple events to control applications and automate tasks.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2025 Peter Steinberger. All rights reserved.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>Peekaboo needs screen recording permission to capture screenshots and analyze window content.</string>
+	<key>PeekabooVersionDisplayString</key>
+	<string>Peekaboo 3.0.0</string>
 </dict>
 </plist>
