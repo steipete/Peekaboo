@@ -27,7 +27,7 @@ Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI auto
   ```bash
   brew install steipete/tap/peekaboo
   ```
-- MCP server (Node 20+, no global install needed):
+- MCP server (Node 22+, no global install needed):
   ```bash
   npx -y @steipete/peekaboo-mcp
   ```
@@ -111,7 +111,7 @@ Set providers via `PEEKABOO_AI_PROVIDERS` or `peekaboo config add`.
 - Service API reference: [docs/service-api-reference.md](docs/service-api-reference.md)
 
 ## Development basics
-- Requirements: macOS 15+, Xcode 16+/Swift 6.2, Node 20+ (Corepack/pnpm).
+- Requirements: macOS 15+, Xcode 16+/Swift 6.2, Node 22+ (Corepack/pnpm).
 - Install deps: `pnpm install` then `pnpm run build:cli` or `pnpm run test:safe`.
 - Lint/format: `pnpm run lint && pnpm run format`.
 
