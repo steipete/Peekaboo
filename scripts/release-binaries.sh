@@ -75,7 +75,7 @@ echo -e "${BLUE}Building version: ${VERSION}${NC}"
 
 # Step 4: Build universal binary
 echo -e "\n${BLUE}Building universal binary...${NC}"
-if ! npm run build:swift; then
+if ! npm run build:swift:all; then
     echo -e "${RED}❌ Swift build failed!${NC}"
     exit 1
 fi
