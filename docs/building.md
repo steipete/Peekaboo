@@ -11,7 +11,7 @@ read_when:
 
 - macOS 15.0+
 - Xcode 16.4+ (includes Swift 6)
-- Node.js 22+ (Corepack-enabled)
+- Node.js 22+ (Corepack-enabled) — only needed for pnpm helper scripts; core Swift builds do not require Node.
 - pnpm (`corepack enable pnpm`)
 
 ## Common Builds
