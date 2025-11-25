@@ -1,4 +1,4 @@
-# Peekaboo 🫣 - Lightning-fast macOS screenshots & GUI automation (MCP + CLI)
+# Peekaboo 🫣 - Mac automation that sees the screen and does the clicks.
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
