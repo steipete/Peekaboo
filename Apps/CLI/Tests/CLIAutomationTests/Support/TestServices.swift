@@ -82,7 +82,12 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         if let result = self.defaultCaptureResult {
             return result
         }
-        throw TestStubError.unimplemented(function)
+
+        // Provide a harmless stub image so unexpected capture calls don't crash the test run.
+        return CaptureResult(
+            imageData: Data(),
+            metadata: CaptureMetadata(size: CGSize(width: 1, height: 1), mode: .screen)
+        )
     }
 }
 

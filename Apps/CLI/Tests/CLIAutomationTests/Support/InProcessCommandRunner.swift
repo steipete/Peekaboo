@@ -66,13 +66,14 @@ enum InProcessCommandRunner {
 
     /// Run the CLI using the default shared services (no overrides).
     static func runWithSharedServices(_ arguments: [String]) async throws -> CommandRunResult {
-        // Hard-stop automation that would drive the real UI unless explicitly enabled.
-        guard CLITestEnvironment.runAutomationRead || CLITestEnvironment.runAutomationActions else {
-            throw TestSkipped("Automation CLI tests require RUN_AUTOMATION_READ=true or RUN_AUTOMATION_ACTIONS=true")
-        }
+        // Use stubbed services in tests to avoid driving the real UI while still exercising
+        // command wiring and JSON formatting.
+        let services = TestServicesFactory.makePeekabooServices()
 
         return try await self.gate.run {
-            try await self.execute(arguments: arguments)
+            try await CommandRuntime.withInjectedServices(services) {
+                try await self.execute(arguments: arguments)
+            }
         }
     }
 

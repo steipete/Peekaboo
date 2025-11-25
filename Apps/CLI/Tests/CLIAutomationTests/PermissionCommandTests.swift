@@ -19,9 +19,9 @@ struct PermissionCommandTests {
             )
         }
 
-        let payload = CodableJSONResponse(
+        let payload = await CodableJSONResponse(
             success: true,
-            data: await PermissionHelpers.getCurrentPermissions(services: services),
+            data: PermissionHelpers.getCurrentPermissions(services: services),
             messages: nil,
             debug_logs: []
         )
@@ -65,8 +65,8 @@ struct PermissionCommandTests {
 }
 #endif
 
-private extension PermissionCommandTests {
-    static func balancedJSON(in text: Substring) -> String? {
+extension PermissionCommandTests {
+    fileprivate static func balancedJSON(in text: Substring) -> String? {
         var curly = 0
         var square = 0
         var end: String.Index?

@@ -97,24 +97,50 @@ struct TTYCommandRunner {
             try primaryHandle.write(contentsOf: data)
         }
 
-        let primaryDeadline = Date().addingTimeInterval(options.timeout)
-        var afterFirstByteDeadline: Date?
-        var buffer = Data()
-        func readChunk() {
-            var tmp = [UInt8](repeating: 0, count: 8192)
-            let n = Darwin.read(primaryFD, &tmp, tmp.count)
-            if n > 0 { buffer.append(contentsOf: tmp.prefix(n)) }
-        }
-
         usleep(120_000) // boot grace
         try send(script)
         try send("\r")
 
-        while true {
-            readChunk()
+        let primaryDeadline = Date().addingTimeInterval(options.timeout)
+        var afterFirstByteDeadline: Date?
+        var buffer = Data()
 
-            if !buffer.isEmpty, afterFirstByteDeadline == nil {
-                afterFirstByteDeadline = Date().addingTimeInterval(0.5)
+        func drainAvailableOutput() {
+            while true {
+                var tmp = [UInt8](repeating: 0, count: 8192)
+                let n = Darwin.read(primaryFD, &tmp, tmp.count)
+                if n > 0 {
+                    buffer.append(contentsOf: tmp.prefix(n))
+                } else {
+                    break
+                }
+            }
+        }
+
+        while true {
+            let targetDeadline = afterFirstByteDeadline ?? primaryDeadline
+            let remainingMs = Int32(max(0, ceil(targetDeadline.timeIntervalSinceNow * 1000)))
+            if remainingMs == 0 { break }
+
+            var fds = [pollfd(fd: primaryFD, events: Int16(POLLIN), revents: 0)]
+            let pollResult = fds.withUnsafeMutableBufferPointer { ptr in
+                poll(ptr.baseAddress, nfds_t(ptr.count), remainingMs)
+            }
+
+            if pollResult > 0, (fds[0].revents & Int16(POLLIN)) != 0 {
+                drainAvailableOutput()
+                if afterFirstByteDeadline == nil, !buffer.isEmpty {
+                    afterFirstByteDeadline = Date().addingTimeInterval(0.5)
+                }
+            } else if pollResult == 0 {
+                // Timed out waiting for data
+                break
+            } else if errno == EINTR {
+                // Interrupted by signal; retry until deadline
+                continue
+            } else {
+                // poll errored; fall through to validation
+                break
             }
 
             if let text = String(data: buffer, encoding: .utf8), !text.isEmpty {
@@ -122,12 +148,11 @@ struct TTYCommandRunner {
                     break
                 }
             }
+        }
 
-            let now = Date()
-            if let byteDeadline = afterFirstByteDeadline, now >= byteDeadline { break }
-            if afterFirstByteDeadline == nil, now >= primaryDeadline { break }
-
-            usleep(60000)
+        if buffer.isEmpty {
+            // Last chance to read anything that arrived after poll returned.
+            drainAvailableOutput()
         }
 
         guard let text = String(data: buffer, encoding: .utf8), !text.isEmpty else {
