@@ -28,7 +28,7 @@ Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI auto
   ```
 - MCP server (Node 20+, no global install needed):
   ```bash
-  npx -y @steipete/peekaboo-mcp@beta
+  npx -y @steipete/peekaboo-mcp
   ```
 
 ## Quick start
@@ -36,11 +36,15 @@ Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI auto
 # Capture full screen at Retina scale and save to Desktop
 peekaboo image --mode screen --retina --path ~/Desktop/screen.png
 
+# Click a button by label (captures, resolves, and clicks in one go)
+peekaboo see --app Safari --json-output | jq -r '.data.session_id' | read SID
+peekaboo click --on "Reload this page" --session "$SID"
+
 # Run a natural-language automation
 peekaboo "Open Notes and create a TODO list with three items"
 
-# Use the MCP server with Claude Desktop (add this command to its config)
-# command: npx -y @steipete/peekaboo-mcp@beta
+# Run as an MCP server (Claude/Cursor)
+npx -y @steipete/peekaboo-mcp
 ```
 
 ## Core commands (CLI)
