@@ -1,3 +1,10 @@
+---
+summary: 'Design for unified clipboard tool (CLI + MCP) covering text, images, files, and raw data'
+read_when:
+  - 'planning or implementing the peekaboo clipboard command/tool'
+  - 'debugging clipboard read/write behaviors or size limits'
+---
+
 # Clipboard Tool Design
 
 Goal: add a single `clipboard` tool (CLI + MCP) that handles text, images, files, and raw data while fitting Peekaboo’s existing one-tool-per-domain pattern.

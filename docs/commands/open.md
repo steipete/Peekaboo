@@ -37,3 +37,10 @@ polter peekaboo -- open /tmp/notes.txt --bundle-id com.apple.TextEdit --wait-unt
 # Launch Safari with a URL and report the resulting PID as JSON
 polter peekaboo -- open https://example.com --json-output
 ```
+
+## Design notes
+- Purpose: mirror `open -a` workflows while keeping Peekaboo’s logging, focus control, and structured JSON output.
+- Target resolution: if the argument has a URL scheme, use it; otherwise expand `~`, resolve relative paths against CWD, and build a file URL (path need not exist).
+- Handler selection order: explicit `--bundle-id` → `--app` (bundle lookup, `.app` path, or common app directories) → system default handler. Invalid selectors throw `NotFoundError.application`.
+- Execution: builds `NSWorkspace.OpenConfiguration` with `activates = !noFocus`, polls up to 10s when `--wait-until-ready`, and still succeeds if activation fails (logs a warning).
+- Output shape (JSON): includes success flag, original + resolved target, handler app name + bundle id, PID, readiness, and focus state.

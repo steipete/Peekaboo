@@ -1,3 +1,10 @@
+---
+summary: 'MCPCommand split notes (Nov 17, 2025)'
+read_when:
+  - 'refactoring MCP CLI commands or helpers'
+  - 'aligning MCP subcommand formatting/error handling'
+---
+
 ## MCPCommand Split Notes (Nov 17, 2025)
 
 - Broke the 1.2K-line `MCPCommand.swift` into per-subcommand files plus small helpers (`MCPDefaults`, `MCPCallTypes`, `MCPCallFormatter`, `MCPArgumentParsing`, `MCPClientManaging`) to localize responsibilities and cut duplication.

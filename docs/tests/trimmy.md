@@ -1,3 +1,10 @@
+---
+summary: 'Manual Trimmy test plan using peekaboo clipboard'
+read_when:
+  - 'verifying Trimmy clipboard trimming behavior'
+  - 'running manual clipboard regression tests'
+---
+
 # Trimmy Manual Test Plan (with Peekaboo clipboard tool)
 
 Goal: Validate Trimmy’s clipboard flattening via Peekaboo without `peekaboo run`. Use the `peekaboo clipboard` tool for all clipboard interactions.

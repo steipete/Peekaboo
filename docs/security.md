@@ -1,3 +1,10 @@
+---
+summary: 'Security and tool hardening guide for Peekaboo'
+read_when:
+  - 'tightening or auditing allowed tools/providers'
+  - 'running Peekaboo in untrusted contexts and need safe defaults'
+---
+
 # Security & Tool Hardening
 
 Peekaboo ships powerful automation tools (clicking, typing, shell, window management, etc.). You can now constrain what the agent and MCP server expose.

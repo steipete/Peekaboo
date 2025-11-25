@@ -52,3 +52,12 @@ peekaboo capture video /path/to/demo.mov --sample-fps 2 --start-ms 5000 --video-
 # Video ingest, keep all sampled frames at 500ms interval (no diff filtering)
 peekaboo capture video /path/to/demo.mov --every-ms 500 --no-diff
 ```
+
+## Design notes
+- Hidden alias: `capture watch` maps to `capture live`; the old standalone `watch` tool was removed.
+- Live defaults: max duration 180s, `--max-frames` 800, resolution cap 1440, diff strategy `fast` unless `--diff-strategy quality` is set.
+- Video ingest uses the same diff/keep logic as live; `--no-diff` keeps every sampled frame. Requires at least 2 kept frames.
+- Core types: `CaptureScope/Options/Result` with a pluggable `CaptureFrameSource` (ScreenCapture for live, AVAssetReader for video). Optional MP4 is written by `VideoWriter` when `--video-out` is set.
+- Quick smokes:  
+  - `peekaboo capture live --mode screen --duration 5 --active-fps 8 --threshold 0` → frames > 0, contact sheet exists.  
+  - `peekaboo capture video /path/demo.mov --sample-fps 2 --start-ms 5000 --video-out /tmp/demo.mp4` → ≥2 kept frames and MP4 written.

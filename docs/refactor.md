@@ -29,3 +29,14 @@ read_when:
 - **Nov 10 2025 (build `cli-build-1762791510`)**: Per feedback, the slider defaults to 1.0× again, but VisualizerCoordinator now applies an internal 1.4× multiplier so “1×” still looks like the slower pacing. This keeps the UI intuitive while preserving the more visible animations we just shipped.
 - **Nov 10 2025 (build `cli-build-1762794091`)**: Rebalanced the visualizer so the slider’s **1.0×** default actually looks good. Each animation now has a human-friendly baseline (flash ≈0.35 s, click ripple ≈0.45 s, swipe/mouse trail ≈0.9 s, etc.) and the slider simply scales those baselines. Docs highlight the baselines instead of hiding multipliers.
 - **Nov 11 2025 (build `cli-build-1762795001`)**: Dropped the LaunchAgent + AsyncXPCConnection bridge. `VisualizationClient` now serializes `VisualizerEvent` payloads, writes them to `~/Library/Application Support/PeekabooShared/VisualizerEvents`, and pings Peekaboo.app via `NSDistributedNotificationCenter`. The app listens through `VisualizerEventReceiver`, loads the JSON, relays to `VisualizerCoordinator`, then deletes the file. Added storage overrides (`PEEKABOO_VISUALIZER_STORAGE`, `PEEKABOO_VISUALIZER_APP_GROUP`) and background cleanup so abandoned events vanish automatically.
+
+## Archived refactor highlights (Nov 2025)
+- **AgentCommand split (Nov 17)** — extracted chat/audio flows, added launch policy scaffolding; needs tighter cancellation and more UI/tests (see `docs/archive/refactor/agent-command-split.md`).
+- **ConfigCommand split/refactor (Nov 17)** — broke the 1.2k-line command into subcommands and helpers; next steps include shared MCP client service and consistent formatting/error handling (`config-command-split.md`, `config-refactor-2025-11-17.md`).
+- **MCPCommand split (Nov 17)** — per-subcommand files plus shared parsing/formatting helpers; add mockable MCPClientService and broaden tests.
+- **MenuService refactor (Nov 18)** — split traversal/actions/extras, added traversal budgets; needs ContinuousClock timings, stronger title matching, and injected visualizer/logger seams.
+- **AXorcist boundary logs (Nov 19 + undated)** — keep AXorcist lean (AX toolkit) and push heuristics into Peekaboo; catalog follow-ups in `axorcist-2025-11-19.md` and `axorcist.md`.
+- **Agent improvements (pi-mono learnings, Nov 21)** — queue mode, streamed tool-call diffs/redaction, event unification, and session logging plans (`agent-improvements.md`).
+- **Capture follow-ups** — watch → capture migration follow-ups and test gaps (`capture-todo.md`).
+- **Open/app launch tests** — WIP abstraction/test plan for `open` vs `app launch` flows (`open-launch-tests.md`).
+- **Tool results refactor** — richer ToolResponse formatting for agent outputs (`tool-results.md`).

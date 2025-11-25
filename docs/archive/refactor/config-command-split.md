@@ -1,3 +1,10 @@
+---
+summary: 'ConfigCommand split plan (Nov 17, 2025)'
+read_when:
+  - 'refactoring config CLI commands'
+  - 'debugging ConfigCommand structure or runtime wiring'
+---
+
 ## ConfigCommand Split Plan (Nov 17, 2025)
 
 - Add execution tests per subcommand: run against temp config/credentials paths, assert file writes, JSON output fields, and exit codes; cover add/list/remove/test/models flows and edit/validate happy/sad paths.

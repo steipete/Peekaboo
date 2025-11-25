@@ -1,3 +1,10 @@
+---
+summary: 'Config refactor notes (Nov 17, 2025)'
+read_when:
+  - 'continuing the config refactor'
+  - 'debugging ConfigCommand behavior after Nov 2025 changes'
+---
+
 ## Config refactor — 2025-11-17 (updated)
 
 Scope: consolidate config/auth logic inside Tachikoma so hosts stay thin. Tachikoma owns credential resolution, storage, validation, OAuth (OpenAI/Codex + Anthropic Max), token refresh, and CLI UX. Hosts (Peekaboo, others) only set the profile directory (e.g., `.peekaboo`) or inject a custom credential provider.

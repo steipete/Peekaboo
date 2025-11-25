@@ -16,7 +16,7 @@ read_when:
 ## 0) Version + metadata prep
 - [ ] Bump versions: `package.json`, `version.json`, app Info.plists (CLI + macOS targets), and all MCP server/tool banners (`Core/PeekabooCore/Sources/PeekabooAgentRuntime/MCP/**`).
 - [ ] Cut `CHANGELOG.md`: move items from **Unreleased** into the new 3.x section with the correct date.
-- [ ] Align docs that mention the version (`docs/tui.md`, `docs/playground-test-result.md`, `AGENTS.md`, any beta strings).
+- [ ] Align docs that mention the version (`docs/tui.md`, `docs/reports/playground-test-result.md`, `AGENTS.md`, any beta strings).
 - [ ] Submodules: bump versions + changelogs in AXorcist, Commander, Tachikoma, TauTUI before updating submodule SHAs here.
 
 ## 1) Format & lint (all repos)

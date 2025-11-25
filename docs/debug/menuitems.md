@@ -1,3 +1,10 @@
+---
+summary: 'Menu bar item debug log for missing Trimmy status item on macOS 26.1'
+read_when:
+  - 'investigating missing menubar/status items'
+  - 'debugging peekaboo menubar list output or CGS/AX heuristics'
+---
+
 # Menu Bar Item Debug Log (macOS 26.1, Trimmy missing)
 
 Goal: Find why `peekaboo menubar list` does not show Trimmy on macOS 26.1 even though the status item is visible.

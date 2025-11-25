@@ -1,3 +1,10 @@
+---
+summary: 'Notes from the Nov 17, 2025 AgentCommand split refactor'
+read_when:
+  - 'planning or reviewing AgentCommand refactors'
+  - 'adding tests or UI glue around agent chat flows'
+---
+
 ## AgentCommand Split Lessons (Nov 17, 2025)
 
 - Trimmed `AgentCommand.swift` by extracting chat + audio flows and a `AgentChatLaunchPolicy` for clearer responsibilities and testing.

@@ -1,3 +1,10 @@
+---
+summary: 'MenuService refactor notes (Nov 18, 2025)'
+read_when:
+  - 'continuing MenuService traversal/refactor work'
+  - 'adding tests or diagnostics for menu interactions'
+---
+
 ## MenuService refactor — 2025-11-18
 
 Context
