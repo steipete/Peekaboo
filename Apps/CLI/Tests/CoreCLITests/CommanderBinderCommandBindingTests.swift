@@ -485,11 +485,69 @@ struct CommanderBinderCommandBindingTests {
     }
 
     @Test("Move command requires a target (validation)")
-    func bindMoveCommandMissingTarget() async throws {
+    func bindMoveCommandMissingTarget() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         var command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
-        await #expect(throws: ValidationError.self) {
+        #expect(throws: ValidationError.self) {
             try command.validate()
+        }
+    }
+
+    @Test("Drag command binding")
+    func bindDragCommand() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "from": ["B1"],
+                "to": ["T2"],
+                "duration": ["1200"],
+                "steps": ["15"],
+                "modifiers": ["cmd,shift"],
+                "profile": ["human"],
+                "session": ["sess-drag"]
+            ],
+            flags: ["spaceSwitch"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: DragCommand.self, parsedValues: parsed)
+        #expect(command.from == "B1")
+        #expect(command.to == "T2")
+        #expect(command.duration == 1200)
+        #expect(command.steps == 15)
+        #expect(command.modifiers == "cmd,shift")
+        #expect(command.profile == "human")
+        #expect(command.session == "sess-drag")
+        #expect(command.focusOptions.spaceSwitch == true)
+    }
+
+    @Test("Swipe command binding")
+    func bindSwipeCommand() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "fromCoords": ["10,20"],
+                "toCoords": ["30,40"],
+                "duration": ["900"],
+                "steps": ["25"],
+                "profile": ["linear"],
+                "session": ["sess-swipe"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: SwipeCommand.self, parsedValues: parsed)
+        #expect(command.fromCoords == "10,20")
+        #expect(command.toCoords == "30,40")
+        #expect(command.duration == 900)
+        #expect(command.steps == 25)
+        #expect(command.profile == "linear")
+        #expect(command.session == "sess-swipe")
+    }
+
+    @Test("Swipe command requires from/to")
+    func bindSwipeCommandMissingEndpoints() async throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        var command = try CommanderCLIBinder.instantiateCommand(ofType: SwipeCommand.self, parsedValues: parsed)
+        await #expect(throws: ExitCode.self) {
+            try await command.run(using: CommandRuntime.makeDefault())
         }
     }
 }
