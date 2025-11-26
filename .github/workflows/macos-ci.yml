@@ -194,10 +194,10 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Select Xcode 16.4 (if present) or fallback to default
+      - name: Select Xcode 26.1 (if present) or fallback to default
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
+          for candidate in /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
             if [[ -d "$candidate" ]]; then
               sudo xcode-select -s "$candidate"
               echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
@@ -251,29 +251,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-tachikoma-
 
-      - name: Install Swift 6.2 toolchain
-        run: |
-          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain" ]; then
-            curl -L "${SWIFT_TOOLCHAIN_URL}" -o /tmp/swift-toolchain.pkg
-            sudo installer -pkg /tmp/swift-toolchain.pkg -target /
-          fi
-
       - name: Show Swift toolchain version
-        run: xcrun --toolchain ${SWIFT_TOOLCHAIN_NAME} swift --version
-
-      - name: Export Swift toolchain binary
-        run: |
-          echo "SWIFT_BIN=/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/bin/swift" >> "$GITHUB_ENV"
-
-      - name: Export Swift runtime library path
-        run: |
-          RUNTIME_PATH="/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain/usr/lib/swift/macosx"
-          echo "SWIFT_RUNTIME_LIB=${RUNTIME_PATH}" >> "$GITHUB_ENV"
-          if [ -n "${DYLD_LIBRARY_PATH:-}" ]; then
-            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
-          else
-            echo "DYLD_LIBRARY_PATH=${RUNTIME_PATH}" >> "$GITHUB_ENV"
-          fi
+        run: swift --version
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -281,12 +260,12 @@ jobs:
       - name: Build Tachikoma
         working-directory: Tachikoma
         run: |
-          "$SWIFT_BIN" build --configuration debug
+          swift build --configuration debug
 
       - name: Run Tachikoma unit tests
         working-directory: Tachikoma
         run: |
-          "$SWIFT_BIN" test --no-parallel --filter unit
+          swift test --no-parallel --filter unit
 
   mac-apps:
     name: Build macOS apps (Peekaboo + Inspector)
@@ -298,10 +277,10 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Select Xcode 16.4 (if present) or fallback to default
+      - name: Select Xcode 26.1 (if present) or fallback to default
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
+          for candidate in /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
             if [[ -d "$candidate" ]]; then
               sudo xcode-select -s "$candidate"
               echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
@@ -309,13 +288,6 @@ jobs:
             fi
           done
           /usr/bin/xcodebuild -version
-
-      - name: Install Swift 6.2 toolchain
-        run: |
-          if [ ! -d "/Library/Developer/Toolchains/${SWIFT_TOOLCHAIN_ID}.xctoolchain" ]; then
-            curl -L "${SWIFT_TOOLCHAIN_URL}" -o /tmp/swift-toolchain.pkg
-            sudo installer -pkg /tmp/swift-toolchain.pkg -target /
-          fi
 
       - name: Build Peekaboo app (Xcode)
         working-directory: Apps
