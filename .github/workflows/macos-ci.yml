@@ -271,7 +271,6 @@ jobs:
     name: Build macOS apps (Peekaboo + Inspector)
     runs-on: macos-latest
     needs: [peekaboo-cli, tachikoma]
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -293,16 +292,7 @@ jobs:
       - name: Build Peekaboo app (Xcode)
         working-directory: Apps
         run: |
-          /usr/bin/env \
-            -u DYLD_LIBRARY_PATH \
-            -u DYLD_FRAMEWORK_PATH \
-            -u DYLD_FALLBACK_FRAMEWORK_PATH \
-            -u DYLD_ROOT_PATH \
-            -u DYLD_INSERT_LIBRARIES \
-            -u DYLD_IMAGE_SUFFIX \
-            -u DYLD_VERSIONED_LIBRARY_PATH \
-            -u DYLD_VERSIONED_FRAMEWORK_PATH \
-            xcodebuild -workspace Peekaboo.xcworkspace \
+          xcodebuild -workspace Peekaboo.xcworkspace \
             -scheme Peekaboo \
             -configuration Debug \
             -sdk macosx \
@@ -312,16 +302,7 @@ jobs:
       - name: Build Inspector app (Xcode)
         working-directory: Apps/PeekabooInspector
         run: |
-          /usr/bin/env \
-            -u DYLD_LIBRARY_PATH \
-            -u DYLD_FRAMEWORK_PATH \
-            -u DYLD_FALLBACK_FRAMEWORK_PATH \
-            -u DYLD_ROOT_PATH \
-            -u DYLD_INSERT_LIBRARIES \
-            -u DYLD_IMAGE_SUFFIX \
-            -u DYLD_VERSIONED_LIBRARY_PATH \
-            -u DYLD_VERSIONED_FRAMEWORK_PATH \
-            xcodebuild -project Inspector.xcodeproj \
+          xcodebuild -project Inspector.xcodeproj \
             -scheme Inspector \
             -configuration Debug \
             -sdk macosx \
