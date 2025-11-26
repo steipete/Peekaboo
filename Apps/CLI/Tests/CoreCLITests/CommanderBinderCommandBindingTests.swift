@@ -392,4 +392,54 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.session == "sess-123")
         #expect(command.focusOptions.noAutoFocus == true)
     }
+
+    @Test("Capture video command binding")
+    func bindCaptureVideoCommand() throws {
+        let parsed = ParsedValues(
+            positional: ["/tmp/demo.mov"],
+            options: [
+                "sampleFps": ["2"],
+                "startMs": ["1000"],
+                "endMs": ["2000"],
+                "maxFrames": ["123"],
+                "maxMb": ["10"],
+                "resolutionCap": ["720"],
+                "diffStrategy": ["quality"],
+                "diffBudgetMs": ["50"],
+                "path": ["/tmp/outdir"],
+                "autocleanMinutes": ["15"],
+                "videoOut": ["/tmp/out.mp4"]
+            ],
+            flags: ["noDiff"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: CaptureVideoCommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.input == "/tmp/demo.mov")
+        #expect(command.sampleFps == 2)
+        #expect(command.everyMs == nil)
+        #expect(command.startMs == 1000)
+        #expect(command.endMs == 2000)
+        #expect(command.noDiff == true)
+        #expect(command.maxFrames == 123)
+        #expect(command.maxMb == 10)
+        #expect(command.resolutionCap == 720)
+        #expect(command.diffStrategy == "quality")
+        #expect(command.diffBudgetMs == 50)
+        #expect(command.path == "/tmp/outdir")
+        #expect(command.autocleanMinutes == 15)
+        #expect(command.videoOut == "/tmp/out.mp4")
+    }
+
+    @Test("Capture video command requires input")
+    func bindCaptureVideoCommandRequiresInput() {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        #expect(throws: CommanderBindingError.missingArgument(label: "input")) {
+            _ = try CommanderCLIBinder.instantiateCommand(
+                ofType: CaptureVideoCommand.self,
+                parsedValues: parsed
+            )
+        }
+    }
 }
