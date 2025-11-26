@@ -9,7 +9,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     @Argument(help: "Keys to press (comma-separated or space-separated)")
     var keysArgument: String?
 
-    @Option(help: "Keys to press (comma-separated or space-separated)")
+    @Option(name: .customLong("keys"), help: "Keys to press (comma-separated or space-separated)")
     var keysOption: String?
 
     @Option(help: "Delay between key press and release in milliseconds")
@@ -168,7 +168,7 @@ extension HotkeyCommand: AsyncRuntimeCommand {}
 extension HotkeyCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.keysArgument = values.positional.first
-        self.keysOption = values.singleOption("keys")
+        self.keysOption = values.singleOption("keys") ?? values.singleOption("keysOption")
         guard self.resolvedKeys != nil else {
             throw ValidationError("No keys specified. Provide keys like \"cmd,c\" or \"cmd c\".")
         }
