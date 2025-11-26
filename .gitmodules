@@ -10,3 +10,6 @@
 [submodule "TauTUI"]
 	path = TauTUI
 	url = https://github.com/steipete/TauTUI.git
+[submodule "Swiftdansi"]
+	path = Swiftdansi
+	url = https://github.com/steipete/Swiftdansi.git

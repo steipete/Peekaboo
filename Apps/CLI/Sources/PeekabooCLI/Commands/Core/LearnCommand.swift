@@ -1,7 +1,9 @@
 import Commander
 import Foundation
 import PeekabooCore
+#if canImport(Swiftdansi)
 import Swiftdansi
+#endif
 
 typealias PeekabooToolParameter = ParameterDefinition
 
@@ -196,6 +198,7 @@ struct LearnCommand {
         }
 
         let width = capabilities.width > 0 ? capabilities.width : nil
+        #if canImport(Swiftdansi)
         let rendered = Swiftdansi.render(
             markdown,
             options: RenderOptions(
@@ -204,11 +207,13 @@ struct LearnCommand {
                 hyperlinks: true,
                 color: true,
                 theme: .contrast,
-                listIndent: 4,
-                listMarker: "•"
+                listIndent: 4
             )
         )
         Swift.print(rendered, terminator: rendered.hasSuffix("\n") ? "" : "\n")
+        #else
+        Swift.print(markdown, terminator: markdown.hasSuffix("\n") ? "" : "\n")
+        #endif
     }
 }
 

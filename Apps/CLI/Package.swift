@@ -115,7 +115,7 @@ let package = Package(
         .package(path: "../../Core/PeekabooFoundation"),
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Tachikoma"),
-        .package(path: "../../../swiftdansi"),
+        .package(path: "../../Swiftdansi"),
     ],
     targets: targets,
     swiftLanguageModes: [.v6])
