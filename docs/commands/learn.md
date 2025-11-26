@@ -19,6 +19,7 @@ read_when:
 - The command is intentionally text-only—`--json-output` is ignored—so downstream systems should capture stdout if they want to cache the content.
 - Everything runs on the main actor because it pulls live data from `ToolRegistry` and Commander; no stale handwritten docs are involved.
 - Because it reuses the same builders the CLI uses at runtime, new commands/tools automatically show up here as soon as they land.
+- When stdout is a rich TTY, output is rendered with Swiftdansi for ANSI color and table/box formatting; piped output stays plain Markdown for downstream tools.
 
 ## Examples
 ```bash

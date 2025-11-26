@@ -29,6 +29,15 @@ case "$COMMAND" in
     ;;
 esac
 
+# Ensure peekaboo targets always run inside a PTY so downstream tools (e.g., Swiftdansi)
+# see an interactive terminal even when invoked from CI or scripted shells.
+if ! $IS_POLTERGEIST_COMMAND && [ "$COMMAND" = "peekaboo" ] && [ -z "$POLTERGEIST_WRAPPER_PTY" ]; then
+  if command -v script >/dev/null 2>&1; then
+    export POLTERGEIST_WRAPPER_PTY=1
+    exec script -q /dev/null "$0" "$@"
+  fi
+fi
+
 if $IS_POLTERGEIST_COMMAND; then
   # Auto-append --config so poltergeist commands read Peekaboo's config when invoked from elsewhere.
   ADD_CONFIG_FLAG=true

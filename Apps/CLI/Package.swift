@@ -34,6 +34,7 @@ var targets: [Target] = [
         .product(name: "PeekabooCore", package: "PeekabooCore"),
         .product(name: "Tachikoma", package: "Tachikoma"),
         .product(name: "TachikomaMCP", package: "Tachikoma"),
+        .product(name: "Swiftdansi", package: "Swiftdansi"),
         ],
         path: "Sources/PeekabooCLI",
         swiftSettings: cliConcurrencySettings),
@@ -98,7 +99,7 @@ if includeAutomationTests {
 let package = Package(
     name: "peekaboo",
     platforms: [
-        .macOS(.v14),
+        .macOS(.v15),
     ],
     products: [
         .executable(
@@ -114,6 +115,7 @@ let package = Package(
         .package(path: "../../Core/PeekabooFoundation"),
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Tachikoma"),
+        .package(path: "../../../swiftdansi"),
     ],
     targets: targets,
     swiftLanguageModes: [.v6])

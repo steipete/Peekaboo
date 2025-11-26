@@ -191,55 +191,8 @@ extension PermissionCommand {
         }
 
         private func handleLegacyPrompt() -> AgentPermissionActionResult {
-            if #available(macOS 14.0, *) {
-                // Should never reach on modern macOS; keep for completeness.
-                return self.handleModernPrompt()
-            }
-
-            if !self.jsonOutput {
-                print("Attempting screen capture to trigger permission prompt...")
-            }
-
-            if #unavailable(macOS 14.0) {
-                self.triggerLegacyScreenRecordingPrompt()
-            }
-
-            if !self.jsonOutput {
-                self.printLegacyGuidance()
-            }
-
-            return AgentPermissionActionResult(
-                action: "request-screen-recording",
-                already_granted: false,
-                prompt_triggered: true,
-                granted: nil
-            )
-        }
-
-        /// Legacy (< macOS 14) probe to provoke the Screen Recording prompt.
-        /// We intentionally keep CGWindowListCreateImage so older systems see the dialog;
-        /// we aren’t modernizing this path yet. It can be disabled via env if needed.
-        @available(
-            macOS,
-            introduced: 10.15,
-            deprecated: 14.0,
-            message: "ScreenCaptureKit handles permission prompts on macOS 14+."
-        )
-        private func triggerLegacyScreenRecordingPrompt() {
-            guard #unavailable(macOS 14.0) else {
-                return
-            }
-
-            let enableLegacy = ProcessInfo.processInfo.environment["PEEKABOO_ALLOW_LEGACY_CAPTURE"]?.lowercased()
-            let allowed = enableLegacy.map { ["1", "true", "yes"].contains($0) } ?? true
-            if !allowed { return }
-
-            _ = CGWindowListCreateImage(
-                CGRect(x: 0, y: 0, width: 1, height: 1),
-                .optionAll,
-                kCGNullWindowID,
-                .nominalResolution
-            )
+            // Minimum supported macOS is 15+, so reuse the modern path.
+            self.handleModernPrompt()
         }
 
         private func printModernResult(granted: Bool) {

@@ -1,11 +1,11 @@
 import Commander
 import Foundation
 import PeekabooCore
+import Swiftdansi
 
 typealias PeekabooToolParameter = ParameterDefinition
 
 @MainActor
-
 struct LearnCommand {
     @RuntimeStorage private var runtime: CommandRuntime?
 
@@ -27,14 +27,16 @@ struct LearnCommand {
     }
 
     private func outputComprehensiveGuide(systemPrompt: String, tools: [PeekabooToolDefinition]) {
-        self.printGuideHeader(systemPrompt: systemPrompt)
-        self.printToolCatalog(tools: tools)
-        self.printBestPractices()
-        self.printQuickReference()
-        self.outputCommanderSummary()
+        var guide = ""
+        self.appendGuideHeader(systemPrompt: systemPrompt, to: &guide)
+        self.appendToolCatalog(tools: tools, to: &guide)
+        self.appendBestPractices(to: &guide)
+        self.appendQuickReference(to: &guide)
+        self.appendCommanderSummary(to: &guide)
+        self.renderGuide(guide)
     }
 
-    private func printGuideHeader(systemPrompt: String) {
+    private func appendGuideHeader(systemPrompt: String, to output: inout String) {
         print("""
         # Peekaboo Comprehensive Guide
 
@@ -46,47 +48,52 @@ struct LearnCommand {
 
         ## Available Tools
 
-        Peekaboo provides 30+ tools for macOS automation. Each tool is designed for a specific purpose and can \
-        be combined to create powerful workflows.
-        """)
+        Peekaboo provides 30+ tools for macOS automation.
+        Each tool is designed for a specific purpose and can be combined
+        to create powerful workflows.
+        """, to: &output)
     }
 
-    private func printToolCatalog(tools: [PeekabooToolDefinition]) {
+    private func appendToolCatalog(tools: [PeekabooToolDefinition], to output: inout String) {
         let groupedTools = ToolRegistry.toolsByCategory()
         for category in ToolCategory.allCases {
             guard let categoryTools = groupedTools[category], !categoryTools.isEmpty else { continue }
-            self.printToolCategory(category, tools: categoryTools)
+            self.appendToolCategory(category, tools: categoryTools, to: &output)
         }
     }
 
-    private func printToolCategory(_ category: ToolCategory, tools: [PeekabooToolDefinition]) {
-        print("\n### \(category.icon) \(category.rawValue) Tools\n")
-        tools.sorted(by: { $0.name < $1.name }).forEach(self.printToolDetails)
+    private func appendToolCategory(
+        _ category: ToolCategory,
+        tools: [PeekabooToolDefinition],
+        to output: inout String
+    ) {
+        print("\n### \(category.icon) \(category.rawValue) Tools\n", to: &output)
+        tools.sorted(by: { $0.name < $1.name }).forEach { self.appendToolDetails($0, to: &output) }
     }
 
-    private func printToolDetails(_ tool: PeekabooToolDefinition) {
-        print("#### `\(tool.name)`\n")
-        print("\(tool.abstract)\n")
+    private func appendToolDetails(_ tool: PeekabooToolDefinition, to output: inout String) {
+        print("#### `\(tool.name)`\n", to: &output)
+        print("\(tool.abstract)\n", to: &output)
 
         if let guidance = tool.agentGuidance {
-            print("**\(guidance)**\n")
+            print("**\(guidance)**\n", to: &output)
         }
 
         if !tool.parameters.isEmpty {
-            self.printParameters(tool.parameters)
+            self.appendParameters(tool.parameters, to: &output)
         }
 
         if !tool.examples.isEmpty {
-            print("**Examples:**")
-            print("```json")
-            tool.examples.forEach { print($0) }
-            print("```")
+            print("**Examples:**", to: &output)
+            print("```json", to: &output)
+            tool.examples.forEach { print($0, to: &output) }
+            print("```", to: &output)
         }
-        print()
+        print("", to: &output)
     }
 
-    private func printParameters(_ parameters: [PeekabooToolParameter]) {
-        print("**Parameters:**")
+    private func appendParameters(_ parameters: [PeekabooToolParameter], to output: inout String) {
+        print("**Parameters:**", to: &output)
         for param in parameters where param.cliOptions?.argumentType != .argument {
             var line = "- `\(param.name)` (\(param.type)"
             if param.required {
@@ -96,16 +103,16 @@ struct LearnCommand {
             if let defaultValue = param.defaultValue {
                 line += " Default: `\(defaultValue)`"
             }
-            print(line)
+            print(line, to: &output)
 
             if let options = param.options {
-                print("  - Options: `\(options.joined(separator: "`, `"))`")
+                print("  - Options: `\(options.joined(separator: "`, `"))`", to: &output)
             }
         }
-        print()
+        print("", to: &output)
     }
 
-    private func printBestPractices() {
+    private func appendBestPractices(to output: inout String) {
         print("""
         ## Usage Best Practices
 
@@ -119,10 +126,10 @@ struct LearnCommand {
            - Typing: `click` the field, then `type` the text.
            - Menus: `menu click --path ...`.
            - Keyboard shortcuts: `hotkey`.
-        """)
+        """, to: &output)
     }
 
-    private func printQuickReference() {
+    private func appendQuickReference(to output: inout String) {
         print("""
         ## Quick Reference
         - **Vision**: see, screenshot, window_capture
@@ -135,45 +142,72 @@ struct LearnCommand {
 
         Remember: You are Peekaboo, an AI-powered screen automation assistant.
         Be confident, be helpful, and get things done!
-        """)
+        """, to: &output)
     }
 
     @MainActor
-    private func outputCommanderSummary() {
-        print("\n## Commander Command Signatures\n")
+    private func appendCommanderSummary(to output: inout String) {
+        print("\n## Commander Command Signatures\n", to: &output)
         let summaries = CommanderRegistryBuilder.buildCommandSummaries()
             .sorted { $0.name < $1.name }
 
         for summary in summaries {
-            print("### `peekaboo \(summary.name)`\n")
+            print("### `peekaboo \(summary.name)`\n", to: &output)
             if !summary.arguments.isEmpty {
-                print("**Positional Arguments:**")
+                print("**Positional Arguments:**", to: &output)
                 for argument in summary.arguments {
                     let optionality = argument.isOptional ? "(optional)" : "(required)"
                     let description = argument.help ?? ""
-                    print("- `\(argument.label)` \(optionality) \(description)")
+                    print("- `\(argument.label)` \(optionality) \(description)", to: &output)
                 }
-                print()
+                print("", to: &output)
             }
             if !summary.options.isEmpty {
-                print("**Options:**")
+                print("**Options:**", to: &output)
                 for option in summary.options {
                     let names = option.names.map { "`\($0)`" }.joined(separator: ", ")
                     let description = option.help ?? "No description"
-                    print("- \(names) – \(description)")
+                    print("- \(names) – \(description)", to: &output)
                 }
-                print()
+                print("", to: &output)
             }
             if !summary.flags.isEmpty {
-                print("**Flags:**")
+                print("**Flags:**", to: &output)
                 for flag in summary.flags {
                     let names = flag.names.map { "`\($0)`" }.joined(separator: ", ")
                     let description = flag.help ?? "No description"
-                    print("- \(names) – \(description)")
+                    print("- \(names) – \(description)", to: &output)
                 }
-                print()
             }
         }
+    }
+
+    private func renderGuide(_ markdown: String) {
+        let capabilities = TerminalDetector.detectCapabilities()
+        let outputMode = TerminalDetector.shouldForceOutputMode() ?? capabilities.recommendedOutputMode
+        let env = ProcessInfo.processInfo.environment
+        let forceColor = env["FORCE_COLOR"] != nil || env["CLICOLOR_FORCE"] != nil
+        let prefersRich = outputMode != .minimal && outputMode != .quiet
+        let shouldRenderANSI = prefersRich && (capabilities.supportsColors || forceColor)
+
+        guard shouldRenderANSI else {
+            Swift.print(markdown, terminator: markdown.hasSuffix("\n") ? "" : "\n")
+            return
+        }
+
+        let width = capabilities.width > 0 ? capabilities.width : nil
+        let rendered = Swiftdansi.render(
+            markdown,
+            options: RenderOptions(
+                wrap: true,
+                width: width,
+                hyperlinks: true,
+                color: true,
+                theme: .contrast,
+                listIndent: 4
+            )
+        )
+        Swift.print(rendered, terminator: rendered.hasSuffix("\n") ? "" : "\n")
     }
 }
 
