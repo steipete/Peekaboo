@@ -58,6 +58,8 @@ public final class VideoFrameSource: CaptureFrameSource {
         self.times = requested
         self.generator = AVAssetImageGenerator(asset: asset)
         self.generator.appliesPreferredTrackTransform = true
+        self.generator.requestedTimeToleranceBefore = .zero
+        self.generator.requestedTimeToleranceAfter = .zero
         if let cap = resolutionCap {
             self.generator.maximumSize = CGSize(width: cap, height: cap)
         }
