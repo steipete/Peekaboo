@@ -32,8 +32,13 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     private var logger: Logger { self.resolvedRuntime.logger }
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    /// Keys after resolving positional/option input and trimming whitespace. Nil when missing/empty.
     var resolvedKeys: String? {
-        self.keysArgument ?? self.keysOption
+        let raw = self.keysArgument ?? self.keysOption
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
     }
 
     @MainActor
@@ -165,7 +170,7 @@ extension HotkeyCommand: CommanderBindableCommand {
         self.keysArgument = values.positional.first
         self.keysOption = values.singleOption("keys")
         guard self.resolvedKeys != nil else {
-            throw CommanderBindingError.missingArgument(label: "keys")
+            throw ValidationError("No keys specified. Provide keys like \"cmd,c\" or \"cmd c\".")
         }
         if let hold: Int = try values.decodeOption("holdDuration", as: Int.self) {
             self.holdDuration = hold

@@ -84,7 +84,10 @@ struct VideoWriterTests {
     @Test("video timestamps follow asset timeline, not wall clock")
     func videoTimestampsMatchVideoTimeline() async throws {
         let timestamps = [0, 500, 1000, 1500]
-        let frameSource = FakeFrameSource(frameCount: timestamps.count, size: CGSize(width: 100, height: 50), timestampsMs: timestamps)
+        let frameSource = FakeFrameSource(
+            frameCount: timestamps.count,
+            size: CGSize(width: 100, height: 50),
+            timestampsMs: timestamps)
         let outputDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("peekaboo-video-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
@@ -144,11 +147,10 @@ private final class FakeFrameSource: CaptureFrameSource {
     func nextFrame() async throws -> (cgImage: CGImage?, metadata: CaptureMetadata)? {
         guard self.remaining > 0 else { return nil }
         self.remaining -= 1
-        let videoMs: Int?
-        if let timestamps = self.timestampsMs, self.produced < timestamps.count {
-            videoMs = timestamps[self.produced]
+        let videoMs: Int? = if let timestamps = self.timestampsMs, self.produced < timestamps.count {
+            timestamps[self.produced]
         } else {
-            videoMs = nil
+            nil
         }
         self.produced += 1
         let image = FakeFrameSource.makeSolidImage(size: self.size)

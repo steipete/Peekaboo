@@ -458,7 +458,7 @@ struct CommanderBinderCommandBindingTests {
     @Test("Hotkey command requires keys")
     func bindHotkeyCommandMissingKeys() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
-        #expect(throws: CommanderBindingError.missingArgument(label: "keys")) {
+        #expect(throws: ValidationError.self) {
             _ = try CommanderCLIBinder.instantiateCommand(ofType: HotkeyCommand.self, parsedValues: parsed)
         }
     }

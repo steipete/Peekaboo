@@ -1,3 +1,4 @@
+import Commander
 import Foundation
 import PeekabooCore
 import Testing
@@ -33,8 +34,11 @@ import Testing
         }
 
         // Test empty keys
-        let emptyCommand = try HotkeyCommand.parse(["--keys", ""])
-        #expect(emptyCommand.resolvedKeys == "")
+        #expect(throws: ValidationError.self) {
+            try CLIOutputCapture.suppressStderr {
+                _ = try HotkeyCommand.parse(["--keys", ""])
+            }
+        }
     }
 
     @Test func keyFormatNormalization() async throws {

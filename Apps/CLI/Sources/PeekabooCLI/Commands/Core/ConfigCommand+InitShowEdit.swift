@@ -109,7 +109,7 @@ extension ConfigCommand {
             }
 
             do {
-                let contents = try String(contentsOfFile: self.configPath)
+                let contents = try String(contentsOfFile: self.configPath, encoding: .utf8)
                 if self.jsonOutput {
                     guard let config = self.configManager.loadConfiguration() else {
                         let errorOutput = ErrorOutput(
