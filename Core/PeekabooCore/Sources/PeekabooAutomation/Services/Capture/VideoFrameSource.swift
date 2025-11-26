@@ -97,7 +97,9 @@ public final class VideoFrameSource: CaptureFrameSource {
     }
 
     private static func milliseconds(from time: CMTime, fallback: CMTime) -> Int? {
-        let resolved = time.isNumeric && time.seconds.isFinite ? time : fallback
+        // Prefer the actual timestamp when present and non-zero; otherwise use the requested fallback.
+        let hasActual = time.isNumeric && time.seconds.isFinite && time != .zero
+        let resolved = hasActual ? time : fallback
         guard resolved.isNumeric else { return nil }
         return Int((resolved.seconds * 1000).rounded())
     }
