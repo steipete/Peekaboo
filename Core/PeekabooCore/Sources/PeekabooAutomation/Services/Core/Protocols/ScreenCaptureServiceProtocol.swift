@@ -115,6 +115,10 @@ public struct CaptureMetadata: Sendable {
     /// Capture mode used
     public let mode: CaptureMode
 
+    /// Timestamp on the source timeline in milliseconds, when available (e.g. video ingest).
+    /// Falls back to wall-clock timing elsewhere.
+    public let videoTimestampMs: Int?
+
     /// Application information (if applicable)
     public let applicationInfo: ServiceApplicationInfo?
 
@@ -130,6 +134,7 @@ public struct CaptureMetadata: Sendable {
     public init(
         size: CGSize,
         mode: CaptureMode,
+        videoTimestampMs: Int? = nil,
         applicationInfo: ServiceApplicationInfo? = nil,
         windowInfo: ServiceWindowInfo? = nil,
         displayInfo: DisplayInfo? = nil,
@@ -137,6 +142,7 @@ public struct CaptureMetadata: Sendable {
     {
         self.size = size
         self.mode = mode
+        self.videoTimestampMs = videoTimestampMs
         self.applicationInfo = applicationInfo
         self.windowInfo = windowInfo
         self.displayInfo = displayInfo

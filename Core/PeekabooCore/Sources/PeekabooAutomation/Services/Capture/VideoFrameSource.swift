@@ -72,9 +72,11 @@ public final class VideoFrameSource: CaptureFrameSource {
         do {
             let image = try self.generator.copyCGImage(at: time, actualTime: &actual)
             let size = CGSize(width: image.width, height: image.height)
+            let millis = Self.milliseconds(from: actual, fallback: time)
             let meta = CaptureMetadata(
                 size: size,
                 mode: self.mode,
+                videoTimestampMs: millis,
                 applicationInfo: nil,
                 windowInfo: nil,
                 displayInfo: nil,
@@ -85,12 +87,19 @@ public final class VideoFrameSource: CaptureFrameSource {
             let meta = CaptureMetadata(
                 size: .zero,
                 mode: self.mode,
+                videoTimestampMs: Self.milliseconds(from: actual, fallback: time),
                 applicationInfo: nil,
                 windowInfo: nil,
                 displayInfo: nil,
                 timestamp: Date())
             return (nil, meta)
         }
+    }
+
+    private static func milliseconds(from time: CMTime, fallback: CMTime) -> Int? {
+        let resolved = time.isNumeric && time.seconds.isFinite ? time : fallback
+        guard resolved.isNumeric else { return nil }
+        return Int((resolved.seconds * 1000).rounded())
     }
 }
 

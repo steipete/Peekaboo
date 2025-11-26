@@ -80,6 +80,51 @@ struct VideoWriterTests {
         #expect(abs(Double(nominalFrameRate) - 12) < 0.5)
         #expect(result.videoOut?.hasSuffix("capture.mp4") == true)
     }
+
+    @Test("video timestamps follow asset timeline, not wall clock")
+    func videoTimestampsMatchVideoTimeline() async throws {
+        let timestamps = [0, 500, 1000, 1500]
+        let frameSource = FakeFrameSource(frameCount: timestamps.count, size: CGSize(width: 100, height: 50), timestampsMs: timestamps)
+        let outputDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("peekaboo-video-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+
+        let options = CaptureOptions(
+            duration: 5,
+            idleFps: 60,
+            activeFps: 60,
+            changeThresholdPercent: 0,
+            heartbeatSeconds: 0,
+            quietMsToIdle: 0,
+            maxFrames: 10,
+            maxMegabytes: nil,
+            highlightChanges: false,
+            captureFocus: .auto,
+            resolutionCap: nil,
+            diffStrategy: .fast,
+            diffBudgetMs: nil)
+
+        let config = WatchCaptureConfiguration(
+            scope: CaptureScope(kind: .frontmost),
+            options: options,
+            outputRoot: outputDir,
+            autoclean: WatchAutocleanConfig(minutes: 120, managed: false),
+            sourceKind: .video,
+            videoIn: "mock.mov",
+            videoOut: nil,
+            keepAllFrames: true)
+
+        let deps = WatchCaptureDependencies(
+            screenCapture: NoOpScreenCaptureService(),
+            screenService: NoOpScreenService(),
+            frameSource: frameSource)
+
+        let session = WatchCaptureSession(dependencies: deps, configuration: config)
+        let result = try await session.run()
+
+        let observed = result.frames.map(\.timestampMs)
+        #expect(observed == timestamps)
+    }
 }
 
 // MARK: - Test fakes
@@ -87,17 +132,27 @@ struct VideoWriterTests {
 private final class FakeFrameSource: CaptureFrameSource {
     private var remaining: Int
     private let size: CGSize
+    private let timestampsMs: [Int]?
+    private var produced: Int = 0
 
-    init(frameCount: Int, size: CGSize) {
+    init(frameCount: Int, size: CGSize, timestampsMs: [Int]? = nil) {
         self.remaining = frameCount
         self.size = size
+        self.timestampsMs = timestampsMs
     }
 
     func nextFrame() async throws -> (cgImage: CGImage?, metadata: CaptureMetadata)? {
         guard self.remaining > 0 else { return nil }
         self.remaining -= 1
+        let videoMs: Int?
+        if let timestamps = self.timestampsMs, self.produced < timestamps.count {
+            videoMs = timestamps[self.produced]
+        } else {
+            videoMs = nil
+        }
+        self.produced += 1
         let image = FakeFrameSource.makeSolidImage(size: self.size)
-        let meta = CaptureMetadata(size: self.size, mode: .screen, timestamp: Date())
+        let meta = CaptureMetadata(size: self.size, mode: .screen, videoTimestampMs: videoMs, timestamp: Date())
         return (image, meta)
     }
 

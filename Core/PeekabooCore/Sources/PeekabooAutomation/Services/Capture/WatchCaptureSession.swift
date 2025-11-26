@@ -223,6 +223,7 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
                 // Frame source exhausted (e.g., video input)
                 break
             }
+            let timestampMs = capture.metadata.videoTimestampMs ?? Int(elapsedNs / 1_000_000)
 
             guard let cgImage = capture.cgImage else {
                 self.framesDropped += 1
@@ -237,7 +238,7 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
                     context: FrameSaveContext(
                         capture: capture,
                         index: state.frameIndex,
-                        timestampMs: Int(elapsedNs / 1_000_000),
+                        timestampMs: timestampMs,
                         changePercent: 0,
                         reason: reason,
                         motionBoxes: nil))
@@ -265,7 +266,7 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
                 let saveContext = FrameSaveContext(
                     capture: capture,
                     index: state.frameIndex,
-                    timestampMs: Int(elapsedNs / 1_000_000),
+                    timestampMs: timestampMs,
                     changePercent: diff.changePercent,
                     reason: decision.reason,
                     motionBoxes: diff.motionBoxes)

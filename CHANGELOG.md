@@ -4,6 +4,12 @@
 
 ### Added
 - `peekaboo hotkey` now accepts the key combo as a positional argument (in addition to `--keys`), covering quick one-liners like `peekaboo hotkey "cmd,shift,t"` or `peekaboo hotkey "cmd space"` without forcing a flag; docs updated with precedence, error cases, and fresh examples.
+- `peekaboo learn` renders its full guide as ANSI-styled markdown via Swiftdansi on rich terminals (contrast theme, dotted bullets, indented lists), while continuing to emit plain markdown when piped or in quiet mode.
+
+### Changed
+- `scripts/poltergeist-wrapper.sh` now always allocates a PTY for `peekaboo` targets so Swiftdansi and other ANSI-aware flows see an interactive TTY even in CI or scripted runs.
+- CLI builds target macOS 15+ in line with the project baseline and Swiftdansi’s minimum, dropping legacy macOS 14 support.
+- Swiftdansi is now vendored as a git submodule alongside AXorcist/Commander/Tachikoma/TauTUI, simplifying local builds (no more sibling checkout path).
 
 ## [3.0.0-beta1] - 2025-11-25
 
@@ -41,6 +47,7 @@
 - Agent MCP tools (see/click/drag/type/scroll) default to the latest `see` session when none is pinned, so follow-up actions work without re-running `see`.
 - MCP Responses image payloads are normalized (URL/base64) to align with the schema; manual testing guidance updated.
 - Restored Playground target build on macOS 15 so local examples compile again.
+- `peekaboo capture video --sample-fps` now reports frame timestamps from the video timeline (not session wall-clock), fixing bunched `t=XXms` outputs and aligning `metadata.json`; regression test added.
 
 ## [2.0.3] - 2025-07-03
 
