@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased] (3.0.0-beta2)
 
 ### Added
 - `peekaboo hotkey` now accepts the key combo as a positional argument (in addition to `--keys`), covering quick one-liners like `peekaboo hotkey "cmd,shift,t"` or `peekaboo hotkey "cmd space"` without forcing a flag; docs updated with precedence, error cases, and fresh examples.
@@ -36,6 +36,7 @@
 - CLI help output now hides compatibility aliases such as `--jsonOutput` while still documenting the primary short/long names (`-j`, `--json`), matching the new alias metadata exported by the Commander submodule.
 
 ### Fixed
+- `peekaboo capture video` positional input now binds correctly through Commander, preventing “missing input” runtime errors; binder and parsing tests cover the regression.
 - Menubar automation uses a bundled LSUIElement helper before CGS fallbacks, improving detection of menu extras on macOS 26+.
 - Agent MCP tools (see/click/drag/type/scroll) default to the latest `see` session when none is pinned, so follow-up actions work without re-running `see`.
 - MCP Responses image payloads are normalized (URL/base64) to align with the schema; manual testing guidance updated.
