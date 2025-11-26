@@ -204,7 +204,8 @@ struct LearnCommand {
                 hyperlinks: true,
                 color: true,
                 theme: .contrast,
-                listIndent: 4
+                listIndent: 4,
+                listMarker: "•"
             )
         )
         Swift.print(rendered, terminator: rendered.hasSuffix("\n") ? "" : "\n")
