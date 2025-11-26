@@ -442,4 +442,54 @@ struct CommanderBinderCommandBindingTests {
             )
         }
     }
+
+    @Test("Hotkey command binding (positional wins)")
+    func bindHotkeyCommand() throws {
+        let parsed = ParsedValues(
+            positional: ["cmd,space"],
+            options: ["keys": ["cmd,c"], "holdDuration": ["120"]],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: HotkeyCommand.self, parsedValues: parsed)
+        #expect(command.resolvedKeys == "cmd,space")
+        #expect(command.holdDuration == 120)
+    }
+
+    @Test("Hotkey command requires keys")
+    func bindHotkeyCommandMissingKeys() {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        #expect(throws: CommanderBindingError.missingArgument(label: "keys")) {
+            _ = try CommanderCLIBinder.instantiateCommand(ofType: HotkeyCommand.self, parsedValues: parsed)
+        }
+    }
+
+    @Test("Move command binding with coordinates")
+    func bindMoveCommand() throws {
+        let parsed = ParsedValues(
+            positional: ["100,200"],
+            options: [
+                "duration": ["750"],
+                "steps": ["30"],
+                "profile": ["human"],
+                "session": ["sess-1"]
+            ],
+            flags: ["smooth"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
+        #expect(command.coordinates == "100,200")
+        #expect(command.duration == 750)
+        #expect(command.steps == 30)
+        #expect(command.profile == "human")
+        #expect(command.session == "sess-1")
+        #expect(command.smooth == true)
+    }
+
+    @Test("Move command requires a target (validation)")
+    func bindMoveCommandMissingTarget() async throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        var command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
+        await #expect(throws: ValidationError.self) {
+            try command.validate()
+        }
+    }
 }
