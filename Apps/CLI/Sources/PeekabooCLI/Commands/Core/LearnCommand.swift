@@ -105,11 +105,10 @@ struct LearnCommand {
             if let defaultValue = param.defaultValue {
                 line += " Default: `\(defaultValue)`"
             }
-            print(line, to: &output)
-
             if let options = param.options {
-                print("  - Options: `\(options.joined(separator: "`, `"))`", to: &output)
+                line += " Options: `\(options.joined(separator: "`, `"))`"
             }
+            print(line, to: &output)
         }
         print("", to: &output)
     }
@@ -207,7 +206,8 @@ struct LearnCommand {
                 hyperlinks: true,
                 color: true,
                 theme: .contrast,
-                listIndent: 4
+                listIndent: 4,
+                listMarker: "•"
             )
         )
         Swift.print(rendered, terminator: rendered.hasSuffix("\n") ? "" : "\n")
