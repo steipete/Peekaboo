@@ -2,6 +2,9 @@
 
 ## [Unreleased] (3.0.0-beta2)
 
+### Fixed
+- App resolution now correctly prioritizes exact name matches over bundleID-contains matches, fixing issues where `--app Safari` would incorrectly match helper processes like "AutoFill (Obsidian)" whose bundleID contains "Safari". Refactored `ElementDetectionService` to delegate to `ApplicationService.findApplication()` for a single source of truth.
+
 ### Added
 - `peekaboo hotkey` now accepts the key combo as a positional argument (in addition to `--keys`), covering quick one-liners like `peekaboo hotkey "cmd,shift,t"` or `peekaboo hotkey "cmd space"` without forcing a flag; docs updated with precedence, error cases, and fresh examples.
 - `peekaboo learn` renders its full guide as ANSI-styled markdown via Swiftdansi on rich terminals (contrast theme, dotted bullets, indented lists), while continuing to emit plain markdown when piped or in quiet mode.

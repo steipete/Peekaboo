@@ -38,11 +38,16 @@ import PeekabooFoundation
 public final class ElementDetectionService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ElementDetectionService")
     private let sessionManager: any SessionManagerProtocol
+    private let applicationService: ApplicationService
     private let windowIdentityService = WindowIdentityService()
     private let windowManagementService = WindowManagementService()
 
-    public init(sessionManager: (any SessionManagerProtocol)? = nil) {
+    public init(
+        sessionManager: (any SessionManagerProtocol)? = nil,
+        applicationService: ApplicationService? = nil
+    ) {
         self.sessionManager = sessionManager ?? SessionManager()
+        self.applicationService = applicationService ?? ApplicationService()
     }
 
     /// Detect UI elements in a screenshot
@@ -53,7 +58,7 @@ public final class ElementDetectionService {
     {
         self.logger.info("Starting element detection")
 
-        let targetApp = try self.resolveApplication(windowContext: windowContext)
+        let targetApp = try await self.resolveApplication(windowContext: windowContext)
         let windowResolution = try await self.resolveWindow(for: targetApp, context: windowContext)
         let windowName = windowResolution.window.title() ?? "Untitled"
         self.logger.debug("Found \(windowResolution.windowTypeDescription): \(windowName)")
@@ -170,19 +175,21 @@ extension ElementDetectionService {
         }
     }
 
-    private func resolveApplication(windowContext: WindowContext?) throws -> NSRunningApplication {
+    private func resolveApplication(windowContext: WindowContext?) async throws -> NSRunningApplication {
         if let appName = windowContext?.applicationName {
-            self.logger.debug("Looking for application: \(appName)")
-            let apps = NSWorkspace.shared.runningApplications.filter { app in
-                app.localizedName?.localizedCaseInsensitiveContains(appName) == true ||
-                    app.bundleIdentifier?.localizedCaseInsensitiveContains(appName) == true
-            }
+            self.logger.debug("Looking for application via ApplicationService: \(appName)")
 
-            guard let app = apps.first else {
-                self.logger.error("Application not found: \(appName)")
+            // Use ApplicationService for consistent app resolution across the codebase
+            let appInfo = try await self.applicationService.findApplication(identifier: appName)
+
+            // Look up the NSRunningApplication by PID
+            guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
+                self.logger.error("Could not get NSRunningApplication for PID: \(appInfo.processIdentifier)")
                 throw PeekabooError.appNotFound(appName)
             }
-            return app
+
+            self.logger.debug("Resolved application: \(runningApp.localizedName ?? "unknown")")
+            return runningApp
         }
 
         guard let frontmost = NSWorkspace.shared.frontmostApplication else {
