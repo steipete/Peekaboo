@@ -10,6 +10,7 @@
 - `peekaboo learn` renders its full guide as ANSI-styled markdown via Swiftdansi on rich terminals (contrast theme, dotted bullets, indented lists), while continuing to emit plain markdown when piped or in quiet mode.
 
 ### Changed
+- Menu bar helper now returns a lightweight list of window IDs, and menu extras enrich metadata locally; keeps menubar discovery working after the helper refactor.
 - `scripts/poltergeist-wrapper.sh` now always allocates a PTY for `peekaboo` targets so Swiftdansi and other ANSI-aware flows see an interactive TTY even in CI or scripted runs.
 - CLI builds target macOS 15+ in line with the project baseline and Swiftdansi’s minimum, dropping legacy macOS 14 support.
 - Swiftdansi is now vendored as a git submodule alongside AXorcist/Commander/Tachikoma/TauTUI, simplifying local builds (no more sibling checkout path).
