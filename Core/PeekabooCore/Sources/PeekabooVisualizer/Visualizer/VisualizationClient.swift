@@ -48,14 +48,18 @@ public final class VisualizationClient: @unchecked Sendable {
     private let cleanupInterval: TimeInterval = 60
 
     public init(consoleLogHandler: ((String) -> Void)? = nil) {
-        self.consoleLogHandler = consoleLogHandler ?? VisualizationClient.defaultConsoleLogHandler
-
         let environment = ProcessInfo.processInfo.environment
         let bundleIdentifier = Bundle.main.bundleIdentifier
         let forcedAppContext = environment["PEEKABOO_VISUALIZER_FORCE_APP"] == "true"
         let isAppBundle = VisualizationClient.isPeekabooMacBundle(identifier: bundleIdentifier)
         self.isRunningInsideMacApp = forcedAppContext || isAppBundle
         self.cleanupDisabled = environment["PEEKABOO_VISUALIZER_DISABLE_CLEANUP"] == "true"
+
+        let envLogLevel = VisualizationClient.parseLogLevel(environment["PEEKABOO_LOG_LEVEL"])
+        self.defaultConsoleLogLevel = envLogLevel ?? .warning
+        self.minimumConsoleLogLevel = self.defaultConsoleLogLevel
+
+        self.consoleLogHandler = consoleLogHandler ?? VisualizationClient.defaultConsoleLogHandler
 
         if forcedAppContext, !isAppBundle {
             VisualizationClient.defaultConsoleLogHandler(
@@ -65,12 +69,11 @@ public final class VisualizationClient: @unchecked Sendable {
         if let override = VisualizationClient.parseBooleanEnvironmentValue(environment["PEEKABOO_VISUALIZER_STDOUT"]) {
             self.shouldMirrorToConsole = override
         } else {
-            self.shouldMirrorToConsole = !self.isRunningInsideMacApp
+            // Only mirror visualizer logs to console when explicitly verbose-level logging is requested.
+            let allowVerboseConsole = envLogLevel?.rawValue ?? ConsoleLogLevel.warning.rawValue
+                <= ConsoleLogLevel.verbose.rawValue
+            self.shouldMirrorToConsole = allowVerboseConsole && !self.isRunningInsideMacApp
         }
-
-        let envLogLevel = VisualizationClient.parseLogLevel(environment["PEEKABOO_LOG_LEVEL"])
-        self.defaultConsoleLogLevel = envLogLevel ?? .warning
-        self.minimumConsoleLogLevel = self.defaultConsoleLogLevel
 
         if environment["PEEKABOO_VISUAL_FEEDBACK"] == "false" {
             self.isEnabled = false
@@ -204,7 +207,10 @@ public final class VisualizationClient: @unchecked Sendable {
         }
 
         guard self.isRunningInsideMacApp || Self.isVisualizerAppRunning() else {
-            if !self.hasLoggedMissingApp, self.minimumConsoleLogLevel <= .verbose {
+            if !self.hasLoggedMissingApp,
+               self.shouldMirrorToConsole,
+               self.minimumConsoleLogLevel <= .verbose
+            {
                 self.log(.debug, "Peekaboo.app is not running; visual feedback unavailable until it launches")
                 self.hasLoggedMissingApp = true
             }
