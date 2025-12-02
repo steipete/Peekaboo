@@ -52,6 +52,7 @@
 - MCP Responses image payloads are normalized (URL/base64) to align with the schema; manual testing guidance updated.
 - Restored Playground target build on macOS 15 so local examples compile again.
 - `peekaboo capture video --sample-fps` now reports frame timestamps from the video timeline (not session wall-clock), fixing bunched `t=XXms` outputs and aligning `metadata.json`; regression test added.
+- `peekaboo capture video` now advertises and binds its required input video file in Commander help/registry, preventing missing-input crashes; binder and program-resolution tests cover the regression.
 
 ## [2.0.3] - 2025-07-03
 

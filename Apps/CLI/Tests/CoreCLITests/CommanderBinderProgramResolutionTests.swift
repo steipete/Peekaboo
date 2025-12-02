@@ -146,6 +146,23 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("noAutoFocus"))
     }
 
+    @Test("Commander program resolves capture video input positional")
+    @MainActor
+    func commanderResolvesCaptureVideoInput() throws {
+        let descriptors = CommanderRegistryBuilder.buildDescriptors()
+        let program = Program(descriptors: descriptors.map(\.metadata))
+        let invocation = try program.resolve(argv: [
+            "peekaboo",
+            "capture",
+            "video",
+            "/tmp/demo.mov",
+            "--sample-fps", "3"
+        ])
+        let values = invocation.parsedValues
+        #expect(values.positional == ["/tmp/demo.mov"])
+        #expect(values.options["sampleFps"] == ["3"])
+    }
+
     @Test("Commander program resolves list default to apps")
     @MainActor
     func commanderResolvesListDefaultApps() throws {

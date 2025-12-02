@@ -432,6 +432,14 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.videoOut == "/tmp/out.mp4")
     }
 
+    @Test("Capture video commander signature exposes required input")
+    func captureVideoCommanderSignatureHasInputArgument() {
+        let signature = CaptureVideoCommand.commanderSignature()
+        let input = signature.arguments.first { $0.label == "input" }
+        #expect(input?.isOptional == false)
+        #expect(input?.help == "Input video file")
+    }
+
     @Test("Capture video command requires input")
     func bindCaptureVideoCommandRequiresInput() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
