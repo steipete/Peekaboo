@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// Result of a click operation
-public struct ClickResult: Sendable {
+public struct ClickResult: Sendable, Codable {
     public let elementDescription: String
     public let location: CGPoint?
 
@@ -61,7 +61,7 @@ public protocol MenuServiceProtocol: Sendable {
 }
 
 /// Structure representing an application's menu bar
-public struct MenuStructure: Sendable {
+public struct MenuStructure: Sendable, Codable {
     /// Application information
     public let application: ServiceApplicationInfo
 
@@ -80,7 +80,7 @@ public struct MenuStructure: Sendable {
 }
 
 /// A menu in the menu bar
-public struct Menu: Sendable {
+public struct Menu: Sendable, Codable {
     /// Menu title
     public let title: String
 
@@ -117,7 +117,7 @@ public struct Menu: Sendable {
 }
 
 /// A menu item
-public struct MenuItem: Sendable {
+public struct MenuItem: Sendable, Codable {
     /// Item title
     public let title: String
 
@@ -174,7 +174,7 @@ public struct MenuItem: Sendable {
 }
 
 /// Keyboard shortcut information
-public struct KeyboardShortcut: Sendable {
+public struct KeyboardShortcut: Sendable, Codable {
     /// Modifier keys (cmd, shift, option, ctrl)
     public let modifiers: Set<String>
 
@@ -274,7 +274,7 @@ public struct MenuBarItemInfo: Sendable, Codable {
 }
 
 /// Information about a system menu extra (status bar item)
-public struct MenuExtraInfo: Sendable {
+public struct MenuExtraInfo: Sendable, Codable {
     /// Display title chosen for automation clients (maybe localized/humanized).
     public let title: String
 

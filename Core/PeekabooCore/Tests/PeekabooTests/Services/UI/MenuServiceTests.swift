@@ -302,7 +302,7 @@ struct MenuServiceTests {
         #expect(result.menus.count == 1)
         #expect(result.menus.first?.title == "File")
 
-        let lookupCount = await fakeService.lookups
+        let lookupCount = fakeService.lookups
         #expect(lookupCount == 0) // cache hit avoided lookup
 
         service.clearMenuCache()

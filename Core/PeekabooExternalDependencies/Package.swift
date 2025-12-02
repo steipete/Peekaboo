@@ -28,6 +28,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log", from: "1.6.4"),
         .package(url: "https://github.com/apple/swift-system", from: "1.6.3"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.3.0"),
+        .package(url: "https://github.com/ChimeHQ/AsyncXPCConnection", from: "1.3.0"),
     ],
     targets: [
         .target(
@@ -40,6 +41,7 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "SystemPackage", package: "swift-system"),
                 .product(name: "OrderedCollections", package: "swift-collections"),
+                .product(name: "AsyncXPCConnection", package: "AsyncXPCConnection"),
             ],
             swiftSettings: approachableConcurrencySettings),
     ],

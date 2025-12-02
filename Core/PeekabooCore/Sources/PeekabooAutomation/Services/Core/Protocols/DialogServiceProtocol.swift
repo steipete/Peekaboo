@@ -107,7 +107,7 @@ extension DialogServiceProtocol {
 }
 
 /// Information about a dialog
-public struct DialogInfo: Sendable {
+public struct DialogInfo: Sendable, Codable {
     /// Dialog title
     public let title: String
 
@@ -139,7 +139,7 @@ public struct DialogInfo: Sendable {
 }
 
 /// Result of a dialog action
-public struct DialogActionResult: Sendable {
+public struct DialogActionResult: Sendable, Codable {
     /// Whether the action was successful
     public let success: Bool
 
@@ -161,7 +161,7 @@ public struct DialogActionResult: Sendable {
 }
 
 /// Information about dialog elements
-public struct DialogElements: Sendable {
+public struct DialogElements: Sendable, Codable {
     /// Dialog information
     public let dialogInfo: DialogInfo
 
@@ -193,7 +193,7 @@ public struct DialogElements: Sendable {
 }
 
 /// Information about a dialog button
-public struct DialogButton: Sendable {
+public struct DialogButton: Sendable, Codable {
     /// Button text
     public let title: String
 
@@ -215,7 +215,7 @@ public struct DialogButton: Sendable {
 }
 
 /// Information about a dialog text field
-public struct DialogTextField: Sendable {
+public struct DialogTextField: Sendable, Codable {
     /// Field label or title
     public let title: String?
 
@@ -247,7 +247,7 @@ public struct DialogTextField: Sendable {
 }
 
 /// Generic dialog element
-public struct DialogElement: Sendable {
+public struct DialogElement: Sendable, Codable {
     /// Element role
     public let role: String
 

@@ -87,7 +87,7 @@ public enum ModifierKey: String, Sendable {
 }
 
 /// Special keys for typing operations
-public enum SpecialKey: String, Sendable {
+public enum SpecialKey: String, Sendable, Codable {
     case `return`
     case enter // Numeric keypad enter
     case tab
@@ -123,10 +123,46 @@ public enum SpecialKey: String, Sendable {
 // MARK: - Type Actions
 
 /// Actions for typing operations
-public enum TypeAction: Sendable {
+public enum TypeAction: Sendable, Codable {
     case text(String)
     case key(SpecialKey)
     case clear
+
+    private enum CodingKeys: String, CodingKey { case kind, text, key }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try container.decode(String.self, forKey: .kind)
+        switch kind {
+        case "text":
+            let value = try container.decode(String.self, forKey: .text)
+            self = .text(value)
+        case "key":
+            let value = try container.decode(SpecialKey.self, forKey: .key)
+            self = .key(value)
+        case "clear":
+            self = .clear
+        default:
+            throw DecodingError.dataCorruptedError(
+                forKey: .kind,
+                in: container,
+                debugDescription: "Unknown TypeAction kind: \(kind)")
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case let .text(value):
+            try container.encode("text", forKey: .kind)
+            try container.encode(value, forKey: .text)
+        case let .key(key):
+            try container.encode("key", forKey: .kind)
+            try container.encode(key, forKey: .key)
+        case .clear:
+            try container.encode("clear", forKey: .kind)
+        }
+    }
 }
 
 /// Typing profile exposed to higher-level tooling/visualizers

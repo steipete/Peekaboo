@@ -1,13 +1,13 @@
 import CoreGraphics
 import Foundation
 
-public enum CaptureVisualizerMode: Sendable {
+public enum CaptureVisualizerMode: Sendable, Codable {
     case screenshotFlash
     case watchCapture
 }
 
 /// Preferred output scale for captures
-public enum CaptureScalePreference: Sendable {
+public enum CaptureScalePreference: Sendable, Codable {
     /// Store images at logical 1x resolution (default)
     case logical1x
     /// Store images at the display's native pixel scale (e.g., 2x on Retina)
@@ -81,7 +81,7 @@ extension ScreenCaptureServiceProtocol {
 }
 
 /// Result of a capture operation
-public struct CaptureResult: Sendable {
+public struct CaptureResult: Sendable, Codable {
     /// The captured image data
     public let imageData: Data
 
@@ -108,7 +108,7 @@ public struct CaptureResult: Sendable {
 }
 
 /// Metadata about a captured image
-public struct CaptureMetadata: Sendable {
+public struct CaptureMetadata: Sendable, Codable {
     /// Size of the captured image
     public let size: CGSize
 
@@ -151,7 +151,7 @@ public struct CaptureMetadata: Sendable {
 }
 
 /// Information about a display
-public struct DisplayInfo: Sendable {
+public struct DisplayInfo: Sendable, Codable {
     public let index: Int
     public let name: String?
     public let bounds: CGRect

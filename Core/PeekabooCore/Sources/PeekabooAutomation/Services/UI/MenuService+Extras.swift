@@ -198,9 +198,11 @@ extension MenuService {
         let cgsIDs = cgsMenuBarWindowIDs(onScreen: true, activeSpace: true)
         let legacyIDs = cgsProcessMenuBarWindowIDs(onScreenOnly: true)
         let combinedIDs = Array(Set(cgsIDs + legacyIDs))
-        self.logger
-            .debug(
-                "CGS menuBarItems returned \(cgsIDs.count) ids; processMenuBar returned \(legacyIDs.count); combined \(combinedIDs.count)")
+        self.logger.debug(
+            """
+            CGS menuBarItems returned \(cgsIDs.count) ids;
+            processMenuBar returned \(legacyIDs.count); combined \(combinedIDs.count)
+            """)
         if !combinedIDs.isEmpty {
             // Use CGWindow metadata per window ID to resolve owner/bundle.
             for id in combinedIDs {
@@ -232,7 +234,16 @@ extension MenuService {
 
     /// Invoke the LSUIElement helper (if built) to enumerate menu bar windows from a GUI context.
     private func getMenuBarItemsViaHelper() -> [MenuExtraInfo]? {
-        let helperPath = "\(FileManager.default.currentDirectoryPath)/Helpers/MenuBarHelper/build/MenubarHelper.app/Contents/MacOS/menubar-helper"
+        let helperPath = [
+            FileManager.default.currentDirectoryPath,
+            "Helpers",
+            "MenuBarHelper",
+            "build",
+            "MenubarHelper.app",
+            "Contents",
+            "MacOS",
+            "menubar-helper",
+        ].joined(separator: "/")
         guard FileManager.default.isExecutableFile(atPath: helperPath) else {
             return nil
         }
@@ -599,7 +610,7 @@ extension MenuService {
         var merged = [MenuExtraInfo]()
 
         func upsert(_ extra: MenuExtraInfo) {
-            let bothHavePosition = extra.position != .zero && merged.first(where: { $0.position != .zero }) != nil
+            let bothHavePosition = extra.position != .zero && merged.contains { $0.position != .zero }
             if bothHavePosition,
                let index = merged.firstIndex(where: { $0.position.distance(to: extra.position) < 5 })
             {

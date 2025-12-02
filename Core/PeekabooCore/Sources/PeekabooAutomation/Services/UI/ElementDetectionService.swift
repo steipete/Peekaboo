@@ -460,6 +460,7 @@ extension ElementDetectionService {
         }
     }
 
+    // swiftlint:disable function_parameter_count
     private func collectElements(
         window: Element,
         appElement: Element,
@@ -622,6 +623,8 @@ extension ElementDetectionService {
                 visitedElements: &visitedElements)
         }
     }
+
+    // swiftlint:enable function_parameter_count
 
     private func logButtonDebugInfoIfNeeded(_ descriptor: ElementDescriptor) {
         guard descriptor.role.lowercased() == "axbutton" else { return }

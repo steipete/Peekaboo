@@ -53,7 +53,7 @@ public protocol WindowManagementServiceProtocol: Sendable {
 }
 
 /// Options for targeting a window
-public enum WindowTarget: Sendable, CustomStringConvertible {
+public enum WindowTarget: Sendable, CustomStringConvertible, Codable {
     /// Target by application name or bundle ID
     case application(String)
 
@@ -71,6 +71,61 @@ public enum WindowTarget: Sendable, CustomStringConvertible {
 
     /// Target a specific window ID
     case windowId(Int)
+
+    private enum CodingKeys: String, CodingKey { case kind, app, index, title, windowId }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try container.decode(String.self, forKey: .kind)
+        switch kind {
+        case "application":
+            self = try .application(container.decode(String.self, forKey: .app))
+        case "title":
+            self = try .title(container.decode(String.self, forKey: .title))
+        case "index":
+            let app = try container.decode(String.self, forKey: .app)
+            let index = try container.decode(Int.self, forKey: .index)
+            self = .index(app: app, index: index)
+        case "applicationAndTitle":
+            let app = try container.decode(String.self, forKey: .app)
+            let title = try container.decode(String.self, forKey: .title)
+            self = .applicationAndTitle(app: app, title: title)
+        case "frontmost":
+            self = .frontmost
+        case "windowId":
+            self = try .windowId(container.decode(Int.self, forKey: .windowId))
+        default:
+            throw DecodingError.dataCorruptedError(
+                forKey: .kind,
+                in: container,
+                debugDescription: "Unknown WindowTarget kind: \(kind)")
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case let .application(app):
+            try container.encode("application", forKey: .kind)
+            try container.encode(app, forKey: .app)
+        case let .title(title):
+            try container.encode("title", forKey: .kind)
+            try container.encode(title, forKey: .title)
+        case let .index(app, index):
+            try container.encode("index", forKey: .kind)
+            try container.encode(app, forKey: .app)
+            try container.encode(index, forKey: .index)
+        case let .applicationAndTitle(app, title):
+            try container.encode("applicationAndTitle", forKey: .kind)
+            try container.encode(app, forKey: .app)
+            try container.encode(title, forKey: .title)
+        case .frontmost:
+            try container.encode("frontmost", forKey: .kind)
+        case let .windowId(id):
+            try container.encode("windowId", forKey: .kind)
+            try container.encode(id, forKey: .windowId)
+        }
+    }
 
     public var description: String {
         switch self {
@@ -91,7 +146,7 @@ public enum WindowTarget: Sendable, CustomStringConvertible {
 }
 
 /// Result of a window operation
-public struct WindowOperationResult: Sendable {
+public struct WindowOperationResult: Sendable, Codable {
     /// Whether the operation succeeded
     public let success: Bool
 

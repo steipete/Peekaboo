@@ -126,7 +126,10 @@ public enum CaptureError: Error, LocalizedError, Sendable {
         case .imageConversionFailed:
             return "Failed to convert captured image to desired format."
         case let .detectionTimedOut(seconds):
-            return "Element detection timed out after \(Int(seconds))s. Try narrowing the capture or targeting a specific window."
+            return """
+            Element detection timed out after \(Int(seconds))s. Try narrowing the capture or targeting a specific \
+            window.
+            """
         }
     }
 
