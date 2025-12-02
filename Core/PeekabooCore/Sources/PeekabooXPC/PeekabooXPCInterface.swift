@@ -3,6 +3,7 @@ import Foundation
 import os.log
 import PeekabooAgentRuntime
 import PeekabooAutomation
+import Security
 
 @objc(PeekabooXPCConnection)
 public protocol PeekabooXPCConnection: NSObjectProtocol {
@@ -384,6 +385,59 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                     windowTitle: payload.windowTitle,
                     appName: payload.appName)
                 return .dialogElements(elements)
+
+            case .createSession:
+                let id = try await self.services.sessions.createSession()
+                return .sessionId(id)
+
+            case let .storeDetectionResult(payload):
+                try await self.services.sessions.storeDetectionResult(
+                    sessionId: payload.sessionId,
+                    result: payload.result)
+                return .ok
+
+            case let .getDetectionResult(payload):
+                if let result = try await self.services.sessions.getDetectionResult(sessionId: payload.sessionId) {
+                    return .detection(result)
+                } else {
+                    throw PeekabooXPCErrorEnvelope(
+                        code: .notFound,
+                        message: "No detection result for session \(payload.sessionId)")
+                }
+
+            case let .storeScreenshot(payload):
+                try await self.services.sessions.storeScreenshot(
+                    sessionId: payload.sessionId,
+                    screenshotPath: payload.screenshotPath,
+                    applicationName: payload.applicationName,
+                    windowTitle: payload.windowTitle,
+                    windowBounds: payload.windowBounds)
+                return .ok
+
+            case .listSessions:
+                let sessions = try await self.services.sessions.listSessions()
+                return .sessions(sessions)
+
+            case .getMostRecentSession:
+                if let id = await self.services.sessions.getMostRecentSession() {
+                    return .sessionId(id)
+                } else {
+                    throw PeekabooXPCErrorEnvelope(
+                        code: .notFound,
+                        message: "No recent session found")
+                }
+
+            case let .cleanSession(payload):
+                try await self.services.sessions.cleanSession(sessionId: payload.sessionId)
+                return .ok
+
+            case let .cleanSessionsOlderThan(payload):
+                let count = try await self.services.sessions.cleanSessionsOlderThan(days: payload.days)
+                return .int(count)
+
+            case .cleanAllSessions:
+                let count = try await self.services.sessions.cleanAllSessions()
+                return .int(count)
             }
         } catch let envelope as PeekabooXPCErrorEnvelope {
             throw envelope
@@ -401,13 +455,17 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
         _ payload: PeekabooXPCHandshake,
         connection: NSXPCConnection?) throws -> PeekabooXPCResponse
     {
+        let auditInfo = self.extractAuditInfo(from: connection)
+        let resolvedBundle = auditInfo.bundle ?? payload.client.bundleIdentifier
+        let resolvedTeam = auditInfo.team ?? payload.client.teamIdentifier
+
         guard self.supportedVersions.contains(payload.protocolVersion) else {
             throw PeekabooXPCErrorEnvelope(
                 code: .versionMismatch,
                 message: "Protocol \(payload.protocolVersion.major).\(payload.protocolVersion.minor) is not supported")
         }
 
-        if let bundle = payload.client.bundleIdentifier,
+        if let bundle = resolvedBundle,
            !self.allowlistedBundles.isEmpty,
            !self.allowlistedBundles.contains(bundle)
         {
@@ -416,13 +474,26 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 message: "Bundle \(bundle) is not authorized")
         }
 
-        if let team = payload.client.teamIdentifier,
+        if let team = resolvedTeam,
            !self.allowlistedTeams.isEmpty,
            !self.allowlistedTeams.contains(team)
         {
             throw PeekabooXPCErrorEnvelope(
                 code: .unauthorizedClient,
                 message: "Team \(team) is not authorized")
+        }
+
+        if let uid = auditInfo.uid, uid != getuid() {
+            throw PeekabooXPCErrorEnvelope(
+                code: .unauthorizedClient,
+                message: "UID \(uid) is not authorized for this listener")
+        }
+
+        if let pid = auditInfo.pid {
+            let bundleDescription = resolvedBundle ?? "<unknown>"
+            self.logger
+                .debug(
+                    "Accepted XPC handshake pid=\(pid, privacy: .public) bundle=\(bundleDescription, privacy: .public)")
         }
 
         let hostKind = payload.requestedHostKind ?? .helper
@@ -436,6 +507,46 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             build: PeekabooXPCConstants.buildIdentifier,
             supportedOperations: self.allowedOperations.sorted { $0.rawValue < $1.rawValue })
         return .handshake(response)
+    }
+
+    private func extractAuditInfo(from connection: NSXPCConnection?)
+    -> (bundle: String?, team: String?, pid: pid_t?, uid: uid_t?) {
+        guard let connection else { return (nil, nil, nil, nil) }
+
+        let pid = connection.processIdentifier
+        var bundle: String?
+        var team: String?
+
+        if pid != 0 {
+            var code: SecCode?
+            let attributes: [String: Any] = [kSecGuestAttributePid as String: pid]
+            if SecCodeCopyGuestWithAttributes(nil, attributes as CFDictionary, SecCSFlags(), &code) == errSecSuccess,
+               let code
+            {
+                var staticCode: SecStaticCode?
+                if SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode) == errSecSuccess,
+                   let staticCode
+                {
+                    var info: CFDictionary?
+                    if SecCodeCopySigningInformation(staticCode, SecCSFlags(), &info) == errSecSuccess,
+                       let info = info as? [String: Any]
+                    {
+                        bundle = info[kSecCodeInfoIdentifier as String] as? String
+                        if let teamId = info[kSecCodeInfoTeamIdentifier as String] as? String {
+                            team = teamId
+                        } else if
+                            let entitlements = info[kSecCodeInfoEntitlementsDict as String] as? [String: Any],
+                            let appIdentifier = entitlements["application-identifier"] as? String,
+                            let prefix = appIdentifier.split(separator: ".").first
+                        {
+                            team = String(prefix)
+                        }
+                    }
+                }
+            }
+        }
+
+        return (bundle, team, pid, connection.effectiveUserIdentifier)
     }
 }
 

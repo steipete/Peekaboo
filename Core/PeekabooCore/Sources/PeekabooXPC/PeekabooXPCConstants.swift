@@ -4,6 +4,9 @@ public enum PeekabooXPCConstants {
     /// Default mach service name for the helper LaunchAgent.
     public static let serviceName = "boo.peekaboo.helper"
 
+    /// Mach service name hosted by Peekaboo.app itself.
+    public static let guiServiceName = "boo.peekaboo.app"
+
     /// Current protocol version supported by this build.
     public static let protocolVersion = PeekabooXPCProtocolVersion(major: 1, minor: 0)
 

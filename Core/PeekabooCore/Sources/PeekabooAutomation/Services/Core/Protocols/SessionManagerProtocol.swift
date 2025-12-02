@@ -78,7 +78,7 @@ public protocol SessionManagerProtocol: Sendable {
 }
 
 /// Information about a session
-public struct SessionInfo: Sendable {
+public struct SessionInfo: Sendable, Codable {
     /// Unique session identifier
     public let id: String
 

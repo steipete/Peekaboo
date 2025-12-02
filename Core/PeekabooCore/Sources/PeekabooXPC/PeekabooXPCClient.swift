@@ -604,11 +604,100 @@ public actor PeekabooXPCClient {
         }
     }
 
+    // MARK: - Sessions
+
+    public func createSession() async throws -> String {
+        let response = try await self.send(.createSession(.init()))
+        switch response {
+        case let .sessionId(id): return id
+        case let .error(envelope): throw envelope
+        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected createSession response")
+        }
+    }
+
+    public func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
+        try await self.sendExpectOK(.storeDetectionResult(.init(sessionId: sessionId, result: result)))
+    }
+
+    public func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult {
+        let response = try await self.send(.getDetectionResult(.init(sessionId: sessionId)))
+        switch response {
+        case let .detection(result): return result
+        case let .error(envelope): throw envelope
+        default:
+            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected getDetectionResult response")
+        }
+    }
+
+    public func storeScreenshot(
+        sessionId: String,
+        screenshotPath: String,
+        applicationName: String?,
+        windowTitle: String?,
+        windowBounds: CGRect?) async throws
+    {
+        try await self.sendExpectOK(
+            .storeScreenshot(
+                .init(
+                    sessionId: sessionId,
+                    screenshotPath: screenshotPath,
+                    applicationName: applicationName,
+                    windowTitle: windowTitle,
+                    windowBounds: windowBounds)))
+    }
+
+    public func listSessions() async throws -> [SessionInfo] {
+        let response = try await self.send(.listSessions)
+        switch response {
+        case let .sessions(list): return list
+        case let .error(envelope): throw envelope
+        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected listSessions response")
+        }
+    }
+
+    public func getMostRecentSession() async throws -> String {
+        let response = try await self.send(.getMostRecentSession)
+        switch response {
+        case let .sessionId(id): return id
+        case let .error(envelope): throw envelope
+        default:
+            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected getMostRecentSession response")
+        }
+    }
+
+    public func cleanSession(sessionId: String) async throws {
+        try await self.sendExpectOK(.cleanSession(.init(sessionId: sessionId)))
+    }
+
+    public func cleanSessionsOlderThan(days: Int) async throws -> Int {
+        let response = try await self.send(.cleanSessionsOlderThan(.init(days: days)))
+        switch response {
+        case let .int(count): return count
+        case let .error(envelope): throw envelope
+        default:
+            throw PeekabooXPCErrorEnvelope(
+                code: .invalidRequest,
+                message: "Unexpected cleanSessionsOlderThan response")
+        }
+    }
+
+    public func cleanAllSessions() async throws -> Int {
+        let response = try await self.send(.cleanAllSessions)
+        switch response {
+        case let .int(count): return count
+        case let .error(envelope): throw envelope
+        default:
+            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected cleanAllSessions response")
+        }
+    }
+
     // MARK: - Private
 
     private func send(_ request: PeekabooXPCRequest) async throws -> PeekabooXPCResponse {
         let payload = try self.encoder.encode(request)
-        self.logger.debug("Sending XPC request \(String(describing: request), privacy: .public)")
+        let op = request.operation
+        let start = Date()
+        self.logger.debug("Sending XPC request \(op.rawValue, privacy: .public)")
 
         let response: PeekabooXPCResponse = try await self.remote.withDecodingCompletion(
             using: self.decoder)
@@ -618,6 +707,9 @@ public actor PeekabooXPCClient {
                 boxed.handler(data, error)
             })
         }
+        let duration = Date().timeIntervalSince(start)
+        self.logger
+            .debug("XPC \(op.rawValue, privacy: .public) completed in \(duration, format: .fixed(precision: 3))s")
         return response
     }
 

@@ -88,9 +88,9 @@ Error model: typed error codes (`permissionDenied`, `notFound`, `timeout`, `inva
 - Keep payloads small: don’t stream pixels over XPC; use file-backed captures and return paths + metadata.
 
 ## Implementation status (Dec 2025)
-- Helper target (`PeekabooHelper`) now runs a mach-service host using `AsyncXPCConnection` and the Codable envelope described above.
-- Helper enforces allowlists: Team ID `Y5PE65HELJ` and bundles `boo.peekaboo.peekaboo` (CLI) and `boo.peekaboo.mac` (GUI). Default allowed operations cover permissions/capture/automation/app + window management; menu/dock/dialog remain disabled until hardened.
-- Client auto-discovers the helper at `boo.peekaboo.helper` and negotiates protocol v1; disable with `PEEKABOO_NO_REMOTE=1` or override service name via `PEEKABOO_XPC_SERVICE`.
-- CLI runtime picks a remote provider first; it proxies capture (screen/window/frontmost/area), automation (click/type/typeActions/scroll/hotkey/swipe/drag/move/waitForElement), app list/find/launch/activate/quit/hide, and window list/focus/move/resize/bounds over XPC, falling back to local services if the helper is unavailable.
-- Permissions status is pulled from the helper when present so SSH shells see the helper’s TCC grants.
-- `peekaboo permissions helper-bootstrap` now installs a LaunchAgent at `~/Library/LaunchAgents/boo.peekaboo.helper.plist`, copies the helper binary into `~/Library/Application Support/Peekaboo/`, and bootstraps it via `launchctl`.
+- Helper target (`PeekabooHelper`) and Peekaboo.app both host the same mach service; the GUI registers `boo.peekaboo.app` while the LaunchAgent keeps `boo.peekaboo.helper` for headless use.
+- Handshake now validates the audit token (team/bundle from code signature + pid/uid), rejects non-console users, and returns the negotiated capability map.
+- The remote allowlist includes menu, dock, dialog, and session/cache operations; unsupported callers receive `operationNotSupported`.
+- Sessions are stored on the helper via XPC (create/store/load/list/clean), keeping detection caches warm across remote commands.
+- Client discovery tries GUI first, then helper; falls back to in-process when neither is reachable. Per-request logs include latency for basic observability.
+- `peekaboo permissions helper-bootstrap` still installs `~/Library/LaunchAgents/boo.peekaboo.helper.plist`, copies the helper binary into `~/Library/Application Support/Peekaboo/`, and bootstraps it via `launchctl`.

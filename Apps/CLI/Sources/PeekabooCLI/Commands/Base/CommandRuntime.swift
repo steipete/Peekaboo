@@ -149,11 +149,18 @@ extension CommandRuntime {
             return (services: PeekabooServices(), hostDescription: "local (in-process)")
         }
 
-        let serviceName = options.xpcServiceName
+        let explicitService = options.xpcServiceName
             ?? ProcessInfo.processInfo.environment["PEEKABOO_XPC_SERVICE"]
-            ?? PeekabooXPCConstants.serviceName
 
-        let client = PeekabooXPCClient(serviceName: serviceName)
+        let candidates: [(String, PeekabooXPCHostKind)] = if let explicitService {
+            [(explicitService, .helper)]
+        } else {
+            [
+                (PeekabooXPCConstants.guiServiceName, .gui),
+                (PeekabooXPCConstants.serviceName, .helper),
+            ]
+        }
+
         let identity = PeekabooXPCClientIdentity(
             bundleIdentifier: Bundle.main.bundleIdentifier,
             teamIdentifier: nil,
@@ -161,18 +168,21 @@ extension CommandRuntime {
             hostname: Host.current().name
         )
 
-        do {
-            let handshake = try await client.handshake(client: identity, requestedHost: .helper)
-            if handshake.supportedOperations.contains(.captureScreen) {
-                let hostDescription = "remote \(handshake.hostKind.rawValue) via \(serviceName)" +
-                    (handshake.build.map { " (build \($0))" } ?? "")
-                return (
-                    services: RemotePeekabooServices(client: client),
-                    hostDescription: hostDescription
-                )
+        for (serviceName, hostKind) in candidates {
+            let client = PeekabooXPCClient(serviceName: serviceName)
+            do {
+                let handshake = try await client.handshake(client: identity, requestedHost: hostKind)
+                if handshake.supportedOperations.contains(.captureScreen) {
+                    let hostDescription = "remote \(handshake.hostKind.rawValue) via \(serviceName)" +
+                        (handshake.build.map { " (build \($0))" } ?? "")
+                    return (
+                        services: RemotePeekabooServices(client: client),
+                        hostDescription: hostDescription
+                    )
+                }
+            } catch {
+                continue
             }
-        } catch {
-            // fall through to local services
         }
 
         return (services: PeekabooServices(), hostDescription: "local (in-process)")

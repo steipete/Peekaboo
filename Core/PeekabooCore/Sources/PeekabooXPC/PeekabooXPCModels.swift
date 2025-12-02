@@ -25,12 +25,15 @@ public enum PeekabooXPCHostKind: String, Codable, Sendable, CaseIterable {
 }
 
 public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
+    // Core
     case permissionsStatus
+    // Capture
     case captureScreen
     case captureWindow
     case captureFrontmost
     case captureArea
     case detectElements
+    // Input & automation
     case click
     case type
     case typeActions
@@ -40,6 +43,7 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
     case drag
     case moveMouse
     case waitForElement
+    // Windows
     case listWindows
     case focusWindow
     case moveWindow
@@ -49,6 +53,7 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
     case minimizeWindow
     case maximizeWindow
     case getFocusedWindow
+    // Applications
     case listApplications
     case findApplication
     case getFrontmostApplication
@@ -60,15 +65,18 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
     case unhideApplication
     case hideOtherApplications
     case showAllApplications
+    // Menus
     case listMenus
     case listFrontmostMenus
     case clickMenuItem
     case clickMenuItemByName
+    // Menu bar extras
     case listMenuExtras
     case clickMenuExtra
     case listMenuBarItems
     case clickMenuBarItemNamed
     case clickMenuBarItemIndex
+    // Dock
     case listDockItems
     case launchDockItem
     case rightClickDockItem
@@ -76,15 +84,25 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
     case showDock
     case isDockHidden
     case findDockItem
+    // Dialogs
     case dialogFindActive
     case dialogClickButton
     case dialogEnterText
     case dialogHandleFile
     case dialogDismiss
     case dialogListElements
+    // Sessions/cache
+    case createSession
+    case storeDetectionResult
+    case getDetectionResult
+    case storeScreenshot
+    case listSessions
+    case getMostRecentSession
+    case cleanSession
+    case cleanSessionsOlderThan
+    case cleanAllSessions
 
     /// Operations enabled by default for remote helper hosts.
-    /// Menu/Dock/Dialog stay local until we harden those surfaces.
     public static let remoteDefaultAllowlist: Set<PeekabooXPCOperation> = [
         .permissionsStatus,
         .captureScreen,
@@ -121,6 +139,37 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
         .unhideApplication,
         .hideOtherApplications,
         .showAllApplications,
+        .listMenus,
+        .listFrontmostMenus,
+        .clickMenuItem,
+        .clickMenuItemByName,
+        .listMenuExtras,
+        .clickMenuExtra,
+        .listMenuBarItems,
+        .clickMenuBarItemNamed,
+        .clickMenuBarItemIndex,
+        .listDockItems,
+        .launchDockItem,
+        .rightClickDockItem,
+        .hideDock,
+        .showDock,
+        .isDockHidden,
+        .findDockItem,
+        .dialogFindActive,
+        .dialogClickButton,
+        .dialogEnterText,
+        .dialogHandleFile,
+        .dialogDismiss,
+        .dialogListElements,
+        .createSession,
+        .storeDetectionResult,
+        .getDetectionResult,
+        .storeScreenshot,
+        .listSessions,
+        .getMostRecentSession,
+        .cleanSession,
+        .cleanSessionsOlderThan,
+        .cleanAllSessions,
     ]
 }
 
@@ -368,6 +417,33 @@ public struct PeekabooXPCDialogDismissRequest: Codable, Sendable {
     public let appName: String?
 }
 
+public struct PeekabooXPCCreateSessionRequest: Codable, Sendable {}
+
+public struct PeekabooXPCStoreDetectionRequest: Codable, Sendable {
+    public let sessionId: String
+    public let result: ElementDetectionResult
+}
+
+public struct PeekabooXPCGetDetectionRequest: Codable, Sendable {
+    public let sessionId: String
+}
+
+public struct PeekabooXPCStoreScreenshotRequest: Codable, Sendable {
+    public let sessionId: String
+    public let screenshotPath: String
+    public let applicationName: String?
+    public let windowTitle: String?
+    public let windowBounds: CGRect?
+}
+
+public struct PeekabooXPCCleanSessionRequest: Codable, Sendable {
+    public let sessionId: String
+}
+
+public struct PeekabooXPCCleanSessionsOlderRequest: Codable, Sendable {
+    public let days: Int
+}
+
 public enum PeekabooXPCRequest: Codable, Sendable {
     case handshake(PeekabooXPCHandshake)
     case permissionsStatus
@@ -427,6 +503,15 @@ public enum PeekabooXPCRequest: Codable, Sendable {
     case dialogHandleFile(PeekabooXPCDialogHandleFileRequest)
     case dialogDismiss(PeekabooXPCDialogDismissRequest)
     case dialogListElements(PeekabooXPCDialogFindRequest)
+    case createSession(PeekabooXPCCreateSessionRequest)
+    case storeDetectionResult(PeekabooXPCStoreDetectionRequest)
+    case getDetectionResult(PeekabooXPCGetDetectionRequest)
+    case storeScreenshot(PeekabooXPCStoreScreenshotRequest)
+    case listSessions
+    case getMostRecentSession
+    case cleanSession(PeekabooXPCCleanSessionRequest)
+    case cleanSessionsOlderThan(PeekabooXPCCleanSessionsOlderRequest)
+    case cleanAllSessions
 }
 
 extension PeekabooXPCRequest {
@@ -490,6 +575,15 @@ extension PeekabooXPCRequest {
         case .dialogHandleFile: .dialogHandleFile
         case .dialogDismiss: .dialogDismiss
         case .dialogListElements: .dialogListElements
+        case .createSession: .createSession
+        case .storeDetectionResult: .storeDetectionResult
+        case .getDetectionResult: .getDetectionResult
+        case .storeScreenshot: .storeScreenshot
+        case .listSessions: .listSessions
+        case .getMostRecentSession: .getMostRecentSession
+        case .cleanSession: .cleanSession
+        case .cleanSessionsOlderThan: .cleanSessionsOlderThan
+        case .cleanAllSessions: .cleanAllSessions
         }
     }
 }
@@ -516,6 +610,10 @@ public enum PeekabooXPCResponse: Codable, Sendable {
     case dialogInfo(DialogInfo)
     case dialogElements(DialogElements)
     case dialogResult(DialogActionResult)
+    case sessionId(String)
+    case sessions([SessionInfo])
+    case detection(ElementDetectionResult)
+    case int(Int)
     case error(PeekabooXPCErrorEnvelope)
 }
 

@@ -356,6 +356,91 @@ public final class RemoteDialogService: DialogServiceProtocol {
 }
 
 @MainActor
+public final class RemoteSessionManager: SessionManagerProtocol {
+    private let client: PeekabooXPCClient
+
+    public init(client: PeekabooXPCClient) {
+        self.client = client
+    }
+
+    public func createSession() async throws -> String {
+        try await self.client.createSession()
+    }
+
+    public func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
+        try await self.client.storeDetectionResult(sessionId: sessionId, result: result)
+    }
+
+    public func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult? {
+        do {
+            return try await self.client.getDetectionResult(sessionId: sessionId)
+        } catch let envelope as PeekabooXPCErrorEnvelope where envelope.code == .notFound {
+            return nil
+        }
+    }
+
+    public func getMostRecentSession() async -> String? {
+        await (try? self.client.getMostRecentSession())
+    }
+
+    public func listSessions() async throws -> [SessionInfo] {
+        try await self.client.listSessions()
+    }
+
+    public func cleanSession(sessionId: String) async throws {
+        try await self.client.cleanSession(sessionId: sessionId)
+    }
+
+    public func cleanSessionsOlderThan(days: Int) async throws -> Int {
+        try await self.client.cleanSessionsOlderThan(days: days)
+    }
+
+    public func cleanAllSessions() async throws -> Int {
+        try await self.client.cleanAllSessions()
+    }
+
+    public func getSessionStoragePath() -> String {
+        // Remote side owns the storage; expose helper-visible path to callers when needed.
+        SessionManager().getSessionStoragePath()
+    }
+
+    public func storeScreenshot(
+        sessionId: String,
+        screenshotPath: String,
+        applicationName: String?,
+        windowTitle: String?,
+        windowBounds: CGRect?) async throws
+    {
+        try await self.client.storeScreenshot(
+            sessionId: sessionId,
+            screenshotPath: screenshotPath,
+            applicationName: applicationName,
+            windowTitle: windowTitle,
+            windowBounds: windowBounds)
+    }
+
+    public func getElement(sessionId: String, elementId: String) async throws -> UIElement? {
+        // Not exposed over XPC; rely on detection results.
+        _ = sessionId
+        _ = elementId
+        return nil
+    }
+
+    public func findElements(sessionId: String, matching query: String) async throws -> [UIElement] {
+        // Not exposed over XPC yet.
+        _ = sessionId
+        _ = query
+        return []
+    }
+
+    public func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
+        // Not exposed over XPC; could be added later.
+        _ = sessionId
+        return nil
+    }
+}
+
+@MainActor
 public final class RemoteApplicationService: ApplicationServiceProtocol {
     private let client: PeekabooXPCClient
 
@@ -457,7 +542,7 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         self.applications = RemoteApplicationService(client: client)
         self.automation = RemoteUIAutomationService(client: client)
         self.windows = RemoteWindowManagementService(client: client)
-        let sessionManager = SessionManager()
+        let sessionManager = RemoteSessionManager(client: client)
 
         self.menu = RemoteMenuService(client: client)
         self.dock = RemoteDockService(client: client)

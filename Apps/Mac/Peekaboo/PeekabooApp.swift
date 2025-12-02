@@ -2,6 +2,7 @@ import AppKit
 import KeyboardShortcuts
 import os.log
 import PeekabooCore
+import PeekabooXPC
 import SwiftUI
 import Tachikoma
 
@@ -96,6 +97,7 @@ struct PeekabooApp: App {
 
                     // Connect app delegate to state
                     let context = AppStateConnectionContext(
+                        services: self.services,
                         settings: self.settings,
                         sessionStore: self.sessionStore,
                         permissions: self.permissions,
@@ -199,6 +201,7 @@ struct PeekabooApp: App {
 // MARK: - App Delegate
 
 private struct AppStateConnectionContext {
+    let services: PeekabooServices
     let settings: PeekabooSettings
     let sessionStore: SessionStore
     let permissions: Permissions
@@ -212,6 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "App")
     private var statusBarController: StatusBarController?
     var windowOpener: ((String) -> Void)?
+    private var xpcHost: PeekabooXPCHost?
 
     // State connections
     private var settings: PeekabooSettings?
@@ -271,6 +275,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Setup notification observers
         self.setupNotificationObservers()
+
+        self.startXPCListener(services: context.services)
 
         // Show onboarding if needed
         if self.settings?.hasValidAPIKey != true {
@@ -400,6 +406,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.logger.info("Global shortcut triggered: showInspector")
             self?.showInspector()
         }
+    }
+
+    private func startXPCListener(services: PeekabooServices) {
+        let allowlistedBundles: Set<String> = [
+            "boo.peekaboo.peekaboo", // CLI
+            "boo.peekaboo.mac", // GUI
+        ]
+        let allowlistedTeams: Set<String> = ["Y5PE65HELJ"]
+
+        self.logger.info("Starting GUI XPC listener at \(PeekabooXPCConstants.guiServiceName, privacy: .public)")
+        self.xpcHost = PeekabooXPCBootstrap.startHelperListener(
+            services: services,
+            serviceName: PeekabooXPCConstants.guiServiceName,
+            allowlistedTeams: allowlistedTeams,
+            allowlistedBundles: allowlistedBundles,
+            allowedOperations: PeekabooXPCOperation.remoteDefaultAllowlist)
     }
 
     // MARK: - Public Access
