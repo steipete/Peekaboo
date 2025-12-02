@@ -27,6 +27,22 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private let logger = Logger(subsystem: "boo.peekaboo.xpc", category: "server")
+    private let screenRecordingOperations: Set<PeekabooXPCOperation> = [
+        .captureScreen, .captureWindow, .captureFrontmost, .captureArea, .detectElements,
+    ]
+    private let accessibilityOperations: Set<PeekabooXPCOperation> = [
+        .click, .type, .typeActions, .scroll, .hotkey, .swipe, .drag, .moveMouse, .waitForElement,
+        .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
+        .minimizeWindow, .maximizeWindow, .getFocusedWindow,
+        .listMenus, .listFrontmostMenus, .clickMenuItem, .clickMenuItemByName,
+        .listMenuExtras, .clickMenuExtra, .listMenuBarItems, .clickMenuBarItemNamed, .clickMenuBarItemIndex,
+        .listDockItems, .launchDockItem, .rightClickDockItem, .hideDock, .showDock, .isDockHidden, .findDockItem,
+        .dialogFindActive, .dialogClickButton, .dialogEnterText, .dialogHandleFile, .dialogDismiss, .dialogListElements,
+    ]
+    private let appleScriptOperations: Set<PeekabooXPCOperation> = [
+        .launchApplication, .activateApplication, .quitApplication, .hideApplication, .unhideApplication,
+        .hideOtherApplications, .showAllApplications,
+    ]
 
     public init(
         services: any PeekabooServiceProviding,
@@ -82,13 +98,19 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
         _ request: PeekabooXPCRequest,
         connection: NSXPCConnection?) async throws -> PeekabooXPCResponse
     {
+        let permissions = self.services.permissions.checkAllPermissions()
+        let effectiveOps = self.effectiveAllowedOperations(permissions: permissions)
+        let op = request.operation
+        let start = Date()
+        let pid = connection?.processIdentifier ?? 0
+
         do {
             if case .handshake = request {
                 // always allow
-            } else if !self.allowedOperations.contains(request.operation) {
+            } else if !effectiveOps.contains(op) {
                 throw PeekabooXPCErrorEnvelope(
-                    code: .operationNotSupported,
-                    message: "Operation \(request.operation.rawValue) is not enabled on this host")
+                    code: .permissionDenied,
+                    message: "Operation \(op.rawValue) is not allowed with current permissions")
             }
             switch request {
             case let .handshake(payload):
@@ -440,13 +462,22 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 return .int(count)
             }
         } catch let envelope as PeekabooXPCErrorEnvelope {
+            let duration = Date().timeIntervalSince(start)
+            self.logger.error(
+                "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) failed in \(duration, format: .fixed(precision: 3))s: \(envelope.message, privacy: .public)")
             throw envelope
         } catch {
+            let duration = Date().timeIntervalSince(start)
+            self.logger.error(
+                "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) failed in \(duration, format: .fixed(precision: 3))s: \(error.localizedDescription, privacy: .public)")
             throw PeekabooXPCErrorEnvelope(
                 code: .internalError,
                 message: "XPC operation failed",
                 details: "\(error)")
         }
+        let duration = Date().timeIntervalSince(start)
+        self.logger.debug(
+            "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) ok in \(duration, format: .fixed(precision: 3))s")
     }
 
     // swiftlint:enable cyclomatic_complexity function_body_length
@@ -497,6 +528,9 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
         }
 
         let hostKind = payload.requestedHostKind ?? .helper
+        let permissions = self.services.permissions.checkAllPermissions()
+        let effectiveOps = self.effectiveAllowedOperations(permissions: permissions)
+
         let negotiated = min(
             max(payload.protocolVersion, self.supportedVersions.lowerBound),
             self.supportedVersions.upperBound)
@@ -505,7 +539,7 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             negotiatedVersion: negotiated,
             hostKind: hostKind,
             build: PeekabooXPCConstants.buildIdentifier,
-            supportedOperations: self.allowedOperations.sorted { $0.rawValue < $1.rawValue })
+            supportedOperations: effectiveOps.sorted { $0.rawValue < $1.rawValue })
         return .handshake(response)
     }
 
@@ -547,6 +581,20 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
         }
 
         return (bundle, team, pid, connection.effectiveUserIdentifier)
+    }
+
+    private func effectiveAllowedOperations(permissions: PermissionsStatus) -> Set<PeekabooXPCOperation> {
+        var ops = self.allowedOperations
+        if !permissions.screenRecording {
+            ops.subtract(self.screenRecordingOperations)
+        }
+        if !permissions.accessibility {
+            ops.subtract(self.accessibilityOperations)
+        }
+        if !permissions.appleScript {
+            ops.subtract(self.appleScriptOperations)
+        }
+        return ops
     }
 }
 

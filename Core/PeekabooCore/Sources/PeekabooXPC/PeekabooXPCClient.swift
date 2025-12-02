@@ -15,6 +15,7 @@ public actor PeekabooXPCClient {
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private let logger = Logger(subsystem: "boo.peekaboo.xpc", category: "client")
+    private let throttler = XPCRequestThrottler(maxConcurrent: 4)
 
     public init(
         serviceName: String = PeekabooXPCConstants.serviceName,
@@ -699,14 +700,21 @@ public actor PeekabooXPCClient {
         let start = Date()
         self.logger.debug("Sending XPC request \(op.rawValue, privacy: .public)")
 
-        let response: PeekabooXPCResponse = try await self.remote.withDecodingCompletion(
-            using: self.decoder)
-        { (service: any PeekabooXPCConnection, handler: @escaping XPCReplyHandler) in
-            let boxed = UncheckedResponseHandler(handler: handler)
-            service.send(payload, withReply: { data, error in
-                boxed.handler(data, error)
-            })
+        await self.throttler.acquire()
+        let response: PeekabooXPCResponse
+        do {
+            response = try await self.remote.withDecodingCompletion(using: self.decoder)
+            { (service: any PeekabooXPCConnection, handler: @escaping XPCReplyHandler) in
+                let boxed = UncheckedResponseHandler(handler: handler)
+                service.send(payload, withReply: { data, error in
+                    boxed.handler(data, error)
+                })
+            }
+        } catch {
+            await self.throttler.release()
+            throw error
         }
+        await self.throttler.release()
         let duration = Date().timeIntervalSince(start)
         self.logger
             .debug("XPC \(op.rawValue, privacy: .public) completed in \(duration, format: .fixed(precision: 3))s")
@@ -733,6 +741,33 @@ public actor PeekabooXPCClient {
             throw envelope
         default:
             throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected capture response")
+        }
+    }
+}
+
+private actor XPCRequestThrottler {
+    private let maxConcurrent: Int
+    private var inFlight = 0
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    init(maxConcurrent: Int) {
+        self.maxConcurrent = maxConcurrent
+    }
+
+    func acquire() async {
+        if self.inFlight >= self.maxConcurrent {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                self.waiters.append(continuation)
+            }
+        }
+        self.inFlight += 1
+    }
+
+    func release() {
+        self.inFlight -= 1
+        if let waiter = self.waiters.first {
+            self.waiters.removeFirst()
+            waiter.resume()
         }
     }
 }
