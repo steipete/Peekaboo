@@ -42,6 +42,7 @@
 - Documented the safe vs. automation tagging convention and the new command shorthands inside `docs/swift-testing-playbook.md`, so contributors know exactly which suites to run before tagging.
 - `AudioInputService` now relies on Swift observation (`@Observable`) plus structured `Task.sleep` polling instead of Combine timers, keeping v3’s audio capture aligned with Swift 6.2’s concurrency expectations.
 - CLI `tools` output now uses `OrderedDictionary`, guaranteeing the same ordering every time you list tools or dump JSON so copy/paste instructions in the README stay accurate.
+- Removed the Gemini CLI reusable workflow from CI to eliminate an external check that was blocking pull requests when no Gemini credentials are configured.
 
 ### Changed
 - Provider configuration now prefers environment overrides while still loading stored credentials, matching the latest Tachikoma behavior and keeping CI/config files in sync.
