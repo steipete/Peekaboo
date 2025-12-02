@@ -35,7 +35,7 @@ public final class VisualizationClient: @unchecked Sendable {
     private let distributedCenter = DistributedNotificationCenter.default()
 
     private let consoleLogHandler: (String) -> Void
-    private let shouldMirrorToConsole: Bool
+    private var consoleMirroringEnabled: Bool
     private let defaultConsoleLogLevel: ConsoleLogLevel
     private var minimumConsoleLogLevel: ConsoleLogLevel
     private let isRunningInsideMacApp: Bool
@@ -66,14 +66,9 @@ public final class VisualizationClient: @unchecked Sendable {
                 "[Visualizer][INFO] Visualizer client forcing mac-app context via PEEKABOO_VISUALIZER_FORCE_APP")
         }
 
-        if let override = VisualizationClient.parseBooleanEnvironmentValue(environment["PEEKABOO_VISUALIZER_STDOUT"]) {
-            self.shouldMirrorToConsole = override
-        } else {
-            // Only mirror visualizer logs to console when explicitly verbose-level logging is requested.
-            let allowVerboseConsole = envLogLevel?.rawValue ?? ConsoleLogLevel.warning.rawValue
-                <= ConsoleLogLevel.verbose.rawValue
-            self.shouldMirrorToConsole = allowVerboseConsole && !self.isRunningInsideMacApp
-        }
+        let envMirror = VisualizationClient.parseBooleanEnvironmentValue(environment["PEEKABOO_VISUALIZER_STDOUT"]) ?? false
+        // Default to off unless explicitly enabled via env or the runtime opts in (e.g. --verbose).
+        self.consoleMirroringEnabled = envMirror && !self.isRunningInsideMacApp
 
         if environment["PEEKABOO_VISUAL_FEEDBACK"] == "false" {
             self.isEnabled = false
@@ -208,7 +203,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
         guard self.isRunningInsideMacApp || Self.isVisualizerAppRunning() else {
             if !self.hasLoggedMissingApp,
-               self.shouldMirrorToConsole,
+               self.consoleMirroringEnabled,
                self.minimumConsoleLogLevel <= .verbose
             {
                 self.log(.debug, "Peekaboo.app is not running; visual feedback unavailable until it launches")
@@ -263,7 +258,7 @@ public final class VisualizationClient: @unchecked Sendable {
 
         self.logger.log(level: osLogType, "\(message, privacy: .public)")
 
-        guard self.shouldMirrorToConsole, level >= self.minimumConsoleLogLevel else { return }
+        guard self.consoleMirroringEnabled, level >= self.minimumConsoleLogLevel else { return }
 
         let emoji = switch level {
         case .trace: "TRACE"
@@ -312,6 +307,16 @@ public final class VisualizationClient: @unchecked Sendable {
         } else {
             self.minimumConsoleLogLevel = self.defaultConsoleLogLevel
         }
+    }
+
+    /// Enable or disable mirroring visualizer logs to the console. The CLI runtime calls this based on `--verbose`.
+    @MainActor
+    public func setConsoleMirroringEnabled(_ enabled: Bool) {
+        // Never mirror inside the mac app bundle unless explicitly forced via env.
+        if self.isRunningInsideMacApp, !self.consoleMirroringEnabled {
+            return
+        }
+        self.consoleMirroringEnabled = enabled || self.consoleMirroringEnabled
     }
 
     private static func parseBooleanEnvironmentValue(_ rawValue: String?) -> Bool? {

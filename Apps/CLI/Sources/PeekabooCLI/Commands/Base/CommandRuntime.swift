@@ -81,6 +81,7 @@ struct CommandRuntime {
         }
 
         VisualizationClient.shared.setConsoleLogLevelOverride(visualizerConsoleLevel)
+        VisualizationClient.shared.setConsoleMirroringEnabled(configuration.verbose)
 
         self.services.ensureVisualizerConnection()
     }
