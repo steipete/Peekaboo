@@ -18,6 +18,7 @@
 - Rapid rebuilds while editing Swift: `pnpm run poltergeist:haunt` → check with `pnpm run poltergeist:status`, stop via `pnpm run poltergeist:rest`.
 - Validate before handoff: `pnpm run lint` (SwiftLint), `pnpm run format` (SwiftFormat check/fix), then `pnpm run test:safe`. Full automation/UI tests: `pnpm run test:automation` or `pnpm run test:all`.
 - Tachikoma live provider checks: `pnpm run tachikoma:test:integration`.
+- You may run `peekaboo` CLI commands locally for repros/debugging; be mindful they capture the host desktop (screen recording/accessibility permissions required).
 
 ## Coding Style & Naming Conventions
 - Swift 6.2, 4-space indent, 120-column wrap; explicit `self` is required (SwiftFormat enforces). Run `pnpm run format` before committing.
