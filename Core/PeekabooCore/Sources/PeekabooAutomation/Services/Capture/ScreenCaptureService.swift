@@ -1362,6 +1362,9 @@ final class CaptureOutput: NSObject, @unchecked Sendable {
                 self.finish(.failure(CancellationError()))
             }
         }
+
+        // Always clear continuation after returning to avoid leaks.
+        defer { self.continuation = nil }
     }
 
     /// Feed new screen samples into the pending continuation, delivering captured frames.
