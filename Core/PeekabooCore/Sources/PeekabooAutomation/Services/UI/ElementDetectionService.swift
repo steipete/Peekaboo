@@ -44,8 +44,8 @@ public final class ElementDetectionService {
 
     public init(
         sessionManager: (any SessionManagerProtocol)? = nil,
-        applicationService: ApplicationService? = nil
-    ) {
+        applicationService: ApplicationService? = nil)
+    {
         self.sessionManager = sessionManager ?? SessionManager()
         self.applicationService = applicationService ?? ApplicationService()
     }
@@ -142,15 +142,10 @@ extension ElementDetectionService {
             throw CaptureError.detectionTimedOut(timeoutSeconds)
         }
 
-        do {
-            let (elements, map) = try await detectionTask.value
-            timeoutTask.cancel()
-            elementIdMap = map
-            return elements
-        } catch {
-            timeoutTask.cancel()
-            throw error
-        }
+        let (elements, map) = await detectionTask.value
+        timeoutTask.cancel()
+        elementIdMap = map
+        return elements
     }
 }
 
@@ -661,7 +656,8 @@ extension ElementDetectionService {
 
     private func textualDescendants(of element: Element, depth: Int = 0, limit: Int = 4) -> [String] {
         guard depth < 3, limit > 0, !Task.isCancelled,
-              let children = element.children(), !children.isEmpty else {
+              let children = element.children(), !children.isEmpty
+        else {
             return []
         }
 

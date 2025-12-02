@@ -4,6 +4,9 @@
 
 ### Fixed
 - App resolution now correctly prioritizes exact name matches over bundleID-contains matches, fixing issues where `--app Safari` would incorrectly match helper processes like "AutoFill (Obsidian)" whose bundleID contains "Safari". Refactored `ElementDetectionService` to delegate to `ApplicationService.findApplication()` for a single source of truth.
+- `peekaboo see --json-output` now skips menubar enumeration unless `--verbose` is set and wraps the remaining work in hard wall-clock timeouts, preventing the command from hanging for minutes when target apps are minimized or AX traversal stalls. Timeouts surface as `TIMEOUT` exit codes instead of silent hangs.
+- UI element detection now enforces conservative limits (max depth 12, max 400 nodes, max 50 children per node) and a 20s detection deadline, making runaway AX trees safe; detection timeouts are mapped to CLI exit codes and tested.
+- Screen capture waiting no longer leaves a continuation dangling after completion, eliminating rare leaks and stalled capture streams.
 
 ### Added
 - `peekaboo hotkey` now accepts the key combo as a positional argument (in addition to `--keys`), covering quick one-liners like `peekaboo hotkey "cmd,shift,t"` or `peekaboo hotkey "cmd space"` without forcing a flag; docs updated with precedence, error cases, and fresh examples.

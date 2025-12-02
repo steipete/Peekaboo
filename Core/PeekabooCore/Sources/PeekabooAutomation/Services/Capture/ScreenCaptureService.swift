@@ -1341,7 +1341,8 @@ final class CaptureOutput: NSObject, @unchecked Sendable {
 
     /// Suspend until the next captured frame arrives, throwing if the stream stalls.
     func waitForImage() async throws -> CGImage {
-        try await withTaskCancellationHandler {
+        defer { self.continuation = nil }
+        return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 self.continuation = continuation
 
@@ -1362,9 +1363,6 @@ final class CaptureOutput: NSObject, @unchecked Sendable {
                 self.finish(.failure(CancellationError()))
             }
         }
-
-        // Always clear continuation after returning to avoid leaks.
-        defer { self.continuation = nil }
     }
 
     /// Feed new screen samples into the pending continuation, delivering captured frames.

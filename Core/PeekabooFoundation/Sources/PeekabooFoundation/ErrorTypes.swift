@@ -34,7 +34,6 @@ public enum CaptureError: Error, LocalizedError, Sendable {
     case captureFailed(String)
     case imageConversionFailed
     case detectionTimedOut(Double)
-    case detectionTimedOut(Double)
 
     public var errorDescription: String? {
         switch self {

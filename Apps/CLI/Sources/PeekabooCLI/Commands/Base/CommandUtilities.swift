@@ -203,6 +203,8 @@ extension ErrorHandlingCommand {
             .AMBIGUOUS_APP_IDENTIFIER
         case .imageConversionFailed:
             .CAPTURE_FAILED
+        case .detectionTimedOut:
+            .TIMEOUT
         }
     }
 

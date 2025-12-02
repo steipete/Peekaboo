@@ -198,7 +198,9 @@ extension MenuService {
         let cgsIDs = cgsMenuBarWindowIDs(onScreen: true, activeSpace: true)
         let legacyIDs = cgsProcessMenuBarWindowIDs(onScreenOnly: true)
         let combinedIDs = Array(Set(cgsIDs + legacyIDs))
-        self.logger.debug("CGS menuBarItems returned \(cgsIDs.count) ids; processMenuBar returned \(legacyIDs.count); combined \(combinedIDs.count)")
+        self.logger
+            .debug(
+                "CGS menuBarItems returned \(cgsIDs.count) ids; processMenuBar returned \(legacyIDs.count); combined \(combinedIDs.count)")
         if !combinedIDs.isEmpty {
             // Use CGWindow metadata per window ID to resolve owner/bundle.
             for id in combinedIDs {
@@ -268,7 +270,8 @@ extension MenuService {
         if let info {
             windowInfo = info
         } else if let refreshed = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowID) as? [[String: Any]],
-                  let first = refreshed.first {
+                  let first = refreshed.first
+        {
             windowInfo = first
         } else {
             return nil
@@ -370,7 +373,7 @@ extension MenuService {
                 let identifier = extra.identifier()
                 let hasIdentifier = identifier?.isEmpty == false
                 let hasNonPlaceholderTitle = !isPlaceholderMenuTitle(baseTitle)
-                if !hasIdentifier && !hasNonPlaceholderTitle {
+                if !hasIdentifier, !hasNonPlaceholderTitle {
                     continue
                 }
 
@@ -442,8 +445,7 @@ extension MenuService {
                     .first(where: { !isPlaceholderMenuTitle($0) })
                 {
                     effectiveTitle = childDerived
-                }
-                else if let ident = sanitizedMenuText(extra.identifier()), !ident.isEmpty {
+                } else if let ident = sanitizedMenuText(extra.identifier()), !ident.isEmpty {
                     effectiveTitle = ident
                 }
             }
@@ -472,7 +474,7 @@ extension MenuService {
         var results: [MenuExtraInfo] = []
         let commonMenuTitles: Set<String> = [
             "apple", "file", "edit", "view", "window", "help", "history", "bookmarks", "navigate", "tab", "tools",
-            "cut", "copy", "paste", "format"
+            "cut", "copy", "paste", "format",
         ]
 
         func collectElements(from element: Element, depth: Int = 0, limit: Int = 4) -> [Element] {
@@ -510,17 +512,18 @@ extension MenuService {
                 // Fallbacks to app name when placeholder/short/common menu words.
                 if isPlaceholderMenuTitle(effectiveTitle) ||
                     effectiveTitle.count <= 2 ||
-                    commonMenuTitles.contains(effectiveTitle.lowercased()) {
+                    commonMenuTitles.contains(effectiveTitle.lowercased())
+                {
                     effectiveTitle = app.localizedName ?? effectiveTitle
                 }
 
                 let position = extra.position() ?? .zero
                 // Restrict to top-of-screen positions to avoid stray elements.
-                if position != .zero && position.y > 100 { continue }
+                if position != .zero, position.y > 100 { continue }
 
                 // Avoid duplicating children of a status item: require that this element itself is status-like.
                 let childrenRoles = (extra.children() ?? []).compactMap { $0.role() }
-                if !isStatusLike && childrenRoles.contains(where: { $0 == "AXMenuItem" }) {
+                if !isStatusLike, childrenRoles.contains(where: { $0 == "AXMenuItem" }) {
                     continue
                 }
 
@@ -547,9 +550,10 @@ extension MenuService {
 
     /// Hit-test window extras to attach AX identifiers/titles when CGS gives only placeholders.
     private func enrichWindowExtrasWithAXHitTest(_ extras: [MenuExtraInfo]) -> [MenuExtraInfo] {
-        return extras.map { extra in
-            guard extra.identifier == nil || isPlaceholderMenuTitle(extra.title) || isPlaceholderMenuTitle(extra.rawTitle),
-                  extra.position != .zero
+        extras.map { extra in
+            guard extra
+                .identifier == nil || isPlaceholderMenuTitle(extra.title) || isPlaceholderMenuTitle(extra.rawTitle),
+                extra.position != .zero
             else { return extra }
 
             guard let hit = Element.elementAtPoint(extra.position) else {
@@ -561,12 +565,12 @@ extension MenuService {
             let isStatusLike = role == "AXStatusItem" || subrole == "AXStatusItem" || subrole == "AXMenuExtra"
             if !isStatusLike { return extra }
 
-                let hitTitle = sanitizedMenuText(hit.identifier())
-                    ?? sanitizedMenuText(hit.help())
-                    ?? sanitizedMenuText(hit.title())
-                    ?? hit.descriptionText()
-                    ?? extra.title
-                    ?? extra.rawTitle
+            let hitTitle = sanitizedMenuText(hit.identifier())
+                ?? sanitizedMenuText(hit.help())
+                ?? sanitizedMenuText(hit.title())
+                ?? hit.descriptionText()
+                ?? extra.rawTitle
+                ?? extra.title
             let hitIdentifier = hit.identifier() ?? extra.identifier
 
             return MenuExtraInfo(

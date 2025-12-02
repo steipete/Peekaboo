@@ -43,7 +43,6 @@ private enum ScreenCaptureBridge {
 
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
-@MainActor
 struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsConfigurable {
     @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
@@ -109,6 +108,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         self.runtime = runtime
         let startTime = Date()
         let logger = self.logger
+        let overallTimeout: TimeInterval = 30.0
 
         logger.operationStart("see_command", metadata: [
             "app": self.app ?? "none",
@@ -117,6 +117,38 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             "hasAnalyzePrompt": self.analyze != nil,
         ])
 
+        let commandCopy = self
+        let operationTask = Task {
+            try await commandCopy.runImpl(startTime: startTime, logger: logger)
+        }
+
+        let timeoutTask = Task {
+            try await Task.sleep(nanoseconds: UInt64(overallTimeout * 1_000_000_000))
+            operationTask.cancel()
+            throw CaptureError.detectionTimedOut(overallTimeout)
+        }
+
+        do {
+            _ = try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask { try await operationTask.value }
+                group.addTask { try await timeoutTask.value }
+                guard let value = try await group.next() else { return }
+                group.cancelAll()
+                return value
+            }
+        } catch {
+            logger.operationComplete(
+                "see_command",
+                success: false,
+                metadata: [
+                    "error": error.localizedDescription,
+                ]
+            )
+            throw error
+        }
+    }
+
+    private func runImpl(startTime: Date, logger: Logger) async throws {
         do {
             // Check permissions
             logger.verbose("Checking screen recording permissions", category: "Permissions")
@@ -252,12 +284,19 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
         // Detect UI elements with window context
         self.logger.operationStart("element_detection")
-        let detectionResult = try await AutomationServiceBridge.detectElements(
-            automation: self.services.automation,
-            imageData: captureResult.imageData,
-            sessionId: nil,
-            windowContext: windowContext
-        )
+        let detectionResult: ElementDetectionResult
+        do {
+            detectionResult = try await Self.withWallClockTimeout(seconds: 20.0) {
+                try await AutomationServiceBridge.detectElements(
+                    automation: self.services.automation,
+                    imageData: captureResult.imageData,
+                    sessionId: nil,
+                    windowContext: windowContext
+                )
+            }
+        } catch is TimeoutError {
+            throw CaptureError.detectionTimedOut(20.0)
+        }
         self.logger.operationComplete("element_detection")
 
         // Update the result with the correct screenshot path
@@ -756,6 +795,48 @@ struct MenuBarSummary: Codable {
 // MARK: - Format Helpers Extension
 
 extension SeeCommand {
+    /// Fetches the menu bar summary only when verbose output is requested, with a short timeout.
+    private func fetchMenuBarSummaryIfEnabled() async -> MenuBarSummary? {
+        guard self.verbose else { return nil }
+
+        do {
+            return try await Self.withWallClockTimeout(seconds: 2.5) {
+                try Task.checkCancellation()
+                return await self.getMenuBarItemsSummary()
+            }
+        } catch {
+            self.logger.debug(
+                "Skipping menu bar summary",
+                category: "Menu",
+                metadata: ["reason": error.localizedDescription]
+            )
+            return nil
+        }
+    }
+
+    /// Timeout helper that is not MainActor-bound, so it can still fire if the main actor is blocked.
+    static func withWallClockTimeout<T: Sendable>(
+        seconds: TimeInterval,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw CaptureError.detectionTimedOut(seconds)
+            }
+
+            guard let result = try await group.next() else {
+                throw CaptureError.detectionTimedOut(seconds)
+            }
+            group.cancelAll()
+            return result
+        }
+    }
+
     private func performAnalysisDetailed(imagePath: String, prompt: String) async throws -> SeeAnalysisData {
         // Use PeekabooCore AI service which is configured via ConfigurationManager/Tachikoma
         let ai = PeekabooAIService()
@@ -800,7 +881,11 @@ extension SeeCommand {
 
         let sessionPaths = self.sessionPaths(for: context)
 
-        let output = await SeeResult(
+        // Menu bar enumeration can be slow or hang on some setups. Only attempt it in verbose
+        // mode and bound it with a short timeout so JSON output is responsive by default.
+        let menuSummary = await self.fetchMenuBarSummaryIfEnabled()
+
+        let output = SeeResult(
             session_id: context.sessionId,
             screenshot_raw: sessionPaths.raw,
             screenshot_annotated: sessionPaths.annotated,
@@ -814,7 +899,7 @@ extension SeeCommand {
             analysis: context.analysis,
             execution_time: context.executionTime,
             ui_elements: uiElements,
-            menu_bar: self.getMenuBarItemsSummary()
+            menu_bar: menuSummary
         )
 
         outputSuccessCodable(data: output, logger: self.outputLogger)
