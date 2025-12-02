@@ -38,14 +38,21 @@ let package = Package(
             name: "PeekabooAgentRuntime",
             targets: ["PeekabooAgentRuntime"]),
         .library(
+            name: "PeekabooXPC",
+            targets: ["PeekabooXPC"]),
+        .library(
             name: "PeekabooCore",
             targets: ["PeekabooCore"]),
+        .executable(
+            name: "PeekabooHelper",
+            targets: ["PeekabooHelper"]),
     ],
     dependencies: [
         .package(path: "../PeekabooFoundation"),
         .package(path: "../PeekabooProtocols"),
         .package(path: "../PeekabooExternalDependencies"),
         .package(path: "../../Tachikoma"),
+        .package(url: "https://github.com/ChimeHQ/AsyncXPCConnection", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-configuration", .upToNextMinor(from: "0.2.0")),
     ],
     targets: [
@@ -93,6 +100,17 @@ let package = Package(
             ],
             path: "Tests/PeekabooVisualizerTests",
             swiftSettings: testTargetSettings),
+        .target(
+            name: "PeekabooXPC",
+            dependencies: [
+                .target(name: "PeekabooAutomation"),
+                .target(name: "PeekabooAgentRuntime"),
+                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
+                .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
+                .product(name: "AsyncXPCConnection", package: "AsyncXPCConnection"),
+            ],
+            path: "Sources/PeekabooXPC",
+            swiftSettings: coreTargetSettings),
         .target(
             name: "PeekabooAgentRuntime",
             dependencies: [
@@ -143,6 +161,7 @@ let package = Package(
                 "PeekabooCore",
                 "PeekabooAutomation",
                 "PeekabooAgentRuntime",
+                "PeekabooXPC",
                 "PeekabooFoundation",
                 "PeekabooProtocols",
             ],
@@ -150,5 +169,13 @@ let package = Package(
                 .process("Resources"),
             ],
             swiftSettings: testTargetSettings),
+        .executableTarget(
+            name: "PeekabooHelper",
+            dependencies: [
+                "PeekabooCore",
+                "PeekabooXPC",
+            ],
+            path: "Sources/PeekabooHelper",
+            swiftSettings: approachableConcurrencySettings),
     ],
     swiftLanguageModes: [.v6])
