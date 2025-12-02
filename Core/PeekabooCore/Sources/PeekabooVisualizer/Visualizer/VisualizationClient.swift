@@ -204,7 +204,7 @@ public final class VisualizationClient: @unchecked Sendable {
         }
 
         guard self.isRunningInsideMacApp || Self.isVisualizerAppRunning() else {
-            if !self.hasLoggedMissingApp {
+            if !self.hasLoggedMissingApp, self.minimumConsoleLogLevel <= .verbose {
                 self.log(.debug, "Peekaboo.app is not running; visual feedback unavailable until it launches")
                 self.hasLoggedMissingApp = true
             }

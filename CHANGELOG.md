@@ -56,6 +56,7 @@
 - Anthropic OAuth token exchange now uses standards-compliant form encoding, fixing 400 responses during `peekaboo config login anthropic`; regression test added.
 - `peekaboo see --analyze` now honors `aiProviders.providers` when choosing the default model instead of always defaulting to OpenAI; coverage added for configured defaults.
 - Added more coverage to ensure AI provider precedence honors provider lists, Anthropic-only keys, and empty/default fallbacks.
+- Visualizer “Peekaboo.app is not running” notice now only appears with verbose logging, keeping default runs quieter.
 
 ## [2.0.3] - 2025-07-03
 
