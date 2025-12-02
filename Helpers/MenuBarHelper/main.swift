@@ -7,9 +7,9 @@ import Foundation
 
 private struct CGSWindowListOption: OptionSet {
     let rawValue: UInt32
-    static let onScreen     = CGSWindowListOption(rawValue: 1 << 0)
+    static let onScreen = CGSWindowListOption(rawValue: 1 << 0)
     static let menuBarItems = CGSWindowListOption(rawValue: 1 << 1)
-    static let activeSpace  = CGSWindowListOption(rawValue: 1 << 2)
+    static let activeSpace = CGSWindowListOption(rawValue: 1 << 2)
 }
 
 private func loadSymbol<T>(_ name: String, handle: UnsafeMutableRawPointer?) -> T? {
@@ -32,12 +32,12 @@ private func listMenuBarWindowIDs() -> [UInt32] {
     guard let handle = loadCGSHandle(),
           let mainConnSym: @convention(c) () -> UInt32 = loadSymbol("CGSMainConnectionID", handle: handle),
           let copySym: @convention(c) (UInt32, Int32, UInt32) -> CFArray? =
-            loadSymbol("CGSCopyWindowsWithOptions", handle: handle),
+          loadSymbol("CGSCopyWindowsWithOptions", handle: handle),
           let getCountSym: @convention(c) (UInt32, UInt32, UnsafeMutablePointer<Int32>) -> Int32 =
-            loadSymbol("CGSGetWindowCount", handle: handle),
+          loadSymbol("CGSGetWindowCount", handle: handle),
           let getMenuBarSym: @convention(c) (
-            UInt32, UInt32, Int32, UnsafeMutablePointer<CGWindowID>, UnsafeMutablePointer<Int32>) -> Int32 =
-            loadSymbol("CGSGetProcessMenuBarWindowList", handle: handle)
+              UInt32, UInt32, Int32, UnsafeMutablePointer<CGWindowID>, UnsafeMutablePointer<Int32>) -> Int32 =
+          loadSymbol("CGSGetProcessMenuBarWindowList", handle: handle)
     else {
         return []
     }
@@ -83,5 +83,6 @@ if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.pr
 } else {
     fputs("{\"error\":\"serialization_failed\"}", stdout)
 }
+
 fflush(stdout)
 exit(0)

@@ -31,9 +31,9 @@ struct ModernEffectView<Content: View>: View {
         if #available(macOS 26.0, *) {
             // Use new Liquid Glass on macOS 26+
             NativeGlassWrapper(
-                style: style,
-                cornerRadius: cornerRadius,
-                content: content)
+                style: self.style,
+                cornerRadius: self.cornerRadius,
+                content: self.content)
         } else {
             // Use standard macOS materials for 14-25
             self.content
@@ -148,8 +148,8 @@ struct ModernButton: View {
     var body: some View {
         if #available(macOS 26.0, *) {
             // Use glass button style on macOS 26+
-            Button(role: role, action: action) {
-                Label(title, systemImage: systemImage ?? "")
+            Button(role: self.role, action: self.action) {
+                Label(self.title, systemImage: self.systemImage ?? "")
             }
             .buttonStyle(.glass)
         } else {
@@ -178,7 +178,7 @@ struct ModernCard<Content: View>: View {
     var body: some View {
         if #available(macOS 26.0, *) {
             // Glass card on macOS 26+
-            content
+            self.content
                 .padding()
                 .background {
                     ModernEffectView(style: .content) {
@@ -211,7 +211,7 @@ struct ModernToolbar<Content: View>: View {
         if #available(macOS 26.0, *) {
             // Glass toolbar on macOS 26+
             ModernEffectView(style: .toolbar) {
-                content
+                self.content
             }
         } else {
             // Standard macOS toolbar material

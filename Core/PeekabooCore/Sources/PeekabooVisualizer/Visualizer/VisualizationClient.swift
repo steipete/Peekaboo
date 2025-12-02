@@ -66,7 +66,8 @@ public final class VisualizationClient: @unchecked Sendable {
                 "[Visualizer][INFO] Visualizer client forcing mac-app context via PEEKABOO_VISUALIZER_FORCE_APP")
         }
 
-        let envMirror = VisualizationClient.parseBooleanEnvironmentValue(environment["PEEKABOO_VISUALIZER_STDOUT"]) ?? false
+        let envMirror = VisualizationClient
+            .parseBooleanEnvironmentValue(environment["PEEKABOO_VISUALIZER_STDOUT"]) ?? false
         // Default to off unless explicitly enabled via env or the runtime opts in (e.g. --verbose).
         self.consoleMirroringEnabled = envMirror && !self.isRunningInsideMacApp
 

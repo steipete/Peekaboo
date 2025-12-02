@@ -170,7 +170,7 @@ struct ToolIcon: View {
 
     var body: some View {
         if #available(macOS 15.0, *) {
-            AnimatedToolIcon(toolName: toolName, isRunning: isRunning)
+            AnimatedToolIcon(toolName: self.toolName, isRunning: self.isRunning)
         } else {
             StaticToolIcon(toolName: self.toolName)
         }
@@ -187,8 +187,8 @@ struct EnhancedToolIcon: View {
             // Main tool icon with animations
             if #available(macOS 15.0, *) {
                 AnimatedToolIcon(
-                    toolName: toolName,
-                    isRunning: status == .running)
+                    toolName: self.toolName,
+                    isRunning: self.status == .running)
             } else {
                 StaticToolIcon(toolName: self.toolName)
             }

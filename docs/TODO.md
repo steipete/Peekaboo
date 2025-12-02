@@ -1,3 +1,10 @@
+---
+summary: Track backlog of Peekaboo feature ideas and automations under consideration
+read_when:
+  - reviewing or grooming upcoming Peekaboo features
+  - adding new automation ideas or evaluating feasibility
+---
+
 # Peekaboo TODO / Feature Ideas
 
 ## Media & System Control

@@ -244,7 +244,8 @@ extension ApplicationService {
         // Sort by score (descending) and return the best match
         if let bestMatch = fuzzyMatches.sorted(by: { $0.score > $1.score }).first {
             let matchedName = bestMatch.app.localizedName ?? "unknown"
-            self.logger.debug("Fuzzy match found: '\(trimmedIdentifier)' → '\(matchedName)' (score: \(bestMatch.score))")
+            self.logger
+                .debug("Fuzzy match found: '\(trimmedIdentifier)' → '\(matchedName)' (score: \(bestMatch.score))")
             return self.createApplicationInfo(from: bestMatch.app)
         }
 
