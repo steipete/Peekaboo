@@ -1,5 +1,6 @@
 import Foundation
 import PeekabooCore
+import PeekabooXPC
 
 /// Shared permission checking and formatting utilities
 enum PermissionHelpers {
@@ -10,16 +11,74 @@ enum PermissionHelpers {
         let grantInstructions: String
     }
 
+    struct PermissionStatusResponse: Codable {
+        let source: String
+        let permissions: [PermissionInfo]
+    }
+
+    private static let defaultServiceName = PeekabooXPCConstants.serviceName
+
+    /// Try to fetch permissions from the XPC helper; falls back to local services on failure.
+    @MainActor
+    private static func remotePermissionsStatus(
+        serviceName: String = ProcessInfo.processInfo.environment["PEEKABOO_XPC_SERVICE"] ?? defaultServiceName
+    ) async -> PermissionsStatus? {
+        let client = PeekabooXPCClient(serviceName: serviceName)
+        let identity = PeekabooXPCClientIdentity(
+            bundleIdentifier: Bundle.main.bundleIdentifier,
+            teamIdentifier: nil,
+            processIdentifier: getpid(),
+            hostname: Host.current().name
+        )
+
+        do {
+            let handshake = try await client.handshake(client: identity, requestedHost: .helper)
+            guard handshake.supportedOperations.contains(.permissionsStatus) else { return nil }
+            return try await client.permissionsStatus()
+        } catch {
+            return nil
+        }
+    }
+
     /// Get current permission status for all Peekaboo permissions
     static func getCurrentPermissions(
-        services: any PeekabooServiceProviding) async -> [PermissionInfo] {
-        // Get current permission status for all Peekaboo permissions
-        let screenRecording = await Task { @MainActor in
-            await services.screenCapture.hasScreenRecordingPermission()
-        }.value
-        let accessibility = await AutomationServiceBridge.hasAccessibilityPermission(automation: services.automation)
+        services: any PeekabooServiceProviding,
+        allowRemote: Bool = true,
+        serviceName: String? = nil
+    ) async -> [PermissionInfo] {
+        let response = await self.getCurrentPermissionsWithSource(
+            services: services,
+            allowRemote: allowRemote,
+            serviceName: serviceName
+        )
+        return response.permissions
+    }
 
-        return [
+    /// Get current permission status along with whether a remote helper responded.
+    static func getCurrentPermissionsWithSource(
+        services: any PeekabooServiceProviding,
+        allowRemote: Bool = true,
+        serviceName: String? = nil
+    ) async -> PermissionStatusResponse {
+        // Prefer remote helper when available so SSH/sandboxed shells can reuse existing TCC grants.
+        let remoteStatus = allowRemote
+            ? await self.remotePermissionsStatus(serviceName: serviceName ?? self.defaultServiceName)
+            : nil
+
+        let screenRecording: Bool
+        let accessibility: Bool
+
+        if let remoteStatus {
+            screenRecording = remoteStatus.screenRecording
+            accessibility = remoteStatus.accessibility
+        } else {
+            screenRecording = await Task { @MainActor in
+                await services.screenCapture.hasScreenRecordingPermission()
+            }.value
+            accessibility = await AutomationServiceBridge.hasAccessibilityPermission(automation: services.automation)
+        }
+
+        let permissions = [
             PermissionInfo(
                 name: "Screen Recording",
                 isRequired: true,
@@ -33,6 +92,9 @@ enum PermissionHelpers {
                 grantInstructions: "System Settings > Privacy & Security > Accessibility"
             )
         ]
+
+        let source = remoteStatus != nil ? "xpc" : "local"
+        return PermissionStatusResponse(source: source, permissions: permissions)
     }
 
     /// Format permission status for display

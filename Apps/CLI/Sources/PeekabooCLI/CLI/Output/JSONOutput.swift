@@ -174,6 +174,11 @@ func outputError(message: String, code: ErrorCode, details: String? = nil, logge
     outputJSON(JSONResponse(success: false, messages: nil, debugLogs: debugLogs, error: error), logger: logger)
 }
 
+func outputFailure(message: String, logger: Logger, error: (any Error)? = nil) {
+    let details = error.map { "\($0)" }
+    outputError(message: message, code: .UNKNOWN_ERROR, details: details, logger: logger)
+}
+
 /// Empty type for successful responses with no data
 struct Empty: Codable {}
 

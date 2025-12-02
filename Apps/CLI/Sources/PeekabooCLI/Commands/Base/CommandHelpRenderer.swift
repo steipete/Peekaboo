@@ -17,7 +17,7 @@ struct CommandHelpRenderer {
 
         let fallbackSignature = CommandSignature.describe(type.init())
             .flattened()
-            .withStandardRuntimeFlags()
+            .withPeekabooRuntimeFlags()
         return self.renderHelp(
             abstract: description.abstract,
             discussion: description.discussion,

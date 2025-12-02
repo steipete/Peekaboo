@@ -75,7 +75,7 @@ enum CommanderRegistryBuilder {
         let commandInstance = type.init()
         let signature = self.resolveSignature(for: type, instance: commandInstance)
             .flattened()
-            .withStandardRuntimeFlags()
+            .withPeekabooRuntimeFlags()
         let childDescriptors = description.subcommands.map { self.buildDescriptor(for: $0) }
         let defaultName = description.defaultSubcommand.map { self.commandName(for: $0) }
         let metadata = CommandDescriptor(

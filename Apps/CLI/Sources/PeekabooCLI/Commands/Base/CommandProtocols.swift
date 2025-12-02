@@ -18,12 +18,12 @@ extension AsyncRuntimeCommand {
     /// and executes the async implementation on the main actor.
     mutating func run() throws {
         var commandCopy = self
-        let runtime = CommandRuntime.makeDefault()
         let semaphore = DispatchSemaphore(value: 0)
         var thrownError: (any Error)?
 
         Task { @MainActor in
             do {
+                let runtime = await CommandRuntime.makeDefaultAsync()
                 try await commandCopy.run(using: runtime)
             } catch {
                 thrownError = error

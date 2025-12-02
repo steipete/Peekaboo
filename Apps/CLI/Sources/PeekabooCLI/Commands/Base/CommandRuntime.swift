@@ -7,6 +7,7 @@ import Foundation
 import PeekabooCore
 import PeekabooFoundation
 import PeekabooProtocols
+import PeekabooXPC
 
 /// Shared options that control logging and output behavior.
 struct CommandRuntimeOptions: Sendable {
@@ -14,6 +15,8 @@ struct CommandRuntimeOptions: Sendable {
     var jsonOutput = false
     var logLevel: LogLevel?
     var captureEnginePreference: String?
+    var preferRemote = true
+    var xpcServiceName: String?
 
     func makeConfiguration() -> CommandRuntime.Configuration {
         CommandRuntime.Configuration(
@@ -38,16 +41,19 @@ struct CommandRuntime {
     }
 
     let configuration: Configuration
+    let hostDescription: String
     @MainActor let services: any PeekabooServiceProviding
     @MainActor let logger: Logger
 
     @MainActor
     init(
         configuration: Configuration,
-        services: any PeekabooServiceProviding
+        services: any PeekabooServiceProviding,
+        hostDescription: String = "local (in-process)"
     ) {
         self.configuration = configuration
         self.services = services
+        self.hostDescription = hostDescription
         self.logger = Logger.shared
 
         services.installAgentRuntimeDefaults()
@@ -84,6 +90,8 @@ struct CommandRuntime {
         VisualizationClient.shared.setConsoleMirroringEnabled(configuration.verbose)
 
         self.services.ensureVisualizerConnection()
+
+        self.logger.debug("Runtime host: \(hostDescription)")
     }
 
     @MainActor
@@ -95,15 +103,32 @@ struct CommandRuntime {
 extension CommandRuntime {
     @MainActor
     static func makeDefault(options: CommandRuntimeOptions) -> CommandRuntime {
-        CommandRuntime(
-            options: options,
-            services: self.serviceOverride ?? PeekabooServices()
-        )
+        let services = self.serviceOverride ?? PeekabooServices()
+        return CommandRuntime(configuration: options.makeConfiguration(), services: services)
     }
 
     @MainActor
     static func makeDefault() -> CommandRuntime {
         self.makeDefault(options: CommandRuntimeOptions())
+    }
+
+    @MainActor
+    static func makeDefaultAsync(options: CommandRuntimeOptions) async -> CommandRuntime {
+        if let override = self.serviceOverride {
+            return CommandRuntime(options: options, services: override)
+        }
+
+        let resolution = await self.resolveServices(options: options)
+        return CommandRuntime(
+            configuration: options.makeConfiguration(),
+            services: resolution.services,
+            hostDescription: resolution.hostDescription
+        )
+    }
+
+    @MainActor
+    static func makeDefaultAsync() async -> CommandRuntime {
+        await self.makeDefaultAsync(options: CommandRuntimeOptions())
     }
 
     @MainActor
@@ -114,6 +139,43 @@ extension CommandRuntime {
         try await self.$serviceOverride.withValue(services) {
             try await operation()
         }
+    }
+
+    @MainActor
+    private static func resolveServices(options: CommandRuntimeOptions)
+    async -> (services: any PeekabooServiceProviding, hostDescription: String) {
+        let envNoRemote = ProcessInfo.processInfo.environment["PEEKABOO_NO_REMOTE"]
+        guard options.preferRemote, envNoRemote == nil else {
+            return (services: PeekabooServices(), hostDescription: "local (in-process)")
+        }
+
+        let serviceName = options.xpcServiceName
+            ?? ProcessInfo.processInfo.environment["PEEKABOO_XPC_SERVICE"]
+            ?? PeekabooXPCConstants.serviceName
+
+        let client = PeekabooXPCClient(serviceName: serviceName)
+        let identity = PeekabooXPCClientIdentity(
+            bundleIdentifier: Bundle.main.bundleIdentifier,
+            teamIdentifier: nil,
+            processIdentifier: getpid(),
+            hostname: Host.current().name
+        )
+
+        do {
+            let handshake = try await client.handshake(client: identity, requestedHost: .helper)
+            if handshake.supportedOperations.contains(.captureScreen) {
+                let hostDescription = "remote \(handshake.hostKind.rawValue) via \(serviceName)" +
+                    (handshake.build.map { " (build \($0))" } ?? "")
+                return (
+                    services: RemotePeekabooServices(client: client),
+                    hostDescription: hostDescription
+                )
+            }
+        } catch {
+            // fall through to local services
+        }
+
+        return (services: PeekabooServices(), hostDescription: "local (in-process)")
     }
 }
 

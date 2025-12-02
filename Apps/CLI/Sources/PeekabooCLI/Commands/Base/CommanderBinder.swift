@@ -50,6 +50,12 @@ enum CommanderCLIBinder {
             !captureEngine.isEmpty {
             options.captureEnginePreference = captureEngine
         }
+        if values.flag("no-remote") {
+            options.preferRemote = false
+        }
+        if let xpc = values.singleOption("xpc-service")?.trimmingCharacters(in: .whitespacesAndNewlines), !xpc.isEmpty {
+            options.xpcServiceName = xpc
+        }
         return options
     }
 }

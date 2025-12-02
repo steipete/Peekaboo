@@ -229,6 +229,14 @@ extension CommanderRuntimeRouter {
             theme.bullet(
                 label: "--log-level <level>",
                 description: "trace | verbose | debug | info | warning | error | critical"
+            ),
+            theme.bullet(
+                label: "--no-remote",
+                description: "Force local services; skip the XPC helper even if available"
+            ),
+            theme.bullet(
+                label: "--xpc-service <name>",
+                description: "Override mach service name for the helper (default boo.peekaboo.helper)"
             )
         ]
     }

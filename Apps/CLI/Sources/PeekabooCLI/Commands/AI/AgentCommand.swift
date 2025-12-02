@@ -258,7 +258,7 @@ final class EscapeKeyMonitor {
 extension AgentCommand {
     @MainActor
     mutating func run() async throws {
-        let runtime = CommandRuntime.makeDefault()
+        let runtime = await CommandRuntime.makeDefaultAsync()
         try await self.run(using: runtime)
     }
 
