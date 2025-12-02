@@ -54,6 +54,7 @@
 - `peekaboo capture video --sample-fps` now reports frame timestamps from the video timeline (not session wall-clock), fixing bunched `t=XXms` outputs and aligning `metadata.json`; regression test added.
 - `peekaboo capture video` now advertises and binds its required input video file in Commander help/registry, preventing missing-input crashes; binder and program-resolution tests cover the regression.
 - Anthropic OAuth token exchange now uses standards-compliant form encoding, fixing 400 responses during `peekaboo config login anthropic`; regression test added.
+- `peekaboo see --analyze` now honors `aiProviders.providers` when choosing the default model instead of always defaulting to OpenAI; coverage added for configured defaults.
 
 ## [2.0.3] - 2025-07-03
 

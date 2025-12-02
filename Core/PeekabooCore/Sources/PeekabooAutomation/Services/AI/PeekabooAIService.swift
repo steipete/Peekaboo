@@ -4,9 +4,17 @@ import Tachikoma
 /// AI service for handling model interactions and AI-powered features
 @MainActor
 public final class PeekabooAIService {
-    private let defaultModel: LanguageModel = .openai(.gpt51)
+    private let configuration: ConfigurationManager
+    private let resolvedModels: [LanguageModel]
+    private let defaultModel: LanguageModel
 
-    public init() {
+    // Exposed for tests (internal)
+    var resolvedDefaultModel: LanguageModel { self.defaultModel }
+
+    public init(configuration: ConfigurationManager = .shared) {
+        self.configuration = configuration
+        self.resolvedModels = Self.resolveAvailableModels(configuration: configuration)
+        self.defaultModel = self.resolvedModels.first ?? .openai(.gpt51)
         // Rely on TachikomaConfiguration to load from env/credentials (profile set at startup)
     }
 
@@ -119,10 +127,22 @@ public final class PeekabooAIService {
 
     /// List available models
     public func availableModels() -> [LanguageModel] {
-        // List available models
-        [
-            .openai(.gpt51),
-            .anthropic(.sonnet45),
-        ]
+        self.resolvedModels
+    }
+
+    private static func resolveAvailableModels(configuration: ConfigurationManager) -> [LanguageModel] {
+        let providers = configuration.getAIProviders()
+        let parsed = providers
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .compactMap { LanguageModel.parse(from: $0) }
+
+        if !parsed.isEmpty { return parsed }
+
+        // Fallback: prefer Anthropic if a key is present, else OpenAI
+        if let key = configuration.getAnthropicAPIKey(), !key.isEmpty {
+            return [.anthropic(.sonnet45)]
+        }
+        return [.openai(.gpt51), .anthropic(.sonnet45)]
     }
 }

@@ -30,6 +30,35 @@ struct PeekabooAIServiceTests {
         #expect(models == [.openai(.gpt51), .anthropic(.sonnet45)])
     }
 
+    @Test("Respects configured provider default")
+    @MainActor
+    func respectsConfiguredProvider() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let configPath = tempDir.appendingPathComponent("config.json")
+        try """
+        {
+          "aiProviders": { "providers": "anthropic/claude-sonnet-4.5" }
+        }
+        """.write(to: configPath, atomically: true, encoding: .utf8)
+
+        // Point configuration manager at the temporary config and reload.
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        defer {
+            unsetenv("PEEKABOO_CONFIG_DIR")
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        let service = PeekabooAIService()
+        #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
+        #expect(service.availableModels() == [.anthropic(.sonnet45)])
+    }
+
     @Test("Generate text with default model")
     @MainActor
     func testGenerateText() async throws {
