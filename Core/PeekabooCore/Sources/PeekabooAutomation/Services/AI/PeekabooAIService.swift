@@ -13,6 +13,7 @@ public final class PeekabooAIService {
 
     public init(configuration: ConfigurationManager = .shared) {
         self.configuration = configuration
+        _ = configuration.loadConfiguration()
         self.resolvedModels = Self.resolveAvailableModels(configuration: configuration)
         self.defaultModel = self.resolvedModels.first ?? .openai(.gpt51)
         // Rely on TachikomaConfiguration to load from env/credentials (profile set at startup)

@@ -87,6 +87,34 @@ struct PeekabooAIServiceTests {
         #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
     }
 
+    @Test("Automatically loads configuration when resolving providers")
+    @MainActor
+    func autoLoadsConfiguration() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let configPath = tempDir.appendingPathComponent("config.json")
+        try """
+        {
+          "aiProviders": { "providers": "anthropic/claude-sonnet-4.5" }
+        }
+        """.write(to: configPath, atomically: true, encoding: .utf8)
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        defer {
+            unsetenv("PEEKABOO_CONFIG_DIR")
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Intentionally do NOT call loadConfiguration to mirror CLI startup.
+        ConfigurationManager.shared.resetForTesting()
+
+        let service = PeekabooAIService()
+        #expect(service.availableModels() == [.anthropic(.sonnet45)])
+        #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
+    }
+
     @Test("Falls back to Anthropic when only Anthropic key is present")
     @MainActor
     func fallbackAnthropicWithKey() async throws {
