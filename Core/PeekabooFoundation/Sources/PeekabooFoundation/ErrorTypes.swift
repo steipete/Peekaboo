@@ -33,6 +33,8 @@ public enum CaptureError: Error, LocalizedError, Sendable {
     case invalidWindowIndex(Int, availableCount: Int)
     case captureFailed(String)
     case imageConversionFailed
+    case detectionTimedOut(Double)
+    case detectionTimedOut(Double)
 
     public var errorDescription: String? {
         switch self {
@@ -124,6 +126,8 @@ public enum CaptureError: Error, LocalizedError, Sendable {
             return "Capture failed: \(message)"
         case .imageConversionFailed:
             return "Failed to convert captured image to desired format."
+        case let .detectionTimedOut(seconds):
+            return "Element detection timed out after \(Int(seconds))s. Try narrowing the capture or targeting a specific window."
         }
     }
 
@@ -155,6 +159,7 @@ public enum CaptureError: Error, LocalizedError, Sendable {
         case .invalidWindowIndex: 29
         case .captureFailed: 30
         case .imageConversionFailed: 31
+        case .detectionTimedOut: 32
         }
     }
 }

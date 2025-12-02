@@ -65,7 +65,7 @@ public final class ElementDetectionService {
 
         var elementIdMap: [String: DetectedElement] = [:]
         let allowWebFocus = windowContext?.shouldFocusWebContent ?? true
-        let detectedElements = await self.collectElements(
+        let detectedElements = try await self.collectElementsWithTimeout(
             window: windowResolution.window,
             appElement: windowResolution.appElement,
             appIsActive: targetApp.isActive,
@@ -115,6 +115,46 @@ public final class ElementDetectionService {
 }
 
 extension ElementDetectionService {
+    private func collectElementsWithTimeout(
+        window: Element,
+        appElement: Element,
+        appIsActive: Bool,
+        allowWebFocus: Bool,
+        elementIdMap: inout [String: DetectedElement],
+        timeoutSeconds: Double = 20.0) async throws -> [DetectedElement]
+    {
+        let detectionTask = Task { () -> ([DetectedElement], [String: DetectedElement]) in
+            let deadline = Date().addingTimeInterval(timeoutSeconds)
+            var localMap: [String: DetectedElement] = [:]
+            let elements = await self.collectElements(
+                window: window,
+                appElement: appElement,
+                appIsActive: appIsActive,
+                allowWebFocus: allowWebFocus,
+                deadline: deadline,
+                elementIdMap: &localMap)
+            return (elements, localMap)
+        }
+
+        let timeoutTask = Task {
+            try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+            detectionTask.cancel()
+            throw CaptureError.detectionTimedOut(timeoutSeconds)
+        }
+
+        do {
+            let (elements, map) = try await detectionTask.value
+            timeoutTask.cancel()
+            elementIdMap = map
+            return elements
+        } catch {
+            timeoutTask.cancel()
+            throw error
+        }
+    }
+}
+
+extension ElementDetectionService {
     private static let textualRoles: Set<String> = [
         "axstatictext",
         "axtext",
@@ -129,7 +169,9 @@ extension ElementDetectionService {
         "axsearchfield",
         "axsecuretextfield",
     ]
-    private static let maxTraversalDepth = 80
+    private static let maxTraversalDepth = 12
+    private static let maxElementCount = 400
+    private static let maxChildrenPerNode = 50
     private static let maxWebFocusAttempts = 2
 
     // MARK: - Helper Methods
@@ -428,6 +470,7 @@ extension ElementDetectionService {
         appElement: Element,
         appIsActive: Bool,
         allowWebFocus: Bool,
+        deadline: Date,
         elementIdMap: inout [String: DetectedElement]) async -> [DetectedElement]
     {
         var detectedElements: [DetectedElement] = []
@@ -441,6 +484,7 @@ extension ElementDetectionService {
             self.processElement(
                 window,
                 depth: 0,
+                deadline: deadline,
                 detectedElements: &detectedElements,
                 elementIdMap: &elementIdMap,
                 visitedElements: &visitedElements)
@@ -448,6 +492,7 @@ extension ElementDetectionService {
             self.processElement(
                 appElement,
                 depth: 0,
+                deadline: deadline,
                 detectedElements: &detectedElements,
                 elementIdMap: &elementIdMap,
                 visitedElements: &visitedElements)
@@ -456,6 +501,7 @@ extension ElementDetectionService {
                 self.processElement(
                     focusedElement,
                     depth: 0,
+                    deadline: deadline,
                     detectedElements: &detectedElements,
                     elementIdMap: &elementIdMap,
                     visitedElements: &visitedElements)
@@ -486,11 +532,15 @@ extension ElementDetectionService {
     private func processElement(
         _ element: Element,
         depth: Int,
+        deadline: Date,
         detectedElements: inout [DetectedElement],
         elementIdMap: inout [String: DetectedElement],
         visitedElements: inout Set<Element>)
     {
         guard depth < Self.maxTraversalDepth else { return }
+        guard !Task.isCancelled else { return }
+        guard Date() < deadline else { return }
+        guard detectedElements.count < Self.maxElementCount else { return }
         guard visitedElements.insert(element).inserted else { return }
         guard let descriptor = self.describeElement(element) else { return }
 
@@ -531,6 +581,7 @@ extension ElementDetectionService {
         self.processChildren(
             of: element,
             depth: depth + 1,
+            deadline: deadline,
             detectedElements: &detectedElements,
             elementIdMap: &elementIdMap,
             visitedElements: &visitedElements)
@@ -557,15 +608,20 @@ extension ElementDetectionService {
     private func processChildren(
         of element: Element,
         depth: Int,
+        deadline: Date,
         detectedElements: inout [DetectedElement],
         elementIdMap: inout [String: DetectedElement],
         visitedElements: inout Set<Element>)
     {
+        guard !Task.isCancelled else { return }
         guard let children = element.children() else { return }
-        for child in children {
+        let limitedChildren = children.prefix(Self.maxChildrenPerNode)
+        for child in limitedChildren {
+            guard detectedElements.count < Self.maxElementCount else { break }
             self.processElement(
                 child,
                 depth: depth,
+                deadline: deadline,
                 detectedElements: &detectedElements,
                 elementIdMap: &elementIdMap,
                 visitedElements: &visitedElements)
@@ -604,7 +660,8 @@ extension ElementDetectionService {
     }
 
     private func textualDescendants(of element: Element, depth: Int = 0, limit: Int = 4) -> [String] {
-        guard depth < 3, limit > 0, let children = element.children(), !children.isEmpty else {
+        guard depth < 3, limit > 0, !Task.isCancelled,
+              let children = element.children(), !children.isEmpty else {
             return []
         }
 
@@ -675,6 +732,7 @@ extension ElementDetectionService {
         depth: Int,
         remainingDepth: Int) -> Bool
     {
+        guard !Task.isCancelled else { return false }
         guard remainingDepth >= 0 else { return false }
         guard let children = element.children(strict: true) else { return false }
 
