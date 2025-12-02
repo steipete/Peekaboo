@@ -30,6 +30,11 @@ extension SeeCommand: CommanderSignatureProviding {
                     long: "path"
                 ),
                 .commandOption(
+                    "captureEngine",
+                    help: "Capture engine: auto|classic|cg|modern|sckit (defaults to auto)",
+                    long: "capture-engine"
+                ),
+                .commandOption(
                     "screenIndex",
                     help: "Specific screen index to capture (0-based)",
                     long: "screen-index"

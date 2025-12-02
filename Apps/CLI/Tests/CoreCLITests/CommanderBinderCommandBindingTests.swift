@@ -471,6 +471,18 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
+    @Test("See command respects capture-engine option")
+    func bindSeeCommandCaptureEngine() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: ["captureEngine": ["classic"]],
+            flags: []
+        )
+
+        let runtimeOptions = try CommanderCLIBinder.makeRuntimeOptions(from: parsed)
+        #expect(runtimeOptions.captureEnginePreference == "classic")
+    }
+
     @Test("Move command binding with coordinates")
     func bindMoveCommand() throws {
         let parsed = ParsedValues(

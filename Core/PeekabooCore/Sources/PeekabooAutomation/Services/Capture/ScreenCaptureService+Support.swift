@@ -105,7 +105,7 @@ enum ScreenCaptureAPIResolver {
 
         // Default: modern then legacy
         return Self.postProcess(
-            apis: [.modern, .legacy],
+            apis: [.legacy, .modern],
             environment: environment)
     }
 

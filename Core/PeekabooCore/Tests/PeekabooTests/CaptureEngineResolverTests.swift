@@ -3,10 +3,10 @@ import Testing
 
 @Suite("Capture engine env resolver")
 struct CaptureEngineResolverTests {
-    @Test("auto defaults to modern+legacy")
+    @Test("auto defaults to legacy+modern")
     func autoDefault() {
         let apis = ScreenCaptureAPIResolver.resolve(environment: [:])
-        #expect(apis == [.modern, .legacy])
+        #expect(apis == [.legacy, .modern])
     }
 
     @Test("modern-only selection")
