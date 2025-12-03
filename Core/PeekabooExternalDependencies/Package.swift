@@ -22,12 +22,14 @@ let package = Package(
     dependencies: [
         // External dependencies centralized here
         .package(path: "../../AXorcist"),
-        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.4"),
+        // Pin to 1.0.x for Swift 6.0 toolchain compatibility (1.1.x uses trailing-comma syntax).
+        .package(url: "https://github.com/apple/swift-async-algorithms", .upToNextMinor(from: "1.0.4")),
         .package(url: "https://github.com/apple/swift-algorithms", from: "1.2.1"),
         .package(path: "../../Commander"),
         .package(url: "https://github.com/apple/swift-log", from: "1.6.4"),
         .package(url: "https://github.com/apple/swift-system", from: "1.6.3"),
-        .package(url: "https://github.com/apple/swift-collections", from: "1.3.0"),
+        // Use main to pick up Swift 6 fixes until the next tagged release.
+        .package(url: "https://github.com/apple/swift-collections", branch: "main"),
         .package(url: "https://github.com/ChimeHQ/AsyncXPCConnection", from: "1.3.0"),
     ],
     targets: [

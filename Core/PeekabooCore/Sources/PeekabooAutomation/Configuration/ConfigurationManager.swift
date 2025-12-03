@@ -4,12 +4,6 @@ import Foundation
 #if canImport(Configuration)
 import Configuration
 
-@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, *)
-private struct IdentityKeyDecoder: ConfigKeyDecoder {
-    func decode(_ string: String, context: [String: ConfigContextValue]) -> ConfigKey {
-        ConfigKey([string], context: context)
-    }
-}
 #endif
 import PeekabooFoundation
 import Tachikoma
@@ -74,7 +68,6 @@ public final class ConfigurationManager: @unchecked Sendable {
     private static var environmentReader: ConfigReader {
         enum Holder {
             static let reader = ConfigReader(
-                keyDecoder: IdentityKeyDecoder(),
                 provider: EnvironmentVariablesProvider(
                     secretsSpecifier: .dynamic { key, _ in
                         let lowercased = key.lowercased()

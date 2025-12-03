@@ -53,7 +53,8 @@ let package = Package(
         .package(path: "../PeekabooExternalDependencies"),
         .package(path: "../../Tachikoma"),
         .package(url: "https://github.com/ChimeHQ/AsyncXPCConnection", from: "1.3.0"),
-        .package(url: "https://github.com/apple/swift-configuration", .upToNextMinor(from: "0.2.0")),
+        // Use main for Swift 6.x compatibility; 0.2.0 trips key-path restrictions in Swift 6.
+        .package(url: "https://github.com/apple/swift-configuration", branch: "main"),
     ],
     targets: [
         .target(
