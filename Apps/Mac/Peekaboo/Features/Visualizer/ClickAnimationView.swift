@@ -83,7 +83,7 @@ struct ClickAnimationView: View {
                 .opacity(self.labelOpacity)
                 .offset(y: 30)
         }
-        .frame(width: 200, height: 200)
+        .frame(width: 320, height: 320)
         .onAppear {
             self.startAnimation()
         }
@@ -96,7 +96,7 @@ struct ClickAnimationView: View {
 
         // Primary ripple animation
         withAnimation(.easeOut(duration: duration)) {
-            self.rippleScale = 2.0
+            self.rippleScale = 1.8
             self.rippleOpacity = 0
         }
 
@@ -104,7 +104,7 @@ struct ClickAnimationView: View {
         if self.clickType == .double {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15 * self.animationSpeed) {
                 withAnimation(.easeOut(duration: duration)) {
-                    self.secondRippleScale = 2.0
+                    self.secondRippleScale = 1.8
                     self.secondRippleOpacity = 0
                 }
             }

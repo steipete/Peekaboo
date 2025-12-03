@@ -404,7 +404,7 @@ extension VisualizerCoordinator {
             animationSpeed: self.durationScaledAnimationSpeed)
 
         // Calculate window rect centered on click point
-        let size: CGFloat = 200
+        let size: CGFloat = 320
         let rect = CGRect(
             x: point.x - size / 2,
             y: point.y - size / 2,
