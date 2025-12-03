@@ -53,23 +53,25 @@ final class AnimationOverlayManager {
 
         // Schedule removal
         Task { @MainActor in
-            if fadeOut {
-                // Fade out animation
-                await withCheckedContinuation { continuation in
-                    NSAnimationContext.runAnimationGroup { context in
-                        context.duration = 0.3
-                        window.animator().alphaValue = 0
-                    } completionHandler: {
-                        Task { @MainActor in
-                            self.removeWindow(window)
-                            continuation.resume()
-                        }
+            // Keep the overlay visible for the requested duration first.
+            try? await Task.sleep(for: .seconds(duration))
+
+            guard fadeOut else {
+                self.removeWindow(window)
+                return
+            }
+
+            // Then fade out over a short easing period before removal.
+            await withCheckedContinuation { continuation in
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.3
+                    window.animator().alphaValue = 0
+                } completionHandler: {
+                    Task { @MainActor in
+                        self.removeWindow(window)
+                        continuation.resume()
                     }
                 }
-            } else {
-                // Remove after duration
-                try? await Task.sleep(for: .seconds(duration))
-                self.removeWindow(window)
             }
         }
 
