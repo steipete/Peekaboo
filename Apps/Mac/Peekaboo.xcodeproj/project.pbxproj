@@ -150,6 +150,7 @@
 				782555042E1CA10900F1D8DF /* PeekabooCore */,
 				78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */,
 				78E542AC2E4178650006A8EF /* KeyboardShortcuts */,
+				78F4CC982EE0457200ACDAAA /* PeekabooXPC */,
 			);
 			productName = Peekaboo;
 			productReference = 7814F1062E1BD4C8000995F8 /* Peekaboo.app */;

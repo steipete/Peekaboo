@@ -22,8 +22,8 @@ let package = Package(
     dependencies: [
         // External dependencies centralized here
         .package(path: "../../AXorcist"),
-        // Pin to 1.0.x for Swift 6.0 toolchain compatibility (1.1.x uses trailing-comma syntax).
-        .package(url: "https://github.com/apple/swift-async-algorithms", .upToNextMinor(from: "1.0.4")),
+        // 1.1.x is Swift 6.2-ready (we're on Xcode 26.1.1).
+        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.1.0"),
         .package(url: "https://github.com/apple/swift-algorithms", from: "1.2.1"),
         .package(path: "../../Commander"),
         .package(url: "https://github.com/apple/swift-log", from: "1.6.4"),
