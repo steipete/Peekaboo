@@ -33,6 +33,7 @@ final class VisualizerCoordinator {
     /// Optimized animation queue with batching and priorities
     private let animationQueue = OptimizedAnimationQueue()
     private static let animationSlowdownFactor: Double = 3.0
+    private var previewDurationOverride: TimeInterval?
 
     /// Settings reference
     private weak var settings: PeekabooSettings?
@@ -86,7 +87,8 @@ final class VisualizerCoordinator {
 
     private func scaledDuration(_ baseline: TimeInterval, applySlowdown: Bool = true) -> TimeInterval {
         let slowdown = applySlowdown ? Self.animationSlowdownFactor : 1.0
-        return baseline * self.animationSpeedScale * slowdown
+        let duration = baseline * self.animationSpeedScale * slowdown
+        return self.previewDurationOverride.map { min($0, duration) } ?? duration
     }
 
     private func scaledDuration(
@@ -95,7 +97,15 @@ final class VisualizerCoordinator {
         applySlowdown: Bool = true) -> TimeInterval
     {
         let slowdown = applySlowdown ? Self.animationSlowdownFactor : 1.0
-        return max(requested, baseline) * self.animationSpeedScale * slowdown
+        let duration = max(requested, baseline) * self.animationSpeedScale * slowdown
+        return self.previewDurationOverride.map { min($0, duration) } ?? duration
+    }
+
+    /// Run a preview with capped animation duration (used by Settings play buttons).
+    func runPreview<T>(_ body: () async -> T) async -> T {
+        self.previewDurationOverride = 1.0
+        defer { self.previewDurationOverride = nil }
+        return await body()
     }
 
     // MARK: - Settings

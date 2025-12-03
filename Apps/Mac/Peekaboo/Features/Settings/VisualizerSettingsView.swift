@@ -323,54 +323,70 @@ struct AnimationToggleRow: View {
             y: screen.frame.midY - 150,
             width: 400,
             height: 300)
-        _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showScreenshotFlash(in: rect)
+        }
     }
 
     @MainActor
     private func previewClick(at point: CGPoint) async {
-        _ = await self.visualizerCoordinator.showClickFeedback(at: point, type: .single)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showClickFeedback(at: point, type: .single)
+        }
     }
 
     @MainActor
     private func previewTyping() async {
         let sampleKeys = ["H", "e", "l", "l", "o"]
-        _ = await self.visualizerCoordinator.showTypingFeedback(
-            keys: sampleKeys,
-            duration: 2.0,
-            cadence: .human(wordsPerMinute: 60))
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showTypingFeedback(
+                keys: sampleKeys,
+                duration: 2.0,
+                cadence: .human(wordsPerMinute: 60))
+        }
     }
 
     @MainActor
     private func previewScroll(at point: CGPoint) async {
-        _ = await self.visualizerCoordinator.showScrollFeedback(at: point, direction: .down, amount: 3)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showScrollFeedback(at: point, direction: .down, amount: 3)
+        }
     }
 
     @MainActor
     private func previewTrail(on screen: NSScreen) async {
         let from = CGPoint(x: screen.frame.midX - 150, y: screen.frame.midY - 50)
         let to = CGPoint(x: screen.frame.midX + 150, y: screen.frame.midY + 50)
-        _ = await self.visualizerCoordinator.showMouseMovement(from: from, to: to, duration: 1.5)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showMouseMovement(from: from, to: to, duration: 1.5)
+        }
     }
 
     @MainActor
     private func previewSwipe(on screen: NSScreen) async {
         let swipeFrom = CGPoint(x: screen.frame.midX - 100, y: screen.frame.midY)
         let swipeTo = CGPoint(x: screen.frame.midX + 100, y: screen.frame.midY)
-        _ = await self.visualizerCoordinator.showSwipeGesture(from: swipeFrom, to: swipeTo, duration: 1.0)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showSwipeGesture(from: swipeFrom, to: swipeTo, duration: 1.0)
+        }
     }
 
     @MainActor
     private func previewHotkey() async {
         let sampleKeys = ["⌘", "⇧", "P"]
-        _ = await self.visualizerCoordinator.showHotkeyDisplay(keys: sampleKeys, duration: 2.0)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showHotkeyDisplay(keys: sampleKeys, duration: 2.0)
+        }
     }
 
     @MainActor
     private func previewAppLifecycle() async {
-        if Bool.random() {
-            _ = await self.visualizerCoordinator.showAppLaunch(appName: "Peekaboo", iconPath: nil as String?)
-        } else {
-            _ = await self.visualizerCoordinator.showAppQuit(appName: "TextEdit", iconPath: nil as String?)
+        await self.visualizerCoordinator.runPreview {
+            if Bool.random() {
+                _ = await self.visualizerCoordinator.showAppLaunch(appName: "Peekaboo", iconPath: nil as String?)
+            } else {
+                _ = await self.visualizerCoordinator.showAppQuit(appName: "TextEdit", iconPath: nil as String?)
+            }
         }
     }
 
@@ -381,13 +397,17 @@ struct AnimationToggleRow: View {
             y: screen.frame.midY - 100,
             width: 300,
             height: 200)
-        _ = await self.visualizerCoordinator.showWindowOperation(.move, windowRect: windowRect, duration: 1.0)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showWindowOperation(.move, windowRect: windowRect, duration: 1.0)
+        }
     }
 
     @MainActor
     private func previewMenuNavigation() async {
         let menuPath = ["File", "Export", "PNG Image"]
-        _ = await self.visualizerCoordinator.showMenuNavigation(menuPath: menuPath)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showMenuNavigation(menuPath: menuPath)
+        }
     }
 
     @MainActor
@@ -397,15 +417,19 @@ struct AnimationToggleRow: View {
             y: screen.frame.midY - 25,
             width: 200,
             height: 50)
-        _ = await self.visualizerCoordinator.showDialogInteraction(
-            element: .button,
-            elementRect: dialogRect,
-            action: .clickButton)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showDialogInteraction(
+                element: .button,
+                elementRect: dialogRect,
+                action: .clickButton)
+        }
     }
 
     @MainActor
     private func previewSpaceSwitch() async {
-        _ = await self.visualizerCoordinator.showSpaceSwitch(from: 1, to: 2, direction: .right)
+        await self.visualizerCoordinator.runPreview {
+            _ = await self.visualizerCoordinator.showSpaceSwitch(from: 1, to: 2, direction: .right)
+        }
     }
 
     @MainActor
