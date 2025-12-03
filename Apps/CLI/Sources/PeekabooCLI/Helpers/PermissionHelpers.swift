@@ -65,36 +65,35 @@ enum PermissionHelpers {
             ? await self.remotePermissionsStatus(serviceName: serviceName ?? self.defaultServiceName)
             : nil
 
-        let screenRecording: Bool
-        let accessibility: Bool
-
-        if let remoteStatus {
-            screenRecording = remoteStatus.screenRecording
-            accessibility = remoteStatus.accessibility
+        let status: PermissionsStatus = if let remoteStatus {
+            remoteStatus
         } else {
-            screenRecording = await Task { @MainActor in
-                await services.screenCapture.hasScreenRecordingPermission()
-            }.value
-            accessibility = await AutomationServiceBridge.hasAccessibilityPermission(automation: services.automation)
+            await Task { @MainActor in services.permissions.checkAllPermissions() }.value
         }
 
-        let permissions = [
+        let permissionList = [
             PermissionInfo(
                 name: "Screen Recording",
                 isRequired: true,
-                isGranted: screenRecording,
+                isGranted: status.screenRecording,
                 grantInstructions: "System Settings > Privacy & Security > Screen Recording"
             ),
             PermissionInfo(
                 name: "Accessibility",
-                isRequired: false,
-                isGranted: accessibility,
+                isRequired: true,
+                isGranted: status.accessibility,
                 grantInstructions: "System Settings > Privacy & Security > Accessibility"
+            ),
+            PermissionInfo(
+                name: "AppleScript (Automation)",
+                isRequired: true,
+                isGranted: status.appleScript,
+                grantInstructions: "System Settings > Privacy & Security > Automation (enable Peekaboo)"
             )
         ]
 
         let source = remoteStatus != nil ? "xpc" : "local"
-        return PermissionStatusResponse(source: source, permissions: permissions)
+        return PermissionStatusResponse(source: source, permissions: permissionList)
     }
 
     /// Format permission status for display

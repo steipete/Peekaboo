@@ -120,12 +120,17 @@ struct PermissionsCommand: ParsableCommand {
 
             do {
                 let handshake = try await client.handshake(client: identity, requestedHost: .helper)
+                let resolvedPermissionTags = resolvePermissionTags(
+                    handshake.permissionTags,
+                    operations: handshake.supportedOperations
+                )
                 let payload = HelperStatusPayload(
                     service: self.resolvedServiceName,
                     hostKind: handshake.hostKind.rawValue,
                     protocolVersion: "\(handshake.negotiatedVersion.major).\(handshake.negotiatedVersion.minor)",
                     build: handshake.build ?? "unknown",
-                    supportedOperations: handshake.supportedOperations.map(\.rawValue)
+                    supportedOperations: handshake.supportedOperations.map(\.rawValue),
+                    permissionTags: resolvedPermissionTags
                 )
                 if self.jsonOutput {
                     outputSuccessCodable(data: payload, logger: self.outputLogger)
@@ -134,6 +139,16 @@ struct PermissionsCommand: ParsableCommand {
                         "[host: \(payload.hostKind), proto: \(payload.protocolVersion), build: \(payload.build)]"
                     print(summary)
                     print("Operations: \(payload.supportedOperations.joined(separator: ", "))")
+                    if !payload.permissionTags.isEmpty {
+                        let tagSummary = payload.permissionTags
+                            .sorted { $0.key < $1.key }
+                            .map { key, value in
+                                let tags = value.map(\.rawValue).joined(separator: "+")
+                                return "\(key)=\(tags)"
+                            }
+                            .joined(separator: ", ")
+                        print("Permission tags: \(tagSummary)")
+                    }
                 }
             } catch {
                 if self.jsonOutput {
@@ -198,6 +213,10 @@ struct PermissionsCommand: ParsableCommand {
                     hostname: Host.current().name
                 )
                 let handshake = try await client.handshake(client: identity, requestedHost: .helper)
+                let resolvedPermissionTags = resolvePermissionTags(
+                    handshake.permissionTags,
+                    operations: handshake.supportedOperations
+                )
 
                 let result = HelperBootstrapResult(
                     service: serviceName,
@@ -205,7 +224,8 @@ struct PermissionsCommand: ParsableCommand {
                     binaryPath: destination,
                     hostKind: handshake.hostKind.rawValue,
                     build: handshake.build ?? "unknown",
-                    supportedOperations: handshake.supportedOperations.map(\.rawValue)
+                    supportedOperations: handshake.supportedOperations.map(\.rawValue),
+                    permissionTags: resolvedPermissionTags
                 )
                 if self.jsonOutput {
                     outputSuccessCodable(data: result, logger: self.outputLogger)
@@ -215,6 +235,16 @@ struct PermissionsCommand: ParsableCommand {
                     print("  Binary: \(destination)")
                     print("  Host: \(result.hostKind) (build \(result.build))")
                     print("  Operations: \(result.supportedOperations.joined(separator: ", "))")
+                    if !result.permissionTags.isEmpty {
+                        let tagSummary = result.permissionTags
+                            .sorted { $0.key < $1.key }
+                            .map { key, value in
+                                let tags = value.map(\.rawValue).joined(separator: "+")
+                                return "\(key)=\(tags)"
+                            }
+                            .joined(separator: ", ")
+                        print("  Permission tags: \(tagSummary)")
+                    }
                 }
             } catch {
                 self.emitFailure("Helper bootstrap failed", error: error)
@@ -292,7 +322,7 @@ struct PermissionsCommand: ParsableCommand {
                 "Label": serviceName,
                 "ProgramArguments": [binaryPath],
                 "MachServices": [serviceName: true],
-                "RunAtLoad": true,
+                "RunAtLoad": false,
                 "KeepAlive": ["SuccessfulExit": false],
                 "StandardOutPath": logPath,
                 "StandardErrorPath": logPath,
@@ -341,12 +371,24 @@ struct PermissionsCommand: ParsableCommand {
     }
 }
 
+private func resolvePermissionTags(
+    _ advertised: [String: [PeekabooXPCPermissionKind]],
+    operations: [PeekabooXPCOperation]
+) -> [String: [PeekabooXPCPermissionKind]] {
+    if !advertised.isEmpty { return advertised }
+    return Dictionary(
+        uniqueKeysWithValues: operations.map { op in
+            (op.rawValue, Array(op.requiredPermissions).sorted { $0.rawValue < $1.rawValue })
+        })
+}
+
 private struct HelperStatusPayload: Codable {
     let service: String
     let hostKind: String
     let protocolVersion: String
     let build: String
     let supportedOperations: [String]
+    let permissionTags: [String: [PeekabooXPCPermissionKind]]
 }
 
 private struct HelperBootstrapResult: Codable {
@@ -356,6 +398,7 @@ private struct HelperBootstrapResult: Codable {
     let hostKind: String
     let build: String
     let supportedOperations: [String]
+    let permissionTags: [String: [PeekabooXPCPermissionKind]]
 }
 
 @MainActor
