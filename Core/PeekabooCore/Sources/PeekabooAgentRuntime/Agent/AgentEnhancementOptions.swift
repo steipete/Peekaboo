@@ -1,0 +1,117 @@
+//
+//  AgentEnhancementOptions.swift
+//  PeekabooCore
+//
+//  Configuration options for agent enhancements:
+//  - Context injection
+//  - Visual verification
+//  - Smart screenshots
+//
+
+import Foundation
+
+/// Options for controlling agent enhancement features.
+@available(macOS 14.0, *)
+public struct AgentEnhancementOptions: Sendable {
+    // MARK: - Context Injection (Enhancement #1)
+
+    /// Whether to auto-inject desktop context before each LLM turn.
+    /// When enabled, injects focused app, window title, cursor position, and clipboard.
+    public var contextAware: Bool
+
+    // MARK: - Visual Verification (Enhancement #2)
+
+    /// Whether to verify actions with screenshots after execution.
+    public var verifyActions: Bool
+
+    /// Maximum retry attempts when verification fails.
+    public var maxVerificationRetries: Int
+
+    /// Which action types to verify (empty = all mutating actions).
+    public var verifyActionTypes: Set<VerifiableActionType>
+
+    // MARK: - Smart Screenshots (Enhancement #3)
+
+    /// Whether to use diff-aware capture (skip if screen unchanged).
+    public var smartCapture: Bool
+
+    /// Threshold for detecting screen changes (0.0 - 1.0).
+    /// Lower = more sensitive to changes.
+    public var changeThreshold: Float
+
+    /// Whether to use region-focused capture after actions.
+    public var regionFocusAfterAction: Bool
+
+    /// Default radius for region capture (in pixels).
+    public var regionCaptureRadius: CGFloat
+
+    // MARK: - Initialization
+
+    public init(
+        contextAware: Bool = true,
+        verifyActions: Bool = false,
+        maxVerificationRetries: Int = 1,
+        verifyActionTypes: Set<VerifiableActionType> = [],
+        smartCapture: Bool = false,
+        changeThreshold: Float = 0.05,
+        regionFocusAfterAction: Bool = false,
+        regionCaptureRadius: CGFloat = 300
+    ) {
+        self.contextAware = contextAware
+        self.verifyActions = verifyActions
+        self.maxVerificationRetries = maxVerificationRetries
+        self.verifyActionTypes = verifyActionTypes
+        self.smartCapture = smartCapture
+        self.changeThreshold = changeThreshold
+        self.regionFocusAfterAction = regionFocusAfterAction
+        self.regionCaptureRadius = regionCaptureRadius
+    }
+
+    // MARK: - Presets
+
+    /// Default options: context-aware enabled, no verification, no smart capture.
+    public static let `default` = AgentEnhancementOptions()
+
+    /// Minimal options: all enhancements disabled.
+    public static let minimal = AgentEnhancementOptions(
+        contextAware: false,
+        verifyActions: false,
+        smartCapture: false
+    )
+
+    /// Full options: all enhancements enabled.
+    public static let full = AgentEnhancementOptions(
+        contextAware: true,
+        verifyActions: true,
+        maxVerificationRetries: 2,
+        smartCapture: true,
+        regionFocusAfterAction: true
+    )
+
+    /// Verification-focused: context + verification, no smart capture.
+    public static let verified = AgentEnhancementOptions(
+        contextAware: true,
+        verifyActions: true,
+        maxVerificationRetries: 2
+    )
+}
+
+/// Action types that can be verified with screenshots.
+public enum VerifiableActionType: String, Sendable, Hashable, CaseIterable {
+    case click
+    case type
+    case scroll
+    case hotkey
+    case drag
+    case launchApp = "launch_app"
+    case menu
+    case dialog
+
+    /// Whether this action type modifies state and should be verified by default.
+    public var isMutating: Bool {
+        switch self {
+        case .click, .type, .scroll, .hotkey, .drag, .launchApp, .menu, .dialog:
+            return true
+        }
+    }
+}
