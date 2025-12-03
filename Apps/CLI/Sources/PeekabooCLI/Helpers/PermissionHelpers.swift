@@ -16,14 +16,21 @@ enum PermissionHelpers {
         let permissions: [PermissionInfo]
     }
 
-    private static let defaultServiceName = PeekabooXPCConstants.serviceName
-
     /// Try to fetch permissions from the XPC helper; falls back to local services on failure.
     @MainActor
-    private static func remotePermissionsStatus(
-        serviceName: String = ProcessInfo.processInfo.environment["PEEKABOO_XPC_SERVICE"] ?? defaultServiceName
-    ) async -> PermissionsStatus? {
-        let client = PeekabooXPCClient(serviceName: serviceName)
+    private static func remotePermissionsStatus(serviceName override: String? = nil) async -> PermissionsStatus? {
+        let envService = ProcessInfo.processInfo.environment["PEEKABOO_XPC_SERVICE"]
+        let resolvedOverride = override ?? envService
+
+        let candidates: [(String, PeekabooXPCHostKind)] = if let explicit = resolvedOverride {
+            [(explicit, .helper)]
+        } else {
+            [
+                (PeekabooXPCConstants.guiServiceName, .gui),
+                (PeekabooXPCConstants.serviceName, .helper),
+            ]
+        }
+
         let identity = PeekabooXPCClientIdentity(
             bundleIdentifier: Bundle.main.bundleIdentifier,
             teamIdentifier: nil,
@@ -31,13 +38,17 @@ enum PermissionHelpers {
             hostname: Host.current().name
         )
 
-        do {
-            let handshake = try await client.handshake(client: identity, requestedHost: .helper)
-            guard handshake.supportedOperations.contains(.permissionsStatus) else { return nil }
-            return try await client.permissionsStatus()
-        } catch {
-            return nil
+        for (service, hostKind) in candidates {
+            let client = PeekabooXPCClient(serviceName: service)
+            do {
+                let handshake = try await client.handshake(client: identity, requestedHost: hostKind)
+                guard handshake.supportedOperations.contains(.permissionsStatus) else { continue }
+                return try await client.permissionsStatus()
+            } catch {
+                continue
+            }
         }
+        return nil
     }
 
     /// Get current permission status for all Peekaboo permissions
@@ -62,7 +73,7 @@ enum PermissionHelpers {
     ) async -> PermissionStatusResponse {
         // Prefer remote helper when available so SSH/sandboxed shells can reuse existing TCC grants.
         let remoteStatus = allowRemote
-            ? await self.remotePermissionsStatus(serviceName: serviceName ?? self.defaultServiceName)
+            ? await self.remotePermissionsStatus(serviceName: serviceName)
             : nil
 
         let status: PermissionsStatus = if let remoteStatus {

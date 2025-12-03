@@ -533,14 +533,15 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
 
         let hostKind = payload.requestedHostKind ?? .helper
         let permissions = self.services.permissions.checkAllPermissions()
-        let effectiveOps = self.effectiveAllowedOperations(permissions: permissions)
-        let sortedOps = effectiveOps.sorted { $0.rawValue < $1.rawValue }
+        let enabledOps = self.effectiveAllowedOperations(permissions: permissions)
+        let advertisedOps = Array(self.allowedOperations).sorted { $0.rawValue < $1.rawValue }
         let permissionTags = Dictionary(
-            uniqueKeysWithValues: sortedOps.map { op in
+            uniqueKeysWithValues: advertisedOps.map { op in
                 (op.rawValue, Array(op.requiredPermissions).sorted { $0.rawValue < $1.rawValue })
             })
+
         self.logger.debug(
-            "Handshake allowedOps=\(sortedOps.count, privacy: .public) tags=\(permissionTags.count, privacy: .public)")
+            "Handshake advertised=\(advertisedOps.count, privacy: .public) enabled=\(enabledOps.count, privacy: .public) tags=\(permissionTags.count, privacy: .public)")
 
         let negotiated = min(
             max(payload.protocolVersion, self.supportedVersions.lowerBound),
@@ -550,7 +551,7 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             negotiatedVersion: negotiated,
             hostKind: hostKind,
             build: PeekabooXPCConstants.buildIdentifier,
-            supportedOperations: sortedOps,
+            supportedOperations: advertisedOps,
             permissionTags: permissionTags)
         return .handshake(response)
     }
