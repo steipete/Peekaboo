@@ -101,6 +101,7 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
     case cleanSession
     case cleanSessionsOlderThan
     case cleanAllSessions
+    case _appleScriptProbe
 
     /// Operations enabled by default for remote helper hosts.
     public static let remoteDefaultAllowlist: Set<PeekabooXPCOperation> = [
@@ -170,6 +171,7 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
         .cleanSession,
         .cleanSessionsOlderThan,
         .cleanAllSessions,
+        ._appleScriptProbe,
     ]
 }
 
@@ -512,6 +514,7 @@ public enum PeekabooXPCRequest: Codable, Sendable {
     case cleanSession(PeekabooXPCCleanSessionRequest)
     case cleanSessionsOlderThan(PeekabooXPCCleanSessionsOlderRequest)
     case cleanAllSessions
+    case appleScriptProbe
 }
 
 extension PeekabooXPCRequest {
@@ -584,6 +587,7 @@ extension PeekabooXPCRequest {
         case .cleanSession: .cleanSession
         case .cleanSessionsOlderThan: .cleanSessionsOlderThan
         case .cleanAllSessions: .cleanAllSessions
+        case .appleScriptProbe: ._appleScriptProbe
         }
     }
 }

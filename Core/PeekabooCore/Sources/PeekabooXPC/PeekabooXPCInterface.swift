@@ -42,6 +42,7 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
     private let appleScriptOperations: Set<PeekabooXPCOperation> = [
         .launchApplication, .activateApplication, .quitApplication, .hideApplication, .unhideApplication,
         .hideOtherApplications, .showAllApplications,
+        ._appleScriptProbe,
     ]
 
     public init(
@@ -460,16 +461,26 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             case .cleanAllSessions:
                 let count = try await self.services.sessions.cleanAllSessions()
                 return .int(count)
+
+            case .appleScriptProbe:
+                guard self.services.permissions.checkAppleScriptPermission() else {
+                    throw PeekabooXPCErrorEnvelope(
+                        code: .permissionDenied,
+                        message: "AppleScript permission not granted")
+                }
+                return .ok
             }
         } catch let envelope as PeekabooXPCErrorEnvelope {
             let duration = Date().timeIntervalSince(start)
             self.logger.error(
-                "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) failed in \(duration, format: .fixed(precision: 3))s: \(envelope.message, privacy: .public)")
+                "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) failed in "
+                    + "\(duration, format: .fixed(precision: 3))s: \(envelope.message, privacy: .public)")
             throw envelope
         } catch {
             let duration = Date().timeIntervalSince(start)
             self.logger.error(
-                "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) failed in \(duration, format: .fixed(precision: 3))s: \(error.localizedDescription, privacy: .public)")
+                "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) failed in "
+                    + "\(duration, format: .fixed(precision: 3))s: \(error.localizedDescription, privacy: .public)")
             throw PeekabooXPCErrorEnvelope(
                 code: .internalError,
                 message: "XPC operation failed",
@@ -477,7 +488,8 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
         }
         let duration = Date().timeIntervalSince(start)
         self.logger.debug(
-            "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) ok in \(duration, format: .fixed(precision: 3))s")
+            "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) ok in "
+                + "\(duration, format: .fixed(precision: 3))s")
     }
 
     // swiftlint:enable cyclomatic_complexity function_body_length

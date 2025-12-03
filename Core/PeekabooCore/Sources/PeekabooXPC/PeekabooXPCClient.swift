@@ -692,6 +692,10 @@ public actor PeekabooXPCClient {
         }
     }
 
+    public func appleScriptProbe() async throws {
+        try await self.sendExpectOK(.appleScriptProbe)
+    }
+
     // MARK: - Private
 
     private func send(_ request: PeekabooXPCRequest) async throws -> PeekabooXPCResponse {
@@ -704,12 +708,12 @@ public actor PeekabooXPCClient {
         let response: PeekabooXPCResponse
         do {
             response = try await self.remote.withDecodingCompletion(using: self.decoder)
-            { (service: any PeekabooXPCConnection, handler: @escaping XPCReplyHandler) in
-                let boxed = UncheckedResponseHandler(handler: handler)
-                service.send(payload, withReply: { data, error in
-                    boxed.handler(data, error)
-                })
-            }
+                { (service: any PeekabooXPCConnection, handler: @escaping XPCReplyHandler) in
+                    let boxed = UncheckedResponseHandler(handler: handler)
+                    service.send(payload, withReply: { data, error in
+                        boxed.handler(data, error)
+                    })
+                }
         } catch {
             await self.throttler.release()
             throw error
