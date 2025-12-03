@@ -99,11 +99,20 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
         _ request: PeekabooXPCRequest,
         connection: NSXPCConnection?) async throws -> PeekabooXPCResponse
     {
+        let start = Date()
+        let pid = connection?.processIdentifier ?? 0
+        var failed = false
+        defer {
+            if !failed {
+                let duration = Date().timeIntervalSince(start)
+                let durationString = String(format: "%.3f", duration)
+                let message = "XPC op=\(request.operation.rawValue) pid=\(pid) ok in \(durationString)s"
+                self.logger.debug("\(message, privacy: .public)")
+            }
+        }
         let permissions = self.services.permissions.checkAllPermissions()
         let effectiveOps = self.effectiveAllowedOperations(permissions: permissions)
         let op = request.operation
-        let start = Date()
-        let pid = connection?.processIdentifier ?? 0
 
         do {
             if case .handshake = request {
@@ -471,25 +480,25 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 return .ok
             }
         } catch let envelope as PeekabooXPCErrorEnvelope {
+            failed = true
             let duration = Date().timeIntervalSince(start)
-            self.logger.error(
-                "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) failed in "
-                    + "\(duration, format: .fixed(precision: 3))s: \(envelope.message, privacy: .public)")
+            let durationString = String(format: "%.3f", duration)
+            let message =
+                "XPC op=\(op.rawValue) pid=\(pid) failed in \(durationString)s: \(envelope.message)"
+            self.logger.error("\(message, privacy: .public)")
             throw envelope
         } catch {
+            failed = true
             let duration = Date().timeIntervalSince(start)
-            self.logger.error(
-                "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) failed in "
-                    + "\(duration, format: .fixed(precision: 3))s: \(error.localizedDescription, privacy: .public)")
+            let durationString = String(format: "%.3f", duration)
+            let message =
+                "XPC op=\(op.rawValue) pid=\(pid) failed in \(durationString)s: \(error.localizedDescription)"
+            self.logger.error("\(message, privacy: .public)")
             throw PeekabooXPCErrorEnvelope(
                 code: .internalError,
                 message: "XPC operation failed",
                 details: "\(error)")
         }
-        let duration = Date().timeIntervalSince(start)
-        self.logger.debug(
-            "XPC op=\(op.rawValue, privacy: .public) pid=\(pid, privacy: .public) ok in "
-                + "\(duration, format: .fixed(precision: 3))s")
     }
 
     // swiftlint:enable cyclomatic_complexity function_body_length
