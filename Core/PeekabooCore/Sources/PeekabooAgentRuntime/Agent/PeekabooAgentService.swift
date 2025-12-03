@@ -205,7 +205,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         dryRun: Bool = false,
         queueMode: QueueMode = .oneAtATime,
         eventDelegate: (any AgentEventDelegate)? = nil,
-        verbose: Bool = false) async throws -> AgentExecutionResult
+        verbose: Bool = false,
+        enhancementOptions: AgentEnhancementOptions? = .default) async throws -> AgentExecutionResult
     {
         // Store the verbose flag for this execution
         self.isVerbose = verbose
@@ -280,7 +281,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 maxSteps: maxSteps,
                 streamingDelegate: streamingDelegate,
                 queueMode: queueMode,
-                eventHandler: eventHandler)
+                eventHandler: eventHandler,
+                enhancementOptions: enhancementOptions)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -429,7 +431,8 @@ extension PeekabooAgentService {
         dryRun: Bool = false,
         queueMode: QueueMode = .oneAtATime,
         eventDelegate: (any AgentEventDelegate)? = nil,
-        verbose: Bool = false) async throws -> AgentExecutionResult
+        verbose: Bool = false,
+        enhancementOptions: AgentEnhancementOptions? = .default) async throws -> AgentExecutionResult
     {
         self.isVerbose = verbose
         TachikomaConfiguration.current.setVerbose(verbose)
@@ -487,7 +490,8 @@ extension PeekabooAgentService {
                 maxSteps: maxSteps,
                 streamingDelegate: streamingDelegate,
                 queueMode: queueMode,
-                eventHandler: eventHandler)
+                eventHandler: eventHandler,
+                enhancementOptions: enhancementOptions)
 
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
             return result
@@ -808,7 +812,8 @@ extension PeekabooAgentService {
         maxSteps: Int = 20,
         streamingDelegate: StreamingEventDelegate,
         queueMode: QueueMode = .oneAtATime,
-        eventHandler: EventHandler? = nil) async throws -> AgentExecutionResult
+        eventHandler: EventHandler? = nil,
+        enhancementOptions: AgentEnhancementOptions? = nil) async throws -> AgentExecutionResult
     {
         _ = streamingDelegate
         let tools = await self.buildToolset(for: model)
@@ -818,7 +823,8 @@ extension PeekabooAgentService {
             model: model,
             tools: tools,
             sessionId: context.id,
-            eventHandler: eventHandler)
+            eventHandler: eventHandler,
+            enhancementOptions: enhancementOptions)
 
         let outcome = try await self.runStreamingLoop(
             configuration: configuration,

@@ -21,6 +21,7 @@ extension PeekabooAgentService {
         let tools: [AgentTool]
         let sessionId: String
         let eventHandler: EventHandler?
+        let enhancementOptions: AgentEnhancementOptions?
     }
 
     private struct ToolHandlingContext {
@@ -59,6 +60,26 @@ extension PeekabooAgentService {
         // Queue of pending user messages (set by caller). For now, this is empty
         // and will be injected by higher-level chat loop when we add that support.
         var queuedMessages: [ModelMessage] = pendingUserMessages
+
+        // Enhancement #1: Inject desktop context at loop start if enabled
+        if let options = configuration.enhancementOptions, options.contextAware {
+            let contextService = DesktopContextService(services: self.services)
+            let context = await contextService.gatherContext()
+            let contextText = contextService.formatContextForPrompt(context)
+
+            // Find the user message and prepend context
+            if let lastUserIndex = state.messages.lastIndex(where: { $0.role == .user }) {
+                let originalMessage = state.messages[lastUserIndex]
+                if case let .text(text) = originalMessage.content.first {
+                    let enhancedText = "\(contextText)\n\n\(text)"
+                    state.messages[lastUserIndex] = ModelMessage.user(enhancedText)
+
+                    if self.isVerbose {
+                        self.logger.debug("Injected desktop context: \(contextText)")
+                    }
+                }
+            }
+        }
 
         for stepIndex in 0..<maxSteps {
             self.logStreamingStepStart(stepIndex, tools: configuration.tools)

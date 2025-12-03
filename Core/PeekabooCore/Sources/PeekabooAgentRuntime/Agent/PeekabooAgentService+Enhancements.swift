@@ -268,12 +268,13 @@ extension PeekabooAgentService {
             options: configuration.enhancementOptions
         )
 
-        // Convert to standard configuration
+        // Convert to standard configuration, passing through enhancement options
         let standardConfig = StreamingLoopConfiguration(
             model: configuration.model,
             tools: configuration.tools,
             sessionId: configuration.sessionId,
-            eventHandler: configuration.eventHandler
+            eventHandler: configuration.eventHandler,
+            enhancementOptions: configuration.enhancementOptions
         )
 
         // TODO: Full integration would modify runStreamingLoop to call
