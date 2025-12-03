@@ -3,6 +3,7 @@
 ## [Unreleased] (3.0.0-beta2)
 
 ### Fixed
+- Visualizer previews now respect their full duration before fading out; overlays no longer disappear in ~0.3s regardless of the requested timing.
 - App resolution now correctly prioritizes exact name matches over bundleID-contains matches, fixing issues where `--app Safari` would incorrectly match helper processes like "AutoFill (Obsidian)" whose bundleID contains "Safari". Refactored `ElementDetectionService` to delegate to `ApplicationService.findApplication()` for a single source of truth.
 - `peekaboo see --json-output` now skips menubar enumeration unless `--verbose` is set and wraps the remaining work in hard wall-clock timeouts, preventing the command from hanging for minutes when target apps are minimized or AX traversal stalls. Timeouts surface as `TIMEOUT` exit codes instead of silent hangs.
 - UI element detection now enforces conservative limits (max depth 12, max 400 nodes, max 50 children per node) and a 20s detection deadline, making runaway AX trees safe; detection timeouts are mapped to CLI exit codes and tested.
