@@ -12,21 +12,62 @@
 		782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
 		78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 78E542AC2E4178650006A8EF /* KeyboardShortcuts */; };
 		78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */ = {isa = PBXBuildFile; productRef = 78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */; };
+		78F4CC912EE0452000ACDAAA /* XPCService.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = 78F4CC862EE0452000ACDAAA /* XPCService.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		78F4CC992EE0457200ACDAAA /* PeekabooXPC in Frameworks */ = {isa = PBXBuildFile; productRef = 78F4CC982EE0457200ACDAAA /* PeekabooXPC */; };
+		78F4CC9B2EE0457800ACDAAA /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 78F4CC9A2EE0457800ACDAAA /* PeekabooCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		78F4CC8F2EE0452000ACDAAA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7814F0FE2E1BD4C8000995F8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 78F4CC852EE0452000ACDAAA;
+			remoteInfo = XPCService;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		78F4CC922EE0452000ACDAAA /* Embed XPC Services */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/XPCServices";
+			dstSubfolderSpec = 16;
+			files = (
+				78F4CC912EE0452000ACDAAA /* XPCService.xpc in Embed XPC Services */,
+			);
+			name = "Embed XPC Services";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		7814F1062E1BD4C8000995F8 /* Peekaboo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Peekaboo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		78F900152E5C000100123456 /* VisualizerCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Peekaboo/Services/Visualizer/VisualizerCoordinator.swift"; sourceTree = SOURCE_ROOT; };
-		78F900162E5C000100123456 /* VisualizerEventReceiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Peekaboo/Services/Visualizer/VisualizerEventReceiver.swift"; sourceTree = SOURCE_ROOT; };
+		78F4CC862EE0452000ACDAAA /* XPCService.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = XPCService.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		78F4CC952EE0452000ACDAAA /* Exceptions for "XPCService" folder in "XPCService" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 78F4CC852EE0452000ACDAAA /* XPCService */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7814F1082E1BD4C8000995F8 /* Peekaboo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Peekaboo;
+			sourceTree = "<group>";
+		};
+		78F4CC872EE0452000ACDAAA /* XPCService */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				78F4CC952EE0452000ACDAAA /* Exceptions for "XPCService" folder in "XPCService" target */,
+			);
+			path = XPCService;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +85,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		78F4CC832EE0452000ACDAAA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				78F4CC992EE0457200ACDAAA /* PeekabooXPC in Frameworks */,
+				78F4CC9B2EE0457800ACDAAA /* PeekabooCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -51,6 +101,8 @@
 			isa = PBXGroup;
 			children = (
 				7814F1082E1BD4C8000995F8 /* Peekaboo */,
+				78F4CC872EE0452000ACDAAA /* XPCService */,
+				78F4CC972EE0457200ACDAAA /* Frameworks */,
 				7814F1072E1BD4C8000995F8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -59,8 +111,16 @@
 			isa = PBXGroup;
 			children = (
 				7814F1062E1BD4C8000995F8 /* Peekaboo.app */,
+				78F4CC862EE0452000ACDAAA /* XPCService.xpc */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		78F4CC972EE0457200ACDAAA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -73,10 +133,12 @@
 				7814F1022E1BD4C8000995F8 /* Sources */,
 				7814F1032E1BD4C8000995F8 /* Frameworks */,
 				7814F1042E1BD4C8000995F8 /* Resources */,
+				78F4CC922EE0452000ACDAAA /* Embed XPC Services */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				78F4CC902EE0452000ACDAAA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7814F1082E1BD4C8000995F8 /* Peekaboo */,
@@ -93,6 +155,30 @@
 			productReference = 7814F1062E1BD4C8000995F8 /* Peekaboo.app */;
 			productType = "com.apple.product-type.application";
 		};
+		78F4CC852EE0452000ACDAAA /* XPCService */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 78F4CC962EE0452000ACDAAA /* Build configuration list for PBXNativeTarget "XPCService" */;
+			buildPhases = (
+				78F4CC822EE0452000ACDAAA /* Sources */,
+				78F4CC832EE0452000ACDAAA /* Frameworks */,
+				78F4CC842EE0452000ACDAAA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				78F4CC872EE0452000ACDAAA /* XPCService */,
+			);
+			name = XPCService;
+			packageProductDependencies = (
+				78F4CC982EE0457200ACDAAA /* PeekabooXPC */,
+				78F4CC9A2EE0457800ACDAAA /* PeekabooCore */,
+			);
+			productName = XPCService;
+			productReference = 78F4CC862EE0452000ACDAAA /* XPCService.xpc */;
+			productType = "com.apple.product-type.xpc-service";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -100,13 +186,16 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2600;
+				LastSwiftUpdateCheck = 2610;
 				LastUpgradeCheck = 2600;
-		TargetAttributes = {
-			7814F1052E1BD4C8000995F8 = {
-				CreatedOnToolsVersion = 26.0;
-			};
-		};
+				TargetAttributes = {
+					7814F1052E1BD4C8000995F8 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					78F4CC852EE0452000ACDAAA = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+				};
 			};
 			buildConfigurationList = 7814F1012E1BD4C8000995F8 /* Build configuration list for PBXProject "Peekaboo" */;
 			developmentRegion = en;
@@ -129,6 +218,7 @@
 			projectRoot = "";
 			targets = (
 				7814F1052E1BD4C8000995F8 /* Peekaboo */,
+				78F4CC852EE0452000ACDAAA /* XPCService */,
 			);
 		};
 /* End PBXProject section */
@@ -141,10 +231,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		78F4CC842EE0452000ACDAAA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		7814F1022E1BD4C8000995F8 /* Sources */ = {
@@ -154,10 +248,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		78F4CC822EE0452000ACDAAA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-/* End PBXShellScriptBuildPhase section */
+/* Begin PBXTargetDependency section */
+		78F4CC902EE0452000ACDAAA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 78F4CC852EE0452000ACDAAA /* XPCService */;
+			targetProxy = 78F4CC8F2EE0452000ACDAAA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		7814F10F2E1BD4CA000995F8 /* Debug */ = {
@@ -317,13 +423,13 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
-			SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-			SWIFT_EMIT_LOC_STRINGS = YES;
-			SWIFT_ENABLE_EXPERIMENTAL_FEATURES = StrictConcurrency;
-			SWIFT_ENABLE_UPCOMING_FEATURES = "ExistentialAny NonisolatedNonsendingByDefault";
-			SWIFT_STRICT_CONCURRENCY = complete;
-			SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-			SWIFT_VERSION = 6.0;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_ENABLE_EXPERIMENTAL_FEATURES = StrictConcurrency;
+				SWIFT_ENABLE_UPCOMING_FEATURES = "ExistentialAny NonisolatedNonsendingByDefault";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
 				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
@@ -365,14 +471,70 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
-			SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-			SWIFT_EMIT_LOC_STRINGS = YES;
-			SWIFT_ENABLE_EXPERIMENTAL_FEATURES = StrictConcurrency;
-			SWIFT_ENABLE_UPCOMING_FEATURES = "ExistentialAny NonisolatedNonsendingByDefault";
-			SWIFT_STRICT_CONCURRENCY = complete;
-			SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-			SWIFT_VERSION = 6.0;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_ENABLE_EXPERIMENTAL_FEATURES = StrictConcurrency;
+				SWIFT_ENABLE_UPCOMING_FEATURES = "ExistentialAny NonisolatedNonsendingByDefault";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
 				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		78F4CC932EE0452000ACDAAA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Y5PE65HELJ;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = XPCService/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = XPCService;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boo.peekaboo.app.XPCService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		78F4CC942EE0452000ACDAAA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Y5PE65HELJ;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = XPCService/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = XPCService;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = boo.peekaboo.app.XPCService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -393,6 +555,15 @@
 			buildConfigurations = (
 				7814F1122E1BD4CA000995F8 /* Debug */,
 				7814F1132E1BD4CA000995F8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		78F4CC962EE0452000ACDAAA /* Build configuration list for PBXNativeTarget "XPCService" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				78F4CC932EE0452000ACDAAA /* Debug */,
+				78F4CC942EE0452000ACDAAA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -425,9 +596,6 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
-/* Begin PBXTargetDependency section */
-/* End PBXTargetDependency section */
-
 /* Begin XCSwiftPackageProductDependency section */
 		7814F18F2E1C0950000995F8 /* AXorcist */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -449,6 +617,16 @@
 		78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PeekabooUICore;
+		};
+		78F4CC982EE0457200ACDAAA /* PeekabooXPC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 782555032E1CA10900F1D8DF /* XCLocalSwiftPackageReference "../../Core/PeekabooCore" */;
+			productName = PeekabooXPC;
+		};
+		78F4CC9A2EE0457800ACDAAA /* PeekabooCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 782555032E1CA10900F1D8DF /* XCLocalSwiftPackageReference "../../Core/PeekabooCore" */;
+			productName = PeekabooCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
