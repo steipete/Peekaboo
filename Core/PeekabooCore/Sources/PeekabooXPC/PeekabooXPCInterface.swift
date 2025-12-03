@@ -541,7 +541,11 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             })
 
         self.logger.debug(
-            "Handshake advertised=\(advertisedOps.count, privacy: .public) enabled=\(enabledOps.count, privacy: .public) tags=\(permissionTags.count, privacy: .public)")
+            """
+            Handshake advertised=\(advertisedOps.count, privacy: .public) \
+            enabled=\(enabledOps.count, privacy: .public) \
+            tags=\(permissionTags.count, privacy: .public)
+            """)
 
         let negotiated = min(
             max(payload.protocolVersion, self.supportedVersions.lowerBound),
