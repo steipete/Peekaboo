@@ -3,12 +3,16 @@ import PeekabooCore
 import PeekabooXPC
 
 @main
+@MainActor
 struct PeekabooHelperMain {
+    private static var xpcHost: PeekabooXPCHost?
+
     static func main() {
         let services = PeekabooServices()
 
         let allowlistedBundles: Set<String> = [
-            "boo.peekaboo.peekaboo", // CLI
+            "boo.peekaboo", // CLI (Developer ID build)
+            "boo.peekaboo.peekaboo", // CLI (signed bundle id in release)
             "boo.peekaboo.mac", // GUI app
         ]
 
@@ -16,14 +20,13 @@ struct PeekabooHelperMain {
             "Y5PE65HELJ",
         ]
 
-        let host = PeekabooXPCBootstrap.startHelperListener(
+        self.xpcHost = PeekabooXPCBootstrap.startHelperListener(
             services: services,
             serviceName: PeekabooXPCConstants.serviceName,
             allowlistedTeams: allowlistedTeams,
             allowlistedBundles: allowlistedBundles,
             allowedOperations: PeekabooXPCOperation.remoteDefaultAllowlist)
 
-        host.resume()
         dispatchMain()
     }
 }

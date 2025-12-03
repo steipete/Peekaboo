@@ -24,7 +24,13 @@ public enum PeekabooXPCHostKind: String, Codable, Sendable, CaseIterable {
     case inProcess
 }
 
-public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
+public enum PeekabooXPCPermissionKind: String, Codable, Sendable {
+    case screenRecording
+    case accessibility
+    case appleScript
+}
+
+public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable, Hashable {
     // Core
     case permissionsStatus
     // Capture
@@ -102,6 +108,41 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable {
     case cleanSessionsOlderThan
     case cleanAllSessions
     case _appleScriptProbe
+
+    /// TCC permissions an operation relies on. Used to gate advertisement/handling.
+    public var requiredPermissions: Set<PeekabooXPCPermissionKind> {
+        switch self {
+        case .captureScreen, .captureWindow, .captureFrontmost, .captureArea, .detectElements:
+            [.screenRecording]
+        case .click, .type, .typeActions, .scroll, .hotkey, .swipe, .drag, .moveMouse, .waitForElement,
+             .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
+             .minimizeWindow, .maximizeWindow, .getFocusedWindow, .listMenus, .listFrontmostMenus,
+             .clickMenuItem, .clickMenuItemByName, .listMenuExtras, .clickMenuExtra, .listMenuBarItems,
+             .clickMenuBarItemNamed, .clickMenuBarItemIndex, .listDockItems, .launchDockItem,
+             .rightClickDockItem, .hideDock, .showDock, .isDockHidden, .findDockItem, .dialogFindActive,
+             .dialogClickButton, .dialogEnterText, .dialogHandleFile, .dialogDismiss, .dialogListElements:
+            [.accessibility]
+        case .launchApplication, .activateApplication, .quitApplication, .hideApplication, .unhideApplication,
+             .hideOtherApplications, .showAllApplications:
+            [.appleScript]
+        case ._appleScriptProbe,
+             .permissionsStatus,
+             .createSession,
+             .storeDetectionResult,
+             .getDetectionResult,
+             .storeScreenshot,
+             .listSessions,
+             .getMostRecentSession,
+             .cleanSession,
+             .cleanSessionsOlderThan,
+             .cleanAllSessions,
+             .listApplications,
+             .findApplication,
+             .getFrontmostApplication,
+             .isApplicationRunning:
+            []
+        }
+    }
 
     /// Operations enabled by default for remote helper hosts.
     public static let remoteDefaultAllowlist: Set<PeekabooXPCOperation> = [
@@ -215,17 +256,51 @@ public struct PeekabooXPCHandshakeResponse: Codable, Sendable {
     public let hostKind: PeekabooXPCHostKind
     public let build: String?
     public let supportedOperations: [PeekabooXPCOperation]
+    /// Map of operation rawValue to the permissions it requires so clients can surface missing grants.
+    public let permissionTags: [String: [PeekabooXPCPermissionKind]]
 
     public init(
         negotiatedVersion: PeekabooXPCProtocolVersion,
         hostKind: PeekabooXPCHostKind,
         build: String?,
-        supportedOperations: [PeekabooXPCOperation])
+        supportedOperations: [PeekabooXPCOperation],
+        permissionTags: [String: [PeekabooXPCPermissionKind]] = [:])
     {
         self.negotiatedVersion = negotiatedVersion
         self.hostKind = hostKind
         self.build = build
         self.supportedOperations = supportedOperations
+        self.permissionTags = permissionTags
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case negotiatedVersion
+        case hostKind
+        case build
+        case supportedOperations
+        case permissionTags
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.negotiatedVersion = try container.decode(PeekabooXPCProtocolVersion.self, forKey: .negotiatedVersion)
+        self.hostKind = try container.decode(PeekabooXPCHostKind.self, forKey: .hostKind)
+        self.build = try container.decodeIfPresent(String.self, forKey: .build)
+        self.supportedOperations = try container.decode([PeekabooXPCOperation].self, forKey: .supportedOperations)
+        self.permissionTags = try container.decodeIfPresent(
+            [String: [PeekabooXPCPermissionKind]].self,
+            forKey: .permissionTags) ?? [:]
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.negotiatedVersion, forKey: .negotiatedVersion)
+        try container.encode(self.hostKind, forKey: .hostKind)
+        try container.encodeIfPresent(self.build, forKey: .build)
+        try container.encode(self.supportedOperations, forKey: .supportedOperations)
+        if !self.permissionTags.isEmpty {
+            try container.encode(self.permissionTags, forKey: .permissionTags)
+        }
     }
 }
 
