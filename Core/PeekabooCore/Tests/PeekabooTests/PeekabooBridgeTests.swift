@@ -45,6 +45,8 @@ struct PeekabooBridgeTests {
 
         #expect(handshake.negotiatedVersion == PeekabooBridgeConstants.protocolVersion)
         #expect(handshake.supportedOperations.contains(.permissionsStatus))
+        #expect(handshake.enabledOperations?.contains(.permissionsStatus) != false)
+        #expect(handshake.permissions != nil)
         #expect(handshake.hostKind == .gui)
     }
 
@@ -64,6 +66,12 @@ struct PeekabooBridgeTests {
             processIdentifier: getpid(),
             hostname: Host.current().name)
 
+        let peer = PeekabooBridgePeer(
+            processIdentifier: getpid(),
+            userIdentifier: getuid(),
+            bundleIdentifier: identity.bundleIdentifier,
+            teamIdentifier: identity.teamIdentifier)
+
         let request = PeekabooBridgeRequest.handshake(
             .init(
                 protocolVersion: PeekabooBridgeConstants.protocolVersion,
@@ -71,7 +79,7 @@ struct PeekabooBridgeTests {
                 requestedHostKind: .gui))
 
         let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: peer)
         }
         let response = try self.decode(responseData)
 
@@ -98,6 +106,12 @@ struct PeekabooBridgeTests {
             processIdentifier: getpid(),
             hostname: Host.current().name)
 
+        let peer = PeekabooBridgePeer(
+            processIdentifier: getpid(),
+            userIdentifier: getuid(),
+            bundleIdentifier: identity.bundleIdentifier,
+            teamIdentifier: identity.teamIdentifier)
+
         let request = PeekabooBridgeRequest.handshake(
             .init(
                 protocolVersion: PeekabooBridgeConstants.protocolVersion,
@@ -105,7 +119,7 @@ struct PeekabooBridgeTests {
                 requestedHostKind: .gui))
 
         let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: peer)
         }
         let response = try self.decode(responseData)
 

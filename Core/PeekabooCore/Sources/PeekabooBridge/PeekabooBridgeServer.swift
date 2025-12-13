@@ -78,6 +78,12 @@ public final class PeekabooBridgeServer {
         _ request: PeekabooBridgeRequest,
         peer: PeekabooBridgePeer?) async throws -> PeekabooBridgeResponse
     {
+        if peer == nil, !self.allowlistedTeams.isEmpty || !self.allowlistedBundles.isEmpty {
+            throw PeekabooBridgeErrorEnvelope(
+                code: .unauthorizedClient,
+                message: "Unsigned bridge clients are not allowed for this listener")
+        }
+
         let start = Date()
         let pid = peer?.processIdentifier ?? 0
         var failed = false
@@ -579,6 +585,8 @@ public final class PeekabooBridgeServer {
             hostKind: self.hostKind,
             build: PeekabooBridgeConstants.buildIdentifier,
             supportedOperations: advertisedOps,
+            permissions: permissions,
+            enabledOperations: Array(enabledOps).sorted { $0.rawValue < $1.rawValue },
             permissionTags: permissionTags)
         return .handshake(response)
     }

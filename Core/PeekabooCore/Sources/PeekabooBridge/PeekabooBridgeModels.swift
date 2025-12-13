@@ -259,6 +259,10 @@ public struct PeekabooBridgeHandshakeResponse: Codable, Sendable {
     public let hostKind: PeekabooBridgeHostKind
     public let build: String?
     public let supportedOperations: [PeekabooBridgeOperation]
+    /// Current permission status of the host process (TCC grants).
+    public let permissions: PermissionsStatus?
+    /// Operations that are currently enabled given the host's permission status.
+    public let enabledOperations: [PeekabooBridgeOperation]?
     /// Map of operation rawValue to the permissions it requires so clients can surface missing grants.
     public let permissionTags: [String: [PeekabooBridgePermissionKind]]
 
@@ -267,12 +271,16 @@ public struct PeekabooBridgeHandshakeResponse: Codable, Sendable {
         hostKind: PeekabooBridgeHostKind,
         build: String?,
         supportedOperations: [PeekabooBridgeOperation],
+        permissions: PermissionsStatus? = nil,
+        enabledOperations: [PeekabooBridgeOperation]? = nil,
         permissionTags: [String: [PeekabooBridgePermissionKind]] = [:])
     {
         self.negotiatedVersion = negotiatedVersion
         self.hostKind = hostKind
         self.build = build
         self.supportedOperations = supportedOperations
+        self.permissions = permissions
+        self.enabledOperations = enabledOperations
         self.permissionTags = permissionTags
     }
 
@@ -281,6 +289,8 @@ public struct PeekabooBridgeHandshakeResponse: Codable, Sendable {
         case hostKind
         case build
         case supportedOperations
+        case permissions
+        case enabledOperations
         case permissionTags
     }
 
@@ -290,6 +300,10 @@ public struct PeekabooBridgeHandshakeResponse: Codable, Sendable {
         self.hostKind = try container.decode(PeekabooBridgeHostKind.self, forKey: .hostKind)
         self.build = try container.decodeIfPresent(String.self, forKey: .build)
         self.supportedOperations = try container.decode([PeekabooBridgeOperation].self, forKey: .supportedOperations)
+        self.permissions = try container.decodeIfPresent(PermissionsStatus.self, forKey: .permissions)
+        self.enabledOperations = try container.decodeIfPresent(
+            [PeekabooBridgeOperation].self,
+            forKey: .enabledOperations)
         self.permissionTags = try container.decodeIfPresent(
             [String: [PeekabooBridgePermissionKind]].self,
             forKey: .permissionTags) ?? [:]
@@ -301,6 +315,8 @@ public struct PeekabooBridgeHandshakeResponse: Codable, Sendable {
         try container.encode(self.hostKind, forKey: .hostKind)
         try container.encodeIfPresent(self.build, forKey: .build)
         try container.encode(self.supportedOperations, forKey: .supportedOperations)
+        try container.encodeIfPresent(self.permissions, forKey: .permissions)
+        try container.encodeIfPresent(self.enabledOperations, forKey: .enabledOperations)
         if !self.permissionTags.isEmpty {
             try container.encode(self.permissionTags, forKey: .permissionTags)
         }

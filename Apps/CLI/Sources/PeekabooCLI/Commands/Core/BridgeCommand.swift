@@ -3,6 +3,7 @@ import Foundation
 import PeekabooBridge
 import PeekabooCore
 import PeekabooFoundation
+import Security
 
 /// Diagnose Peekaboo Bridge host connectivity and resolution.
 struct BridgeCommand: ParsableCommand {
@@ -20,7 +21,7 @@ struct BridgeCommand: ParsableCommand {
 
         Examples:
           peekaboo bridge status
-          peekaboo bridge status --json-output
+          peekaboo bridge status --json
           peekaboo bridge status --verbose
           peekaboo bridge status --bridge-socket ~/Library/Application\\ Support/clawdis/bridge.sock
           peekaboo bridge status --no-remote
@@ -102,9 +103,18 @@ extension BridgeCommand {
             }
 
             print("")
+            print("Client: \(report.client.humanSummary)")
+            if report.client.teamIdentifier == nil {
+                print("Note: unsigned clients may be rejected by host code-sign checks.")
+            }
+
+            print("")
             print("Candidates:")
             for candidate in report.candidates {
                 print("- \(candidate.humanSummary)")
+                if case let .failure(error) = candidate.result, let hint = error.hint {
+                    print("  hint: \(hint)")
+                }
             }
         }
     }
@@ -138,7 +148,7 @@ private struct BridgeDiagnostics: Sendable {
 
         let identity = PeekabooBridgeClientIdentity(
             bundleIdentifier: Bundle.main.bundleIdentifier,
-            teamIdentifier: nil,
+            teamIdentifier: Self.currentTeamIdentifier(),
             processIdentifier: getpid(),
             hostname: Host.current().name
         )
@@ -150,7 +160,8 @@ private struct BridgeDiagnostics: Sendable {
                 remoteSkipped: true,
                 remoteSkipReason: remoteSkipReason,
                 selected: .local(),
-                candidates: candidates.map { BridgeCandidateReport(socketPath: $0, result: .skipped) }
+                candidates: candidates.map { BridgeCandidateReport(socketPath: $0, result: .skipped) },
+                client: .init(identity: identity)
             )
         }
 
@@ -168,7 +179,8 @@ private struct BridgeDiagnostics: Sendable {
                 )
                 results.append(.init(socketPath: socketPath, result: .success(report)))
 
-                if selected == nil, handshake.supportedOperations.contains(.captureScreen) {
+                let enabledOps = handshake.enabledOperations ?? handshake.supportedOperations
+                if selected == nil, enabledOps.contains(.captureScreen) {
                     selected = .remote(socketPath: socketPath, handshake: report)
                 }
             } catch let envelope as PeekabooBridgeErrorEnvelope {
@@ -190,7 +202,8 @@ private struct BridgeDiagnostics: Sendable {
             remoteSkipped: false,
             remoteSkipReason: nil,
             selected: selected ?? .local(),
-            candidates: results
+            candidates: results,
+            client: .init(identity: identity)
         )
     }
 
@@ -209,6 +222,24 @@ private struct BridgeDiagnostics: Sendable {
 
         return rawCandidates.map { NSString(string: $0).expandingTildeInPath }
     }
+
+    private static func currentTeamIdentifier() -> String? {
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { return nil }
+
+        var staticCode: SecStaticCode?
+        guard SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode) == errSecSuccess,
+              let sCode = staticCode
+        else { return nil }
+
+        var infoCF: CFDictionary?
+        let flags = SecCSFlags(rawValue: UInt32(kSecCSSigningInformation))
+        guard SecCodeCopySigningInformation(sCode, flags, &infoCF) == errSecSuccess,
+              let info = infoCF as? [String: Any]
+        else { return nil }
+
+        return info[kSecCodeInfoTeamIdentifier as String] as? String
+    }
 }
 
 private struct BridgeStatusReport: Codable, Sendable {
@@ -216,6 +247,27 @@ private struct BridgeStatusReport: Codable, Sendable {
     let remoteSkipReason: String?
     let selected: BridgeSelectionReport
     let candidates: [BridgeCandidateReport]
+    let client: BridgeClientReport
+}
+
+private struct BridgeClientReport: Codable, Sendable {
+    let bundleIdentifier: String?
+    let teamIdentifier: String?
+    let processIdentifier: pid_t
+    let hostname: String?
+
+    init(identity: PeekabooBridgeClientIdentity) {
+        self.bundleIdentifier = identity.bundleIdentifier
+        self.teamIdentifier = identity.teamIdentifier
+        self.processIdentifier = identity.processIdentifier
+        self.hostname = identity.hostname
+    }
+
+    var humanSummary: String {
+        let bundle = self.bundleIdentifier ?? "<unknown bundle>"
+        let team = self.teamIdentifier ?? "<unsigned>"
+        return "pid=\(self.processIdentifier) bundle=\(bundle) team=\(team)"
+    }
 }
 
 private struct BridgeCandidateReport: Codable, Sendable {
@@ -225,11 +277,27 @@ private struct BridgeCandidateReport: Codable, Sendable {
     var humanSummary: String {
         switch self.result {
         case .skipped:
-            "\(self.socketPath) — skipped"
+            return "\(self.socketPath) — skipped"
         case let .success(handshake):
-            "\(self.socketPath) — OK (\(handshake.hostKind.rawValue), ops: \(handshake.supportedOperations.count))"
+            let enabled = handshake.enabledOperations?.count
+            let supported = handshake.supportedOperations.count
+            let opsSummary = if let enabled {
+                "ops: \(enabled)/\(supported) enabled"
+            } else {
+                "ops: \(supported)"
+            }
+            let permissionsSummary = handshake.permissions.map { status in
+                let sr = status.screenRecording ? "Y" : "N"
+                let ax = status.accessibility ? "Y" : "N"
+                let appleScript = status.appleScript ? "Y" : "N"
+                return "perm: SR=\(sr) AX=\(ax) AS=\(appleScript)"
+            }
+            if let permissionsSummary {
+                return "\(self.socketPath) — OK (\(handshake.hostKind.rawValue), \(opsSummary), \(permissionsSummary))"
+            }
+            return "\(self.socketPath) — OK (\(handshake.hostKind.rawValue), \(opsSummary))"
         case let .failure(error):
-            "\(self.socketPath) — \(error.humanSummary)"
+            return "\(self.socketPath) — \(error.humanSummary)"
         }
     }
 }
@@ -245,6 +313,8 @@ private struct BridgeHandshakeReport: Codable, Sendable {
     let hostKind: PeekabooBridgeHostKind
     let build: String?
     let supportedOperations: [PeekabooBridgeOperation]
+    let permissions: PermissionsStatus?
+    let enabledOperations: [PeekabooBridgeOperation]?
     let permissionTags: [String: [PeekabooBridgePermissionKind]]
 
     init(from handshake: PeekabooBridgeHandshakeResponse) {
@@ -252,6 +322,8 @@ private struct BridgeHandshakeReport: Codable, Sendable {
         self.hostKind = handshake.hostKind
         self.build = handshake.build
         self.supportedOperations = handshake.supportedOperations
+        self.permissions = handshake.permissions
+        self.enabledOperations = handshake.enabledOperations
         self.permissionTags = handshake.permissionTags
     }
 }
@@ -264,10 +336,17 @@ private struct BridgeCandidateErrorReport: Codable, Sendable {
     let hint: String?
 
     static func bridgeEnvelope(_ envelope: PeekabooBridgeErrorEnvelope) -> BridgeCandidateErrorReport {
-        let hint: String? = if envelope.code == .unauthorizedClient {
+        let hint: String? = switch envelope.code {
+        case .unauthorizedClient:
             "Client not signed by an allowed TeamID. For local dev, set " +
                 "PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1 in the host."
-        } else {
+        case .decodingFailed:
+            "Host returned a non-Bridge response. This commonly means you hit a different socket protocol " +
+                "or the host closed early due to code-sign checks."
+        case .internalError:
+            "Host closed the connection without a valid response. This commonly indicates code-sign checks " +
+                "or a mismatched Bridge protocol."
+        default:
             nil
         }
         return BridgeCandidateErrorReport(

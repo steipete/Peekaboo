@@ -714,7 +714,22 @@ public actor PeekabooBridgeClient {
                 timeoutSec: requestTimeoutSec)
         }.value
 
-        let response = try self.decoder.decode(PeekabooBridgeResponse.self, from: responseData)
+        guard !responseData.isEmpty else {
+            throw PeekabooBridgeErrorEnvelope(
+                code: .internalError,
+                message: "Bridge host returned no response",
+                details: "EOF while reading response for \(op.rawValue)")
+        }
+
+        let response: PeekabooBridgeResponse
+        do {
+            response = try self.decoder.decode(PeekabooBridgeResponse.self, from: responseData)
+        } catch {
+            throw PeekabooBridgeErrorEnvelope(
+                code: .decodingFailed,
+                message: "Bridge host returned an invalid response",
+                details: "\(error)")
+        }
         let duration = Date().timeIntervalSince(start)
         self.logger.debug(
             "bridge \(op.rawValue, privacy: .public) completed in \(duration, format: .fixed(precision: 3))s")
