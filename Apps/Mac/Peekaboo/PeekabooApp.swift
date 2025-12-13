@@ -109,6 +109,7 @@ struct PeekabooApp: App {
 
                     // Check permissions
                     await self.permissions.check()
+                    self.appDelegate.maybeShowPermissionsOnboardingIfNeeded()
                 }
         }
         .windowResizability(.contentSize)
@@ -217,6 +218,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
     var windowOpener: ((String) -> Void)?
     private var bridgeHost: PeekabooBridgeHost?
+    private var didSchedulePermissionsOnboarding = false
 
     // State connections
     private var settings: PeekabooSettings?
@@ -282,6 +284,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Show onboarding if needed
         if self.settings?.hasValidAPIKey != true {
             self.showMainWindow()
+        }
+    }
+
+    func maybeShowPermissionsOnboardingIfNeeded() {
+        guard !self.didSchedulePermissionsOnboarding else { return }
+        self.didSchedulePermissionsOnboarding = true
+
+        guard let permissions = self.permissions else { return }
+
+        let seenVersion = UserDefaults.standard.integer(forKey: permissionsOnboardingVersionKey)
+        let hasSeen = UserDefaults.standard.bool(forKey: permissionsOnboardingSeenKey)
+        let shouldShow = seenVersion < currentPermissionsOnboardingVersion || !hasSeen
+        guard shouldShow else { return }
+
+        guard !permissions.hasAllPermissions else {
+            UserDefaults.standard.set(true, forKey: permissionsOnboardingSeenKey)
+            UserDefaults.standard.set(currentPermissionsOnboardingVersion, forKey: permissionsOnboardingVersionKey)
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            PermissionsOnboardingController.shared.show(permissions: permissions)
         }
     }
 

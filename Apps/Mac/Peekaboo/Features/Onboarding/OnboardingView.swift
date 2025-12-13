@@ -1,14 +1,6 @@
 import PeekabooCore
 import SwiftUI
 
-// Type alias for permission status
-typealias PermissionStatus = ObservablePermissionsService.PermissionState
-
-// Notification name extension
-extension Notification.Name {
-    static let permissionsUpdated = Notification.Name("PermissionsUpdated")
-}
-
 struct OnboardingView: View {
     @Environment(PeekabooSettings.self) private var settings
     @State private var apiKey = ""
@@ -169,7 +161,6 @@ struct OnboardingView: View {
 
 struct PermissionsView: View {
     @Environment(Permissions.self) private var permissions
-    @State private var permissionUpdateTrigger = 0
 
     var body: some View {
         VStack(spacing: 24) {
@@ -178,51 +169,41 @@ struct PermissionsView: View {
             GhostImageView(state: .peek2, size: CGSize(width: 80, height: 80))
 
             VStack(spacing: 8) {
-                Text("Permissions Required")
+                Text("Permissions")
                     .font(.title)
                     .fontWeight(.semibold)
 
-                Text("Peekaboo needs access to automate your Mac")
+                Text("Grant Screen Recording + Accessibility. Automation is optional for some workflows.")
                     .foregroundColor(.secondary)
             }
 
-            VStack(spacing: 16) {
-                PermissionRow(
-                    title: "Screen Recording",
-                    description: "Required to capture screenshots and see your screen",
-                    status: self.permissions.screenRecordingStatus,
-                    action: {
-                        self.permissions.requestScreenRecording()
-                    })
-
-                PermissionRow(
-                    title: "Accessibility",
-                    description: "Required to control mouse and keyboard",
-                    status: self.permissions.accessibilityStatus,
-                    action: {
-                        self.permissions.requestAccessibility()
-                    })
-
-                PermissionRow(
-                    title: "Automation",
-                    description: "Required to control applications and execute commands",
-                    status: self.permissions.appleScriptStatus,
-                    action: {
-                        self.permissions.requestAppleScript()
-                    })
-            }
-            .padding(20)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(12)
+            PermissionChecklistView(showOptional: true)
+                .padding(20)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(12)
 
             Spacer()
 
-            Button("Check Permissions") {
-                Task {
-                    await self.permissions.check()
+            VStack(spacing: 10) {
+                Button("Check Permissions") {
+                    Task {
+                        await self.permissions.check()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+
+                HStack(spacing: 12) {
+                    Button("Show onboarding") {
+                        PermissionsOnboardingController.shared.show(permissions: self.permissions)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Open Settings → Permissions") {
+                        SettingsOpener.openSettings(tab: .permissions)
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
-            .buttonStyle(.borderedProminent)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
@@ -236,72 +217,6 @@ struct PermissionsView: View {
         }
         .onDisappear {
             self.permissions.stopMonitoring()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
-            // Force UI update when permissions change
-            self.permissionUpdateTrigger += 1
-        }
-    }
-}
-
-// MARK: - Permission Row
-
-struct PermissionRow: View {
-    let title: String
-    let description: String
-    let status: PermissionStatus
-    let action: () -> Void
-
-    var body: some View {
-        HStack(spacing: 16) {
-            // Status icon
-            Image(systemName: self.statusIcon)
-                .font(.title2)
-                .foregroundColor(self.statusColor)
-                .frame(width: 30)
-
-            // Text
-            VStack(alignment: .leading, spacing: 2) {
-                Text(self.title)
-                    .font(.headline)
-
-                Text(self.description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-
-            // Action button
-            if self.status != .authorized {
-                Button(self.status == .denied ? "Open Settings" : "Enable") {
-                    self.action()
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .padding(.vertical, 8)
-    }
-
-    private var statusIcon: String {
-        switch self.status {
-        case .notDetermined:
-            "questionmark.circle"
-        case .denied:
-            "xmark.circle"
-        case .authorized:
-            "checkmark.circle.fill"
-        }
-    }
-
-    private var statusColor: Color {
-        switch self.status {
-        case .notDetermined:
-            .secondary
-        case .denied:
-            .red
-        case .authorized:
-            .green
         }
     }
 }

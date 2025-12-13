@@ -14,6 +14,14 @@ enum SettingsOpener {
     /// Opens the Settings window using the environment action via notification
     /// This is needed for cases where we can't use SettingsLink (e.g., from menu bar)
     static func openSettings() {
+        self.openSettings(tab: nil)
+    }
+
+    static func openSettings(tab: PeekabooSettingsTab?) {
+        if let tab {
+            SettingsTabRouter.request(tab)
+        }
+
         // Let DockIconManager handle dock visibility
         DockIconManager.shared.temporarilyShowDock()
 
@@ -55,6 +63,11 @@ enum SettingsOpener {
 
                     // DockIconManager will handle dock visibility automatically
                 }
+            }
+
+            if let tab {
+                try? await Task.sleep(for: .milliseconds(50))
+                NotificationCenter.default.post(name: .peekabooSelectSettingsTab, object: tab)
             }
         }
     }

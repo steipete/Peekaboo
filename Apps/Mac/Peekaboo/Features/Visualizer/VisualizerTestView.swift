@@ -8,6 +8,7 @@
 import AppKit
 import PeekabooCore
 import PeekabooFoundation
+import PeekabooVisualizer
 import SwiftUI
 
 /// Test view for all visualizer animations

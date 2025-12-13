@@ -1,0 +1,243 @@
+import AppKit
+import SwiftUI
+
+let permissionsOnboardingSeenKey = "peekaboo.permissionsOnboardingSeen"
+let permissionsOnboardingVersionKey = "peekaboo.permissionsOnboardingVersion"
+let currentPermissionsOnboardingVersion = 1
+
+@MainActor
+final class PermissionsOnboardingController {
+    static let shared = PermissionsOnboardingController()
+
+    private var window: NSWindow?
+
+    func show(permissions: Permissions) {
+        if let window {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let hosting = NSHostingController(rootView: PermissionsOnboardingView(permissions: permissions))
+        let window = NSWindow(contentViewController: hosting)
+        window.title = "Permissions"
+        window.setContentSize(NSSize(width: 680, height: 760))
+        window.styleMask = [.titled, .closable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.window = window
+    }
+
+    func close() {
+        self.window?.close()
+        self.window = nil
+    }
+}
+
+struct PermissionsOnboardingView: View {
+    @Bindable var permissions: Permissions
+
+    @State private var currentPage = 0
+
+    private let pageWidth: CGFloat = 680
+    private let contentHeight: CGFloat = 520
+    private var pageCount: Int { 2 }
+    private var buttonTitle: String { self.currentPage == self.pageCount - 1 ? "Finish" : "Next" }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            GhostImageView(state: .peek2, size: CGSize(width: 96, height: 96))
+                .padding(.top, 18)
+                .padding(.bottom, 4)
+                .frame(height: 132)
+
+            GeometryReader { _ in
+                HStack(spacing: 0) {
+                    self.welcomePage().frame(width: self.pageWidth)
+                    self.permissionsPage().frame(width: self.pageWidth)
+                }
+                .offset(x: CGFloat(-self.currentPage) * self.pageWidth)
+                .animation(
+                    .interactiveSpring(response: 0.5, dampingFraction: 0.86, blendDuration: 0.25),
+                    value: self.currentPage)
+                .frame(height: self.contentHeight, alignment: .top)
+                .clipped()
+            }
+            .frame(height: self.contentHeight)
+
+            self.navigationBar
+        }
+        .frame(width: self.pageWidth, height: 720)
+        .background(Color(NSColor.windowBackgroundColor))
+        .task {
+            await self.permissions.check()
+        }
+        .onAppear {
+            self.permissions.registerMonitoring()
+        }
+        .onDisappear {
+            self.permissions.unregisterMonitoring()
+        }
+    }
+
+    private func welcomePage() -> some View {
+        self.onboardingPage {
+            Text("Grant permissions")
+                .font(.largeTitle.weight(.semibold))
+            Text("Peekaboo needs Screen Recording + Accessibility to capture and automate your Mac.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 560)
+                .fixedSize(horizontal: false, vertical: true)
+
+            self.onboardingCard(spacing: 10, padding: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Color(nsColor: .systemOrange))
+                        .frame(width: 22)
+                        .padding(.top, 1)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Security notice")
+                            .font(.headline)
+                        Text(
+                            """
+                            Screen capture + accessibility access are powerful.
+                            Only grant them if you trust the workflows and prompts you run.
+                            """)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .frame(maxWidth: 520)
+        }
+    }
+
+    private func permissionsPage() -> some View {
+        self.onboardingPage {
+            Text("Permissions checklist")
+                .font(.largeTitle.weight(.semibold))
+            Text("Grant the required items once; you can revisit this anytime in Settings → Permissions.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 560)
+                .fixedSize(horizontal: false, vertical: true)
+
+            self.onboardingCard {
+                PermissionChecklistView(showOptional: true)
+
+                Button("Open Settings → Permissions") {
+                    SettingsOpener.openSettings(tab: .permissions)
+                }
+                .buttonStyle(.link)
+                .padding(.top, 6)
+            }
+        }
+    }
+
+    private var navigationBar: some View {
+        HStack(spacing: 20) {
+            ZStack(alignment: .leading) {
+                Button(action: {}, label: {
+                    Label("Back", systemImage: "chevron.left").labelStyle(.iconOnly)
+                })
+                .buttonStyle(.plain)
+                .opacity(0)
+                .disabled(true)
+
+                if self.currentPage > 0 {
+                    Button(action: self.handleBack, label: {
+                        Label("Back", systemImage: "chevron.left")
+                            .labelStyle(.iconOnly)
+                    })
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+                    .opacity(0.8)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                }
+            }
+            .frame(minWidth: 80, alignment: .leading)
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                ForEach(0..<self.pageCount, id: \.self) { index in
+                    Button {
+                        withAnimation { self.currentPage = index }
+                    } label: {
+                        Circle()
+                            .fill(index == self.currentPage ? Color.accentColor : Color.gray.opacity(0.3))
+                            .frame(width: 8, height: 8)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Spacer()
+
+            Button(action: self.handleNext) {
+                Text(self.buttonTitle)
+                    .frame(minWidth: 88)
+            }
+            .keyboardShortcut(.return)
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(.horizontal, 28)
+        .padding(.bottom, 24)
+        .frame(height: 60)
+    }
+
+    private func onboardingPage(@ViewBuilder _ content: () -> some View) -> some View {
+        VStack(spacing: 22) {
+            content()
+            Spacer()
+        }
+        .padding(.horizontal, 28)
+        .frame(width: self.pageWidth, alignment: .top)
+    }
+
+    private func onboardingCard(
+        spacing: CGFloat = 12,
+        padding: CGFloat = 16,
+        @ViewBuilder _ content: () -> some View) -> some View
+    {
+        VStack(alignment: .leading, spacing: spacing) {
+            content()
+        }
+        .padding(padding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 3))
+    }
+
+    private func handleBack() {
+        withAnimation {
+            self.currentPage = max(0, self.currentPage - 1)
+        }
+    }
+
+    private func handleNext() {
+        if self.currentPage < self.pageCount - 1 {
+            withAnimation { self.currentPage += 1 }
+        } else {
+            self.finish()
+        }
+    }
+
+    private func finish() {
+        UserDefaults.standard.set(true, forKey: permissionsOnboardingSeenKey)
+        UserDefaults.standard.set(currentPermissionsOnboardingVersion, forKey: permissionsOnboardingVersionKey)
+        PermissionsOnboardingController.shared.close()
+    }
+}

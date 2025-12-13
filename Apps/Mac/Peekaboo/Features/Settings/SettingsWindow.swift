@@ -6,30 +6,78 @@ import SwiftUI
 struct SettingsWindow: View {
     @Environment(PeekabooSettings.self) private var settings
     @Environment(Permissions.self) private var permissions
+    @State private var selectedTab: PeekabooSettingsTab = .general
+    @State private var monitoringPermissions = false
 
     var body: some View {
-        TabView {
+        TabView(selection: self.$selectedTab) {
             GeneralSettingsView()
                 .tabItem {
                     Label("General", systemImage: "gear")
                 }
+                .tag(PeekabooSettingsTab.general)
 
             AISettingsView()
                 .tabItem {
                     Label("AI", systemImage: "brain")
                 }
+                .tag(PeekabooSettingsTab.ai)
 
             VisualizerSettingsTabView()
                 .tabItem {
                     Label("Visualizer", systemImage: "sparkles")
                 }
+                .tag(PeekabooSettingsTab.visualizer)
 
             ShortcutSettingsView()
                 .tabItem {
                     Label("Shortcuts", systemImage: "keyboard")
                 }
+                .tag(PeekabooSettingsTab.shortcuts)
+
+            PermissionsSettingsView()
+                .tabItem {
+                    Label("Permissions", systemImage: "lock.shield")
+                }
+                .tag(PeekabooSettingsTab.permissions)
         }
         .frame(width: 550, height: 700)
+        .onReceive(NotificationCenter.default.publisher(for: .peekabooSelectSettingsTab)) { note in
+            if let tab = note.object as? PeekabooSettingsTab {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                    self.selectedTab = tab
+                }
+            }
+        }
+        .onAppear {
+            if let pending = SettingsTabRouter.consumePending() {
+                self.selectedTab = pending
+            }
+            self.updatePermissionMonitoring(for: self.selectedTab)
+        }
+        .onChange(of: self.selectedTab) { _, newValue in
+            self.updatePermissionMonitoring(for: newValue)
+        }
+        .onDisappear {
+            self.stopPermissionMonitoring()
+        }
+    }
+
+    private func updatePermissionMonitoring(for tab: PeekabooSettingsTab) {
+        let shouldMonitor = tab == .permissions
+        if shouldMonitor, !self.monitoringPermissions {
+            self.monitoringPermissions = true
+            self.permissions.registerMonitoring()
+        } else if !shouldMonitor, self.monitoringPermissions {
+            self.monitoringPermissions = false
+            self.permissions.unregisterMonitoring()
+        }
+    }
+
+    private func stopPermissionMonitoring() {
+        guard self.monitoringPermissions else { return }
+        self.monitoringPermissions = false
+        self.permissions.unregisterMonitoring()
     }
 }
 

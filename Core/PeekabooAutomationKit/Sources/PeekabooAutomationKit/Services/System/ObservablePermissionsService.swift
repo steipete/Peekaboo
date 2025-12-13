@@ -115,20 +115,20 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
 
     /// Request screen recording permission
     public func requestScreenRecording() throws {
-        // Request screen recording permission
-        try self.core.requireScreenRecordingPermission()
+        _ = self.core.requestScreenRecordingPermission(interactive: true)
+        self.checkPermissions()
     }
 
     /// Request accessibility permission
     public func requestAccessibility() throws {
-        // Request accessibility permission
-        try self.core.requireAccessibilityPermission()
+        _ = self.core.requestAccessibilityPermission(interactive: true)
+        self.checkPermissions()
     }
 
     /// Request AppleScript permission
     public func requestAppleScript() throws {
-        // Request AppleScript permission
-        try self.core.requireAppleScriptPermission()
+        _ = self.core.requestAppleScriptPermission(interactive: true)
+        self.checkPermissions()
     }
 
     /// Check if all permissions are granted

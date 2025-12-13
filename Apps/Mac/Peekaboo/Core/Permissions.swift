@@ -12,36 +12,30 @@ import PeekabooCore
 @Observable
 @MainActor
 final class Permissions {
-    private let permissionsService: ObservablePermissionsServiceProtocol
+    private let permissionsService: any ObservablePermissionsServiceProtocol
     private let logger = Logger(subsystem: "com.peekaboo.peekaboo", category: "Permissions")
 
-    var screenRecordingStatus: ObservablePermissionsService.PermissionState {
-        self.permissionsService.screenRecordingStatus
-    }
-
-    var accessibilityStatus: ObservablePermissionsService.PermissionState {
-        self.permissionsService.accessibilityStatus
-    }
-
-    var appleScriptStatus: ObservablePermissionsService.PermissionState {
-        self.permissionsService.appleScriptStatus
-    }
+    var screenRecordingStatus: ObservablePermissionsService.PermissionState = .notDetermined
+    var accessibilityStatus: ObservablePermissionsService.PermissionState = .notDetermined
+    var appleScriptStatus: ObservablePermissionsService.PermissionState = .notDetermined
 
     var hasAllPermissions: Bool {
-        self.permissionsService.hasAllPermissions
+        self.screenRecordingStatus == .authorized && self.accessibilityStatus == .authorized
     }
 
-    init(permissionsService: ObservablePermissionsServiceProtocol? = nil) {
+    private var monitorTimer: Timer?
+    private var isChecking = false
+    private var registrations = 0
+    private var lastCheck: Date?
+    private let minimumCheckInterval: TimeInterval = 0.5
+
+    init(permissionsService: (any ObservablePermissionsServiceProtocol)? = nil) {
         self.permissionsService = permissionsService ?? ObservablePermissionsService()
+        self.syncFromService()
     }
 
     func check() async {
-        self.logger.info("Checking all permissions...")
-        self.permissionsService.checkPermissions()
-        let description =
-            "Permission check complete - Accessibility: \(String(describing: self.accessibilityStatus)), " +
-            "Screen Recording: \(String(describing: self.screenRecordingStatus))"
-        self.logger.info("\(description, privacy: .public)")
+        self.check(force: true)
     }
 
     func requestScreenRecording() {
@@ -50,6 +44,7 @@ final class Permissions {
         } catch {
             self.logger.error("Failed to request screen recording permission: \(error)")
         }
+        self.syncFromService()
     }
 
     func requestAccessibility() {
@@ -58,6 +53,7 @@ final class Permissions {
         } catch {
             self.logger.error("Failed to request accessibility permission: \(error)")
         }
+        self.syncFromService()
     }
 
     func requestAppleScript() {
@@ -66,13 +62,69 @@ final class Permissions {
         } catch {
             self.logger.error("Failed to request AppleScript permission: \(error)")
         }
+        self.syncFromService()
     }
 
     func startMonitoring() {
-        self.permissionsService.startMonitoring(interval: 1.0)
+        self.registerMonitoring()
     }
 
     func stopMonitoring() {
-        self.permissionsService.stopMonitoring()
+        self.unregisterMonitoring()
+    }
+
+    func registerMonitoring() {
+        self.registrations += 1
+        if self.registrations == 1 {
+            self.startMonitoringTimer()
+        }
+    }
+
+    func unregisterMonitoring() {
+        guard self.registrations > 0 else { return }
+        self.registrations -= 1
+        if self.registrations == 0 {
+            self.stopMonitoringTimer()
+        }
+    }
+
+    private func startMonitoringTimer() {
+        self.check(force: true)
+
+        self.monitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                self.check(force: false)
+            }
+        }
+    }
+
+    private func stopMonitoringTimer() {
+        self.monitorTimer?.invalidate()
+        self.monitorTimer = nil
+        self.lastCheck = nil
+    }
+
+    private func syncFromService() {
+        self.screenRecordingStatus = self.permissionsService.screenRecordingStatus
+        self.accessibilityStatus = self.permissionsService.accessibilityStatus
+        self.appleScriptStatus = self.permissionsService.appleScriptStatus
+    }
+
+    private func check(force: Bool) {
+        if self.isChecking { return }
+
+        let now = Date()
+        if !force, let lastCheck, now.timeIntervalSince(lastCheck) < self.minimumCheckInterval {
+            return
+        }
+
+        self.isChecking = true
+        defer { self.isChecking = false }
+
+        self.logger.info("Checking all permissions...")
+        self.permissionsService.checkPermissions()
+        self.syncFromService()
+        self.lastCheck = Date()
     }
 }

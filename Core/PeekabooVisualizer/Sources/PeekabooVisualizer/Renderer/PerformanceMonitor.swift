@@ -11,11 +11,11 @@ import QuartzCore
 
 /// Monitors performance metrics for the visualizer system
 @MainActor
-final class PerformanceMonitor {
+public final class PerformanceMonitor {
     // MARK: - Properties
 
     /// Shared instance
-    static let shared = PerformanceMonitor()
+    public static let shared = PerformanceMonitor()
 
     /// Logger for performance metrics
     private let logger = Logger(subsystem: "boo.peekaboo.visualizer", category: "PerformanceMonitor")
@@ -40,7 +40,7 @@ final class PerformanceMonitor {
     // MARK: - Public Methods
 
     /// Start monitoring performance
-    func startMonitoring() {
+    public func startMonitoring() {
         // Use Timer on macOS instead of CADisplayLink
         self.frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -52,7 +52,7 @@ final class PerformanceMonitor {
     }
 
     /// Stop monitoring performance
-    func stopMonitoring() {
+    public func stopMonitoring() {
         self.frameTimer?.invalidate()
         self.frameTimer = nil
 
@@ -122,7 +122,7 @@ final class PerformanceMonitor {
     }
 
     /// Get performance report
-    func getPerformanceReport() async -> PerformanceReport {
+    public func getPerformanceReport() async -> PerformanceReport {
         let (usedMemory, totalMemory) = self.getMemoryUsage()
 
         // Calculate average animation duration
@@ -153,7 +153,7 @@ final class PerformanceMonitor {
     }
 
     /// Log performance report
-    func logPerformanceReport() async {
+    public func logPerformanceReport() async {
         let report = await self.getPerformanceReport()
 
         self.logger.info("""
@@ -239,14 +239,14 @@ final class AnimationTracker: @unchecked Sendable {
 // MARK: - PerformanceReport
 
 /// Performance report data
-struct PerformanceReport {
-    let currentFPS: Double
-    let averageFPS: Double
-    let memoryUsageMB: Double
-    let totalMemoryMB: Double
-    let activeAnimations: Int
-    let totalAnimations: Int
-    let peakConcurrentAnimations: Int
-    let averageAnimationDuration: TimeInterval
-    let slowestAnimations: [(type: String, duration: TimeInterval)]
+public struct PerformanceReport {
+    public let currentFPS: Double
+    public let averageFPS: Double
+    public let memoryUsageMB: Double
+    public let totalMemoryMB: Double
+    public let activeAnimations: Int
+    public let totalAnimations: Int
+    public let peakConcurrentAnimations: Int
+    public let averageAnimationDuration: TimeInterval
+    public let slowestAnimations: [(type: String, duration: TimeInterval)]
 }

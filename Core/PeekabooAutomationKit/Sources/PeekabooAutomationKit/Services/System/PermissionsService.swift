@@ -15,21 +15,39 @@ public final class PermissionsService {
 
     /// Check if Screen Recording permission is granted
     public func checkScreenRecordingPermission() -> Bool {
-        // Check if Screen Recording permission is granted
         self.logger.debug("Checking screen recording permission")
 
-        // Use CGWindowListCreateImage which doesn't require async
-        // This is the traditional way to check screen recording permission
-        let windowList = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID)
-        let hasPermission = windowList != nil && CFArrayGetCount(windowList) > 0
+        if #available(macOS 10.15, *) {
+            let hasPermission = CGPreflightScreenCaptureAccess()
+            self.logger.info("Screen recording permission: \(hasPermission)")
+            return hasPermission
+        }
 
-        self.logger.info("Screen recording permission: \(hasPermission)")
-        return hasPermission
+        self.logger.info("Screen recording permission: true (pre-10.15 fallback)")
+        return true
+    }
+
+    @discardableResult
+    public func requestScreenRecordingPermission(interactive: Bool = true) -> Bool {
+        self.logger.debug("Requesting screen recording permission")
+
+        guard interactive else { return self.checkScreenRecordingPermission() }
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+            ProcessInfo.processInfo.arguments.contains("--test-mode") ||
+            NSClassFromString("XCTest") != nil
+        {
+            return self.checkScreenRecordingPermission()
+        }
+
+        if #available(macOS 10.15, *) {
+            _ = CGRequestScreenCaptureAccess()
+        }
+
+        return self.checkScreenRecordingPermission()
     }
 
     /// Check if Accessibility permission is granted
     public func checkAccessibilityPermission() -> Bool {
-        // Check if Accessibility permission is granted
         self.logger.debug("Checking accessibility permission")
 
         // Check if we have accessibility permission through AXorcist helper
@@ -39,9 +57,18 @@ public final class PermissionsService {
         return hasPermission
     }
 
+    @discardableResult
+    public func requestAccessibilityPermission(interactive: Bool = true) -> Bool {
+        self.logger.debug("Requesting accessibility permission")
+
+        guard interactive else { return self.checkAccessibilityPermission() }
+        let hasPermission = AXPermissionHelpers.askForAccessibilityIfNeeded()
+        self.logger.info("Accessibility permission (after request): \(hasPermission)")
+        return hasPermission
+    }
+
     /// Check if AppleScript permission is granted
     public func checkAppleScriptPermission() -> Bool {
-        // Check if AppleScript permission is granted
         self.logger.debug("Checking AppleScript permission")
 
         // Check if we have permission to send AppleEvents
@@ -61,12 +88,45 @@ public final class PermissionsService {
             &addressDesc,
             typeWildCard,
             typeWildCard,
-            true, // async notification
-        )
+            false)
 
         let hasPermission = permissionStatus == noErr
         self.logger.info("AppleScript permission status: \(permissionStatus), has permission: \(hasPermission)")
         return hasPermission
+    }
+
+    @discardableResult
+    public func requestAppleScriptPermission(interactive: Bool = true) -> Bool {
+        self.logger.debug("Requesting AppleScript permission")
+
+        guard interactive else { return self.checkAppleScriptPermission() }
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+            ProcessInfo.processInfo.arguments.contains("--test-mode") ||
+            NSClassFromString("XCTest") != nil
+        {
+            return self.checkAppleScriptPermission()
+        }
+
+        let targetBundleID = "com.apple.systemevents"
+
+        guard var addressDesc = NSAppleEventDescriptor(bundleIdentifier: targetBundleID).aeDesc?.pointee else {
+            self.logger.warning("Failed to create AppleEvent descriptor")
+            return false
+        }
+
+        defer {
+            AEDisposeDesc(&addressDesc)
+        }
+
+        let permissionStatus = AEDeterminePermissionToAutomateTarget(
+            &addressDesc,
+            typeWildCard,
+            typeWildCard,
+            true)
+
+        let hasPermission = permissionStatus == noErr
+        self.logger.info("AppleScript permission request status: \(permissionStatus), has permission: \(hasPermission)")
+        return self.checkAppleScriptPermission()
     }
 
     /// Require Screen Recording permission, throwing if not granted
@@ -131,13 +191,18 @@ public struct PermissionsStatus: Sendable {
     }
 
     public var allGranted: Bool {
-        self.screenRecording && self.accessibility && self.appleScript
+        self.screenRecording && self.accessibility
     }
 
     public var missingPermissions: [String] {
         var missing: [String] = []
         if !self.screenRecording { missing.append("Screen Recording") }
         if !self.accessibility { missing.append("Accessibility") }
+        return missing
+    }
+
+    public var missingOptionalPermissions: [String] {
+        var missing: [String] = []
         if !self.appleScript { missing.append("AppleScript") }
         return missing
     }
