@@ -233,6 +233,18 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
 
         let appInfo = try await self.resolveApplication(appName, services: self.services)
 
+        // Prefer the window listing service path so tests (and window-server based flows) do not
+        // require a real NSRunningApplication or accessibility introspection to locate the window.
+        do {
+            let windowList = try await self.services.applications.listWindows(for: appInfo.name, timeout: nil)
+            if let window = windowList.data.windows.first(where: { $0.isMainWindow })
+                ?? windowList.data.windows.first {
+                return CGPoint(x: window.bounds.midX, y: window.bounds.midY)
+            }
+        } catch {
+            // Fall back to AX-based window discovery below.
+        }
+
         return try await Task { @MainActor in
             guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
                 throw PeekabooError.appNotFound(appName)

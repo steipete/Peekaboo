@@ -327,20 +327,25 @@ struct MoveWindowSubcommand: ApplicationResolvable, ErrorHandlingCommand, Output
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
+    mutating func validate() throws {
+        _ = try self.resolveApplicationIdentifier()
+
+        guard self.to != nil || self.toCurrent else {
+            throw ValidationError("Must specify either --to or --to-current")
+        }
+        guard !(self.to != nil && self.toCurrent) else {
+            throw ValidationError("Cannot specify both --to and --to-current")
+        }
+    }
+
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
+            try self.validate()
             let appIdentifier = try self.resolveApplicationIdentifier()
-
-            guard self.to != nil || self.toCurrent else {
-                throw ValidationError("Must specify either --to or --to-current")
-            }
-            guard !(self.to != nil && self.toCurrent) else {
-                throw ValidationError("Cannot specify both --to and --to-current")
-            }
 
             var windowOptions = WindowIdentificationOptions()
             windowOptions.app = appIdentifier

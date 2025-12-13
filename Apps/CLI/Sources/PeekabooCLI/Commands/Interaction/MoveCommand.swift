@@ -228,17 +228,18 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     ) -> MovementParameters {
         switch profileSelection {
         case .linear:
+            let wantsSmooth = self.smooth || (self.duration ?? 0) > 0
             let resolvedDuration: Int = if let customDuration = self.duration {
                 customDuration
             } else {
-                self.smooth ? 500 : 0
+                wantsSmooth ? 500 : 0
             }
-            let resolvedSteps = self.smooth ? max(self.steps, 1) : 1
+            let resolvedSteps = wantsSmooth ? max(self.steps, 1) : 1
             return MovementParameters(
                 profile: .linear,
                 duration: resolvedDuration,
                 steps: resolvedSteps,
-                smooth: self.smooth,
+                smooth: wantsSmooth,
                 profileName: profileSelection.rawValue
             )
         case .human:

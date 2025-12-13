@@ -38,7 +38,7 @@ struct MenuCommandTests {
     @Test("Menu command has expected subcommands")
     func menuSubcommands() {
         let subcommands = MenuCommand.commandDescription.subcommands
-        #expect(subcommands.count == 3)
+        #expect(subcommands.count == 4)
 
         var names: [String] = [] // Key-path map here trips SILGen; keep loop (docs/silgen-crash-debug.md).
         names.reserveCapacity(subcommands.count)
@@ -47,8 +47,9 @@ struct MenuCommandTests {
             names.append(name)
         }
         #expect(names.contains("click"))
-        #expect(names.contains("click-system"))
+        #expect(names.contains("click-extra"))
         #expect(names.contains("list"))
+        #expect(names.contains("list-all"))
     }
 
     @Test("Menu click command help")
@@ -65,14 +66,12 @@ struct MenuCommandTests {
     @Test("Menu click requires app and path/item")
     func menuClickValidation() async throws {
         // Test missing app
-        await #expect(throws: (any Error).self) {
-            _ = try await self.runMenuCommand(["menu", "click", "--path", "File > New"])
-        }
+        let missingApp = try await self.runMenuCommand(["menu", "click", "--path", "File > New"])
+        #expect(missingApp.exitStatus != 0)
 
         // Test missing path/item
-        await #expect(throws: (any Error).self) {
-            _ = try await self.runMenuCommand(["menu", "click", "--app", "Finder"])
-        }
+        let missingPath = try await self.runMenuCommand(["menu", "click", "--app", "Finder"])
+        #expect(missingPath.exitStatus != 0)
     }
 
     @Test("Menu path parsing")
@@ -88,12 +87,12 @@ struct MenuCommandTests {
         #expect(components2 == ["Window", "Bring All to Front"])
     }
 
-    @Test("Menu click-system command help")
+    @Test("Menu click-extra command help")
     func menuSystemHelp() async throws {
-        let result = try await self.runMenuCommand(["menu", "click-system", "--help"])
+        let result = try await self.runMenuCommand(["menu", "click-extra", "--help"])
         #expect(result.exitStatus == 0)
         let output = self.output(from: result)
-        #expect(output.contains("Click system menu items"))
+        #expect(output.contains("Click a system menu extra"))
         #expect(output.contains("--title"))
         #expect(output.contains("--item"))
     }

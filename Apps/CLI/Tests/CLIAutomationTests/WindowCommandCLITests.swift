@@ -198,13 +198,13 @@ struct WindowCommandLocalTests {
 
         if focusResponse.success {
             // Try moving the window
-                let moveOutput = try await runBuiltCommand([
-                    "window", "move",
-                    "--app", "TextEdit",
-                    "--x", "200",
-                    "--y", "200",
-                    "--json",
-                ])
+            let moveOutput = try await runBuiltCommand([
+                "window", "move",
+                "--app", "TextEdit",
+                "--x", "200",
+                "--y", "200",
+                "--json",
+            ])
 
             let moveResponse = try JSONDecoder().decode(JSONResponse.self, from: Data(moveOutput.utf8))
 

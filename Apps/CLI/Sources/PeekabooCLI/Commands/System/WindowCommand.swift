@@ -128,6 +128,16 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
     }
 }
 
+extension WindowIdentificationOptions {
+    @MainActor
+    fileprivate func resolveApplicationInfo(
+        services: any PeekabooServiceProviding
+    ) async throws -> ServiceApplicationInfo {
+        let identifier = try self.resolveApplicationIdentifier()
+        return try await services.applications.findApplication(identifier: identifier)
+    }
+}
+
 // MARK: - Helper Functions
 
 private func createWindowActionResult(
@@ -205,6 +215,8 @@ extension WindowCommand {
             do {
                 try self.windowOptions.validate()
                 let target = self.windowOptions.createTarget()
+                let appInfo = try await self.windowOptions.resolveApplicationInfo(services: self.services)
+                let appName = appInfo.name
 
                 // Get window info before action
                 let windows = try await WindowServiceBridge.listWindows(
@@ -212,7 +224,9 @@ extension WindowCommand {
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
-                let appName = self.windowOptions.app ?? "Unknown"
+                guard windowInfo != nil else {
+                    throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
+                }
 
                 // Perform the action
                 try await WindowServiceBridge.closeWindow(windows: self.services.windows, target: target)
@@ -267,6 +281,8 @@ extension WindowCommand {
             do {
                 try self.windowOptions.validate()
                 let target = self.windowOptions.createTarget()
+                let appInfo = try await self.windowOptions.resolveApplicationInfo(services: self.services)
+                let appName = appInfo.name
 
                 // Get window info before action
                 let windows = try await WindowServiceBridge.listWindows(
@@ -274,7 +290,9 @@ extension WindowCommand {
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
-                let appName = self.windowOptions.app ?? "Unknown"
+                guard windowInfo != nil else {
+                    throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
+                }
 
                 // Perform the action
                 try await WindowServiceBridge.minimizeWindow(windows: self.services.windows, target: target)
@@ -328,6 +346,8 @@ extension WindowCommand {
             do {
                 try self.windowOptions.validate()
                 let target = self.windowOptions.createTarget()
+                let appInfo = try await self.windowOptions.resolveApplicationInfo(services: self.services)
+                let appName = appInfo.name
 
                 // Get window info before action
                 let windows = try await WindowServiceBridge.listWindows(
@@ -335,7 +355,9 @@ extension WindowCommand {
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
-                let appName = self.windowOptions.app ?? "Unknown"
+                guard windowInfo != nil else {
+                    throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
+                }
 
                 // Perform the action
                 try await WindowServiceBridge.maximizeWindow(windows: self.services.windows, target: target)
@@ -395,6 +417,8 @@ extension WindowCommand {
                 self.logger.debug("Window options validated")
                 let target = self.windowOptions.createTarget()
                 self.logger.debug("Target created: \(target)")
+                let appInfo = try await self.windowOptions.resolveApplicationInfo(services: self.services)
+                let appName = appInfo.name
 
                 // Get window info before action
                 let windows = try await WindowServiceBridge.listWindows(
@@ -403,7 +427,6 @@ extension WindowCommand {
                 )
                 self.logger.debug("Found \(windows.count) windows")
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
-                let appName = self.windowOptions.app ?? "Unknown"
 
                 // Check if we found any windows
                 guard !windows.isEmpty else {
@@ -414,7 +437,7 @@ extension WindowCommand {
                 if let windowID = windowInfo?.windowID {
                     try await ensureFocused(
                         windowID: CGWindowID(windowID),
-                        applicationName: self.windowOptions.app,
+                        applicationName: appName,
                         windowTitle: self.windowOptions.windowTitle,
                         options: self.focusOptions.asFocusOptions,
                         services: self.services
@@ -492,6 +515,8 @@ extension WindowCommand {
             do {
                 try self.windowOptions.validate()
                 let target = self.windowOptions.createTarget()
+                let appInfo = try await self.windowOptions.resolveApplicationInfo(services: self.services)
+                let appName = appInfo.name
 
                 // Get window info
                 let windows = try await WindowServiceBridge.listWindows(
@@ -499,7 +524,9 @@ extension WindowCommand {
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
-                let appName = self.windowOptions.app ?? "Unknown"
+                guard windowInfo != nil else {
+                    throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
+                }
 
                 // Move the window
                 let newOrigin = CGPoint(x: x, y: y)
@@ -586,6 +613,8 @@ extension WindowCommand {
             do {
                 try self.windowOptions.validate()
                 let target = self.windowOptions.createTarget()
+                let appInfo = try await self.windowOptions.resolveApplicationInfo(services: self.services)
+                let appName = appInfo.name
 
                 // Get window info
                 let windows = try await WindowServiceBridge.listWindows(
@@ -593,7 +622,9 @@ extension WindowCommand {
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
-                let appName = self.windowOptions.app ?? "Unknown"
+                guard windowInfo != nil else {
+                    throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
+                }
 
                 // Resize the window
                 let newSize = CGSize(width: width, height: height)
@@ -670,6 +701,8 @@ extension WindowCommand {
             do {
                 try self.windowOptions.validate()
                 let target = self.windowOptions.createTarget()
+                let appInfo = try await self.windowOptions.resolveApplicationInfo(services: self.services)
+                let appName = appInfo.name
 
                 // Get window info
                 let windows = try await WindowServiceBridge.listWindows(
@@ -677,7 +710,9 @@ extension WindowCommand {
                     target: self.windowOptions.toWindowTarget()
                 )
                 let windowInfo = self.windowOptions.selectWindow(from: windows)
-                let appName = self.windowOptions.app ?? "Unknown"
+                guard windowInfo != nil else {
+                    throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
+                }
 
                 // Set bounds
                 let newBounds = CGRect(x: x, y: y, width: width, height: height)

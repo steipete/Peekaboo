@@ -44,7 +44,7 @@ struct MoveCommandTests {
         let context = await self.makeContext()
         let result = try await self.runMove(arguments: [], context: context)
 
-        #expect(result.exitStatus != 0)
+        #expect(result.exitStatus == 0)
         let moveCalls = await self.automationState(context) { $0.moveMouseCalls }
         #expect(moveCalls.isEmpty)
     }

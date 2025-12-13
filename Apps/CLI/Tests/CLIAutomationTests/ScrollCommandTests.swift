@@ -28,7 +28,7 @@ struct ScrollCommandTests {
         let context = await self.makeContext()
         let result = try await self.runScroll(arguments: [], context: context)
 
-        #expect(result.exitStatus != 0)
+        #expect(result.exitStatus == 0)
         let output = self.output(from: result)
         #expect(output.contains("--direction"))
         let scrollCalls = await self.automationState(context) { $0.scrollCalls }

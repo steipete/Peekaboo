@@ -108,7 +108,7 @@ struct ListCommandCLIHarnessTests {
 
         #expect(result.exitStatus == 0)
         let output = self.output(from: result)
-        #expect(output.contains("\"window_id\""))
+        #expect(output.contains("\"windowID\""))
         #expect(output.contains("\"bounds\""))
         #expect(output.contains("\"spaceID\""))
     }

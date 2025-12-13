@@ -79,18 +79,16 @@ struct SpaceCommandReadTests {
     @Test("space move-window requires app parameter")
     func spaceMoveWindowRequiresApp() {
         #expect(throws: (any Error).self) {
-            try CLIOutputCapture.suppressStderr {
-                _ = try MoveWindowSubcommand.parse(["--to", "2"])
-            }
+            var command = try MoveWindowSubcommand.parse(["--to", "2"])
+            try command.validate()
         }
     }
 
     @Test("space move-window requires destination")
     func spaceMoveWindowRequiresDestination() {
         #expect(throws: (any Error).self) {
-            try CLIOutputCapture.suppressStderr {
-                _ = try MoveWindowSubcommand.parse(["--app", "Finder"])
-            }
+            var command = try MoveWindowSubcommand.parse(["--app", "Finder"])
+            try command.validate()
         }
     }
 

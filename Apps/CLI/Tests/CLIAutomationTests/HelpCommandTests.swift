@@ -61,8 +61,14 @@ struct HelpCommandTests {
 
             // Each subcommand help should contain a usage card + global flags.
             #expect(output.contains("Usage"), "Help for \(subcommand) should contain Usage")
-            #expect(output.contains("polter peekaboo \(subcommand)"), "Help for \(subcommand) should contain usage line")
-            #expect(output.contains("Global Runtime Flags"), "Help for \(subcommand) should mention global runtime flags")
+            #expect(
+                output.contains("polter peekaboo \(subcommand)"),
+                "Help for \(subcommand) should contain usage line"
+            )
+            #expect(
+                output.contains("Global Runtime Flags"),
+                "Help for \(subcommand) should mention global runtime flags"
+            )
             #expect(output.contains("--json"), "Help for \(subcommand) should include JSON flag")
 
             // Should not show agent execution output

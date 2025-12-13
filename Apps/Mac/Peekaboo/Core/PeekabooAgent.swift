@@ -204,7 +204,7 @@ final class PeekabooAgent {
         do {
             try Task.checkCancellation()
             let agent = try self.peekabooAgent(from: agentService)
-            let session = try await self.ensureSession()
+            let session = self.ensureSession()
             self.logUserMessage(content, in: session)
             let delegate = self.makeEventDelegate()
             let result = try await self.runAgentTask(
@@ -213,7 +213,7 @@ final class PeekabooAgent {
                 agent: agent,
                 eventDelegate: delegate)
             try Task.checkCancellation()
-            try await self.persistResult(result, for: session, taskDescription: taskDescription)
+            await self.persistResult(result, for: session, taskDescription: taskDescription)
         } catch {
             try self.handleTaskError(error, taskDescription: taskDescription)
             throw error

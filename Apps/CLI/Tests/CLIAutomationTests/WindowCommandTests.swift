@@ -82,11 +82,41 @@ struct WindowCommandTests {
 
     @Test
     func windowListCommand() async throws {
-        // Test that window list delegates to list windows command
-        let output = try await runPeekabooCommand(["window", "list", "--app", "Finder", "--json"])
+        // Test that window list delegates to list windows command (via stubbed services)
+        let appName = "Finder"
+        let context = await self.makeWindowContext(
+            appInfo: ServiceApplicationInfo(
+                processIdentifier: 1234,
+                bundleIdentifier: "com.apple.finder",
+                name: appName
+            ),
+            windows: [
+                appName: [
+                    ServiceWindowInfo(
+                        windowID: 1,
+                        title: "Finder Window",
+                        bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
+                        isMainWindow: true,
+                        index: 0
+                    ),
+                ],
+            ]
+        )
 
-        let json = try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any]
-        #expect(json?["success"] != nil)
+        let result = try await self.runWindowCommand([
+            "window", "list",
+            "--app", appName,
+            "--json",
+        ], context: context)
+
+        #expect(result.exitStatus == 0)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        let response = try JSONDecoder().decode(
+            CodableJSONResponse<WindowListData>.self,
+            from: Data(output.utf8)
+        )
+        #expect(response.success == true)
+        #expect(response.data.windows.isEmpty == false)
     }
 
     @Test
