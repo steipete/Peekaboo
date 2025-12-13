@@ -68,7 +68,11 @@ func sanitizedMenuText(_ value: String?) -> String? {
     return candidateNormalized == targetNormalized
 }
 
-@_spi(Testing) public func titlesMatchPartial(candidate: String?, target: String, normalizedTarget: String? = nil) -> Bool {
+@_spi(Testing) public func titlesMatchPartial(
+    candidate: String?,
+    target: String,
+    normalizedTarget: String? = nil) -> Bool
+{
     guard let candidateNormalized = normalizedMenuTitle(candidate) else { return false }
     let targetNormalized = normalizedTarget ?? normalizedMenuTitle(target)
     guard let targetNormalized else { return false }

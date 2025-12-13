@@ -5,7 +5,6 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import PeekabooCore
 import PeekabooFoundation
 import SwiftUI
 

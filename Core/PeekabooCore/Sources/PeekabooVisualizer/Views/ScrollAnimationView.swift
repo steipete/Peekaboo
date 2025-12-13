@@ -5,7 +5,6 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import PeekabooCore
 import PeekabooFoundation
 import SwiftUI
 
@@ -14,7 +13,7 @@ struct ScrollAnimationView: View {
     // MARK: - Properties
 
     /// Scroll direction
-    let direction: PeekabooFoundation.ScrollDirection
+    let direction: ScrollDirection
 
     /// Number of scroll units
     let amount: Int

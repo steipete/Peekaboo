@@ -49,13 +49,19 @@ extension AutomationFeedbackClient {
     public func connect() {}
 
     public func showClickFeedback(at _: CGPoint, type _: ClickType) async -> Bool { false }
-    public func showTypingFeedback(keys _: [String], duration _: TimeInterval, cadence _: TypingCadence) async -> Bool { false }
+    public func showTypingFeedback(
+        keys _: [String],
+        duration _: TimeInterval,
+        cadence _: TypingCadence) async -> Bool { false }
     public func showScrollFeedback(at _: CGPoint, direction _: ScrollDirection, amount _: Int) async -> Bool { false }
     public func showHotkeyDisplay(keys _: [String], duration _: TimeInterval) async -> Bool { false }
     public func showSwipeGesture(from _: CGPoint, to _: CGPoint, duration _: TimeInterval) async -> Bool { false }
     public func showMouseMovement(from _: CGPoint, to _: CGPoint, duration _: TimeInterval) async -> Bool { false }
 
-    public func showWindowOperation(_: WindowOperationKind, windowRect _: CGRect, duration _: TimeInterval) async -> Bool { false }
+    public func showWindowOperation(
+        _: WindowOperationKind,
+        windowRect _: CGRect,
+        duration _: TimeInterval) async -> Bool { false }
 
     public func showDialogInteraction(
         element _: DialogElementType,
@@ -79,4 +85,3 @@ extension AutomationFeedbackClient {
 public final class NoopAutomationFeedbackClient: AutomationFeedbackClient {
     public init() {}
 }
-

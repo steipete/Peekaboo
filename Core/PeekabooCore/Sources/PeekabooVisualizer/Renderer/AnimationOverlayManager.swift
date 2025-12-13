@@ -12,7 +12,7 @@ import SwiftUI
 /// Manages overlay windows for animation effects
 @MainActor
 final class AnimationOverlayManager {
-    private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "AnimationOverlayManager")
+    private let logger = Logger(subsystem: "boo.peekaboo.visualizer", category: "AnimationOverlayManager")
     private var overlayWindows: [NSWindow] = []
 
     /// Shows an animation view in an overlay window

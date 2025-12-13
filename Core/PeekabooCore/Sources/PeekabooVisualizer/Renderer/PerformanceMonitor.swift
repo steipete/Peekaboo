@@ -18,7 +18,7 @@ final class PerformanceMonitor {
     static let shared = PerformanceMonitor()
 
     /// Logger for performance metrics
-    private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "PerformanceMonitor")
+    private let logger = Logger(subsystem: "boo.peekaboo.visualizer", category: "PerformanceMonitor")
 
     /// Performance metrics storage
     private var metrics = Metrics()

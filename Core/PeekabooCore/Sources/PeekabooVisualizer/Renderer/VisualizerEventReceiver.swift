@@ -5,8 +5,6 @@
 
 @preconcurrency import Foundation
 import os
-import PeekabooAutomation
-import PeekabooCore
 import PeekabooFoundation
 import PeekabooProtocols
 
@@ -21,13 +19,13 @@ private func visualizerDebugLog(_ message: @autoclosure () -> String) {}
 #endif
 
 @MainActor
-final class VisualizerEventReceiver {
-    private let logger = os.Logger(subsystem: "boo.peekaboo.mac", category: "VisualizerEventReceiver")
+public final class VisualizerEventReceiver {
+    private let logger = os.Logger(subsystem: "boo.peekaboo.visualizer", category: "VisualizerEventReceiver")
     private let coordinator: VisualizerCoordinator
     private var observer: (any NSObjectProtocol)?
     private var cleanupTask: Task<Void, Never>?
 
-    init(visualizerCoordinator: VisualizerCoordinator) {
+    public init(visualizerCoordinator: VisualizerCoordinator) {
         self.coordinator = visualizerCoordinator
         self.observer = DistributedNotificationCenter.default().addObserver(
             forName: .visualizerEventDispatched,
@@ -133,7 +131,7 @@ final class VisualizerEventReceiver {
         case let .annotatedScreenshot(imageData, elements, windowBounds, duration):
             await self.coordinator.showAnnotatedScreenshot(
                 imageData: imageData,
-                elements: self.convertDetectedElements(elements),
+                elements: elements,
                 windowBounds: windowBounds,
                 duration: duration)
         }
@@ -147,17 +145,5 @@ final class VisualizerEventReceiver {
         descriptor.split(separator: "|", maxSplits: 1).first.flatMap { UUID(uuidString: String($0)) }
     }
 
-    private func convertDetectedElements(
-        _ elements: [PeekabooProtocols.DetectedElement]) -> [PeekabooAutomation.DetectedElement]
-    {
-        elements.map { element in
-            PeekabooAutomation.DetectedElement(
-                id: element.id,
-                type: element.type,
-                label: element.label,
-                value: element.value,
-                bounds: element.bounds,
-                isEnabled: element.isEnabled)
-        }
-    }
+    // DetectedElement is already part of the VisualizerEvent payload contract (PeekabooProtocols).
 }

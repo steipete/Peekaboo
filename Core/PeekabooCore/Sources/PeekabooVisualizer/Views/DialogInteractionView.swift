@@ -1,4 +1,3 @@
-import PeekabooCore
 import PeekabooFoundation
 import SwiftUI
 

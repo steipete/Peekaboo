@@ -5,11 +5,7 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import PeekabooCore
 import SwiftUI
-
-/// Use the shared PeekabooCore definition so payloads match the CLI.
-typealias SpaceDirection = PeekabooCore.SpaceDirection
 
 /// Animated space (virtual desktop) transition visualization
 struct SpaceTransitionView: View {

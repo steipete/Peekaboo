@@ -5,11 +5,7 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import PeekabooCore
 import SwiftUI
-
-/// Reuse PeekabooCore’s definition so animation payloads match the CLI.
-typealias WindowOperation = PeekabooCore.WindowOperation
 
 /// Animated window operation visualization (close, minimize, maximize, move, resize)
 struct WindowOperationView: View {

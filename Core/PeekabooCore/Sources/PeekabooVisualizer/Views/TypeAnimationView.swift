@@ -251,7 +251,7 @@ struct TypeAnimationView: View {
         switch cadence {
         case let .human(wordsPerMinute):
             return max(0.3, min(3.0, Double(wordsPerMinute) / baselineWPM))
-        case let .fixed(milliseconds):
+        case .fixed:
             let wpm = self.resolveWordsPerMinute(for: cadence)
             guard wpm > 0 else { return fallback }
             return max(0.3, min(3.0, Double(wpm) / baselineWPM))

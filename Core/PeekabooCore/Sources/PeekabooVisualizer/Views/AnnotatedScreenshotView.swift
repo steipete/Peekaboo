@@ -5,8 +5,9 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import PeekabooCore
+import Foundation
 import PeekabooFoundation
+import PeekabooProtocols
 import SwiftUI
 
 /// A view that displays live UI element annotations as an overlay
@@ -186,19 +187,15 @@ struct AnnotatedScreenshotView: View {
         DetectedElement(
             id: "B1",
             type: .button,
-            label: "Submit",
             bounds: CGRect(x: 100, y: 100, width: 80, height: 30),
-            isEnabled: true,
-            isSelected: nil,
-            attributes: [:]),
+            label: "Submit",
+            isEnabled: true),
         DetectedElement(
             id: "T1",
             type: .textField,
-            label: "Email",
             bounds: CGRect(x: 100, y: 200, width: 200, height: 30),
-            isEnabled: true,
-            isSelected: nil,
-            attributes: [:]),
+            label: "Email",
+            isEnabled: true),
     ]
 
     // Use a placeholder image

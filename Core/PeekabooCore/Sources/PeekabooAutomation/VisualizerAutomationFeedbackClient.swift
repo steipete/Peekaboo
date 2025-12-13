@@ -40,7 +40,11 @@ public final class VisualizerAutomationFeedbackClient: AutomationFeedbackClient 
         await self.client.showMouseMovement(from: from, to: to, duration: duration)
     }
 
-    public func showWindowOperation(_ kind: WindowOperationKind, windowRect: CGRect, duration: TimeInterval) async -> Bool {
+    public func showWindowOperation(
+        _ kind: WindowOperationKind,
+        windowRect: CGRect,
+        duration: TimeInterval) async -> Bool
+    {
         let op: WindowOperation = switch kind {
         case .close: .close
         case .minimize: .minimize

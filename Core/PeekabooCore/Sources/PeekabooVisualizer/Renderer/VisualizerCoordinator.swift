@@ -5,27 +5,24 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import AXorcist
-import Combine
 import CoreGraphics
 import Foundation
 import IOKit.ps
 import Observation
 import os
-import PeekabooCore
 import PeekabooFoundation
-import PeekabooUICore
+import PeekabooProtocols
 import SwiftUI
 
-/// Coordinates all visual feedback animations for the Peekaboo app
+/// Coordinates all visual feedback animations for a host app.
 /// This follows modern SwiftUI patterns and focuses on simplicity
 @MainActor
 @Observable
-final class VisualizerCoordinator {
+public final class VisualizerCoordinator {
     // MARK: - Properties
 
     /// Logger for debugging
-    private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "VisualizerCoordinator")
+    private let logger = Logger(subsystem: "boo.peekaboo.visualizer", category: "VisualizerCoordinator")
 
     /// Overlay manager for displaying animations
     private let overlayManager = AnimationOverlayManager()
@@ -33,10 +30,11 @@ final class VisualizerCoordinator {
     /// Optimized animation queue with batching and priorities
     private let animationQueue = OptimizedAnimationQueue()
     private static let animationSlowdownFactor: Double = 3.0
+    private static let defaultVisualizerAnimationSpeed: Double = 1.0
     private var previewDurationOverride: TimeInterval?
 
     /// Settings reference
-    private weak var settings: PeekabooSettings?
+    private weak var settings: (any VisualizerSettingsProviding)?
 
     private enum AnimationBaseline {
         static let screenshotFlash: TimeInterval = 0.35
@@ -57,7 +55,7 @@ final class VisualizerCoordinator {
     }
 
     private var animationSpeedScale: Double {
-        max(0.1, min(2.0, self.settings?.visualizerAnimationSpeed ?? PeekabooSettings.defaultVisualizerAnimationSpeed))
+        max(0.1, min(2.0, self.settings?.visualizerAnimationSpeed ?? Self.defaultVisualizerAnimationSpeed))
     }
 
     private var durationScaledAnimationSpeed: Double {
@@ -79,7 +77,7 @@ final class VisualizerCoordinator {
 
     // MARK: - Initialization
 
-    init() {
+    public init() {
         // Overlay manager is created internally
     }
 
@@ -102,7 +100,7 @@ final class VisualizerCoordinator {
     }
 
     /// Run a preview with capped animation duration (used by Settings play buttons).
-    func runPreview<T>(_ body: () async -> T) async -> T {
+    public func runPreview<T>(_ body: () async -> T) async -> T {
         self.previewDurationOverride = 1.0
         defer { self.previewDurationOverride = nil }
         return await body()
@@ -110,14 +108,14 @@ final class VisualizerCoordinator {
 
     // MARK: - Settings
 
-    /// Connect to PeekabooSettings
-    func connectSettings(_ settings: PeekabooSettings) {
+    /// Connect to a host settings source.
+    public func connectSettings(_ settings: any VisualizerSettingsProviding) {
         self.settings = settings
         self.logger.info("Visualizer connected to settings")
     }
 
     /// Check if visualizer is enabled
-    func isEnabled() -> Bool {
+    public func isEnabled() -> Bool {
         self.settings?.visualizerEnabled ?? true
     }
 
@@ -155,7 +153,7 @@ final class VisualizerCoordinator {
 @available(macOS 14.0, *)
 @MainActor
 extension VisualizerCoordinator {
-    func showScreenshotFlash(in rect: CGRect) async -> Bool {
+    public func showScreenshotFlash(in rect: CGRect) async -> Bool {
         self.logger.info("📸 Visualizer: Showing screenshot flash for rect: \(String(describing: rect))")
 
         self.screenshotCount += 1
@@ -167,7 +165,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showWatchCapture(in rect: CGRect) async -> Bool {
+    public func showWatchCapture(in rect: CGRect) async -> Bool {
         guard self.settings?.visualizerEnabled ?? true,
               self.settings?.watchCaptureHUDEnabled ?? true
         else {
@@ -196,7 +194,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showClickFeedback(at point: CGPoint, type: PeekabooFoundation.ClickType) async -> Bool {
+    public func showClickFeedback(at point: CGPoint, type: ClickType) async -> Bool {
         self.logger.info("🖱️ Visualizer: Showing click feedback at \(String(describing: point)), type: \(type)")
 
         return await self.animationQueue.enqueue(priority: .high) {
@@ -204,7 +202,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showTypingFeedback(keys: [String], duration: TimeInterval, cadence: TypingCadence?) async -> Bool {
+    public func showTypingFeedback(keys: [String], duration: TimeInterval, cadence: TypingCadence?) async -> Bool {
         self.logger.info("⌨️ Visualizer: Showing typing feedback for \(keys.count) keys: \(keys.joined())")
 
         return await self.animationQueue.enqueue(priority: .normal) {
@@ -212,9 +210,9 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showScrollFeedback(
+    public func showScrollFeedback(
         at point: CGPoint,
-        direction: PeekabooFoundation.ScrollDirection,
+        direction: ScrollDirection,
         amount: Int) async -> Bool
     {
         let message = [
@@ -228,7 +226,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showMouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
+    public func showMouseMovement(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
         let message = [
             "🐭 Visualizer: Showing mouse movement from \(String(describing: from))",
             "to \(String(describing: to)), duration: \(duration)s",
@@ -240,7 +238,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showSwipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
+    public func showSwipeGesture(from: CGPoint, to: CGPoint, duration: TimeInterval) async -> Bool {
         let message = [
             "👆 Visualizer: Showing swipe gesture from \(String(describing: from))",
             "to \(String(describing: to)), duration: \(duration)s",
@@ -252,7 +250,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showHotkeyDisplay(keys: [String], duration: TimeInterval) async -> Bool {
+    public func showHotkeyDisplay(keys: [String], duration: TimeInterval) async -> Bool {
         self.logger.debug("Showing hotkey display for keys: \(keys)")
 
         return await self.animationQueue.enqueue(priority: .high) {
@@ -260,7 +258,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showAppLaunch(appName: String, iconPath: String?) async -> Bool {
+    public func showAppLaunch(appName: String, iconPath: String?) async -> Bool {
         self.logger.debug("Showing app launch animation for: \(appName)")
 
         return await self.animationQueue.enqueue {
@@ -268,7 +266,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showAppQuit(appName: String, iconPath: String?) async -> Bool {
+    public func showAppQuit(appName: String, iconPath: String?) async -> Bool {
         self.logger.debug("Showing app quit animation for: \(appName)")
 
         return await self.animationQueue.enqueue {
@@ -276,7 +274,11 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showWindowOperation(_ operation: WindowOperation, windowRect: CGRect, duration: TimeInterval) async -> Bool {
+    public func showWindowOperation(
+        _ operation: WindowOperation,
+        windowRect: CGRect,
+        duration: TimeInterval) async -> Bool
+    {
         self.logger.debug("Showing window operation: \(String(describing: operation))")
 
         return await self.animationQueue.enqueue {
@@ -284,7 +286,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showMenuNavigation(menuPath: [String]) async -> Bool {
+    public func showMenuNavigation(menuPath: [String]) async -> Bool {
         self.logger.debug("Showing menu navigation for path: \(menuPath)")
 
         return await self.animationQueue.enqueue {
@@ -292,7 +294,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showDialogInteraction(
+    public func showDialogInteraction(
         element: DialogElementType,
         elementRect: CGRect,
         action: DialogActionType) async -> Bool
@@ -308,7 +310,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showSpaceSwitch(from: Int, to: Int, direction: SpaceDirection) async -> Bool {
+    public func showSpaceSwitch(from: Int, to: Int, direction: SpaceDirection) async -> Bool {
         self.logger.debug("Showing space switch from \(from) to \(to)")
 
         return await self.animationQueue.enqueue {
@@ -316,7 +318,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showElementDetection(elements: [String: CGRect], duration: TimeInterval) async -> Bool {
+    public func showElementDetection(elements: [String: CGRect], duration: TimeInterval) async -> Bool {
         self.logger.debug("Showing element detection for \(elements.count) elements")
 
         return await self.animationQueue.enqueue {
@@ -324,7 +326,7 @@ extension VisualizerCoordinator {
         }
     }
 
-    func showAnnotatedScreenshot(
+    public func showAnnotatedScreenshot(
         imageData: Data,
         elements: [DetectedElement],
         windowBounds: CGRect,
@@ -390,7 +392,7 @@ extension VisualizerCoordinator {
         return true
     }
 
-    private func displayClickAnimation(at point: CGPoint, type: PeekabooFoundation.ClickType) async -> Bool {
+    private func displayClickAnimation(at point: CGPoint, type: ClickType) async -> Bool {
         // Check if enabled
         guard self.settings?.visualizerEnabled ?? true,
               self.settings?.clickAnimationEnabled ?? true
@@ -458,7 +460,7 @@ extension VisualizerCoordinator {
 
     private func displayScrollIndicators(
         at point: CGPoint,
-        direction: PeekabooFoundation.ScrollDirection,
+        direction: ScrollDirection,
         amount: Int) async -> Bool
     {
         // Check if enabled

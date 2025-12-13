@@ -15,7 +15,7 @@ actor OptimizedAnimationQueue {
     // MARK: - Properties
 
     /// Logger
-    private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "AnimationQueue")
+    private let logger = Logger(subsystem: "boo.peekaboo.visualizer", category: "AnimationQueue")
 
     /// Maximum concurrent animations
     private let maxConcurrentAnimations = 5
@@ -203,7 +203,7 @@ final class AnimationResourcePool {
     private let maxPoolSize = 10
 
     /// Logger
-    private let logger = Logger(subsystem: "boo.peekaboo.mac", category: "ResourcePool")
+    private let logger = Logger(subsystem: "boo.peekaboo.visualizer", category: "ResourcePool")
 
     private init() {}
 
