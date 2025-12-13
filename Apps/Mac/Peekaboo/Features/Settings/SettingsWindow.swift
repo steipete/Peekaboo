@@ -17,11 +17,13 @@ struct SettingsWindow: View {
                 }
                 .tag(PeekabooSettingsTab.general)
 
-            AISettingsView()
-                .tabItem {
-                    Label("AI", systemImage: "brain")
-                }
-                .tag(PeekabooSettingsTab.ai)
+            if self.settings.agentModeEnabled {
+                AISettingsView()
+                    .tabItem {
+                        Label("AI", systemImage: "brain")
+                    }
+                    .tag(PeekabooSettingsTab.ai)
+            }
 
             VisualizerSettingsTabView()
                 .tabItem {
@@ -45,22 +47,37 @@ struct SettingsWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: .peekabooSelectSettingsTab)) { note in
             if let tab = note.object as? PeekabooSettingsTab {
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                    self.selectedTab = tab
+                    self.selectedTab = self.sanitizedTabSelection(tab)
                 }
             }
         }
         .onAppear {
             if let pending = SettingsTabRouter.consumePending() {
-                self.selectedTab = pending
+                self.selectedTab = self.sanitizedTabSelection(pending)
+            }
+            if !self.settings.agentModeEnabled, self.selectedTab == .ai {
+                self.selectedTab = .general
             }
             self.updatePermissionMonitoring(for: self.selectedTab)
         }
         .onChange(of: self.selectedTab) { _, newValue in
             self.updatePermissionMonitoring(for: newValue)
         }
+        .onChange(of: self.settings.agentModeEnabled) { _, enabled in
+            if !enabled, self.selectedTab == .ai {
+                self.selectedTab = .general
+            }
+        }
         .onDisappear {
             self.stopPermissionMonitoring()
         }
+    }
+
+    private func sanitizedTabSelection(_ tab: PeekabooSettingsTab) -> PeekabooSettingsTab {
+        if tab == .ai, !self.settings.agentModeEnabled {
+            return .general
+        }
+        return tab
     }
 
     private func updatePermissionMonitoring(for tab: PeekabooSettingsTab) {
@@ -101,6 +118,9 @@ struct GeneralSettingsView: View {
             }
 
             Section("Features") {
+                Toggle("Enable agent mode", isOn: Binding(
+                    get: { self.settings.agentModeEnabled },
+                    set: { self.settings.agentModeEnabled = $0 }))
                 Toggle("Enable haptic feedback", isOn: Binding(
                     get: { self.settings.hapticFeedbackEnabled },
                     set: { self.settings.hapticFeedbackEnabled = $0 }))

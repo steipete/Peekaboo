@@ -214,7 +214,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Now create status bar with connected state
         self.statusBarController = StatusBarController(
             agent: context.agent,
-            sessionStore: context.sessionStore)
+            sessionStore: context.sessionStore,
+            permissions: context.permissions,
+            settings: context.settings)
 
         // Connect dock icon manager to settings
         DockIconManager.shared.connectToSettings(context.settings)
@@ -233,7 +235,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.startBridgeHost(services: context.services)
 
         // Show onboarding if needed
-        if self.settings?.hasValidAPIKey != true {
+        if self.settings?.agentModeEnabled == true, self.settings?.hasValidAPIKey != true {
             self.showMainWindow()
         }
     }

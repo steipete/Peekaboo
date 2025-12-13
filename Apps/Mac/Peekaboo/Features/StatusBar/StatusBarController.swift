@@ -15,16 +15,22 @@ final class StatusBarController: NSObject {
     // State connections
     private let agent: PeekabooAgent
     private let sessionStore: SessionStore
+    private let permissions: Permissions
+    private let settings: PeekabooSettings
 
     // Icon animation
     private let animationController = MenuBarAnimationController()
 
     init(
         agent: PeekabooAgent,
-        sessionStore: SessionStore)
+        sessionStore: SessionStore,
+        permissions: Permissions,
+        settings: PeekabooSettings)
     {
         self.agent = agent
         self.sessionStore = sessionStore
+        self.permissions = permissions
+        self.settings = settings
 
         // Create status item
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -104,8 +110,13 @@ final class StatusBarController: NSObject {
 
         if event.type == .rightMouseUp {
             self.showContextMenu()
-        } else {
+            return
+        }
+
+        if self.settings.agentModeEnabled {
             self.togglePopover()
+        } else {
+            self.showContextMenu()
         }
     }
 
@@ -121,33 +132,47 @@ final class StatusBarController: NSObject {
     private func showContextMenu() {
         let menu = NSMenu()
 
-        // Recent sessions
-        if !self.sessionStore.sessions.isEmpty {
-            menu.addItem(NSMenuItem(title: "Recent Sessions", action: nil, keyEquivalent: ""))
+        if self.settings.agentModeEnabled {
+            // Recent sessions
+            if !self.sessionStore.sessions.isEmpty {
+                menu.addItem(NSMenuItem(title: "Recent Sessions", action: nil, keyEquivalent: ""))
 
-            for session in self.sessionStore.sessions.prefix(5) {
-                let item = NSMenuItem(
-                    title: session.title,
-                    action: #selector(self.openSession(_:)),
-                    keyEquivalent: "")
-                item.representedObject = session.id
-                item.target = self
-                menu.addItem(item)
+                for session in self.sessionStore.sessions.prefix(5) {
+                    let item = NSMenuItem(
+                        title: session.title,
+                        action: #selector(self.openSession(_:)),
+                        keyEquivalent: "")
+                    item.representedObject = session.id
+                    item.target = self
+                    menu.addItem(item)
+                }
+
+                menu.addItem(.separator())
             }
+
+            // Actions
+            menu.addItem(NSMenuItem(
+                title: "Open Peekaboo",
+                action: #selector(self.openMainWindow),
+                keyEquivalent: "p").with { $0.keyEquivalentModifierMask = [.command, .shift] })
+
+            menu.addItem(NSMenuItem(
+                title: "Inspector",
+                action: #selector(self.openInspector),
+                keyEquivalent: "i").with { $0.keyEquivalentModifierMask = [.command, .shift] })
 
             menu.addItem(.separator())
         }
 
-        // Actions
         menu.addItem(NSMenuItem(
-            title: "Open Peekaboo",
-            action: #selector(self.openMainWindow),
-            keyEquivalent: "p").with { $0.keyEquivalentModifierMask = [.command, .shift] })
+            title: "Permissions…",
+            action: #selector(self.openPermissions),
+            keyEquivalent: ""))
 
         menu.addItem(NSMenuItem(
-            title: "Inspector",
-            action: #selector(self.openInspector),
-            keyEquivalent: "i").with { $0.keyEquivalentModifierMask = [.command, .shift] })
+            title: "Permissions Onboarding…",
+            action: #selector(self.showPermissionsOnboarding),
+            keyEquivalent: ""))
 
         menu.addItem(NSMenuItem(
             title: "Settings...",
@@ -221,6 +246,14 @@ final class StatusBarController: NSObject {
 
     @objc private func openSettings() {
         SettingsOpener.openSettings()
+    }
+
+    @objc private func openPermissions() {
+        SettingsOpener.openSettings(tab: .permissions)
+    }
+
+    @objc private func showPermissionsOnboarding() {
+        PermissionsOnboardingController.shared.show(permissions: self.permissions)
     }
 
     @objc private func openInspector() {
