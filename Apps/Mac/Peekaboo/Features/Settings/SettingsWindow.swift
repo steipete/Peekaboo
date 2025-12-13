@@ -4,10 +4,16 @@ import PeekabooCore
 import SwiftUI
 
 struct SettingsWindow: View {
+    let updater: any UpdaterProviding
+
     @Environment(PeekabooSettings.self) private var settings
     @Environment(Permissions.self) private var permissions
     @State private var selectedTab: PeekabooSettingsTab = .general
     @State private var monitoringPermissions = false
+
+    init(updater: any UpdaterProviding = DisabledUpdaterController()) {
+        self.updater = updater
+    }
 
     var body: some View {
         TabView(selection: self.$selectedTab) {
@@ -42,6 +48,12 @@ struct SettingsWindow: View {
                     Label("Permissions", systemImage: "lock.shield")
                 }
                 .tag(PeekabooSettingsTab.permissions)
+
+            AboutSettingsView(updater: self.updater)
+                .tabItem {
+                    Label("About", systemImage: "info.circle")
+                }
+                .tag(PeekabooSettingsTab.about)
         }
         .frame(width: 550, height: 700)
         .onReceive(NotificationCenter.default.publisher(for: .peekabooSelectSettingsTab)) { note in

@@ -17,6 +17,7 @@ final class StatusBarController: NSObject {
     private let sessionStore: SessionStore
     private let permissions: Permissions
     private let settings: PeekabooSettings
+    private let updater: any UpdaterProviding
 
     // Icon animation
     private let animationController = MenuBarAnimationController()
@@ -25,12 +26,14 @@ final class StatusBarController: NSObject {
         agent: PeekabooAgent,
         sessionStore: SessionStore,
         permissions: Permissions,
-        settings: PeekabooSettings)
+        settings: PeekabooSettings,
+        updater: any UpdaterProviding)
     {
         self.agent = agent
         self.sessionStore = sessionStore
         self.permissions = permissions
         self.settings = settings
+        self.updater = updater
 
         // Create status item
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -148,6 +151,13 @@ final class StatusBarController: NSObject {
             keyEquivalent: "")
             .with { item in item.image = nil }
         menu.addItem(aboutItem)
+
+        let updatesItem = NSMenuItem(
+            title: "Check for Updates…",
+            action: #selector(self.checkForUpdates),
+            keyEquivalent: "")
+            .with { item in item.image = nil }
+        menu.addItem(updatesItem)
 
         menu.addItem(NSMenuItem(
             title: "Permissions…",
@@ -277,7 +287,11 @@ final class StatusBarController: NSObject {
     }
 
     @objc private func showAbout() {
-        NSApp.orderFrontStandardAboutPanel(nil)
+        SettingsOpener.openSettings(tab: .about)
+    }
+
+    @objc private func checkForUpdates() {
+        self.updater.checkForUpdates(nil)
     }
 
     // MARK: - Icon Animation

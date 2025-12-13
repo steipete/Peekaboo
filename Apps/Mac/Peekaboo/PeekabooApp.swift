@@ -147,7 +147,7 @@ struct PeekabooApp: App {
 
         // Settings scene
         Settings {
-            SettingsWindow()
+            SettingsWindow(updater: self.appDelegate.updaterController)
                 .environment(self.settings)
                 .environment(self.permissions)
                 .environment(self.appDelegate.visualizerCoordinator ?? VisualizerCoordinator())
@@ -175,6 +175,7 @@ private struct AppStateConnectionContext {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "App")
     private var statusBarController: StatusBarController?
+    let updaterController: any UpdaterProviding = makeUpdaterController()
     var windowOpener: ((String) -> Void)?
     private var bridgeHost: PeekabooBridgeHost?
     private var didSchedulePermissionsOnboarding = false
@@ -216,7 +217,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             agent: context.agent,
             sessionStore: context.sessionStore,
             permissions: context.permissions,
-            settings: context.settings)
+            settings: context.settings,
+            updater: self.updaterController)
 
         // Connect dock icon manager to settings
         DockIconManager.shared.connectToSettings(context.settings)

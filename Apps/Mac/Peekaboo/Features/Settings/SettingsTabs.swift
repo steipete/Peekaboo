@@ -6,6 +6,7 @@ enum PeekabooSettingsTab: Hashable, CaseIterable {
     case visualizer
     case shortcuts
     case permissions
+    case about
 
     var title: String {
         switch self {
@@ -14,6 +15,7 @@ enum PeekabooSettingsTab: Hashable, CaseIterable {
         case .visualizer: "Visualizer"
         case .shortcuts: "Shortcuts"
         case .permissions: "Permissions"
+        case .about: "About"
         }
     }
 }
