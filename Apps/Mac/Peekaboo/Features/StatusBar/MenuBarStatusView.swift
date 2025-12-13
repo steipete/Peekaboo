@@ -2,7 +2,6 @@ import AppKit
 import os.log
 import PeekabooCore
 import SwiftUI
-import Tachikoma
 
 struct MenuBarStatusView: View {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "MenuBarStatus")
@@ -10,66 +9,86 @@ struct MenuBarStatusView: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
     @Environment(SpeechRecognizer.self) private var speechRecognizer
+    @Environment(\.openWindow) private var openWindow
 
-    @State private var isHovering = false
-    @State private var hasAppeared = false
     @State private var isVoiceMode = false
     @State private var inputText = ""
-    @State private var refreshTrigger = UUID()
+    @State private var detailsExpanded = false
     @FocusState private var isInputFocused: Bool
 
-    private let popoverCornerRadius: CGFloat = 30
-
     var body: some View {
-        self.contentStack
-            .padding(20)
-            .background(self.popoverBackground)
-            .clipShape(RoundedRectangle(cornerRadius: self.popoverCornerRadius, style: .continuous))
-            .preferredColorScheme(.dark)
-            .frame(width: 420)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 8)
-            .onAppear {
-                self.setupViewOnAppear()
-            }
-            .onChange(of: self.agent.isProcessing) { _, _ in
-                self.refreshTrigger = UUID()
-            }
-            .onChange(of: self.sessionStore.currentSession?.messages.count ?? 0) { _, _ in
-                self.refreshTrigger = UUID()
-            }
-            .onChange(of: self.agent.toolExecutionHistory.count) { _, _ in
-                self.refreshTrigger = UUID()
-            }
-    }
+        VStack(spacing: 0) {
+            StatusBarHeaderView(
+                isVoiceMode: self.$isVoiceMode,
+                onOpenMainWindow: self.openMainWindow,
+                onOpenInspector: self.openInspector,
+                onOpenSettings: self.openSettings,
+                onNewSession: self.createNewSession)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
 
-    @ViewBuilder
-    private var popoverBackground: some View {
-        if #available(macOS 26.0, *) {
-            Color.clear
-                .glassBackground(
-                    cornerRadius: self.popoverCornerRadius,
-                    tintColor: NSColor(calibratedWhite: 0.07, alpha: 0.9))
-                .shadow(color: Color.black.opacity(0.35), radius: 28, y: 18)
-        } else {
-            RoundedRectangle(cornerRadius: self.popoverCornerRadius, style: .continuous)
-                .fill(Color.black.opacity(0.75))
-                .shadow(color: Color.black.opacity(0.28), radius: 24, y: 16)
+            Divider()
+
+            Group {
+                if self.isVoiceMode {
+                    VoiceInputView(
+                        onClose: { self.isVoiceMode = false },
+                        onSubmitTranscript: self.submitVoiceInput)
+                } else {
+                    StatusBarInputView(
+                        inputText: self.$inputText,
+                        isInputFocused: self.$isInputFocused,
+                        isProcessing: self.agent.isProcessing,
+                        onSubmit: self.submitInput)
+                }
+            }
+            .padding(12)
+
+            Divider()
+
+            StatusBarContentView(detailsExpanded: self.$detailsExpanded)
+                .frame(maxHeight: 320)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 10)
+
+            Divider()
+
+            ActionButtonsView(
+                onOpenMainWindow: self.openMainWindow,
+                onNewSession: self.createNewSession)
+                .padding(12)
+        }
+        .frame(width: 360)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.ultraThinMaterial)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color(NSColor.separatorColor).opacity(0.7), lineWidth: 0.5)
+        }
+        .padding(8)
+        .onAppear {
+            self.focusInputIfNeeded()
+        }
+        .onChange(of: self.agent.isProcessing) { _, newValue in
+            if newValue {
+                self.detailsExpanded = true
+            }
+            self.focusInputIfNeeded()
+        }
+        .onChange(of: self.sessionStore.currentSession?.id) { _, _ in
+            self.focusInputIfNeeded()
         }
     }
 
     // MARK: - Setup and Lifecycle
 
-    private func setupViewOnAppear() {
-        self.hasAppeared = true
-        // Force a UI update in case environment values weren't ready
+    private func focusInputIfNeeded() {
+        guard !self.agent.isProcessing else { return }
         DispatchQueue.main.async {
-            self.hasAppeared = true
-            self.refreshTrigger = UUID()
-            // Focus the input field when idle
-            if self.sessionStore.currentSession == nil, !self.agent.isProcessing {
-                self.isInputFocused = true
-            }
+            self.isInputFocused = true
         }
     }
 
@@ -83,33 +102,9 @@ struct MenuBarStatusView: View {
         self.inputText = ""
     }
 
-    private func toggleVoiceRecording() {
-        if self.speechRecognizer.isListening {
-            // Stop and submit
-            self.speechRecognizer.stopListening()
-
-            let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !transcript.isEmpty {
-                self.submitVoiceInput(transcript)
-            }
-        } else {
-            // Start listening
-            Task {
-                do {
-                    try self.speechRecognizer.startListening()
-                } catch {
-                    self.logger.error("Failed to start speech recognition: \(error)")
-                }
-            }
-        }
-    }
-
     private func submitVoiceInput(_ text: String) {
-        Task {
-            // Close voice mode
-            self.isVoiceMode = false
-            self.executeTask(text)
-        }
+        self.isVoiceMode = false
+        self.executeTask(text)
     }
 
     private func executeTask(_ text: String) {
@@ -135,76 +130,25 @@ struct MenuBarStatusView: View {
             }
         }
     }
-}
 
-// MARK: - Layout Helpers
-
-extension MenuBarStatusView {
-    private var contentStack: some View {
-        VStack(spacing: 14) {
-            self.headerSection
-            self.timelineSection
-            self.inputSection
-            self.actionsSection
-        }
+    private func openMainWindow() {
+        DockIconManager.shared.temporarilyShowDock()
+        NSApp.activate(ignoringOtherApps: true)
+        self.openWindow(id: "main")
     }
 
-    private var headerSection: some View {
-        StatusBarHeaderView(isVoiceMode: self.$isVoiceMode)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
-            .statusPanelBackground(cornerRadius: 22, fillOpacity: 0.12)
+    private func openInspector() {
+        DockIconManager.shared.temporarilyShowDock()
+        NSApp.activate(ignoringOtherApps: true)
+        NotificationCenter.default.post(name: .showInspector, object: nil)
     }
 
-    private var timelineSection: some View {
-        StatusBarContentView()
-            .frame(maxHeight: 440)
-            .statusPanelBackground(cornerRadius: 24, fillOpacity: 0.08)
+    private func openSettings() {
+        SettingsOpener.openSettings()
     }
 
-    @ViewBuilder
-    private var inputSection: some View {
-        Group {
-            if self.isVoiceMode {
-                VoiceInputView(onToggleRecording: self.toggleVoiceRecording)
-            } else {
-                StatusBarInputView(
-                    inputText: self.$inputText,
-                    isVoiceMode: self.$isVoiceMode,
-                    isInputFocused: self.$isInputFocused,
-                    isProcessing: self.agent.isProcessing,
-                    onSubmit: self.submitInput)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .statusPanelBackground(cornerRadius: 20, fillOpacity: 0.1)
-    }
-
-    private var actionsSection: some View {
-        ActionButtonsView()
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .statusPanelBackground(cornerRadius: 18, fillOpacity: 0.12)
-    }
-}
-
-// MARK: - Section Styling Helpers
-
-extension View {
-    fileprivate func statusPanelBackground(
-        cornerRadius: CGFloat,
-        fillOpacity: Double,
-        strokeOpacity: Double = 0) -> some View
-    {
-        background(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color.white.opacity(fillOpacity))
-                .overlay {
-                    if strokeOpacity > 0 {
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .stroke(Color.white.opacity(strokeOpacity), lineWidth: 0.8)
-                    }
-                })
+    private func createNewSession() {
+        _ = self.sessionStore.createSession(title: "New Session")
+        self.detailsExpanded = true
     }
 }

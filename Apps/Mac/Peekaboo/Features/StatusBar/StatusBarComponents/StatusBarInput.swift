@@ -1,177 +1,110 @@
 import PeekabooCore
 import SwiftUI
-import Tachikoma
-import TachikomaAudio
 
 // MARK: - Input Components
 
 /// Text input area for the status bar
 struct StatusBarInputView: View {
     @Binding var inputText: String
-    @Binding var isVoiceMode: Bool
     @FocusState.Binding var isInputFocused: Bool
 
     let isProcessing: Bool
     let onSubmit: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            if self.isVoiceMode {
-                Image(systemName: "mic.fill")
-                    .foregroundColor(.red)
-                    .font(.caption)
-            }
-
-            TextField(self.isProcessing ? "Ask a follow-up..." : "Ask Peekaboo...", text: self.$inputText)
-                .textFieldStyle(.plain)
-                .font(.body)
+        HStack(spacing: 10) {
+            TextField(self.isProcessing ? "Ask a follow‑up…" : "Ask Peekaboo…", text: self.$inputText)
+                .textFieldStyle(.roundedBorder)
                 .focused(self.$isInputFocused)
-                .onSubmit {
-                    self.onSubmit()
-                }
+                .onSubmit(self.onSubmit)
 
-            // Voice mode toggle
-            Button(action: { self.isVoiceMode.toggle() }, label: {
-                Image(systemName: self.isVoiceMode ? "keyboard" : "mic")
-                    .font(.body)
-                    .foregroundColor(self.isVoiceMode ? .red : .secondary)
-            })
-            .buttonStyle(.plain)
-            .help(self.isVoiceMode ? "Switch to text input" : "Switch to voice input")
-
-            Button(action: self.onSubmit, label: {
+            Button(action: self.onSubmit) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.title2)
-            })
-            .buttonStyle(.plain)
-            .disabled(self.inputText.isEmpty && !self.isVoiceMode)
+                    .foregroundStyle(
+                        self.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? Color.secondary
+                            : Color.accentColor)
+            }
+            .buttonStyle(.borderless)
+            .disabled(self.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
     }
 }
 
-/// Voice input interface with recording controls
+/// Voice input (dictation) interface with minimal controls.
 struct VoiceInputView: View {
     @Environment(SpeechRecognizer.self) private var speechRecognizer
-    @Environment(RealtimeVoiceService.self) private var realtimeService
 
-    @State private var useRealtimeMode = true // Enable realtime mode by default
-    @State private var showRealtimeWindow = false
-
-    let onToggleRecording: () -> Void
+    let onClose: () -> Void
+    let onSubmitTranscript: (String) -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Mode toggle
-            HStack {
-                Label("Realtime Mode", systemImage: "waveform.circle")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label(self.speechRecognizer.isListening ? "Listening…" : "Dictation", systemImage: "mic")
+                    .font(.subheadline.weight(.semibold))
 
-                Toggle("", isOn: self.$useRealtimeMode)
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
+                Spacer()
+
+                Button("Close", action: self.onClose)
+                    .buttonStyle(.borderless)
             }
-            .padding(.horizontal)
 
-            if self.useRealtimeMode {
-                // Realtime mode UI
-                VStack(spacing: 12) {
-                    if self.realtimeService.isConnected {
-                        // Connection status
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(Color.green)
-                                .frame(width: 6, height: 6)
-                            Text("Connected")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+            Text(self.speechRecognizer.transcript.isEmpty ? "Speak to dictate your next request." : self
+                .speechRecognizer.transcript)
+                .font(.body)
+                .foregroundStyle(self.speechRecognizer.transcript.isEmpty ? .secondary : .primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(4)
+                .textSelection(.enabled)
 
-                        // Current state
-                        Text(self.realtimeService.connectionState.rawValue.capitalized)
-                            .font(.headline)
-
-                        // Live transcript
-                        if !self.realtimeService.currentTranscript.isEmpty {
-                            Text(self.realtimeService.currentTranscript)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                                .frame(maxHeight: 60)
-                        }
-
-                        // End session button
-                        Button("End Session") {
-                            Task {
-                                await self.realtimeService.endSession()
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    } else {
-                        // Start session button
-                        Button(action: {
-                            self.showRealtimeWindow = true
-                        }, label: {
-                            VStack(spacing: 8) {
-                                Image(systemName: "waveform.circle.fill")
-                                    .font(.system(size: 48))
-                                    .foregroundStyle(.linearGradient(
-                                        colors: [.blue, .purple],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing))
-
-                                Text("Start Realtime Conversation")
-                                    .font(.caption)
-                            }
-                        })
-                        .buttonStyle(.plain)
-                    }
+            HStack(spacing: 10) {
+                Button {
+                    self.toggleRecording()
+                } label: {
+                    Label(
+                        self.speechRecognizer.isListening ? "Stop" : "Start",
+                        systemImage: self.speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
                 }
-                .padding()
-                .frame(minHeight: 200)
-            } else {
-                // Traditional recording mode
-                VStack(spacing: 8) {
-                    if self.speechRecognizer.isListening {
-                        HStack(spacing: 4) {
-                            ForEach(0..<3) { index in
-                                Circle()
-                                    .fill(Color.accentColor)
-                                    .frame(width: 8, height: 8)
-                                    .scaleEffect(self.speechRecognizer.isListening ? 1.2 : 0.8)
-                                    .animation(
-                                        Animation.easeInOut(duration: 0.6)
-                                            .repeatForever()
-                                            .delay(Double(index) * 0.2),
-                                        value: self.speechRecognizer.isListening)
-                            }
-                        }
-                        .frame(height: 20)
-                    }
+                .buttonStyle(.bordered)
 
-                    Text(self.speechRecognizer.transcript.isEmpty ? "Listening..." : self.speechRecognizer.transcript)
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                        .frame(maxHeight: 100)
-
-                    // Microphone button
-                    Button(action: self.onToggleRecording, label: {
-                        Image(systemName: self.speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
-                            .font(.system(size: 48))
-                            .foregroundColor(self.speechRecognizer.isListening ? .red : .accentColor)
-                    })
-                    .buttonStyle(.plain)
+                Button("Send") {
+                    let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !transcript.isEmpty else { return }
+                    self.speechRecognizer.stopListening()
+                    self.onSubmitTranscript(transcript)
+                    self.onClose()
                 }
-                .padding()
-                .frame(minHeight: 200)
+                .buttonStyle(.borderedProminent)
+                .disabled(self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Spacer(minLength: 0)
             }
         }
-        .sheet(isPresented: self.$showRealtimeWindow) {
-            RealtimeVoiceView()
+        .onAppear {
+            self.startListeningIfPossible()
+        }
+        .onDisappear {
+            self.speechRecognizer.stopListening()
+        }
+    }
+
+    private func toggleRecording() {
+        if self.speechRecognizer.isListening {
+            self.speechRecognizer.stopListening()
+        } else {
+            self.startListeningIfPossible()
+        }
+    }
+
+    private func startListeningIfPossible() {
+        Task {
+            do {
+                try self.speechRecognizer.startListening()
+            } catch {
+                // Keep the UI responsive; the parent view logs details when needed.
+            }
         }
     }
 }
