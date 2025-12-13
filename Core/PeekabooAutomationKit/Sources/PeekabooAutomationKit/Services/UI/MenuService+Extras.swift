@@ -12,6 +12,11 @@ import PeekabooFoundation
 
 @MainActor
 extension MenuService {
+    private var menuBarAXTimeoutSec: Float { 0.25 }
+    private var deepMenuBarAXSweepEnabled: Bool {
+        ProcessInfo.processInfo.environment["PEEKABOO_MENUBAR_DEEP_AX_SWEEP"] == "1"
+    }
+
     public func clickMenuExtra(title: String) async throws {
         let systemWide = Element.systemWide()
 
@@ -54,13 +59,29 @@ extension MenuService {
     }
 
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
-        let axExtras = self.getMenuBarItemsViaAccessibility()
-        let appAXExtras = self.getMenuBarItemsFromAppsAX()
-        let windowExtras = self.enrichWindowExtrasWithAXHitTest(self.getMenuBarItemsViaWindows())
-        let controlCenterExtras = self.getMenuBarItemsFromControlCenterAX()
+        // Menu bar enumeration must never hang: agents depend on this returning quickly.
+        // AX can block on misbehaving apps; keep the default path cheap and bounded.
+        let windowExtras = self.getMenuBarItemsViaWindows()
+
+        let axExtras = self.getMenuBarItemsViaAccessibility(timeout: self.menuBarAXTimeoutSec)
+        let controlCenterExtras = self.getMenuBarItemsFromControlCenterAX(timeout: self.menuBarAXTimeoutSec)
+
+        let appAXExtras: [MenuExtraInfo] = if self.deepMenuBarAXSweepEnabled {
+            self.getMenuBarItemsFromAppsAX(timeout: self.menuBarAXTimeoutSec)
+        } else {
+            []
+        }
+
+        // Avoid AX hit-testing by default (can hang); enable via PEEKABOO_MENUBAR_DEEP_AX_SWEEP=1.
+        let fallbackExtras: [MenuExtraInfo] = if self.deepMenuBarAXSweepEnabled {
+            self.enrichWindowExtrasWithAXHitTest(windowExtras, timeout: self.menuBarAXTimeoutSec)
+        } else {
+            windowExtras
+        }
+
         return Self.mergeMenuExtras(
-            accessibilityExtras: axExtras + appAXExtras,
-            fallbackExtras: windowExtras + controlCenterExtras)
+            accessibilityExtras: axExtras + controlCenterExtras + appAXExtras,
+            fallbackExtras: fallbackExtras)
     }
 
     public func listMenuBarItems(includeRaw: Bool = false) async throws -> [MenuBarItemInfo] {
@@ -350,7 +371,7 @@ extension MenuService {
     }
 
     /// Attempt to pull status items hosted inside Control Center/system UI via accessibility.
-    private func getMenuBarItemsFromControlCenterAX() -> [MenuExtraInfo] {
+    private func getMenuBarItemsFromControlCenterAX(timeout: Float) -> [MenuExtraInfo] {
         let hostBundleIDs = [
             "com.apple.controlcenter",
             "com.apple.systemuiserver",
@@ -365,6 +386,7 @@ extension MenuService {
         func collectElements(from element: Element, depth: Int = 0, limit: Int = 6) -> [Element] {
             if depth > limit { return [] }
             var results: [Element] = []
+            element.setMessagingTimeout(timeout)
             if let children = element.children() {
                 for child in children {
                     results.append(child)
@@ -378,8 +400,10 @@ extension MenuService {
 
         for host in hosts {
             let axApp = AXApp(host).element
+            axApp.setMessagingTimeout(timeout)
             let candidates = collectElements(from: axApp)
             for extra in candidates {
+                extra.setMessagingTimeout(timeout)
                 let baseTitle = extra.title() ?? extra.help() ?? extra.descriptionText() ?? "Unknown"
                 let identifier = extra.identifier()
                 let hasIdentifier = identifier?.isEmpty == false
@@ -424,14 +448,15 @@ extension MenuService {
         return items
     }
 
-    private func getMenuBarItemsViaAccessibility() -> [MenuExtraInfo] {
+    private func getMenuBarItemsViaAccessibility(timeout: Float) -> [MenuExtraInfo] {
         let systemWide = Element.systemWide()
 
-        guard let menuBar = systemWide.menuBar() else {
+        guard let menuBar = systemWide.menuBarWithTimeout(timeout: timeout) else {
             return []
         }
 
         func flattenExtras(_ element: Element) -> [Element] {
+            element.setMessagingTimeout(timeout)
             guard let children = element.children() else { return [] }
             var results: [Element] = []
             for child in children {
@@ -446,6 +471,7 @@ extension MenuService {
         let candidates = flattenExtras(menuBar)
 
         return candidates.compactMap { extra in
+            extra.setMessagingTimeout(timeout)
             let baseTitle = extra.title() ?? extra.help() ?? extra.descriptionText() ?? "Unknown"
             var effectiveTitle = baseTitle
             if isPlaceholderMenuTitle(effectiveTitle),
@@ -480,7 +506,7 @@ extension MenuService {
     }
 
     /// Sweep AX trees of all running apps to find menu bar/status items that expose AX titles or identifiers.
-    private func getMenuBarItemsFromAppsAX() -> [MenuExtraInfo] {
+    private func getMenuBarItemsFromAppsAX(timeout: Float) -> [MenuExtraInfo] {
         let running = NSWorkspace.shared.runningApplications
         var results: [MenuExtraInfo] = []
         let commonMenuTitles: Set<String> = [
@@ -491,6 +517,7 @@ extension MenuService {
         func collectElements(from element: Element, depth: Int = 0, limit: Int = 4) -> [Element] {
             if depth > limit { return [] }
             var list: [Element] = []
+            element.setMessagingTimeout(timeout)
             if let children = element.children() {
                 for child in children {
                     list.append(child)
@@ -502,8 +529,10 @@ extension MenuService {
 
         for app in running {
             let axApp = AXApp(app).element
+            axApp.setMessagingTimeout(timeout)
             let candidates = collectElements(from: axApp)
             for extra in candidates {
+                extra.setMessagingTimeout(timeout)
                 let role = extra.role() ?? ""
                 let subrole = extra.subrole() ?? ""
                 let isStatusLike = role == "AXStatusItem" || subrole == "AXStatusItem" || subrole == "AXMenuExtra"
@@ -560,17 +589,19 @@ extension MenuService {
     }
 
     /// Hit-test window extras to attach AX identifiers/titles when CGS gives only placeholders.
-    private func enrichWindowExtrasWithAXHitTest(_ extras: [MenuExtraInfo]) -> [MenuExtraInfo] {
+    private func enrichWindowExtrasWithAXHitTest(_ extras: [MenuExtraInfo], timeout: Float) -> [MenuExtraInfo] {
         extras.map { extra in
             guard extra
                 .identifier == nil || isPlaceholderMenuTitle(extra.title) || isPlaceholderMenuTitle(extra.rawTitle),
                 extra.position != .zero
             else { return extra }
 
+            Element.systemWide().setMessagingTimeout(timeout)
             guard let hit = Element.elementAtPoint(extra.position) else {
                 return extra
             }
 
+            hit.setMessagingTimeout(timeout)
             let role = hit.role() ?? ""
             let subrole = hit.subrole() ?? ""
             let isStatusLike = role == "AXStatusItem" || subrole == "AXStatusItem" || subrole == "AXMenuExtra"
