@@ -11,6 +11,7 @@
 		782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 782555012E1CA0ED00F1D8DF /* AXorcist */; };
 		782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
 		78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 78E542AC2E4178650006A8EF /* KeyboardShortcuts */; };
+		78F8A0A12F0C0B3D00BEEF00 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 78F8A0A32F0C0B3D00BEEF00 /* Sparkle */; };
 		78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */ = {isa = PBXBuildFile; productRef = 78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +35,7 @@
 				7814F1902E1C0950000995F8 /* AXorcist in Frameworks */,
 				782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */,
 				78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */,
+				78F8A0A12F0C0B3D00BEEF00 /* Sparkle in Frameworks */,
 				782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */,
 				78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */,
 			);
@@ -91,6 +93,7 @@
 				782555042E1CA10900F1D8DF /* PeekabooCore */,
 				78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */,
 				78E542AC2E4178650006A8EF /* KeyboardShortcuts */,
+				78F8A0A32F0C0B3D00BEEF00 /* Sparkle */,
 				78F4CC982EE0457200ACDAAA /* PeekabooBridge */,
 			);
 			productName = Peekaboo;
@@ -126,6 +129,7 @@
 				782555032E1CA10900F1D8DF /* XCLocalSwiftPackageReference "../../Core/PeekabooCore" */,
 				78EA3D0E2E3B92AB000ADFA6 /* XCLocalSwiftPackageReference "../../Core/PeekabooUICore" */,
 				78E542AB2E4178650006A8EF /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				78F8A0A22F0C0B3D00BEEF00 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7814F1072E1BD4C8000995F8 /* Products */;
@@ -316,6 +320,7 @@
 				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "ENABLE_SPARKLE $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_ENABLE_EXPERIMENTAL_FEATURES = StrictConcurrency;
 				SWIFT_ENABLE_UPCOMING_FEATURES = "ExistentialAny NonisolatedNonsendingByDefault";
@@ -421,6 +426,14 @@
 				minimumVersion = 2.3.0;
 			};
 		};
+		78F8A0A22F0C0B3D00BEEF00 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -440,6 +453,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 78E542AB2E4178650006A8EF /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
 			productName = KeyboardShortcuts;
+		};
+		78F8A0A32F0C0B3D00BEEF00 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 78F8A0A22F0C0B3D00BEEF00 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 		78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */ = {
 			isa = XCSwiftPackageProductDependency;
