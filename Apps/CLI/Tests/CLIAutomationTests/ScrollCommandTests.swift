@@ -46,7 +46,7 @@ struct ScrollCommandTests {
                 "--smooth",
                 "--snapshot", "snapshot-42",
                 "--on", "B1",
-                "--json-output",
+                "--json",
             ],
             context: context
         )
@@ -63,10 +63,11 @@ struct ScrollCommandTests {
         #expect(call.request.snapshotId == "snapshot-42")
 
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
-        let payload = try JSONDecoder().decode(ScrollResult.self, from: payloadData)
+        let payload = try JSONDecoder().decode(CodableJSONResponse<ScrollResult>.self, from: payloadData)
         #expect(payload.success)
-        #expect(payload.direction == "down")
-        #expect(payload.amount == 5)
+        #expect(payload.data.success)
+        #expect(payload.data.direction == "down")
+        #expect(payload.data.amount == 5)
     }
 
     @Test("Scroll without snapshot still executes")
@@ -89,14 +90,14 @@ struct ScrollCommandTests {
     func smoothScrollingIncreasesTicks() async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(
-            arguments: ["--direction", "down", "--amount", "4", "--smooth", "--json-output"],
+            arguments: ["--direction", "down", "--amount", "4", "--smooth", "--json"],
             context: context
         )
 
         #expect(result.exitStatus == 0)
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
-        let payload = try JSONDecoder().decode(ScrollResult.self, from: payloadData)
-        #expect(payload.totalTicks == 12) // 4 * 3 when smooth
+        let payload = try JSONDecoder().decode(CodableJSONResponse<ScrollResult>.self, from: payloadData)
+        #expect(payload.data.totalTicks == 12) // 4 * 3 when smooth
     }
 
     @Test("Direction validation accepts common values", arguments: [

@@ -36,7 +36,7 @@ struct AgentMenuTests {
         let output = try await runCommand([
             "agent",
             "List all menus available in the Calculator app",
-            "--json-output",
+            "--json",
         ])
 
         let data = try #require(output.data(using: String.Encoding.utf8))
@@ -75,7 +75,7 @@ struct AgentMenuTests {
         let output = try await runCommand([
             "agent",
             "Switch Calculator to Scientific mode using the View menu",
-            "--json-output",
+            "--json",
         ])
 
         let data = try #require(output.data(using: String.Encoding.utf8))
@@ -120,7 +120,7 @@ struct AgentMenuTests {
         let output = try await runCommand([
             "agent",
             "Find and use the spell check feature in TextEdit",
-            "--json-output",
+            "--json",
         ])
 
         let data = try #require(output.data(using: String.Encoding.utf8))
@@ -160,7 +160,7 @@ struct AgentMenuTests {
         let output = try await runCommand([
             "agent",
             "Click on the 'Quantum Computing' menu item in Calculator",
-            "--json-output",
+            "--json",
         ])
 
         let data = try #require(output.data(using: String.Encoding.utf8))

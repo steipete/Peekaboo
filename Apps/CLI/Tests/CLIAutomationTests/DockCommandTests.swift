@@ -23,7 +23,7 @@ struct DockCommandTests {
 
     @Test("List command JSON structure")
     func listCommandJSON() async throws {
-        let result = try await self.runCommand(["dock", "list", "--json-output"])
+        let result = try await self.runCommand(["dock", "list", "--json"])
         let output = result.output
 
         // Parse JSON

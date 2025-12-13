@@ -38,7 +38,7 @@ struct ListCommandCLIHarnessTests {
         ]
         let context = await self.makeContext(applications: applications)
 
-        let result = try await self.runList(arguments: ["list", "apps", "--json-output"], services: context.services)
+        let result = try await self.runList(arguments: ["list", "apps", "--json"], services: context.services)
         #expect(result.exitStatus == 0)
 
         let data = try #require(self.output(from: result).data(using: .utf8))
@@ -101,7 +101,7 @@ struct ListCommandCLIHarnessTests {
                 "list", "windows",
                 "--app", appName,
                 "--include-details", "bounds,ids",
-                "--json-output",
+                "--json",
             ],
             services: context.services
         )
@@ -200,7 +200,7 @@ struct ListCommandTests {
     @Test("AppsSubcommand with JSON output flag", .tags(.fast))
     func appsSubcommandWithJSONOutput() throws {
         // Test apps subcommand with JSON flag
-        let command = try AppsSubcommand.parse(["--json-output"])
+        let command = try AppsSubcommand.parse(["--json"])
         #expect(command.jsonOutput == true)
     }
 
@@ -644,7 +644,7 @@ struct ListCommandAdvancedTests {
         let command = try PermissionsSubcommand.parse([])
         #expect(command.jsonOutput == false)
 
-        let commandWithJSON = try PermissionsSubcommand.parse(["--json-output"])
+        let commandWithJSON = try PermissionsSubcommand.parse(["--json"])
         #expect(commandWithJSON.jsonOutput == true)
     }
 

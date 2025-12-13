@@ -7,7 +7,7 @@ import Testing
 struct TypeCommandTests {
     @Test("Type command with text argument")
     func typeWithText() throws {
-        let command = try TypeCommand.parse(["Hello World", "--json-output"])
+        let command = try TypeCommand.parse(["Hello World", "--json"])
 
         #expect(command.text == "Hello World")
         #expect(command.jsonOutput == true)
@@ -18,7 +18,7 @@ struct TypeCommandTests {
 
     @Test("Type command with --text option")
     func typeWithTextOption() throws {
-        let command = try TypeCommand.parse(["--text", "Option Text", "--json-output"])
+        let command = try TypeCommand.parse(["--text", "Option Text", "--json"])
 
         #expect(command.text == nil)
         #expect(command.textOption == "Option Text")
@@ -26,7 +26,7 @@ struct TypeCommandTests {
 
     @Test("Type command with special keys")
     func typeWithSpecialKeys() throws {
-        let command = try TypeCommand.parse(["--tab", "2", "--return", "--json-output"])
+        let command = try TypeCommand.parse(["--tab", "2", "--return", "--json"])
 
         #expect(command.text == nil)
         #expect(command.tab == 2)
@@ -37,7 +37,7 @@ struct TypeCommandTests {
 
     @Test("Type command with clear flag")
     func typeWithClear() throws {
-        let command = try TypeCommand.parse(["New Text", "--clear", "--json-output"])
+        let command = try TypeCommand.parse(["New Text", "--clear", "--json"])
 
         #expect(command.text == "New Text")
         #expect(command.clear == true)
@@ -46,7 +46,7 @@ struct TypeCommandTests {
 
     @Test("Type command with custom delay")
     func typeWithCustomDelay() throws {
-        let command = try TypeCommand.parse(["Fast", "--delay", "0", "--json-output"])
+        let command = try TypeCommand.parse(["Fast", "--delay", "0", "--json"])
 
         #expect(command.text == "Fast")
         #expect(command.delay == 0)
@@ -54,7 +54,7 @@ struct TypeCommandTests {
 
     @Test("Type command with human typing speed")
     func typeWithWPM() throws {
-        var command = try TypeCommand.parse(["Message", "--wpm", "140", "--json-output"])
+        var command = try TypeCommand.parse(["Message", "--wpm", "140", "--json"])
         #expect(command.wordsPerMinute == 140)
         #expect(command.delay == 2)
         // Validation should allow the selected range
@@ -144,7 +144,7 @@ struct TypeCommandTests {
             "--return",
             "--escape",
             "--delete",
-            "--json-output"
+            "--json"
         ])
 
         #expect(command.text == "Test")

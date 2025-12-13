@@ -36,7 +36,7 @@ struct ClickCommandFocusTests {
         ]
 
         // Create a basic click command with all options
-        var args = ["click", "--coords", "100,100", "--json-output"]
+        var args = ["click", "--coords", "100,100", "--json"]
         args.append(contentsOf: focusOptions.flatMap { [$0] }.compactMap { arg in
             // Add values for options that need them
             if arg == "--focus-timeout" { return ["--focus-timeout", "3.0"] }
@@ -57,7 +57,7 @@ struct ClickCommandFocusTests {
         let seeOutput = try await runPeekabooCommand([
             "see",
             "--app", "Finder",
-            "--json-output"
+            "--json"
         ])
 
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
@@ -79,7 +79,7 @@ struct ClickCommandFocusTests {
         let clickOutput = try await runPeekabooCommand([
             "click", "--on", clickable.id,
             "--snapshot", snapshotId,
-            "--json-output"
+            "--json"
         ])
 
         let clickData = try JSONDecoder().decode(ClickResponse.self, from: Data(clickOutput.utf8))
@@ -92,7 +92,7 @@ struct ClickCommandFocusTests {
         let output = try await runPeekabooCommand([
             "click", "button",
             "--space-switch",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))
@@ -106,7 +106,7 @@ struct ClickCommandFocusTests {
         let output = try await runPeekabooCommand([
             "click", "--coords", "100,200",
             "--bring-to-current-space",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))
@@ -122,7 +122,7 @@ struct ClickCommandFocusTests {
         let seeOutput = try await runPeekabooCommand([
             "see",
             "--app", "Finder",
-            "--json-output"
+            "--json"
         ])
 
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
@@ -136,7 +136,7 @@ struct ClickCommandFocusTests {
         _ = try await self.runPeekabooCommand([
             "click", "--coords", "100,100",
             "--snapshot", snapshotId,
-            "--json-output"
+            "--json"
         ])
         let snapshotDuration = Date().timeIntervalSince(snapshotStart)
 
@@ -144,7 +144,7 @@ struct ClickCommandFocusTests {
         let noSnapshotStart = Date()
         _ = try await self.runPeekabooCommand([
             "click", "--coords", "100,100",
-            "--json-output"
+            "--json"
         ])
         let noSnapshotDuration = Date().timeIntervalSince(noSnapshotStart)
 
@@ -160,7 +160,7 @@ struct ClickCommandFocusTests {
         let output = try await runPeekabooCommand([
             "click", "button",
             "--snapshot", "invalid-snapshot-id",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))
@@ -177,7 +177,7 @@ struct ClickCommandFocusTests {
             "click", "100", "100",
             "--space-switch",
             "--bring-to-current-space",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))

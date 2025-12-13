@@ -23,7 +23,7 @@ struct CLIRuntimeSmokeTests {
     @Test("peekaboo list apps emits JSON via Commander")
     func commanderListApps() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo(["list", "apps", "--json-output"])
+        let result = try await TestChildProcess.runPeekaboo(["list", "apps", "--json"])
         #expect(result.status == .exited(0))
         #expect(result.standardOutput.contains("\"applications\""))
     }
@@ -31,7 +31,7 @@ struct CLIRuntimeSmokeTests {
     @Test("peekaboo list windows requires --app")
     func listWindowsWithoutAppFails() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo(["list", "windows", "--json-output"])
+        let result = try await TestChildProcess.runPeekaboo(["list", "windows", "--json"])
         #expect(result.status != .exited(0))
         #expect(result.standardError.contains("Missing argument: app"))
     }

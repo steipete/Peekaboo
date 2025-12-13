@@ -120,7 +120,7 @@ struct ImageAnalyzeIntegrationTests {
         for _ in providerConfigs {
             let command = try ImageCommand.parse([
                 "--analyze", "Test prompt",
-                "--json-output",
+                "--json",
             ])
 
             #expect(command.analyze == "Test prompt")
@@ -164,7 +164,7 @@ struct ImageAnalyzeIntegrationTests {
             ["--analyze", "Test", "--mode", "screen"],
             ["--mode", "screen", "--analyze", "Test"],
             ["--app", "Safari", "--analyze", "Test", "--format", "png"],
-            ["--analyze", "Test", "--json-output", "--path", "/tmp/test.png"],
+            ["--analyze", "Test", "--json", "--path", "/tmp/test.png"],
         ]
 
         for args in commands {
@@ -205,7 +205,7 @@ struct ImageCommandMockAIProviderTests {
         let command = try ImageCommand.parse([
             "--mode", "frontmost",
             "--analyze", "Mock analysis test",
-            "--json-output",
+            "--json",
         ])
 
         #expect(command.mode == .frontmost)

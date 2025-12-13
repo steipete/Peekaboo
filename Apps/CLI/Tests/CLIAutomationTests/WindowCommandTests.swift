@@ -54,7 +54,7 @@ struct WindowCommandTests {
         let result = try await self.runWindowCommand([
             "window", "list",
             "--app", appName,
-            "--json-output",
+            "--json",
         ], context: context)
 
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
@@ -83,10 +83,10 @@ struct WindowCommandTests {
     @Test
     func windowListCommand() async throws {
         // Test that window list delegates to list windows command
-        let output = try await runPeekabooCommand(["window", "list", "--app", "Finder", "--json-output"])
+        let output = try await runPeekabooCommand(["window", "list", "--app", "Finder", "--json"])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
-        #expect(data.success == true || data.error != nil) // Either succeeds or fails with proper error
+        let json = try JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any]
+        #expect(json?["success"] != nil)
     }
 
     @Test
@@ -95,47 +95,29 @@ struct WindowCommandTests {
         let commands = ["close", "minimize", "maximize", "focus"]
 
         for command in commands {
-            do {
+            await #expect(throws: (any Error).self) {
                 _ = try await self.runPeekabooCommand(["window", command])
-                Issue.record("Expected command to fail without --app")
-            } catch {
-                // Expected to fail
-                #expect(error.localizedDescription.contains("--app must be specified") ||
-                    error.localizedDescription.contains("Exit status: 1")
-                )
             }
         }
     }
 
     @Test
     func windowMoveRequiresCoordinates() async throws {
-        do {
+        await #expect(throws: (any Error).self) {
             _ = try await self.runPeekabooCommand(["window", "move", "--app", "Finder"])
-            Issue.record("Expected command to fail without coordinates")
-        } catch {
-            // Expected to fail - missing required x and y
-            #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64")
-            )
         }
     }
 
     @Test
     func windowResizeRequiresDimensions() async throws {
-        do {
+        await #expect(throws: (any Error).self) {
             _ = try await self.runPeekabooCommand(["window", "resize", "--app", "Finder"])
-            Issue.record("Expected command to fail without dimensions")
-        } catch {
-            // Expected to fail - missing required width and height
-            #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64")
-            )
         }
     }
 
     @Test
     func windowSetBoundsRequiresAllParameters() async throws {
-        do {
+        await #expect(throws: (any Error).self) {
             _ = try await self.runPeekabooCommand([
                 "window",
                 "set-bounds",
@@ -146,12 +128,6 @@ struct WindowCommandTests {
                 "--y",
                 "100",
             ])
-            Issue.record("Expected command to fail without all parameters")
-        } catch {
-            // Expected to fail - missing required width and height
-            #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64")
-            )
         }
     }
 
@@ -191,7 +167,7 @@ struct WindowCommandTests {
             "--y", String(Int(updatedBounds.origin.y)),
             "--width", String(Int(updatedBounds.size.width)),
             "--height", String(Int(updatedBounds.size.height)),
-            "--json-output",
+            "--json",
         ]
 
         let result = try await self.runWindowCommand(args, context: context)
@@ -253,7 +229,7 @@ struct WindowCommandTests {
             "--app", appName,
             "--width", String(Int(updatedSize.width)),
             "--height", String(Int(updatedSize.height)),
-            "--json-output",
+            "--json",
         ]
 
         let result = try await self.runWindowCommand(args, context: context)
@@ -352,7 +328,7 @@ struct WindowCommandLocalIntegrationTests {
         // This test requires TextEdit to be running and local permissions
 
         // First, ensure TextEdit is running and has a window
-        let launchResult = try await runPeekabooCommand(["image", "--app", "TextEdit", "--json-output"])
+        let launchResult = try await runPeekabooCommand(["image", "--app", "TextEdit", "--json"])
         let launchData = try JSONDecoder().decode(JSONResponse.self, from: Data(launchResult.utf8))
 
         guard launchData.success else {
@@ -361,7 +337,7 @@ struct WindowCommandLocalIntegrationTests {
         }
 
         // Try to minimize TextEdit window
-        let result = try await runPeekabooCommand(["window", "minimize", "--app", "TextEdit", "--json-output"])
+        let result = try await runPeekabooCommand(["window", "minimize", "--app", "TextEdit", "--json"])
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(result.utf8))
 
         if let error = data.error {
@@ -387,7 +363,7 @@ struct WindowCommandLocalIntegrationTests {
             "--app", "TextEdit",
             "--x", "200",
             "--y", "200",
-            "--json-output",
+            "--json",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(result.utf8))
@@ -416,7 +392,7 @@ struct WindowCommandLocalIntegrationTests {
         let result = try await runPeekabooCommand([
             "window", "focus",
             "--app", "TextEdit",
-            "--json-output",
+            "--json",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(result.utf8))

@@ -26,7 +26,7 @@ struct SeeCommandPlaygroundTests {
         let output = try await self.runPeekabooCommand([
             "see",
             "--app", "Playground",
-            "--json-output",
+            "--json",
         ])
 
         let data = try #require(output.data(using: .utf8))

@@ -70,7 +70,7 @@ struct AllCommandsJSONOutputTests {
         ["dialog", "dismiss"],
         ["dialog", "list"],
     ]
-    @Test("All commands support --json-output flag")
+    @Test("All commands support --json flag")
     func verifyAllCommandsHaveJSONOutputFlag() async throws {
         var missingJSONOutputCommands: [String] = []
 
@@ -79,27 +79,27 @@ struct AllCommandsJSONOutputTests {
             let result = try await InProcessCommandRunner.runShared(commandArgs + ["--help"])
             let output = result.combinedOutput
 
-            if !output.contains("--json-output") {
+            if !output.contains("--json") {
                 missingJSONOutputCommands.append(commandName)
             }
         }
 
         #expect(
             missingJSONOutputCommands.isEmpty,
-            "Commands missing --json-output flag: \(missingJSONOutputCommands.joined(separator: ", "))"
+            "Commands missing --json flag: \(missingJSONOutputCommands.joined(separator: ", "))"
         )
     }
 
-    @Test("Commands produce valid JSON with --json-output")
+    @Test("Commands produce valid JSON with --json")
     func verifyCommandsProduceValidJSON() async throws {
         // Commands that can be safely tested without side effects
         let testableCommands: [(args: [String], description: String)] = [
-            (["permissions", "--json-output"], "permissions"),
-            (["permissions", "check", "--json-output"], "permissions check"),
-            (["list", "apps", "--json-output"], "list apps"),
-            (["list", "permissions", "--json-output"], "list permissions"),
-            (["sleep", "50", "--json-output"], "sleep"),
-            (["clean", "--all-snapshots", "--dry-run", "--json-output"], "clean (dry run)"),
+            (["permissions", "--json"], "permissions"),
+            (["permissions", "status", "--json"], "permissions status"),
+            (["list", "apps", "--json"], "list apps"),
+            (["list", "permissions", "--json"], "list permissions"),
+            (["sleep", "50", "--json"], "sleep"),
+            (["clean", "--all-snapshots", "--dry-run", "--json"], "clean (dry run)"),
         ]
         var invalidJSONCommands: [String] = []
 
@@ -127,7 +127,7 @@ struct AllCommandsJSONOutputTests {
 
     @Test("JSON output follows consistent schema")
     func verifyJSONOutputSchema() async throws {
-        let result = try await InProcessCommandRunner.runShared(["permissions", "--json-output"])
+        let result = try await InProcessCommandRunner.runShared(["permissions", "--json"])
         let data = Data(result.combinedOutput.utf8)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             Issue.record("Failed to parse JSON output from permissions command")
@@ -165,10 +165,10 @@ struct AllCommandsJSONOutputTests {
     func verifyErrorResponsesUseJSON() async throws {
         // Test commands that will produce errors
         let errorCommands: [(args: [String], description: String)] = [
-            (["image", "--app", "NonExistentApp_XYZ_123", "--json-output"], "image missing app"),
-            (["see", "--app", "NonExistentApp_XYZ_123", "--json-output"], "see missing app"),
-            (["sleep", "--json-output", "--", "-100"], "negative sleep duration"),
-            (["run", "missing.peekaboo.json", "--json-output"], "missing automation script"),
+            (["image", "--app", "NonExistentApp_XYZ_123", "--json"], "image missing app"),
+            (["see", "--app", "NonExistentApp_XYZ_123", "--json"], "see missing app"),
+            (["sleep", "--json", "--", "-100"], "negative sleep duration"),
+            (["run", "missing.peekaboo.json", "--json"], "missing automation script"),
         ]
         var nonJSONErrors: [String] = []
 
@@ -212,11 +212,11 @@ struct AllCommandsJSONOutputTests {
 
     @Test("Subcommands properly inherit JSON output")
     func verifySubcommandsInheritJSONOutput() async throws {
-        // Test that subcommands can be called with --json-output
+        // Test that subcommands can be called with --json
         let subcommandTests: [(args: [String], description: String)] = [
-            (["app", "list", "--json-output"], "app list"),
-            (["config", "show", "--json-output"], "config show"),
-            (["list", "permissions", "--json-output"], "list permissions"),
+            (["app", "list", "--json"], "app list"),
+            (["config", "show", "--json"], "config show"),
+            (["list", "permissions", "--json"], "list permissions"),
         ]
         var failedSubcommands: [String] = []
 
@@ -233,7 +233,7 @@ struct AllCommandsJSONOutputTests {
 
         #expect(
             failedSubcommands.isEmpty,
-            "Subcommands not accepting --json-output: \(failedSubcommands.joined(separator: ", "))"
+            "Subcommands not accepting --json: \(failedSubcommands.joined(separator: ", "))"
         )
     }
 }

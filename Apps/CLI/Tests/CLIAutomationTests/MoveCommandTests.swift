@@ -67,7 +67,7 @@ struct MoveCommandTests {
         try await context.snapshots.storeDetectionResult(snapshotId: "snapshot-id", result: detection)
 
         let result = try await self.runMove(
-            arguments: ["--id", "B1", "--snapshot", "snapshot-id", "--json-output"],
+            arguments: ["--id", "B1", "--snapshot", "snapshot-id", "--json"],
             context: context
         )
 
@@ -109,16 +109,17 @@ struct MoveCommandTests {
     @Test("JSON output contains expected shape")
     func jsonOutput() async throws {
         let context = await self.makeContext()
-        let result = try await self.runMove(arguments: ["150,250", "--json-output"], context: context)
+        let result = try await self.runMove(arguments: ["150,250", "--json"], context: context)
 
         #expect(result.exitStatus == 0)
         let data = try #require(self.output(from: result).data(using: .utf8))
-        let payload = try JSONDecoder().decode(MoveResult.self, from: data)
+        let payload = try JSONDecoder().decode(CodableJSONResponse<MoveResult>.self, from: data)
         #expect(payload.success)
-        #expect(payload.targetDescription.contains("Coordinates"))
-        #expect(payload.targetLocation["x"] == 150)
-        #expect(payload.targetLocation["y"] == 250)
-        #expect(payload.profile == "linear")
+        #expect(payload.data.success)
+        #expect(payload.data.targetDescription.contains("Coordinates"))
+        #expect(payload.data.targetLocation["x"] == 150)
+        #expect(payload.data.targetLocation["y"] == 250)
+        #expect(payload.data.profile == "linear")
     }
 
     @Test("Human profile toggles movement mode")

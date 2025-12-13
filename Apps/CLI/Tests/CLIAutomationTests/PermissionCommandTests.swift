@@ -21,7 +21,7 @@ struct PermissionCommandTests {
 
         let payload = await CodableJSONResponse(
             success: true,
-            data: PermissionHelpers.getCurrentPermissions(services: services),
+            data: PermissionHelpers.getCurrentPermissions(services: services, allowRemote: false),
             messages: nil,
             debug_logs: []
         )
@@ -37,7 +37,7 @@ struct PermissionCommandTests {
 
         if let accessibility = payload.data.first(where: { $0.name == "Accessibility" }) {
             #expect(accessibility.isGranted == false)
-            #expect(accessibility.isRequired == false)
+            #expect(accessibility.isRequired == true)
         } else {
             Issue.record("Missing accessibility entry")
         }

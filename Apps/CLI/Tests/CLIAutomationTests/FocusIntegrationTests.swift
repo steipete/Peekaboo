@@ -30,7 +30,7 @@ struct FocusIntegrationTests {
         let seeOutput = try await runPeekabooCommand([
             "see",
             "--app", "Finder",
-            "--json-output"
+            "--json"
         ])
 
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
@@ -44,7 +44,7 @@ struct FocusIntegrationTests {
         let clickOutput = try await runPeekabooCommand([
             "click", "button",
             "--snapshot", snapshotId,
-            "--json-output"
+            "--json"
         ])
 
         let clickData = try JSONDecoder().decode(ClickResponse.self, from: Data(clickOutput.utf8))
@@ -62,7 +62,7 @@ struct FocusIntegrationTests {
             let seeOutput = try await runPeekabooCommand([
                 "see",
                 "--app", app,
-                "--json-output"
+                "--json"
             ])
 
             let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
@@ -81,7 +81,7 @@ struct FocusIntegrationTests {
         let typeOutput = try await runPeekabooCommand([
             "type", "test",
             "--snapshot", snapshot,
-            "--json-output"
+            "--json"
         ])
 
         let typeData = try JSONDecoder().decode(TypeResponse.self, from: Data(typeOutput.utf8))
@@ -96,7 +96,7 @@ struct FocusIntegrationTests {
         let output = try await runPeekabooCommand([
             "menu", "View",
             "--app", "Finder",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(MenuResponse.self, from: Data(output.utf8))
@@ -112,7 +112,7 @@ struct FocusIntegrationTests {
         let seeOutput = try await runPeekabooCommand([
             "see",
             "--app", "Finder",
-            "--json-output"
+            "--json"
         ])
 
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
@@ -127,7 +127,7 @@ struct FocusIntegrationTests {
             "click", "button",
             "--snapshot", snapshotId,
             "--no-auto-focus",
-            "--json-output"
+            "--json"
         ])
 
         let clickData = try JSONDecoder().decode(ClickResponse.self, from: Data(clickOutput.utf8))
@@ -141,7 +141,7 @@ struct FocusIntegrationTests {
         let output = try await runPeekabooCommand([
             "type", "test",
             "--focus-timeout", "0.1",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(TypeResponse.self, from: Data(output.utf8))
@@ -155,7 +155,7 @@ struct FocusIntegrationTests {
             "menu", "File",
             "--app", "TextEdit",
             "--focus-retry-count", "10",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(MenuResponse.self, from: Data(output.utf8))
@@ -173,7 +173,7 @@ struct FocusIntegrationTests {
             "window", "focus",
             "--app", "Safari",
             "--space-switch",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(WindowActionResponse.self, from: Data(output.utf8))
@@ -186,7 +186,7 @@ struct FocusIntegrationTests {
             "window", "focus",
             "--app", "TextEdit",
             "--move-here",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(WindowActionResponse.self, from: Data(output.utf8))
@@ -200,7 +200,7 @@ struct FocusIntegrationTests {
         let output = try await runPeekabooCommand([
             "window", "focus",
             "--app", "NonExistentApp12345",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(WindowActionResponse.self, from: Data(output.utf8))
@@ -217,7 +217,7 @@ struct FocusIntegrationTests {
             "window", "focus",
             "--app", "Finder",
             "--window-title", "ThisWindowDoesNotExist12345",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(WindowActionResponse.self, from: Data(output.utf8))

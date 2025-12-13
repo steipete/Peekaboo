@@ -110,7 +110,7 @@ struct ImageCommandTests {
     func imageCommandWithJSONOutput() throws {
         // Test JSON output flag
         let command = try ImageCommand.parse([
-            "--json-output",
+            "--json",
         ])
 
         #expect(command.jsonOutput == true)
@@ -175,7 +175,7 @@ struct ImageCommandTests {
         // Test analyze with JSON output
         let command = try ImageCommand.parse([
             "--analyze", "Describe the UI",
-            "--json-output",
+            "--json",
         ])
 
         #expect(command.analyze == "Describe the UI")
@@ -196,7 +196,7 @@ struct ImageCommandTests {
         arguments: [
             (args: ["--mode", "screen", "--format", "png"], mode: CaptureMode.screen, format: ImageFormat.png),
             (args: ["--mode", "window", "--format", "jpg"], mode: CaptureMode.window, format: ImageFormat.jpg),
-            (args: ["--mode", "multi", "--json-output"], mode: CaptureMode.multi, format: ImageFormat.png),
+            (args: ["--mode", "multi", "--json"], mode: CaptureMode.multi, format: ImageFormat.png),
         ]
     )
     func commandCombinations(args: [String], mode: CaptureMode, format: ImageFormat) throws {
@@ -553,7 +553,7 @@ struct ImageCommandTests {
                 "--window-title", "Nonexistent",
                 "--capture-focus", "background",
                 "--path", Self.makeTempCapturePath("notes.png"),
-                "--json-output",
+                "--json",
             ],
             services: services
         )
@@ -587,7 +587,7 @@ struct ImageCommandTests {
         var command = try ImageCommand.parse([
             "--mode", "screen",
             "--path", Self.makeTempCapturePath("logical.png"),
-            "--json-output",
+            "--json",
         ])
 
         let runtime = CommandRuntime(
@@ -620,7 +620,7 @@ struct ImageCommandTests {
             "--mode", "screen",
             "--retina",
             "--path", Self.makeTempCapturePath("retina.png"),
-            "--json-output",
+            "--json",
         ])
 
         let runtime = CommandRuntime(
@@ -716,7 +716,7 @@ struct ImageCommandTests {
                 "--app", appName,
                 "--capture-focus", "background",
                 "--path", Self.makeTempCapturePath("overlay.png"),
-                "--json-output",
+                "--json",
             ],
             services: services
         )

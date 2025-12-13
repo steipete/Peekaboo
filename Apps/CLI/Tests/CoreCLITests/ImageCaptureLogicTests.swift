@@ -281,7 +281,7 @@ struct ImageCaptureLogicTests {
             "--format", "png",
             "--path", "/tmp/vscode-windows",
             "--capture-focus", "foreground",
-            "--json-output",
+            "--json",
         ])
 
         #expect(command.mode == .multi)
@@ -299,7 +299,7 @@ struct ImageCaptureLogicTests {
             "--screen-index", "1",
             "--format", "jpg",
             "--path", "/Users/test/screenshots/display-1.jpg",
-            "--json-output",
+            "--json",
         ])
 
         #expect(command.mode == .screen)

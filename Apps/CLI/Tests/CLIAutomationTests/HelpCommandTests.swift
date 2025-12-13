@@ -11,12 +11,14 @@ struct HelpCommandTests {
         let output = try await runPeekaboo([]).stdout
 
         // Verify help content is shown
-        #expect(output.contains("OVERVIEW: Lightning-fast macOS screenshots"))
-        #expect(output.contains("USAGE: peekaboo <subcommand>"))
-        #expect(output.contains("SUBCOMMANDS:"))
+        #expect(output.contains("Usage"))
+        #expect(output.contains("polter peekaboo <command>"))
+        #expect(output.contains("Core Commands"))
         #expect(output.contains("image"))
         #expect(output.contains("list"))
         #expect(output.contains("agent"))
+        #expect(output.contains("Global Runtime Flags"))
+        #expect(output.contains("--json/-j"))
     }
 
     @Test("--help flag shows help")
@@ -24,43 +26,44 @@ struct HelpCommandTests {
         let output = try await runPeekaboo(["--help"]).stdout
 
         // Should show same help as no arguments
-        #expect(output.contains("OVERVIEW: Lightning-fast macOS screenshots"))
-        #expect(output.contains("USAGE: peekaboo <subcommand>"))
+        #expect(output.contains("Usage"))
+        #expect(output.contains("polter peekaboo <command>"))
     }
 
     @Test("help subcommand for each tool")
     func helpForEachSubcommand() async throws {
         let subcommands = [
-            ("image", "Capture screenshots"),
-            ("list", "List running applications, windows, or check permissions"),
-            ("config", "Manage Peekaboo configuration"),
-            ("permissions", "Check and request system permissions required for Peekaboo"),
-            ("see", "Capture and analyze UI elements for automation"),
-            ("click", "Click on UI elements or coordinates"),
-            ("type", "Type text or send keyboard input"),
-            ("scroll", "Scroll the mouse wheel in any direction"),
-            ("hotkey", "Press keyboard shortcuts and key combinations"),
-            ("swipe", "Perform swipe gestures"),
-            ("drag", "Perform drag and drop operations"),
-            ("move", "Move the mouse cursor to coordinates or UI elements"),
-            ("run", "Execute a Peekaboo automation script"),
-            ("sleep", "Pause execution for a specified duration"),
-            ("clean", "Clean up snapshot cache and temporary files"),
-            ("window", "Manipulate application windows"),
-            ("menu", "Interact with application menu bar"),
-            ("app", "Control applications"),
-            ("dock", "Interact with the macOS Dock"),
-            ("dialog", "Interact with system dialogs and alerts"),
-            ("agent", "Execute complex automation tasks using AI agent")
+            "image",
+            "list",
+            "config",
+            "permissions",
+            "see",
+            "click",
+            "type",
+            "scroll",
+            "hotkey",
+            "swipe",
+            "drag",
+            "move",
+            "run",
+            "sleep",
+            "clean",
+            "window",
+            "menu",
+            "app",
+            "dock",
+            "dialog",
+            "agent",
         ]
 
-        for (subcommand, expectedOverview) in subcommands {
+        for subcommand in subcommands {
             let output = try await runPeekaboo(["help", subcommand]).stdout
 
-            // Each subcommand help should contain OVERVIEW and USAGE
-            #expect(output.contains("OVERVIEW:"), "Help for \(subcommand) should contain OVERVIEW")
-            #expect(output.contains(expectedOverview), "Help for \(subcommand) should contain '\(expectedOverview)'")
-            #expect(output.contains("USAGE:"), "Help for \(subcommand) should contain USAGE")
+            // Each subcommand help should contain a usage card + global flags.
+            #expect(output.contains("Usage"), "Help for \(subcommand) should contain Usage")
+            #expect(output.contains("polter peekaboo \(subcommand)"), "Help for \(subcommand) should contain usage line")
+            #expect(output.contains("Global Runtime Flags"), "Help for \(subcommand) should mention global runtime flags")
+            #expect(output.contains("--json"), "Help for \(subcommand) should include JSON flag")
 
             // Should not show agent execution output
             #expect(!output.contains("[info] Peekaboo Agent"), "Help for \(subcommand) should not invoke agent")
@@ -87,8 +90,8 @@ struct HelpCommandTests {
         for subcommand in subcommands {
             let output = try await runPeekaboo([subcommand, "--help"]).stdout
 
-            #expect(output.contains("OVERVIEW:"), "\(subcommand) --help should show overview")
-            #expect(output.contains("USAGE:"), "\(subcommand) --help should show usage")
+            #expect(output.contains("Usage"), "\(subcommand) --help should show usage")
+            #expect(output.contains("Global Runtime Flags"), "\(subcommand) --help should mention global flags")
             #expect(!output.contains("[info] Peekaboo Agent"), "\(subcommand) --help should not invoke agent")
         }
     }

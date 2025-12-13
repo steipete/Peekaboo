@@ -42,7 +42,7 @@ struct WindowFocusTests {
             "window", "focus",
             "--app", "Safari",
             "--space-switch",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
@@ -61,7 +61,7 @@ struct WindowFocusTests {
             "window", "focus",
             "--app", "TextEdit",
             "--move-here",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
@@ -75,7 +75,7 @@ struct WindowFocusTests {
             "window", "focus",
             "--app", "Finder",
             "--no-space-switch",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
@@ -135,7 +135,7 @@ struct WindowFocusTests {
         let output = try await runPeekabooCommand([
             "type", "test",
             "--focus-timeout", "2.5",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
@@ -149,7 +149,7 @@ struct WindowFocusTests {
             "menu", "File > New",
             "--app", "TextEdit",
             "--focus-retry-count", "5",
-            "--json-output"
+            "--json"
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))

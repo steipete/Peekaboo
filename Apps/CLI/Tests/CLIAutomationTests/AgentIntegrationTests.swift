@@ -27,7 +27,7 @@ struct AgentIntegrationTests {
         let args = [
             "agent",
             "Open TextEdit and type 'Peekaboo Agent Test'",
-            "--json-output",
+            "--json",
             "--max-steps", "10",
         ]
 
@@ -68,7 +68,7 @@ struct AgentIntegrationTests {
         let args = [
             "agent",
             "Open Safari, wait 2 seconds, then minimize it",
-            "--json-output",
+            "--json",
             "--verbose",
         ]
 
@@ -106,7 +106,7 @@ struct AgentIntegrationTests {
             "agent",
             "Click on all buttons in the current window",
             "--dry-run",
-            "--json-output",
+            "--json",
         ]
 
         let outputString = try await self.runAgentCommand(args)
@@ -130,7 +130,7 @@ struct AgentIntegrationTests {
         // Direct invocation without "agent" subcommand
         let args = [
             "Take a screenshot of the current window",
-            "--json-output",
+            "--json",
         ]
 
         let outputString = try await self.runAgentCommand(args)
@@ -154,7 +154,7 @@ struct AgentIntegrationTests {
             "agent",
             "Do 20 different things with various applications",
             "--max-steps", "3",
-            "--json-output",
+            "--json",
         ]
 
         let outputString = try await self.runAgentCommand(args)

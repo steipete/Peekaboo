@@ -33,7 +33,7 @@ struct PIDImageCaptureTests {
             "--mode", "multi",
             "--format", "png",
             "--path", NSTemporaryDirectory(),
-            "--json-output",
+            "--json",
         ])
 
         do {
@@ -74,7 +74,7 @@ struct PIDImageCaptureTests {
             "--mode", "multi",
             "--format", "png",
             "--path", NSTemporaryDirectory(),
-            "--json-output",
+            "--json",
         ])
 
         do {
@@ -104,7 +104,7 @@ struct PIDImageCaptureTests {
                     "--app", invalidPID,
                     "--mode", "window",
                     "--format", "png",
-                    "--json-output",
+                    "--json",
                 ])
 
                 // The command should parse but fail during execution

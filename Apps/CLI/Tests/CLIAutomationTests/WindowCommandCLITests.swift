@@ -55,7 +55,7 @@ struct WindowCommandCLITests {
 
     @Test("Window list delegates to list windows")
     func windowListDelegation() async throws {
-        let result = try await runCommand(["window", "list", "--app", "NonExistentApp", "--json-output"])
+        let result = try await runCommand(["window", "list", "--app", "NonExistentApp", "--json"])
         #expect(result.status != 0)
 
         // Should get JSON output
@@ -72,7 +72,7 @@ struct WindowCommandCLITests {
 
     @Test("Missing required app parameter")
     func missingAppParameter() async throws {
-        let result = try await self.runCommand(["window", "close", "--json-output"])
+        let result = try await self.runCommand(["window", "close", "--json"])
         #expect(result.status != 0)
     }
 
@@ -85,7 +85,7 @@ struct WindowCommandCLITests {
             "Finder",
             "--window-index",
             "999",
-            "--json-output",
+            "--json",
         ])
         #expect(result.status != 0)
 
@@ -101,7 +101,7 @@ struct WindowCommandCLITests {
         let operations = ["close", "minimize", "maximize", "focus"]
 
         for operation in operations {
-            let result = try await runCommand(["window", operation, "--app", "NonExistentApp123", "--json-output"])
+            let result = try await runCommand(["window", operation, "--app", "NonExistentApp123", "--json"])
             #expect(result.status != 0)
 
             if let data = result.output.data(using: .utf8) {
@@ -185,10 +185,10 @@ struct WindowCommandLocalTests {
     @Test("Window operations with TextEdit")
     func textEditWindowOperations() async throws {
         // Ensure TextEdit is running
-        _ = try? await self.runBuiltCommand(["image", "--app", "TextEdit", "--json-output"])
+        _ = try? await self.runBuiltCommand(["image", "--app", "TextEdit", "--json"])
 
         // Try to focus TextEdit
-        let focusOutput = try await runBuiltCommand(["window", "focus", "--app", "TextEdit", "--json-output"])
+        let focusOutput = try await runBuiltCommand(["window", "focus", "--app", "TextEdit", "--json"])
         let focusResponse = try JSONDecoder().decode(JSONResponse.self, from: Data(focusOutput.utf8))
 
         if focusResponse.error?.code == "PERMISSION_ERROR_ACCESSIBILITY" {
@@ -198,13 +198,13 @@ struct WindowCommandLocalTests {
 
         if focusResponse.success {
             // Try moving the window
-            let moveOutput = try await runBuiltCommand([
-                "window", "move",
-                "--app", "TextEdit",
-                "--x", "200",
-                "--y", "200",
-                "--json-output",
-            ])
+                let moveOutput = try await runBuiltCommand([
+                    "window", "move",
+                    "--app", "TextEdit",
+                    "--x", "200",
+                    "--y", "200",
+                    "--json",
+                ])
 
             let moveResponse = try JSONDecoder().decode(JSONResponse.self, from: Data(moveOutput.utf8))
 

@@ -16,7 +16,7 @@ struct AppCommandTests {
     @Test("App command has expected subcommands")
     func appSubcommands() {
         let subcommands = AppCommand.commandDescription.subcommands
-        #expect(subcommands.count == 5)
+        #expect(subcommands.count == 7)
 
         var subcommandNames: [String] = []
         subcommandNames.reserveCapacity(subcommands.count)
@@ -27,8 +27,10 @@ struct AppCommandTests {
         #expect(subcommandNames.contains("launch"))
         #expect(subcommandNames.contains("quit"))
         #expect(subcommandNames.contains("hide"))
-        #expect(subcommandNames.contains("show"))
+        #expect(subcommandNames.contains("unhide"))
         #expect(subcommandNames.contains("switch"))
+        #expect(subcommandNames.contains("relaunch"))
+        #expect(subcommandNames.contains("list"))
     }
 
     @Test("App launch command help")
@@ -36,10 +38,10 @@ struct AppCommandTests {
         let output = try await runAppCommand(["app", "launch", "--help"])
 
         #expect(output.contains("Launch an application"))
-        #expect(output.contains("--app"))
         #expect(output.contains("--bundle-id"))
-        #expect(output.contains("--wait"))
-        #expect(output.contains("--background"))
+        #expect(output.contains("--open"))
+        #expect(output.contains("--wait-until-ready"))
+        #expect(output.contains("--no-focus"))
     }
 
     @Test("App quit command validation")
@@ -59,17 +61,14 @@ struct AppCommandTests {
     func appHideValidation() async throws {
         // Normal hide should work
         let output = try await runAppCommand(["app", "hide", "--app", "Finder", "--help"])
-        #expect(output.contains("Hide applications"))
-
-        // Test --others flag
-        #expect(output.contains("--others"))
+        #expect(output.contains("Hide an application"))
     }
 
     @Test("App show command validation")
     func appShowValidation() async throws {
         // Test missing app/all
         await #expect(throws: (any Error).self) {
-            _ = try await runAppCommand(["app", "show"])
+            _ = try await runAppCommand(["app", "unhide"])
         }
     }
 
@@ -84,10 +83,10 @@ struct AppCommandTests {
     @Test("App lifecycle flow")
     func appLifecycleFlow() {
         // This tests the logical flow of app lifecycle commands
-        let launchCmd = ["app", "launch", "--app", "TextEdit", "--wait"]
+        let launchCmd = ["app", "launch", "--app", "TextEdit", "--wait-until-ready"]
         let hideCmd = ["app", "hide", "--app", "TextEdit"]
-        let showCmd = ["app", "show", "--app", "TextEdit"]
-        let quitCmd = ["app", "quit", "--app", "TextEdit", "--json-output"]
+        let showCmd = ["app", "unhide", "--app", "TextEdit"]
+        let quitCmd = ["app", "quit", "--app", "TextEdit", "--json"]
 
         // Verify command structure is valid
         #expect(launchCmd.count > 3)
@@ -111,7 +110,7 @@ struct AppCommandIntegrationTests {
             "app", "launch",
             "--app", "TextEdit",
             "--wait",
-            "--json-output",
+            "--json",
         ])
 
         struct LaunchResult: Codable {
@@ -140,7 +139,7 @@ struct AppCommandIntegrationTests {
         let (hideOutput, hideService) = try await runAppCommandWithService([
             "app", "hide",
             "--app", "TextEdit",
-            "--json-output",
+            "--json",
         ])
 
         let hideData = try JSONDecoder().decode(JSONResponse.self, from: Data(hideOutput.utf8))
@@ -152,7 +151,7 @@ struct AppCommandIntegrationTests {
         let (showOutput, showService) = try await runAppCommandWithService([
             "app", "show",
             "--app", "TextEdit",
-            "--json-output",
+            "--json",
         ])
 
         let showData = try JSONDecoder().decode(JSONResponse.self, from: Data(showOutput.utf8))
@@ -167,7 +166,7 @@ struct AppCommandIntegrationTests {
         let (cycleOutput, cycleService) = try await runAppCommandWithService([
             "app", "switch",
             "--cycle",
-            "--json-output",
+            "--json",
         ])
 
         let cycleData = try JSONDecoder().decode(JSONResponse.self, from: Data(cycleOutput.utf8))
@@ -179,7 +178,7 @@ struct AppCommandIntegrationTests {
         let (switchOutput, switchService) = try await runAppCommandWithService([
             "app", "switch",
             "--to", "Finder",
-            "--json-output",
+            "--json",
         ])
 
         let switchData = try JSONDecoder().decode(JSONResponse.self, from: Data(switchOutput.utf8))
@@ -193,7 +192,7 @@ struct AppCommandIntegrationTests {
         let (output, appService) = try await runAppCommandWithService([
             "app", "quit",
             "--app", "TextEdit",
-            "--json-output",
+            "--json",
         ])
 
         struct AppQuitInfo: Codable {
@@ -221,7 +220,7 @@ struct AppCommandIntegrationTests {
             "app", "hide",
             "--app", "Finder",
             "--others",
-            "--json-output",
+            "--json",
         ])
 
         let response = try JSONDecoder().decode(

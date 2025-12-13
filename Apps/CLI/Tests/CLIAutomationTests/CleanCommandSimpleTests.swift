@@ -40,7 +40,7 @@ struct CleanCommandSimpleTests {
 
     @Test("Clean command parses json-output flag")
     func parseJsonOutput() throws {
-        let command = try CleanCommand.parse(["--all-snapshots", "--json-output"])
+        let command = try CleanCommand.parse(["--all-snapshots", "--json"])
         #expect(command.allSnapshots == true)
         #expect(command.jsonOutput == true)
     }
@@ -50,7 +50,7 @@ struct CleanCommandSimpleTests {
         let command = try CleanCommand.parse([
             "--older-than", "48",
             "--dry-run",
-            "--json-output",
+            "--json",
         ])
         #expect(command.olderThan == 48)
         #expect(command.dryRun == true)

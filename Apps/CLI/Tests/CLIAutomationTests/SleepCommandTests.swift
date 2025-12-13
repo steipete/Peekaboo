@@ -13,7 +13,7 @@ struct SleepCommandTests {
 
     @Test("Sleep command parses with JSON output")
     func parseWithJSONOutput() throws {
-        let command = try SleepCommand.parse(["500", "--json-output"])
+        let command = try SleepCommand.parse(["500", "--json"])
         #expect(command.duration == 500)
         #expect(command.jsonOutput == true)
     }

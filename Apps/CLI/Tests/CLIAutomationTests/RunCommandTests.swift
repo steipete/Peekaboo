@@ -51,14 +51,14 @@ struct RunCommandCLIHarnessTests {
         let result = try await InProcessCommandRunner.run([
             "run",
             scriptPath,
-            "--json-output",
+            "--json",
         ], services: services)
 
         #expect(result.exitStatus == 0)
         let data = try #require(result.stdout.data(using: .utf8))
-        let payload = try JSONDecoder().decode(ScriptExecutionResult.self, from: data)
-        #expect(payload.totalSteps == 2)
-        #expect(payload.success)
+        let payload = try JSONDecoder().decode(CodableJSONResponse<ScriptExecutionResult>.self, from: data)
+        #expect(payload.data.totalSteps == 2)
+        #expect(payload.data.success)
         #expect(process.loadScriptCalls.count == 1)
         #expect(process.executeScriptCalls.count == 1)
     }

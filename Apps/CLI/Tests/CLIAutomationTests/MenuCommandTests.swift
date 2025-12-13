@@ -121,7 +121,7 @@ struct MenuCommandTests {
             "--app", "Finder",
             "--item", "Open",
             "--no-auto-focus",
-            "--json-output",
+            "--json",
         ]
         let (result, context) = try await self.runMenuCommandWithContext(args)
         #expect(result.exitStatus == 0)
@@ -136,7 +136,7 @@ struct MenuCommandTests {
             "--app", "Finder",
             "--path", "File > Save",
             "--no-auto-focus",
-            "--json-output",
+            "--json",
         ]
         let (result, context) = try await self.runMenuCommandWithContext(args)
         #expect(result.exitStatus == 0)

@@ -171,7 +171,7 @@ struct CommanderBinderProgramResolutionTests {
         let invocation = try program.resolve(argv: [
             "peekaboo",
             "list",
-            "--json-output"
+            "--json"
         ])
         #expect(invocation.path == ["list", "apps"])
         #expect(invocation.parsedValues.flags.contains("jsonOutput"))

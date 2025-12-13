@@ -71,7 +71,7 @@ struct ToolsCommandTests {
 
     @Test("ToolsCommand argument parsing - json output")
     func argumentParsingJsonOutput() throws {
-        let args = ["--json-output"]
+        let args = ["--json"]
         let command = try ToolsCommand.parse(args)
 
         #expect(command.jsonOutput == true)
@@ -79,7 +79,7 @@ struct ToolsCommandTests {
 
     @Test("ToolsCommand argument parsing - multiple flags")
     func argumentParsingMultipleFlags() throws {
-        let args = ["--verbose", "--json-output", "--include-disabled", "--group-by-server"]
+        let args = ["--verbose", "--json", "--include-disabled", "--group-by-server"]
         let command = try ToolsCommand.parse(args)
 
         #expect(command.verbose == true)
@@ -186,7 +186,7 @@ struct ToolsCommandStructureTests {
         #expect(discussion.contains("--mcp-only"))
         #expect(discussion.contains("--mcp github"))
         #expect(discussion.contains("--verbose"))
-        #expect(discussion.contains("--json-output"))
+        #expect(discussion.contains("--json"))
     }
 
     @Test("Command properties have correct types and attributes")

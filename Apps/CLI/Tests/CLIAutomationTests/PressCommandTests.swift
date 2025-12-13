@@ -24,7 +24,7 @@ struct PressCommandTests {
     @Test("Press command forwards keys to automation service")
     func forwardsKeys() async throws {
         let context = await self.makeContext()
-        let result = try await self.runPress(arguments: ["return", "--json-output"], context: context)
+        let result = try await self.runPress(arguments: ["return", "--json"], context: context)
 
         #expect(result.exitStatus == 0)
         let calls = await self.automationState(context) { $0.typeActionsCalls }
@@ -32,10 +32,11 @@ struct PressCommandTests {
         #expect(call.actions.count == 1)
 
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
-        let payload = try JSONDecoder().decode(PressResult.self, from: payloadData)
+        let payload = try JSONDecoder().decode(CodableJSONResponse<PressResult>.self, from: payloadData)
         #expect(payload.success)
-        #expect(payload.keys == ["return"])
-        #expect(payload.totalPresses == 1)
+        #expect(payload.data.success)
+        #expect(payload.data.keys == ["return"])
+        #expect(payload.data.totalPresses == 1)
     }
 
     @Test("Repeat count multiplies key actions")

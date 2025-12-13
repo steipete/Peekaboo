@@ -54,7 +54,7 @@ struct MCPListCommandTests {
 
     @Test("List command argument parsing")
     func listCommandArgumentParsing() throws {
-        _ = try MCPCommand.parse(["list", "--json-output", "--skip-health-check"])
+        _ = try MCPCommand.parse(["list", "--json", "--skip-health-check"])
 
         // We can't easily access the subcommand from the parsed result
         // but we can verify the parsing succeeds
@@ -65,7 +65,7 @@ struct MCPListCommandTests {
         let helpText = MCPCommand.List.helpMessage()
 
         #expect(helpText.contains("list"))
-        #expect(helpText.contains("--json-output"))
+        #expect(helpText.contains("--json"))
         #expect(helpText.contains("--skip-health-check"))
         #expect(helpText.contains("Output in JSON format"))
         #expect(helpText.contains("Skip health checks"))
@@ -205,7 +205,7 @@ struct MCPInfoCommandTests {
         #expect(helpText.contains("info"))
         #expect(helpText.contains("Name of the MCP server"))
         #expect(helpText.contains("Output in JSON format"))
-        #expect(helpText.contains("--json-output"))
+        #expect(helpText.contains("--json"))
     }
 }
 
@@ -274,7 +274,7 @@ struct MCPDisableCommandTests {
 struct MCPCommandParsingTests {
     @Test("Parsing MCP list with flags")
     func parsingListWithFlags() throws {
-        let args = ["--json-output"]
+        let args = ["--json"]
         let command = try MCPCommand.List.parse(args)
         #expect(command.jsonOutput == true)
     }
@@ -320,7 +320,7 @@ struct MCPCommandParsingTests {
 
     @Test("Parsing MCP info with JSON output")
     func parsingInfoWithJson() throws {
-        let args = ["github", "--json-output"]
+        let args = ["github", "--json"]
         let command = try MCPCommand.Info.parse(args)
         #expect(command.name == "github")
         #expect(command.jsonOutput == true)

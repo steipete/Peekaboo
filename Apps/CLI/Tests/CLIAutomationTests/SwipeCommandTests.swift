@@ -41,7 +41,7 @@ struct SwipeCommandTests {
                 "--to-coords", "300,450",
                 "--duration", "1200",
                 "--steps", "40",
-                "--json-output",
+                "--json",
             ],
             context: context
         )
@@ -57,10 +57,11 @@ struct SwipeCommandTests {
         #expect(call.profile == .linear)
 
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
-        let payload = try JSONDecoder().decode(SwipeResult.self, from: payloadData)
+        let payload = try JSONDecoder().decode(CodableJSONResponse<SwipeResult>.self, from: payloadData)
         #expect(payload.success)
-        #expect(payload.distance > 0)
-        #expect(payload.profile == "linear")
+        #expect(payload.data.success)
+        #expect(payload.data.distance > 0)
+        #expect(payload.data.profile == "linear")
     }
 
     @Test("Element based swipe resolves using waitForElement")
@@ -93,7 +94,7 @@ struct SwipeCommandTests {
             arguments: [
                 "--from", "B1",
                 "--to", "B5",
-                "--json-output",
+                "--json",
             ],
             context: context
         )
@@ -132,7 +133,7 @@ struct SwipeCommandTests {
                 "--from-coords", "50,50",
                 "--to-coords", "450,250",
                 "--profile", "human",
-                "--json-output",
+                "--json",
             ],
             context: context
         )
@@ -143,8 +144,8 @@ struct SwipeCommandTests {
         #expect(call.profile == .human())
         #expect(call.steps >= 40)
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
-        let payload = try JSONDecoder().decode(SwipeResult.self, from: payloadData)
-        #expect(payload.profile == "human")
+        let payload = try JSONDecoder().decode(CodableJSONResponse<SwipeResult>.self, from: payloadData)
+        #expect(payload.data.profile == "human")
     }
 
     // MARK: - Helpers

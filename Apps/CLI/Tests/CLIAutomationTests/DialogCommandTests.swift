@@ -57,10 +57,10 @@ struct DialogCommandTests {
         #expect(result.status == 0)
         let output = result.output
 
-        #expect(output.contains("OVERVIEW: Click a button in a dialog using DialogService"))
+        #expect(output.contains("Click a button in a dialog using DialogService"))
         #expect(output.contains("--button"))
         #expect(output.contains("--window"))
-        #expect(output.contains("--json-output"))
+        #expect(output.contains("--json"))
     }
 
     @Test("Dialog  input command help")
@@ -69,7 +69,7 @@ struct DialogCommandTests {
         #expect(result.status == 0)
         let output = result.output
 
-        #expect(output.contains("OVERVIEW: Enter text in a dialog field using DialogService"))
+        #expect(output.contains("Enter text in a dialog field using DialogService"))
         #expect(output.contains("--text"))
         #expect(output.contains("--field"))
         #expect(output.contains("--index"))
@@ -82,7 +82,7 @@ struct DialogCommandTests {
         #expect(result.status == 0)
         let output = result.output
 
-        #expect(output.contains("OVERVIEW: Handle file save/open dialogs using DialogService"))
+        #expect(output.contains("Handle file save/open dialogs using DialogService"))
         #expect(output.contains("--path"))
         #expect(output.contains("--name"))
         #expect(output.contains("--select"))
@@ -94,7 +94,7 @@ struct DialogCommandTests {
         #expect(result.status == 0)
         let output = result.output
 
-        #expect(output.contains("OVERVIEW: Dismiss a dialog using DialogService"))
+        #expect(output.contains("Dismiss a dialog using DialogService"))
         #expect(output.contains("--force"))
         #expect(output.contains("--window"))
     }
@@ -110,7 +110,7 @@ struct DialogCommandTests {
 
         let services = self.makeTestServices(dialogs: dialogService)
         let (output, status) = try await self.runCommand(
-            ["dialog", "dismiss", "--force", "--json-output"],
+            ["dialog", "dismiss", "--force", "--json"],
             services: services
         )
 
@@ -134,8 +134,8 @@ struct DialogCommandTests {
         #expect(result.status == 0)
         let output = result.output
 
-        #expect(output.contains("OVERVIEW: List elements in current dialog using DialogService"))
-        #expect(output.contains("--json-output"))
+        #expect(output.contains("List elements in current dialog using DialogService"))
+        #expect(output.contains("--json"))
     }
 
     @Test("Dialog  error handling")
@@ -188,7 +188,7 @@ struct DialogCommandTests {
         let services = self.makeTestServices(dialogs: dialogService)
 
         let (output, status) = try await self.runCommand(
-            ["dialog", "list", "--json-output"],
+            ["dialog", "list", "--json"],
             services: services
         )
         #expect(status == 0)
@@ -211,14 +211,21 @@ struct DialogCommandTests {
         let services = self.makeTestServices(dialogs: dialogService)
 
         let (output, status) = try await self.runCommand(
-            ["dialog", "click", "--button", "New Document", "--json-output"],
+            ["dialog", "click", "--button", "New Document", "--json"],
             services: services
         )
         #expect(status == 0)
 
         let data = try #require(output.data(using: .utf8))
-        let response = try JSONDecoder().decode(JSONResponse.self, from: data)
+        struct DialogClickPayload: Codable {
+            let action: String
+            let button: String
+            let window: String
+        }
+
+        let response = try JSONDecoder().decode(CodableJSONResponse<DialogClickPayload>.self, from: data)
         #expect(response.success == true)
+        #expect(response.data.button == "New Document")
         #expect(dialogService.recordedButtonClicks.count == 1)
         #expect(dialogService.recordedButtonClicks.first?.button == "New Document")
     }
@@ -266,7 +273,7 @@ struct DialogCommandIntegrationTests {
     func listActiveDialogs() async throws {
         let output = try await runAutomationCommand([
             "dialog", "list",
-            "--json-output",
+            "--json",
         ])
 
         struct TextField: Codable {
@@ -305,7 +312,7 @@ struct DialogCommandIntegrationTests {
         let output = try await runAutomationCommand([
             "dialog", "click",
             "--button", "OK",
-            "--json-output",
+            "--json",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
@@ -321,7 +328,7 @@ struct DialogCommandIntegrationTests {
             "dialog", "input",
             "--text", "Test input",
             "--field", "Name",
-            "--json-output",
+            "--json",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
@@ -336,7 +343,7 @@ struct DialogCommandIntegrationTests {
         let output = try await runAutomationCommand([
             "dialog", "dismiss",
             "--force",
-            "--json-output",
+            "--json",
         ])
 
         struct DialogDismissResult: Codable {
@@ -362,7 +369,7 @@ struct DialogCommandIntegrationTests {
             "--path", "/tmp",
             "--name", "test.txt",
             "--select", "Save",
-            "--json-output",
+            "--json",
         ])
 
         struct FileDialogResult: Codable {

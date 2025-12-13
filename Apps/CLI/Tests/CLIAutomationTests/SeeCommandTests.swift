@@ -25,7 +25,7 @@ struct SeeCommandTests {
             "--app", "Safari",
             "--path", "/tmp/screenshot.png",
             "--annotate",
-            "--json-output",
+            "--json",
         ])
         #expect(command.app == "Safari")
         #expect(command.path == "/tmp/screenshot.png")
@@ -228,7 +228,7 @@ struct SeeCommandRuntimeTests {
                     "see",
                     "--mode", "frontmost",
                     "--path", outputURL.path,
-                    "--json-output",
+                    "--json",
                 ],
                 services: context.services
             )

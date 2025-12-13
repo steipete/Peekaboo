@@ -18,7 +18,7 @@ struct PressCommandIntegrationTests {
         ]
 
         for (input, expectedCount) in testCases {
-            let command = try PressCommand.parse(input + ["--json-output"])
+            let command = try PressCommand.parse(input + ["--json"])
             #expect(command.keys == input)
             #expect(command.keys.count == expectedCount)
 
@@ -111,7 +111,7 @@ struct PressCommandIntegrationTests {
 
     @Test("Press command JSON output format")
     func pressCommandJSONOutput() throws {
-        let command = try PressCommand.parse(["tab", "--json-output"])
+        let command = try PressCommand.parse(["tab", "--json"])
         #expect(command.jsonOutput == true)
     }
 

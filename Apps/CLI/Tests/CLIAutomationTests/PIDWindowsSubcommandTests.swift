@@ -12,7 +12,7 @@ struct PIDWindowsSubcommandTests {
         // Test parsing windows subcommand with PID
         let command = try WindowsSubcommand.parse([
             "--app", "PID:1234",
-            "--json-output",
+            "--json",
         ])
 
         #expect(command.app == "PID:1234")
@@ -25,7 +25,7 @@ struct PIDWindowsSubcommandTests {
         let command = try WindowsSubcommand.parse([
             "--app", "PID:5678",
             "--include-details", "ids,bounds,off_screen",
-            "--json-output",
+            "--json",
         ])
 
         #expect(command.app == "PID:5678")

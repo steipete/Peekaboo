@@ -121,7 +121,7 @@ struct MenuExtractionTests {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with Calculator app
-        let output = try await runPeekabooCommand(["menu", "list", "--app", "Calculator", "--json-output"])
+        let output = try await runPeekabooCommand(["menu", "list", "--app", "Calculator", "--json"])
         let data = try #require(output.data(using: .utf8))
         let json = try JSONDecoder().decode(MenuTestResponse.self, from: data)
 
@@ -167,7 +167,7 @@ struct MenuExtractionTests {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with TextEdit which has well-known shortcuts
-        let output = try await runPeekabooCommand(["menu", "list", "--app", "TextEdit", "--json-output"])
+        let output = try await runPeekabooCommand(["menu", "list", "--app", "TextEdit", "--json"])
         let data = try #require(output.data(using: .utf8))
         let json = try JSONDecoder().decode(MenuTestResponse.self, from: data)
 
@@ -195,7 +195,7 @@ struct MenuExtractionTests {
         #if !os(Linux)
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
-        let output = try await runPeekabooCommand(["menu", "list-all", "--json-output"])
+        let output = try await runPeekabooCommand(["menu", "list-all", "--json"])
         let data = try #require(output.data(using: .utf8))
         let json = try JSONDecoder().decode(MenuTestResponse.self, from: data)
 
@@ -226,7 +226,7 @@ struct MenuExtractionTests {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Finder has nested menus like View > Sort By > Name
-        let output = try await runPeekabooCommand(["menu", "list", "--app", "Finder", "--json-output"])
+        let output = try await runPeekabooCommand(["menu", "list", "--app", "Finder", "--json"])
         let data = try #require(output.data(using: .utf8))
         let json = try JSONDecoder().decode(MenuTestResponse.self, from: data)
 
@@ -258,7 +258,7 @@ struct MenuExtractionTests {
         #if !os(Linux)
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
-        let output = try await runPeekabooCommand(["menu", "list", "--app", "Finder", "--json-output"])
+        let output = try await runPeekabooCommand(["menu", "list", "--app", "Finder", "--json"])
         let data = try #require(output.data(using: .utf8))
         let json = try JSONDecoder().decode(MenuTestResponse.self, from: data)
 
@@ -311,7 +311,7 @@ struct MenuDialogLocalHarnessTests {
         try await self.ensureUntitledTextEditDocument()
 
         let listResponse: CodableJSONResponse<MenuListData> = try self.runJSONCommand(
-            ["menu", "list", "--app", "TextEdit", "--json-output"]
+            ["menu", "list", "--app", "TextEdit", "--json"]
         )
         #expect(listResponse.success == true)
         #expect(
@@ -332,7 +332,7 @@ struct MenuDialogLocalHarnessTests {
         try self.ensureAppLaunched("Calculator")
 
         let listResponse: CodableJSONResponse<MenuListData> = try self.runJSONCommand(
-            ["menu", "list", "--app", "Calculator", "--json-output"]
+            ["menu", "list", "--app", "Calculator", "--json"]
         )
         #expect(listResponse.success == true)
         #expect(
@@ -362,14 +362,14 @@ struct MenuDialogLocalHarnessTests {
                     "--y", "\(100 + iteration * 30)",
                     "--width", "720",
                     "--height", "520",
-                    "--json-output",
+                    "--json",
                 ]
             )
             _ = try ExternalCommandRunner.runPolterPeekaboo(
                 [
                     "window", "list",
                     "--app", "TextEdit",
-                    "--json-output",
+                    "--json",
                 ]
             )
         }
@@ -392,7 +392,7 @@ struct MenuDialogLocalHarnessTests {
                 "dialog", "list",
                 "--app", "TextEdit",
                 "--window", "Save",
-                "--json-output",
+                "--json",
             ]
         )
 
@@ -407,7 +407,7 @@ struct MenuDialogLocalHarnessTests {
                 "dialog", "click",
                 "--app", "TextEdit",
                 "--button", "Cancel",
-                "--json-output",
+                "--json",
             ]
         )
     }
@@ -454,7 +454,7 @@ struct MenuDialogLocalHarnessTests {
             [
                 "window", "focus",
                 "--app", appName,
-                "--json-output",
+                "--json",
             ]
         )
     }
@@ -468,7 +468,7 @@ struct MenuDialogLocalHarnessTests {
                 "menu", "click",
                 "--app", appName,
                 "--path", path,
-                "--json-output",
+                "--json",
             ]
         )
     }
@@ -510,7 +510,7 @@ struct MenuDialogLocalHarnessTests {
                 [
                     "menu", "list",
                     "--app", appName,
-                    "--json-output",
+                    "--json",
                 ]
             )
             #expect(listResponse.success == true, "Iteration \(iteration) failed to list menus for \(appName)")
@@ -528,7 +528,7 @@ struct MenuDialogLocalHarnessTests {
                         "--y", "\(180 + iteration * 3)",
                         "--width", "700",
                         "--height", "500",
-                        "--json-output",
+                        "--json",
                     ]
                 )
             }
@@ -538,7 +538,7 @@ struct MenuDialogLocalHarnessTests {
                     [
                         "window", "list",
                         "--app", appName,
-                        "--json-output",
+                        "--json",
                     ]
                 )
             }

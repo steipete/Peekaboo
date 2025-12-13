@@ -13,7 +13,7 @@ struct MenuCommandIntegrationTests {
             [
                 "menu", "list",
                 "--app", context.appInfo.name,
-                "--json-output",
+                "--json",
                 "--no-auto-focus",
             ],
             context: context
@@ -39,7 +39,7 @@ struct MenuCommandIntegrationTests {
             [
                 "menu", "list",
                 "--app", context.appInfo.name,
-                "--json-output",
+                "--json",
                 "--no-auto-focus",
             ],
             context: context
@@ -50,7 +50,7 @@ struct MenuCommandIntegrationTests {
                 "menu", "click",
                 "--app", context.appInfo.name,
                 "--path", "File > New",
-                "--json-output",
+                "--json",
                 "--no-auto-focus",
             ],
             context: context

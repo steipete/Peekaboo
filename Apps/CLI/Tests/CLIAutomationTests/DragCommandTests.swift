@@ -104,7 +104,7 @@ struct DragCommandTests {
             "--duration", "750",
             "--steps", "5",
             "--modifiers", "cmd,option",
-            "--json-output",
+            "--json",
             "--no-auto-focus",
         ]
         let (result, context) = try await self.runDragCommandWithContext(arguments)
@@ -128,15 +128,16 @@ struct DragCommandTests {
             "--from-coords", "100,100",
             "--to-coords", "300,300",
             "--duration", "500",
-            "--json-output",
+            "--json",
             "--no-auto-focus",
         ]
         let (result, context) = try await self.runDragCommandWithContext(arguments)
         #expect(result.exitStatus == 0)
         let payloadData = Data(self.output(from: result).utf8)
-        let payload = try JSONDecoder().decode(DragResult.self, from: payloadData)
+        let payload = try JSONDecoder().decode(CodableJSONResponse<DragResult>.self, from: payloadData)
         #expect(payload.success)
-        #expect(payload.profile == "linear")
+        #expect(payload.data.success)
+        #expect(payload.data.profile == "linear")
         let dragCalls = await self.automationState(context) { $0.dragCalls }
         let call = try #require(dragCalls.first)
         #expect(Int(call.from.x) == 100)
@@ -160,7 +161,7 @@ struct DragCommandTests {
             "--from", "B1",
             "--to-coords", "500,500",
             "--snapshot", "test-snapshot",
-            "--json-output",
+            "--json",
             "--no-auto-focus",
         ]
         let (result, context) = try await self.runDragCommandWithContext(arguments) { automation, _ in
@@ -185,7 +186,7 @@ struct DragCommandTests {
             "--from-coords", "200,200",
             "--to-coords", "400,400",
             "--modifiers", "cmd,option",
-            "--json-output",
+            "--json",
         ]
         let (result, context) = try await self.runDragCommandWithContext(arguments)
         #expect(result.exitStatus == 0)
@@ -220,7 +221,7 @@ struct DragCommandTests {
             "drag",
             "--from-coords", "100,100",
             "--to-app", "Finder",
-            "--json-output",
+            "--json",
         ]
 
         let (result, context) = try await self.runDragCommandWithContext(
@@ -242,7 +243,7 @@ struct DragCommandTests {
             "--from-coords", "50,50",
             "--to-coords", "150,150",
             "--duration", "2000",
-            "--json-output",
+            "--json",
         ]
         let (result, context) = try await self.runDragCommandWithContext(arguments)
         #expect(result.exitStatus == 0)
@@ -259,7 +260,7 @@ struct DragCommandTests {
             "--from-coords", "0,0",
             "--to-coords", "400,200",
             "--profile", "human",
-            "--json-output",
+            "--json",
             "--no-auto-focus",
         ]
         let (result, context) = try await self.runDragCommandWithContext(arguments)
@@ -269,8 +270,8 @@ struct DragCommandTests {
         #expect(call.profile == .human())
         #expect(call.steps >= 40)
         let payloadData = Data(self.output(from: result).utf8)
-        let payload = try JSONDecoder().decode(DragResult.self, from: payloadData)
-        #expect(payload.profile == "human")
+        let payload = try JSONDecoder().decode(CodableJSONResponse<DragResult>.self, from: payloadData)
+        #expect(payload.data.profile == "human")
     }
 }
 

@@ -204,7 +204,7 @@ struct CommanderBinderMCPWindowTests {
         let invocation = try program.resolve(argv: [
             "peekaboo",
             "permissions",
-            "--json-output"
+            "--json"
         ])
         #expect(invocation.path == ["permissions", "status"])
         #expect(invocation.parsedValues.flags.contains("jsonOutput"))
