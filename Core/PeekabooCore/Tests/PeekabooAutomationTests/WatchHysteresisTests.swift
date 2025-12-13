@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
-@testable import PeekabooAutomation
+@testable import PeekabooAutomationKit
 
 @Suite("Watch hysteresis and caps")
 @MainActor

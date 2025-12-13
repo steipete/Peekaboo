@@ -1,6 +1,6 @@
 import CoreImage
 import Testing
-@testable import PeekabooAutomation
+@testable import PeekabooAutomationKit
 
 @Suite("CaptureOutput finish semantics")
 struct CaptureOutputTests {

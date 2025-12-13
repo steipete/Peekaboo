@@ -4,6 +4,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
+@_spi(Testing) import PeekabooAutomationKit
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
@@ -160,7 +161,7 @@ struct ScreenCaptureServiceFlowTests {
         let legacyOperator = FixtureCaptureOperator(fixtures: fixtures)
 
         let dependencies = ScreenCaptureService.Dependencies(
-            visualizerClient: StubVisualizationClient(),
+            feedbackClient: StubAutomationFeedbackClient(),
             permissionEvaluator: CountingPermissionEvaluator(),
             fallbackRunner: ScreenCaptureFallbackRunner(apis: [.modern, .legacy]),
             applicationResolver: FixtureResolver(fixtures: fixtures),
@@ -181,7 +182,7 @@ struct ScreenCaptureServiceFlowTests {
         let permission = CountingPermissionEvaluator()
 
         let dependencies = ScreenCaptureService.Dependencies(
-            visualizerClient: StubVisualizationClient(),
+            feedbackClient: StubAutomationFeedbackClient(),
             permissionEvaluator: permission,
             fallbackRunner: ScreenCaptureFallbackRunner(apis: [.modern]),
             applicationResolver: FixtureResolver(fixtures: fixtures),
@@ -200,10 +201,12 @@ struct ScreenCaptureServiceFlowTests {
 // MARK: - Test Doubles
 
 @MainActor
-private final class StubVisualizationClient: VisualizationClientProtocol, @unchecked Sendable {
+private final class StubAutomationFeedbackClient: AutomationFeedbackClient, @unchecked Sendable {
     func connect() {}
-    func showScreenshotFlash(in rect: CGRect) async -> Bool { false }
-    func showWatchCapture(in rect: CGRect) async -> Bool { false }
+
+    func showScreenshotFlash(in _: CGRect) async -> Bool { false }
+
+    func showWatchCapture(in _: CGRect) async -> Bool { false }
 }
 
 @MainActor

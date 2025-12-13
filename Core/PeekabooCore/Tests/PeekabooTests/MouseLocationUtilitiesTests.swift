@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import PeekabooAutomation
+@testable import PeekabooAutomationKit
 
 @Suite("MouseLocationUtilities Tests")
 @MainActor

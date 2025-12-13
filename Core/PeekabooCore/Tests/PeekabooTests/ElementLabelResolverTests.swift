@@ -1,6 +1,6 @@
 import Testing
 @testable import PeekabooAgentRuntime
-@testable import PeekabooAutomation
+@_spi(Testing) import PeekabooAutomationKit
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 

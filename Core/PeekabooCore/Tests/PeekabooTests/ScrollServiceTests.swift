@@ -4,6 +4,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
+@testable import PeekabooAutomationKit
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 

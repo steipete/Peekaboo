@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import PeekabooAutomation
+@_spi(Testing) import PeekabooAutomationKit
 
 private struct FallbackEvent {
     let operation: String
@@ -15,7 +15,7 @@ struct ScreenCaptureFallbackRunnerTests {
     @MainActor
     @Test("success on first engine records observer")
     func successFirstEngine() async throws {
-        let logger = CategoryLogger(service: LoggingService(subsystem: "test.logger"), category: "test")
+        let logger = LoggingService(subsystem: "test.logger").logger(category: "test")
         var events: [FallbackEvent] = []
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy]) { op, api, duration, success, error in
             // Observer may run off the actor executor; hop explicitly so array mutation stays deterministic.
@@ -50,7 +50,7 @@ struct ScreenCaptureFallbackRunnerTests {
     @Test("fallback to legacy records both events")
     func fallbackRecordsEvents() async throws {
         enum Dummy: Error { case fail }
-        let logger = CategoryLogger(service: LoggingService(subsystem: "test.logger"), category: "test")
+        let logger = LoggingService(subsystem: "test.logger").logger(category: "test")
         var call = 0
         var events: [FallbackEvent] = []
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy]) { op, api, duration, success, error in

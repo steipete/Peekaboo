@@ -3,7 +3,7 @@ import Foundation
 import ImageIO
 import Testing
 import UniformTypeIdentifiers
-@testable import PeekabooAutomation
+@testable import PeekabooAutomationKit
 
 @Suite("WatchCaptureSession diffing")
 struct WatchCaptureSessionTests {

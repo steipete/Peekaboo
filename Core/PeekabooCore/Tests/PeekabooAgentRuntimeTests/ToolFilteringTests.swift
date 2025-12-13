@@ -4,7 +4,7 @@ import Tachikoma
 import Testing
 @testable import PeekabooAgentRuntime
 
-@Suite("Tool filtering")
+@Suite("Tool filtering", .serialized)
 struct ToolFilteringTests {
     @Test("Config allow list narrows tools")
     func configAllowList() throws {
@@ -47,8 +47,9 @@ struct ToolFilteringTests {
                 #expect(filtered == ["see"])
                 #expect(filters.deny.contains("type"))
                 #expect(filters.deny.contains("shell"))
+                #expect(filters.denySources["shell"] == .config)
                 #expect(logs.contains { $0.contains("type") && $0.contains("environment") })
-                #expect(logs.contains { $0.contains("shell") && $0.contains("config") })
+                #expect(logs.contains { $0.contains("shell") && $0.contains("allow list") })
             }
     }
 
@@ -88,35 +89,48 @@ private func withTempConfig(
     env: [String: String] = [:],
     _ perform: () throws -> Void) throws
 {
-    let fm = FileManager.default
-    let dir = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+    // Process env + ConfigurationManager.shared are process-global; Swift Testing can run tests concurrently.
+    try ToolFilteringEnvLock.withLock {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
-    let configURL = dir.appendingPathComponent("config.json")
-    try json.write(to: configURL, atomically: true, encoding: .utf8)
+        let configURL = dir.appendingPathComponent("config.json")
+        try json.write(to: configURL, atomically: true, encoding: .utf8)
 
-    var restore: [String: String?] = [:]
-    restore["PEEKABOO_CONFIG_DIR"] = ProcessInfo.processInfo.environment["PEEKABOO_CONFIG_DIR"]
-    setenv("PEEKABOO_CONFIG_DIR", dir.path, 1)
+        var restore: [String: String?] = [:]
+        restore["PEEKABOO_CONFIG_DIR"] = ProcessInfo.processInfo.environment["PEEKABOO_CONFIG_DIR"]
+        setenv("PEEKABOO_CONFIG_DIR", dir.path, 1)
 
-    for (key, value) in env {
-        restore[key] = ProcessInfo.processInfo.environment[key]
-        setenv(key, value, 1)
-    }
-
-    defer {
-        for (key, value) in restore {
-            if let value {
-                setenv(key, value, 1)
-            } else {
-                unsetenv(key)
-            }
+        for (key, value) in env {
+            restore[key] = ProcessInfo.processInfo.environment[key]
+            setenv(key, value, 1)
         }
-        try? fm.removeItem(at: dir)
+
+        defer {
+            for (key, value) in restore {
+                if let value {
+                    setenv(key, value, 1)
+                } else {
+                    unsetenv(key)
+                }
+            }
+            try? fm.removeItem(at: dir)
+        }
+
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        try perform()
     }
+}
 
-    ConfigurationManager.shared.resetForTesting()
-    _ = ConfigurationManager.shared.loadConfiguration()
+private enum ToolFilteringEnvLock {
+    private static let mutex = NSLock()
 
-    try perform()
+    static func withLock<T>(_ perform: () throws -> T) rethrows -> T {
+        self.mutex.lock()
+        defer { self.mutex.unlock() }
+        return try perform()
+    }
 }

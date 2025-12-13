@@ -4,6 +4,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
+@testable import PeekabooAutomationKit
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
@@ -323,7 +324,6 @@ struct TypeServiceTests {
         #expect(Date().timeIntervalSince(startTime) > 0)
     }
 }
-#endif
 
 final class DeterministicTypingRandomSource: TypingCadenceRandomSource {
     private let values: [Double]
@@ -344,3 +344,4 @@ final class DeterministicTypingRandomSource: TypingCadenceRandomSource {
 }
 
 extension DeterministicTypingRandomSource: @unchecked Sendable {}
+#endif

@@ -6,7 +6,7 @@
 import Foundation
 import PeekabooFoundation
 import Testing
-@testable import PeekabooAutomation
+@_spi(Testing) import PeekabooAutomationKit
 
 private enum CaptureTestError: Error {
     case modernFailure
@@ -43,7 +43,7 @@ struct ScreenCaptureServicePlanTests {
     @Test("Fallback runner retries on timeout errors")
     func fallbackRetriesOnTimeout() async throws {
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
-        let logger = MockLoggingService().logger(category: LoggingService.Category.screenCapture)
+        let logger = MockLoggingService().logger(category: "screenCapture")
         var attempts: [ScreenCaptureAPI] = []
 
         let result = try await runner.run(
@@ -65,7 +65,7 @@ struct ScreenCaptureServicePlanTests {
     @Test("Fallback runner retries even on unknown errors")
     func fallbackRetriesOnUnknownErrors() async throws {
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
-        let logger = MockLoggingService().logger(category: LoggingService.Category.screenCapture)
+        let logger = MockLoggingService().logger(category: "screenCapture")
         var attempts: [ScreenCaptureAPI] = []
 
         let result = try await runner.run(
@@ -87,7 +87,7 @@ struct ScreenCaptureServicePlanTests {
     @Test("Fallback runner surfaces the final error when all APIs fail")
     func fallbackSurfacesLastError() async {
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
-        let logger = MockLoggingService().logger(category: LoggingService.Category.screenCapture)
+        let logger = MockLoggingService().logger(category: "screenCapture")
         var attempts: [ScreenCaptureAPI] = []
 
         do {

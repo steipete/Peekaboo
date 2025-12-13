@@ -1,12 +1,12 @@
 import Testing
-@testable import PeekabooAutomation
+@_spi(Testing) import PeekabooAutomationKit
 
 @Suite("Capture engine env resolver")
 struct CaptureEngineResolverTests {
     @Test("auto defaults to legacy+modern")
     func autoDefault() {
         let apis = ScreenCaptureAPIResolver.resolve(environment: [:])
-        #expect(apis == [.legacy, .modern])
+        #expect(apis == [.modern, .legacy])
     }
 
     @Test("modern-only selection")

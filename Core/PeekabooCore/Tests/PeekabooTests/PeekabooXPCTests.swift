@@ -1,5 +1,7 @@
 import Foundation
+import PeekabooAutomation
 import PeekabooCore
+import PeekabooFoundation
 import PeekabooXPC
 import Testing
 
@@ -170,7 +172,7 @@ struct PeekabooXPCTests {
         let client = PeekabooXPCClient(endpoint: endpoint)
         let result = try await client.captureFrontmost()
 
-        #expect(result.imageData == StubScreenCaptureService.sampleData)
+        #expect(result.imageData == Data("stub-capture".utf8))
         #expect(result.metadata.mode == .frontmost)
     }
 
@@ -190,7 +192,11 @@ struct PeekabooXPCTests {
         try await client.click(target: .elementId("B1"), clickType: .single, sessionId: nil)
 
         let lastClick = await stub.automationStub.lastClick
-        #expect(lastClick?.target == .elementId("B1"))
+        if case let .elementId(id)? = lastClick?.target {
+            #expect(id == "B1")
+        } else {
+            Issue.record("Expected elementId(B1), got \(String(describing: lastClick?.target))")
+        }
         #expect(lastClick?.type == .single)
     }
 }
@@ -211,10 +217,10 @@ private final class StubServices: PeekabooServiceProviding {
     let sessions: any SessionManagerProtocol = SessionManager()
     let files: any FileServiceProtocol = FileService()
     let clipboard: any ClipboardServiceProtocol = ClipboardService()
-    let configuration: ConfigurationManager = .init()
+    let configuration: ConfigurationManager = .shared
     let process: any ProcessServiceProtocol = ProcessService()
     let permissions: PermissionsService = .init()
-    let audioInput: AudioInputService = .init()
+    let audioInput: AudioInputService = .init(aiService: PeekabooAIService(configuration: .shared))
     let screens: any ScreenServiceProtocol = ScreenService()
     let agent: (any AgentServiceProtocol)? = nil
 
@@ -403,30 +409,30 @@ private final class StubApplicationService: ApplicationServiceProtocol {
 
 @MainActor
 private final class UnimplementedMenuService: MenuServiceProtocol {
-    func listMenus(for _: String) async throws -> MenuStructure { throw PeekabooError.operationError(message: "stub") }
-    func listFrontmostMenus() async throws -> MenuStructure { throw PeekabooError.operationError(message: "stub") }
+    func listMenus(for _: String) async throws -> MenuStructure { throw PeekabooError.notImplemented("stub") }
+    func listFrontmostMenus() async throws -> MenuStructure { throw PeekabooError.notImplemented("stub") }
     func clickMenuItem(app _: String, itemPath _: String) async throws {
-        throw PeekabooError.operationError(message: "stub")
+        throw PeekabooError.notImplemented("stub")
     }
 
     func clickMenuItemByName(app _: String, itemName _: String) async throws {
-        throw PeekabooError.operationError(message: "stub")
+        throw PeekabooError.notImplemented("stub")
     }
 
-    func clickMenuExtra(title _: String) async throws { throw PeekabooError.operationError(message: "stub") }
+    func clickMenuExtra(title _: String) async throws { throw PeekabooError.notImplemented("stub") }
     func listMenuExtras() async throws -> [MenuExtraInfo] { [] }
     func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] { [] }
-    func clickMenuBarItem(named _: String) async throws -> ClickResult { throw PeekabooError
-        .operationError(message: "stub")
+    func clickMenuBarItem(named _: String) async throws -> ClickResult {
+        throw PeekabooError.notImplemented("stub")
     }
 
-    func clickMenuBarItem(at _: Int) async throws -> ClickResult { throw PeekabooError.operationError(message: "stub") }
+    func clickMenuBarItem(at _: Int) async throws -> ClickResult { throw PeekabooError.notImplemented("stub") }
 }
 
 @MainActor
 private final class UnimplementedDockService: DockServiceProtocol {
     func launchFromDock(appName _: String) async throws {}
-    func findDockItem(name _: String) async throws -> DockItem { throw PeekabooError.operationError(message: "stub") }
+    func findDockItem(name _: String) async throws -> DockItem { throw PeekabooError.notImplemented("stub") }
     func rightClickDockItem(appName _: String, menuItem _: String?) async throws {}
     func hideDock() async throws {}
     func showDock() async throws {}
@@ -439,12 +445,12 @@ private final class UnimplementedDockService: DockServiceProtocol {
 @MainActor
 private final class UnimplementedDialogService: DialogServiceProtocol {
     func findActiveDialog(windowTitle _: String?, appName _: String?) async throws -> DialogInfo {
-        throw PeekabooError.operationError(message: "stub")
+        throw PeekabooError.notImplemented("stub")
     }
 
     func clickButton(buttonText _: String, windowTitle _: String?, appName _: String?) async throws
         -> DialogActionResult
-    { throw PeekabooError.operationError(message: "stub") }
+    { throw PeekabooError.notImplemented("stub") }
 
     func enterText(
         text _: String,
@@ -452,17 +458,17 @@ private final class UnimplementedDialogService: DialogServiceProtocol {
         clearExisting _: Bool,
         windowTitle _: String?,
         appName _: String?) async throws -> DialogActionResult
-    { throw PeekabooError.operationError(message: "stub") }
+    { throw PeekabooError.notImplemented("stub") }
 
     func handleFileDialog(path _: String?, filename _: String?, actionButton _: String, appName _: String?) async
         throws -> DialogActionResult
-    { throw PeekabooError.operationError(message: "stub") }
+    { throw PeekabooError.notImplemented("stub") }
 
     func dismissDialog(force _: Bool, windowTitle _: String?, appName _: String?) async throws -> DialogActionResult {
-        throw PeekabooError.operationError(message: "stub")
+        throw PeekabooError.notImplemented("stub")
     }
 
     func listDialogElements(windowTitle _: String?, appName _: String?) async throws -> DialogElements {
-        throw PeekabooError.operationError(message: "stub")
+        throw PeekabooError.notImplemented("stub")
     }
 }

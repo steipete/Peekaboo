@@ -48,6 +48,7 @@ let package = Package(
             targets: ["PeekabooHelper"]),
     ],
     dependencies: [
+        .package(path: "../PeekabooAutomationKit"),
         .package(path: "../PeekabooFoundation"),
         .package(path: "../PeekabooProtocols"),
         .package(path: "../PeekabooExternalDependencies"),
@@ -61,6 +62,7 @@ let package = Package(
             name: "PeekabooAutomation",
             dependencies: [
                 .target(name: "PeekabooVisualizer"),
+                .product(name: "PeekabooAutomationKit", package: "PeekabooAutomationKit"),
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
                 .product(name: "PeekabooProtocols", package: "PeekabooProtocols"),
                 .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
@@ -72,7 +74,6 @@ let package = Package(
             path: "Sources/PeekabooAutomation",
             exclude: [
                 "Services/README.md",
-                "Core/README.md",
             ],
             swiftSettings: coreTargetSettings),
         .testTarget(
@@ -80,6 +81,7 @@ let package = Package(
             dependencies: [
                 "PeekabooAutomation",
                 "PeekabooCore",
+                .product(name: "PeekabooAutomationKit", package: "PeekabooAutomationKit"),
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
             ],
             path: "Tests/PeekabooAutomationTests",
@@ -163,6 +165,7 @@ let package = Package(
                 "PeekabooAutomation",
                 "PeekabooAgentRuntime",
                 "PeekabooXPC",
+                .product(name: "PeekabooAutomationKit", package: "PeekabooAutomationKit"),
                 "PeekabooFoundation",
                 "PeekabooProtocols",
             ],

@@ -3,6 +3,7 @@ import Foundation
 import os.log
 import PeekabooAgentRuntime
 import PeekabooAutomation
+import PeekabooFoundation
 import Security
 
 @objc(PeekabooXPCConnection)
@@ -100,6 +101,10 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
         do {
             if case .handshake = request {
                 // always allow
+            } else if !self.allowedOperations.contains(op) {
+                throw PeekabooXPCErrorEnvelope(
+                    code: .operationNotSupported,
+                    message: "Operation \(op.rawValue) is not supported by this host")
             } else if !effectiveOps.contains(op) {
                 throw PeekabooXPCErrorEnvelope(
                     code: .permissionDenied,
@@ -477,6 +482,19 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             let message =
                 "XPC op=\(op.rawValue) pid=\(pid) failed in \(durationString)s: \(error.localizedDescription)"
             self.logger.error("\(message, privacy: .public)")
+
+            if let error = error as? PeekabooError {
+                switch error {
+                case let .notImplemented(message):
+                    throw PeekabooXPCErrorEnvelope(
+                        code: .operationNotSupported,
+                        message: "Operation \(op.rawValue) is not supported: \(message)",
+                        details: "\(error)")
+                default:
+                    break
+                }
+            }
+
             throw PeekabooXPCErrorEnvelope(
                 code: .internalError,
                 message: "XPC operation failed",

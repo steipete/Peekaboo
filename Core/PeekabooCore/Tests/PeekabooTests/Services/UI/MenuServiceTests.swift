@@ -10,6 +10,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
+@_spi(Testing) import PeekabooAutomationKit
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
@@ -282,7 +283,7 @@ struct MenuServiceTests {
             applicationService: fakeService,
             traversalPolicy: .balanced,
             logger: Logger(subsystem: "test", category: "menu"),
-            visualizerClient: VisualizationClient.shared,
+            feedbackClient: NoopAutomationFeedbackClient(),
             partialMatchEnabled: true,
             cacheTTL: 5)
 
@@ -295,7 +296,10 @@ struct MenuServiceTests {
             isEnabled: true)
         let cachedStructure = MenuStructure(application: app, menus: [cachedMenu])
         let appId = app.bundleIdentifier ?? "com.test.app"
-        service.menuCache[appId] = (expiresAt: Date().addingTimeInterval(5), structure: cachedStructure)
+        service.seedMenuCacheForTesting(
+            appId: appId,
+            expiresAt: Date().addingTimeInterval(5),
+            structure: cachedStructure)
 
         let result = try await service.listMenus(for: appId)
 
