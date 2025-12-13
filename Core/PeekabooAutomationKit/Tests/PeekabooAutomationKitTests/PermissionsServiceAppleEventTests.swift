@@ -1,0 +1,32 @@
+import ApplicationServices
+@testable import PeekabooAutomationKit
+import XCTest
+
+@MainActor
+final class PermissionsServiceAppleEventTests: XCTestCase {
+    func testAppleEventTargetDescriptorIsDuplicated() {
+        let bundleIdentifier = "com.apple.systemevents"
+
+        let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
+        guard let originalHandle = targetDescriptor.aeDesc?.pointee.dataHandle else {
+            XCTFail("Expected NSAppleEventDescriptor to expose an aeDesc handle")
+            return
+        }
+
+        guard var duplicatedDesc = PermissionsService.makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier) else {
+            XCTFail("Expected PermissionsService to create a target address AEDesc")
+            return
+        }
+        defer { AEDisposeDesc(&duplicatedDesc) }
+
+        guard let duplicatedHandle = duplicatedDesc.dataHandle else {
+            XCTFail("Expected duplicated AEDesc to have a data handle")
+            return
+        }
+
+        XCTAssertNotEqual(
+            UInt(bitPattern: originalHandle),
+            UInt(bitPattern: duplicatedHandle),
+            "Expected duplicated AEDesc to own a distinct handle (avoid double-free)")
+    }
+}

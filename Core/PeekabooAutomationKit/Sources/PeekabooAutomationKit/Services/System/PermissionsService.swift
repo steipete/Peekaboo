@@ -73,18 +73,8 @@ public final class PermissionsService {
 
         // Check if we have permission to send AppleEvents
         // This checks permission for sending events to System Events
-        let targetBundleID = "com.apple.systemevents"
-
-        let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: targetBundleID)
-        guard let targetDescPointer = targetDescriptor.aeDesc else {
+        guard var addressDesc = Self.makeAppleEventTargetAddressDesc(bundleIdentifier: "com.apple.systemevents") else {
             self.logger.warning("Failed to create AppleEvent target descriptor")
-            return false
-        }
-
-        var addressDesc = AEDesc()
-        let copyStatus = AEDuplicateDesc(targetDescPointer, &addressDesc)
-        guard copyStatus == noErr else {
-            self.logger.warning("Failed to duplicate AppleEvent target descriptor: \(copyStatus)")
             return false
         }
 
@@ -115,18 +105,8 @@ public final class PermissionsService {
             return self.checkAppleScriptPermission()
         }
 
-        let targetBundleID = "com.apple.systemevents"
-
-        let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: targetBundleID)
-        guard let targetDescPointer = targetDescriptor.aeDesc else {
+        guard var addressDesc = Self.makeAppleEventTargetAddressDesc(bundleIdentifier: "com.apple.systemevents") else {
             self.logger.warning("Failed to create AppleEvent target descriptor")
-            return false
-        }
-
-        var addressDesc = AEDesc()
-        let copyStatus = AEDuplicateDesc(targetDescPointer, &addressDesc)
-        guard copyStatus == noErr else {
-            self.logger.warning("Failed to duplicate AppleEvent target descriptor: \(copyStatus)")
             return false
         }
 
@@ -143,6 +123,17 @@ public final class PermissionsService {
         let hasPermission = permissionStatus == noErr
         self.logger.info("AppleScript permission request status: \(permissionStatus), has permission: \(hasPermission)")
         return self.checkAppleScriptPermission()
+    }
+
+    internal static func makeAppleEventTargetAddressDesc(bundleIdentifier: String) -> AEDesc? {
+        let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
+        guard let targetDescPointer = targetDescriptor.aeDesc else { return nil }
+
+        var addressDesc = AEDesc()
+        let copyStatus = AEDuplicateDesc(targetDescPointer, &addressDesc)
+        guard copyStatus == noErr else { return nil }
+
+        return addressDesc
     }
 
     /// Require Screen Recording permission, throwing if not granted
