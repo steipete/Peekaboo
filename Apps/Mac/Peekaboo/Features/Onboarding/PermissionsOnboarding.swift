@@ -18,7 +18,9 @@ final class PermissionsOnboardingController {
             return
         }
 
-        let hosting = NSHostingController(rootView: PermissionsOnboardingView(permissions: permissions))
+        let rootView = PermissionsOnboardingView(permissions: permissions)
+            .environment(permissions)
+        let hosting = NSHostingController(rootView: rootView)
         let window = NSWindow(contentViewController: hosting)
         window.title = "Permissions"
         window.setContentSize(NSSize(width: 680, height: 760))
