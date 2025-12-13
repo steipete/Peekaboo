@@ -1142,20 +1142,25 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         @available(macOS, obsoleted: 15.0)
         @MainActor
         private func captureWindowWithCGWindowList(windowID: CGWindowID) throws -> CGImage {
-            let imageOptions: CGWindowImageOption = [
-                .boundsIgnoreFraming,
-                .bestResolution,
-            ]
-            guard
-                let image = CGWindowListCreateImage(
-                    .infinite,
-                    [.optionIncludingWindow],
-                    windowID,
-                    imageOptions)
-            else {
-                throw OperationError.captureFailed(reason: "CGWindowListCreateImage returned nil")
+            if #unavailable(macOS 14.0) {
+                let imageOptions: CGWindowImageOption = [
+                    .boundsIgnoreFraming,
+                    .bestResolution,
+                ]
+                guard
+                    let image = CGWindowListCreateImage(
+                        .infinite,
+                        [.optionIncludingWindow],
+                        windowID,
+                        imageOptions)
+                else {
+                    throw OperationError.captureFailed(reason: "CGWindowListCreateImage returned nil")
+                }
+                return image
             }
-            return image
+
+            throw OperationError.captureFailed(
+                reason: "CGWindowListCreateImage is deprecated; use ScreenCaptureKit instead")
         }
 
         private nonisolated static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
