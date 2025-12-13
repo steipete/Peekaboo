@@ -10,7 +10,7 @@ import PeekabooFoundation
 struct AppCommand: ParsableCommand {
     static let commandDescription = CommandDescription(
         commandName: "app",
-        abstract: "Control applications - launch, quit, hide, show, and switch between apps",
+        abstract: "Control applications - launch, quit, relaunch, hide/unhide, switch, and list apps",
         discussion: """
         EXAMPLES:
           # Launch an application
@@ -289,6 +289,23 @@ struct AppCommand: ParsableCommand {
             let logger = self.logger
 
             do {
+                if self.all {
+                    if self.app != nil || self.pid != nil {
+                        throw ValidationError("Cannot combine --all with --app or --pid")
+                    }
+                } else {
+                    if let except = self.except,
+                       !except.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        throw ValidationError("--except requires --all")
+                    }
+                    if self.app != nil && self.pid != nil {
+                        throw ValidationError("Cannot combine --app with --pid")
+                    }
+                    if self.app == nil && self.pid == nil {
+                        throw ValidationError("Either --app, --pid, or --all must be specified")
+                    }
+                }
+
                 var quitApps: [(String, NSRunningApplication)] = []
 
                 if self.all {
@@ -317,8 +334,14 @@ struct AppCommand: ParsableCommand {
                     } else {
                         throw NotFoundError.application(appName)
                     }
+                } else if let pid = self.pid {
+                    guard let runningApp = NSRunningApplication(processIdentifier: pid),
+                          let name = runningApp.localizedName else {
+                        throw NotFoundError.application("pid \(pid)")
+                    }
+                    quitApps.append((name, runningApp))
                 } else {
-                    throw ValidationError("Either --app or --all must be specified")
+                    throw ValidationError("Either --app, --pid, or --all must be specified")
                 }
 
                 // Quit the apps

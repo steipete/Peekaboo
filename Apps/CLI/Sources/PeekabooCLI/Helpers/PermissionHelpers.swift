@@ -79,7 +79,11 @@ enum PermissionHelpers {
         let status: PermissionsStatus = if let remoteStatus {
             remoteStatus
         } else {
-            await Task { @MainActor in services.permissions.checkAllPermissions() }.value
+            await Task { @MainActor in
+                let screenRecording = await services.screenCapture.hasScreenRecordingPermission()
+                let accessibility = await services.automation.hasAccessibilityPermission()
+                return PermissionsStatus(screenRecording: screenRecording, accessibility: accessibility)
+            }.value
         }
 
         let permissionList = [
@@ -94,12 +98,6 @@ enum PermissionHelpers {
                 isRequired: true,
                 isGranted: status.accessibility,
                 grantInstructions: "System Settings > Privacy & Security > Accessibility"
-            ),
-            PermissionInfo(
-                name: "AppleScript (Automation)",
-                isRequired: true,
-                isGranted: status.appleScript,
-                grantInstructions: "System Settings > Privacy & Security > Automation (enable Peekaboo)"
             )
         ]
 

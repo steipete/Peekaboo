@@ -68,18 +68,37 @@ enum CommanderRuntimeRouter {
         guard !arguments.isEmpty else { return false }
 
         if arguments[0].caseInsensitiveCompare("help") == .orderedSame {
-            let path = Array(arguments.dropFirst())
+            let tokens = Array(arguments.dropFirst())
+            let path = self.resolveHelpPath(from: tokens, descriptors: descriptors)
             try self.printHelp(for: path, descriptors: descriptors)
             return true
         }
 
         if let index = arguments.firstIndex(where: { self.isHelpToken($0) }) {
-            let path = Array(arguments.prefix(index))
+            let tokens = Array(arguments.prefix(index))
+            let path = self.resolveHelpPath(from: tokens, descriptors: descriptors)
             try self.printHelp(for: path, descriptors: descriptors)
             return true
         }
 
         return false
+    }
+
+    private static func resolveHelpPath(
+        from tokens: [String],
+        descriptors: [CommanderCommandDescriptor]
+    ) -> [String] {
+        guard !tokens.isEmpty else { return [] }
+
+        for length in stride(from: tokens.count, through: 1, by: -1) {
+            let candidate = Array(tokens.prefix(length))
+            if self.findDescriptor(in: descriptors, matching: candidate) != nil {
+                return candidate
+            }
+        }
+
+        // Preserve previous behavior for unknown paths: let printHelp throw with the original tokens.
+        return tokens
     }
 
     private static func handleVersionRequest(arguments: [String]) -> Bool {
