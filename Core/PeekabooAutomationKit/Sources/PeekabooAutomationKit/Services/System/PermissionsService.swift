@@ -1,3 +1,4 @@
+import ApplicationServices
 import AVFoundation
 import AXorcist
 import CoreGraphics
@@ -125,8 +126,16 @@ public final class PermissionsService {
         return self.checkAppleScriptPermission()
     }
 
+    @MainActor
+    private static var cachedAppleEventTargetDescriptors: [String: NSAppleEventDescriptor] = [:]
+
+    @MainActor
     static func makeAppleEventTargetAddressDesc(bundleIdentifier: String) -> AEDesc? {
-        let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
+        let targetDescriptor = Self.cachedAppleEventTargetDescriptors[bundleIdentifier] ?? {
+            let descriptor = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
+            Self.cachedAppleEventTargetDescriptors[bundleIdentifier] = descriptor
+            return descriptor
+        }()
         guard let targetDescPointer = targetDescriptor.aeDesc else { return nil }
 
         var addressDesc = AEDesc()

@@ -31,4 +31,34 @@ final class PermissionsServiceAppleEventTests: XCTestCase {
             UInt(bitPattern: duplicatedHandle),
             "Expected duplicated AEDesc to own a distinct handle (avoid double-free)")
     }
+
+    func testAppleEventTargetDescriptorDuplicationReturnsUniqueHandlesPerCall() {
+        let bundleIdentifier = "com.apple.systemevents"
+
+        guard var firstDesc = PermissionsService
+            .makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier)
+        else {
+            XCTFail("Expected first duplicated AEDesc")
+            return
+        }
+        defer { AEDisposeDesc(&firstDesc) }
+
+        guard var secondDesc = PermissionsService
+            .makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier)
+        else {
+            XCTFail("Expected second duplicated AEDesc")
+            return
+        }
+        defer { AEDisposeDesc(&secondDesc) }
+
+        guard let firstHandle = firstDesc.dataHandle, let secondHandle = secondDesc.dataHandle else {
+            XCTFail("Expected duplicated AEDesc instances to have data handles")
+            return
+        }
+
+        XCTAssertNotEqual(
+            UInt(bitPattern: firstHandle),
+            UInt(bitPattern: secondHandle),
+            "Expected each call to return a fresh duplicated AEDesc handle")
+    }
 }
