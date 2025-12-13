@@ -32,7 +32,7 @@ struct MenuBarStatusView: View {
                 isInputFocused: self.$isInputFocused,
                 isProcessing: self.agent.isProcessing,
                 onSubmit: self.submitInput)
-            .padding(12)
+                .padding(12)
 
             Divider()
 

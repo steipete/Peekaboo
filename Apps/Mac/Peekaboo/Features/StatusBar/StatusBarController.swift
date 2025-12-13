@@ -132,10 +132,40 @@ final class StatusBarController: NSObject {
     private func showContextMenu() {
         let menu = NSMenu()
 
+        let settingsItem = NSMenuItem(
+            title: "Settings…",
+            action: #selector(self.openSettings),
+            keyEquivalent: ",")
+            .with { item in
+                item.keyEquivalentModifierMask = .command
+                item.image = nil
+            }
+        menu.addItem(settingsItem)
+
+        let aboutItem = NSMenuItem(
+            title: "About Peekaboo",
+            action: #selector(self.showAbout),
+            keyEquivalent: "")
+            .with { item in item.image = nil }
+        menu.addItem(aboutItem)
+
+        menu.addItem(NSMenuItem(
+            title: "Permissions…",
+            action: #selector(self.openPermissions),
+            keyEquivalent: "").with { item in item.image = nil })
+
+        menu.addItem(NSMenuItem(
+            title: "Permissions Onboarding…",
+            action: #selector(self.showPermissionsOnboarding),
+            keyEquivalent: "").with { item in item.image = nil })
+
         if self.settings.agentModeEnabled {
-            // Recent sessions
+            let agentMenu = NSMenu()
+
             if !self.sessionStore.sessions.isEmpty {
-                menu.addItem(NSMenuItem(title: "Recent Sessions", action: nil, keyEquivalent: ""))
+                let headerItem = NSMenuItem(title: "Recent Sessions", action: nil, keyEquivalent: "")
+                headerItem.isEnabled = false
+                agentMenu.addItem(headerItem)
 
                 for session in self.sessionStore.sessions.prefix(5) {
                     let item = NSMenuItem(
@@ -144,54 +174,32 @@ final class StatusBarController: NSObject {
                         keyEquivalent: "")
                     item.representedObject = session.id
                     item.target = self
-                    menu.addItem(item)
+                    agentMenu.addItem(item)
                 }
 
-                menu.addItem(.separator())
+                agentMenu.addItem(.separator())
             }
 
-            // Actions
-            menu.addItem(NSMenuItem(
+            agentMenu.addItem(NSMenuItem(
                 title: "Open Peekaboo",
                 action: #selector(self.openMainWindow),
                 keyEquivalent: "p").with { $0.keyEquivalentModifierMask = [.command, .shift] })
 
-            menu.addItem(NSMenuItem(
+            agentMenu.addItem(NSMenuItem(
                 title: "Inspector",
                 action: #selector(self.openInspector),
                 keyEquivalent: "i").with { $0.keyEquivalentModifierMask = [.command, .shift] })
 
-            menu.addItem(.separator())
+            let agentItem = NSMenuItem(title: "Agent", action: nil, keyEquivalent: "")
+            agentItem.submenu = agentMenu
+            menu.addItem(agentItem)
         }
-
-        menu.addItem(NSMenuItem(
-            title: "Permissions…",
-            action: #selector(self.openPermissions),
-            keyEquivalent: ""))
-
-        menu.addItem(NSMenuItem(
-            title: "Permissions Onboarding…",
-            action: #selector(self.showPermissionsOnboarding),
-            keyEquivalent: ""))
-
-        menu.addItem(NSMenuItem(
-            title: "Settings...",
-            action: #selector(self.openSettings),
-            keyEquivalent: ",").with { $0.keyEquivalentModifierMask = .command })
-
-        menu.addItem(.separator())
-
-        menu.addItem(NSMenuItem(
-            title: "About Peekaboo",
-            action: #selector(self.showAbout),
-            keyEquivalent: ""))
-
-        menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
             title: "Quit",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q")
+            .with { item in item.image = nil }
         quitItem.keyEquivalentModifierMask = .command
         quitItem.target = NSApp
         menu.addItem(quitItem)
