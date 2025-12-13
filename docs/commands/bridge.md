@@ -1,0 +1,39 @@
+---
+summary: 'Diagnose Peekaboo Bridge host connectivity via peekaboo bridge'
+read_when:
+  - 'verifying whether the CLI is using Peekaboo.app / Clawdis.app as a Bridge host'
+  - 'debugging codesign / TeamID failures for bridge.sock connections'
+  - 'checking which socket path Peekaboo is probing'
+---
+
+# `peekaboo bridge`
+
+`peekaboo bridge` reports how the CLI resolves a Peekaboo Bridge host (the socket-based TCC broker used for Screen Recording / Accessibility / AppleScript operations).
+
+## Subcommands
+| Name | Purpose |
+| --- | --- |
+| `status` (default) | Probes the configured socket paths, attempts a Bridge handshake, and reports which host would be selected (or if Peekaboo will fall back to local in-process execution). |
+
+## Notes
+- Host discovery order is documented in `docs/bridge-host.md`.
+- `--no-remote` (or `PEEKABOO_NO_REMOTE`) skips remote probing and forces local execution.
+- `--bridge-socket <path>` (or `PEEKABOO_BRIDGE_SOCKET`) overrides host discovery and probes only that socket.
+- Hosts validate callers by code signature TeamID. If the host rejects the client (`unauthorizedClient`), install a signed Peekaboo CLI build or enable the debug-only escape hatch on the host.
+
+## Examples
+```bash
+# Human-readable status (selected host only)
+polter peekaboo -- bridge status
+
+# Full probe results + structured output for agents
+polter peekaboo -- bridge status --verbose --json-output | jq '.data'
+
+# Probe a specific host socket path
+polter peekaboo -- bridge status --bridge-socket \
+  ~/Library/Application\ Support/clawdis/bridge.sock
+
+# Force local (skip Peekaboo.app / Clawdis.app hosts)
+polter peekaboo -- bridge status --no-remote
+```
+

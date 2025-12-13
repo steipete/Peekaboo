@@ -57,4 +57,4 @@ Bridge hosts are intended to be long-lived and keep automation state **in memory
 - By default, the CLI attempts to use a remote host when available.
 - Use `--no-remote` to force local execution.
 - Use `--bridge-socket <path>` or `PEEKABOO_BRIDGE_SOCKET` to override host discovery.
-
+- Use `peekaboo bridge status` to verify which host would be selected and why (probe results, handshake errors, etc.).
