@@ -88,6 +88,34 @@ struct AudioInputServiceTests {
             _ = try? await service.stopRecording()
             #expect(!service.isRecording)
         }
+
+        @Test("Recorder state is observed only while recording")
+        @MainActor
+        func observesRecorderStateOnlyWhileRecording() async throws {
+            let recorder = MockAudioRecorder()
+            let service = AudioInputServiceTests.makeService(recorder: recorder)
+
+            // Mutating the recorder while idle should not update the service.
+            recorder.recordingDuration = 7.5
+            try await Task.sleep(for: .milliseconds(150))
+            #expect(service.recordingDuration == 0)
+            #expect(service.isRecording == false)
+
+            // Once recording starts, the service should reflect recorder state.
+            try await service.startRecording()
+            recorder.recordingDuration = 1.25
+            try await Task.sleep(for: .milliseconds(150))
+            #expect(service.isRecording == true)
+            #expect(service.recordingDuration == 1.25)
+
+            // After stopping, observation should stop and recorder mutations shouldn't leak back in.
+            _ = try await service.stopRecording()
+            recorder.isRecording = true
+            recorder.recordingDuration = 9.0
+            try await Task.sleep(for: .milliseconds(150))
+            #expect(service.isRecording == false)
+            #expect(service.recordingDuration == 0)
+        }
     }
 
     @Suite("File Transcription")
