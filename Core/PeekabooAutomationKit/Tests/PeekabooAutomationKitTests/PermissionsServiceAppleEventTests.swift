@@ -1,6 +1,6 @@
 import ApplicationServices
-@testable import PeekabooAutomationKit
 import XCTest
+@testable import PeekabooAutomationKit
 
 @MainActor
 final class PermissionsServiceAppleEventTests: XCTestCase {
@@ -13,7 +13,9 @@ final class PermissionsServiceAppleEventTests: XCTestCase {
             return
         }
 
-        guard var duplicatedDesc = PermissionsService.makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier) else {
+        guard var duplicatedDesc = PermissionsService
+            .makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier)
+        else {
             XCTFail("Expected PermissionsService to create a target address AEDesc")
             return
         }

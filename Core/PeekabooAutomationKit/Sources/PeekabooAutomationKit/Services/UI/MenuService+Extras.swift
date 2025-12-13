@@ -24,7 +24,7 @@ extension MenuService {
             throw PeekabooError.operationError(message: "System menu bar not found")
         }
 
-        let menuBarItems = menuBar.children() ?? []
+        let menuBarItems = menuBar.children(strict: true) ?? []
         guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
             var context = ErrorContext()
             context.add("menuExtra", title)
@@ -34,7 +34,7 @@ extension MenuService {
                 context: context.build())
         }
 
-        let extras = menuExtrasGroup.children() ?? []
+        let extras = menuExtrasGroup.children(strict: true) ?? []
         guard let menuExtra = extras.first(where: { element in
             element.title() == title ||
                 element.help() == title ||
@@ -62,6 +62,12 @@ extension MenuService {
         // Menu bar enumeration must never hang: agents depend on this returning quickly.
         // AX can block on misbehaving apps; keep the default path cheap and bounded.
         let windowExtras = self.getMenuBarItemsViaWindows()
+
+        // Fast path: WindowServer enumeration is usually sufficient and avoids AX calls entirely.
+        // Only fall back to accessibility sweeps when explicitly enabled or when WindowServer gives nothing.
+        if !windowExtras.isEmpty, !self.deepMenuBarAXSweepEnabled {
+            return windowExtras
+        }
 
         let axExtras = self.getMenuBarItemsViaAccessibility(timeout: self.menuBarAXTimeoutSec)
         let controlCenterExtras = self.getMenuBarItemsFromControlCenterAX(timeout: self.menuBarAXTimeoutSec)
@@ -387,7 +393,7 @@ extension MenuService {
             if depth > limit { return [] }
             var results: [Element] = []
             element.setMessagingTimeout(timeout)
-            if let children = element.children() {
+            if let children = element.children(strict: true) {
                 for child in children {
                     results.append(child)
                     results.append(contentsOf: collectElements(from: child, depth: depth + 1, limit: limit))
@@ -414,7 +420,7 @@ extension MenuService {
 
                 var effectiveTitle = baseTitle
                 if isPlaceholderMenuTitle(effectiveTitle),
-                   let children = extra.children()
+                   let children = extra.children(strict: true)
                 {
                     if let childDerived = children
                         .compactMap({ sanitizedMenuText($0.title()) ?? sanitizedMenuText($0.descriptionText()) })
@@ -457,7 +463,7 @@ extension MenuService {
 
         func flattenExtras(_ element: Element) -> [Element] {
             element.setMessagingTimeout(timeout)
-            guard let children = element.children() else { return [] }
+            guard let children = element.children(strict: true) else { return [] }
             var results: [Element] = []
             for child in children {
                 if child.role() == "AXMenuBarItem" || child.role() == "AXGroup" {
@@ -475,7 +481,7 @@ extension MenuService {
             let baseTitle = extra.title() ?? extra.help() ?? extra.descriptionText() ?? "Unknown"
             var effectiveTitle = baseTitle
             if isPlaceholderMenuTitle(effectiveTitle),
-               let children = extra.children()
+               let children = extra.children(strict: true)
             {
                 if let childDerived = children
                     .compactMap({ sanitizedMenuText($0.title()) ?? sanitizedMenuText($0.descriptionText()) })
@@ -518,7 +524,7 @@ extension MenuService {
             if depth > limit { return [] }
             var list: [Element] = []
             element.setMessagingTimeout(timeout)
-            if let children = element.children() {
+            if let children = element.children(strict: true) {
                 for child in children {
                     list.append(child)
                     list.append(contentsOf: collectElements(from: child, depth: depth + 1, limit: limit))
@@ -562,7 +568,7 @@ extension MenuService {
                 if position != .zero, position.y > 100 { continue }
 
                 // Avoid duplicating children of a status item: require that this element itself is status-like.
-                let childrenRoles = (extra.children() ?? []).compactMap { $0.role() }
+                let childrenRoles = (extra.children(strict: true) ?? []).compactMap { $0.role() }
                 if !isStatusLike, childrenRoles.contains(where: { $0 == "AXMenuItem" }) {
                     continue
                 }

@@ -125,7 +125,7 @@ public final class PermissionsService {
         return self.checkAppleScriptPermission()
     }
 
-    internal static func makeAppleEventTargetAddressDesc(bundleIdentifier: String) -> AEDesc? {
+    static func makeAppleEventTargetAddressDesc(bundleIdentifier: String) -> AEDesc? {
         let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
         guard let targetDescPointer = targetDescriptor.aeDesc else { return nil }
 
