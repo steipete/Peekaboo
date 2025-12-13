@@ -43,12 +43,9 @@ final class PermissionsOnboardingController {
 struct PermissionsOnboardingView: View {
     @Bindable var permissions: Permissions
 
-    @State private var currentPage = 0
-
     private let pageWidth: CGFloat = 680
     private let contentHeight: CGFloat = 520
-    private var pageCount: Int { 2 }
-    private var buttonTitle: String { self.currentPage == self.pageCount - 1 ? "Finish" : "Next" }
+    private var buttonTitle: String { "Done" }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,16 +55,9 @@ struct PermissionsOnboardingView: View {
                 .frame(height: 132)
 
             GeometryReader { _ in
-                HStack(spacing: 0) {
-                    self.welcomePage().frame(width: self.pageWidth)
-                    self.permissionsPage().frame(width: self.pageWidth)
-                }
-                .offset(x: CGFloat(-self.currentPage) * self.pageWidth)
-                .animation(
-                    .interactiveSpring(response: 0.5, dampingFraction: 0.86, blendDuration: 0.25),
-                    value: self.currentPage)
-                .frame(height: self.contentHeight, alignment: .top)
-                .clipped()
+                self.permissionsPage()
+                    .frame(width: self.pageWidth)
+                    .frame(height: self.contentHeight, alignment: .top)
             }
             .frame(height: self.contentHeight)
 
@@ -83,43 +73,6 @@ struct PermissionsOnboardingView: View {
         }
         .onDisappear {
             self.permissions.unregisterMonitoring()
-        }
-    }
-
-    private func welcomePage() -> some View {
-        self.onboardingPage {
-            Text("Grant permissions")
-                .font(.largeTitle.weight(.semibold))
-            Text("Peekaboo needs Screen Recording + Accessibility to capture and automate your Mac.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 560)
-                .fixedSize(horizontal: false, vertical: true)
-
-            self.onboardingCard(spacing: 10, padding: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Color(nsColor: .systemOrange))
-                        .frame(width: 22)
-                        .padding(.top, 1)
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Security notice")
-                            .font(.headline)
-                        Text(
-                            """
-                            Screen capture + accessibility access are powerful.
-                            Only grant them if you trust the workflows and prompts you run.
-                            """)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .frame(maxWidth: 520)
         }
     }
 
@@ -147,46 +100,9 @@ struct PermissionsOnboardingView: View {
     }
 
     private var navigationBar: some View {
-        HStack(spacing: 20) {
-            ZStack(alignment: .leading) {
-                Button(action: {}, label: {
-                    Label("Back", systemImage: "chevron.left").labelStyle(.iconOnly)
-                })
-                .buttonStyle(.plain)
-                .opacity(0)
-                .disabled(true)
-
-                if self.currentPage > 0 {
-                    Button(action: self.handleBack, label: {
-                        Label("Back", systemImage: "chevron.left")
-                            .labelStyle(.iconOnly)
-                    })
-                    .buttonStyle(.plain)
-                    .foregroundColor(.secondary)
-                    .opacity(0.8)
-                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                }
-            }
-            .frame(minWidth: 80, alignment: .leading)
-
+        HStack {
             Spacer()
-
-            HStack(spacing: 8) {
-                ForEach(0..<self.pageCount, id: \.self) { index in
-                    Button {
-                        withAnimation { self.currentPage = index }
-                    } label: {
-                        Circle()
-                            .fill(index == self.currentPage ? Color.accentColor : Color.gray.opacity(0.3))
-                            .frame(width: 8, height: 8)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            Spacer()
-
-            Button(action: self.handleNext) {
+            Button(action: self.finish) {
                 Text(self.buttonTitle)
                     .frame(minWidth: 88)
             }
@@ -221,20 +137,6 @@ struct PermissionsOnboardingView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(NSColor.controlBackgroundColor))
                 .shadow(color: .black.opacity(0.06), radius: 8, y: 3))
-    }
-
-    private func handleBack() {
-        withAnimation {
-            self.currentPage = max(0, self.currentPage - 1)
-        }
-    }
-
-    private func handleNext() {
-        if self.currentPage < self.pageCount - 1 {
-            withAnimation { self.currentPage += 1 }
-        } else {
-            self.finish()
-        }
     }
 
     private func finish() {
