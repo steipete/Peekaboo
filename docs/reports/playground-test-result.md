@@ -84,7 +84,7 @@ USAGE: peekaboo see [--app <app>] [--window-id <window-id>] [--window-title <win
   - Successfully captured and analyzed UI
   - Found 51 UI elements (26 interactive)
   - Created session 1753686072886-3831
-  - Generated UI map at ~/.peekaboo/session/1753686072886-3831/map.json
+  - Generated UI map at ~/.peekaboo/snapshots/1753686072886-3831/snapshot.json
 
 ---
 
@@ -93,7 +93,7 @@ USAGE: peekaboo see [--app <app>] [--window-id <window-id>] [--window-title <win
 **Help Output**:
 ```
 OVERVIEW: Click on UI elements or coordinates
-USAGE: peekaboo click [<query>] [--session <session>] [--on <on>] [--coords <coords>] [--wait-for <wait-for>] [--double] [--right] [--json-output]
+USAGE: peekaboo click [<query>] [--snapshot <snapshot>] [--on <on>] [--coords <coords>] [--wait-for <wait-for>] [--double] [--right] [--json-output]
 ```
 
 **Testing Results**:
@@ -123,7 +123,7 @@ USAGE: peekaboo click [<query>] [--session <session>] [--on <on>] [--coords <coo
 **Help Output**:
 ```
 OVERVIEW: Type text or send keyboard input
-USAGE: peekaboo type [<text>] [--session <session>] [--delay <delay>] [--press-return] [--tab <tab>] [--escape] [--delete] [--clear] [--json-output]
+USAGE: peekaboo type [<text>] [--snapshot <snapshot>] [--delay <delay>] [--press-return] [--tab <tab>] [--escape] [--delete] [--clear] [--json-output]
 ```
 
 **Testing Results**:
@@ -146,7 +146,7 @@ USAGE: peekaboo type [<text>] [--session <session>] [--delay <delay>] [--press-r
 **Help Output**:
 ```
 OVERVIEW: Scroll the mouse wheel in any direction
-USAGE: peekaboo scroll --direction <direction> [--amount <amount>] [--on <on>] [--session <session>] [--delay <delay>] [--smooth] [--json-output]
+USAGE: peekaboo scroll --direction <direction> [--amount <amount>] [--on <on>] [--snapshot <snapshot>] [--delay <delay>] [--smooth] [--json-output]
 ```
 
 **Testing Results**:
@@ -168,7 +168,7 @@ USAGE: peekaboo scroll --direction <direction> [--amount <amount>] [--on <on>] [
 **Help Output**:
 ```
 OVERVIEW: Press keyboard shortcuts and key combinations
-USAGE: peekaboo hotkey --keys <keys> [--hold-duration <hold-duration>] [--session <session>] [--json-output]
+USAGE: peekaboo hotkey --keys <keys> [--hold-duration <hold-duration>] [--snapshot <snapshot>] [--json-output]
 ```
 
 **Testing Results**:
@@ -260,7 +260,7 @@ SUBCOMMANDS: launch, quit, hide, unhide, switch, list
 **Help Output**:
 ```
 OVERVIEW: Move the mouse cursor to coordinates or UI elements
-USAGE: peekaboo move [<coordinates>] [--to <to>] [--id <id>] [--center] [--smooth] [--duration <duration>] [--steps <steps>] [--session <session>] [--json-output]
+USAGE: peekaboo move [<coordinates>] [--to <to>] [--id <id>] [--center] [--smooth] [--duration <duration>] [--steps <steps>] [--snapshot <snapshot>] [--json-output]
 ```
 
 **Testing Results**:
@@ -381,22 +381,22 @@ SUBCOMMANDS: click, input, file, dismiss, list
 
 ---
 
-### ✅ 17. clean - Clean up session cache
+### ✅ 17. clean - Clean up snapshot cache
 
 **Help Output**:
 ```
-OVERVIEW: Clean up session cache and temporary files
-Sessions are stored in ~/.peekaboo/session/<PID>/
+OVERVIEW: Clean up snapshot cache and temporary files
+Snapshots are stored in ~/.peekaboo/snapshots/<snapshot-id>/
 ```
 
 **Testing Results**:
 - ✅ Dry run test: `./scripts/peekaboo-wait.sh clean --dry-run --older-than 1`
-  - Would remove 44 sessions
+  - Would remove 44 snapshots
   - Space to be freed: 2.8 MB
   - Dry run mode prevents actual deletion
 
 **Parameter Observations**:
-- Flexible cleanup options (all, by age, specific session)
+- Flexible cleanup options (all, by age, specific snapshot)
 - Dry-run mode for safety
 - Clear reporting of space to be freed
 
@@ -495,7 +495,7 @@ Uses OpenAI Chat Completions API to break down and execute complex automation ta
 - `image` - Screenshot capture works perfectly
 - `list` - Lists apps/windows/permissions correctly
 - `see` - UI element mapping works well
-- `click` - Works fast with session (0.15s after fix)
+- `click` - Works fast with snapshot context (0.15s after fix)
 - `type` - Text input works smoothly
 - `scroll` - Mouse wheel scrolling works
 - `hotkey` - Keyboard shortcuts work
@@ -508,7 +508,7 @@ Uses OpenAI Chat Completions API to break down and execute complex automation ta
 - `drag` - Drag and drop operations work
 - `swipe` - Swipe gestures work
 - `dialog` - Dialog interaction ready (needs dialog to test)
-- `clean` - Session cleanup works
+- `clean` - Snapshot cleanup works
 - `run` - Script execution documented
 - `config` - Configuration management works
 - `permissions` - Permission checking works
@@ -529,9 +529,9 @@ Uses OpenAI Chat Completions API to break down and execute complex automation ta
 ### 2. ✅ FIXED: Click Command Performance Issue
 - **Severity**: Medium
 - **Impact**: Click commands were taking 36+ seconds
-- **Root Cause**: Searching through ALL applications instead of using session data
-- **Fix Applied**: Modified to use session data when available
-- **Performance**: 240x speedup (36s → 0.15s with session)
+- **Root Cause**: Searching through ALL applications instead of using snapshot data
+- **Fix Applied**: Modified to use snapshot data when available
+- **Performance**: 240x speedup (36s → 0.15s with snapshot)
 - **Status**: FIXED & TESTED
 
 ### 3. ✅ FIXED: Menu Item Parameter Enhancement
@@ -552,7 +552,7 @@ Uses OpenAI Chat Completions API to break down and execute complex automation ta
 |---------|------------------------|-------|
 | image   | 0.3-0.5s | Fast |
 | see     | 0.3-0.5s | Fast |
-| click   | 0.15s with session | Fixed! Was 36-72s |
+| click   | 0.15s with snapshot | Fixed! Was 36-72s |
 | type    | 0.08s | Very fast |
 | scroll  | 0.02s | Very fast |
 | hotkey  | 0.07s | Very fast |
@@ -575,12 +575,12 @@ Uses OpenAI Chat Completions API to break down and execute complex automation ta
 
 ### Already Fixed:
 1. ✅ WindowCommand inheritance bug - FIXED
-2. ✅ Click performance issue - FIXED with session usage
+2. ✅ Click performance issue - FIXED with snapshot usage
 3. ✅ Menu --item parameter - FIXED with recursive search
 4. ✅ ServiceError build issue - FIXED
 
 ### Future Improvements:
-1. **Click Fallback Performance**: Investigate why element search without session is slow
+1. **Click Fallback Performance**: Investigate why element search without snapshot is slow
 2. **Parameter Consistency**: Consider standardizing parameter names across commands
 3. **Progress Indicators**: Add progress bars for long-running operations
 4. **Script Templates**: Provide example .peekaboo.json scripts

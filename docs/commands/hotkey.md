@@ -14,14 +14,14 @@ read_when:
 | --- | --- |
 | `keys` / `--keys "cmd,c"` | Required list of keys (positional or `--keys`). Use commas or spaces; modifiers (`cmd`, `alt`, `ctrl`, `shift`, `fn`) can be mixed with letters/numbers/special keys. |
 | `--hold-duration <ms>` | Milliseconds to hold the combo before releasing (default `50`). |
-| `--session <id>` | Optional session to determine which app should be focused beforehand. |
-| Focus flags | All `FocusCommandOptions` flags apply; focus only runs when a session is available. |
+| `--snapshot <id>` | Optional snapshot to determine which app should be focused beforehand. |
+| Focus flags | All `FocusCommandOptions` flags apply; focus only runs when a snapshot is available. |
 
 ## Implementation notes
 - The command errors if no keys are provided (either positionally or via `--keys`).
 - When both forms are present, the positional value is used.
 - Keys are parsed into an ordered list (press order) and rejoined with commas before calling the automation service, which expects `cmd,shift,p` style input and releases keys in reverse order.
-- If you omit `--session`, the command skips `ensureFocused` entirely; this is handy for OS-global shortcuts like Spotlight, but for app-specific shortcuts you should reuse the `see` session.
+- If you omit `--snapshot`, the command skips `ensureFocused` entirely; this is handy for OS-global shortcuts like Spotlight, but for app-specific shortcuts you should reuse the `see` snapshot.
 - JSON mode returns the normalized key list, total count, and elapsed time, which is useful when logging scripted shortcuts.
 
 ## Examples
@@ -30,9 +30,9 @@ read_when:
 polter peekaboo -- hotkey "cmd,c"
 
 # Reopen the last closed tab in Safari
-polter peekaboo -- hotkey --keys "cmd,shift,t" --session $(jq -r '.data.session_id' /tmp/see.json)
+polter peekaboo -- hotkey --keys "cmd,shift,t" --snapshot $(jq -r '.data.snapshot_id' /tmp/see.json)
 
-# Trigger Spotlight without needing a session
+# Trigger Spotlight without needing a snapshot
 polter peekaboo -- hotkey --keys "cmd space" --no-auto-focus
 
 # Tab backwards using Shift+Tab (positional, space-separated)

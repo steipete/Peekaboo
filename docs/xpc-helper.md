@@ -71,7 +71,7 @@ Error model: typed error codes (`permissionDenied`, `notFound`, `timeout`, `inva
 - `peekaboo daemon restart`: polite restart of helper; GUI host ignored.
 
 ## Data paths
-- Reuse existing session storage layout so remote captures remain compatible (`SessionManager` paths). Helper writes under the same base; ensure permissions so CLI can read results.
+- Reuse the snapshot storage layout so remote captures remain compatible (`SnapshotManager` paths). Helper writes under the same base (`~/.peekaboo/snapshots/`); ensure permissions so the CLI can read results.
 - Visualizer: leave as-is (file + distributed notification) until/unless we co-host the visualizer endpoint; not required for CLI-from-SSH.
 
 ## Migration plan
@@ -90,7 +90,7 @@ Error model: typed error codes (`permissionDenied`, `notFound`, `timeout`, `inva
 ## Implementation status (Dec 2025)
 - Helper target (`PeekabooHelper`) and Peekaboo.app both host the same mach service; the GUI registers `boo.peekaboo.app` while the LaunchAgent keeps `boo.peekaboo.helper` for headless use.
 - Handshake now validates the audit token (team/bundle from code signature + pid/uid), rejects non-console users, and returns the negotiated capability map.
-- The remote allowlist includes menu, dock, dialog, and session/cache operations; unsupported callers receive `operationNotSupported`.
-- Sessions are stored on the helper via XPC (create/store/load/list/clean), keeping detection caches warm across remote commands.
+- The remote allowlist includes menu, dock, dialog, and snapshot/cache operations; unsupported callers receive `operationNotSupported`.
+- Snapshots are stored on the helper via XPC (create/store/load/list/clean), keeping detection caches warm across remote commands.
 - Client discovery tries GUI first, then helper; falls back to in-process when neither is reachable. Per-request logs include latency for basic observability.
 - `peekaboo permissions helper-bootstrap` still installs `~/Library/LaunchAgents/boo.peekaboo.helper.plist`, copies the helper binary into `~/Library/Application Support/Peekaboo/`, and bootstraps it via `launchctl`.

@@ -168,10 +168,10 @@ The Playground app provides:
 
 ```bash
 # List recent sessions
-ls -la ~/.peekaboo/session/
+ls -la ~/.peekaboo/snapshots/
 
 # View session UI map
-cat ~/.peekaboo/session/<session-id>/map.json | jq .
+cat ~/.peekaboo/snapshots/<snapshot-id>/snapshot.json | jq .
 ```
 
 ## Common Testing Patterns

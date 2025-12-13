@@ -68,7 +68,7 @@ Common log categories used throughout Peekaboo:
 - **Capture**: Screenshot capture operations
 - **WindowSearch**: Window finding and matching
 - **ElementDetection**: UI element detection and analysis
-- **Session**: Session management operations
+- **Snapshot**: Snapshot cache management operations
 - **Performance**: Performance timing and metrics
 - **Operation**: High-level operation tracking
 - **AI**: AI provider operations and analysis
@@ -99,7 +99,7 @@ $ peekaboo see --app Safari --verbose
 [2025-01-06T08:05:23.203Z] VERBOSE [Capture]: Initiating window capture {app=Safari, windowTitle=any}
 [2025-01-06T08:05:23.204Z] VERBOSE [Performance]: Starting timer 'window_capture'
 [2025-01-06T08:05:23.537Z] VERBOSE [Performance]: Timer 'window_capture' completed {duration_ms=333}
-[2025-01-06T08:05:23.538Z] VERBOSE [Capture]: Capture completed successfully {sessionId=12345, elementCount=42, screenshotSize=524288}
+[2025-01-06T08:05:23.538Z] VERBOSE [Capture]: Capture completed successfully {snapshotId=12345, elementCount=42, screenshotSize=524288}
 [2025-01-06T08:05:23.750Z] VERBOSE [Operation]: Operation completed {operation=see_command, success=true, executionTimeMs=627}
 ```
 
@@ -107,11 +107,11 @@ $ peekaboo see --app Safari --verbose
 
 ```bash
 $ peekaboo click --on B99 --verbose
-[2025-01-06T08:05:24.123Z] VERBOSE [Session]: Resolving session {explicitId=null}
-[2025-01-06T08:05:24.124Z] VERBOSE [Session]: Found valid sessions {count=1, latest=12345}
-[2025-01-06T08:05:24.125Z] VERBOSE [ElementSearch]: Looking for element {id=B99, sessionId=12345}
-[2025-01-06T08:05:24.126Z] VERBOSE [ElementSearch]: Loading session map from cache
-[2025-01-06T08:05:24.127Z] ERROR [ElementSearch]: Element not found in session {id=B99, availableIds=[B1,B2,B3,T1,T2]}
+[2025-01-06T08:05:24.123Z] VERBOSE [Snapshot]: Resolving snapshot {explicitId=null}
+[2025-01-06T08:05:24.124Z] VERBOSE [Snapshot]: Found valid snapshots {count=1, latest=12345}
+[2025-01-06T08:05:24.125Z] VERBOSE [ElementSearch]: Looking for element {id=B99, snapshotId=12345}
+[2025-01-06T08:05:24.126Z] VERBOSE [ElementSearch]: Loading snapshot map from cache
+[2025-01-06T08:05:24.127Z] ERROR [ElementSearch]: Element not found in snapshot {id=B99, availableIds=[B1,B2,B3,T1,T2]}
 ```
 
 ### Performance Analysis
@@ -133,7 +133,9 @@ When using `--json-output`, verbose logs are collected in the `debug_logs` array
 ```json
 {
   "success": true,
-  "sessionId": "12345",
+  "data": {
+    "snapshot_id": "12345"
+  },
   "debug_logs": [
     "[2025-01-06T08:05:23.123Z] VERBOSE: Verbose logging enabled",
     "[2025-01-06T08:05:23.124Z] VERBOSE [Operation]: Starting operation {operation=see_command}"

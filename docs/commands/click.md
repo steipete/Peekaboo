@@ -2,7 +2,7 @@
 summary: 'Target UI elements via peekaboo click'
 read_when:
   - 'building deterministic element interactions after running `see`'
-  - 'debugging focus/session issues for click automation'
+  - 'debugging focus/snapshot issues for click automation'
 ---
 
 # `peekaboo click`
@@ -14,16 +14,16 @@ read_when:
 | --- | --- |
 | `[query]` | Optional positional text query (case-insensitive substring match). |
 | `--on <id>` / `--id <id>` | Target a specific Peekaboo element ID (e.g., `B1`, `T2`). |
-| `--coords x,y` | Click exact coordinates without touching the session cache. |
-| `--session <id>` | Reuse a prior session; defaults to `services.sessions.getMostRecentSession()` when omitted. |
-| `--app <name>` | Force a specific app focus before clicking (in addition to whatever session resolves). |
+| `--coords x,y` | Click exact coordinates without touching the snapshot cache. |
+| `--snapshot <id>` | Reuse a prior snapshot; defaults to `services.snapshots.getMostRecentSnapshot()` when omitted. |
+| `--app <name>` | Force a specific app focus before clicking (in addition to whatever snapshot resolves). |
 | `--wait-for <ms>` | Millisecond timeout while waiting for the element to appear (default 5000). |
 | `--double` / `--right` | Perform double-click or secondary-click instead of the default single click. |
 | Focus flags | `--no-auto-focus`, `--focus-timeout-seconds`, `--focus-retry-count`, `--space-switch`, `--bring-to-current-space` (see `FocusCommandOptions`). |
 
 ## Implementation notes
 - Validation makes sure you only provide one targeting strategy (ID/query vs. `--coords`) and that coordinate strings parse cleanly into doubles.
-- When no `--session` is provided, the command grabs the most recent session ID (if any) before waiting for elements. Coordinate clicks skip session usage entirely to avoid stale caches.
+- When no `--snapshot` is provided, the command grabs the most recent snapshot ID (if any) before waiting for elements. Coordinate clicks skip snapshot usage entirely to avoid stale caches.
 - Element-based clicks call `AutomationServiceBridge.waitForElement` with the supplied timeout so you don’t have to insert manual sleeps. Helpful hints are printed when timeouts expire.
 - Focus is enforced just before the click by `ensureFocused`; by default it will hop Spaces if necessary unless you pass `--no-auto-focus`.
 - JSON output reports `clickedElement`, the resolved coordinates, wait time, execution time, and the frontmost app after the click.

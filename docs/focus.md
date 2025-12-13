@@ -44,13 +44,13 @@ Peekaboo uses multiple methods to track windows:
 3. **Window Title** - Human-readable but can change
 4. **Window Index** - Position-based, least stable
 
-When you use the `see` command, Peekaboo stores the window's CGWindowID in the session, allowing subsequent commands to reliably target the same window even if its title changes or it moves between Spaces.
+When you use the `see` command, Peekaboo stores the window's CGWindowID in the snapshot, allowing subsequent commands to reliably target the same window even if its title changes or it moves between Spaces.
 
 ### Focus Flow
 
 When you execute an interaction command (click, type, etc.), Peekaboo:
 
-1. **Retrieves window info** from the current session
+1. **Retrieves window info** from the current snapshot
 2. **Checks if window still exists** (handles closed windows gracefully)
 3. **Detects which Space** contains the window
 4. **Switches to that Space** if different from current
@@ -234,10 +234,10 @@ peekaboo space where-is --app Chrome --window-title "GitHub"
 
 ### 1. Use Sessions
 
-Always start with `see` to establish a session:
+Always start with `see` to establish a snapshot:
 
 ```bash
-# Good: Establishes session with window tracking
+# Good: Establishes snapshot with window tracking
 peekaboo see --app Safari
 peekaboo click "Login"
 peekaboo type "username"
@@ -371,9 +371,9 @@ Focus management is implemented using:
 3. **Stage Manager** - Experimental support, may have edge cases
 4. **Minimized Windows** - Cannot be focused directly (must restore first)
 
-### Session Storage
+### Snapshot Storage
 
-Window information stored in sessions:
+Window information stored in snapshots:
 
 ```json
 {

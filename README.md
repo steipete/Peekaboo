@@ -39,8 +39,8 @@ Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI auto
 peekaboo image --mode screen --retina --path ~/Desktop/screen.png
 
 # Click a button by label (captures, resolves, and clicks in one go)
-peekaboo see --app Safari --json-output | jq -r '.data.session_id' | read SID
-peekaboo click --on "Reload this page" --session "$SID"
+peekaboo see --app Safari --json-output | jq -r '.data.snapshot_id' | read SNAPSHOT
+peekaboo click --on "Reload this page" --snapshot "$SNAPSHOT"
 
 # Run a natural-language automation
 peekaboo "Open Notes and create a TODO list with three items"
@@ -64,8 +64,8 @@ npx -y @steipete/peekaboo
 
 | Command | Key flags / subcommands | What it does |
 | --- | --- | --- |
-| [see](docs/commands/see.md) | `--app`, `--mode screen/window`, `--retina`, `--json-output` | Capture and annotate UI, return session + element IDs |
-| [click](docs/commands/click.md) | `--on <id/query>`, `--session`, `--wait`, coords | Click by element ID, label, or coordinates |
+| [see](docs/commands/see.md) | `--app`, `--mode screen/window`, `--retina`, `--json-output` | Capture and annotate UI, return snapshot + element IDs |
+| [click](docs/commands/click.md) | `--on <id/query>`, `--snapshot`, `--wait`, coords | Click by element ID, label, or coordinates |
 | [type](docs/commands/type.md) | `--text`, `--clear`, `--delay-ms` | Enter text with pacing options |
 | [press](docs/commands/press.md) | key names, `--repeat` | Special keys and sequences |
 | [hotkey](docs/commands/hotkey.md) | combos like `cmd,shift,t` | Modifier combos (cmd/ctrl/alt/shift) |
@@ -87,7 +87,7 @@ npx -y @steipete/peekaboo
 | [permissions](docs/commands/permissions.md) | `status`, `grant` | Check/grant required macOS permissions |
 | [run](docs/commands/run.md) | `.peekaboo.json`, `--output`, `--no-fail-fast` | Execute `.peekaboo.json` automation scripts |
 | [sleep](docs/commands/sleep.md) | `--duration` (ms) | Millisecond delays between steps |
-| [clean](docs/commands/clean.md) | `--all-sessions`, `--older-than`, `--session` | Prune sessions and caches |
+| [clean](docs/commands/clean.md) | `--all-snapshots`, `--older-than`, `--snapshot` | Prune snapshots and caches |
 | [agent](docs/commands/agent.md) | `--model`, `--dry-run`, `--resume`, `--max-steps`, audio | Natural-language multi-step automation |
 | [mcp](docs/commands/mcp.md) | `serve`, `list`, `add`, `enable/disable`, `test` | Manage external MCP servers and serve Peekaboo |
 

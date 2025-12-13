@@ -20,7 +20,7 @@ This document provides a comprehensive reference for all services available in P
 7. [ProcessService](#processservice)
 8. [DialogService](#dialogservice)
 9. [FileService](#fileservice)
-10. [SessionManager](#sessionmanager)
+10. [SnapshotManager](#snapshotmanager)
 11. [ConfigurationManager](#configurationmanager)
 12. [EventGenerator](#eventgenerator)
 
@@ -476,38 +476,104 @@ func createDirectory(at path: String) throws
 
 ---
 
-## SessionManager
+## SnapshotManager
 
-Manages automation sessions for the Mac app.
+Persists UI automation snapshots created by `peekaboo see` so follow-up commands (`click`, `type`, `scroll`, …) can resolve element IDs and reliably refocus the same window.
 
-### Properties
-
-```swift
-var currentSession: Session? { get }
-var isSessionActive: Bool { get }
-```
+Snapshots are stored under `~/.peekaboo/snapshots/<snapshot-id>/` and typically include:
+- `snapshot.json` (the serialized `UIAutomationSnapshot`, including `uiMap` + window metadata)
+- `raw.png` (the stored screenshot copied into the snapshot)
+- `annotated.png` (optional, when annotations are generated)
 
 ### Methods
 
-#### `startSession(mode:)`
-Starts a new automation session.
+#### `createSnapshot()`
+Creates a new empty snapshot and returns its ID.
 
 ```swift
-func startSession(mode: SessionMode) async throws -> Session
+func createSnapshot() async throws -> String
 ```
 
-#### `endSession()`
-Ends the current session.
+#### `getMostRecentSnapshot()`
+Returns the most recent valid snapshot ID (if any).
 
 ```swift
-func endSession() async
+func getMostRecentSnapshot() async -> String?
 ```
 
-#### `executeInSession(_:)`
-Executes a block within the current session context.
+#### `storeScreenshot(snapshotId:screenshotPath:applicationName:windowTitle:windowBounds:)`
+Stores a raw screenshot in the snapshot directory and records basic window metadata.
 
 ```swift
-func executeInSession<T>(_ block: () async throws -> T) async throws -> T
+func storeScreenshot(
+    snapshotId: String,
+    screenshotPath: String,
+    applicationName: String?,
+    windowTitle: String?,
+    windowBounds: CGRect?
+) async throws
+```
+
+#### `storeAnnotatedScreenshot(snapshotId:annotatedScreenshotPath:)`
+Stores an annotated screenshot as `annotated.png` inside the snapshot directory (optional companion to `raw.png`).
+
+```swift
+func storeAnnotatedScreenshot(
+    snapshotId: String,
+    annotatedScreenshotPath: String
+) async throws
+```
+
+#### `storeDetectionResult(snapshotId:result:)`
+Persists detected UI elements into `snapshot.json`.
+
+```swift
+func storeDetectionResult(
+    snapshotId: String,
+    result: ElementDetectionResult
+) async throws
+```
+
+#### `getDetectionResult(snapshotId:)`
+Loads the persisted snapshot and returns a reconstructed `ElementDetectionResult` (if present).
+
+```swift
+func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult?
+```
+
+#### `getElement(snapshotId:elementId:)`
+Fetches a single `UIElement` from the snapshot’s `uiMap`.
+
+```swift
+func getElement(snapshotId: String, elementId: String) async throws -> UIElement?
+```
+
+#### `findElements(snapshotId:matching:)`
+Searches the snapshot’s `uiMap` for elements matching a query string.
+
+```swift
+func findElements(snapshotId: String, matching query: String) async throws -> [UIElement]
+```
+
+#### `listSnapshots()`
+Returns metadata for all snapshot directories.
+
+```swift
+func listSnapshots() async throws -> [SnapshotInfo]
+```
+
+#### `cleanSnapshot(snapshotId:)`
+Deletes a specific snapshot directory.
+
+```swift
+func cleanSnapshot(snapshotId: String) async throws
+```
+
+#### `cleanAllSnapshots()`
+Deletes all snapshot directories and returns the number removed.
+
+```swift
+func cleanAllSnapshots() async throws -> Int
 ```
 
 ---

@@ -12,9 +12,9 @@ read_when:
 ## Key options
 | Flag | Description |
 | --- | --- |
-| `--from <id>` / `--from-coords x,y` | Source location (ID requires a valid session). |
+| `--from <id>` / `--from-coords x,y` | Source location (ID requires a valid snapshot). |
 | `--to <id>` / `--to-coords x,y` | Destination location (also supports IDs or literal coordinates). |
-| `--session <id>` | Needed whenever you reference IDs so the command can look up bounds. Auto-resolves to the most recent session if omitted. |
+| `--snapshot <id>` | Needed whenever you reference IDs so the command can look up bounds. Auto-resolves to the most recent snapshot if omitted. |
 | `--duration <ms>` | Default 500 ms; controls how long the swipe lasts. |
 | `--steps <count>` | Number of intermediate points for smoothing (default 20). |
 | `--right-button` | Currently rejected — the implementation throws a validation error because right-button drags are not yet wired up. |
@@ -39,7 +39,7 @@ polter peekaboo -- swipe --from-coords 120,880 --to-coords 120,200
 # Human-style swipe with adaptive easing
 polter peekaboo -- swipe --from-coords 80,640 --to-coords 820,320 --profile human
 
-# Mix coordinate → element drag using the most recent session
+# Mix coordinate → element drag using the most recent snapshot
 polter peekaboo -- swipe --from-coords 400,400 --to drawer_toggle
 ```
 

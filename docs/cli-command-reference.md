@@ -7,20 +7,20 @@ read_when:
 
 # CLI Command Reference
 
-Peekaboo’s CLI mirrors everything the agent can do. Commands share the same session cache and most support `--json-output` for scripting. Run `peekaboo` with no arguments to print the root help menu, and `peekaboo --version` at any time to see the embedded build/commit metadata that Poltergeist stamped into the binary.
+Peekaboo’s CLI mirrors everything the agent can do. Commands share the same snapshot cache and most support `--json-output` for scripting. Run `peekaboo` with no arguments to print the root help menu, and `peekaboo --version` at any time to see the embedded build/commit metadata that Poltergeist stamped into the binary.
 
 Use `peekaboo <command> --help` for inline flag descriptions; this page links to the authoritative docs in `docs/commands/`.
 
 ## Vision & Capture
 
-- [`see`](commands/see.md) – Capture annotated UI maps, produce session IDs, and optionally run AI analysis.
+- [`see`](commands/see.md) – Capture annotated UI maps, produce snapshot IDs, and optionally run AI analysis.
 - [`image`](commands/image.md) – Save raw PNG/JPG captures of screens, windows, or menu bar regions; supports `--analyze` prompts.
 - `capture` – Long-running capture. `capture live` (adaptive PNG frames) replaces watch; `capture video` ingests a video and samples frames. Outputs frames, contact sheet, metadata, optional MP4.
 - [`list`](commands/list.md) – Subcommands: `apps`, `windows`, `screens`, `menubar`, `permissions`.
 - [`tools`](commands/tools.md) – Filter native vs MCP tools; group by server or emit JSON summaries.
 - [`run`](commands/run.md) – Execute `.peekaboo.json` scripts (`--output`, `--no-fail-fast`).
 - [`sleep`](commands/sleep.md) – Millisecond pauses between steps.
-- [`clean`](commands/clean.md) – Remove session caches by ID, age, or all at once (`--dry-run` supported).
+- [`clean`](commands/clean.md) – Remove snapshot caches by ID, age, or all at once (`--dry-run` supported).
 - [`config`](commands/config.md) – Subcommands: `init`, `show`, `edit`, `validate`, `add`, `login`, `set-credential` (legacy), `add-provider`, `list-providers`, `test-provider`, `remove-provider`, `models`.
 - [`permissions`](commands/permissions.md) – `status` (default) and `grant` helpers for Screen Recording/Accessibility.
 - [`learn`](commands/learn.md) – Print the complete agent guide (system prompt, tool catalog, Commander signatures).

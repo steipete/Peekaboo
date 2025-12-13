@@ -51,7 +51,7 @@ Not in scope: backwards compatibility with pre-3.0 CLIs, legacy argument parser 
 - Capture: `ScreenCaptureService`, `ImageCaptureBridge`, ScreenCaptureKit integration.
 - Automation: `UIAutomationService`, `AutomationServiceBridge` for click/type/scroll/etc.
 - Windows/Spaces/Menus/Dock/Dialog services with high-level bridges consumed by commands.
-- Session management: `SessionManager` (stores screenshots/element maps under `~/.peekaboo/session/<PID>`).
+- Snapshot management: `SnapshotManager` (stores UI automation snapshots under `~/.peekaboo/snapshots/<snapshot-id>/`).
 
 ### 3.2 PeekabooAgentRuntime
 - `PeekabooAgentService`: orchestrates tools, system prompt, MCP tool registry.
@@ -79,12 +79,12 @@ services.installAgentRuntimeDefaults()
 
 ---
 
-## 4. Session Lifecycle & Storage
+## 4. Snapshot Lifecycle & Storage
 
-1. **Creation:** `peekaboo see` (and `image` when annotations are saved) captures the target, runs element detection, and writes files to `~/.peekaboo/session/<PID>/` via `SessionManager`. Writes happen in a staging dir followed by atomic rename to avoid partial state.
-2. **Resolution:** Interaction commands call `services.sessions.getMostRecentSession()` when `--session` is omitted. Coordinate-only commands skip session usage entirely to avoid stale data.
-3. **Reuse:** Commands that focus applications (`click`, `type`, etc.) merge session info with explicit `--app` or `FocusCommandOptions` to bring the right window/Space forward before interacting.
-4. **Cleanup:** `peekaboo clean` proxies into `services.files.clean*` helpers. Users can delete all sessions, those older than N hours, or a single session ID; `--dry-run` reports would-be deletions without touching disk.
+1. **Creation:** `peekaboo see` captures the target, runs element detection, and writes a snapshot under `~/.peekaboo/snapshots/<snapshot-id>/` via `SnapshotManager` (`snapshot.json`, plus `raw.png` / `annotated.png` when available).
+2. **Resolution:** Interaction commands call `services.snapshots.getMostRecentSnapshot()` when `--snapshot` is omitted. Coordinate-only commands skip snapshot usage entirely to avoid stale data.
+3. **Reuse:** Commands that focus applications (`click`, `type`, etc.) merge snapshot info with explicit `--app` or `FocusCommandOptions` to bring the right window/Space forward before interacting.
+4. **Cleanup:** `peekaboo clean` proxies into `services.files.clean*Snapshots` helpers. Users can delete all snapshots, those older than N hours, or a single snapshot ID; `--dry-run` reports would-be deletions without touching disk.
 
 This shared cache is the hand-off mechanism between CLI invocations, custom scripts, and agents. Nothing else should read/write UI maps manually.
 
@@ -131,8 +131,8 @@ Common helpers:
 ## 8. Primary Workflows
 
 1. **Capture → Act loop**
-   - `see` generates session files + annotated PNG (optional) and prints the `session_id`.
-   - Interaction commands automatically pick up the freshest session (unless `--session` overrides) and autofocus the relevant window.
+   - `see` generates snapshot files + annotated PNG (optional) and prints the `snapshot_id`.
+   - Interaction commands automatically pick up the freshest snapshot (unless `--snapshot` overrides) and autofocus the relevant window.
    - Logs + JSON output include timings, UI bounds, and hints for debugging (e.g., element not found suggestions).
 
 2. **Configuration & Permissions**

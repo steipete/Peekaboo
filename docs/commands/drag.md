@@ -14,7 +14,7 @@ read_when:
 | --- | --- |
 | `--from <id>` / `--from-coords x,y` | Source handle. Exactly one of these is required. |
 | `--to <id>` / `--to-coords x,y` / `--to-app <name>` | Destination. Use `--to-app Trash` for Dock drops or any bundle ID/name for app-centric drops. |
-| `--session <id>` | Needed whenever IDs are involved. Defaults to the most recent session otherwise. |
+| `--snapshot <id>` | Needed whenever IDs are involved. Defaults to the most recent snapshot otherwise. |
 | `--duration <ms>` | Drag length (default 500 ms). |
 | `--steps <count>` | Number of interpolation points (default 20) to control smoothness. |
 | `--modifiers cmd,shift,…` | Comma-separated list of modifier keys held during the drag. |

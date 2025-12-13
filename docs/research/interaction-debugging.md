@@ -36,7 +36,7 @@ read_when:
 | Mac StatusBar SwiftUI build blockers | `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, and `UnifiedActivityFeed.swift` continue to fail `./runner ./scripts/build-mac-debug.sh`. | `StatusBarControllerTests` only instantiate the controller—no coverage for the SwiftUI button style or logging helper. | Finish the Logger/API cleanup in those files and add snapshot/compilation tests (e.g., `StatusBarActionsTests`) so SwiftUI button styles conform to `ButtonStyle` and logging interpolations stay valid. |
 | AXObserverManager drift | Workspace build still links against a stale AXorcist artifact missing `attachNotification`. | None | Add an AXorcist unit test (`AXObserverManagerTests`) that instantiates the manager, attaches notifications, and validates callbacks so both SwiftPM and the workspace must ingest the updated sources. |
 | Finder window focus error classification | Fix now maps `FocusError` to `WINDOW_NOT_FOUND`, but there’s no regression test for Finder’s menubar-only state. | `FocusErrorMappingTests` (unit-only) | Add CLI-level coverage (stub service or automation harness) that simulates Finder with no renderable windows and asserts `window focus --app Finder` emits `WINDOW_NOT_FOUND` instead of `INTERNAL_SWIFT_ERROR`. |
-| `SessionManager.storeScreenshot` guardrails | Copy/annotation guardrails remain untested. | None | Add tests that exercise relative paths, missing destination directories, and annotated captures so screenshot copying stays safe. |
+| `SnapshotManager.storeScreenshot` guardrails | Copy/annotation guardrails remain untested. | None | Add tests that exercise relative paths, missing destination directories, and annotated captures so screenshot copying stays safe. |
 | `list windows` empty-output warning | Formatter now emits a warning when no windows exist, but there’s no regression test to keep it working. | `WindowCommandCLITests` (happy-path only) | Add CLI tests asserting the warning + JSON payload appear when the window list is empty. |
 | `clean --dry-run` validation | The command now emits `VALIDATION_ERROR`, yet no test ensures the mapping stays intact. | `CleanCommandTests` (success only) | Add a test that runs `clean --dry-run` without selectors and asserts `VALIDATION_ERROR` plus the guidance text. |
 | Command help surface | Commander now intercepts `help`/`--help`, but we have no tests proving the new router behavior. | None | Add CLI tests for `polter peekaboo -- help window` and `polter peekaboo -- window --help` (stubbed) to ensure help text prints even when routed through Poltergeist. |
@@ -50,7 +50,7 @@ Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdi
 
 ### Implementation roadmap
 1. **Reproduce & test guardrails** – Land the regression tests outlined above (window geometry, real menu automation, polter argument forwarding, StatusBar logger compile tests, AXObserverManager, SpaceTool schema). These should fail today and document the gaps.
-2. **Fix highest-impact blockers** – Prioritize menu/window/dialog reliability so secure login/Chrome scenarios unblock. Tackle polter flag forwarding and SessionManager caching while tests are red.
+2. **Fix highest-impact blockers** – Prioritize menu/window/dialog reliability so secure login/Chrome scenarios unblock. Tackle polter flag forwarding and SnapshotManager caching while tests are red.
 3. **Expand secure login/Chrome coverage** – Build a deterministic fixture (WebKit host or recorded session) so we can iterate on OCR/AX fallbacks without live credentials; add XCT/unittest coverage to prevent regressions once solved.
 4. **Stabilize mac build** – Address StatusBar logger rewrites, AXObserverManager linkage, and SpaceTool formatter so `./runner ./scripts/build-mac-debug.sh` passes; keep the new tests in place to enforce it.
 5. **Document progress** – Update this section as each issue lands (note fix date + test name) so future agents know which paths are safe.
@@ -61,20 +61,20 @@ Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdi
 - **Expected**: Command should return success (or at least surface a real capture error) once the screenshot is on disk.
 - **Impact**: Blocks every downstream workflow that needs fresh UI element maps. Even `peekaboo see --app TextEdit` without `--path` fails with the same error, so agents can’t gather element IDs at all.
 ### Investigation log — Nov 11, 2025
-- Replayed the capture pipeline inside `SeeCommand`: `saveScreenshot` writes to the requested path, after which we call `SessionManager.storeScreenshot` before any other session persistence occurs.
-- Traced `SessionManager.storeScreenshot` and found it copied the file into `.peekaboo/session/<id>/raw.png` without ensuring the destination directory existed. The resulting `FileManager.copyItem` threw `NSCocoaErrorDomain Code=4 "The file “textedit-see.png” doesn’t exist."`, bubbling up as `INTERNAL_SWIFT_ERROR`.
+- Replayed the capture pipeline inside `SeeCommand`: `saveScreenshot` writes to the requested path, after which we call `SnapshotManager.storeScreenshot` before any other snapshot persistence occurs.
+- Traced `SnapshotManager.storeScreenshot` and found it copied the file into `.peekaboo/snapshots/<id>/raw.png` without ensuring the destination directory existed. The resulting `FileManager.copyItem` threw `NSCocoaErrorDomain Code=4 "The file “textedit-see.png” doesn’t exist."`, bubbling up as `INTERNAL_SWIFT_ERROR`.
 ### Resolution — Nov 12, 2025
-- `SessionManager.storeScreenshot` now creates the per-session directory before copying, standardizes the source URL, and reports a clearer file I/O error if the user-provided path truly disappears. `peekaboo see --path /tmp/foo.png --annotate --json-output` completes successfully and downstream element/session storage works again.
+- `SnapshotManager.storeScreenshot` now creates the per-snapshot directory before copying, standardizes the source URL, and reports a clearer file I/O error if the user-provided path truly disappears. `peekaboo see --path /tmp/foo.png --annotate --json-output` completes successfully and downstream element/snapshot storage works again.
 
 ## `see` now returns WINDOW_NOT_FOUND for Chrome despite saving screenshots
 - **Command**: `polter peekaboo -- see --app "Google Chrome" --json-output`
 - **Observed**: The capture pipeline runs, `peekaboo_see_1762952828.png` lands on the Desktop, but the CLI exits with `{ "code": "WINDOW_NOT_FOUND", "message": "App 'Google Chrome' is running but has no windows or dialogs" }`. Debug logs confirm ScreenCaptureKit grabbed the window (duration 171 ms) before the error fires.
 - **Variant**: Adding `--window-title "New Tab"` now fails even earlier with `WINDOW_NOT_FOUND` while the window search logs “Found windows {count=6}” right before it bails—so the heuristic sees Chrome’s windows but insists none match.
-- **Expected**: Once a screenshot is on disk, the command should return success and emit the session/element list so agents can interact with secure login’s UI.
-- **Impact**: secure login automation is stalled again—we can’t obtain element IDs or session IDs even though Chrome’s window is visible and focusable.
+- **Expected**: Once a screenshot is on disk, the command should return success and emit the snapshot/element list so agents can interact with secure login’s UI.
+- **Impact**: secure login automation is stalled again—we can’t obtain element IDs or snapshot IDs even though Chrome’s window is visible and focusable.
 - **Status — Nov 12, 2025 13:07**: Reproducible immediately after navigating to the login page; need to trace why `CaptureWindowWorkflow` thinks Chrome has zero windows while the capture step succeeds.
 ### Resolution — Nov 12, 2025 (evening)
-- `ElementDetectionService` now calls `windowsWithTimeout()` when enumerating AX windows for the target application, ensuring we wait for Chrome’s helper processes to surface their windows before bailing. This removed the `WINDOW_NOT_FOUND` spurious error and the CLI now returns the normal session payload (tested with `polter peekaboo -- see --app "Google Chrome" --json-output`).
+- `ElementDetectionService` now calls `windowsWithTimeout()` when enumerating AX windows for the target application, ensuring we wait for Chrome’s helper processes to surface their windows before bailing. This removed the `WINDOW_NOT_FOUND` spurious error and the CLI now returns the normal snapshot payload (tested with `polter peekaboo -- see --app "Google Chrome" --json-output`).
 
 ## Screen capture fallback never reached legacy API
 - **Command**: `polter peekaboo -- see --app "Google Chrome"` while ScreenCaptureKit returns `Failed to start stream due to audio/video capture failure`.
@@ -84,7 +84,7 @@ Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdi
 ### Resolution — Nov 12, 2025
 - `ScreenCaptureFallbackRunner.shouldFallback` now retries with the legacy API for **any** modern failure (as long as a fallback API exists). Added inline logging so debuggers can find the correlation ID instantly.
 - `ScreenCaptureServicePlanTests` now cover timeout errors, unknown errors, and the “all APIs failed” case so we don’t regress the fallback sequencing again.
-- Result: `polter peekaboo -- see …` immediately switches to the legacy pipeline when ScreenCaptureKit raises the audio/video failure, and secure login automation proceeds with fresh session IDs.
+- Result: `polter peekaboo -- see …` immediately switches to the legacy pipeline when ScreenCaptureKit raises the audio/video failure, and secure login automation proceeds with fresh snapshot IDs.
 
 ## CLI smoke tests — Nov 12, 2025 (afternoon)
 - `polter peekaboo -- list apps --json-output`: Enumerated 50 running processes (9 with windows) in ~2 s, populated bundle IDs and window counts, and produced no warnings—list command output remains reliable for automation targeting.
@@ -134,7 +134,7 @@ Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdi
 ## `see` command exploded: `AnnotatedScreenshotRenderer` missing
 - **Command**: `polter peekaboo -- see --app "Google Chrome" --json-output`
 - **Observed**: Every run failed to build with `cannot find 'AnnotatedScreenshotRenderer' in scope` after the renderer struct was moved below the `SeeTool` definition.
-- **Impact**: Without a working `see` build, no automation session could even start, so the secure login flow was blocked at the very first step.
+- **Impact**: Without a working `see` build, no automation snapshot could even start, so the secure login flow was blocked at the very first step.
 ### Resolution — Nov 12, 2025
 - Hoisted `AnnotatedScreenshotRenderer` above `SeeTool` so Swift sees it before use and removed the duplicate definition at the bottom of the file.
 
@@ -164,7 +164,7 @@ Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdi
 - Added hermetic tests (`windowSetBoundsReportsFreshBounds`, `windowResizeReportsFreshBounds`) that run the commands against stub window services and assert the reported `new_bounds` matches the requested coordinates, preventing future regressions.
 
 ## Window focus builds died due to raw `Logger` strings
-- **Command**: `polter peekaboo -- click --on elem_153 --session <id> --json-output`
+- **Command**: `polter peekaboo -- click --on elem_153 --snapshot <id> --json-output`
 - **Observed**: Poltergeist reported `WindowManagementService.swift:589:30: error: cannot convert value of type 'String' to expected argument type 'OSLogMessage'` whenever we ran any CLI command that touched windows. The new `Logger` API refuses runtime strings.
 - **Impact**: Every automation attempt triggered a rebuild failure before the command ran, so the secure login login flow (and anything else) couldn’t even begin.
 ### Resolution — Nov 12, 2025
@@ -245,7 +245,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - `CommanderRuntimeRouter` now strips the executable name, intercepts `help`, `--help`, and `-h` tokens, renders help for the requested path (or prints a root command table), and exits with `ExitCode.success`. Users can once again discover per-command signatures straight from the CLI.
 
 ### Next steps I'd suggest
-1. Add regression tests for `SessionManager.storeScreenshot` that cover relative paths, missing directories, and annotated captures so the copy guardrails stay in place.
+1. Add regression tests for `SnapshotManager.storeScreenshot` that cover relative paths, missing directories, and annotated captures so the copy guardrails stay in place.
 2. Backfill CLI integration coverage for `peekaboo list windows` (text + JSON) to guarantee the warning footer appears when no windows are detected.
 3. Extend `CommandHelpRenderer` output (and docs) with richer examples/subcommand tables so the new help plumbing doubles as user-facing reference material.
 
@@ -290,7 +290,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 
 ## `clean --dry-run` returned INTERNAL_SWIFT_ERROR on validation failure
 - **Command**: `polter peekaboo clean --dry-run --json-output`
-- **Observed**: Leaving out `--all-sessions/--session/--older-than` produced `{ "success": false, "code": "INTERNAL_SWIFT_ERROR" }` even though it’s a user mistake.
+- **Observed**: Leaving out `--all-snapshots/--snapshot/--older-than` produced `{ "success": false, "code": "INTERNAL_SWIFT_ERROR" }` even though it’s a user mistake.
 - **Resolution — Nov 12, 2025**: CleanCommand now throws `ValidationError` and emits `VALIDATION_ERROR` in JSON (matching the CLI guidelines). Added regression tests would still be useful.
 
 ## `menu list` fails when the target app only provides a menubar
@@ -346,11 +346,11 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - Added `FocusErrorMappingTests` to lock in the mapping (including `axElementNotFound` → `WINDOW_NOT_FOUND` and `focusVerificationTimeout` → `TIMEOUT`).
 
 ## `type` silently succeeds without a focused field
-- **Command**: `polter peekaboo type "Hello"` (no `--app`, no active session)
+- **Command**: `polter peekaboo type "Hello"` (no `--app`, no active snapshot)
 - **Observed**: CLI prints `✅ Typing completed`, but no characters arrive in TextEdit because nothing ensured the insertion point was active.
 - **Expected**: Typing should still be possible for advanced users who deliberately inject keystrokes, but the CLI should warn when it cannot guarantee focus.
 ### Resolution — Nov 12, 2025
-- `TypeCommand` now keeps “blind typing” available yet logs a warning when neither `--app` nor `--session` is supplied under auto-focus. Users still get their keystrokes, but the CLI explicitly suggests running `peekaboo see` or specifying `--app` first so the experience is less confusing.
+- `TypeCommand` now keeps “blind typing” available yet logs a warning when neither `--app` nor `--snapshot` is supplied under auto-focus. Users still get their keystrokes, but the CLI explicitly suggests running `peekaboo see` or specifying `--app` first so the experience is less confusing.
 
 ## Dialog commands ignore macOS Open/Save panels
 - **Command**: `polter peekaboo dialog click --button "New Document"`
@@ -422,11 +422,11 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Command sequence** (all via Peekaboo CLI):
   1. `polter peekaboo -- app launch "Google Chrome" --wait-until-ready`
   2. `polter peekaboo -- hotkey --keys "cmd,l"` → `type "<login URL>" --return`
-  3. `polter peekaboo -- see --app "Google Chrome" --json-output` (session `38D6B591-…`)
-  4. `polter peekaboo -- click --session 38D6B591-… --id elem_138` (`Sign In With Email`)
+  3. `polter peekaboo -- see --app "Google Chrome" --json-output` (snapshot `38D6B591-…`)
+  4. `polter peekaboo -- click --snapshot 38D6B591-… --id elem_138` (`Sign In With Email`)
   5. `polter peekaboo -- type "<test email>"`, `--tab`, `type "<test password>"`, `type --return`
 - **Observed**:
-  - Every `see` session (`38D6B591-…`, `810AA6D6-…`, `021107B0-…`, `9ADE4207-…`) reports **zero** `AXTextField` nodes. The UI map only contains `AXGroup`/`AXUnknown` entries with empty labels, so neither `click --id` nor text queries can reach the email/password inputs.
+  - Every `see` snapshot (`38D6B591-…`, `810AA6D6-…`, `021107B0-…`, `9ADE4207-…`) reports **zero** `AXTextField` nodes. The UI map only contains `AXGroup`/`AXUnknown` entries with empty labels, so neither `click --id` nor text queries can reach the email/password inputs.
   - OCR of the captured screenshots (e.g. `~/Desktop/Screenshots/peekaboo_see_1762929688.png`) only shows the 1Password prompt plus “Return to this browser to keep using secure login. Log in.” There is no detectable “Email” copy in the bitmap, explaining why the automation never finds a field to focus.
   - Attempting scripted fallbacks—typing JavaScript into devtools and `javascript:(...)` URLs via Peekaboo—still leaves the page untouched because `document.querySelector('input[type="email"]')` returns `null` in this environment.
 - **Impact**: We can open Chrome, navigate to the hosted login form, and click “Sign In With Email”, but we can’t populate the fields or detect success, so the requested automation remains blocked.
@@ -436,11 +436,11 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 3. If secure login truly relies on passwordless links, document that flow and teach Peekaboo how to parse the follow-up dialog so agents can continue.
 - **Progress — Nov 13, 2025**: `ElementDetectionService` now promotes editable `AXGroup`s (or ones whose role description mentions “text field”) to `textField` results. This gives us a fighting chance once secure login’s web view actually exposes editable descendants, and the same heuristics help other hybrid UIs that wrap inputs inside groups.
 - **Progress — Nov 13, 2025 (late)**: Playground now ships a deterministic “Hidden Web-style Text Fields” fixture (see `HiddenFieldsView`) and `SeeCommandPlaygroundTests.hiddenFieldsAreDetected` (run with `RUN_LOCAL_TESTS=true`) verifies `peekaboo see --app Playground --json-output` keeps returning those promoted `.textField` entries. Next: script the Chrome permission bubble the same way.
-- **Retest — Nov 14, 2025 02:34 UTC**: `polter peekaboo -- see --app "Google Chrome" --json-output --path /tmp/secure-login.png` (session `A3CF1910-FE78-4420-9527-BD7FDC874E90`) still reports zero `textField` roles even though 204 elements are detected overall; screenshot + UI map stored under `~/.peekaboo/session/A3CF1910-FE78-4420-9527-BD7FDC874E90/`. No observable email/password inputs yet, so we remain blocked on real-world reproduction despite the Playground coverage.
+- **Retest — Nov 14, 2025 02:34 UTC**: `polter peekaboo -- see --app "Google Chrome" --json-output --path /tmp/secure-login.png` (snapshot `A3CF1910-FE78-4420-9527-BD7FDC874E90`) still reports zero `textField` roles even though 204 elements are detected overall; screenshot + UI map stored under `~/.peekaboo/snapshots/A3CF1910-FE78-4420-9527-BD7FDC874E90/`. No observable email/password inputs yet, so we remain blocked on real-world reproduction despite the Playground coverage.
 - **Retest — Nov 14, 2025 03:05 UTC (vercel.com/login)**: Same result against a different login flow (`polter peekaboo -- see --app "Google Chrome" --json-output --path /tmp/vercel-login.png`) where we typed `https://vercel.com/login` via `type --app "Google Chrome" … --return`. Session `B4355B11-417A-43AF-BA25-AEB3B8837388` contains 648 UI nodes but zero `textField` roles, confirming the gap isn’t limited to the earlier customer-specific site.
-- **Retest — Nov 14, 2025 03:10 UTC (github.com/login)**: Repeated the workflow against GitHub’s login page (`type --app "Google Chrome" "https://github.com/login" --return` + `see --json-output --path /tmp/github-login.png`, session `E8390C6E-7D29-4021-9364-4A46936F8E19`). Result: 204 elements detected, none with `role == "textField"`, even though Accessibility Inspector reports both the username and password inputs with `AXTextField/AXSecureTextField`. The heuristics still miss real-world text fields despite the Playground fixture success.
-- **Retest — Nov 14, 2025 03:25–03:33 UTC (stripe.com/login + instagram.com/login)**: Stripe auto-focused its email field, so `BF63D068-7A2D-4D6B-A910-42777FCE85D7` shows the expected `AXTextField` entries (email + password). Instagram initially returned only the omnibox field, but once we scripted a `click --coords 1500,600` before running `see`, session `EDEED86F-8CCF-429B-A7FE-BC8FCBE4CA5B` surfaced three `AXTextField` nodes (username, password, URL bar). Conclusion: some flows only expose their embedded login form to AX after focus enters the iframe, so `see` now attempts a best-effort focus of the main `AXWebArea` when no text fields are detected (disable with `--no-web-focus` if the click is undesirable, or fall back to the browser MCP DOM).
-- **Status — Nov 12, 2025**: Repeated scroll attempts (`peekaboo scroll --session … --direction down --amount 8`) do not reveal any additional accessibility nodes; every capture still lacks text fields, so we remain blocked on discovering a tabbable input.
+- **Retest — Nov 14, 2025 03:10 UTC (github.com/login)**: Repeated the workflow against GitHub’s login page (`type --app "Google Chrome" "https://github.com/login" --return` + `see --json-output --path /tmp/github-login.png`, snapshot `E8390C6E-7D29-4021-9364-4A46936F8E19`). Result: 204 elements detected, none with `role == "textField"`, even though Accessibility Inspector reports both the username and password inputs with `AXTextField/AXSecureTextField`. The heuristics still miss real-world text fields despite the Playground fixture success.
+- **Retest — Nov 14, 2025 03:25–03:33 UTC (stripe.com/login + instagram.com/login)**: Stripe auto-focused its email field, so `BF63D068-7A2D-4D6B-A910-42777FCE85D7` shows the expected `AXTextField` entries (email + password). Instagram initially returned only the omnibox field, but once we scripted a `click --coords 1500,600` before running `see`, snapshot `EDEED86F-8CCF-429B-A7FE-BC8FCBE4CA5B` surfaced three `AXTextField` nodes (username, password, URL bar). Conclusion: some flows only expose their embedded login form to AX after focus enters the iframe, so `see` now attempts a best-effort focus of the main `AXWebArea` when no text fields are detected (disable with `--no-web-focus` if the click is undesirable, or fall back to the browser MCP DOM).
+- **Status — Nov 12, 2025**: Repeated scroll attempts (`peekaboo scroll --snapshot … --direction down --amount 8`) do not reveal any additional accessibility nodes; every capture still lacks text fields, so we remain blocked on discovering a tabbable input.
 - **Update — Nov 12, 2025 (evening)**: Quitting `1Password` removes the save-login modal, but the secure login web app still displays “Return to this browser to keep using secure login. Log in.” with no text fields or form controls exposed through AX (or visible via OCR). The flow appears to require a magic-link email that we can’t access, so we remain blocked on entering the provided password.
 
 - `SeeCommandPlaygroundTests.hiddenFieldsAreDetected` also asserts that the Playground “Permission Bubble Simulation” fixture exposes “Allow”/“Don’t Allow” button labels, so the fallback heuristics are exercised in automation.

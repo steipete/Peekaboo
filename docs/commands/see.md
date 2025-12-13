@@ -7,7 +7,7 @@ read_when:
 
 # `peekaboo see`
 
-`peekaboo see` captures the current macOS UI, extracts accessibility metadata, and (optionally) saves annotated screenshots. CLI and agent flows rely on these UI maps to find element IDs (`elem_123`), bounds, labels, and session IDs.
+`peekaboo see` captures the current macOS UI, extracts accessibility metadata, and (optionally) saves annotated screenshots. CLI and agent flows rely on these UI maps to find element IDs (`elem_123`), bounds, labels, and snapshot IDs.
 
 ```bash
 # Capture frontmost window, print JSON, and save an annotated PNG
@@ -20,7 +20,7 @@ polter peekaboo -- see --app "Google Chrome" --window-title "Login"
 ## When to use
 
 - Before issuing `click`/`type` commands so you have stable element IDs.
-- When debugging automation failures—`--json-output` includes raw bounds, labels, and session IDs.
+- When debugging automation failures—`--json-output` includes raw bounds, labels, and snapshot IDs.
 - To snapshot UI regressions (pass `--annotate` + `--path`).
 
 ## Key options
@@ -48,8 +48,8 @@ This fallback only runs inside the resolved window (it won’t hop between windo
 
 When `--json-output` is supplied, the CLI prints:
 
-- `session_id` – reference for subsequent `click --session …` and `type --session …`.
-- `ui_map` – path to the persisted element map (`~/.peekaboo/session/<id>/map.json`).
+- `snapshot_id` – reference for subsequent `click --snapshot …` and `type --snapshot …`.
+- `ui_map` – path to the persisted snapshot file (`~/.peekaboo/snapshots/<id>/snapshot.json`).
 - `ui_elements` – flattened list of actionable nodes (buttons, text fields, links, etc.).
 - `interactable_count`, `element_count`, `capture_mode`, and performance metadata for debugging.
 - Each `ui_elements[n]` entry now mirrors the raw AX metadata we capture—`title`, `label`, **`description`**, `role_description`, `help`, `identifier`, and the keyboard shortcut if one exists. That makes Chrome toolbar icons (which frequently hide their name in `AXDescription`) searchable without relying on coordinates.

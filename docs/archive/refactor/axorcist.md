@@ -17,7 +17,7 @@ _Status: Archived · Focus: keeping AXorcist lean and pushing heuristics to Peek
 - Open warnings to chase: `CGWindowListCreateImage` deprecation in `PermissionCommand`, unused-result warnings in `VisualizerCommand` demo steps.
 
 ## Boundary decision
-- **AXorcist:** generic AX glue—element wrappers, permission/assert helpers, window/app lookup, input synthesis, attribute casting, timeouts/retry helpers, and light logging hooks. No Peekaboo-specific heuristics (menus/dialog scoring, session caches).
+- **AXorcist:** generic AX glue—element wrappers, permission/assert helpers, window/app lookup, input synthesis, attribute casting, timeouts/retry helpers, and light logging hooks. No Peekaboo-specific heuristics (menus/dialog scoring, snapshot caches).
 - **Peekaboo:** heuristics and UX: menu/dock/dialog specialization, scoring/ranking, overlays, agent/session state.
 - Rule: if any macOS automation user would want it, keep it in AXorcist; if it embeds Peekaboo behavior, keep it in Peekaboo.
 

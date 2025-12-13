@@ -7,7 +7,7 @@ read_when:
 
 # `peekaboo press`
 
-`press` fires individual `SpecialKey` values (Return, Tab, arrows, F-keys, etc.) in sequence. It routes through the same `TypeActionsRequest` stack as `type`, so focus handling and session reuse behave the same way.
+`press` fires individual `SpecialKey` values (Return, Tab, arrows, F-keys, etc.) in sequence. It routes through the same `TypeActionsRequest` stack as `type`, so focus handling and snapshot reuse behave the same way.
 
 ## Key options
 | Flag | Description |
@@ -16,12 +16,12 @@ read_when:
 | `--count <n>` | Repeat the entire key sequence `n` times (default `1`). |
 | `--delay <ms>` | Delay between key presses (default `100`). |
 | `--hold <ms>` | Planned hold duration per key (currently stored but not yet wired to the automation layer). |
-| `--session <id>` | Use a specific session; otherwise the last session wins. |
+| `--snapshot <id>` | Use a specific snapshot; otherwise the last snapshot wins. |
 | Focus flags | Same `FocusCommandOptions` bundle as `click`/`type`. |
 
 ## Implementation notes
 - Keys are lowercased and mapped to `SpecialKey`; the command fails fast with a helpful message if a token isn’t recognized.
-- The focus helper only runs when a session ID is available, so for “blind” global shortcuts you can omit `--session` entirely.
+- The focus helper only runs when a snapshot ID is available, so for “blind” global shortcuts you can omit `--snapshot` entirely.
 - Repetition multiplies the sequence client-side—e.g., `press tab return --count 3` becomes six actions—so you get predictable ordering.
 - Results include the literal key list, total presses, repeat count, and elapsed time in both text and JSON modes.
 - The `--hold` flag is parsed and stored for future use but does not change behavior yet; include manual sleeps if you need long key holds.

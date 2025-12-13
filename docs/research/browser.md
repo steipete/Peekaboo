@@ -13,7 +13,7 @@ read_when:
 
 ## Chromium / Chrome
 - You can only attach Playwright (or any CDP client) to an existing Chromium tab if the browser exposed a debugging endpoint at launch (`--remote-debugging-port=<port>`). Chrome 136+ requires pairing that flag with a non-default profile (`--user-data-dir=/tmp/pb-cdp-profile`) or the port is ignored.
-- Once a CDP endpoint is live, `playwright.chromium.connectOverCDP()` (or Puppeteer / chrome-remote-interface) can list existing contexts/pages and run `Runtime.evaluate`, `DOM.querySelector`, etc., on the active tab. Plan: wrap that flow in a new `BrowserAutomationService` so Peekaboo agents call `browser js --app "Google Chrome" --session <id>`.
+- Once a CDP endpoint is live, `playwright.chromium.connectOverCDP()` (or Puppeteer / chrome-remote-interface) can list existing contexts/pages and run `Runtime.evaluate`, `DOM.querySelector`, etc., on the active tab. Plan: wrap that flow in a new `BrowserAutomationService` so Peekaboo agents call `browser js --app "Google Chrome" --snapshot <id>`.
 - CLI idea: `polter peekaboo browser ensure-debug-port --app "Google Chrome"` relaunches Chrome via Poltergeist with the required flags, persists the assigned port, and returns it through Peekaboo services.
 
 ## Safari / WebKit

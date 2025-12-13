@@ -31,7 +31,7 @@ This document provides a high-level overview of how Tachikoma and PeekabooCore w
                   └─────────────┘        └──────────────┘
 ```
 
-- **PeekabooAutomation** – houses *all* automation-facing code (configuration, capture, application/menu/window services, session management, typed models). Anything that touches Accessibility, ScreenCaptureKit, or on-host configuration lives here.
+- **PeekabooAutomation** – houses *all* automation-facing code (configuration, capture, application/menu/window services, snapshot management, typed models). Anything that touches Accessibility, ScreenCaptureKit, or on-host configuration lives here.
 - **PeekabooVisualizer** – standalone visual feedback layer (`VisualizationClient`, event store, presets) used by automation and apps.
 - **PeekabooAgentRuntime** – MCP tools, ToolRegistry/formatters, and the agent service itself. Depends on `PeekabooAutomation` for services/data models and on `PeekabooVisualizer` for status tokens.
 - **PeekabooCore** – thin umbrella (`_exported` imports + `PeekabooServices` convenience container). Apps/CLI keep importing `PeekabooCore`, but large features can now link the more focused products directly. Whoever instantiates `PeekabooServices` is responsible for calling `installAgentRuntimeDefaults()` so MCP tools and the ToolRegistry share that instance.
@@ -47,7 +47,7 @@ This document provides a high-level overview of how Tachikoma and PeekabooCore w
 **PeekabooAutomation**
 - Depends on Tachikoma for provider metadata and `PeekabooVisualizer` for optional UI feedback.
 - Exposes pure Swift protocols (`ApplicationServiceProtocol`, `LoggingServiceProtocol`, etc.) plus concrete implementations (MenuService, ScreenCaptureService, ProcessService, etc.).
-- Owns persisted models such as `CaptureTarget`, `AutomationAction`, `UIElement`, `SessionInfo`, and shared helper utilities.
+- Owns persisted models such as `CaptureTarget`, `AutomationAction`, `UIElement`, `SnapshotInfo`, and shared helper utilities.
 
 **PeekabooAgentRuntime**
 - Imports `PeekabooAutomation` for services/models and hosts MCP/agent tooling (`PeekabooAgentService`, `MCPToolContext`, `ToolRegistry`, CLI/MCP formatters).
@@ -115,7 +115,7 @@ let applications = services.applications  // ApplicationService
 #### UIAutomationService (Orchestrator)
 - **Role**: Primary automation interface delegating to specialized services
 - **Delegation**: Routes operations to appropriate specialized services
-- **Session Management**: Maintains state across automation workflows
+- **Snapshot Management**: Maintains state across automation workflows
 
 #### Specialized Services
 Each service handles a specific aspect of automation:
@@ -126,7 +126,7 @@ Each service handles a specific aspect of automation:
 - **ApplicationService**: Application discovery and management
 - **WindowManagementService**: Window positioning and state control
 - **MenuService**: Menu bar navigation and interaction
-- **SessionManager**: State persistence and element caching
+- **SnapshotManager**: State persistence and element caching
 
 ### Threading Model
 
@@ -172,7 +172,7 @@ Behind the scenes the client serializes a `VisualizerEvent` into `~/Library/Appl
 3. **Service Orchestration**: `UIAutomationService` delegates to specialized services
 4. **Platform Integration**: Services use macOS APIs (Accessibility, ScreenCaptureKit)
 5. **Visual Feedback**: Operations trigger visualizer animations
-6. **Session Management**: State cached for subsequent operations
+6. **Snapshot Management**: State cached for subsequent operations
 
 ### Example Flow: "Click the Submit button"
 
@@ -200,7 +200,7 @@ VisualizationClient (click animation)
 - **Window Management**: 10-200ms (depending on operation complexity)
 
 ### Optimization Strategies
-- **Session Caching**: Element detection results cached per session
+- **Snapshot Caching**: Element detection results cached per snapshot
 - **Accessibility Timeouts**: Reduced from 6s to 2s to prevent hangs
 - **Dual APIs**: Modern ScreenCaptureKit with CGWindowList fallback
 - **Visual Feedback**: Async animations don't block automation operations
@@ -237,7 +237,7 @@ CLI Arguments > Environment Variables > Credential Files > Config Files > Defaul
 ### Scalability
 - Service architecture supports horizontal scaling through additional specialized services
 - AI model provider supports multiple concurrent model instances
-- Session management designed for multi-user and multi-process scenarios
+- Snapshot management designed for multi-user and multi-process scenarios
 
 ### Extensibility
 - Plugin architecture possible through service locator pattern
