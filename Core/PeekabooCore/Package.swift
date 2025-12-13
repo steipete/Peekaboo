@@ -48,8 +48,7 @@ let package = Package(
         .package(path: "../PeekabooExternalDependencies"),
         .package(path: "../PeekabooVisualizer"),
         .package(path: "../../Tachikoma"),
-        // Use main for Swift 6.x compatibility; 0.2.0 trips key-path restrictions in Swift 6.
-        .package(url: "https://github.com/apple/swift-configuration", branch: "main"),
+        .package(url: "https://github.com/apple/swift-configuration", from: "1.0.0"),
     ],
     targets: [
         .target(
