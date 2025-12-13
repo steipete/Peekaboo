@@ -60,7 +60,7 @@ public final class AudioInputService {
     @ObservationIgnored
     private let recorder: any AudioRecorderProtocol
     @ObservationIgnored
-    private var stateObservationTask: Task<Void, Never>?
+    private nonisolated(unsafe) var stateObservationTask: Task<Void, Never>?
 
     public private(set) var isRecording = false
     public private(set) var recordingDuration: TimeInterval = 0
@@ -90,15 +90,10 @@ public final class AudioInputService {
         self.aiService = aiService
         self.credentialProvider = credentialProvider
         self.recorder = recorder
-
-        // Observe recorder state changes
-        self.stateObservationTask = Task { @MainActor [weak self] in
-            await self?.observeRecorderState()
-        }
     }
 
     deinit {
-        stateObservationTask?.cancel()
+        self.stateObservationTask?.cancel()
     }
 
     // MARK: - Public Properties
@@ -111,17 +106,27 @@ public final class AudioInputService {
     // MARK: - Private Methods
 
     private func observeRecorderState() async {
-        // Poll recorder state at a lightweight interval while the task is active
         while !Task.isCancelled {
             try? await Task.sleep(for: .milliseconds(100))
-            // Sync recorder state with our published properties
-            if self.isRecording != self.recorder.isRecording {
-                self.isRecording = self.recorder.isRecording
-            }
-            if self.recordingDuration != self.recorder.recordingDuration {
-                self.recordingDuration = self.recorder.recordingDuration
+            self.isRecording = self.recorder.isRecording
+            self.recordingDuration = self.recorder.recordingDuration
+
+            if !self.recorder.isRecording {
+                return
             }
         }
+    }
+
+    private func startStateObservationIfNeeded() {
+        guard self.stateObservationTask == nil else { return }
+        self.stateObservationTask = Task { @MainActor [weak self] in
+            await self?.observeRecorderState()
+        }
+    }
+
+    private func stopStateObservation() {
+        self.stateObservationTask?.cancel()
+        self.stateObservationTask = nil
     }
 
     // MARK: - Recording Methods
@@ -132,6 +137,7 @@ public final class AudioInputService {
         do {
             try await self.recorder.startRecording()
             self.isRecording = true
+            self.startStateObservationIfNeeded()
             self.logger.info("Started audio recording")
         } catch let error as AudioRecordingError {
             // Convert AudioRecordingError to AudioInputError
@@ -157,6 +163,7 @@ public final class AudioInputService {
             let audioData = try await recorder.stopRecording()
             self.isRecording = false
             self.recordingDuration = 0
+            self.stopStateObservation()
             self.logger.info("Stopped audio recording")
 
             // Transcribe the recorded audio using TachikomaAudio
@@ -192,6 +199,7 @@ public final class AudioInputService {
         // Cancel recording without transcription
         await self.recorder.cancelRecording()
         self.isRecording = false
+        self.stopStateObservation()
         self.logger.info("Cancelled audio recording")
     }
 
