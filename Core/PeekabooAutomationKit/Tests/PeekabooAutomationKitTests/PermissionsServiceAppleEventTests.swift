@@ -4,14 +4,8 @@ import XCTest
 
 @MainActor
 final class PermissionsServiceAppleEventTests: XCTestCase {
-    func testAppleEventTargetDescriptorIsDuplicated() {
+    func testAppleEventTargetDescriptorUsesBundleIdentifierType() {
         let bundleIdentifier = "com.apple.systemevents"
-
-        let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
-        guard let originalHandle = targetDescriptor.aeDesc?.pointee.dataHandle else {
-            XCTFail("Expected NSAppleEventDescriptor to expose an aeDesc handle")
-            return
-        }
 
         guard var duplicatedDesc = PermissionsService
             .makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier)
@@ -21,15 +15,15 @@ final class PermissionsServiceAppleEventTests: XCTestCase {
         }
         defer { AEDisposeDesc(&duplicatedDesc) }
 
-        guard let duplicatedHandle = duplicatedDesc.dataHandle else {
+        XCTAssertEqual(
+            duplicatedDesc.descriptorType,
+            DescType(typeApplicationBundleID),
+            "Expected AppleEvent target descriptor to be a bundle identifier address descriptor")
+
+        guard duplicatedDesc.dataHandle != nil else {
             XCTFail("Expected duplicated AEDesc to have a data handle")
             return
         }
-
-        XCTAssertNotEqual(
-            UInt(bitPattern: originalHandle),
-            UInt(bitPattern: duplicatedHandle),
-            "Expected duplicated AEDesc to own a distinct handle (avoid double-free)")
     }
 
     func testAppleEventTargetDescriptorDuplicationReturnsUniqueHandlesPerCall() {

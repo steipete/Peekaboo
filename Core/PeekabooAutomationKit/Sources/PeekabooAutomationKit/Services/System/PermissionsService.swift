@@ -14,6 +14,12 @@ public final class PermissionsService {
 
     public init() {}
 
+    private static var isRunningUnderTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+            ProcessInfo.processInfo.arguments.contains("--test-mode") ||
+            NSClassFromString("XCTest") != nil
+    }
+
     /// Check if Screen Recording permission is granted
     public func checkScreenRecordingPermission() -> Bool {
         self.logger.debug("Checking screen recording permission")
@@ -33,10 +39,7 @@ public final class PermissionsService {
         self.logger.debug("Requesting screen recording permission")
 
         guard interactive else { return self.checkScreenRecordingPermission() }
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
-            ProcessInfo.processInfo.arguments.contains("--test-mode") ||
-            NSClassFromString("XCTest") != nil
-        {
+        if Self.isRunningUnderTests {
             return self.checkScreenRecordingPermission()
         }
 
@@ -72,22 +75,21 @@ public final class PermissionsService {
     public func checkAppleScriptPermission() -> Bool {
         self.logger.debug("Checking AppleScript permission")
 
-        // Check if we have permission to send AppleEvents
-        // This checks permission for sending events to System Events
-        guard var addressDesc = Self.makeAppleEventTargetAddressDesc(bundleIdentifier: "com.apple.systemevents") else {
-            self.logger.warning("Failed to create AppleEvent target descriptor")
-            return false
-        }
+        // Apple Events automation permission is evaluated against a target app.
+        // We probe System Events since it's the most common automation target.
+        let bundleIdentifier = "com.apple.systemevents"
 
-        defer {
-            AEDisposeDesc(&addressDesc)
-        }
+        var permissionStatus = Self.determineAppleScriptAutomationPermissionStatus(
+            targetBundleIdentifier: bundleIdentifier,
+            askUser: false)
 
-        let permissionStatus = AEDeterminePermissionToAutomateTarget(
-            &addressDesc,
-            typeWildCard,
-            typeWildCard,
-            false)
+        if permissionStatus == procNotFound, !Self.isRunningUnderTests {
+            self.logger.debug("AppleScript permission probe returned procNotFound; launching target and retrying")
+            Self.launchApplication(bundleIdentifier: bundleIdentifier, logger: self.logger)
+            permissionStatus = Self.determineAppleScriptAutomationPermissionStatus(
+                targetBundleIdentifier: bundleIdentifier,
+                askUser: false)
+        }
 
         let hasPermission = permissionStatus == noErr
         self.logger.info("AppleScript permission status: \(permissionStatus), has permission: \(hasPermission)")
@@ -99,50 +101,70 @@ public final class PermissionsService {
         self.logger.debug("Requesting AppleScript permission")
 
         guard interactive else { return self.checkAppleScriptPermission() }
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
-            ProcessInfo.processInfo.arguments.contains("--test-mode") ||
-            NSClassFromString("XCTest") != nil
-        {
+        if Self.isRunningUnderTests {
             return self.checkAppleScriptPermission()
         }
 
-        guard var addressDesc = Self.makeAppleEventTargetAddressDesc(bundleIdentifier: "com.apple.systemevents") else {
-            self.logger.warning("Failed to create AppleEvent target descriptor")
-            return false
-        }
+        let bundleIdentifier = "com.apple.systemevents"
 
-        defer {
-            AEDisposeDesc(&addressDesc)
-        }
+        var permissionStatus = Self.determineAppleScriptAutomationPermissionStatus(
+            targetBundleIdentifier: bundleIdentifier,
+            askUser: true)
 
-        let permissionStatus = AEDeterminePermissionToAutomateTarget(
-            &addressDesc,
-            typeWildCard,
-            typeWildCard,
-            true)
+        if permissionStatus == procNotFound {
+            self.logger.debug("AppleScript permission request returned procNotFound; launching target and retrying")
+            Self.launchApplication(bundleIdentifier: bundleIdentifier, logger: self.logger)
+            permissionStatus = Self.determineAppleScriptAutomationPermissionStatus(
+                targetBundleIdentifier: bundleIdentifier,
+                askUser: true)
+        }
 
         let hasPermission = permissionStatus == noErr
         self.logger.info("AppleScript permission request status: \(permissionStatus), has permission: \(hasPermission)")
         return self.checkAppleScriptPermission()
     }
 
-    @MainActor
-    private static var cachedAppleEventTargetDescriptors: [String: NSAppleEventDescriptor] = [:]
+    private static func determineAppleScriptAutomationPermissionStatus(
+        targetBundleIdentifier: String,
+        askUser: Bool) -> OSStatus
+    {
+        guard var addressDesc = Self.makeAppleEventTargetAddressDesc(bundleIdentifier: targetBundleIdentifier) else {
+            return OSStatus(paramErr)
+        }
+        defer { AEDisposeDesc(&addressDesc) }
 
-    @MainActor
+        // Probe with a common Apple Event that is safe and broadly supported.
+        let eventClass = AEEventClass(0x61657674) // aevt
+        let eventID = AEEventID(0x6F617070) // oapp
+        return AEDeterminePermissionToAutomateTarget(&addressDesc, eventClass, eventID, askUser)
+    }
+
     static func makeAppleEventTargetAddressDesc(bundleIdentifier: String) -> AEDesc? {
-        let targetDescriptor = Self.cachedAppleEventTargetDescriptors[bundleIdentifier] ?? {
-            let descriptor = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
-            Self.cachedAppleEventTargetDescriptors[bundleIdentifier] = descriptor
-            return descriptor
-        }()
-        guard let targetDescPointer = targetDescriptor.aeDesc else { return nil }
+        guard let bundleIDData = bundleIdentifier.data(using: .utf8), !bundleIDData.isEmpty else {
+            return nil
+        }
 
         var addressDesc = AEDesc()
-        let copyStatus = AEDuplicateDesc(targetDescPointer, &addressDesc)
-        guard copyStatus == noErr else { return nil }
-
+        let status = bundleIDData.withUnsafeBytes { buffer -> OSStatus in
+            guard let baseAddress = buffer.baseAddress else { return OSStatus(paramErr) }
+            return OSStatus(AECreateDesc(DescType(typeApplicationBundleID), baseAddress, buffer.count, &addressDesc))
+        }
+        guard status == noErr else { return nil }
         return addressDesc
+    }
+
+    private static func launchApplication(bundleIdentifier: String, logger: Logger) {
+        guard !Self.isRunningUnderTests else { return }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = ["-g", "-b", bundleIdentifier]
+
+        do {
+            try process.run()
+        } catch {
+            logger.debug("Failed to launch app \(bundleIdentifier, privacy: .public): \(String(describing: error), privacy: .public)")
+        }
     }
 
     /// Require Screen Recording permission, throwing if not granted
