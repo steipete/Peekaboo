@@ -2,7 +2,7 @@ import Foundation
 import PeekabooAutomation
 import PeekabooFoundation
 
-public struct PeekabooXPCProtocolVersion: Codable, Sendable, Comparable, Hashable {
+public struct PeekabooBridgeProtocolVersion: Codable, Sendable, Comparable, Hashable {
     public let major: Int
     public let minor: Int
 
@@ -11,26 +11,26 @@ public struct PeekabooXPCProtocolVersion: Codable, Sendable, Comparable, Hashabl
         self.minor = minor
     }
 
-    public static func < (lhs: PeekabooXPCProtocolVersion, rhs: PeekabooXPCProtocolVersion) -> Bool {
+    public static func < (lhs: PeekabooBridgeProtocolVersion, rhs: PeekabooBridgeProtocolVersion) -> Bool {
         if lhs.major != rhs.major { return lhs.major < rhs.major }
         return lhs.minor < rhs.minor
     }
 }
 
-public enum PeekabooXPCHostKind: String, Codable, Sendable, CaseIterable {
+public enum PeekabooBridgeHostKind: String, Codable, Sendable, CaseIterable {
     case gui
     case helper
     case onDemand
     case inProcess
 }
 
-public enum PeekabooXPCPermissionKind: String, Codable, Sendable {
+public enum PeekabooBridgePermissionKind: String, Codable, Sendable {
     case screenRecording
     case accessibility
     case appleScript
 }
 
-public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable, Hashable {
+public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Hashable {
     // Core
     case permissionsStatus
     // Capture
@@ -111,7 +111,7 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable, Hasha
     case _appleScriptProbe
 
     /// TCC permissions an operation relies on. Used to gate advertisement/handling.
-    public var requiredPermissions: Set<PeekabooXPCPermissionKind> {
+    public var requiredPermissions: Set<PeekabooBridgePermissionKind> {
         switch self {
         case .captureScreen, .captureWindow, .captureFrontmost, .captureArea, .detectElements:
             [.screenRecording]
@@ -147,7 +147,7 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable, Hasha
     }
 
     /// Operations enabled by default for remote helper hosts.
-    public static let remoteDefaultAllowlist: Set<PeekabooXPCOperation> = [
+    public static let remoteDefaultAllowlist: Set<PeekabooBridgeOperation> = [
         .permissionsStatus,
         .captureScreen,
         .captureWindow,
@@ -219,7 +219,7 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable, Hasha
     ]
 }
 
-public struct PeekabooXPCClientIdentity: Codable, Sendable {
+public struct PeekabooBridgeClientIdentity: Codable, Sendable {
     public let bundleIdentifier: String?
     public let teamIdentifier: String?
     public let processIdentifier: pid_t
@@ -238,15 +238,15 @@ public struct PeekabooXPCClientIdentity: Codable, Sendable {
     }
 }
 
-public struct PeekabooXPCHandshake: Codable, Sendable {
-    public let protocolVersion: PeekabooXPCProtocolVersion
-    public let client: PeekabooXPCClientIdentity
-    public let requestedHostKind: PeekabooXPCHostKind?
+public struct PeekabooBridgeHandshake: Codable, Sendable {
+    public let protocolVersion: PeekabooBridgeProtocolVersion
+    public let client: PeekabooBridgeClientIdentity
+    public let requestedHostKind: PeekabooBridgeHostKind?
 
     public init(
-        protocolVersion: PeekabooXPCProtocolVersion,
-        client: PeekabooXPCClientIdentity,
-        requestedHostKind: PeekabooXPCHostKind? = nil)
+        protocolVersion: PeekabooBridgeProtocolVersion,
+        client: PeekabooBridgeClientIdentity,
+        requestedHostKind: PeekabooBridgeHostKind? = nil)
     {
         self.protocolVersion = protocolVersion
         self.client = client
@@ -254,20 +254,20 @@ public struct PeekabooXPCHandshake: Codable, Sendable {
     }
 }
 
-public struct PeekabooXPCHandshakeResponse: Codable, Sendable {
-    public let negotiatedVersion: PeekabooXPCProtocolVersion
-    public let hostKind: PeekabooXPCHostKind
+public struct PeekabooBridgeHandshakeResponse: Codable, Sendable {
+    public let negotiatedVersion: PeekabooBridgeProtocolVersion
+    public let hostKind: PeekabooBridgeHostKind
     public let build: String?
-    public let supportedOperations: [PeekabooXPCOperation]
+    public let supportedOperations: [PeekabooBridgeOperation]
     /// Map of operation rawValue to the permissions it requires so clients can surface missing grants.
-    public let permissionTags: [String: [PeekabooXPCPermissionKind]]
+    public let permissionTags: [String: [PeekabooBridgePermissionKind]]
 
     public init(
-        negotiatedVersion: PeekabooXPCProtocolVersion,
-        hostKind: PeekabooXPCHostKind,
+        negotiatedVersion: PeekabooBridgeProtocolVersion,
+        hostKind: PeekabooBridgeHostKind,
         build: String?,
-        supportedOperations: [PeekabooXPCOperation],
-        permissionTags: [String: [PeekabooXPCPermissionKind]] = [:])
+        supportedOperations: [PeekabooBridgeOperation],
+        permissionTags: [String: [PeekabooBridgePermissionKind]] = [:])
     {
         self.negotiatedVersion = negotiatedVersion
         self.hostKind = hostKind
@@ -286,12 +286,12 @@ public struct PeekabooXPCHandshakeResponse: Codable, Sendable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.negotiatedVersion = try container.decode(PeekabooXPCProtocolVersion.self, forKey: .negotiatedVersion)
-        self.hostKind = try container.decode(PeekabooXPCHostKind.self, forKey: .hostKind)
+        self.negotiatedVersion = try container.decode(PeekabooBridgeProtocolVersion.self, forKey: .negotiatedVersion)
+        self.hostKind = try container.decode(PeekabooBridgeHostKind.self, forKey: .hostKind)
         self.build = try container.decodeIfPresent(String.self, forKey: .build)
-        self.supportedOperations = try container.decode([PeekabooXPCOperation].self, forKey: .supportedOperations)
+        self.supportedOperations = try container.decode([PeekabooBridgeOperation].self, forKey: .supportedOperations)
         self.permissionTags = try container.decodeIfPresent(
-            [String: [PeekabooXPCPermissionKind]].self,
+            [String: [PeekabooBridgePermissionKind]].self,
             forKey: .permissionTags) ?? [:]
     }
 
@@ -309,43 +309,43 @@ public struct PeekabooXPCHandshakeResponse: Codable, Sendable {
 
 // MARK: - Request payloads
 
-public struct PeekabooXPCCaptureScreenRequest: Codable, Sendable {
+public struct PeekabooBridgeCaptureScreenRequest: Codable, Sendable {
     public let displayIndex: Int?
     public let visualizerMode: CaptureVisualizerMode
     public let scale: CaptureScalePreference
 }
 
-public struct PeekabooXPCCaptureWindowRequest: Codable, Sendable {
+public struct PeekabooBridgeCaptureWindowRequest: Codable, Sendable {
     public let appIdentifier: String
     public let windowIndex: Int?
     public let visualizerMode: CaptureVisualizerMode
     public let scale: CaptureScalePreference
 }
 
-public struct PeekabooXPCCaptureFrontmostRequest: Codable, Sendable {
+public struct PeekabooBridgeCaptureFrontmostRequest: Codable, Sendable {
     public let visualizerMode: CaptureVisualizerMode
     public let scale: CaptureScalePreference
 }
 
-public struct PeekabooXPCCaptureAreaRequest: Codable, Sendable {
+public struct PeekabooBridgeCaptureAreaRequest: Codable, Sendable {
     public let rect: CGRect
     public let visualizerMode: CaptureVisualizerMode
     public let scale: CaptureScalePreference
 }
 
-public struct PeekabooXPCDetectElementsRequest: Codable, Sendable {
+public struct PeekabooBridgeDetectElementsRequest: Codable, Sendable {
     public let imageData: Data
     public let snapshotId: String?
     public let windowContext: WindowContext?
 }
 
-public struct PeekabooXPCClickRequest: Codable, Sendable {
+public struct PeekabooBridgeClickRequest: Codable, Sendable {
     public let target: ClickTarget
     public let clickType: ClickType
     public let snapshotId: String?
 }
 
-public struct PeekabooXPCTypeRequest: Codable, Sendable {
+public struct PeekabooBridgeTypeRequest: Codable, Sendable {
     public let text: String
     public let target: String?
     public let clearExisting: Bool
@@ -353,22 +353,22 @@ public struct PeekabooXPCTypeRequest: Codable, Sendable {
     public let snapshotId: String?
 }
 
-public struct PeekabooXPCTypeActionsRequest: Codable, Sendable {
+public struct PeekabooBridgeTypeActionsRequest: Codable, Sendable {
     public let actions: [TypeAction]
     public let cadence: TypingCadence
     public let snapshotId: String?
 }
 
-public struct PeekabooXPCScrollRequest: Codable, Sendable {
+public struct PeekabooBridgeScrollRequest: Codable, Sendable {
     public let request: ScrollRequest
 }
 
-public struct PeekabooXPCHotkeyRequest: Codable, Sendable {
+public struct PeekabooBridgeHotkeyRequest: Codable, Sendable {
     public let keys: String
     public let holdDuration: Int
 }
 
-public struct PeekabooXPCSwipeRequest: Codable, Sendable {
+public struct PeekabooBridgeSwipeRequest: Codable, Sendable {
     public let from: CGPoint
     public let to: CGPoint
     public let duration: Int
@@ -376,7 +376,7 @@ public struct PeekabooXPCSwipeRequest: Codable, Sendable {
     public let profile: MouseMovementProfile
 }
 
-public struct PeekabooXPCDragRequest: Codable, Sendable {
+public struct PeekabooBridgeDragRequest: Codable, Sendable {
     public let from: CGPoint
     public let to: CGPoint
     public let duration: Int
@@ -385,98 +385,98 @@ public struct PeekabooXPCDragRequest: Codable, Sendable {
     public let profile: MouseMovementProfile
 }
 
-public struct PeekabooXPCMoveMouseRequest: Codable, Sendable {
+public struct PeekabooBridgeMoveMouseRequest: Codable, Sendable {
     public let to: CGPoint
     public let duration: Int
     public let steps: Int
     public let profile: MouseMovementProfile
 }
 
-public struct PeekabooXPCWaitRequest: Codable, Sendable {
+public struct PeekabooBridgeWaitRequest: Codable, Sendable {
     public let target: ClickTarget
     public let timeout: TimeInterval
     public let snapshotId: String?
 }
 
-public struct PeekabooXPCWindowTargetRequest: Codable, Sendable {
+public struct PeekabooBridgeWindowTargetRequest: Codable, Sendable {
     public let target: WindowTarget
 }
 
-public struct PeekabooXPCWindowMoveRequest: Codable, Sendable {
+public struct PeekabooBridgeWindowMoveRequest: Codable, Sendable {
     public let target: WindowTarget
     public let position: CGPoint
 }
 
-public struct PeekabooXPCWindowResizeRequest: Codable, Sendable {
+public struct PeekabooBridgeWindowResizeRequest: Codable, Sendable {
     public let target: WindowTarget
     public let size: CGSize
 }
 
-public struct PeekabooXPCWindowBoundsRequest: Codable, Sendable {
+public struct PeekabooBridgeWindowBoundsRequest: Codable, Sendable {
     public let target: WindowTarget
     public let bounds: CGRect
 }
 
-public struct PeekabooXPCAppIdentifierRequest: Codable, Sendable {
+public struct PeekabooBridgeAppIdentifierRequest: Codable, Sendable {
     public let identifier: String
 }
 
-public struct PeekabooXPCQuitAppRequest: Codable, Sendable {
+public struct PeekabooBridgeQuitAppRequest: Codable, Sendable {
     public let identifier: String
     public let force: Bool
 }
 
-public struct PeekabooXPCMenuListRequest: Codable, Sendable {
+public struct PeekabooBridgeMenuListRequest: Codable, Sendable {
     public let appIdentifier: String
 }
 
-public struct PeekabooXPCMenuClickRequest: Codable, Sendable {
+public struct PeekabooBridgeMenuClickRequest: Codable, Sendable {
     public let appIdentifier: String
     public let itemPath: String
 }
 
-public struct PeekabooXPCMenuClickByNameRequest: Codable, Sendable {
+public struct PeekabooBridgeMenuClickByNameRequest: Codable, Sendable {
     public let appIdentifier: String
     public let itemName: String
 }
 
-public struct PeekabooXPCMenuBarClickByNameRequest: Codable, Sendable {
+public struct PeekabooBridgeMenuBarClickByNameRequest: Codable, Sendable {
     public let name: String
 }
 
-public struct PeekabooXPCMenuBarClickByIndexRequest: Codable, Sendable {
+public struct PeekabooBridgeMenuBarClickByIndexRequest: Codable, Sendable {
     public let index: Int
 }
 
-public struct PeekabooXPCDockListRequest: Codable, Sendable {
+public struct PeekabooBridgeDockListRequest: Codable, Sendable {
     public let includeAll: Bool
 }
 
-public struct PeekabooXPCDockLaunchRequest: Codable, Sendable {
+public struct PeekabooBridgeDockLaunchRequest: Codable, Sendable {
     public let appName: String
 }
 
-public struct PeekabooXPCDockRightClickRequest: Codable, Sendable {
+public struct PeekabooBridgeDockRightClickRequest: Codable, Sendable {
     public let appName: String
     public let menuItem: String?
 }
 
-public struct PeekabooXPCDockFindRequest: Codable, Sendable {
+public struct PeekabooBridgeDockFindRequest: Codable, Sendable {
     public let name: String
 }
 
-public struct PeekabooXPCDialogFindRequest: Codable, Sendable {
+public struct PeekabooBridgeDialogFindRequest: Codable, Sendable {
     public let windowTitle: String?
     public let appName: String?
 }
 
-public struct PeekabooXPCDialogClickButtonRequest: Codable, Sendable {
+public struct PeekabooBridgeDialogClickButtonRequest: Codable, Sendable {
     public let buttonText: String
     public let windowTitle: String?
     public let appName: String?
 }
 
-public struct PeekabooXPCDialogEnterTextRequest: Codable, Sendable {
+public struct PeekabooBridgeDialogEnterTextRequest: Codable, Sendable {
     public let text: String
     public let fieldIdentifier: String?
     public let clearExisting: Bool
@@ -484,31 +484,31 @@ public struct PeekabooXPCDialogEnterTextRequest: Codable, Sendable {
     public let appName: String?
 }
 
-public struct PeekabooXPCDialogHandleFileRequest: Codable, Sendable {
+public struct PeekabooBridgeDialogHandleFileRequest: Codable, Sendable {
     public let path: String?
     public let filename: String?
     public let actionButton: String
     public let appName: String?
 }
 
-public struct PeekabooXPCDialogDismissRequest: Codable, Sendable {
+public struct PeekabooBridgeDialogDismissRequest: Codable, Sendable {
     public let force: Bool
     public let windowTitle: String?
     public let appName: String?
 }
 
-public struct PeekabooXPCCreateSnapshotRequest: Codable, Sendable {}
+public struct PeekabooBridgeCreateSnapshotRequest: Codable, Sendable {}
 
-public struct PeekabooXPCStoreDetectionRequest: Codable, Sendable {
+public struct PeekabooBridgeStoreDetectionRequest: Codable, Sendable {
     public let snapshotId: String
     public let result: ElementDetectionResult
 }
 
-public struct PeekabooXPCGetDetectionRequest: Codable, Sendable {
+public struct PeekabooBridgeGetDetectionRequest: Codable, Sendable {
     public let snapshotId: String
 }
 
-public struct PeekabooXPCStoreScreenshotRequest: Codable, Sendable {
+public struct PeekabooBridgeStoreScreenshotRequest: Codable, Sendable {
     public let snapshotId: String
     public let screenshotPath: String
     public let applicationBundleId: String?
@@ -518,12 +518,12 @@ public struct PeekabooXPCStoreScreenshotRequest: Codable, Sendable {
     public let windowBounds: CGRect?
 }
 
-public struct PeekabooXPCStoreAnnotatedScreenshotRequest: Codable, Sendable {
+public struct PeekabooBridgeStoreAnnotatedScreenshotRequest: Codable, Sendable {
     public let snapshotId: String
     public let annotatedScreenshotPath: String
 }
 
-public struct PeekabooXPCGetMostRecentSnapshotRequest: Codable, Sendable {
+public struct PeekabooBridgeGetMostRecentSnapshotRequest: Codable, Sendable {
     public let applicationBundleId: String?
 
     public init(applicationBundleId: String?) {
@@ -531,88 +531,88 @@ public struct PeekabooXPCGetMostRecentSnapshotRequest: Codable, Sendable {
     }
 }
 
-public struct PeekabooXPCCleanSnapshotRequest: Codable, Sendable {
+public struct PeekabooBridgeCleanSnapshotRequest: Codable, Sendable {
     public let snapshotId: String
 }
 
-public struct PeekabooXPCCleanSnapshotsOlderRequest: Codable, Sendable {
+public struct PeekabooBridgeCleanSnapshotsOlderRequest: Codable, Sendable {
     public let days: Int
 }
 
-public enum PeekabooXPCRequest: Codable, Sendable {
-    case handshake(PeekabooXPCHandshake)
+public enum PeekabooBridgeRequest: Codable, Sendable {
+    case handshake(PeekabooBridgeHandshake)
     case permissionsStatus
-    case captureScreen(PeekabooXPCCaptureScreenRequest)
-    case captureWindow(PeekabooXPCCaptureWindowRequest)
-    case captureFrontmost(PeekabooXPCCaptureFrontmostRequest)
-    case captureArea(PeekabooXPCCaptureAreaRequest)
-    case detectElements(PeekabooXPCDetectElementsRequest)
-    case click(PeekabooXPCClickRequest)
-    case type(PeekabooXPCTypeRequest)
-    case typeActions(PeekabooXPCTypeActionsRequest)
-    case scroll(PeekabooXPCScrollRequest)
-    case hotkey(PeekabooXPCHotkeyRequest)
-    case swipe(PeekabooXPCSwipeRequest)
-    case drag(PeekabooXPCDragRequest)
-    case moveMouse(PeekabooXPCMoveMouseRequest)
-    case waitForElement(PeekabooXPCWaitRequest)
-    case listWindows(PeekabooXPCWindowTargetRequest)
-    case focusWindow(PeekabooXPCWindowTargetRequest)
-    case moveWindow(PeekabooXPCWindowMoveRequest)
-    case resizeWindow(PeekabooXPCWindowResizeRequest)
-    case setWindowBounds(PeekabooXPCWindowBoundsRequest)
-    case closeWindow(PeekabooXPCWindowTargetRequest)
-    case minimizeWindow(PeekabooXPCWindowTargetRequest)
-    case maximizeWindow(PeekabooXPCWindowTargetRequest)
+    case captureScreen(PeekabooBridgeCaptureScreenRequest)
+    case captureWindow(PeekabooBridgeCaptureWindowRequest)
+    case captureFrontmost(PeekabooBridgeCaptureFrontmostRequest)
+    case captureArea(PeekabooBridgeCaptureAreaRequest)
+    case detectElements(PeekabooBridgeDetectElementsRequest)
+    case click(PeekabooBridgeClickRequest)
+    case type(PeekabooBridgeTypeRequest)
+    case typeActions(PeekabooBridgeTypeActionsRequest)
+    case scroll(PeekabooBridgeScrollRequest)
+    case hotkey(PeekabooBridgeHotkeyRequest)
+    case swipe(PeekabooBridgeSwipeRequest)
+    case drag(PeekabooBridgeDragRequest)
+    case moveMouse(PeekabooBridgeMoveMouseRequest)
+    case waitForElement(PeekabooBridgeWaitRequest)
+    case listWindows(PeekabooBridgeWindowTargetRequest)
+    case focusWindow(PeekabooBridgeWindowTargetRequest)
+    case moveWindow(PeekabooBridgeWindowMoveRequest)
+    case resizeWindow(PeekabooBridgeWindowResizeRequest)
+    case setWindowBounds(PeekabooBridgeWindowBoundsRequest)
+    case closeWindow(PeekabooBridgeWindowTargetRequest)
+    case minimizeWindow(PeekabooBridgeWindowTargetRequest)
+    case maximizeWindow(PeekabooBridgeWindowTargetRequest)
     case getFocusedWindow
     case listApplications
-    case findApplication(PeekabooXPCAppIdentifierRequest)
+    case findApplication(PeekabooBridgeAppIdentifierRequest)
     case getFrontmostApplication
-    case isApplicationRunning(PeekabooXPCAppIdentifierRequest)
-    case launchApplication(PeekabooXPCAppIdentifierRequest)
-    case activateApplication(PeekabooXPCAppIdentifierRequest)
-    case quitApplication(PeekabooXPCQuitAppRequest)
-    case hideApplication(PeekabooXPCAppIdentifierRequest)
-    case unhideApplication(PeekabooXPCAppIdentifierRequest)
-    case hideOtherApplications(PeekabooXPCAppIdentifierRequest)
+    case isApplicationRunning(PeekabooBridgeAppIdentifierRequest)
+    case launchApplication(PeekabooBridgeAppIdentifierRequest)
+    case activateApplication(PeekabooBridgeAppIdentifierRequest)
+    case quitApplication(PeekabooBridgeQuitAppRequest)
+    case hideApplication(PeekabooBridgeAppIdentifierRequest)
+    case unhideApplication(PeekabooBridgeAppIdentifierRequest)
+    case hideOtherApplications(PeekabooBridgeAppIdentifierRequest)
     case showAllApplications
-    case listMenus(PeekabooXPCMenuListRequest)
+    case listMenus(PeekabooBridgeMenuListRequest)
     case listFrontmostMenus
-    case clickMenuItem(PeekabooXPCMenuClickRequest)
-    case clickMenuItemByName(PeekabooXPCMenuClickByNameRequest)
+    case clickMenuItem(PeekabooBridgeMenuClickRequest)
+    case clickMenuItemByName(PeekabooBridgeMenuClickByNameRequest)
     case listMenuExtras
-    case clickMenuExtra(PeekabooXPCMenuBarClickByNameRequest)
+    case clickMenuExtra(PeekabooBridgeMenuBarClickByNameRequest)
     case listMenuBarItems(Bool)
-    case clickMenuBarItemNamed(PeekabooXPCMenuBarClickByNameRequest)
-    case clickMenuBarItemIndex(PeekabooXPCMenuBarClickByIndexRequest)
-    case listDockItems(PeekabooXPCDockListRequest)
-    case launchDockItem(PeekabooXPCDockLaunchRequest)
-    case rightClickDockItem(PeekabooXPCDockRightClickRequest)
+    case clickMenuBarItemNamed(PeekabooBridgeMenuBarClickByNameRequest)
+    case clickMenuBarItemIndex(PeekabooBridgeMenuBarClickByIndexRequest)
+    case listDockItems(PeekabooBridgeDockListRequest)
+    case launchDockItem(PeekabooBridgeDockLaunchRequest)
+    case rightClickDockItem(PeekabooBridgeDockRightClickRequest)
     case hideDock
     case showDock
     case isDockHidden
-    case findDockItem(PeekabooXPCDockFindRequest)
-    case dialogFindActive(PeekabooXPCDialogFindRequest)
-    case dialogClickButton(PeekabooXPCDialogClickButtonRequest)
-    case dialogEnterText(PeekabooXPCDialogEnterTextRequest)
-    case dialogHandleFile(PeekabooXPCDialogHandleFileRequest)
-    case dialogDismiss(PeekabooXPCDialogDismissRequest)
-    case dialogListElements(PeekabooXPCDialogFindRequest)
-    case createSnapshot(PeekabooXPCCreateSnapshotRequest)
-    case storeDetectionResult(PeekabooXPCStoreDetectionRequest)
-    case getDetectionResult(PeekabooXPCGetDetectionRequest)
-    case storeScreenshot(PeekabooXPCStoreScreenshotRequest)
-    case storeAnnotatedScreenshot(PeekabooXPCStoreAnnotatedScreenshotRequest)
+    case findDockItem(PeekabooBridgeDockFindRequest)
+    case dialogFindActive(PeekabooBridgeDialogFindRequest)
+    case dialogClickButton(PeekabooBridgeDialogClickButtonRequest)
+    case dialogEnterText(PeekabooBridgeDialogEnterTextRequest)
+    case dialogHandleFile(PeekabooBridgeDialogHandleFileRequest)
+    case dialogDismiss(PeekabooBridgeDialogDismissRequest)
+    case dialogListElements(PeekabooBridgeDialogFindRequest)
+    case createSnapshot(PeekabooBridgeCreateSnapshotRequest)
+    case storeDetectionResult(PeekabooBridgeStoreDetectionRequest)
+    case getDetectionResult(PeekabooBridgeGetDetectionRequest)
+    case storeScreenshot(PeekabooBridgeStoreScreenshotRequest)
+    case storeAnnotatedScreenshot(PeekabooBridgeStoreAnnotatedScreenshotRequest)
     case listSnapshots
-    case getMostRecentSnapshot(PeekabooXPCGetMostRecentSnapshotRequest)
-    case cleanSnapshot(PeekabooXPCCleanSnapshotRequest)
-    case cleanSnapshotsOlderThan(PeekabooXPCCleanSnapshotsOlderRequest)
+    case getMostRecentSnapshot(PeekabooBridgeGetMostRecentSnapshotRequest)
+    case cleanSnapshot(PeekabooBridgeCleanSnapshotRequest)
+    case cleanSnapshotsOlderThan(PeekabooBridgeCleanSnapshotsOlderRequest)
     case cleanAllSnapshots
     case appleScriptProbe
 }
 
-extension PeekabooXPCRequest {
-    public var operation: PeekabooXPCOperation {
+extension PeekabooBridgeRequest {
+    public var operation: PeekabooBridgeOperation {
         switch self {
         case .handshake: .permissionsStatus
         case .permissionsStatus: .permissionsStatus
@@ -687,8 +687,8 @@ extension PeekabooXPCRequest {
     }
 }
 
-public enum PeekabooXPCResponse: Codable, Sendable {
-    case handshake(PeekabooXPCHandshakeResponse)
+public enum PeekabooBridgeResponse: Codable, Sendable {
+    case handshake(PeekabooBridgeHandshakeResponse)
     case permissionsStatus(PermissionsStatus)
     case capture(CaptureResult)
     case elementDetection(ElementDetectionResult)
@@ -713,10 +713,10 @@ public enum PeekabooXPCResponse: Codable, Sendable {
     case snapshots([SnapshotInfo])
     case detection(ElementDetectionResult)
     case int(Int)
-    case error(PeekabooXPCErrorEnvelope)
+    case error(PeekabooBridgeErrorEnvelope)
 }
 
-public enum PeekabooXPCErrorCode: String, Codable, Sendable {
+public enum PeekabooBridgeErrorCode: String, Codable, Sendable {
     case permissionDenied
     case notFound
     case timeout
@@ -729,12 +729,12 @@ public enum PeekabooXPCErrorCode: String, Codable, Sendable {
     case internalError
 }
 
-public struct PeekabooXPCErrorEnvelope: Codable, Sendable, Error {
-    public let code: PeekabooXPCErrorCode
+public struct PeekabooBridgeErrorEnvelope: Codable, Sendable, Error {
+    public let code: PeekabooBridgeErrorCode
     public let message: String
     public let details: String?
 
-    public init(code: PeekabooXPCErrorCode, message: String, details: String? = nil) {
+    public init(code: PeekabooBridgeErrorCode, message: String, details: String? = nil) {
         self.code = code
         self.message = message
         self.details = details

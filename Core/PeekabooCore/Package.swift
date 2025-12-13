@@ -35,14 +35,11 @@ let package = Package(
             name: "PeekabooAgentRuntime",
             targets: ["PeekabooAgentRuntime"]),
         .library(
-            name: "PeekabooXPC",
-            targets: ["PeekabooXPC"]),
+            name: "PeekabooBridge",
+            targets: ["PeekabooBridge"]),
         .library(
             name: "PeekabooCore",
             targets: ["PeekabooCore"]),
-        .executable(
-            name: "PeekabooHelper",
-            targets: ["PeekabooHelper"]),
     ],
     dependencies: [
         .package(path: "../PeekabooAutomationKit"),
@@ -51,7 +48,6 @@ let package = Package(
         .package(path: "../PeekabooExternalDependencies"),
         .package(path: "../PeekabooVisualizer"),
         .package(path: "../../Tachikoma"),
-        .package(url: "https://github.com/ChimeHQ/AsyncXPCConnection", from: "1.3.0"),
         // Use main for Swift 6.x compatibility; 0.2.0 trips key-path restrictions in Swift 6.
         .package(url: "https://github.com/apple/swift-configuration", branch: "main"),
     ],
@@ -85,15 +81,13 @@ let package = Package(
             path: "Tests/PeekabooAutomationTests",
             swiftSettings: testTargetSettings),
         .target(
-            name: "PeekabooXPC",
+            name: "PeekabooBridge",
             dependencies: [
                 .target(name: "PeekabooAutomation"),
                 .target(name: "PeekabooAgentRuntime"),
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
-                .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
-                .product(name: "AsyncXPCConnection", package: "AsyncXPCConnection"),
             ],
-            path: "Sources/PeekabooXPC",
+            path: "Sources/PeekabooBridge",
             swiftSettings: coreTargetSettings),
         .target(
             name: "PeekabooAgentRuntime",
@@ -145,7 +139,6 @@ let package = Package(
                 "PeekabooCore",
                 "PeekabooAutomation",
                 "PeekabooAgentRuntime",
-                "PeekabooXPC",
                 .product(name: "PeekabooAutomationKit", package: "PeekabooAutomationKit"),
                 .product(name: "PeekabooVisualizer", package: "PeekabooVisualizer"),
                 "PeekabooFoundation",
@@ -155,13 +148,5 @@ let package = Package(
                 .process("Resources"),
             ],
             swiftSettings: testTargetSettings),
-        .executableTarget(
-            name: "PeekabooHelper",
-            dependencies: [
-                "PeekabooCore",
-                "PeekabooXPC",
-            ],
-            path: "Sources/PeekabooHelper",
-            swiftSettings: approachableConcurrencySettings),
     ],
     swiftLanguageModes: [.v6])

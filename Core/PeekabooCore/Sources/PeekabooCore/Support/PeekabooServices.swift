@@ -203,6 +203,90 @@ public final class PeekabooServices {
         self.refreshAgentService()
     }
 
+    /// Initialize with default services but a custom snapshot manager (e.g. in-memory for long-lived host apps).
+    @MainActor
+    public convenience init(snapshotManager: any SnapshotManagerProtocol) {
+        let logger = SystemLogger(subsystem: "boo.peekaboo.core", category: "Services")
+        logger.debug("🚀 Initializing PeekabooServices with default implementations (custom snapshots)")
+
+        let logging = LoggingService()
+        logger.debug("\(AgentDisplayTokens.Status.success) LoggingService initialized")
+
+        let apps = ApplicationService()
+        logger.debug("\(AgentDisplayTokens.Status.success) ApplicationService initialized")
+
+        let snapshots = snapshotManager
+        logger.debug("\(AgentDisplayTokens.Status.success) SnapshotManager initialized (custom)")
+
+        let screenCap = ScreenCaptureService(loggingService: logging)
+        logger.debug("\(AgentDisplayTokens.Status.success) ScreenCaptureService initialized")
+
+        let auto = UIAutomationService(snapshotManager: snapshots, loggingService: logging, searchPolicy: .balanced)
+        logger.debug("\(AgentDisplayTokens.Status.success) UIAutomationService initialized")
+
+        let windows = WindowManagementService(applicationService: apps)
+        logger.debug("\(AgentDisplayTokens.Status.success) WindowManagementService initialized")
+
+        let menuSvc = MenuService(applicationService: apps)
+        logger.debug("\(AgentDisplayTokens.Status.success) MenuService initialized")
+
+        let dockSvc = DockService()
+        logger.debug("\(AgentDisplayTokens.Status.success) DockService initialized")
+
+        let dialogs = DialogService()
+        logger.debug("\(AgentDisplayTokens.Status.success) DialogService initialized")
+
+        let files = FileService()
+        logger.debug("\(AgentDisplayTokens.Status.success) FileService initialized")
+
+        let clipboard = ClipboardService()
+        logger.debug("\(AgentDisplayTokens.Status.success) ClipboardService initialized")
+
+        let configuration = ConfigurationManager.shared
+        logger.debug("\(AgentDisplayTokens.Status.success) ConfigurationManager initialized")
+
+        let process = ProcessService(
+            applicationService: apps,
+            screenCaptureService: screenCap,
+            snapshotManager: snapshots,
+            uiAutomationService: auto,
+            windowManagementService: windows,
+            menuService: menuSvc,
+            dockService: dockSvc)
+        logger.debug("\(AgentDisplayTokens.Status.success) ProcessService initialized")
+
+        let permissions = PermissionsService()
+        logger.debug("\(AgentDisplayTokens.Status.success) PermissionsService initialized")
+
+        let audioInput = AudioInputService(aiService: PeekabooAIService())
+        logger.debug("\(AgentDisplayTokens.Status.success) AudioInputService initialized")
+
+        let screens = ScreenService()
+        logger.debug("\(AgentDisplayTokens.Status.success) ScreenService initialized")
+
+        self.init(
+            logging: logging,
+            screenCapture: screenCap,
+            applications: apps,
+            automation: auto,
+            windows: windows,
+            menu: menuSvc,
+            dock: dockSvc,
+            dialogs: dialogs,
+            snapshots: snapshots,
+            files: files,
+            clipboard: clipboard,
+            process: process,
+            permissions: permissions,
+            audioInput: audioInput,
+            configuration: configuration,
+            agent: nil,
+            screens: screens)
+
+        logger.debug("✨ PeekabooServices initialization complete (custom snapshots)")
+        self.refreshAgentService()
+    }
+
     /// Initialize with custom service implementations (for testing)
     @MainActor
     public init(

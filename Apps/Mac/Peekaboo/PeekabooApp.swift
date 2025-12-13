@@ -1,8 +1,9 @@
 import AppKit
 import KeyboardShortcuts
 import os.log
+import PeekabooAutomationKit
+import PeekabooBridge
 import PeekabooCore
-import PeekabooXPC
 import SwiftUI
 import Tachikoma
 
@@ -12,7 +13,7 @@ struct PeekabooApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
 
-    @State private var services = PeekabooServices()
+    @State private var services = PeekabooServices(snapshotManager: InMemorySnapshotManager())
     // Core state - initialized together for proper dependencies
     @State private var settings = PeekabooSettings()
     @State private var sessionStore = SessionStore()
@@ -215,7 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "App")
     private var statusBarController: StatusBarController?
     var windowOpener: ((String) -> Void)?
-    private var xpcHost: PeekabooXPCHost?
+    private var bridgeHost: PeekabooBridgeHost?
 
     // State connections
     private var settings: PeekabooSettings?
@@ -276,7 +277,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup notification observers
         self.setupNotificationObservers()
 
-        self.startXPCListener(services: context.services)
+        self.startBridgeHost(services: context.services)
 
         // Show onboarding if needed
         if self.settings?.hasValidAPIKey != true {
@@ -288,7 +289,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false // Menu bar app stays running
     }
 
-    func applicationWillTerminate(_: Notification) {}
+    func applicationWillTerminate(_: Notification) {
+        if let bridgeHost = self.bridgeHost {
+            Task { await bridgeHost.stop() }
+        }
+    }
 
     // MARK: - Window Management
 
@@ -408,20 +413,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func startXPCListener(services: PeekabooServices) {
+    private func startBridgeHost(services: PeekabooServices) {
         let allowlistedBundles: Set<String> = [
             "boo.peekaboo.peekaboo", // CLI
             "boo.peekaboo.mac", // GUI
         ]
         let allowlistedTeams: Set<String> = ["Y5PE65HELJ"]
 
-        self.logger.info("Starting GUI XPC listener at \(PeekabooXPCConstants.guiServiceName, privacy: .public)")
-        self.xpcHost = PeekabooXPCBootstrap.startHelperListener(
+        self.logger.info("Starting Peekaboo Bridge at \(PeekabooBridgeConstants.peekabooSocketPath, privacy: .public)")
+        self.bridgeHost = PeekabooBridgeBootstrap.startHost(
             services: services,
-            serviceName: PeekabooXPCConstants.guiServiceName,
+            hostKind: .gui,
+            socketPath: PeekabooBridgeConstants.peekabooSocketPath,
             allowlistedTeams: allowlistedTeams,
             allowlistedBundles: allowlistedBundles,
-            allowedOperations: PeekabooXPCOperation.remoteDefaultAllowlist)
+            allowedOperations: PeekabooBridgeOperation.remoteDefaultAllowlist)
     }
 
     // MARK: - Public Access

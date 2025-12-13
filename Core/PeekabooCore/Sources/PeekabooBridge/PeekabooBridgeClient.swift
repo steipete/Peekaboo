@@ -1,62 +1,39 @@
-import AsyncXPCConnection
+import Darwin
 import Foundation
 import os.log
 import PeekabooAutomation
 import PeekabooFoundation
 
-private struct UncheckedResponseHandler: @unchecked Sendable {
-    let handler: (Data?, (any Error)?) -> Void
-}
-
-private typealias XPCReplyHandler = (Data?, (any Error)?) -> Void
-
-public actor PeekabooXPCClient {
-    private let remote: RemoteXPCService<any PeekabooXPCConnection>
+public actor PeekabooBridgeClient {
+    private let socketPath: String
+    private let maxResponseBytes: Int
+    private let requestTimeoutSec: TimeInterval
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
-    private let logger = Logger(subsystem: "boo.peekaboo.xpc", category: "client")
-    private let throttler = XPCRequestThrottler(maxConcurrent: 4)
+    private let logger = Logger(subsystem: "boo.peekaboo.bridge", category: "client")
 
     public init(
-        serviceName: String = PeekabooXPCConstants.serviceName,
-        encoder: JSONEncoder = .peekabooXPCEncoder(),
-        decoder: JSONDecoder = .peekabooXPCDecoder(),
-        configure: ((NSXPCConnection) -> Void)? = nil)
+        socketPath: String = PeekabooBridgeConstants.peekabooSocketPath,
+        maxResponseBytes: Int = 64 * 1024 * 1024,
+        requestTimeoutSec: TimeInterval = 10,
+        encoder: JSONEncoder = .peekabooBridgeEncoder(),
+        decoder: JSONDecoder = .peekabooBridgeDecoder())
     {
-        let connection = NSXPCConnection(machServiceName: serviceName)
-        connection.remoteObjectInterface = NSXPCInterface.peekabooXPCInterface()
-        configure?(connection)
-        connection.resume()
-
-        self.remote = RemoteXPCService(connection: connection)
-        self.encoder = encoder
-        self.decoder = decoder
-    }
-
-    public init(
-        endpoint: NSXPCListenerEndpoint,
-        encoder: JSONEncoder = .peekabooXPCEncoder(),
-        decoder: JSONDecoder = .peekabooXPCDecoder(),
-        configure: ((NSXPCConnection) -> Void)? = nil)
-    {
-        let connection = NSXPCConnection(listenerEndpoint: endpoint)
-        connection.remoteObjectInterface = NSXPCInterface.peekabooXPCInterface()
-        configure?(connection)
-        connection.resume()
-
-        self.remote = RemoteXPCService(connection: connection)
+        self.socketPath = socketPath
+        self.maxResponseBytes = maxResponseBytes
+        self.requestTimeoutSec = requestTimeoutSec
         self.encoder = encoder
         self.decoder = decoder
     }
 
     @discardableResult
     public func handshake(
-        client: PeekabooXPCClientIdentity,
-        requestedHost: PeekabooXPCHostKind? = nil,
-        protocolVersion: PeekabooXPCProtocolVersion = PeekabooXPCConstants.protocolVersion)
-        async throws -> PeekabooXPCHandshakeResponse
+        client: PeekabooBridgeClientIdentity,
+        requestedHost: PeekabooBridgeHostKind? = nil,
+        protocolVersion: PeekabooBridgeProtocolVersion = PeekabooBridgeConstants.protocolVersion)
+        async throws -> PeekabooBridgeHandshakeResponse
     {
-        let payload = PeekabooXPCHandshake(
+        let payload = PeekabooBridgeHandshake(
             protocolVersion: protocolVersion,
             client: client,
             requestedHostKind: requestedHost)
@@ -68,7 +45,7 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected handshake response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected handshake response")
         }
     }
 
@@ -80,7 +57,7 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected permissions response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected permissions response")
         }
     }
 
@@ -89,7 +66,7 @@ public actor PeekabooXPCClient {
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        let payload = PeekabooXPCCaptureScreenRequest(
+        let payload = PeekabooBridgeCaptureScreenRequest(
             displayIndex: displayIndex,
             visualizerMode: visualizerMode,
             scale: scale)
@@ -103,7 +80,7 @@ public actor PeekabooXPCClient {
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        let payload = PeekabooXPCCaptureWindowRequest(
+        let payload = PeekabooBridgeCaptureWindowRequest(
             appIdentifier: appIdentifier,
             windowIndex: windowIndex,
             visualizerMode: visualizerMode,
@@ -116,7 +93,7 @@ public actor PeekabooXPCClient {
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        let payload = PeekabooXPCCaptureFrontmostRequest(visualizerMode: visualizerMode, scale: scale)
+        let payload = PeekabooBridgeCaptureFrontmostRequest(visualizerMode: visualizerMode, scale: scale)
         let response = try await self.send(.captureFrontmost(payload))
         return try Self.unwrapCapture(from: response)
     }
@@ -126,7 +103,7 @@ public actor PeekabooXPCClient {
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        let payload = PeekabooXPCCaptureAreaRequest(rect: rect, visualizerMode: visualizerMode, scale: scale)
+        let payload = PeekabooBridgeCaptureAreaRequest(rect: rect, visualizerMode: visualizerMode, scale: scale)
         let response = try await self.send(.captureArea(payload))
         return try Self.unwrapCapture(from: response)
     }
@@ -136,7 +113,7 @@ public actor PeekabooXPCClient {
         snapshotId: String?,
         windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
-        let payload = PeekabooXPCDetectElementsRequest(
+        let payload = PeekabooBridgeDetectElementsRequest(
             imageData: imageData,
             snapshotId: snapshotId,
             windowContext: windowContext)
@@ -147,12 +124,12 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected detectElements response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected detectElements response")
         }
     }
 
     public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
-        let payload = PeekabooXPCClickRequest(target: target, clickType: clickType, snapshotId: snapshotId)
+        let payload = PeekabooBridgeClickRequest(target: target, clickType: clickType, snapshotId: snapshotId)
         try await self.sendExpectOK(.click(payload))
     }
 
@@ -163,7 +140,7 @@ public actor PeekabooXPCClient {
         typingDelay: Int,
         snapshotId: String?) async throws
     {
-        let payload = PeekabooXPCTypeRequest(
+        let payload = PeekabooBridgeTypeRequest(
             text: text,
             target: target,
             clearExisting: clearExisting,
@@ -177,7 +154,7 @@ public actor PeekabooXPCClient {
         cadence: TypingCadence,
         snapshotId: String?) async throws -> TypeResult
     {
-        let payload = PeekabooXPCTypeActionsRequest(actions: actions, cadence: cadence, snapshotId: snapshotId)
+        let payload = PeekabooBridgeTypeActionsRequest(actions: actions, cadence: cadence, snapshotId: snapshotId)
         let response = try await self.send(.typeActions(payload))
         switch response {
         case let .typeResult(result):
@@ -185,16 +162,16 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected typeActions response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected typeActions response")
         }
     }
 
     public func scroll(_ request: ScrollRequest) async throws {
-        try await self.sendExpectOK(.scroll(PeekabooXPCScrollRequest(request: request)))
+        try await self.sendExpectOK(.scroll(PeekabooBridgeScrollRequest(request: request)))
     }
 
     public func hotkey(keys: String, holdDuration: Int) async throws {
-        try await self.sendExpectOK(.hotkey(PeekabooXPCHotkeyRequest(keys: keys, holdDuration: holdDuration)))
+        try await self.sendExpectOK(.hotkey(PeekabooBridgeHotkeyRequest(keys: keys, holdDuration: holdDuration)))
     }
 
     public func swipe(
@@ -204,7 +181,7 @@ public actor PeekabooXPCClient {
         steps: Int,
         profile: MouseMovementProfile) async throws
     {
-        let payload = PeekabooXPCSwipeRequest(from: from, to: to, duration: duration, steps: steps, profile: profile)
+        let payload = PeekabooBridgeSwipeRequest(from: from, to: to, duration: duration, steps: steps, profile: profile)
         try await self.sendExpectOK(.swipe(payload))
     }
 
@@ -217,7 +194,7 @@ public actor PeekabooXPCClient {
         modifiers: String?,
         profile: MouseMovementProfile) async throws
     {
-        let payload = PeekabooXPCDragRequest(
+        let payload = PeekabooBridgeDragRequest(
             from: from,
             to: to,
             duration: duration,
@@ -235,14 +212,14 @@ public actor PeekabooXPCClient {
         steps: Int,
         profile: MouseMovementProfile) async throws
     {
-        let payload = PeekabooXPCMoveMouseRequest(to: point, duration: duration, steps: steps, profile: profile)
+        let payload = PeekabooBridgeMoveMouseRequest(to: point, duration: duration, steps: steps, profile: profile)
         try await self.sendExpectOK(.moveMouse(payload))
     }
 
     public func waitForElement(target: ClickTarget, timeout: TimeInterval, snapshotId: String?) async throws
         -> WaitForElementResult
     {
-        let payload = PeekabooXPCWaitRequest(target: target, timeout: timeout, snapshotId: snapshotId)
+        let payload = PeekabooBridgeWaitRequest(target: target, timeout: timeout, snapshotId: snapshotId)
         let response = try await self.send(.waitForElement(payload))
         switch response {
         case let .waitResult(result):
@@ -250,48 +227,48 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected waitForElement response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected waitForElement response")
         }
     }
 
     public func listWindows(target: WindowTarget) async throws -> [ServiceWindowInfo] {
-        let response = try await self.send(.listWindows(PeekabooXPCWindowTargetRequest(target: target)))
+        let response = try await self.send(.listWindows(PeekabooBridgeWindowTargetRequest(target: target)))
         switch response {
         case let .windows(windows):
             return windows
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected listWindows response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected listWindows response")
         }
     }
 
     public func focusWindow(target: WindowTarget) async throws {
-        try await self.sendExpectOK(.focusWindow(PeekabooXPCWindowTargetRequest(target: target)))
+        try await self.sendExpectOK(.focusWindow(PeekabooBridgeWindowTargetRequest(target: target)))
     }
 
     public func moveWindow(target: WindowTarget, to position: CGPoint) async throws {
-        try await self.sendExpectOK(.moveWindow(PeekabooXPCWindowMoveRequest(target: target, position: position)))
+        try await self.sendExpectOK(.moveWindow(PeekabooBridgeWindowMoveRequest(target: target, position: position)))
     }
 
     public func resizeWindow(target: WindowTarget, to size: CGSize) async throws {
-        try await self.sendExpectOK(.resizeWindow(PeekabooXPCWindowResizeRequest(target: target, size: size)))
+        try await self.sendExpectOK(.resizeWindow(PeekabooBridgeWindowResizeRequest(target: target, size: size)))
     }
 
     public func setWindowBounds(target: WindowTarget, bounds: CGRect) async throws {
-        try await self.sendExpectOK(.setWindowBounds(PeekabooXPCWindowBoundsRequest(target: target, bounds: bounds)))
+        try await self.sendExpectOK(.setWindowBounds(PeekabooBridgeWindowBoundsRequest(target: target, bounds: bounds)))
     }
 
     public func closeWindow(target: WindowTarget) async throws {
-        try await self.sendExpectOK(.closeWindow(PeekabooXPCWindowTargetRequest(target: target)))
+        try await self.sendExpectOK(.closeWindow(PeekabooBridgeWindowTargetRequest(target: target)))
     }
 
     public func minimizeWindow(target: WindowTarget) async throws {
-        try await self.sendExpectOK(.minimizeWindow(PeekabooXPCWindowTargetRequest(target: target)))
+        try await self.sendExpectOK(.minimizeWindow(PeekabooBridgeWindowTargetRequest(target: target)))
     }
 
     public func maximizeWindow(target: WindowTarget) async throws {
-        try await self.sendExpectOK(.maximizeWindow(PeekabooXPCWindowTargetRequest(target: target)))
+        try await self.sendExpectOK(.maximizeWindow(PeekabooBridgeWindowTargetRequest(target: target)))
     }
 
     public func getFocusedWindow() async throws -> ServiceWindowInfo? {
@@ -302,7 +279,7 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected getFocusedWindow response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected getFocusedWindow response")
         }
     }
 
@@ -314,19 +291,19 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected listApplications response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected listApplications response")
         }
     }
 
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
-        let response = try await self.send(.findApplication(PeekabooXPCAppIdentifierRequest(identifier: identifier)))
+        let response = try await self.send(.findApplication(PeekabooBridgeAppIdentifierRequest(identifier: identifier)))
         switch response {
         case let .application(app):
             return app
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected findApplication response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected findApplication response")
         }
     }
 
@@ -338,41 +315,46 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected frontmost application response")
+            throw PeekabooBridgeErrorEnvelope(
+                code: .invalidRequest,
+                message: "Unexpected frontmost application response")
         }
     }
 
     public func isApplicationRunning(identifier: String) async throws -> Bool {
         let response = try await self
-            .send(.isApplicationRunning(PeekabooXPCAppIdentifierRequest(identifier: identifier)))
+            .send(.isApplicationRunning(PeekabooBridgeAppIdentifierRequest(identifier: identifier)))
         switch response {
         case let .bool(running):
             return running
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected isApplicationRunning response")
+            throw PeekabooBridgeErrorEnvelope(
+                code: .invalidRequest,
+                message: "Unexpected isApplicationRunning response")
         }
     }
 
     public func launchApplication(identifier: String) async throws -> ServiceApplicationInfo {
-        let response = try await self.send(.launchApplication(PeekabooXPCAppIdentifierRequest(identifier: identifier)))
+        let response = try await self
+            .send(.launchApplication(PeekabooBridgeAppIdentifierRequest(identifier: identifier)))
         switch response {
         case let .application(app):
             return app
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected launchApplication response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected launchApplication response")
         }
     }
 
     public func activateApplication(identifier: String) async throws {
-        try await self.sendExpectOK(.activateApplication(PeekabooXPCAppIdentifierRequest(identifier: identifier)))
+        try await self.sendExpectOK(.activateApplication(PeekabooBridgeAppIdentifierRequest(identifier: identifier)))
     }
 
     public func quitApplication(identifier: String, force: Bool) async throws -> Bool {
-        let payload = PeekabooXPCQuitAppRequest(identifier: identifier, force: force)
+        let payload = PeekabooBridgeQuitAppRequest(identifier: identifier, force: force)
         let response = try await self.send(.quitApplication(payload))
         switch response {
         case let .bool(result):
@@ -380,20 +362,20 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected quitApplication response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected quitApplication response")
         }
     }
 
     public func hideApplication(identifier: String) async throws {
-        try await self.sendExpectOK(.hideApplication(PeekabooXPCAppIdentifierRequest(identifier: identifier)))
+        try await self.sendExpectOK(.hideApplication(PeekabooBridgeAppIdentifierRequest(identifier: identifier)))
     }
 
     public func unhideApplication(identifier: String) async throws {
-        try await self.sendExpectOK(.unhideApplication(PeekabooXPCAppIdentifierRequest(identifier: identifier)))
+        try await self.sendExpectOK(.unhideApplication(PeekabooBridgeAppIdentifierRequest(identifier: identifier)))
     }
 
     public func hideOtherApplications(identifier: String) async throws {
-        try await self.sendExpectOK(.hideOtherApplications(PeekabooXPCAppIdentifierRequest(identifier: identifier)))
+        try await self.sendExpectOK(.hideOtherApplications(PeekabooBridgeAppIdentifierRequest(identifier: identifier)))
     }
 
     public func showAllApplications() async throws {
@@ -403,11 +385,11 @@ public actor PeekabooXPCClient {
     // MARK: - Menus
 
     public func listMenus(appIdentifier: String) async throws -> MenuStructure {
-        let response = try await self.send(.listMenus(PeekabooXPCMenuListRequest(appIdentifier: appIdentifier)))
+        let response = try await self.send(.listMenus(PeekabooBridgeMenuListRequest(appIdentifier: appIdentifier)))
         switch response {
         case let .menuStructure(structure): return structure
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected menu list response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected menu list response")
         }
     }
 
@@ -416,18 +398,18 @@ public actor PeekabooXPCClient {
         switch response {
         case let .menuStructure(structure): return structure
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected menu list response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected menu list response")
         }
     }
 
     public func clickMenuItem(appIdentifier: String, itemPath: String) async throws {
-        try await self.sendExpectOK(.clickMenuItem(PeekabooXPCMenuClickRequest(
+        try await self.sendExpectOK(.clickMenuItem(PeekabooBridgeMenuClickRequest(
             appIdentifier: appIdentifier,
             itemPath: itemPath)))
     }
 
     public func clickMenuItemByName(appIdentifier: String, itemName: String) async throws {
-        try await self.sendExpectOK(.clickMenuItemByName(PeekabooXPCMenuClickByNameRequest(
+        try await self.sendExpectOK(.clickMenuItemByName(PeekabooBridgeMenuClickByNameRequest(
             appIdentifier: appIdentifier,
             itemName: itemName)))
     }
@@ -437,12 +419,12 @@ public actor PeekabooXPCClient {
         switch response {
         case let .menuExtras(extras): return extras
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected menu extras response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected menu extras response")
         }
     }
 
     public func clickMenuExtra(title: String) async throws {
-        try await self.sendExpectOK(.clickMenuExtra(PeekabooXPCMenuBarClickByNameRequest(name: title)))
+        try await self.sendExpectOK(.clickMenuExtra(PeekabooBridgeMenuBarClickByNameRequest(name: title)))
     }
 
     public func listMenuBarItems(includeRaw: Bool) async throws -> [MenuBarItemInfo] {
@@ -450,45 +432,46 @@ public actor PeekabooXPCClient {
         switch response {
         case let .menuBarItems(items): return items
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected menu bar response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected menu bar response")
         }
     }
 
     public func clickMenuBarItem(named name: String) async throws -> ClickResult {
-        let response = try await self.send(.clickMenuBarItemNamed(PeekabooXPCMenuBarClickByNameRequest(name: name)))
+        let response = try await self.send(.clickMenuBarItemNamed(PeekabooBridgeMenuBarClickByNameRequest(name: name)))
         switch response {
         case let .clickResult(result): return result
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected menu bar click response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected menu bar click response")
         }
     }
 
     public func clickMenuBarItem(at index: Int) async throws -> ClickResult {
-        let response = try await self.send(.clickMenuBarItemIndex(PeekabooXPCMenuBarClickByIndexRequest(index: index)))
+        let response = try await self
+            .send(.clickMenuBarItemIndex(PeekabooBridgeMenuBarClickByIndexRequest(index: index)))
         switch response {
         case let .clickResult(result): return result
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected menu bar click response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected menu bar click response")
         }
     }
 
     // MARK: - Dock
 
     public func listDockItems(includeAll: Bool) async throws -> [DockItem] {
-        let response = try await self.send(.listDockItems(PeekabooXPCDockListRequest(includeAll: includeAll)))
+        let response = try await self.send(.listDockItems(PeekabooBridgeDockListRequest(includeAll: includeAll)))
         switch response {
         case let .dockItems(items): return items
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dock list response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected dock list response")
         }
     }
 
     public func launchDockItem(appName: String) async throws {
-        try await self.sendExpectOK(.launchDockItem(PeekabooXPCDockLaunchRequest(appName: appName)))
+        try await self.sendExpectOK(.launchDockItem(PeekabooBridgeDockLaunchRequest(appName: appName)))
     }
 
     public func rightClickDockItem(appName: String, menuItem: String?) async throws {
-        try await self.sendExpectOK(.rightClickDockItem(PeekabooXPCDockRightClickRequest(
+        try await self.sendExpectOK(.rightClickDockItem(PeekabooBridgeDockRightClickRequest(
             appName: appName,
             menuItem: menuItem)))
     }
@@ -500,31 +483,31 @@ public actor PeekabooXPCClient {
         switch response {
         case let .bool(value): return value
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dock state response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected dock state response")
         }
     }
 
     public func findDockItem(name: String) async throws -> DockItem {
-        let response = try await self.send(.findDockItem(PeekabooXPCDockFindRequest(name: name)))
+        let response = try await self.send(.findDockItem(PeekabooBridgeDockFindRequest(name: name)))
         switch response {
         case let .dockItem(item):
             if let item { return item }
-            throw PeekabooXPCErrorEnvelope(code: .notFound, message: "Dock item not found")
+            throw PeekabooBridgeErrorEnvelope(code: .notFound, message: "Dock item not found")
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dock find response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected dock find response")
         }
     }
 
     // MARK: - Dialogs
 
     public func dialogFindActive(windowTitle: String?, appName: String?) async throws -> DialogInfo {
-        let response = try await self.send(.dialogFindActive(PeekabooXPCDialogFindRequest(
+        let response = try await self.send(.dialogFindActive(PeekabooBridgeDialogFindRequest(
             windowTitle: windowTitle,
             appName: appName)))
         switch response {
         case let .dialogInfo(info): return info
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog response")
         }
     }
 
@@ -533,14 +516,14 @@ public actor PeekabooXPCClient {
         windowTitle: String?,
         appName: String?) async throws -> DialogActionResult
     {
-        let response = try await self.send(.dialogClickButton(PeekabooXPCDialogClickButtonRequest(
+        let response = try await self.send(.dialogClickButton(PeekabooBridgeDialogClickButtonRequest(
             buttonText: buttonText,
             windowTitle: windowTitle,
             appName: appName)))
         switch response {
         case let .dialogResult(result): return result
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog result")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog result")
         }
     }
 
@@ -551,7 +534,7 @@ public actor PeekabooXPCClient {
         windowTitle: String?,
         appName: String?) async throws -> DialogActionResult
     {
-        let response = try await self.send(.dialogEnterText(PeekabooXPCDialogEnterTextRequest(
+        let response = try await self.send(.dialogEnterText(PeekabooBridgeDialogEnterTextRequest(
             text: text,
             fieldIdentifier: fieldIdentifier,
             clearExisting: clearExisting,
@@ -560,7 +543,7 @@ public actor PeekabooXPCClient {
         switch response {
         case let .dialogResult(result): return result
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog result")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog result")
         }
     }
 
@@ -570,7 +553,7 @@ public actor PeekabooXPCClient {
         actionButton: String,
         appName: String?) async throws -> DialogActionResult
     {
-        let response = try await self.send(.dialogHandleFile(PeekabooXPCDialogHandleFileRequest(
+        let response = try await self.send(.dialogHandleFile(PeekabooBridgeDialogHandleFileRequest(
             path: path,
             filename: filename,
             actionButton: actionButton,
@@ -578,30 +561,32 @@ public actor PeekabooXPCClient {
         switch response {
         case let .dialogResult(result): return result
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog result")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog result")
         }
     }
 
     public func dialogDismiss(force: Bool, windowTitle: String?, appName: String?) async throws -> DialogActionResult {
-        let response = try await self.send(.dialogDismiss(PeekabooXPCDialogDismissRequest(
+        let response = try await self.send(.dialogDismiss(PeekabooBridgeDialogDismissRequest(
             force: force,
             windowTitle: windowTitle,
             appName: appName)))
         switch response {
         case let .dialogResult(result): return result
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog result")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog result")
         }
     }
 
     public func dialogListElements(windowTitle: String?, appName: String?) async throws -> DialogElements {
-        let response = try await self.send(.dialogListElements(PeekabooXPCDialogFindRequest(
+        let response = try await self.send(.dialogListElements(PeekabooBridgeDialogFindRequest(
             windowTitle: windowTitle,
             appName: appName)))
         switch response {
         case let .dialogElements(elements): return elements
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected dialog elements response")
+        default: throw PeekabooBridgeErrorEnvelope(
+                code: .invalidRequest,
+                message: "Unexpected dialog elements response")
         }
     }
 
@@ -612,7 +597,7 @@ public actor PeekabooXPCClient {
         switch response {
         case let .snapshotId(id): return id
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected createSnapshot response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected createSnapshot response")
         }
     }
 
@@ -626,7 +611,7 @@ public actor PeekabooXPCClient {
         case let .detection(result): return result
         case let .error(envelope): throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected getDetectionResult response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected getDetectionResult response")
         }
     }
 
@@ -664,7 +649,7 @@ public actor PeekabooXPCClient {
         switch response {
         case let .snapshots(list): return list
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected listSnapshots response")
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected listSnapshots response")
         }
     }
 
@@ -674,7 +659,9 @@ public actor PeekabooXPCClient {
         case let .snapshotId(id): return id
         case let .error(envelope): throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected getMostRecentSnapshot response")
+            throw PeekabooBridgeErrorEnvelope(
+                code: .invalidRequest,
+                message: "Unexpected getMostRecentSnapshot response")
         }
     }
 
@@ -688,7 +675,7 @@ public actor PeekabooXPCClient {
         case let .int(count): return count
         case let .error(envelope): throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(
+            throw PeekabooBridgeErrorEnvelope(
                 code: .invalidRequest,
                 message: "Unexpected cleanSnapshotsOlderThan response")
         }
@@ -700,7 +687,7 @@ public actor PeekabooXPCClient {
         case let .int(count): return count
         case let .error(envelope): throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected cleanAllSnapshots response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected cleanAllSnapshots response")
         }
     }
 
@@ -710,34 +697,31 @@ public actor PeekabooXPCClient {
 
     // MARK: - Private
 
-    private func send(_ request: PeekabooXPCRequest) async throws -> PeekabooXPCResponse {
+    private func send(_ request: PeekabooBridgeRequest) async throws -> PeekabooBridgeResponse {
         let payload = try self.encoder.encode(request)
         let op = request.operation
         let start = Date()
-        self.logger.debug("Sending XPC request \(op.rawValue, privacy: .public)")
+        self.logger.debug("Sending bridge request \(op.rawValue, privacy: .public)")
 
-        await self.throttler.acquire()
-        let response: PeekabooXPCResponse
-        do {
-            response = try await self.remote.withDecodingCompletion(using: self.decoder)
-                { (service: any PeekabooXPCConnection, handler: @escaping XPCReplyHandler) in
-                    let boxed = UncheckedResponseHandler(handler: handler)
-                    service.send(payload, withReply: { data, error in
-                        boxed.handler(data, error)
-                    })
-                }
-        } catch {
-            await self.throttler.release()
-            throw error
-        }
-        await self.throttler.release()
+        let socketPath = self.socketPath
+        let maxResponseBytes = self.maxResponseBytes
+        let requestTimeoutSec = self.requestTimeoutSec
+        let responseData = try await Task.detached(priority: .userInitiated) {
+            try Self.sendBlocking(
+                socketPath: socketPath,
+                requestData: payload,
+                maxResponseBytes: maxResponseBytes,
+                timeoutSec: requestTimeoutSec)
+        }.value
+
+        let response = try self.decoder.decode(PeekabooBridgeResponse.self, from: responseData)
         let duration = Date().timeIntervalSince(start)
-        self.logger
-            .debug("XPC \(op.rawValue, privacy: .public) completed in \(duration, format: .fixed(precision: 3))s")
+        self.logger.debug(
+            "bridge \(op.rawValue, privacy: .public) completed in \(duration, format: .fixed(precision: 3))s")
         return response
     }
 
-    private func sendExpectOK(_ request: PeekabooXPCRequest) async throws {
+    private func sendExpectOK(_ request: PeekabooBridgeRequest) async throws {
         let response = try await self.send(request)
         switch response {
         case .ok:
@@ -745,45 +729,111 @@ public actor PeekabooXPCClient {
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected response for void request")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected response for void request")
         }
     }
 
-    private static func unwrapCapture(from response: PeekabooXPCResponse) throws -> CaptureResult {
+    private static func unwrapCapture(from response: PeekabooBridgeResponse) throws -> CaptureResult {
         switch response {
         case let .capture(result):
             return result
         case let .error(envelope):
             throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected capture response")
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected capture response")
         }
     }
-}
 
-private actor XPCRequestThrottler {
-    private let maxConcurrent: Int
-    private var inFlight = 0
-    private var waiters: [CheckedContinuation<Void, Never>] = []
-
-    init(maxConcurrent: Int) {
-        self.maxConcurrent = maxConcurrent
+    private nonisolated static func disableSigPipe(fd: Int32) {
+        var one: Int32 = 1
+        _ = setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout.size(ofValue: one)))
     }
 
-    func acquire() async {
-        if self.inFlight >= self.maxConcurrent {
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                self.waiters.append(continuation)
+    private nonisolated static func sendBlocking(
+        socketPath: String,
+        requestData: Data,
+        maxResponseBytes: Int,
+        timeoutSec: TimeInterval) throws -> Data
+    {
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        defer { close(fd) }
+
+        Self.disableSigPipe(fd: fd)
+
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+        let capacity = MemoryLayout.size(ofValue: addr.sun_path)
+        let copied = socketPath.withCString { cstr -> Int in
+            strlcpy(&addr.sun_path.0, cstr, capacity)
+        }
+        guard copied < capacity else { throw POSIXError(.ENAMETOOLONG) }
+        addr.sun_len = UInt8(MemoryLayout.size(ofValue: addr))
+
+        let len = socklen_t(MemoryLayout.size(ofValue: addr))
+        let connectResult = withUnsafePointer(to: &addr) { ptr in
+            connect(fd, UnsafePointer<sockaddr>(OpaquePointer(ptr)), len)
+        }
+        guard connectResult == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .ECONNREFUSED) }
+
+        try Self.writeAll(fd: fd, data: requestData)
+        _ = shutdown(fd, SHUT_WR)
+
+        return try Self.readAll(fd: fd, maxBytes: maxResponseBytes, timeoutSec: timeoutSec)
+    }
+
+    private nonisolated static func writeAll(fd: Int32, data: Data) throws {
+        try data.withUnsafeBytes { buf in
+            guard let base = buf.baseAddress else { return }
+            var written = 0
+            while written < data.count {
+                let n = write(fd, base.advanced(by: written), data.count - written)
+                if n > 0 {
+                    written += n
+                    continue
+                }
+                if n == -1, errno == EINTR { continue }
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
             }
         }
-        self.inFlight += 1
     }
 
-    func release() {
-        self.inFlight -= 1
-        if let waiter = self.waiters.first {
-            self.waiters.removeFirst()
-            waiter.resume()
+    private nonisolated static func readAll(fd: Int32, maxBytes: Int, timeoutSec: TimeInterval) throws -> Data {
+        let deadline = Date().addingTimeInterval(timeoutSec)
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 16 * 1024)
+
+        while true {
+            let remaining = deadline.timeIntervalSinceNow
+            if remaining <= 0 {
+                throw POSIXError(.ETIMEDOUT)
+            }
+
+            var pfd = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+            let sliceMs = max(1.0, min(remaining, 0.25) * 1000.0)
+            let polled = poll(&pfd, 1, Int32(sliceMs))
+            if polled == 0 { continue }
+            if polled < 0 {
+                if errno == EINTR { continue }
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+
+            let n = buffer.withUnsafeMutableBytes { read(fd, $0.baseAddress!, $0.count) }
+            if n > 0 {
+                data.append(buffer, count: n)
+                if data.count > maxBytes {
+                    throw POSIXError(.EMSGSIZE)
+                }
+                continue
+            }
+
+            if n == 0 {
+                return data
+            }
+
+            if errno == EINTR { continue }
+            if errno == EAGAIN { continue }
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
     }
 }

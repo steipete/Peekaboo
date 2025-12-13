@@ -1,176 +1,225 @@
 import Foundation
 import PeekabooAutomation
+import PeekabooBridge
 import PeekabooCore
 import PeekabooFoundation
-import PeekabooXPC
 import Testing
 
-@Suite("Peekaboo XPC")
-struct PeekabooXPCTests {
+@Suite("Peekaboo Bridge")
+struct PeekabooBridgeTests {
+    private func decode(_ data: Data) throws -> PeekabooBridgeResponse {
+        try JSONDecoder.peekabooBridgeDecoder().decode(PeekabooBridgeResponse.self, from: data)
+    }
+
     @Test("handshake negotiates version")
     func handshakeNegotiatesVersion() async throws {
-        let host = await MainActor.run {
-            PeekabooXPCBootstrap.startEmbeddedListener(
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
                 services: PeekabooServices(),
+                hostKind: .gui,
                 allowlistedTeams: [],
                 allowlistedBundles: [])
         }
-        let endpoint = await MainActor.run { host.endpoint }
-        guard let endpoint else { Issue.record("Missing listener endpoint"); return }
 
-        let client = PeekabooXPCClient(endpoint: endpoint)
-        let identity = PeekabooXPCClientIdentity(
+        let identity = PeekabooBridgeClientIdentity(
             bundleIdentifier: "dev.peeka.cli",
             teamIdentifier: "TEAMID",
             processIdentifier: getpid(),
             hostname: Host.current().name)
 
-        let response = try await client.handshake(client: identity, requestedHost: .gui)
-        #expect(response.negotiatedVersion == PeekabooXPCConstants.protocolVersion)
-        #expect(response.supportedOperations.contains(.permissionsStatus))
-        #expect(response.hostKind == .gui)
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let responseData = await MainActor.run {
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
+        }
+        let response = try self.decode(responseData)
+
+        guard case let .handshake(handshake) = response else {
+            Issue.record("Expected handshake response, got \(response)")
+            return
+        }
+
+        #expect(handshake.negotiatedVersion == PeekabooBridgeConstants.protocolVersion)
+        #expect(handshake.supportedOperations.contains(.permissionsStatus))
+        #expect(handshake.hostKind == .gui)
     }
 
     @Test("handshake rejects unauthorized team")
-    func handshakeRejectsUnauthorizedTeam() async {
-        let host = await MainActor.run {
-            PeekabooXPCBootstrap.startEmbeddedListener(
+    func handshakeRejectsUnauthorizedTeam() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
                 services: PeekabooServices(),
+                hostKind: .gui,
                 allowlistedTeams: ["GOODTEAM"],
                 allowlistedBundles: [])
         }
-        let endpoint = await MainActor.run { host.endpoint }
-        guard let endpoint else { Issue.record("Missing listener endpoint"); return }
-        let client = PeekabooXPCClient(endpoint: endpoint)
-        let identity = PeekabooXPCClientIdentity(
+
+        let identity = PeekabooBridgeClientIdentity(
             bundleIdentifier: "dev.peeka.cli",
             teamIdentifier: "BADTEAM",
             processIdentifier: getpid(),
             hostname: Host.current().name)
 
-        do {
-            _ = try await client.handshake(client: identity, requestedHost: .helper)
-            Issue.record("Expected unauthorized team to be rejected")
-        } catch let envelope as PeekabooXPCErrorEnvelope {
-            #expect(envelope.code == .unauthorizedClient)
-        } catch {
-            Issue.record("Unexpected error: \(error)")
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let responseData = await MainActor.run {
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
         }
+        let response = try self.decode(responseData)
+
+        guard case let .error(envelope) = response else {
+            Issue.record("Expected error response, got \(response)")
+            return
+        }
+        #expect(envelope.code == .unauthorizedClient)
     }
 
     @Test("handshake rejects unauthorized bundle")
-    func handshakeRejectsUnauthorizedBundle() async {
-        let host = await MainActor.run {
-            PeekabooXPCBootstrap.startEmbeddedListener(
+    func handshakeRejectsUnauthorizedBundle() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
                 services: PeekabooServices(),
+                hostKind: .gui,
                 allowlistedTeams: [],
                 allowlistedBundles: ["com.peekaboo.cli"])
         }
-        let endpoint = await MainActor.run { host.endpoint }
-        guard let endpoint else { Issue.record("Missing listener endpoint"); return }
 
-        let client = PeekabooXPCClient(endpoint: endpoint)
-        let identity = PeekabooXPCClientIdentity(
+        let identity = PeekabooBridgeClientIdentity(
             bundleIdentifier: "dev.peeka.cli",
             teamIdentifier: "TEAMID",
             processIdentifier: getpid(),
             hostname: Host.current().name)
 
-        do {
-            _ = try await client.handshake(client: identity, requestedHost: .helper)
-            Issue.record("Expected unauthorized bundle to be rejected")
-        } catch let envelope as PeekabooXPCErrorEnvelope {
-            #expect(envelope.code == .unauthorizedClient)
-        } catch {
-            Issue.record("Unexpected error: \(error)")
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let responseData = await MainActor.run {
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
         }
+        let response = try self.decode(responseData)
+
+        guard case let .error(envelope) = response else {
+            Issue.record("Expected error response, got \(response)")
+            return
+        }
+        #expect(envelope.code == .unauthorizedClient)
     }
 
     @Test("handshake rejects incompatible protocol version")
-    func handshakeRejectsIncompatibleProtocol() async {
-        let host = await MainActor.run {
-            PeekabooXPCBootstrap.startEmbeddedListener(
+    func handshakeRejectsIncompatibleProtocol() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
                 services: PeekabooServices(),
+                hostKind: .gui,
                 allowlistedTeams: [],
                 allowlistedBundles: [])
         }
-        let endpoint = await MainActor.run { host.endpoint }
-        guard let endpoint else { Issue.record("Missing listener endpoint"); return }
 
-        let client = PeekabooXPCClient(endpoint: endpoint)
-        let identity = PeekabooXPCClientIdentity(
+        let identity = PeekabooBridgeClientIdentity(
             bundleIdentifier: "dev.peeka.cli",
             teamIdentifier: "TEAMID",
             processIdentifier: getpid(),
             hostname: Host.current().name)
-        let unsupportedVersion = PeekabooXPCProtocolVersion(major: 2, minor: 0)
 
-        do {
-            _ = try await client.handshake(
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: .init(major: 2, minor: 0),
                 client: identity,
-                requestedHost: .helper,
-                protocolVersion: unsupportedVersion)
-            Issue.record("Expected handshake to fail for unsupported version")
-        } catch let envelope as PeekabooXPCErrorEnvelope {
-            #expect(envelope.code == .versionMismatch)
-        } catch {
-            Issue.record("Unexpected error: \(error)")
+                requestedHostKind: .gui))
+
+        let responseData = await MainActor.run {
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
         }
+        let response = try self.decode(responseData)
+
+        guard case let .error(envelope) = response else {
+            Issue.record("Expected error response, got \(response)")
+            return
+        }
+        #expect(envelope.code == .versionMismatch)
     }
 
     @Test("unsupported operations are rejected when not allowlisted")
-    func unsupportedOperationRejected() async {
-        let host = await MainActor.run {
-            PeekabooXPCBootstrap.startEmbeddedListener(
+    func unsupportedOperationRejected() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
                 services: StubServices(),
+                hostKind: .gui,
                 allowlistedTeams: [],
-                allowlistedBundles: [])
+                allowlistedBundles: [],
+                allowedOperations: [.permissionsStatus])
         }
-        let endpoint = await MainActor.run { host.endpoint }
-        guard let endpoint else { Issue.record("Missing listener endpoint"); return }
-        let client = PeekabooXPCClient(endpoint: endpoint)
 
-        do {
-            _ = try await client.listMenus(appIdentifier: "com.apple.TextEdit")
-            Issue.record("Expected operation to be rejected")
-        } catch let envelope as PeekabooXPCErrorEnvelope {
-            #expect(envelope.code == .operationNotSupported)
-        } catch {
-            Issue.record("Unexpected error: \(error)")
+        let request = PeekabooBridgeRequest.listMenus(.init(appIdentifier: "com.apple.TextEdit"))
+        let responseData = await MainActor.run {
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
         }
+        let response = try self.decode(responseData)
+
+        guard case let .error(envelope) = response else {
+            Issue.record("Expected error response, got \(response)")
+            return
+        }
+        #expect(envelope.code == .operationNotSupported)
     }
 
     @Test("permissions status round trips")
     func permissionsStatusRoundTrips() async throws {
-        let host = await MainActor.run {
-            PeekabooXPCBootstrap.startEmbeddedListener(
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
                 services: PeekabooServices(),
+                hostKind: .gui,
                 allowlistedTeams: [],
                 allowlistedBundles: [])
         }
-        let endpoint = await MainActor.run { host.endpoint }
-        guard let endpoint else { Issue.record("Missing listener endpoint"); return }
-        let client = PeekabooXPCClient(endpoint: endpoint)
-        let status = try await client.permissionsStatus()
-        // We only assert the call succeeds and returns a coherent structure.
+
+        let request = PeekabooBridgeRequest.permissionsStatus
+        let responseData = await MainActor.run {
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
+        }
+        let response = try self.decode(responseData)
+
+        guard case let .permissionsStatus(status) = response else {
+            Issue.record("Expected permissions status response, got \(response)")
+            return
+        }
+
         #expect(status.missingPermissions.isEmpty == status.allGranted)
         #expect(status.missingPermissions.count <= 3)
     }
 
-    @Test("capture round trips through XPC")
+    @Test("capture round trips through bridge")
     func captureRoundTrip() async throws {
         let stub = await MainActor.run { StubServices() }
-        let host = await MainActor.run {
-            PeekabooXPCBootstrap.startEmbeddedListener(
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
                 services: stub,
+                hostKind: .gui,
                 allowlistedTeams: [],
                 allowlistedBundles: [])
         }
-        let endpoint = await MainActor.run { host.endpoint }
-        guard let endpoint else { Issue.record("Missing listener endpoint"); return }
 
-        let client = PeekabooXPCClient(endpoint: endpoint)
-        let result = try await client.captureFrontmost()
+        let request = PeekabooBridgeRequest.captureFrontmost(.init(visualizerMode: .screenshotFlash, scale: .logical1x))
+        let responseData = await MainActor.run {
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
+        }
+        let response = try self.decode(responseData)
+
+        guard case let .capture(result) = response else {
+            Issue.record("Expected capture response, got \(response)")
+            return
+        }
 
         #expect(result.imageData == Data("stub-capture".utf8))
         #expect(result.metadata.mode == .frontmost)
@@ -179,17 +228,25 @@ struct PeekabooXPCTests {
     @Test("automation click is forwarded")
     func automationClick() async throws {
         let stub = await MainActor.run { StubServices() }
-        let host = await MainActor.run {
-            PeekabooXPCBootstrap.startEmbeddedListener(
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
                 services: stub,
+                hostKind: .gui,
                 allowlistedTeams: [],
                 allowlistedBundles: [])
         }
-        let endpoint = await MainActor.run { host.endpoint }
-        guard let endpoint else { Issue.record("Missing listener endpoint"); return }
-        let client = PeekabooXPCClient(endpoint: endpoint)
 
-        try await client.click(target: .elementId("B1"), clickType: .single, snapshotId: nil)
+        let request = PeekabooBridgeRequest.click(
+            .init(target: .elementId("B1"), clickType: .single, snapshotId: nil))
+        let responseData = await MainActor.run {
+            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
+        }
+        let response = try self.decode(responseData)
+
+        guard case .ok = response else {
+            Issue.record("Expected ok response, got \(response)")
+            return
+        }
 
         let lastClick = await stub.automationStub.lastClick
         if case let .elementId(id)? = lastClick?.target {
@@ -239,7 +296,8 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .screen)
+        _ = (displayIndex, visualizerMode, scale)
+        return self.makeResult(mode: .screen)
     }
 
     func captureWindow(
@@ -248,14 +306,16 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .window)
+        _ = (appIdentifier, windowIndex, visualizerMode, scale)
+        return self.makeResult(mode: .window)
     }
 
     func captureFrontmost(
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .frontmost)
+        _ = (visualizerMode, scale)
+        return self.makeResult(mode: .frontmost)
     }
 
     func captureArea(
@@ -263,7 +323,8 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .area)
+        _ = (rect, visualizerMode, scale)
+        return self.makeResult(mode: .area)
     }
 
     func hasScreenRecordingPermission() async -> Bool { true }
@@ -275,8 +336,6 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
             metadata: CaptureMetadata(
                 size: .init(width: 1, height: 1),
                 mode: mode,
-                windowInfo: nil,
-                displayInfo: nil,
                 timestamp: Date()))
     }
 }
@@ -411,10 +470,7 @@ private final class StubApplicationService: ApplicationServiceProtocol {
 private final class UnimplementedMenuService: MenuServiceProtocol {
     func listMenus(for _: String) async throws -> MenuStructure { throw PeekabooError.notImplemented("stub") }
     func listFrontmostMenus() async throws -> MenuStructure { throw PeekabooError.notImplemented("stub") }
-    func clickMenuItem(app _: String, itemPath _: String) async throws {
-        throw PeekabooError.notImplemented("stub")
-    }
-
+    func clickMenuItem(app _: String, itemPath _: String) async throws { throw PeekabooError.notImplemented("stub") }
     func clickMenuItemByName(app _: String, itemName _: String) async throws {
         throw PeekabooError.notImplemented("stub")
     }
@@ -422,10 +478,7 @@ private final class UnimplementedMenuService: MenuServiceProtocol {
     func clickMenuExtra(title _: String) async throws { throw PeekabooError.notImplemented("stub") }
     func listMenuExtras() async throws -> [MenuExtraInfo] { [] }
     func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] { [] }
-    func clickMenuBarItem(named _: String) async throws -> ClickResult {
-        throw PeekabooError.notImplemented("stub")
-    }
-
+    func clickMenuBarItem(named _: String) async throws -> ClickResult { throw PeekabooError.notImplemented("stub") }
     func clickMenuBarItem(at _: Int) async throws -> ClickResult { throw PeekabooError.notImplemented("stub") }
 }
 

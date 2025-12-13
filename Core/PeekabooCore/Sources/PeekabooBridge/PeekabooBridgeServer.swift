@@ -1,4 +1,3 @@
-import AsyncXPCConnection
 import Foundation
 import os.log
 import PeekabooAgentRuntime
@@ -6,144 +5,143 @@ import PeekabooAutomation
 import PeekabooFoundation
 import Security
 
-@objc(PeekabooXPCConnection)
-public protocol PeekabooXPCConnection: NSObjectProtocol {
-    func send(_ requestData: Data, withReply reply: @escaping @Sendable (Data?, NSError?) -> Void)
-}
+public struct PeekabooBridgePeer: Sendable {
+    public let processIdentifier: pid_t
+    public let userIdentifier: uid_t?
+    public let bundleIdentifier: String?
+    public let teamIdentifier: String?
 
-extension NSXPCInterface {
-    static func peekabooXPCInterface() -> NSXPCInterface {
-        let interface = NSXPCInterface(with: (any PeekabooXPCConnection).self)
-        return interface
+    public init(
+        processIdentifier: pid_t,
+        userIdentifier: uid_t?,
+        bundleIdentifier: String?,
+        teamIdentifier: String?)
+    {
+        self.processIdentifier = processIdentifier
+        self.userIdentifier = userIdentifier
+        self.bundleIdentifier = bundleIdentifier
+        self.teamIdentifier = teamIdentifier
     }
 }
 
 @MainActor
-public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
+public final class PeekabooBridgeServer {
     private let services: any PeekabooServiceProviding
+    private let hostKind: PeekabooBridgeHostKind
     private let allowlistedTeams: Set<String>
     private let allowlistedBundles: Set<String>
-    private let supportedVersions: ClosedRange<PeekabooXPCProtocolVersion>
-    private let allowedOperations: Set<PeekabooXPCOperation>
+    private let supportedVersions: ClosedRange<PeekabooBridgeProtocolVersion>
+    private let allowedOperations: Set<PeekabooBridgeOperation>
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
-    private let logger = Logger(subsystem: "boo.peekaboo.xpc", category: "server")
+    private let logger = Logger(subsystem: "boo.peekaboo.bridge", category: "server")
 
     public init(
         services: any PeekabooServiceProviding,
+        hostKind: PeekabooBridgeHostKind = .gui,
         allowlistedTeams: Set<String>,
         allowlistedBundles: Set<String>,
-        supportedVersions: ClosedRange<PeekabooXPCProtocolVersion> = PeekabooXPCConstants.supportedProtocolRange,
-        allowedOperations: Set<PeekabooXPCOperation> = PeekabooXPCOperation.remoteDefaultAllowlist,
-        encoder: JSONEncoder = .peekabooXPCEncoder(),
-        decoder: JSONDecoder = .peekabooXPCDecoder())
+        supportedVersions: ClosedRange<PeekabooBridgeProtocolVersion> = PeekabooBridgeConstants.supportedProtocolRange,
+        allowedOperations: Set<PeekabooBridgeOperation> = PeekabooBridgeOperation.remoteDefaultAllowlist,
+        encoder: JSONEncoder = .peekabooBridgeEncoder(),
+        decoder: JSONDecoder = .peekabooBridgeDecoder())
     {
         self.services = services
+        self.hostKind = hostKind
         self.allowlistedTeams = allowlistedTeams
         self.allowlistedBundles = allowlistedBundles
         self.supportedVersions = supportedVersions
         self.allowedOperations = allowedOperations
         self.encoder = encoder
         self.decoder = decoder
-        super.init()
     }
 
-    // MARK: PeekabooXPCConnection
-
-    public nonisolated func send(_ requestData: Data, withReply reply: @escaping @Sendable (Data?, NSError?) -> Void) {
-        let currentConnection = NSXPCConnection.current()
-        Task { @MainActor in
-            let responseData = await self.decodeAndHandle(requestData, connection: currentConnection)
-            reply(responseData, nil)
-        }
-    }
-
-    // MARK: - Private
-
-    private func decodeAndHandle(_ requestData: Data, connection: NSXPCConnection?) async -> Data {
+    public func decodeAndHandle(_ requestData: Data, peer: PeekabooBridgePeer?) async -> Data {
         do {
-            let request = try self.decoder.decode(PeekabooXPCRequest.self, from: requestData)
-            let response = try await self.route(request, connection: connection)
+            let request = try self.decoder.decode(PeekabooBridgeRequest.self, from: requestData)
+            let response = try await self.route(request, peer: peer)
             return try self.encoder.encode(response)
-        } catch let envelope as PeekabooXPCErrorEnvelope {
-            self.logger.error("XPC request failed with envelope: \(envelope.message, privacy: .public)")
-            return (try? self.encoder.encode(PeekabooXPCResponse.error(envelope))) ?? Data()
+        } catch let envelope as PeekabooBridgeErrorEnvelope {
+            self.logger.error("bridge request failed: \(envelope.message, privacy: .public)")
+            return (try? self.encoder.encode(PeekabooBridgeResponse.error(envelope))) ?? Data()
         } catch {
-            self.logger.error("XPC request decoding failed: \(error.localizedDescription, privacy: .public)")
-            let envelope = PeekabooXPCErrorEnvelope(
+            self.logger.error("bridge request decoding failed: \(error.localizedDescription, privacy: .public)")
+            let envelope = PeekabooBridgeErrorEnvelope(
                 code: .decodingFailed,
                 message: "Failed to decode request",
                 details: "\(error)")
-            return (try? self.encoder.encode(PeekabooXPCResponse.error(envelope))) ?? Data()
+            return (try? self.encoder.encode(PeekabooBridgeResponse.error(envelope))) ?? Data()
         }
     }
 
     // swiftlint:disable cyclomatic_complexity function_body_length
     private func route(
-        _ request: PeekabooXPCRequest,
-        connection: NSXPCConnection?) async throws -> PeekabooXPCResponse
+        _ request: PeekabooBridgeRequest,
+        peer: PeekabooBridgePeer?) async throws -> PeekabooBridgeResponse
     {
         let start = Date()
-        let pid = connection?.processIdentifier ?? 0
+        let pid = peer?.processIdentifier ?? 0
         var failed = false
         defer {
             if !failed {
                 let duration = Date().timeIntervalSince(start)
                 let durationString = String(format: "%.3f", duration)
-                let message = "XPC op=\(request.operation.rawValue) pid=\(pid) ok in \(durationString)s"
+                let message = "bridge op=\(request.operation.rawValue) pid=\(pid) ok in \(durationString)s"
                 self.logger.debug("\(message, privacy: .public)")
             }
         }
+
         let permissions = self.services.permissions.checkAllPermissions()
         let effectiveOps = self.effectiveAllowedOperations(permissions: permissions)
         let op = request.operation
 
         do {
             if case .handshake = request {
-                // always allow
+                // Always allow.
             } else if !self.allowedOperations.contains(op) {
-                throw PeekabooXPCErrorEnvelope(
+                throw PeekabooBridgeErrorEnvelope(
                     code: .operationNotSupported,
                     message: "Operation \(op.rawValue) is not supported by this host")
             } else if !effectiveOps.contains(op) {
-                throw PeekabooXPCErrorEnvelope(
+                throw PeekabooBridgeErrorEnvelope(
                     code: .permissionDenied,
                     message: "Operation \(op.rawValue) is not allowed with current permissions")
             }
+
             switch request {
             case let .handshake(payload):
-                return try self.handleHandshake(payload, connection: connection)
+                return try self.handleHandshake(payload, peer: peer)
 
             case .permissionsStatus:
                 return .permissionsStatus(self.services.permissions.checkAllPermissions())
 
             case let .captureScreen(payload):
-                let result = try await self.services.screenCapture.captureScreen(
+                let capture = try await self.services.screenCapture.captureScreen(
                     displayIndex: payload.displayIndex,
                     visualizerMode: payload.visualizerMode,
                     scale: payload.scale)
-                return .capture(result)
+                return .capture(capture)
 
             case let .captureWindow(payload):
-                let result = try await self.services.screenCapture.captureWindow(
+                let capture = try await self.services.screenCapture.captureWindow(
                     appIdentifier: payload.appIdentifier,
                     windowIndex: payload.windowIndex,
                     visualizerMode: payload.visualizerMode,
                     scale: payload.scale)
-                return .capture(result)
+                return .capture(capture)
 
             case let .captureFrontmost(payload):
-                let result = try await self.services.screenCapture.captureFrontmost(
+                let capture = try await self.services.screenCapture.captureFrontmost(
                     visualizerMode: payload.visualizerMode,
                     scale: payload.scale)
-                return .capture(result)
+                return .capture(capture)
 
             case let .captureArea(payload):
-                let result = try await self.services.screenCapture.captureArea(
+                let capture = try await self.services.screenCapture.captureArea(
                     payload.rect,
                     visualizerMode: payload.visualizerMode,
                     scale: payload.scale)
-                return .capture(result)
+                return .capture(capture)
 
             case let .detectElements(payload):
                 let result = try await self.services.automation.detectElements(
@@ -420,7 +418,7 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 if let result = try await self.services.snapshots.getDetectionResult(snapshotId: payload.snapshotId) {
                     return .detection(result)
                 } else {
-                    throw PeekabooXPCErrorEnvelope(
+                    throw PeekabooBridgeErrorEnvelope(
                         code: .notFound,
                         message: "No detection result for snapshot \(payload.snapshotId)")
                 }
@@ -443,8 +441,8 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 return .ok
 
             case .listSnapshots:
-                let snapshots = try await self.services.snapshots.listSnapshots()
-                return .snapshots(snapshots)
+                let list = try await self.services.snapshots.listSnapshots()
+                return .snapshots(list)
 
             case let .getMostRecentSnapshot(payload):
                 let id: String? = if let bundleId = payload.applicationBundleId {
@@ -456,7 +454,7 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 if let id {
                     return .snapshotId(id)
                 } else {
-                    throw PeekabooXPCErrorEnvelope(
+                    throw PeekabooBridgeErrorEnvelope(
                         code: .notFound,
                         message: "No recent snapshot found")
                 }
@@ -475,18 +473,18 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
 
             case .appleScriptProbe:
                 guard self.services.permissions.checkAppleScriptPermission() else {
-                    throw PeekabooXPCErrorEnvelope(
+                    throw PeekabooBridgeErrorEnvelope(
                         code: .permissionDenied,
                         message: "AppleScript permission not granted")
                 }
                 return .ok
             }
-        } catch let envelope as PeekabooXPCErrorEnvelope {
+        } catch let envelope as PeekabooBridgeErrorEnvelope {
             failed = true
             let duration = Date().timeIntervalSince(start)
             let durationString = String(format: "%.3f", duration)
             let message =
-                "XPC op=\(op.rawValue) pid=\(pid) failed in \(durationString)s: \(envelope.message)"
+                "bridge op=\(op.rawValue) pid=\(pid) failed in \(durationString)s: \(envelope.message)"
             self.logger.error("\(message, privacy: .public)")
             throw envelope
         } catch {
@@ -494,13 +492,13 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             let duration = Date().timeIntervalSince(start)
             let durationString = String(format: "%.3f", duration)
             let message =
-                "XPC op=\(op.rawValue) pid=\(pid) failed in \(durationString)s: \(error.localizedDescription)"
+                "bridge op=\(op.rawValue) pid=\(pid) failed in \(durationString)s: \(error.localizedDescription)"
             self.logger.error("\(message, privacy: .public)")
 
             if let error = error as? PeekabooError {
                 switch error {
                 case let .notImplemented(message):
-                    throw PeekabooXPCErrorEnvelope(
+                    throw PeekabooBridgeErrorEnvelope(
                         code: .operationNotSupported,
                         message: "Operation \(op.rawValue) is not supported: \(message)",
                         details: "\(error)")
@@ -509,9 +507,9 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 }
             }
 
-            throw PeekabooXPCErrorEnvelope(
+            throw PeekabooBridgeErrorEnvelope(
                 code: .internalError,
-                message: "XPC operation failed",
+                message: "Bridge operation failed",
                 details: "\(error)")
         }
     }
@@ -519,15 +517,14 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
     // swiftlint:enable cyclomatic_complexity function_body_length
 
     private func handleHandshake(
-        _ payload: PeekabooXPCHandshake,
-        connection: NSXPCConnection?) throws -> PeekabooXPCResponse
+        _ payload: PeekabooBridgeHandshake,
+        peer: PeekabooBridgePeer?) throws -> PeekabooBridgeResponse
     {
-        let auditInfo = self.extractAuditInfo(from: connection)
-        let resolvedBundle = auditInfo.bundle ?? payload.client.bundleIdentifier
-        let resolvedTeam = auditInfo.team ?? payload.client.teamIdentifier
+        let resolvedBundle = peer?.bundleIdentifier ?? payload.client.bundleIdentifier
+        let resolvedTeam = peer?.teamIdentifier ?? payload.client.teamIdentifier
 
         guard self.supportedVersions.contains(payload.protocolVersion) else {
-            throw PeekabooXPCErrorEnvelope(
+            throw PeekabooBridgeErrorEnvelope(
                 code: .versionMismatch,
                 message: "Protocol \(payload.protocolVersion.major).\(payload.protocolVersion.minor) is not supported")
         }
@@ -536,34 +533,29 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
            !self.allowlistedBundles.isEmpty,
            !self.allowlistedBundles.contains(bundle)
         {
-            throw PeekabooXPCErrorEnvelope(
-                code: .unauthorizedClient,
-                message: "Bundle \(bundle) is not authorized")
+            throw PeekabooBridgeErrorEnvelope(code: .unauthorizedClient, message: "Bundle \(bundle) is not authorized")
         }
 
         if let team = resolvedTeam,
            !self.allowlistedTeams.isEmpty,
            !self.allowlistedTeams.contains(team)
         {
-            throw PeekabooXPCErrorEnvelope(
-                code: .unauthorizedClient,
-                message: "Team \(team) is not authorized")
+            throw PeekabooBridgeErrorEnvelope(code: .unauthorizedClient, message: "Team \(team) is not authorized")
         }
 
-        if let uid = auditInfo.uid, uid != getuid() {
-            throw PeekabooXPCErrorEnvelope(
+        if let uid = peer?.userIdentifier, uid != getuid() {
+            throw PeekabooBridgeErrorEnvelope(
                 code: .unauthorizedClient,
                 message: "UID \(uid) is not authorized for this listener")
         }
 
-        if let pid = auditInfo.pid {
+        if let pid = peer?.processIdentifier {
             let bundleDescription = resolvedBundle ?? "<unknown>"
             self.logger
                 .debug(
-                    "Accepted XPC handshake pid=\(pid, privacy: .public) bundle=\(bundleDescription, privacy: .public)")
+                    "bridge handshake ok pid=\(pid, privacy: .public) bundle=\(bundleDescription, privacy: .public)")
         }
 
-        let hostKind = payload.requestedHostKind ?? .helper
         let permissions = self.services.permissions.checkAllPermissions()
         let enabledOps = self.effectiveAllowedOperations(permissions: permissions)
         let advertisedOps = Array(self.allowedOperations).sorted { $0.rawValue < $1.rawValue }
@@ -583,57 +575,17 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             max(payload.protocolVersion, self.supportedVersions.lowerBound),
             self.supportedVersions.upperBound)
 
-        let response = PeekabooXPCHandshakeResponse(
+        let response = PeekabooBridgeHandshakeResponse(
             negotiatedVersion: negotiated,
-            hostKind: hostKind,
-            build: PeekabooXPCConstants.buildIdentifier,
+            hostKind: self.hostKind,
+            build: PeekabooBridgeConstants.buildIdentifier,
             supportedOperations: advertisedOps,
             permissionTags: permissionTags)
         return .handshake(response)
     }
 
-    private func extractAuditInfo(from connection: NSXPCConnection?)
-    -> (bundle: String?, team: String?, pid: pid_t?, uid: uid_t?) {
-        guard let connection else { return (nil, nil, nil, nil) }
-
-        let pid = connection.processIdentifier
-        var bundle: String?
-        var team: String?
-
-        if pid != 0 {
-            var code: SecCode?
-            let attributes: [String: Any] = [kSecGuestAttributePid as String: pid]
-            if SecCodeCopyGuestWithAttributes(nil, attributes as CFDictionary, SecCSFlags(), &code) == errSecSuccess,
-               let code
-            {
-                var staticCode: SecStaticCode?
-                if SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode) == errSecSuccess,
-                   let staticCode
-                {
-                    var info: CFDictionary?
-                    if SecCodeCopySigningInformation(staticCode, SecCSFlags(), &info) == errSecSuccess,
-                       let info = info as? [String: Any]
-                    {
-                        bundle = info[kSecCodeInfoIdentifier as String] as? String
-                        if let teamId = info[kSecCodeInfoTeamIdentifier as String] as? String {
-                            team = teamId
-                        } else if
-                            let entitlements = info[kSecCodeInfoEntitlementsDict as String] as? [String: Any],
-                            let appIdentifier = entitlements["application-identifier"] as? String,
-                            let prefix = appIdentifier.split(separator: ".").first
-                        {
-                            team = String(prefix)
-                        }
-                    }
-                }
-            }
-        }
-
-        return (bundle, team, pid, connection.effectiveUserIdentifier)
-    }
-
-    private func effectiveAllowedOperations(permissions: PermissionsStatus) -> Set<PeekabooXPCOperation> {
-        var granted: Set<PeekabooXPCPermissionKind> = []
+    private func effectiveAllowedOperations(permissions: PermissionsStatus) -> Set<PeekabooBridgeOperation> {
+        var granted: Set<PeekabooBridgePermissionKind> = []
         if permissions.screenRecording {
             granted.insert(.screenRecording)
         }
@@ -648,60 +600,5 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             self.allowedOperations.filter { operation in
                 operation.requiredPermissions.isSubset(of: granted)
             })
-    }
-}
-
-@MainActor
-public final class PeekabooXPCListenerDelegate: NSObject, NSXPCListenerDelegate {
-    private let server: PeekabooXPCServer
-
-    public init(server: PeekabooXPCServer) {
-        self.server = server
-        super.init()
-    }
-
-    public nonisolated func listener(
-        _ listener: NSXPCListener,
-        shouldAcceptNewConnection newConnection: NSXPCConnection) -> Bool
-    {
-        newConnection.exportedInterface = NSXPCInterface.peekabooXPCInterface()
-        newConnection.exportedObject = self.server
-        newConnection.resume()
-        return true
-    }
-}
-
-@MainActor
-public struct PeekabooXPCHost {
-    private let listener: NSXPCListener
-    private let delegate: PeekabooXPCListenerDelegate
-
-    public init(listener: NSXPCListener, delegate: PeekabooXPCListenerDelegate) {
-        self.listener = listener
-        self.delegate = delegate
-        self.listener.delegate = delegate
-    }
-
-    public var endpoint: NSXPCListenerEndpoint? {
-        self.listener.endpoint
-    }
-
-    public static func machService(
-        name: String = PeekabooXPCConstants.serviceName,
-        server: PeekabooXPCServer) -> PeekabooXPCHost
-    {
-        let listener = NSXPCListener(machServiceName: name)
-        let delegate = PeekabooXPCListenerDelegate(server: server)
-        return PeekabooXPCHost(listener: listener, delegate: delegate)
-    }
-
-    public static func embedded(server: PeekabooXPCServer) -> PeekabooXPCHost {
-        let listener = NSXPCListener.anonymous()
-        let delegate = PeekabooXPCListenerDelegate(server: server)
-        return PeekabooXPCHost(listener: listener, delegate: delegate)
-    }
-
-    public func resume() {
-        self.listener.resume()
     }
 }

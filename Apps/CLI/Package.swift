@@ -32,7 +32,7 @@ var targets: [Target] = [
             .product(name: "Spinner", package: "Spinner"),
             .product(name: "TauTUI", package: "TauTUI"),
             .product(name: "PeekabooCore", package: "PeekabooCore"),
-        .product(name: "PeekabooXPC", package: "PeekabooCore"),
+            .product(name: "PeekabooBridge", package: "PeekabooCore"),
             .product(name: "PeekabooVisualizer", package: "PeekabooVisualizer"),
             .product(name: "Tachikoma", package: "Tachikoma"),
             .product(name: "TachikomaMCP", package: "Tachikoma"),

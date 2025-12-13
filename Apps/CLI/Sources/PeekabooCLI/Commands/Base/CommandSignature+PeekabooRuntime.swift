@@ -5,13 +5,13 @@ extension CommandSignature {
     func withPeekabooRuntimeFlags() -> CommandSignature {
         let base = self.withStandardRuntimeFlags()
 
-        let xpcServiceOption = OptionDefinition.make(
-            label: "xpc-service",
+        let bridgeSocketOption = OptionDefinition.make(
+            label: "bridge-socket",
             names: [
-                .long("xpc-service"),
-                .aliasLong("xpcService"),
+                .long("bridge-socket"),
+                .aliasLong("bridgeSocket"),
             ],
-            help: "Override the mach service name for the XPC helper",
+            help: "Override the socket path for a Peekaboo Bridge host",
             parsing: .singleValue
         )
 
@@ -20,12 +20,12 @@ extension CommandSignature {
             names: [
                 .long("no-remote"),
             ],
-            help: "Force local execution; skip the XPC helper even if available"
+            help: "Force local execution; skip remote hosts even if available"
         )
 
         return CommandSignature(
             arguments: base.arguments,
-            options: base.options + [xpcServiceOption],
+            options: base.options + [bridgeSocketOption],
             flags: base.flags + [noRemoteFlag],
             optionGroups: base.optionGroups
         )

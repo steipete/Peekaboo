@@ -53,8 +53,9 @@ enum CommanderCLIBinder {
         if values.flag("no-remote") {
             options.preferRemote = false
         }
-        if let xpc = values.singleOption("xpc-service")?.trimmingCharacters(in: .whitespacesAndNewlines), !xpc.isEmpty {
-            options.xpcServiceName = xpc
+        if let socketPath = values.singleOption("bridge-socket")?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !socketPath.isEmpty {
+            options.bridgeSocketPath = socketPath
         }
         return options
     }

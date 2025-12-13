@@ -30,7 +30,6 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-system", from: "1.6.3"),
         // Use main to pick up Swift 6 fixes until the next tagged release.
         .package(url: "https://github.com/apple/swift-collections", branch: "main"),
-        .package(url: "https://github.com/ChimeHQ/AsyncXPCConnection", from: "1.3.0"),
     ],
     targets: [
         .target(
@@ -43,7 +42,6 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "SystemPackage", package: "swift-system"),
                 .product(name: "OrderedCollections", package: "swift-collections"),
-                .product(name: "AsyncXPCConnection", package: "AsyncXPCConnection"),
             ],
             swiftSettings: approachableConcurrencySettings),
     ],

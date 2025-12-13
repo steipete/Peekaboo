@@ -232,11 +232,11 @@ extension CommanderRuntimeRouter {
             ),
             theme.bullet(
                 label: "--no-remote",
-                description: "Force local services; skip the XPC helper even if available"
+                description: "Force local services; skip remote bridge hosts even if available"
             ),
             theme.bullet(
-                label: "--xpc-service <name>",
-                description: "Override mach service name for the helper (default boo.peekaboo.helper)"
+                label: "--bridge-socket <path>",
+                description: "Override the Peekaboo Bridge socket path"
             )
         ]
     }

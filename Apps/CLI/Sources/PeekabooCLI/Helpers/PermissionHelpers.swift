@@ -1,6 +1,6 @@
 import Foundation
+import PeekabooBridge
 import PeekabooCore
-import PeekabooXPC
 
 /// Shared permission checking and formatting utilities
 enum PermissionHelpers {
@@ -16,32 +16,32 @@ enum PermissionHelpers {
         let permissions: [PermissionInfo]
     }
 
-    /// Try to fetch permissions from the XPC helper; falls back to local services on failure.
+    /// Try to fetch permissions from a remote Peekaboo Bridge host; falls back to local services on failure.
     @MainActor
-    private static func remotePermissionsStatus(serviceName override: String? = nil) async -> PermissionsStatus? {
-        let envService = ProcessInfo.processInfo.environment["PEEKABOO_XPC_SERVICE"]
-        let resolvedOverride = override ?? envService
+    private static func remotePermissionsStatus(socketPath override: String? = nil) async -> PermissionsStatus? {
+        let envSocket = ProcessInfo.processInfo.environment["PEEKABOO_BRIDGE_SOCKET"]
+        let resolvedOverride = override ?? envSocket
 
-        let candidates: [(String, PeekabooXPCHostKind)] = if let explicit = resolvedOverride {
-            [(explicit, .helper)]
+        let candidates: [String] = if let explicit = resolvedOverride, !explicit.isEmpty {
+            [explicit]
         } else {
             [
-                (PeekabooXPCConstants.guiServiceName, .gui),
-                (PeekabooXPCConstants.serviceName, .helper),
+                PeekabooBridgeConstants.peekabooSocketPath,
+                PeekabooBridgeConstants.clawdisSocketPath,
             ]
         }
 
-        let identity = PeekabooXPCClientIdentity(
+        let identity = PeekabooBridgeClientIdentity(
             bundleIdentifier: Bundle.main.bundleIdentifier,
             teamIdentifier: nil,
             processIdentifier: getpid(),
             hostname: Host.current().name
         )
 
-        for (service, hostKind) in candidates {
-            let client = PeekabooXPCClient(serviceName: service)
+        for socketPath in candidates {
+            let client = PeekabooBridgeClient(socketPath: socketPath)
             do {
-                let handshake = try await client.handshake(client: identity, requestedHost: hostKind)
+                let handshake = try await client.handshake(client: identity, requestedHost: nil)
                 guard handshake.supportedOperations.contains(.permissionsStatus) else { continue }
                 return try await client.permissionsStatus()
             } catch {
@@ -55,12 +55,12 @@ enum PermissionHelpers {
     static func getCurrentPermissions(
         services: any PeekabooServiceProviding,
         allowRemote: Bool = true,
-        serviceName: String? = nil
+        socketPath: String? = nil
     ) async -> [PermissionInfo] {
         let response = await self.getCurrentPermissionsWithSource(
             services: services,
             allowRemote: allowRemote,
-            serviceName: serviceName
+            socketPath: socketPath
         )
         return response.permissions
     }
@@ -69,11 +69,11 @@ enum PermissionHelpers {
     static func getCurrentPermissionsWithSource(
         services: any PeekabooServiceProviding,
         allowRemote: Bool = true,
-        serviceName: String? = nil
+        socketPath: String? = nil
     ) async -> PermissionStatusResponse {
-        // Prefer remote helper when available so SSH/sandboxed shells can reuse existing TCC grants.
+        // Prefer remote host when available so sandboxes can reuse existing TCC grants.
         let remoteStatus = allowRemote
-            ? await self.remotePermissionsStatus(serviceName: serviceName)
+            ? await self.remotePermissionsStatus(socketPath: socketPath)
             : nil
 
         let status: PermissionsStatus = if let remoteStatus {
@@ -103,7 +103,7 @@ enum PermissionHelpers {
             )
         ]
 
-        let source = remoteStatus != nil ? "xpc" : "local"
+        let source = remoteStatus != nil ? "bridge" : "local"
         return PermissionStatusResponse(source: source, permissions: permissionList)
     }
 

@@ -4,10 +4,10 @@
 //
 
 import Foundation
+import PeekabooBridge
 import PeekabooCore
 import PeekabooFoundation
 import PeekabooProtocols
-import PeekabooXPC
 
 /// Shared options that control logging and output behavior.
 struct CommandRuntimeOptions: Sendable {
@@ -16,7 +16,7 @@ struct CommandRuntimeOptions: Sendable {
     var logLevel: LogLevel?
     var captureEnginePreference: String?
     var preferRemote = true
-    var xpcServiceName: String?
+    var bridgeSocketPath: String?
 
     func makeConfiguration() -> CommandRuntime.Configuration {
         CommandRuntime.Configuration(
@@ -149,31 +149,31 @@ extension CommandRuntime {
             return (services: PeekabooServices(), hostDescription: "local (in-process)")
         }
 
-        let explicitService = options.xpcServiceName
-            ?? ProcessInfo.processInfo.environment["PEEKABOO_XPC_SERVICE"]
+        let explicitSocket = options.bridgeSocketPath
+            ?? ProcessInfo.processInfo.environment["PEEKABOO_BRIDGE_SOCKET"]
 
-        let candidates: [(String, PeekabooXPCHostKind)] = if let explicitService {
-            [(explicitService, .helper)]
+        let candidates: [String] = if let explicitSocket, !explicitSocket.isEmpty {
+            [explicitSocket]
         } else {
             [
-                (PeekabooXPCConstants.guiServiceName, .gui),
-                (PeekabooXPCConstants.serviceName, .helper),
+                PeekabooBridgeConstants.peekabooSocketPath,
+                PeekabooBridgeConstants.clawdisSocketPath,
             ]
         }
 
-        let identity = PeekabooXPCClientIdentity(
+        let identity = PeekabooBridgeClientIdentity(
             bundleIdentifier: Bundle.main.bundleIdentifier,
             teamIdentifier: nil,
             processIdentifier: getpid(),
             hostname: Host.current().name
         )
 
-        for (serviceName, hostKind) in candidates {
-            let client = PeekabooXPCClient(serviceName: serviceName)
+        for socketPath in candidates {
+            let client = PeekabooBridgeClient(socketPath: socketPath)
             do {
-                let handshake = try await client.handshake(client: identity, requestedHost: hostKind)
+                let handshake = try await client.handshake(client: identity, requestedHost: nil)
                 if handshake.supportedOperations.contains(.captureScreen) {
-                    let hostDescription = "remote \(handshake.hostKind.rawValue) via \(serviceName)" +
+                    let hostDescription = "remote \(handshake.hostKind.rawValue) via \(socketPath)" +
                         (handshake.build.map { " (build \($0))" } ?? "")
                     return (
                         services: RemotePeekabooServices(client: client),

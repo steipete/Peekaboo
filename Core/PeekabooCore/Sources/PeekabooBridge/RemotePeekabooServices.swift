@@ -5,9 +5,9 @@ import PeekabooFoundation
 
 @MainActor
 public final class RemoteScreenCaptureService: ScreenCaptureServiceProtocol {
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
     }
 
@@ -59,9 +59,9 @@ public final class RemoteScreenCaptureService: ScreenCaptureServiceProtocol {
 
 @MainActor
 public final class RemoteUIAutomationService: UIAutomationServiceProtocol {
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
     }
 
@@ -174,9 +174,9 @@ public final class RemoteUIAutomationService: UIAutomationServiceProtocol {
 
 @MainActor
 public final class RemoteWindowManagementService: WindowManagementServiceProtocol {
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
     }
 
@@ -219,9 +219,9 @@ public final class RemoteWindowManagementService: WindowManagementServiceProtoco
 
 @MainActor
 public final class RemoteMenuService: MenuServiceProtocol {
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
     }
 
@@ -264,9 +264,9 @@ public final class RemoteMenuService: MenuServiceProtocol {
 
 @MainActor
 public final class RemoteDockService: DockServiceProtocol {
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
     }
 
@@ -305,9 +305,9 @@ public final class RemoteDockService: DockServiceProtocol {
 
 @MainActor
 public final class RemoteDialogService: DialogServiceProtocol {
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
     }
 
@@ -357,9 +357,9 @@ public final class RemoteDialogService: DialogServiceProtocol {
 
 @MainActor
 public final class RemoteSnapshotManager: SnapshotManagerProtocol {
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
     }
 
@@ -374,7 +374,7 @@ public final class RemoteSnapshotManager: SnapshotManagerProtocol {
     public func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult? {
         do {
             return try await self.client.getDetectionResult(snapshotId: snapshotId)
-        } catch let envelope as PeekabooXPCErrorEnvelope where envelope.code == .notFound {
+        } catch let envelope as PeekabooBridgeErrorEnvelope where envelope.code == .notFound {
             return nil
         }
     }
@@ -456,9 +456,9 @@ public final class RemoteSnapshotManager: SnapshotManagerProtocol {
 
 @MainActor
 public final class RemoteApplicationService: ApplicationServiceProtocol {
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
     }
 
@@ -546,9 +546,9 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
     public let screens: any ScreenServiceProtocol
     public let agent: (any AgentServiceProtocol)?
 
-    private let client: PeekabooXPCClient
+    private let client: PeekabooBridgeClient
 
-    public init(client: PeekabooXPCClient) {
+    public init(client: PeekabooBridgeClient) {
         self.client = client
 
         self.logging = LoggingService()

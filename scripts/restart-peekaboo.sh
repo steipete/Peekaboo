@@ -12,8 +12,6 @@ APP_NAME="${APP_NAME:-Peekaboo}"
 APP_BUNDLE="${APP_BUNDLE:-$DERIVED_DATA_PATH/Build/Products/${CONFIGURATION}/${APP_NAME}.app}"
 
 APP_PROCESS_PATTERN="${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
-HELPER_PATTERN="Peekaboo Helper"
-XPC_PATTERN="boo.peekaboo.app.XPCService"
 
 log()  { printf '%s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -29,13 +27,9 @@ run_step() {
 kill_peekaboo() {
   for _ in {1..15}; do
     pkill -f "${APP_PROCESS_PATTERN}" 2>/dev/null || true
-    pkill -f "${HELPER_PATTERN}" 2>/dev/null || true
-    pkill -f "${XPC_PATTERN}" 2>/dev/null || true
     pkill -x "${APP_NAME}" 2>/dev/null || true
 
     if ! pgrep -f "${APP_PROCESS_PATTERN}" >/dev/null 2>&1 \
-       && ! pgrep -f "${HELPER_PATTERN}" >/dev/null 2>&1 \
-       && ! pgrep -f "${XPC_PATTERN}" >/dev/null 2>&1 \
        && ! pgrep -x "${APP_NAME}" >/dev/null 2>&1; then
       return 0
     fi
