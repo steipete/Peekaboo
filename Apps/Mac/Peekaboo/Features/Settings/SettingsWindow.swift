@@ -101,9 +101,6 @@ struct GeneralSettingsView: View {
             }
 
             Section("Features") {
-                Toggle("Enable voice activation", isOn: Binding(
-                    get: { self.settings.voiceActivationEnabled },
-                    set: { self.settings.voiceActivationEnabled = $0 }))
                 Toggle("Enable haptic feedback", isOn: Binding(
                     get: { self.settings.hapticFeedbackEnabled },
                     set: { self.settings.hapticFeedbackEnabled = $0 }))

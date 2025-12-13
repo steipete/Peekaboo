@@ -15,28 +15,16 @@ final class StatusBarController: NSObject {
     // State connections
     private let agent: PeekabooAgent
     private let sessionStore: SessionStore
-    private let permissions: Permissions
-    private let speechRecognizer: SpeechRecognizer
-    private let settings: PeekabooSettings
-    private let realtimeService: RealtimeVoiceService?
 
     // Icon animation
     private let animationController = MenuBarAnimationController()
 
     init(
         agent: PeekabooAgent,
-        sessionStore: SessionStore,
-        permissions: Permissions,
-        speechRecognizer: SpeechRecognizer,
-        settings: PeekabooSettings,
-        realtimeService: RealtimeVoiceService? = nil)
+        sessionStore: SessionStore)
     {
         self.agent = agent
         self.sessionStore = sessionStore
-        self.permissions = permissions
-        self.speechRecognizer = speechRecognizer
-        self.settings = settings
-        self.realtimeService = realtimeService
 
         // Create status item
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -105,16 +93,8 @@ final class StatusBarController: NSObject {
         let baseView = MenuBarStatusView()
             .environment(self.agent)
             .environment(self.sessionStore)
-            .environment(self.speechRecognizer)
 
-        // Add realtime service if available
-        let contentView = if let realtimeService {
-            AnyView(baseView.environment(realtimeService))
-        } else {
-            AnyView(baseView)
-        }
-
-        self.popover.contentViewController = NSHostingController(rootView: contentView)
+        self.popover.contentViewController = NSHostingController(rootView: baseView)
     }
 
     // MARK: - Actions
@@ -222,18 +202,8 @@ final class StatusBarController: NSObject {
         let rootView = SessionMainWindow()
             .environment(self.sessionStore)
             .environment(self.agent)
-            .environment(self.speechRecognizer)
-            .environment(self.permissions)
-            .environment(self.settings)
 
-        // Add realtime service if available
-        let finalView = if let realtimeService = self.realtimeService {
-            AnyView(rootView.environment(realtimeService))
-        } else {
-            AnyView(rootView)
-        }
-
-        window.contentView = NSHostingView(rootView: finalView)
+        window.contentView = NSHostingView(rootView: rootView)
 
         window.makeKeyAndOrderFront(nil)
     }

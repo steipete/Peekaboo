@@ -3,11 +3,8 @@ import PeekabooCore
 import SwiftUI
 
 struct SessionMainWindow: View {
-    @Environment(PeekabooSettings.self) private var settings
     @Environment(SessionStore.self) private var sessionStore
     @Environment(PeekabooAgent.self) private var agent
-    @Environment(SpeechRecognizer.self) private var speechRecognizer
-    @Environment(Permissions.self) private var permissions
 
     @State private var selectedSessionId: String?
     @State private var searchText = ""
@@ -56,9 +53,7 @@ struct SessionDetailContainer: View {
 #Preview {
     let settings = PeekabooSettings()
     SessionMainWindow()
-        .environment(settings)
         .environment(SessionStore())
         .environment(PeekabooAgent(settings: settings, sessionStore: SessionStore()))
-        .environment(SpeechRecognizer(settings: settings))
         .environment(Permissions())
 }

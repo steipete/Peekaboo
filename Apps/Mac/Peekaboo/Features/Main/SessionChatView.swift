@@ -1,29 +1,16 @@
 import PeekabooCore
 import SwiftUI
-import Tachikoma
-import TachikomaAudio
 
 // MARK: - Session Detail View
 
 struct SessionChatView: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
-    @Environment(SpeechRecognizer.self) private var speechRecognizer
-    @Environment(RealtimeVoiceService.self) private var realtimeService
 
     let session: ConversationSession
     @State private var inputText = ""
     @State private var isProcessing = false
-    @State private var inputMode: InputMode = .text
     @State private var hasConnectionError = false
-    @State private var useRealtimeMode = true // Enable realtime mode by default
-    @State private var showRealtimeSettings = false
-
-    enum InputMode {
-        case text
-        case voice
-        case realtime
-    }
 
     private var isCurrentSession: Bool {
         self.session.id == self.agent.currentSession?.id
@@ -89,14 +76,7 @@ struct SessionChatView: View {
                     Divider()
                 }
 
-                switch self.inputMode {
-                case .text:
-                    self.textInputArea
-                case .voice:
-                    self.voiceInputArea
-                case .realtime:
-                    self.realtimeInputArea
-                }
+                self.textInputArea
             }
         }
     }
@@ -111,28 +91,6 @@ struct SessionChatView: View {
                 .onSubmit {
                     self.submitInput()
                 }
-
-            // Voice mode menu button
-            Menu {
-                Button(action: {
-                    self.inputMode = .voice
-                    self.useRealtimeMode = false
-                }, label: {
-                    Label("Voice Transcription", systemImage: "mic")
-                })
-
-                Button(action: {
-                    self.inputMode = .realtime
-                    self.useRealtimeMode = true
-                }, label: {
-                    Label("Realtime Conversation", systemImage: "waveform.circle")
-                })
-            } label: {
-                Image(systemName: self.inputMode == .realtime ? "waveform.circle" : "mic")
-                    .foregroundColor(self.inputMode != .text ? .accentColor : .secondary)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 24)
 
             if self.agent.isProcessing, self.isCurrentSession {
                 // Show stop button during execution
@@ -164,180 +122,6 @@ struct SessionChatView: View {
         } else {
             "Ask Peekaboo..."
         }
-    }
-
-    private var voiceInputArea: some View {
-        VStack(spacing: 12) {
-            if self.speechRecognizer.isListening {
-                Text(self.speechRecognizer.transcript.isEmpty ? "Listening..." : self.speechRecognizer.transcript)
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-            }
-
-            HStack {
-                Button(action: { self.inputMode = .text }, label: {
-                    Image(systemName: "keyboard")
-                        .foregroundColor(.secondary)
-                })
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                Button(action: self.toggleVoiceRecording, label: {
-                    Image(systemName: self.speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
-                        .font(.system(size: 48))
-                        .foregroundColor(self.speechRecognizer.isListening ? .red : .accentColor)
-                })
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                // Placeholder to balance the layout
-                Color.clear
-                    .frame(width: 30, height: 30)
-            }
-        }
-        .padding()
-        .frame(height: 100)
-    }
-
-    private var realtimeInputArea: some View {
-        VStack(spacing: 12) {
-            // Connection status bar
-            HStack(spacing: 8) {
-                if self.realtimeService.isConnected {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 8, height: 8)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.green.opacity(0.5), lineWidth: 2)
-                                .scaleEffect(1.5)
-                                .opacity(0.5)
-                                .animation(
-                                    .easeInOut(duration: 1).repeatForever(autoreverses: true),
-                                    value: self.realtimeService.isConnected))
-                    Text("Connected")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Text("•")
-                        .foregroundColor(.secondary)
-
-                    Text(self.realtimeService.connectionState.rawValue.capitalized)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    Circle()
-                        .fill(Color.gray)
-                        .frame(width: 8, height: 8)
-                    Text("Not Connected")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                // Settings button
-                Button(action: { self.showRealtimeSettings.toggle() }, label: {
-                    Image(systemName: "gear")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                })
-                .buttonStyle(.plain)
-                .popover(isPresented: self.$showRealtimeSettings) {
-                    RealtimeSettingsView(service: self.realtimeService)
-                        .frame(width: 300, height: 250)
-                }
-            }
-            .padding(.horizontal)
-
-            // Main controls
-            HStack {
-                Button(action: { self.inputMode = .text }, label: {
-                    Image(systemName: "keyboard")
-                        .foregroundColor(.secondary)
-                })
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                if self.realtimeService.isConnected {
-                    // Recording controls
-                    VStack(spacing: 8) {
-                        Button(action: self.toggleRealtimeRecording) {
-                            Image(systemName: self.realtimeService.isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                                .font(.system(size: 48))
-                                .foregroundColor(self.realtimeService.isRecording ? .red : .blue)
-                                .symbolEffect(.bounce, value: self.realtimeService.isRecording)
-                        }
-                        .buttonStyle(.plain)
-
-                        if self.realtimeService.isSpeaking {
-                            HStack(spacing: 4) {
-                                ForEach(0..<3) { i in
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(Color.blue)
-                                        .frame(width: 3, height: CGFloat.random(in: 8...20))
-                                        .animation(
-                                            .easeInOut(duration: 0.3).repeatForever(autoreverses: true)
-                                                .delay(Double(i) * 0.1),
-                                            value: self.realtimeService.isSpeaking)
-                                }
-                            }
-                        } else if self.realtimeService.isRecording {
-                            Text("Listening...")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                } else {
-                    // Start session button
-                    Button(action: self.startRealtimeSession, label: {
-                        VStack(spacing: 8) {
-                            Image(systemName: "waveform.circle.fill")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.linearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing))
-                            Text("Start Conversation")
-                                .font(.caption)
-                        }
-                    })
-                    .buttonStyle(.plain)
-                }
-
-                Spacer()
-
-                if self.realtimeService.isConnected {
-                    Button(action: self.endRealtimeSession, label: {
-                        Image(systemName: "xmark.circle")
-                            .foregroundColor(.secondary)
-                    })
-                    .buttonStyle(.plain)
-                    .help("End conversation")
-                } else {
-                    // Placeholder for balance
-                    Color.clear
-                        .frame(width: 30, height: 30)
-                }
-            }
-
-            // Transcript preview
-            if !self.realtimeService.currentTranscript.isEmpty {
-                Text(self.realtimeService.currentTranscript)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .padding(.horizontal)
-            }
-        }
-        .padding()
-        .frame(height: 140)
     }
 
     // MARK: - Input Handling
@@ -380,58 +164,6 @@ struct SessionChatView: View {
                     // Error is already added to session by agent
                     print("Task error: \(errorMessage)")
                 }
-            }
-        }
-    }
-
-    private func toggleVoiceRecording() {
-        if self.speechRecognizer.isListening {
-            // Stop and submit
-            self.speechRecognizer.stopListening()
-
-            let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !transcript.isEmpty {
-                self.inputText = transcript
-                self.submitInput()
-            }
-        } else {
-            // Start listening
-            Task {
-                do {
-                    try self.speechRecognizer.startListening()
-                } catch {
-                    print("Speech recognition error: \(error)")
-                }
-            }
-        }
-    }
-
-    // MARK: - Realtime Voice Methods
-
-    private func startRealtimeSession() {
-        Task {
-            do {
-                try await self.realtimeService.startSession()
-            } catch {
-                print("Failed to start realtime session: \(error)")
-                // Optionally show error to user
-                self.hasConnectionError = true
-            }
-        }
-    }
-
-    private func endRealtimeSession() {
-        Task {
-            await self.realtimeService.endSession()
-        }
-    }
-
-    private func toggleRealtimeRecording() {
-        Task {
-            do {
-                try await self.realtimeService.toggleRecording()
-            } catch {
-                print("Failed to toggle recording: \(error)")
             }
         }
     }

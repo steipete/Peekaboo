@@ -19,10 +19,7 @@ struct PeekabooApp: App {
     @State private var sessionStore = SessionStore()
     @State private var permissions = Permissions()
 
-    // Dependencies that need the core state
-    @State private var speechRecognizer: SpeechRecognizer?
     @State private var agent: PeekabooAgent?
-    @State private var realtimeService: RealtimeVoiceService?
 
     // Control Inspector window creation
     @AppStorage("inspectorWindowRequested") private var inspectorRequested = false
@@ -61,10 +58,6 @@ struct PeekabooApp: App {
                     self.services.installAgentRuntimeDefaults()
                     self.settings.connectServices(self.services)
 
-                    // Initialize dependencies if needed
-                    if self.speechRecognizer == nil {
-                        self.speechRecognizer = SpeechRecognizer(settings: self.settings)
-                    }
                     if self.agent == nil {
                         self.agent = PeekabooAgent(
                             settings: self.settings,
@@ -74,20 +67,6 @@ struct PeekabooApp: App {
 
                     // Configure Tachikoma with API keys from settings
                     self.configureTachikomaWithSettings()
-
-                    // Initialize realtime service after agent is ready
-                    if self.realtimeService == nil, let agent = self.agent {
-                        do {
-                            if let agentService = try await agent.getAgentService() {
-                                self.realtimeService = RealtimeVoiceService(
-                                    agentService: agentService,
-                                    sessionStore: self.sessionStore,
-                                    settings: self.settings)
-                            }
-                        } catch {
-                            self.logger.error("Failed to initialize realtime service: \(error)")
-                        }
-                    }
 
                     // Set up window opening handler
                     self.appDelegate.windowOpener = { windowId in
@@ -102,9 +81,7 @@ struct PeekabooApp: App {
                         settings: self.settings,
                         sessionStore: self.sessionStore,
                         permissions: self.permissions,
-                        speechRecognizer: self.speechRecognizer!,
-                        agent: self.agent!,
-                        realtimeService: self.realtimeService)
+                        agent: self.agent!)
                     self.appDelegate.connectToState(context)
 
                     // Check permissions
@@ -123,14 +100,11 @@ struct PeekabooApp: App {
                 .environment(self.settings)
                 .environment(self.sessionStore)
                 .environment(self.permissions)
-                .environment(self.speechRecognizer ?? SpeechRecognizer(settings: self.settings))
                 .environment(
                     self.agent ?? PeekabooAgent(
                         settings: self.settings,
                         sessionStore: self.sessionStore,
                         services: self.services))
-                .environment(self.realtimeService ?? self.makeRealtimeVoiceService())
-                .environmentOptional(self.realtimeService)
                 .onReceive(NotificationCenter.default.publisher(for: .openMainWindow)) { _ in
                     // Window will automatically open when this notification is received
                     DispatchQueue.main.async {
@@ -185,19 +159,6 @@ struct PeekabooApp: App {
                 }
         }
     }
-
-    private func makeRealtimeVoiceService() -> RealtimeVoiceService {
-        do {
-            let agentService = try PeekabooAgentService(services: self.services)
-            return RealtimeVoiceService(
-                agentService: agentService,
-                sessionStore: self.sessionStore,
-                settings: self.settings)
-        } catch {
-            self.logger.fault("Failed to create fallback realtime service: \(error.localizedDescription)")
-            fatalError("RealtimeVoiceService unavailable: \(error)")
-        }
-    }
 }
 
 // MARK: - App Delegate
@@ -207,9 +168,7 @@ private struct AppStateConnectionContext {
     let settings: PeekabooSettings
     let sessionStore: SessionStore
     let permissions: Permissions
-    let speechRecognizer: SpeechRecognizer
     let agent: PeekabooAgent
-    let realtimeService: RealtimeVoiceService?
 }
 
 @MainActor
@@ -224,9 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settings: PeekabooSettings?
     private var sessionStore: SessionStore?
     private var permissions: Permissions?
-    private var speechRecognizer: SpeechRecognizer?
     private var agent: PeekabooAgent?
-    private var realtimeService: RealtimeVoiceService?
 
     // Visualizer components
     var visualizerCoordinator: VisualizerCoordinator?
@@ -252,18 +209,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.settings = context.settings
         self.sessionStore = context.sessionStore
         self.permissions = context.permissions
-        self.speechRecognizer = context.speechRecognizer
         self.agent = context.agent
-        self.realtimeService = context.realtimeService
 
         // Now create status bar with connected state
         self.statusBarController = StatusBarController(
             agent: context.agent,
-            sessionStore: context.sessionStore,
-            permissions: context.permissions,
-            speechRecognizer: context.speechRecognizer,
-            settings: context.settings,
-            realtimeService: context.realtimeService)
+            sessionStore: context.sessionStore)
 
         // Connect dock icon manager to settings
         DockIconManager.shared.connectToSettings(context.settings)

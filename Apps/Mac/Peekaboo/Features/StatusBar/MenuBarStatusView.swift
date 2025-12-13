@@ -8,10 +8,8 @@ struct MenuBarStatusView: View {
 
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
-    @Environment(SpeechRecognizer.self) private var speechRecognizer
     @Environment(\.openWindow) private var openWindow
 
-    @State private var isVoiceMode = false
     @State private var inputText = ""
     @State private var detailsExpanded = false
     @FocusState private var isInputFocused: Bool
@@ -19,7 +17,6 @@ struct MenuBarStatusView: View {
     var body: some View {
         VStack(spacing: 0) {
             StatusBarHeaderView(
-                isVoiceMode: self.$isVoiceMode,
                 onOpenMainWindow: self.openMainWindow,
                 onOpenInspector: self.openInspector,
                 onOpenSettings: self.openSettings,
@@ -30,19 +27,11 @@ struct MenuBarStatusView: View {
 
             Divider()
 
-            Group {
-                if self.isVoiceMode {
-                    VoiceInputView(
-                        onClose: { self.isVoiceMode = false },
-                        onSubmitTranscript: self.submitVoiceInput)
-                } else {
-                    StatusBarInputView(
-                        inputText: self.$inputText,
-                        isInputFocused: self.$isInputFocused,
-                        isProcessing: self.agent.isProcessing,
-                        onSubmit: self.submitInput)
-                }
-            }
+            StatusBarInputView(
+                inputText: self.$inputText,
+                isInputFocused: self.$isInputFocused,
+                isProcessing: self.agent.isProcessing,
+                onSubmit: self.submitInput)
             .padding(12)
 
             Divider()
@@ -100,11 +89,6 @@ struct MenuBarStatusView: View {
 
         self.executeTask(text)
         self.inputText = ""
-    }
-
-    private func submitVoiceInput(_ text: String) {
-        self.isVoiceMode = false
-        self.executeTask(text)
     }
 
     private func executeTask(_ text: String) {

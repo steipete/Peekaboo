@@ -9,8 +9,6 @@ struct StatusBarHeaderView: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
 
-    @Binding var isVoiceMode: Bool
-
     let onOpenMainWindow: () -> Void
     let onOpenInspector: () -> Void
     let onOpenSettings: () -> Void
@@ -45,14 +43,6 @@ struct StatusBarHeaderView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Cancel")
-            } else {
-                Button {
-                    self.isVoiceMode.toggle()
-                } label: {
-                    Image(systemName: self.isVoiceMode ? "keyboard" : "mic")
-                }
-                .buttonStyle(.borderless)
-                .help(self.isVoiceMode ? "Switch to text" : "Dictate")
             }
 
             Menu {
