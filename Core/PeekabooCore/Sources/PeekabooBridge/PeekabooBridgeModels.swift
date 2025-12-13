@@ -1,5 +1,5 @@
 import Foundation
-import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooFoundation
 
 public struct PeekabooBridgeProtocolVersion: Codable, Sendable, Comparable, Hashable {

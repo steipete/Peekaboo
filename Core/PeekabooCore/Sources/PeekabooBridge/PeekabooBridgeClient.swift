@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 import os.log
-import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooFoundation
 
 public actor PeekabooBridgeClient {

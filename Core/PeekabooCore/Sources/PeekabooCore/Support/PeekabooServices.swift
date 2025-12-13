@@ -4,6 +4,7 @@ import Foundation
 import os.log
 import PeekabooAgentRuntime
 import PeekabooAutomation
+import PeekabooBridge
 import PeekabooFoundation
 import PeekabooVisualizer
 import Tachikoma
@@ -444,6 +445,7 @@ public final class PeekabooServices {
 }
 
 extension PeekabooServices: PeekabooServiceProviding {}
+extension PeekabooServices: PeekabooBridgeServiceProviding {}
 
 private enum EnvironmentVariables {
     static func value(for key: String) -> String? {

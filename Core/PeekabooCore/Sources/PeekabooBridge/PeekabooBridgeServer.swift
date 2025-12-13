@@ -1,7 +1,6 @@
 import Foundation
 import os.log
-import PeekabooAgentRuntime
-import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooFoundation
 import Security
 
@@ -26,7 +25,7 @@ public struct PeekabooBridgePeer: Sendable {
 
 @MainActor
 public final class PeekabooBridgeServer {
-    private let services: any PeekabooServiceProviding
+    private let services: any PeekabooBridgeServiceProviding
     private let hostKind: PeekabooBridgeHostKind
     private let allowlistedTeams: Set<String>
     private let allowlistedBundles: Set<String>
@@ -37,7 +36,7 @@ public final class PeekabooBridgeServer {
     private let logger = Logger(subsystem: "boo.peekaboo.bridge", category: "server")
 
     public init(
-        services: any PeekabooServiceProviding,
+        services: any PeekabooBridgeServiceProviding,
         hostKind: PeekabooBridgeHostKind = .gui,
         allowlistedTeams: Set<String>,
         allowlistedBundles: Set<String>,

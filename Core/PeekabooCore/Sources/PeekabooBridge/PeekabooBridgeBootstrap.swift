@@ -1,11 +1,10 @@
 import Foundation
-import PeekabooAgentRuntime
 
 @MainActor
 public enum PeekabooBridgeBootstrap {
     @discardableResult
     public static func startHost(
-        services: any PeekabooServiceProviding,
+        services: any PeekabooBridgeServiceProviding,
         hostKind: PeekabooBridgeHostKind,
         socketPath: String,
         allowlistedTeams: Set<String>,
