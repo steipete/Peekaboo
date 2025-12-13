@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Reset Peekaboo.app: kill running instances, rebuild, relaunch, verify.
+# Reset Peekaboo mac app: kill running instances, rebuild, relaunch, verify.
+#
+# Inspired by CodexBar's Scripts/compile_and_run.sh.
 
 set -euo pipefail
 
@@ -14,7 +16,7 @@ APP_BUNDLE="${APP_BUNDLE:-$DERIVED_DATA_PATH/Build/Products/${CONFIGURATION}/${A
 APP_PROCESS_PATTERN="${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
 DERIVED_PROCESS_PATTERN="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}/${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
 
-log()  { printf '%s\n' "$*"; }
+log() { printf '%s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 run_step() {
@@ -25,39 +27,19 @@ run_step() {
   fi
 }
 
-kill_peekaboo() {
+kill_all_peekaboo() {
   for _ in {1..15}; do
     pkill -f "${DERIVED_PROCESS_PATTERN}" 2>/dev/null || true
     pkill -f "${APP_PROCESS_PATTERN}" 2>/dev/null || true
     pkill -x "${APP_NAME}" 2>/dev/null || true
 
     if ! pgrep -f "${DERIVED_PROCESS_PATTERN}" >/dev/null 2>&1 \
-       && ! pgrep -f "${APP_PROCESS_PATTERN}" >/dev/null 2>&1 \
-       && ! pgrep -x "${APP_NAME}" >/dev/null 2>&1; then
+      && ! pgrep -f "${APP_PROCESS_PATTERN}" >/dev/null 2>&1 \
+      && ! pgrep -x "${APP_NAME}" >/dev/null 2>&1; then
       return 0
     fi
-    sleep 0.2
+    sleep 0.25
   done
-  fail "Could not stop running Peekaboo processes"
-}
-
-xc_pipe() {
-  if command -v xcbeautify >/dev/null 2>&1; then
-    xcbeautify
-  else
-    cat
-  fi
-}
-
-build_app() {
-  xcodebuild \
-    -workspace "${WORKSPACE}" \
-    -scheme "${SCHEME}" \
-    -configuration "${CONFIGURATION}" \
-    -derivedDataPath "${DERIVED_DATA_PATH}" \
-    -destination "platform=macOS" \
-    build \
-    | xc_pipe
 }
 
 verify_bundle() {
@@ -72,12 +54,18 @@ launch_app() {
   if pgrep -f "${APP_PROCESS_PATTERN}" >/dev/null 2>&1 || pgrep -x "${APP_NAME}" >/dev/null 2>&1; then
     log "OK: ${APP_NAME} is running."
   else
-    fail "App exited immediately. Check crash logs."
+    fail "App exited immediately. Check crash logs in Console.app (User Reports)."
   fi
 }
 
+# 1) Kill all running Peekaboo instances (bundled or DerivedData).
 log "==> Killing existing Peekaboo instances"
-kill_peekaboo
-run_step "Build Peekaboo.app (${CONFIGURATION})" build_app
+kill_all_peekaboo
+
+# 2) Build the Debug app (no signing) into DerivedData.
+run_step "Build ${APP_NAME}.app (${CONFIGURATION})" "${ROOT_DIR}/scripts/build-mac-debug.sh"
+
+# 3) Relaunch.
 run_step "Locate app bundle" verify_bundle
 run_step "Launch app" launch_app
+
