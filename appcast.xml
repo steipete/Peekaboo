@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+     xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Peekaboo</title>
+    <link>https://raw.githubusercontent.com/steipete/Peekaboo/main/appcast.xml</link>
+    <description>Peekaboo macOS app updates (Sparkle)</description>
+    <language>en</language>
+
+    <!-- Release items live here. See docs/RELEASING.md (macOS app / Sparkle). -->
+  </channel>
+</rss>
+
