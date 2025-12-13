@@ -838,6 +838,8 @@ extension ProcessService {
         try await self.snapshotManager.storeScreenshot(
             snapshotId: snapshotId,
             screenshotPath: path,
+            applicationBundleId: appInfo?.bundleIdentifier,
+            applicationProcessId: appInfo.map { Int32($0.processIdentifier) },
             applicationName: appInfo?.name,
             windowTitle: windowInfo?.title,
             windowBounds: windowInfo?.bounds)

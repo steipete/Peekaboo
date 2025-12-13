@@ -511,6 +511,8 @@ public struct PeekabooXPCGetDetectionRequest: Codable, Sendable {
 public struct PeekabooXPCStoreScreenshotRequest: Codable, Sendable {
     public let snapshotId: String
     public let screenshotPath: String
+    public let applicationBundleId: String?
+    public let applicationProcessId: Int32?
     public let applicationName: String?
     public let windowTitle: String?
     public let windowBounds: CGRect?
@@ -519,6 +521,14 @@ public struct PeekabooXPCStoreScreenshotRequest: Codable, Sendable {
 public struct PeekabooXPCStoreAnnotatedScreenshotRequest: Codable, Sendable {
     public let snapshotId: String
     public let annotatedScreenshotPath: String
+}
+
+public struct PeekabooXPCGetMostRecentSnapshotRequest: Codable, Sendable {
+    public let applicationBundleId: String?
+
+    public init(applicationBundleId: String?) {
+        self.applicationBundleId = applicationBundleId
+    }
 }
 
 public struct PeekabooXPCCleanSnapshotRequest: Codable, Sendable {
@@ -594,7 +604,7 @@ public enum PeekabooXPCRequest: Codable, Sendable {
     case storeScreenshot(PeekabooXPCStoreScreenshotRequest)
     case storeAnnotatedScreenshot(PeekabooXPCStoreAnnotatedScreenshotRequest)
     case listSnapshots
-    case getMostRecentSnapshot
+    case getMostRecentSnapshot(PeekabooXPCGetMostRecentSnapshotRequest)
     case cleanSnapshot(PeekabooXPCCleanSnapshotRequest)
     case cleanSnapshotsOlderThan(PeekabooXPCCleanSnapshotsOlderRequest)
     case cleanAllSnapshots

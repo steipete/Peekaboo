@@ -28,6 +28,8 @@ final class SnapshotCache {
             try await self.snapshotManager.storeScreenshot(
                 snapshotId: self.snapshotId,
                 screenshotPath: screenshotPath,
+                applicationBundleId: data.applicationBundleId,
+                applicationProcessId: data.applicationProcessId,
                 applicationName: data.applicationName,
                 windowTitle: data.windowTitle,
                 windowBounds: data.windowBounds

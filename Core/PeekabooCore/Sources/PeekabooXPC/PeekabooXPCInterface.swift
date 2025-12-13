@@ -429,6 +429,8 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 try await self.services.snapshots.storeScreenshot(
                     snapshotId: payload.snapshotId,
                     screenshotPath: payload.screenshotPath,
+                    applicationBundleId: payload.applicationBundleId,
+                    applicationProcessId: payload.applicationProcessId,
                     applicationName: payload.applicationName,
                     windowTitle: payload.windowTitle,
                     windowBounds: payload.windowBounds)
@@ -444,8 +446,14 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 let snapshots = try await self.services.snapshots.listSnapshots()
                 return .snapshots(snapshots)
 
-            case .getMostRecentSnapshot:
-                if let id = await self.services.snapshots.getMostRecentSnapshot() {
+            case let .getMostRecentSnapshot(payload):
+                let id: String? = if let bundleId = payload.applicationBundleId {
+                    await self.services.snapshots.getMostRecentSnapshot(applicationBundleId: bundleId)
+                } else {
+                    await self.services.snapshots.getMostRecentSnapshot()
+                }
+
+                if let id {
                     return .snapshotId(id)
                 } else {
                     throw PeekabooXPCErrorEnvelope(

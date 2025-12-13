@@ -457,6 +457,8 @@ final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
     var mostRecentSnapshotId: String?
     struct ScreenshotRecord: Sendable {
         let path: String
+        let applicationBundleId: String?
+        let applicationProcessId: Int32?
         let applicationName: String?
         let windowTitle: String?
         let windowBounds: CGRect?
@@ -526,6 +528,10 @@ final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
         self.mostRecentSnapshotId
     }
 
+    func getMostRecentSnapshot(applicationBundleId _: String) async -> String? {
+        self.mostRecentSnapshotId
+    }
+
     func listSnapshots() async throws -> [SnapshotInfo] {
         Array(self.snapshotInfos.values)
     }
@@ -568,6 +574,8 @@ final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
     func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,
+        applicationBundleId: String?,
+        applicationProcessId: Int32?,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?
@@ -588,6 +596,8 @@ final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
         records.append(
             ScreenshotRecord(
                 path: screenshotPath,
+                applicationBundleId: applicationBundleId,
+                applicationProcessId: applicationProcessId,
                 applicationName: applicationName,
                 windowTitle: windowTitle,
                 windowBounds: windowBounds

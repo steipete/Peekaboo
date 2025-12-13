@@ -6,11 +6,15 @@ public nonisolated struct UIAutomationSnapshot: Codable, Sendable {
     public static let currentVersion = 1
 
     public let version: Int
+    /// PID of the process that created the snapshot (e.g. `peekaboo` CLI, a host menubar app).
+    public var creatorProcessId: Int32?
     public var screenshotPath: String?
     public var annotatedPath: String?
     public var uiMap: [String: UIElement]
     public var lastUpdateTime: Date
     public var applicationName: String?
+    public var applicationBundleId: String?
+    public var applicationProcessId: Int32?
     public var windowTitle: String?
     public var windowBounds: CGRect?
     public var menuBar: MenuBarData?
@@ -20,11 +24,14 @@ public nonisolated struct UIAutomationSnapshot: Codable, Sendable {
 
     public init(
         version: Int = UIAutomationSnapshot.currentVersion,
+        creatorProcessId: Int32? = nil,
         screenshotPath: String? = nil,
         annotatedPath: String? = nil,
         uiMap: [String: UIElement] = [:],
         lastUpdateTime: Date = Date(),
         applicationName: String? = nil,
+        applicationBundleId: String? = nil,
+        applicationProcessId: Int32? = nil,
         windowTitle: String? = nil,
         windowBounds: CGRect? = nil,
         menuBar: MenuBarData? = nil,
@@ -33,11 +40,14 @@ public nonisolated struct UIAutomationSnapshot: Codable, Sendable {
         lastFocusTime: Date? = nil)
     {
         self.version = version
+        self.creatorProcessId = creatorProcessId
         self.screenshotPath = screenshotPath
         self.annotatedPath = annotatedPath
         self.uiMap = uiMap
         self.lastUpdateTime = lastUpdateTime
         self.applicationName = applicationName
+        self.applicationBundleId = applicationBundleId
+        self.applicationProcessId = applicationProcessId
         self.windowTitle = windowTitle
         self.windowBounds = windowBounds
         self.menuBar = menuBar

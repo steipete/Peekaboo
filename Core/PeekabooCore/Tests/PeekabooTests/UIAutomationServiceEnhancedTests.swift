@@ -248,6 +248,10 @@ private final class MockSnapshotManager: SnapshotManagerProtocol {
         self.storedResults.keys.first
     }
 
+    func getMostRecentSnapshot(applicationBundleId _: String) async -> String? {
+        self.storedResults.keys.first
+    }
+
     func listSnapshots() async throws -> [SnapshotInfo] {
         []
     }
@@ -275,6 +279,8 @@ private final class MockSnapshotManager: SnapshotManagerProtocol {
     func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,
+        applicationBundleId _: String?,
+        applicationProcessId _: Int32?,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?) async throws

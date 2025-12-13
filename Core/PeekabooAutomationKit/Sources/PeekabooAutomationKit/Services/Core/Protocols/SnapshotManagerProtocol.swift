@@ -22,6 +22,11 @@ public protocol SnapshotManagerProtocol: Sendable {
     /// - Returns: Snapshot ID if available
     func getMostRecentSnapshot() async -> String?
 
+    /// Get the most recent snapshot ID scoped to an application.
+    /// - Parameter applicationBundleId: Bundle identifier of the target application
+    /// - Returns: Snapshot ID if available
+    func getMostRecentSnapshot(applicationBundleId: String) async -> String?
+
     /// List all active snapshots
     /// - Returns: Array of snapshot information
     func listSnapshots() async throws -> [SnapshotInfo]
@@ -53,6 +58,8 @@ public protocol SnapshotManagerProtocol: Sendable {
     func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,
+        applicationBundleId: String?,
+        applicationProcessId: Int32?,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?) async throws

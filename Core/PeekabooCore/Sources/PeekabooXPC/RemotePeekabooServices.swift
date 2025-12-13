@@ -383,6 +383,10 @@ public final class RemoteSnapshotManager: SnapshotManagerProtocol {
         await (try? self.client.getMostRecentSnapshot())
     }
 
+    public func getMostRecentSnapshot(applicationBundleId: String) async -> String? {
+        await (try? self.client.getMostRecentSnapshot(applicationBundleId: applicationBundleId))
+    }
+
     public func listSnapshots() async throws -> [SnapshotInfo] {
         try await self.client.listSnapshots()
     }
@@ -407,6 +411,8 @@ public final class RemoteSnapshotManager: SnapshotManagerProtocol {
     public func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,
+        applicationBundleId: String?,
+        applicationProcessId: Int32?,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?) async throws
@@ -414,6 +420,8 @@ public final class RemoteSnapshotManager: SnapshotManagerProtocol {
         try await self.client.storeScreenshot(
             snapshotId: snapshotId,
             screenshotPath: screenshotPath,
+            applicationBundleId: applicationBundleId,
+            applicationProcessId: applicationProcessId,
             applicationName: applicationName,
             windowTitle: windowTitle,
             windowBounds: windowBounds)

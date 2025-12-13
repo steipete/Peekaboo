@@ -559,12 +559,6 @@ struct CaptureWatchAlias: ParsableCommand {
         }
     }
 
-    @RuntimeStorage private var runtime: CommandRuntime?
-    var runtimeOptions: CommandRuntimeOptions {
-        get { self.live.runtimeOptions }
-        set { self.live.runtimeOptions = newValue }
-    }
-
     private var live = CaptureLiveCommand()
 
     mutating func run(using runtime: CommandRuntime) async throws {

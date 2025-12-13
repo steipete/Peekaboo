@@ -28,7 +28,7 @@ public final class SnapshotManager: SnapshotManagerProtocol {
         try FileManager.default.createDirectory(at: snapshotPath, withIntermediateDirectories: true)
 
         // Initialize empty snapshot data
-        let snapshotData = UIAutomationSnapshot()
+        let snapshotData = UIAutomationSnapshot(creatorProcessId: getpid())
         try await self.snapshotActor.saveSnapshot(snapshotId: snapshotId, data: snapshotData, at: snapshotPath)
 
         return snapshotId
@@ -40,6 +40,9 @@ public final class SnapshotManager: SnapshotManagerProtocol {
         // Load existing snapshot or create new
         var snapshotData = await self.snapshotActor
             .loadSnapshot(snapshotId: snapshotId, from: snapshotPath) ?? UIAutomationSnapshot()
+        if snapshotData.creatorProcessId == nil {
+            snapshotData.creatorProcessId = getpid()
+        }
 
         // Convert detection result to snapshot format (preserve any previously stored screenshot paths).
         if (snapshotData.screenshotPath ?? "").isEmpty, !result.screenshotPath.isEmpty {
@@ -146,6 +149,10 @@ public final class SnapshotManager: SnapshotManagerProtocol {
         await self.findLatestValidSnapshot()
     }
 
+    public func getMostRecentSnapshot(applicationBundleId: String) async -> String? {
+        await self.findLatestValidSnapshot(applicationBundleId: applicationBundleId)
+    }
+
     public func listSnapshots() async throws -> [SnapshotInfo] {
         let snapshotDir = self.getSnapshotStorageURL()
 
@@ -178,7 +185,7 @@ public final class SnapshotManager: SnapshotManagerProtocol {
             let sizeInBytes = self.calculateDirectorySize(snapshotURL)
 
             // Check if process is still active
-            let processId = self.extractProcessId(from: snapshotId)
+            let processId = snapshotData?.creatorProcessId ?? self.extractProcessId(from: snapshotId)
             let isActive = self.isProcessActive(processId)
 
             let info = SnapshotInfo(
@@ -240,6 +247,8 @@ public final class SnapshotManager: SnapshotManagerProtocol {
     public func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,
+        applicationBundleId: String?,
+        applicationProcessId: Int32?,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?) async throws
@@ -251,6 +260,9 @@ public final class SnapshotManager: SnapshotManagerProtocol {
         // Load or create snapshot data
         var snapshotData = await self.snapshotActor
             .loadSnapshot(snapshotId: snapshotId, from: snapshotPath) ?? UIAutomationSnapshot()
+        if snapshotData.creatorProcessId == nil {
+            snapshotData.creatorProcessId = getpid()
+        }
 
         // Copy screenshot to snapshot directory
         let rawPath = snapshotPath.appendingPathComponent("raw.png")
@@ -270,6 +282,8 @@ public final class SnapshotManager: SnapshotManagerProtocol {
 
         snapshotData.screenshotPath = rawPath.path
         snapshotData.applicationName = applicationName
+        snapshotData.applicationBundleId = applicationBundleId
+        snapshotData.applicationProcessId = applicationProcessId
         snapshotData.windowTitle = windowTitle
         snapshotData.windowBounds = windowBounds
         snapshotData.lastUpdateTime = Date()
@@ -283,6 +297,9 @@ public final class SnapshotManager: SnapshotManagerProtocol {
 
         var snapshotData = await self.snapshotActor
             .loadSnapshot(snapshotId: snapshotId, from: snapshotPath) ?? UIAutomationSnapshot()
+        if snapshotData.creatorProcessId == nil {
+            snapshotData.creatorProcessId = getpid()
+        }
 
         let annotatedPath = snapshotPath.appendingPathComponent("annotated.png")
         let sourceURL = URL(fileURLWithPath: annotatedScreenshotPath).standardizedFileURL
@@ -398,6 +415,42 @@ public final class SnapshotManager: SnapshotManagerProtocol {
             self.logger.debug("No valid snapshots found within \(Int(self.snapshotValidityWindow)) second window")
             return nil
         }
+    }
+
+    private func findLatestValidSnapshot(applicationBundleId: String) async -> String? {
+        let snapshotDir = self.getSnapshotStorageURL()
+
+        guard let snapshots = try? FileManager.default.contentsOfDirectory(
+            at: snapshotDir,
+            includingPropertiesForKeys: [.creationDateKey],
+            options: .skipsHiddenFiles)
+        else {
+            return nil
+        }
+
+        let cutoff = Date().addingTimeInterval(-self.snapshotValidityWindow)
+
+        let recentSnapshots = snapshots.compactMap { url -> (url: URL, createdAt: Date)? in
+            guard let values = try? url.resourceValues(forKeys: [.creationDateKey]),
+                  let createdAt = values.creationDate,
+                  createdAt > cutoff,
+                  url.hasDirectoryPath
+            else {
+                return nil
+            }
+            return (url, createdAt)
+        }.sorted { $0.createdAt > $1.createdAt }
+
+        for entry in recentSnapshots {
+            let snapshotId = entry.url.lastPathComponent
+            guard let snapshotData = await self.snapshotActor.loadSnapshot(snapshotId: snapshotId, from: entry.url)
+            else { continue }
+            if snapshotData.applicationBundleId == applicationBundleId {
+                return snapshotId
+            }
+        }
+
+        return nil
     }
 
     private func convertElementTypeToRole(_ type: ElementType) -> String {

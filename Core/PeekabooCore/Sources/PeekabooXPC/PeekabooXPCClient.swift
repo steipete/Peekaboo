@@ -633,6 +633,8 @@ public actor PeekabooXPCClient {
     public func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,
+        applicationBundleId: String?,
+        applicationProcessId: Int32?,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?) async throws
@@ -642,6 +644,8 @@ public actor PeekabooXPCClient {
                 .init(
                     snapshotId: snapshotId,
                     screenshotPath: screenshotPath,
+                    applicationBundleId: applicationBundleId,
+                    applicationProcessId: applicationProcessId,
                     applicationName: applicationName,
                     windowTitle: windowTitle,
                     windowBounds: windowBounds)))
@@ -664,8 +668,8 @@ public actor PeekabooXPCClient {
         }
     }
 
-    public func getMostRecentSnapshot() async throws -> String {
-        let response = try await self.send(.getMostRecentSnapshot)
+    public func getMostRecentSnapshot(applicationBundleId: String? = nil) async throws -> String {
+        let response = try await self.send(.getMostRecentSnapshot(.init(applicationBundleId: applicationBundleId)))
         switch response {
         case let .snapshotId(id): return id
         case let .error(envelope): throw envelope

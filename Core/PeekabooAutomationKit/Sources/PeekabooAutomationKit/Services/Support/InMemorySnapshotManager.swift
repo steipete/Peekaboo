@@ -53,7 +53,7 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
                 lastAccessedAt: now,
                 processId: getpid(),
                 detectionResult: detectionResult,
-                snapshotData: UIAutomationSnapshot())
+                snapshotData: UIAutomationSnapshot(creatorProcessId: getpid()))
             self.applyDetectionResult(detectionResult, to: &entry.snapshotData)
             self.entries[snapshotId] = entry
         }
@@ -74,7 +74,7 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
             lastAccessedAt: now,
             processId: getpid(),
             detectionResult: nil,
-            snapshotData: UIAutomationSnapshot())
+            snapshotData: UIAutomationSnapshot(creatorProcessId: getpid()))
 
         return snapshotId
     }
@@ -87,7 +87,7 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
             lastAccessedAt: Date(),
             processId: getpid(),
             detectionResult: nil,
-            snapshotData: UIAutomationSnapshot())
+            snapshotData: UIAutomationSnapshot(creatorProcessId: getpid()))
 
         entry.lastAccessedAt = Date()
         entry.detectionResult = result
@@ -114,6 +114,18 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
         let cutoff = Date().addingTimeInterval(-self.options.snapshotValidityWindow)
         return self.entries
             .filter { $0.value.createdAt >= cutoff }
+            .max(by: { $0.value.lastAccessedAt < $1.value.lastAccessedAt })?
+            .key
+    }
+
+    public func getMostRecentSnapshot(applicationBundleId: String) async -> String? {
+        self.pruneIfNeeded()
+
+        let cutoff = Date().addingTimeInterval(-self.options.snapshotValidityWindow)
+        return self.entries
+            .filter { _, entry in
+                entry.createdAt >= cutoff && entry.snapshotData.applicationBundleId == applicationBundleId
+            }
             .max(by: { $0.value.lastAccessedAt < $1.value.lastAccessedAt })?
             .key
     }
@@ -168,6 +180,8 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
     public func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,
+        applicationBundleId: String?,
+        applicationProcessId: Int32?,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?) async throws
@@ -179,11 +193,13 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
             lastAccessedAt: Date(),
             processId: getpid(),
             detectionResult: nil,
-            snapshotData: UIAutomationSnapshot())
+            snapshotData: UIAutomationSnapshot(creatorProcessId: getpid()))
 
         entry.lastAccessedAt = Date()
         entry.snapshotData.screenshotPath = screenshotPath
         entry.snapshotData.applicationName = applicationName
+        entry.snapshotData.applicationBundleId = applicationBundleId
+        entry.snapshotData.applicationProcessId = applicationProcessId
         entry.snapshotData.windowTitle = windowTitle
         entry.snapshotData.windowBounds = windowBounds
         entry.snapshotData.lastUpdateTime = Date()
@@ -198,7 +214,7 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
             lastAccessedAt: Date(),
             processId: getpid(),
             detectionResult: nil,
-            snapshotData: UIAutomationSnapshot())
+            snapshotData: UIAutomationSnapshot(creatorProcessId: getpid()))
 
         entry.lastAccessedAt = Date()
         entry.snapshotData.annotatedPath = annotatedScreenshotPath
