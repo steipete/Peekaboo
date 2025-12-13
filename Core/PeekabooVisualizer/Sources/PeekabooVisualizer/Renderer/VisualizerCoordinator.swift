@@ -54,6 +54,61 @@ public final class VisualizerCoordinator {
         static let spaceTransition: TimeInterval = 1.0
     }
 
+    private enum OverlayPadding {
+        static let watchHUD: CGFloat = 16
+        static let click: CGFloat = 32
+        static let typing: CGFloat = 32
+        static let scroll: CGFloat = 24
+        static let mouseTrail: CGFloat = 16
+        static let swipe: CGFloat = 24
+        static let hotkeyGlow: CGFloat = 96
+        static let appLifecycle: CGFloat = 48
+        static let windowOperation: CGFloat = 48
+        static let menuGlow: CGFloat = 64
+        static let dialog: CGFloat = 80
+        static let elementHighlight: CGFloat = 32
+        static let annotatedScreenshot: CGFloat = 64
+    }
+
+    private static func paddedRect(_ rect: CGRect, padding: CGFloat) -> CGRect {
+        guard padding > 0 else { return rect }
+        return rect.insetBy(dx: -padding, dy: -padding)
+    }
+
+    private static func keyWidthForHotkeyOverlay(_ key: String) -> CGFloat {
+        switch key.lowercased() {
+        case "space":
+            120
+        case "shift", "return", "enter", "delete", "backspace":
+            80
+        case "cmd", "command", "ctrl", "control", "option", "alt":
+            60
+        default:
+            40
+        }
+    }
+
+    static func estimatedHotkeyOverlaySize(for keys: [String]) -> CGSize {
+        let keyWidths = keys.map { self.keyWidthForHotkeyOverlay($0) }
+        let keysWidth = keyWidths.reduce(0, +) + CGFloat(max(0, keys.count - 1)) * 8
+        // Key container: internal padding(.horizontal: 20) + border/glow breathing room.
+        let baseWidth = keysWidth + 40
+        let width = max(400, min(960, baseWidth + self.OverlayPadding.hotkeyGlow * 2))
+        // Key height: 40 + padding(.vertical: 20) + glow breathing room.
+        let baseHeight: CGFloat = 80
+        let height = max(160, min(420, baseHeight + self.OverlayPadding.hotkeyGlow * 2))
+        return CGSize(width: width, height: height)
+    }
+
+    static func estimatedMenuOverlaySize(for menuPath: [String]) -> CGSize {
+        // Rough heuristic: each segment needs room for title + padding + arrows.
+        let segmentWidth: CGFloat = 220
+        let baseWidth = max(600, CGFloat(menuPath.count) * segmentWidth)
+        let width = min(1100, baseWidth + self.OverlayPadding.menuGlow * 2)
+        let height: CGFloat = 140 + self.OverlayPadding.menuGlow * 2
+        return CGSize(width: width, height: height)
+    }
+
     private var animationSpeedScale: Double {
         max(0.1, min(2.0, self.settings?.visualizerAnimationSpeed ?? Self.defaultVisualizerAnimationSpeed))
     }
@@ -385,7 +440,7 @@ extension VisualizerCoordinator {
         guard self.settings?.watchCaptureHUDEnabled ?? true else { return false }
         let view = WatchCaptureHUDView(sequence: sequence)
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: Self.OverlayPadding.watchHUD),
             content: view,
             duration: self.scaledDuration(2.4),
             fadeOut: true)
@@ -415,7 +470,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: Self.OverlayPadding.click),
             content: clickView,
             duration: self.scaledDuration(AnimationBaseline.clickRipple),
             fadeOut: true)
@@ -450,7 +505,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: Self.OverlayPadding.typing),
             content: typingView,
             duration: self.scaledDuration(for: duration, minimum: AnimationBaseline.typingOverlay),
             fadeOut: true)
@@ -486,7 +541,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: Self.OverlayPadding.scroll),
             content: scrollView,
             duration: self.scaledDuration(AnimationBaseline.scrollIndicator),
             fadeOut: true)
@@ -534,7 +589,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: Self.OverlayPadding.mouseTrail),
             content: mouseView,
             duration: mouseDuration + 0.35,
             fadeOut: true)
@@ -583,7 +638,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: Self.OverlayPadding.swipe),
             content: swipeView,
             duration: swipeDuration + 0.35,
             fadeOut: true)
@@ -608,7 +663,7 @@ extension VisualizerCoordinator {
         // Position at center of screen where mouse is located
         let screen = self.getTargetScreen()
         let screenFrame = screen.frame
-        let overlaySize = CGSize(width: 400, height: 150)
+        let overlaySize = Self.estimatedHotkeyOverlaySize(for: keys)
         let rect = CGRect(
             x: screenFrame.midX - overlaySize.width / 2,
             y: screenFrame.midY - overlaySize.height / 2,
@@ -617,7 +672,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: 0),
             content: hotkeyView,
             duration: overlayDuration,
             fadeOut: true)
@@ -653,7 +708,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: Self.OverlayPadding.appLifecycle),
             content: launchView,
             duration: launchDuration,
             fadeOut: true)
@@ -689,7 +744,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: Self.OverlayPadding.appLifecycle),
             content: quitView,
             duration: quitDuration,
             fadeOut: true)
@@ -718,7 +773,7 @@ extension VisualizerCoordinator {
 
         // Display at window location
         _ = self.overlayManager.showAnimation(
-            at: windowRect,
+            at: Self.paddedRect(windowRect, padding: Self.OverlayPadding.windowOperation),
             content: windowView,
             duration: windowDuration,
             fadeOut: true)
@@ -743,7 +798,7 @@ extension VisualizerCoordinator {
         // Position at top of screen where mouse is located
         let screen = self.getTargetScreen()
         let screenFrame = screen.frame
-        let overlaySize = CGSize(width: 600, height: 100)
+        let overlaySize = Self.estimatedMenuOverlaySize(for: menuPath)
         let rect = CGRect(
             x: screenFrame.midX - overlaySize.width / 2,
             y: screenFrame.maxY - overlaySize.height - 50,
@@ -752,7 +807,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: rect,
+            at: Self.paddedRect(rect, padding: 0),
             content: menuView,
             duration: menuDuration,
             fadeOut: true)
@@ -782,7 +837,7 @@ extension VisualizerCoordinator {
 
         // Display at element location
         _ = self.overlayManager.showAnimation(
-            at: elementRect,
+            at: Self.paddedRect(elementRect, padding: Self.OverlayPadding.dialog),
             content: dialogView,
             duration: dialogDuration,
             fadeOut: true)
@@ -844,7 +899,7 @@ extension VisualizerCoordinator {
 
             // Display using overlay manager
             _ = self.overlayManager.showAnimation(
-                at: rect,
+                at: Self.paddedRect(rect, padding: Self.OverlayPadding.elementHighlight),
                 content: highlightView,
                 duration: self.scaledDuration(for: duration, minimum: AnimationBaseline.elementHighlight),
                 fadeOut: true)
@@ -884,7 +939,7 @@ extension VisualizerCoordinator {
 
         // Display using overlay manager
         _ = self.overlayManager.showAnimation(
-            at: windowBounds,
+            at: Self.paddedRect(windowBounds, padding: Self.OverlayPadding.annotatedScreenshot),
             content: annotatedView,
             duration: self.scaledDuration(for: duration, minimum: AnimationBaseline.annotatedScreenshot),
             fadeOut: true)

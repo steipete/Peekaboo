@@ -42,7 +42,9 @@ final class AnimationOverlayManager {
 
         // Set content view
         let hostingView = NSHostingView(rootView: content)
+        hostingView.wantsLayer = true
         hostingView.layer?.backgroundColor = NSColor.clear.cgColor
+        hostingView.layer?.masksToBounds = false
         window.contentView = hostingView
 
         // Store window reference
