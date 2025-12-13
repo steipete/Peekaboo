@@ -6,18 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		7814F1902E1C0950000995F8 /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 7814F18F2E1C0950000995F8 /* AXorcist */; };
-		782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 782555012E1CA0ED00F1D8DF /* AXorcist */; };
-		782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
-		78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 78E542AC2E4178650006A8EF /* KeyboardShortcuts */; };
-		78F8A0A12F0C0B3D00BEEF00 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 78F8A0A32F0C0B3D00BEEF00 /* Sparkle */; };
-		78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */ = {isa = PBXBuildFile; productRef = 78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */; };
-/* End PBXBuildFile section */
+	/* Begin PBXBuildFile section */
+			7814F1902E1C0950000995F8 /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 7814F18F2E1C0950000995F8 /* AXorcist */; };
+			782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 782555012E1CA0ED00F1D8DF /* AXorcist */; };
+			782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
+			78B1D0FA2F3A123400C0FFEE /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 78B1D0F92F3A123400C0FFEE /* AppIntents.framework */; };
+			78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 78E542AC2E4178650006A8EF /* KeyboardShortcuts */; };
+			78F8A0A12F0C0B3D00BEEF00 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 78F8A0A32F0C0B3D00BEEF00 /* Sparkle */; };
+			78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */ = {isa = PBXBuildFile; productRef = 78EA3D0F2E3B92AB000ADFA6 /* PeekabooUICore */; };
+	/* End PBXBuildFile section */
 
-/* Begin PBXFileReference section */
-		7814F1062E1BD4C8000995F8 /* Peekaboo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Peekaboo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
+	/* Begin PBXFileReference section */
+			7814F1062E1BD4C8000995F8 /* Peekaboo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Peekaboo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+			78B1D0F92F3A123400C0FFEE /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
+	/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7814F1082E1BD4C8000995F8 /* Peekaboo */ = {
@@ -27,21 +29,22 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		7814F1032E1BD4C8000995F8 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				7814F1902E1C0950000995F8 /* AXorcist in Frameworks */,
-				782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */,
-				78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */,
-				78F8A0A12F0C0B3D00BEEF00 /* Sparkle in Frameworks */,
-				782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */,
-				78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
+	/* Begin PBXFrameworksBuildPhase section */
+			7814F1032E1BD4C8000995F8 /* Frameworks */ = {
+				isa = PBXFrameworksBuildPhase;
+				buildActionMask = 2147483647;
+				files = (
+					7814F1902E1C0950000995F8 /* AXorcist in Frameworks */,
+					782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */,
+					78B1D0FA2F3A123400C0FFEE /* AppIntents.framework in Frameworks */,
+					78E542AD2E4178650006A8EF /* KeyboardShortcuts in Frameworks */,
+					78F8A0A12F0C0B3D00BEEF00 /* Sparkle in Frameworks */,
+					782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */,
+					78EA3D102E3B92AB000ADFA6 /* PeekabooUICore in Frameworks */,
+				);
+				runOnlyForDeploymentPostprocessing = 0;
+			};
+	/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		7814F0FD2E1BD4C8000995F8 = {
@@ -61,14 +64,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		78F4CC972EE0457200ACDAAA /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
-/* End PBXGroup section */
+			78F4CC972EE0457200ACDAAA /* Frameworks */ = {
+				isa = PBXGroup;
+				children = (
+					78B1D0F92F3A123400C0FFEE /* AppIntents.framework */,
+				);
+				name = Frameworks;
+				sourceTree = "<group>";
+			};
+	/* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
 		7814F1052E1BD4C8000995F8 /* Peekaboo */ = {

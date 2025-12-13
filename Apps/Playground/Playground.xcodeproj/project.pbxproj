@@ -6,15 +6,17 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		7814F1902E1C0950000995F8 /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 7814F18F2E1C0950000995F8 /* AXorcist */; };
-		782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 782555012E1CA0ED00F1D8DF /* AXorcist */; };
-		782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
-/* End PBXBuildFile section */
+	/* Begin PBXBuildFile section */
+			7814F1902E1C0950000995F8 /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 7814F18F2E1C0950000995F8 /* AXorcist */; };
+			782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 782555012E1CA0ED00F1D8DF /* AXorcist */; };
+			782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
+			78B1D0FE2F3A123400C0FFEE /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 78B1D0FD2F3A123400C0FFEE /* AppIntents.framework */; };
+	/* End PBXBuildFile section */
 
-/* Begin PBXFileReference section */
-		7814F1062E1BD4C8000995F8 /* Playground.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Playground.app; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
+	/* Begin PBXFileReference section */
+			7814F1062E1BD4C8000995F8 /* Playground.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Playground.app; sourceTree = BUILT_PRODUCTS_DIR; };
+			78B1D0FD2F3A123400C0FFEE /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
+	/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7814F1082E1BD4C8000995F8 /* Playground */ = {
@@ -24,18 +26,19 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		7814F1032E1BD4C8000995F8 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				7814F1902E1C0950000995F8 /* AXorcist in Frameworks */,
-				782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */,
-				782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
+	/* Begin PBXFrameworksBuildPhase section */
+			7814F1032E1BD4C8000995F8 /* Frameworks */ = {
+				isa = PBXFrameworksBuildPhase;
+				buildActionMask = 2147483647;
+				files = (
+					7814F1902E1C0950000995F8 /* AXorcist in Frameworks */,
+					782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */,
+					78B1D0FE2F3A123400C0FFEE /* AppIntents.framework in Frameworks */,
+					782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */,
+				);
+				runOnlyForDeploymentPostprocessing = 0;
+			};
+	/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		7814F0FD2E1BD4C8000995F8 = {
