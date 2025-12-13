@@ -18,8 +18,8 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
     @Option(help: "Element ID to scroll on (from 'see' command)")
     var on: String?
 
-    @Option(help: "Session ID (uses latest if not specified)")
-    var session: String?
+    @Option(help: "Snapshot ID (uses latest if not specified)")
+    var snapshot: String?
 
     @Option(help: "Delay between scroll ticks in milliseconds")
     var delay: Int = 2
@@ -58,12 +58,12 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 throw ValidationError("Invalid direction. Use: up, down, left, or right")
             }
 
-            // Determine session ID if element target is specified
-            let sessionId: String? = if self.on != nil {
-                if let providedSession = session {
-                    providedSession
+            // Determine snapshot ID if element target is specified
+            let snapshotId: String? = if self.on != nil {
+                if let providedSnapshot = snapshot {
+                    providedSnapshot
                 } else {
-                    await self.services.sessions.getMostRecentSession()
+                    await self.services.snapshots.getMostRecentSnapshot()
                 }
             } else {
                 nil
@@ -71,7 +71,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
 
             // Ensure window is focused before scrolling
             try await ensureFocused(
-                sessionId: sessionId,
+                snapshotId: snapshotId,
                 applicationName: self.app,
                 options: self.focusOptions,
                 services: self.services
@@ -84,7 +84,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 target: self.on,
                 smooth: self.smooth,
                 delay: self.delay,
-                sessionId: sessionId
+                snapshotId: snapshotId
             )
             try await AutomationServiceBridge.scroll(
                 automation: self.services.automation,
@@ -93,7 +93,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             AutomationEventLogger.log(
                 .scroll,
                 "direction=\(self.direction) amount=\(self.amount) smooth=\(self.smooth) "
-                    + "target=\(self.on ?? "pointer") session=\(sessionId ?? "latest")"
+                    + "target=\(self.on ?? "pointer") snapshot=\(snapshotId ?? "latest")"
             )
 
             // Calculate total ticks for output
@@ -101,10 +101,10 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
 
             // Determine scroll location for output
             let scrollLocation: CGPoint = if let elementId = on {
-                // Try to get element location from session
-                if let activeSessionId = sessionId,
-                   let detectionResult = try? await self.services.sessions
-                       .getDetectionResult(sessionId: activeSessionId),
+                // Try to get element location from snapshot
+                if let activeSnapshotId = snapshotId,
+                   let detectionResult = try? await self.services.snapshots
+                       .getDetectionResult(snapshotId: activeSnapshotId),
                        let element = detectionResult.elements.findById(elementId) {
                     CGPoint(
                         x: element.bounds.midX,
@@ -203,7 +203,7 @@ extension ScrollCommand: CommanderBindableCommand {
             self.amount = amount
         }
         self.on = values.singleOption("on")
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
         if let delay: Int = try values.decodeOption("delay", as: Int.self) {
             self.delay = delay
         }

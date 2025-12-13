@@ -6,7 +6,7 @@ extension DragCommand: CommanderSignatureProviding {
             options: [
                 .commandOption(
                     "from",
-                    help: "Starting element ID from session",
+                    help: "Starting element ID from snapshot",
                     long: "from"
                 ),
                 .commandOption(
@@ -16,7 +16,7 @@ extension DragCommand: CommanderSignatureProviding {
                 ),
                 .commandOption(
                     "to",
-                    help: "Target element ID from session",
+                    help: "Target element ID from snapshot",
                     long: "to"
                 ),
                 .commandOption(
@@ -30,9 +30,9 @@ extension DragCommand: CommanderSignatureProviding {
                     long: "to-app"
                 ),
                 .commandOption(
-                    "session",
-                    help: "Session ID for element resolution",
-                    long: "session"
+                    "snapshot",
+                    help: "Snapshot ID for element resolution",
+                    long: "snapshot"
                 ),
                 .commandOption(
                     "duration",

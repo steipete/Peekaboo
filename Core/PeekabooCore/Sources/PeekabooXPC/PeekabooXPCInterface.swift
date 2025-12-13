@@ -148,7 +148,7 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
             case let .detectElements(payload):
                 let result = try await self.services.automation.detectElements(
                     in: payload.imageData,
-                    sessionId: payload.sessionId,
+                    snapshotId: payload.snapshotId,
                     windowContext: payload.windowContext)
                 return .elementDetection(result)
 
@@ -156,7 +156,7 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 try await self.services.automation.click(
                     target: payload.target,
                     clickType: payload.clickType,
-                    sessionId: payload.sessionId)
+                    snapshotId: payload.snapshotId)
                 return .ok
 
             case let .type(payload):
@@ -165,14 +165,14 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                     target: payload.target,
                     clearExisting: payload.clearExisting,
                     typingDelay: payload.typingDelay,
-                    sessionId: payload.sessionId)
+                    snapshotId: payload.snapshotId)
                 return .ok
 
             case let .typeActions(payload):
                 let result = try await self.services.automation.typeActions(
                     payload.actions,
                     cadence: payload.cadence,
-                    sessionId: payload.sessionId)
+                    snapshotId: payload.snapshotId)
                 return .typeResult(result)
 
             case let .scroll(payload):
@@ -214,7 +214,7 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                 let result = try await self.services.automation.waitForElement(
                     target: payload.target,
                     timeout: payload.timeout,
-                    sessionId: payload.sessionId)
+                    snapshotId: payload.snapshotId)
                 return .waitResult(result)
 
             case let .listWindows(payload):
@@ -406,57 +406,63 @@ public final class PeekabooXPCServer: NSObject, PeekabooXPCConnection {
                     appName: payload.appName)
                 return .dialogElements(elements)
 
-            case .createSession:
-                let id = try await self.services.sessions.createSession()
-                return .sessionId(id)
+            case .createSnapshot:
+                let id = try await self.services.snapshots.createSnapshot()
+                return .snapshotId(id)
 
             case let .storeDetectionResult(payload):
-                try await self.services.sessions.storeDetectionResult(
-                    sessionId: payload.sessionId,
+                try await self.services.snapshots.storeDetectionResult(
+                    snapshotId: payload.snapshotId,
                     result: payload.result)
                 return .ok
 
             case let .getDetectionResult(payload):
-                if let result = try await self.services.sessions.getDetectionResult(sessionId: payload.sessionId) {
+                if let result = try await self.services.snapshots.getDetectionResult(snapshotId: payload.snapshotId) {
                     return .detection(result)
                 } else {
                     throw PeekabooXPCErrorEnvelope(
                         code: .notFound,
-                        message: "No detection result for session \(payload.sessionId)")
+                        message: "No detection result for snapshot \(payload.snapshotId)")
                 }
 
             case let .storeScreenshot(payload):
-                try await self.services.sessions.storeScreenshot(
-                    sessionId: payload.sessionId,
+                try await self.services.snapshots.storeScreenshot(
+                    snapshotId: payload.snapshotId,
                     screenshotPath: payload.screenshotPath,
                     applicationName: payload.applicationName,
                     windowTitle: payload.windowTitle,
                     windowBounds: payload.windowBounds)
                 return .ok
 
-            case .listSessions:
-                let sessions = try await self.services.sessions.listSessions()
-                return .sessions(sessions)
+            case let .storeAnnotatedScreenshot(payload):
+                try await self.services.snapshots.storeAnnotatedScreenshot(
+                    snapshotId: payload.snapshotId,
+                    annotatedScreenshotPath: payload.annotatedScreenshotPath)
+                return .ok
 
-            case .getMostRecentSession:
-                if let id = await self.services.sessions.getMostRecentSession() {
-                    return .sessionId(id)
+            case .listSnapshots:
+                let snapshots = try await self.services.snapshots.listSnapshots()
+                return .snapshots(snapshots)
+
+            case .getMostRecentSnapshot:
+                if let id = await self.services.snapshots.getMostRecentSnapshot() {
+                    return .snapshotId(id)
                 } else {
                     throw PeekabooXPCErrorEnvelope(
                         code: .notFound,
-                        message: "No recent session found")
+                        message: "No recent snapshot found")
                 }
 
-            case let .cleanSession(payload):
-                try await self.services.sessions.cleanSession(sessionId: payload.sessionId)
+            case let .cleanSnapshot(payload):
+                try await self.services.snapshots.cleanSnapshot(snapshotId: payload.snapshotId)
                 return .ok
 
-            case let .cleanSessionsOlderThan(payload):
-                let count = try await self.services.sessions.cleanSessionsOlderThan(days: payload.days)
+            case let .cleanSnapshotsOlderThan(payload):
+                let count = try await self.services.snapshots.cleanSnapshotsOlderThan(days: payload.days)
                 return .int(count)
 
-            case .cleanAllSessions:
-                let count = try await self.services.sessions.cleanAllSessions()
+            case .cleanAllSnapshots:
+                let count = try await self.services.snapshots.cleanAllSnapshots()
                 return .int(count)
 
             case .appleScriptProbe:

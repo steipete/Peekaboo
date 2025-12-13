@@ -65,8 +65,8 @@ struct SwipeCommandTests {
 
     @Test("Element based swipe resolves using waitForElement")
     func elementBasedSwipe() async throws {
-        let context = await self.makeContext { automation, sessions in
-            sessions.mostRecentSessionId = "session-1"
+        let context = await self.makeContext { automation, snapshots in
+            snapshots.mostRecentSnapshotId = "snapshot-1"
             let element = DetectedElement(
                 id: "B1",
                 type: .button,
@@ -161,11 +161,11 @@ struct SwipeCommandTests {
     }
 
     private func makeContext(
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSnapshotManager) -> Void)? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()
-            configure?(context.automation, context.sessions)
+            configure?(context.automation, context.snapshots)
             return context
         }
     }

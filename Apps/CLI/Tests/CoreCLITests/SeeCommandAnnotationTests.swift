@@ -160,7 +160,7 @@ struct SeeCommandAnnotationTests {
     @Test("Enhanced detection uses window context")
     func enhancedDetectionWindowContext() async throws {
         let imageData = Data(repeating: 0xAB, count: 4)
-        let sessionId = "test-session-123"
+        let snapshotId = "test-snapshot-123"
         let appName = "Safari"
         let windowTitle = "Start Page"
         let windowBounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
@@ -182,7 +182,7 @@ struct SeeCommandAnnotationTests {
         )
 
         let seeResult = Self.makeSeeResult(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             metadata: metadata,
             captureMetadata: captureResult.metadata,
             appName: appName,
@@ -190,7 +190,7 @@ struct SeeCommandAnnotationTests {
         )
         Self.expectSeeResult(
             seeResult,
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             appName: appName,
             windowTitle: windowTitle
         )
@@ -316,17 +316,17 @@ extension SeeCommandAnnotationTests {
     }
 
     fileprivate static func makeSeeResult(
-        sessionId: String,
+        snapshotId: String,
         metadata: DetectionMetadata,
         captureMetadata: CaptureMetadata,
         appName: String,
         windowTitle: String
     ) -> SeeResult {
         SeeResult(
-            session_id: sessionId,
+            snapshot_id: snapshotId,
             screenshot_raw: "raw.png",
             screenshot_annotated: "raw_annotated.png",
-            ui_map: "map.json",
+            ui_map: "snapshot.json",
             application_name: appName,
             window_title: windowTitle,
             is_dialog: false,
@@ -342,11 +342,11 @@ extension SeeCommandAnnotationTests {
 
     fileprivate static func expectSeeResult(
         _ result: SeeResult,
-        sessionId: String,
+        snapshotId: String,
         appName: String,
         windowTitle: String
     ) {
-        #expect(result.session_id == sessionId)
+        #expect(result.snapshot_id == snapshotId)
         #expect(result.application_name == appName)
         #expect(result.window_title == windowTitle)
     }

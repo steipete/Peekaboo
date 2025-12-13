@@ -33,8 +33,8 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(help: "Movement profile: linear (default) or human.")
     var profile: String?
 
-    @Option(help: "Session ID for element resolution")
-    var session: String?
+    @Option(help: "Snapshot ID for element resolution")
+    var snapshot: String?
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -101,17 +101,17 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
             } else if let elementId = id {
                 // Move to element by ID
-                let sessionId: String? = if let providedSession = session {
-                    providedSession
+                let snapshotId: String? = if let providedSnapshot = snapshot {
+                    providedSnapshot
                 } else {
-                    await self.services.sessions.getMostRecentSession()
+                    await self.services.snapshots.getMostRecentSnapshot()
                 }
-                guard let activeSessionId = sessionId else {
-                    throw PeekabooError.sessionNotFound("No session found")
+                guard let activeSnapshotId = snapshotId else {
+                    throw PeekabooError.snapshotNotFound("No snapshot found")
                 }
 
-                guard let detectionResult = try? await self.services.sessions
-                    .getDetectionResult(sessionId: activeSessionId),
+                guard let detectionResult = try? await self.services.snapshots
+                    .getDetectionResult(snapshotId: activeSnapshotId),
                     let element = detectionResult.elements.findById(elementId)
                 else {
                     throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
@@ -122,13 +122,13 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
             } else if let query = to {
                 // Find element by text/query
-                let sessionId: String? = if let providedSession = session {
-                    providedSession
+                let snapshotId: String? = if let providedSnapshot = snapshot {
+                    providedSnapshot
                 } else {
-                    await self.services.sessions.getMostRecentSession()
+                    await self.services.snapshots.getMostRecentSnapshot()
                 }
-                guard let activeSessionId = sessionId else {
-                    throw PeekabooError.sessionNotFound("No session found")
+                guard let activeSnapshotId = snapshotId else {
+                    throw PeekabooError.snapshotNotFound("No snapshot found")
                 }
 
                 // Wait for element to be available
@@ -136,7 +136,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                     automation: self.services.automation,
                     target: .query(query),
                     timeout: 5.0,
-                    sessionId: activeSessionId
+                    snapshotId: activeSnapshotId
                 )
 
                 guard waitResult.found, let element = waitResult.element else {
@@ -355,7 +355,7 @@ extension MoveCommand: CommanderBindableCommand {
         if let steps: Int = try values.decodeOption("steps", as: Int.self) {
             self.steps = steps
         }
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
         self.profile = values.singleOption("profile")
     }
 }

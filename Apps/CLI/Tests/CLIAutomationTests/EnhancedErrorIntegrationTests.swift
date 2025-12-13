@@ -81,10 +81,10 @@ struct EnhancedErrorIntegrationTests {
     }
 
     @Test(
-        "Click without session shows helpful message",
+        "Click without snapshot shows helpful message",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
-    func actualClickWithoutSession() async throws {
+    func actualClickWithoutSnapshot() async throws {
         let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")

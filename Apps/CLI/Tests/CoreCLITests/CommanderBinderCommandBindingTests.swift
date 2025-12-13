@@ -32,17 +32,17 @@ struct CommanderBinderCommandBindingTests {
     func bindCleanCommand() throws {
         let parsed = ParsedValues(
             positional: [],
-            options: ["olderThan": ["48"], "session": ["ignored"]],
+            options: ["olderThan": ["48"], "snapshot": ["ignored"]],
             flags: ["dryRun"]
         )
         var command = try CommanderCLIBinder.instantiateCommand(ofType: CleanCommand.self, parsedValues: parsed)
         #expect(command.dryRun == true)
         #expect(command.olderThan == 48)
-        #expect(command.session == "ignored")
+        #expect(command.snapshot == "ignored")
 
-        let allSessions = ParsedValues(positional: [], options: [:], flags: ["allSessions"])
-        command = try CommanderCLIBinder.instantiateCommand(ofType: CleanCommand.self, parsedValues: allSessions)
-        #expect(command.allSessions == true)
+        let allSnapshots = ParsedValues(positional: [], options: [:], flags: ["allSnapshots"])
+        command = try CommanderCLIBinder.instantiateCommand(ofType: CleanCommand.self, parsedValues: allSnapshots)
+        #expect(command.allSnapshots == true)
     }
 
     @Test("Run command binding")
@@ -309,7 +309,7 @@ struct CommanderBinderCommandBindingTests {
         let parsed = ParsedValues(
             positional: ["Submit"],
             options: [
-                "session": ["abc"],
+                "snapshot": ["abc"],
                 "on": ["B1"],
                 "app": ["Safari"],
                 "waitFor": ["2500"]
@@ -318,7 +318,7 @@ struct CommanderBinderCommandBindingTests {
         )
         let command = try CommanderCLIBinder.instantiateCommand(ofType: ClickCommand.self, parsedValues: parsed)
         #expect(command.query == "Submit")
-        #expect(command.session == "abc")
+        #expect(command.snapshot == "abc")
         #expect(command.on == "B1")
         #expect(command.app == "Safari")
         #expect(command.waitFor == 2500)
@@ -331,7 +331,7 @@ struct CommanderBinderCommandBindingTests {
         let parsed = ParsedValues(
             positional: ["Hello"],
             options: [
-                "session": ["xyz"],
+                "snapshot": ["xyz"],
                 "delay": ["10"],
                 "wpm": ["150"],
                 "tab": ["2"],
@@ -342,7 +342,7 @@ struct CommanderBinderCommandBindingTests {
         )
         let command = try CommanderCLIBinder.instantiateCommand(ofType: TypeCommand.self, parsedValues: parsed)
         #expect(command.text == "Hello")
-        #expect(command.session == "xyz")
+        #expect(command.snapshot == "xyz")
         #expect(command.delay == 10)
         #expect(command.profileOption?.lowercased() == "human")
         #expect(command.wordsPerMinute == 150)
@@ -362,14 +362,14 @@ struct CommanderBinderCommandBindingTests {
             positional: [],
             options: [
                 "text": ["OptionText"],
-                "session": ["abc"]
+                "snapshot": ["abc"]
             ],
             flags: []
         )
         let command = try CommanderCLIBinder.instantiateCommand(ofType: TypeCommand.self, parsedValues: parsed)
         #expect(command.text == nil)
         #expect(command.textOption == "OptionText")
-        #expect(command.session == "abc")
+        #expect(command.snapshot == "abc")
     }
 
     @Test("Press command binding")
@@ -380,7 +380,7 @@ struct CommanderBinderCommandBindingTests {
                 "count": ["3"],
                 "delay": ["25"],
                 "hold": ["75"],
-                "session": ["sess-123"]
+                "snapshot": ["sess-123"]
             ],
             flags: ["noAutoFocus"]
         )
@@ -389,7 +389,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.count == 3)
         #expect(command.delay == 25)
         #expect(command.hold == 75)
-        #expect(command.session == "sess-123")
+        #expect(command.snapshot == "sess-123")
         #expect(command.focusOptions.noAutoFocus == true)
     }
 
@@ -491,7 +491,7 @@ struct CommanderBinderCommandBindingTests {
                 "duration": ["750"],
                 "steps": ["30"],
                 "profile": ["human"],
-                "session": ["sess-1"]
+                "snapshot": ["sess-1"]
             ],
             flags: ["smooth"]
         )
@@ -500,7 +500,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.duration == 750)
         #expect(command.steps == 30)
         #expect(command.profile == "human")
-        #expect(command.session == "sess-1")
+        #expect(command.snapshot == "sess-1")
         #expect(command.smooth == true)
     }
 
@@ -524,7 +524,7 @@ struct CommanderBinderCommandBindingTests {
                 "steps": ["15"],
                 "modifiers": ["cmd,shift"],
                 "profile": ["human"],
-                "session": ["sess-drag"]
+                "snapshot": ["sess-drag"]
             ],
             flags: ["spaceSwitch"]
         )
@@ -535,7 +535,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.steps == 15)
         #expect(command.modifiers == "cmd,shift")
         #expect(command.profile == "human")
-        #expect(command.session == "sess-drag")
+        #expect(command.snapshot == "sess-drag")
         #expect(command.focusOptions.spaceSwitch == true)
     }
 
@@ -549,7 +549,7 @@ struct CommanderBinderCommandBindingTests {
                 "duration": ["900"],
                 "steps": ["25"],
                 "profile": ["linear"],
-                "session": ["sess-swipe"]
+                "snapshot": ["sess-swipe"]
             ],
             flags: []
         )
@@ -559,7 +559,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.duration == 900)
         #expect(command.steps == 25)
         #expect(command.profile == "linear")
-        #expect(command.session == "sess-swipe")
+        #expect(command.snapshot == "sess-swipe")
     }
 
     @Test("Swipe command requires from/to")

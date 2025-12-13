@@ -9,28 +9,28 @@ import PeekabooFoundation
 @MainActor
 public final class TypeService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "TypeService")
-    private let sessionManager: any SessionManagerProtocol
+    private let snapshotManager: any SnapshotManagerProtocol
     private let clickService: ClickService
     private let cadenceRandom: any TypingCadenceRandomSource
 
     public convenience init(
-        sessionManager: (any SessionManagerProtocol)? = nil,
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
         clickService: ClickService? = nil)
     {
         self.init(
-            sessionManager: sessionManager,
+            snapshotManager: snapshotManager,
             clickService: clickService,
             randomSource: SystemTypingCadenceRandomSource())
     }
 
     init(
-        sessionManager: (any SessionManagerProtocol)? = nil,
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
         clickService: ClickService? = nil,
         randomSource: any TypingCadenceRandomSource)
     {
-        let manager = sessionManager ?? SessionManager()
-        self.sessionManager = manager
-        self.clickService = clickService ?? ClickService(sessionManager: manager)
+        let manager = snapshotManager ?? SnapshotManager()
+        self.snapshotManager = manager
+        self.clickService = clickService ?? ClickService(snapshotManager: manager)
         self.cadenceRandom = randomSource
     }
 
@@ -41,7 +41,7 @@ public final class TypeService {
         target: String?,
         clearExisting: Bool,
         typingDelay: Int,
-        sessionId: String?) async throws
+        snapshotId: String?) async throws
     {
         self.logger
             .debug("Type requested - text: '\(text)', target: \(target ?? "current focus"), clear: \(clearExisting)")
@@ -52,8 +52,8 @@ public final class TypeService {
             var elementFrame: CGRect?
 
             // Try to find element by ID first
-            if let sessionId,
-               let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId),
+            if let snapshotId,
+               let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId),
                let element = detectionResult.elements.findById(target)
             {
                 elementFound = true
@@ -62,7 +62,7 @@ public final class TypeService {
 
             // If not found by ID, search by query
             if !elementFound {
-                let searchResult = try await findAndClickElement(query: target, sessionId: sessionId)
+                let searchResult = try await findAndClickElement(query: target, snapshotId: snapshotId)
                 elementFound = searchResult.found
                 elementFrame = searchResult.frame
             }
@@ -73,7 +73,7 @@ public final class TypeService {
                 try await self.clickService.click(
                     target: .coordinates(center),
                     clickType: .single,
-                    sessionId: sessionId)
+                    snapshotId: snapshotId)
 
                 // Small delay after click
                 try await Task.sleep(nanoseconds: 100_000_000) // 100ms
@@ -97,7 +97,7 @@ public final class TypeService {
     public func typeActions(
         _ actions: [TypeAction],
         cadence: TypingCadence,
-        sessionId: String?) async throws -> TypeResult
+        snapshotId: String?) async throws -> TypeResult
     {
         var totalChars = 0
         var keyPresses = 0
@@ -148,10 +148,10 @@ public final class TypeService {
     // MARK: - Private Methods
 
     @MainActor
-    private func findAndClickElement(query: String, sessionId: String?) async throws -> (found: Bool, frame: CGRect?) {
-        // Search in session first
-        if let sessionId,
-           let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+    private func findAndClickElement(query: String, snapshotId: String?) async throws -> (found: Bool, frame: CGRect?) {
+        // Search in snapshot first
+        if let snapshotId,
+           let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId)
         {
             let queryLower = query.lowercased()
 

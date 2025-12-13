@@ -22,6 +22,7 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
 
     // Session errors
     case sessionNotFound(String)
+    case snapshotNotFound(String)
 
     // Operation errors
     case captureTimeout
@@ -86,6 +87,8 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
             return "Menu item not found: \(item)"
         case let .sessionNotFound(id):
             return "Session not found or expired: \(id)"
+        case let .snapshotNotFound(id):
+            return "Snapshot not found or expired: \(id)"
         case .captureTimeout:
             return "Screen capture timed out"
         case let .captureFailed(reason):
@@ -161,6 +164,8 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
             .menuNotFound
         case .sessionNotFound:
             .sessionNotFound
+        case .snapshotNotFound:
+            .snapshotNotFound
         case .captureTimeout:
             .timeout
         case .captureFailed:
@@ -228,6 +233,8 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
             return ["item": item]
         case let .sessionNotFound(id):
             return ["session_id": id]
+        case let .snapshotNotFound(id):
+            return ["snapshot_id": id]
         case let .captureFailed(reason):
             return ["reason": reason]
         case let .clickFailed(reason):
@@ -294,7 +301,7 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
              .elementNotFound, .ambiguousElement, .menuNotFound, .menuItemNotFound,
              .clickFailed, .typeFailed, .invalidCoordinates:
             .automation
-        case .sessionNotFound:
+        case .sessionNotFound, .snapshotNotFound:
             .session
         case .captureTimeout, .captureFailed, .timeout:
             .automation

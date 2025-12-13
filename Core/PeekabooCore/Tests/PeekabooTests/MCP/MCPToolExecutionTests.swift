@@ -163,7 +163,7 @@ private enum MCPToolTestHelpers {
                 dialogs: services.dialogs,
                 dock: services.dock,
                 screenCapture: screenCapture ?? services.screenCapture,
-                sessions: services.sessions,
+                snapshots: services.snapshots,
                 screens: services.screens,
                 agent: services.agent,
                 permissions: services.permissions,
@@ -198,21 +198,21 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         self.accessibilityGranted = accessibilityGranted
     }
 
-    func detectElements(in _: Data, sessionId _: String?, windowContext _: WindowContext?) async throws
+    func detectElements(in _: Data, snapshotId _: String?, windowContext _: WindowContext?) async throws
         -> ElementDetectionResult
     {
         throw PeekabooError.notImplemented("mock detectElements")
     }
 
-    func click(target _: ClickTarget, clickType _: ClickType, sessionId _: String?) async throws {}
+    func click(target _: ClickTarget, clickType _: ClickType, snapshotId _: String?) async throws {}
 
-    func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, sessionId _: String?) async
+    func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?) async
     throws {}
 
     func typeActions(
         _: [TypeAction],
         cadence: TypingCadence,
-        sessionId _: String?) async throws -> TypeResult
+        snapshotId _: String?) async throws -> TypeResult
     {
         self.lastCadence = cadence
         return TypeResult(totalCharacters: 0, keyPresses: 0)
@@ -231,7 +231,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
 
     func hasAccessibilityPermission() async -> Bool { self.accessibilityGranted }
 
-    func waitForElement(target _: ClickTarget, timeout _: TimeInterval, sessionId _: String?) async throws
+    func waitForElement(target _: ClickTarget, timeout _: TimeInterval, snapshotId _: String?) async throws
         -> WaitForElementResult
     {
         WaitForElementResult(found: false, element: nil, waitTime: 0)

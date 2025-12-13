@@ -13,8 +13,8 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     @Option(name: .customLong("text"), help: "Text to type (alternative to positional argument)")
     var textOption: String?
 
-    @Option(help: "Session ID (uses latest if not specified)")
-    var session: String?
+    @Option(help: "Snapshot ID (uses latest if not specified)")
+    var snapshot: String?
 
     @Option(help: "Delay between keystrokes in milliseconds")
     var delay: Int = 2
@@ -95,10 +95,10 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         let startTime = Date()
         do {
             let actions = try self.buildActions()
-            let sessionId = await self.resolveSessionId()
-            self.warnIfFocusUnknown(sessionId: sessionId)
-            try await self.focusIfNeeded(sessionId: sessionId)
-            let typeResult = try await self.executeTypeActions(actions: actions, sessionId: sessionId)
+            let snapshotId = await self.resolveSnapshotId()
+            self.warnIfFocusUnknown(snapshotId: snapshotId)
+            try await self.focusIfNeeded(snapshotId: snapshotId)
+            let typeResult = try await self.executeTypeActions(actions: actions, snapshotId: snapshotId)
             self.renderResult(typeResult, startTime: startTime)
         } catch {
             self.handleError(error)
@@ -145,11 +145,11 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         return actions
     }
 
-    private func resolveSessionId() async -> String? {
-        if let providedSession = session {
-            providedSession
+    private func resolveSnapshotId() async -> String? {
+        if let providedSnapshot = snapshot {
+            providedSnapshot
         } else {
-            await self.services.sessions.getMostRecentSession()
+            await self.services.snapshots.getMostRecentSnapshot()
         }
     }
 
@@ -169,27 +169,27 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         }
     }
 
-    private func warnIfFocusUnknown(sessionId: String?) {
-        guard self.focusOptions.autoFocus, sessionId == nil, self.app == nil else { return }
+    private func warnIfFocusUnknown(snapshotId: String?) {
+        guard self.focusOptions.autoFocus, snapshotId == nil, self.app == nil else { return }
         self.logger.warn(
             """
-            Typing without an associated --app or session. \
+            Typing without an associated --app or snapshot. \
             We'll inject keys blindly; run 'peekaboo see' or provide --app if you need focus guarantees.
             """
         )
     }
 
-    private func focusIfNeeded(sessionId: String?) async throws {
+    private func focusIfNeeded(snapshotId: String?) async throws {
         try await ensureFocused(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             applicationName: self.app,
             options: self.focusOptions,
             services: self.services
         )
     }
 
-    private func executeTypeActions(actions: [TypeAction], sessionId: String?) async throws -> TypeResult {
-        let request = TypeActionsRequest(actions: actions, cadence: self.typingCadence, sessionId: sessionId)
+    private func executeTypeActions(actions: [TypeAction], snapshotId: String?) async throws -> TypeResult {
+        let request = TypeActionsRequest(actions: actions, cadence: self.typingCadence, snapshotId: snapshotId)
         return try await AutomationServiceBridge.typeActions(automation: self.services.automation, request: request)
     }
 
@@ -317,7 +317,7 @@ extension TypeCommand: CommanderBindableCommand {
         // Commander labels options by property name, so prefer that label and fall back to the
         // custom long name for safety.
         self.textOption = values.singleOption("textOption") ?? values.singleOption("text")
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
         if let delay: Int = try values.decodeOption("delay", as: Int.self) {
             self.delay = delay
         }

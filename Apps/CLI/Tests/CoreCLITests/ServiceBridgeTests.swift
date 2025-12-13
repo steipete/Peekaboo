@@ -14,11 +14,11 @@ struct ServiceBridgeTests {
             automation: automation,
             target: .coordinates(CGPoint(x: 10, y: 20)),
             clickType: .double,
-            sessionId: "session-123"
+            snapshotId: "snapshot-123"
         )
 
         #expect(automation.clickCalls.count == 1)
-        #expect(automation.clickCalls.first?.sessionId == "session-123")
+        #expect(automation.clickCalls.first?.snapshotId == "snapshot-123")
     }
 
     @Test func automationWaitReturnsMockResult() async throws {
@@ -38,7 +38,7 @@ struct ServiceBridgeTests {
             automation: mock,
             target: .elementId("B1"),
             timeout: 1,
-            sessionId: "S42"
+            snapshotId: "S42"
         )
 
         #expect(result.found)
@@ -95,7 +95,7 @@ struct ServiceBridgeTests {
 
 @MainActor
 final class MockAutomationService: UIAutomationServiceProtocol {
-    struct ClickCall { let target: ClickTarget; let clickType: ClickType; let sessionId: String? }
+    struct ClickCall { let target: ClickTarget; let clickType: ClickType; let snapshotId: String? }
     var clickCalls: [ClickCall] = []
     var waitCalls: [ClickTarget] = []
     var waitResult: WaitForElementResult
@@ -106,14 +106,14 @@ final class MockAutomationService: UIAutomationServiceProtocol {
 
     func detectElements(
         in _: Data,
-        sessionId _: String?,
+        snapshotId _: String?,
         windowContext _: WindowContext?
     ) async throws -> ElementDetectionResult {
         throw PeekabooError.notImplemented("mock detectElements")
     }
 
-    func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
-        self.clickCalls.append(.init(target: target, clickType: clickType, sessionId: sessionId))
+    func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
+        self.clickCalls.append(.init(target: target, clickType: clickType, snapshotId: snapshotId))
     }
 
     func type(
@@ -121,13 +121,13 @@ final class MockAutomationService: UIAutomationServiceProtocol {
         target _: String?,
         clearExisting _: Bool,
         typingDelay _: Int,
-        sessionId _: String?
+        snapshotId _: String?
     ) async throws {}
 
     func typeActions(
         _ actions: [TypeAction],
         cadence _: TypingCadence,
-        sessionId _: String?
+        snapshotId _: String?
     ) async throws -> TypeResult {
         TypeResult(totalCharacters: actions.count, keyPresses: actions.count)
     }
@@ -149,7 +149,7 @@ final class MockAutomationService: UIAutomationServiceProtocol {
     func waitForElement(
         target: ClickTarget,
         timeout _: TimeInterval,
-        sessionId _: String?
+        snapshotId _: String?
     ) async throws -> WaitForElementResult {
         self.waitCalls.append(target)
         return self.waitResult

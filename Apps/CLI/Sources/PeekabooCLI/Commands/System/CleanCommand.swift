@@ -2,40 +2,38 @@ import Commander
 import Foundation
 import PeekabooCore
 
-/// Clean up session cache and temporary files
+/// Clean up snapshot cache and temporary files
 @available(macOS 14.0, *)
 @MainActor
 struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
     static let commandDescription = CommandDescription(
         commandName: "clean",
-        abstract: "Clean up session cache and temporary files",
+        abstract: "Clean up snapshot cache and temporary files",
         discussion: """
 
             EXAMPLES:
-              peekaboo clean --all-sessions       # Remove all session data
-              peekaboo clean --older-than 24      # Remove sessions older than 24 hours
-              peekaboo clean --session 12345      # Remove specific session
+              peekaboo clean --all-snapshots      # Remove all snapshot data
+              peekaboo clean --older-than 24      # Remove snapshots older than 24 hours
+              peekaboo clean --snapshot 12345     # Remove specific snapshot
               peekaboo clean --dry-run            # Preview what would be deleted
 
-            SESSION CACHE:
-              Sessions are stored in ~/.peekaboo/session/<PID>/
-              Each session contains:
-              - raw.png: Original screenshot
-              - annotated.png: Screenshot with UI markers (if generated)
-              - map.json: UI element mapping data
+            SNAPSHOT CACHE:
+              Snapshots are stored in ~/.peekaboo/snapshots/<snapshot-id>/
+              Each snapshot contains:
+              - snapshot.json: UI element mapping and metadata
         """,
 
         showHelpOnEmptyInvocation: true
     )
 
-    @Flag(help: "Remove all session data")
-    var allSessions = false
+    @Flag(help: "Remove all snapshot data")
+    var allSnapshots = false
 
-    @Option(help: "Remove sessions older than specified hours (default: 24)")
+    @Option(help: "Remove snapshots older than specified hours (default: 24)")
     var olderThan: Int?
 
-    @Option(help: "Remove specific session by ID")
-    var session: String?
+    @Option(help: "Remove specific snapshot by ID")
+    var snapshot: String?
 
     @Flag(help: "Show what would be deleted without actually deleting")
     var dryRun = false
@@ -70,21 +68,21 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
         do {
             // Validate options
-            let optionCount = [allSessions, olderThan != nil, self.session != nil].count { $0 }
+            let optionCount = [allSnapshots, olderThan != nil, self.snapshot != nil].count { $0 }
             guard optionCount == 1 else {
-                throw ValidationError("Specify exactly one of: --all-sessions, --older-than, or --session")
+                throw ValidationError("Specify exactly one of: --all-snapshots, --older-than, or --snapshot")
             }
 
             // Perform cleanup based on option using the FileService
-            let result: CleanResult
+            let result: SnapshotCleanResult
 
-            if self.allSessions {
-                result = try await self.services.files.cleanAllSessions(dryRun: self.dryRun)
+            if self.allSnapshots {
+                result = try await self.services.files.cleanAllSnapshots(dryRun: self.dryRun)
             } else if let hours = olderThan {
-                result = try await self.services.files.cleanOldSessions(hours: hours, dryRun: self.dryRun)
-            } else if let sessionId = session {
-                result = try await self.services.files.cleanSpecificSession(
-                    sessionId: sessionId,
+                result = try await self.services.files.cleanOldSnapshots(hours: hours, dryRun: self.dryRun)
+            } else if let snapshotId = snapshot {
+                result = try await self.services.files.cleanSpecificSnapshot(
+                    snapshotId: snapshotId,
                     dryRun: self.dryRun
                 )
             } else {
@@ -96,22 +94,8 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
             // Output results
             if self.jsonOutput {
-                // Create a wrapper for the clean result with execution time
-                struct CleanResultWithTime: Codable {
-                    let sessionsRemoved: Int
-                    let bytesFreed: Int64
-                    let sessionDetails: [SessionDetail]
-                    let dryRun: Bool
-                    let executionTime: TimeInterval
-                }
-
-                let outputData = CleanResultWithTime(
-                    sessionsRemoved: result.sessionsRemoved,
-                    bytesFreed: result.bytesFreed,
-                    sessionDetails: result.sessionDetails,
-                    dryRun: result.dryRun,
-                    executionTime: executionTime
-                )
+                var outputData = result
+                outputData.executionTime = executionTime
                 outputSuccessCodable(data: outputData, logger: self.outputLogger)
             } else {
                 self.printResults(result, executionTime: executionTime)
@@ -139,23 +123,23 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
         }
     }
 
-    private func printResults(_ result: CleanResult, executionTime: TimeInterval) {
+    private func printResults(_ result: SnapshotCleanResult, executionTime: TimeInterval) {
         if result.dryRun {
             print("🔍 Dry run mode - no files will be deleted")
             print("")
         }
 
-        if result.sessionsRemoved == 0 {
-            print("✅ No sessions to clean")
+        if result.snapshotsRemoved == 0 {
+            print("✅ No snapshots to clean")
         } else {
             let action = result.dryRun ? "Would remove" : "Removed"
-            print("🗑️  \(action) \(result.sessionsRemoved) session\(result.sessionsRemoved == 1 ? "" : "s")")
+            print("🗑️  \(action) \(result.snapshotsRemoved) snapshot\(result.snapshotsRemoved == 1 ? "" : "s")")
             print("💾 Space \(result.dryRun ? "to be freed" : "freed"): \(self.formatBytes(result.bytesFreed))")
 
-            if result.sessionDetails.count <= 5 {
-                print("\nSessions:")
-                for detail in result.sessionDetails {
-                    print("  - \(detail.sessionId) (\(self.formatBytes(detail.size)))")
+            if result.snapshotDetails.count <= 5 {
+                print("\nSnapshots:")
+                for detail in result.snapshotDetails {
+                    print("  - \(detail.snapshotId) (\(self.formatBytes(detail.size)))")
                 }
             }
         }
@@ -174,8 +158,8 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
 private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool, logger: Logger) {
     let errorCode: ErrorCode = switch error {
-    case .sessionNotFound:
-        .SESSION_NOT_FOUND
+    case .snapshotNotFound:
+        .SNAPSHOT_NOT_FOUND
     case .directoryNotFound:
         .FILE_IO_ERROR
     case .insufficientPermissions:
@@ -197,9 +181,9 @@ extension CleanCommand: AsyncRuntimeCommand {}
 @MainActor
 extension CleanCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.allSessions = values.flag("allSessions")
+        self.allSnapshots = values.flag("allSnapshots")
         self.dryRun = values.flag("dryRun")
         self.olderThan = try values.decodeOption("olderThan", as: Int.self)
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
     }
 }

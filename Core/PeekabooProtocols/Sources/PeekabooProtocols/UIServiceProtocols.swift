@@ -53,19 +53,19 @@ public struct ScreenInfo: Sendable {
     }
 }
 
-/// Protocol for session manager operations
+/// Protocol for snapshot manager operations
 @MainActor
-public protocol SessionManagerProtocol: Sendable {
-    func createSession(id: String?) async -> String
-    func getSession(id: String) async -> SessionData?
-    func updateSession(id: String, data: SessionData) async
-    func deleteSession(id: String) async
-    func listSessions() async -> [String]
-    func getDetectionResult(sessionId: String) async throws -> DetectionResult
-    func storeDetectionResult(_ result: DetectionResult, sessionId: String) async
+public protocol SnapshotManagerProtocol: Sendable {
+    func createSnapshot(id: String?) async -> String
+    func getSnapshot(id: String) async -> SnapshotData?
+    func updateSnapshot(id: String, data: SnapshotData) async
+    func deleteSnapshot(id: String) async
+    func listSnapshots() async -> [String]
+    func getDetectionResult(snapshotId: String) async throws -> DetectionResult
+    func storeDetectionResult(_ result: DetectionResult, snapshotId: String) async
 }
 
-public struct SessionData: Sendable {
+public struct SnapshotData: Sendable {
     public let id: String
     public let createdAt: Date
     public let metadata: [String: String]

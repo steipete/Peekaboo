@@ -20,9 +20,9 @@ import Testing
         #expect(command3.resolvedKeys == "cmd,v")
         #expect(command3.holdDuration == 100)
 
-        // Test with session ID
-        let command4 = try HotkeyCommand.parse(["--keys", "cmd,z", "--session", "test-session"])
-        #expect(command4.session == "test-session")
+        // Test with snapshot ID
+        let command4 = try HotkeyCommand.parse(["--keys", "cmd,z", "--snapshot", "test-snapshot"])
+        #expect(command4.snapshot == "test-snapshot")
     }
 
     @Test func invalidInputHandling() async throws {

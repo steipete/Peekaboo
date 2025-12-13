@@ -31,7 +31,7 @@ struct TypeServiceTests {
             target: nil,
             clearExisting: false,
             typingDelay: 50,
-            sessionId: nil)
+            snapshotId: nil)
     }
 
     @Test("Type with special characters")
@@ -45,7 +45,7 @@ struct TypeServiceTests {
             target: nil,
             clearExisting: false,
             typingDelay: 50,
-            sessionId: nil)
+            snapshotId: nil)
     }
 
     @Test("Type in specific element")
@@ -61,7 +61,7 @@ struct TypeServiceTests {
                 target: "email",
                 clearExisting: false,
                 typingDelay: 50,
-                sessionId: nil)
+                snapshotId: nil)
         } catch is NotFoundError {
             // Expected in test environment
         }
@@ -77,7 +77,7 @@ struct TypeServiceTests {
             target: nil,
             clearExisting: true,
             typingDelay: 50,
-            sessionId: nil)
+            snapshotId: nil)
     }
 
     @Test("Type actions")
@@ -97,7 +97,7 @@ struct TypeServiceTests {
         let result = try await service.typeActions(
             actions,
             cadence: .fixed(milliseconds: 50),
-            sessionId: nil)
+            snapshotId: nil)
 
         #expect(result.totalCharacters > 0)
         #expect(result.keyPresses > 0)
@@ -113,7 +113,7 @@ struct TypeServiceTests {
             target: nil,
             clearExisting: false,
             typingDelay: 0,
-            sessionId: nil)
+            snapshotId: nil)
     }
 
     @Test("Type with slow speed")
@@ -127,7 +127,7 @@ struct TypeServiceTests {
             target: nil,
             clearExisting: false,
             typingDelay: 100, // 100ms between characters
-            sessionId: nil)
+            snapshotId: nil)
         let duration = Date().timeIntervalSince(startTime)
 
         // Should take at least 300ms for 4 characters (3 delays)
@@ -144,7 +144,7 @@ struct TypeServiceTests {
             target: nil,
             clearExisting: false,
             typingDelay: 50,
-            sessionId: nil)
+            snapshotId: nil)
     }
 
     @Test("Unicode text")
@@ -167,7 +167,7 @@ struct TypeServiceTests {
                 target: nil,
                 clearExisting: false,
                 typingDelay: 50,
-                sessionId: nil)
+                snapshotId: nil)
         }
     }
 
@@ -190,7 +190,7 @@ struct TypeServiceTests {
         let result = try await service.typeActions(
             actions,
             cadence: .fixed(milliseconds: 50),
-            sessionId: nil)
+            snapshotId: nil)
 
         #expect(result.keyPresses == actions.count)
     }
@@ -216,7 +216,7 @@ struct TypeServiceTests {
         let result = try await service.typeActions(
             newKeyActions,
             cadence: .fixed(milliseconds: 50),
-            sessionId: nil)
+            snapshotId: nil)
 
         #expect(result.keyPresses == newKeyActions.count)
     }
@@ -245,7 +245,7 @@ struct TypeServiceTests {
         let result = try await service.typeActions(
             actionsWithEscapes,
             cadence: .fixed(milliseconds: 10),
-            sessionId: nil)
+            snapshotId: nil)
 
         #expect(result.totalCharacters > 0)
         #expect(result.keyPresses > 0)
@@ -272,7 +272,7 @@ struct TypeServiceTests {
         let result = try await service.typeActions(
             mixedActions,
             cadence: .fixed(milliseconds: 20),
-            sessionId: nil)
+            snapshotId: nil)
 
         // Count expected key presses
         let expectedKeyPresses = mixedActions.count(where: { action in
@@ -296,7 +296,7 @@ struct TypeServiceTests {
         let result = try await service.typeActions(
             functionKeyActions,
             cadence: .fixed(milliseconds: 30),
-            sessionId: nil)
+            snapshotId: nil)
 
         #expect(result.keyPresses == 12)
     }
@@ -316,7 +316,7 @@ struct TypeServiceTests {
         let result = try await service.typeActions(
             actions,
             cadence: .human(wordsPerMinute: 140),
-            sessionId: nil)
+            snapshotId: nil)
 
         #expect(result.totalCharacters == 7)
         #expect(result.keyPresses >= 8)

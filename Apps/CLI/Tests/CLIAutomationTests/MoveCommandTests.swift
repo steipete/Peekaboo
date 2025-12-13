@@ -59,15 +59,15 @@ struct MoveCommandTests {
             bounds: CGRect(x: 50, y: 70, width: 120, height: 40)
         )
         let detection = ElementDetectionResult(
-            sessionId: "session-id",
+            snapshotId: "snapshot-id",
             screenshotPath: "/tmp/screenshot.png",
             elements: DetectedElements(buttons: [element]),
             metadata: DetectionMetadata(detectionTime: 0, elementCount: 1, method: "stub")
         )
-        try await context.sessions.storeDetectionResult(sessionId: "session-id", result: detection)
+        try await context.snapshots.storeDetectionResult(snapshotId: "snapshot-id", result: detection)
 
         let result = try await self.runMove(
-            arguments: ["--id", "B1", "--session", "session-id", "--json-output"],
+            arguments: ["--id", "B1", "--snapshot", "snapshot-id", "--json-output"],
             context: context
         )
 
@@ -81,8 +81,8 @@ struct MoveCommandTests {
 
     @Test("Move by query waits for element using automation service")
     func moveByQuery() async throws {
-        let context = await self.makeContext { automation, sessions in
-            sessions.mostRecentSessionId = "session-query"
+        let context = await self.makeContext { automation, snapshots in
+            snapshots.mostRecentSnapshotId = "snapshot-query"
             let element = DetectedElement(
                 id: "B2",
                 type: .button,
@@ -148,11 +148,11 @@ struct MoveCommandTests {
     }
 
     private func makeContext(
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSnapshotManager) -> Void)? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()
-            configure?(context.automation, context.sessions)
+            configure?(context.automation, context.snapshots)
             return context
         }
     }

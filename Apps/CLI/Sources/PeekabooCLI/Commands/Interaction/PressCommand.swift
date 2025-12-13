@@ -19,8 +19,8 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
     @Option(help: "Hold duration for each key in milliseconds")
     var hold: Int = 50
 
-    @Option(help: "Session ID (uses latest if not specified)")
-    var session: String?
+    @Option(help: "Snapshot ID (uses latest if not specified)")
+    var snapshot: String?
 
     @OptionGroup var focusOptions: FocusCommandOptions
     @RuntimeStorage private var runtime: CommandRuntime?
@@ -55,17 +55,17 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
         do {
             try self.validate()
-            // Get session if available
-            let sessionId: String? = if let providedSession = session {
-                providedSession
+            // Get snapshot if available
+            let snapshotId: String? = if let providedSnapshot = snapshot {
+                providedSnapshot
             } else {
-                await self.services.sessions.getMostRecentSession()
+                await self.services.snapshots.getMostRecentSnapshot()
             }
 
             // Ensure window is focused before pressing keys
-            if let sessionId {
+            if let snapshotId {
                 try await ensureFocused(
-                    sessionId: sessionId,
+                    snapshotId: snapshotId,
                     options: self.focusOptions,
                     services: self.services
                 )
@@ -92,7 +92,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             let typeRequest = TypeActionsRequest(
                 actions: actions,
                 cadence: .fixed(milliseconds: self.delay),
-                sessionId: sessionId
+                snapshotId: snapshotId
             )
             let result = try await AutomationServiceBridge.typeActions(
                 automation: self.services.automation,
@@ -210,7 +210,7 @@ extension PressCommand: CommanderBindableCommand {
         if let hold: Int = try values.decodeOption("hold", as: Int.self) {
             self.hold = hold
         }
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
         self.focusOptions = try values.makeFocusOptions()
     }
 }

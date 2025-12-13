@@ -20,7 +20,7 @@ struct ScrollServiceTests {
         target: String? = nil,
         smooth: Bool = false,
         delay: Int = 10,
-        sessionId: String? = nil) -> ScrollRequest
+        snapshotId: String? = nil) -> ScrollRequest
     {
         ScrollRequest(
             direction: direction,
@@ -28,7 +28,7 @@ struct ScrollServiceTests {
             target: target,
             smooth: smooth,
             delay: delay,
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
     @Test("ScrollService initializes successfully with default configuration")

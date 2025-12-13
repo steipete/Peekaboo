@@ -99,7 +99,7 @@ struct AllCommandsJSONOutputTests {
             (["list", "apps", "--json-output"], "list apps"),
             (["list", "permissions", "--json-output"], "list permissions"),
             (["sleep", "50", "--json-output"], "sleep"),
-            (["clean", "--all-sessions", "--dry-run", "--json-output"], "clean (dry run)"),
+            (["clean", "--all-snapshots", "--dry-run", "--json-output"], "clean (dry run)"),
         ]
         var invalidJSONCommands: [String] = []
 

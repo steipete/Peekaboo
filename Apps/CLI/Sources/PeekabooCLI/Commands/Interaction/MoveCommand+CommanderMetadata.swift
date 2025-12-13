@@ -37,9 +37,9 @@ extension MoveCommand: CommanderSignatureProviding {
                     long: "profile"
                 ),
                 .commandOption(
-                    "session",
-                    help: "Session ID for element resolution",
-                    long: "session"
+                    "snapshot",
+                    help: "Snapshot ID for element resolution",
+                    long: "snapshot"
                 ),
             ],
             flags: [

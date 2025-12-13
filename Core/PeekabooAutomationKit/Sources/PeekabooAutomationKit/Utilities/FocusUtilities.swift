@@ -20,7 +20,7 @@
 /// 2. **Space Switching**: Switch to window's Space if on different desktop
 /// 3. **Window Movement**: Bring windows to current Space
 /// 4. **Focus Verification**: Verify focus with configurable retries
-/// 5. **Session Integration**: Store window IDs for fast refocusing
+/// 5. **Snapshot Integration**: Store window IDs for fast refocusing
 ///
 /// ## Usage Examples
 ///

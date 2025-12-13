@@ -12,7 +12,7 @@ public protocol PeekabooServiceProviding: AnyObject, Sendable {
     var menu: any MenuServiceProtocol { get }
     var dock: any DockServiceProtocol { get }
     var dialogs: any DialogServiceProtocol { get }
-    var sessions: any SessionManagerProtocol { get }
+    var snapshots: any SnapshotManagerProtocol { get }
     var files: any FileServiceProtocol { get }
     var clipboard: any ClipboardServiceProtocol { get }
     var configuration: ConfigurationManager { get }

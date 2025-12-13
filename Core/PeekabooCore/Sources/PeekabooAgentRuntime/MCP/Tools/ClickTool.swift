@@ -36,9 +36,9 @@ public struct ClickTool: MCPTool {
                     description: """
                     Optional. Click at specific coordinates in format 'x,y' (e.g., '100,200').
                     """),
-                "session": SchemaBuilder.string(
+                "snapshot": SchemaBuilder.string(
                     description: """
-                    Optional. Session ID from see command. Uses latest session if not specified.
+                    Optional. Snapshot ID from see command. Uses latest snapshot if not specified.
                     """),
                 "wait_for": SchemaBuilder.number(
                     description: """
@@ -74,7 +74,7 @@ public struct ClickTool: MCPTool {
             let resolution = try await self.resolveClickTarget(for: request)
             try await self.performClick(
                 at: resolution.location,
-                sessionId: request.sessionId,
+                snapshotId: request.snapshotId,
                 intent: request.intent)
 
             let executionTime = Date().timeIntervalSince(startTime)
@@ -92,14 +92,8 @@ public struct ClickTool: MCPTool {
 
     // MARK: - Private Helpers
 
-    private func getSession(id: String?) async -> UISession? {
-        if let sessionId = id {
-            return await UISessionManager.shared.getSession(id: sessionId)
-        }
-
-        // Get most recent session
-        // For now, return nil - in a real implementation we'd track the most recent session
-        return nil
+    private func getSnapshot(id: String?) async -> UISnapshot? {
+        await UISnapshotManager.shared.getSnapshot(id: id)
     }
 
     private func resolveClickTarget(for request: ClickRequest) async throws -> ClickResolution {
@@ -108,33 +102,33 @@ public struct ClickTool: MCPTool {
             let point = try self.parseCoordinates(raw)
             return ClickResolution(location: point, elementDescription: nil)
         case let .elementId(identifier):
-            let session = try await self.requireSession(id: request.sessionId)
-            let element = try await self.requireElement(id: identifier, session: session)
+            let snapshot = try await self.requireSnapshot(id: request.snapshotId)
+            let element = try await self.requireElement(id: identifier, snapshot: snapshot)
             return ClickResolution(
                 location: element.centerPoint,
                 elementDescription: element.humanDescription,
-                targetApp: session.applicationName,
-                windowTitle: session.windowTitle,
+                targetApp: snapshot.applicationName,
+                windowTitle: snapshot.windowTitle,
                 elementRole: element.humanRole,
                 elementLabel: element.displayLabel)
         case let .query(text):
-            let session = try await self.requireSession(id: request.sessionId)
-            let element = try await self.findElement(matching: text, session: session)
+            let snapshot = try await self.requireSnapshot(id: request.snapshotId)
+            let element = try await self.findElement(matching: text, snapshot: snapshot)
             return ClickResolution(
                 location: element.centerPoint,
                 elementDescription: element.humanDescription,
-                targetApp: session.applicationName,
-                windowTitle: session.windowTitle,
+                targetApp: snapshot.applicationName,
+                windowTitle: snapshot.windowTitle,
                 elementRole: element.humanRole,
                 elementLabel: element.displayLabel)
         }
     }
 
-    private func performClick(at location: CGPoint, sessionId: String?, intent: ClickIntent) async throws {
+    private func performClick(at location: CGPoint, snapshotId: String?, intent: ClickIntent) async throws {
         try await self.context.automation.click(
             target: .coordinates(location),
             clickType: intent.automationType,
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
     private func buildResponse(
@@ -186,24 +180,24 @@ public struct ClickTool: MCPTool {
         return CGPoint(x: x, y: y)
     }
 
-    private func requireSession(id: String?) async throws -> UISession {
-        guard let session = await self.getSession(id: id) else {
-            throw ClickToolError("No active session. Run 'see' command first to capture UI state.")
+    private func requireSnapshot(id: String?) async throws -> UISnapshot {
+        guard let snapshot = await self.getSnapshot(id: id) else {
+            throw ClickToolError("No active snapshot. Run 'see' command first to capture UI state.")
         }
-        return session
+        return snapshot
     }
 
-    private func requireElement(id: String, session: UISession) async throws -> UIElement {
-        guard let element = await session.getElement(byId: id) else {
+    private func requireElement(id: String, snapshot: UISnapshot) async throws -> UIElement {
+        guard let element = await snapshot.getElement(byId: id) else {
             throw ClickToolError(
-                "Element '\(id)' not found in current session. Run 'see' command to update UI state.")
+                "Element '\(id)' not found in current snapshot. Run 'see' command to update UI state.")
         }
         return element
     }
 
-    private func findElement(matching query: String, session: UISession) async throws -> UIElement {
+    private func findElement(matching query: String, snapshot: UISnapshot) async throws -> UIElement {
         let searchText = query.lowercased()
-        let elements = await session.uiElements
+        let elements = await snapshot.uiElements
         let matches = elements.filter { element in
             element.title?.lowercased().contains(searchText) ?? false ||
                 element.label?.lowercased().contains(searchText) ?? false ||
@@ -222,7 +216,7 @@ public struct ClickTool: MCPTool {
 
 private struct ClickRequest {
     let target: ClickRequestTarget
-    let sessionId: String?
+    let snapshotId: String?
     let intent: ClickIntent
 
     init(arguments: ToolArguments) throws {
@@ -236,7 +230,7 @@ private struct ClickRequest {
             throw ClickToolError("Must specify either 'query', 'on', or 'coords'.")
         }
 
-        self.sessionId = arguments.getString("session")
+        self.snapshotId = arguments.getString("snapshot")
         let isDouble = arguments.getBool("double") ?? false
         let isRight = arguments.getBool("right") ?? false
         self.intent = ClickIntent(double: isDouble, right: isRight)

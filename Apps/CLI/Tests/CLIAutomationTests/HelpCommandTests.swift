@@ -45,7 +45,7 @@ struct HelpCommandTests {
             ("move", "Move the mouse cursor to coordinates or UI elements"),
             ("run", "Execute a Peekaboo automation script"),
             ("sleep", "Pause execution for a specified duration"),
-            ("clean", "Clean up session cache and temporary files"),
+            ("clean", "Clean up snapshot cache and temporary files"),
             ("window", "Manipulate application windows"),
             ("menu", "Interact with application menu bar"),
             ("app", "Control applications"),

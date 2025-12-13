@@ -61,7 +61,7 @@ struct SeeCommandAnnotationIntegrationTests {
         }
 
         let result2 = SeeResult(
-            session_id: "test2",
+            snapshot_id: "test2",
             screenshot_raw: path2,
             screenshot_annotated: "",
             ui_map: "",
@@ -110,7 +110,7 @@ struct SeeCommandAnnotationIntegrationTests {
         if let uiService = services.automation as? UIAutomationService {
             let result = try await uiService.detectElements(
                 in: imageData,
-                sessionId: nil,
+                snapshotId: nil,
                 windowContext: windowContext
             )
 

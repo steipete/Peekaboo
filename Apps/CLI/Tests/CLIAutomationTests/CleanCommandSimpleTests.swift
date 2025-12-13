@@ -7,10 +7,10 @@ import Testing
 struct CleanCommandSimpleTests {
     @Test("Clean command parses all-sessions flag")
     func parseAllSessions() throws {
-        let command = try CleanCommand.parse(["--all-sessions"])
-        #expect(command.allSessions == true)
+        let command = try CleanCommand.parse(["--all-snapshots"])
+        #expect(command.allSnapshots == true)
         #expect(command.olderThan == nil)
-        #expect(command.session == nil)
+        #expect(command.snapshot == nil)
         #expect(command.dryRun == false)
         #expect(command.jsonOutput == false)
     }
@@ -18,30 +18,30 @@ struct CleanCommandSimpleTests {
     @Test("Clean command parses older-than option")
     func parseOlderThan() throws {
         let command = try CleanCommand.parse(["--older-than", "24"])
-        #expect(command.allSessions == false)
+        #expect(command.allSnapshots == false)
         #expect(command.olderThan == 24)
-        #expect(command.session == nil)
+        #expect(command.snapshot == nil)
     }
 
-    @Test("Clean command parses session option")
+    @Test("Clean command parses snapshot option")
     func parseSession() throws {
-        let command = try CleanCommand.parse(["--session", "12345"])
-        #expect(command.allSessions == false)
+        let command = try CleanCommand.parse(["--snapshot", "12345"])
+        #expect(command.allSnapshots == false)
         #expect(command.olderThan == nil)
-        #expect(command.session == "12345")
+        #expect(command.snapshot == "12345")
     }
 
     @Test("Clean command parses dry-run flag")
     func parseDryRun() throws {
-        let command = try CleanCommand.parse(["--all-sessions", "--dry-run"])
-        #expect(command.allSessions == true)
+        let command = try CleanCommand.parse(["--all-snapshots", "--dry-run"])
+        #expect(command.allSnapshots == true)
         #expect(command.dryRun == true)
     }
 
     @Test("Clean command parses json-output flag")
     func parseJsonOutput() throws {
-        let command = try CleanCommand.parse(["--all-sessions", "--json-output"])
-        #expect(command.allSessions == true)
+        let command = try CleanCommand.parse(["--all-snapshots", "--json-output"])
+        #expect(command.allSnapshots == true)
         #expect(command.jsonOutput == true)
     }
 
@@ -59,22 +59,22 @@ struct CleanCommandSimpleTests {
 
     @Test("Clean result structure")
     func cleanResultStructure() {
-        let sessionDetails = [
-            SessionDetail(sessionId: "123", path: "/tmp/123", size: 1024, creationDate: Date()),
-            SessionDetail(sessionId: "456", path: "/tmp/456", size: 2048, creationDate: Date()),
+        let snapshotDetails = [
+            SnapshotDetail(snapshotId: "123", path: "/tmp/123", size: 1024, creationDate: Date()),
+            SnapshotDetail(snapshotId: "456", path: "/tmp/456", size: 2048, creationDate: Date()),
         ]
 
-        let result = CleanResult(
-            sessionsRemoved: 2,
+        let result = SnapshotCleanResult(
+            snapshotsRemoved: 2,
             bytesFreed: 3072,
-            sessionDetails: sessionDetails,
+            snapshotDetails: snapshotDetails,
             dryRun: false,
             executionTime: 1.5
         )
 
-        #expect(result.sessionsRemoved == 2)
+        #expect(result.snapshotsRemoved == 2)
         #expect(result.bytesFreed == 3072)
-        #expect(result.sessionDetails.count == 2)
+        #expect(result.snapshotDetails.count == 2)
         #expect(result.dryRun == false)
     }
 }

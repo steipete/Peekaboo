@@ -9,13 +9,13 @@ import PeekabooFoundation
 @MainActor
 public final class ScrollService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ScrollService")
-    private let sessionManager: any SessionManagerProtocol
+    private let snapshotManager: any SnapshotManagerProtocol
     private let clickService: ClickService
 
-    public init(sessionManager: (any SessionManagerProtocol)? = nil, clickService: ClickService? = nil) {
-        let manager = sessionManager ?? SessionManager()
-        self.sessionManager = manager
-        self.clickService = clickService ?? ClickService(sessionManager: manager)
+    public init(snapshotManager: (any SnapshotManagerProtocol)? = nil, clickService: ClickService? = nil) {
+        let manager = snapshotManager ?? SnapshotManager()
+        self.snapshotManager = manager
+        self.clickService = clickService ?? ClickService(snapshotManager: manager)
     }
 
     /// Perform scroll operation
@@ -47,12 +47,12 @@ public final class ScrollService {
             return location
         }
 
-        if let sessionPoint = try await self.lookupElementCenter(target: target, sessionId: request.sessionId) {
+        if let sessionPoint = try await self.lookupElementCenter(target: target, snapshotId: request.snapshotId) {
             try await self.moveMouseToPoint(sessionPoint)
             return sessionPoint
         }
 
-        guard let frame = try await self.findElementFrame(query: target, sessionId: request.sessionId) else {
+        guard let frame = try await self.findElementFrame(query: target, snapshotId: request.snapshotId) else {
             throw NotFoundError.element(target)
         }
 
@@ -63,9 +63,9 @@ public final class ScrollService {
         return point
     }
 
-    private func lookupElementCenter(target: String, sessionId: String?) async throws -> CGPoint? {
-        guard let sessionId,
-              let detectionResult = try? await self.sessionManager.getDetectionResult(sessionId: sessionId),
+    private func lookupElementCenter(target: String, snapshotId: String?) async throws -> CGPoint? {
+        guard let snapshotId,
+              let detectionResult = try? await self.snapshotManager.getDetectionResult(snapshotId: snapshotId),
               let element = detectionResult.elements.findById(target)
         else {
             return nil
@@ -127,10 +127,10 @@ public final class ScrollService {
     }
 
     @MainActor
-    private func findElementFrame(query: String, sessionId: String?) async throws -> CGRect? {
-        // Search in session first
-        if let sessionId,
-           let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+    private func findElementFrame(query: String, snapshotId: String?) async throws -> CGRect? {
+        // Search in snapshot first
+        if let snapshotId,
+           let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId)
         {
             let queryLower = query.lowercased()
 

@@ -33,8 +33,8 @@ public struct ScrollTool: MCPTool {
                 "on": SchemaBuilder.string(
                     description: "Optional. Element ID to scroll on (from see command). " +
                         "If not specified, scrolls at current mouse position."),
-                "session": SchemaBuilder.string(
-                    description: "Optional. Session ID from see command. Uses latest session if not specified."),
+                "snapshot": SchemaBuilder.string(
+                    description: "Optional. Snapshot ID from see command. Uses latest snapshot if not specified."),
                 "amount": SchemaBuilder.number(
                     description: "Optional. Number of scroll ticks/lines. Default: 3.",
                     default: 3),
@@ -82,14 +82,8 @@ public struct ScrollTool: MCPTool {
         }
     }
 
-    private func getSession(id: String?) async -> UISession? {
-        if let sessionId = id {
-            return await UISessionManager.shared.getSession(id: sessionId)
-        }
-
-        // Get most recent session
-        // For now, return nil - in a real implementation we'd track the most recent session
-        return nil
+    private func getSnapshot(id: String?) async -> UISnapshot? {
+        await UISnapshotManager.shared.getSnapshot(id: id)
     }
 
     private func parseRequest(arguments: ToolArguments) throws -> ScrollToolRequest {
@@ -112,7 +106,7 @@ public struct ScrollTool: MCPTool {
         return ScrollToolRequest(
             direction: direction,
             elementId: arguments.getString("on"),
-            sessionId: arguments.getString("session"),
+            snapshotId: arguments.getString("snapshot"),
             amount: amount,
             delay: Int(arguments.getNumber("delay") ?? 2),
             smooth: arguments.getBool("smooth") ?? false)
@@ -130,7 +124,7 @@ public struct ScrollTool: MCPTool {
             target: target.elementId,
             smooth: request.smooth,
             delay: request.delay,
-            sessionId: request.sessionId)
+            snapshotId: request.snapshotId)
         try await automation.scroll(serviceRequest)
 
         let executionTime = Date().timeIntervalSince(startTime)
@@ -154,13 +148,13 @@ public struct ScrollTool: MCPTool {
             return ScrollTargetDescription(elementId: nil, description: "at current mouse position", appName: nil)
         }
 
-        guard let session = await self.getSession(id: request.sessionId) else {
-            throw ScrollToolValidationError("No active session. Run 'see' command first to capture UI state.")
+        guard let snapshot = await self.getSnapshot(id: request.snapshotId) else {
+            throw ScrollToolValidationError("No active snapshot. Run 'see' command first to capture UI state.")
         }
 
-        guard let element = await session.getElement(byId: elementId) else {
+        guard let element = await snapshot.getElement(byId: elementId) else {
             throw ScrollToolValidationError(
-                "Element '\(elementId)' not found in current session. Run 'see' command to update UI state.")
+                "Element '\(elementId)' not found in current snapshot. Run 'see' command to update UI state.")
         }
 
         let label = element.title ?? element.label ?? "untitled"
@@ -168,14 +162,14 @@ public struct ScrollTool: MCPTool {
         return ScrollTargetDescription(
             elementId: elementId,
             description: description,
-            appName: session.applicationName)
+            appName: snapshot.applicationName)
     }
 }
 
 private struct ScrollToolRequest {
     let direction: ToolScrollDirection
     let elementId: String?
-    let sessionId: String?
+    let snapshotId: String?
     let amount: Int
     let delay: Int
     let smooth: Bool

@@ -26,8 +26,8 @@ struct CommandRuntimeInjectionTests {
         )
 
         let context = MCPToolContext.shared
-        #expect(ObjectIdentifier(context.sessions as AnyObject) ==
-            ObjectIdentifier(services.sessions as AnyObject))
+        #expect(ObjectIdentifier(context.snapshots as AnyObject) ==
+            ObjectIdentifier(services.snapshots as AnyObject))
 
         let tools = ToolRegistry.allTools()
         #expect(!tools.isEmpty)
@@ -51,7 +51,7 @@ final class RecordingPeekabooServices: PeekabooServiceProviding {
     var menu: any MenuServiceProtocol { self.base.menu }
     var dock: any DockServiceProtocol { self.base.dock }
     var dialogs: any DialogServiceProtocol { self.base.dialogs }
-    var sessions: any SessionManagerProtocol { self.base.sessions }
+    var snapshots: any SnapshotManagerProtocol { self.base.snapshots }
     var files: any FileServiceProtocol { self.base.files }
     var clipboard: any ClipboardServiceProtocol { self.base.clipboard }
     var configuration: PeekabooCore.ConfigurationManager { self.base.configuration }

@@ -35,8 +35,8 @@ public struct MoveTool: MCPTool {
                     description: "Optional. Alias for 'to' - coordinates in format 'x,y' (e.g., '100,200')."),
                 "id": SchemaBuilder.string(
                     description: "Optional. Element ID to move to (from see command output)."),
-                "session": SchemaBuilder.string(
-                    description: "Optional. Session ID from see command. Uses latest session if not specified."),
+                "snapshot": SchemaBuilder.string(
+                    description: "Optional. Snapshot ID from see command. Uses latest snapshot if not specified."),
                 "center": SchemaBuilder.boolean(
                     description: "Optional. Move to center of screen.",
                     default: false),
@@ -131,7 +131,7 @@ public struct MoveTool: MCPTool {
 
     private func parseRequest(arguments: ToolArguments) throws -> MoveRequest {
         let target = try self.parseTarget(from: arguments)
-        let sessionId = arguments.getString("session")
+        let snapshotId = arguments.getString("snapshot")
         let profileName = (arguments.getString("profile") ?? "linear").lowercased()
         guard let profile = MovementProfileOption(rawValue: profileName) else {
             throw MoveToolValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
@@ -153,7 +153,7 @@ public struct MoveTool: MCPTool {
 
         return MoveRequest(
             target: target,
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             smooth: smooth,
             durationOverride: durationOverride,
             stepsOverride: stepsOverride,
@@ -202,12 +202,12 @@ public struct MoveTool: MCPTool {
             let summary = "coordinates (\(Int(location.x)), \(Int(location.y)))"
             return ResolvedMoveTarget(location: location, description: summary)
         case let .element(elementId):
-            guard let session = await self.getSession(id: request.sessionId) else {
-                throw MoveToolValidationError("No active session. Run 'see' command first to capture UI state.")
+            guard let snapshot = await self.getSnapshot(id: request.snapshotId) else {
+                throw MoveToolValidationError("No active snapshot. Run 'see' command first to capture UI state.")
             }
-            guard let element = await session.getElement(byId: elementId) else {
+            guard let element = await snapshot.getElement(byId: elementId) else {
                 throw MoveToolValidationError(
-                    "Element '\(elementId)' not found in current session. Run 'see' command to update UI state.")
+                    "Element '\(elementId)' not found in current snapshot. Run 'see' command to update UI state.")
             }
             let location = CGPoint(x: element.frame.midX, y: element.frame.midY)
             let label = element.title ?? element.label ?? "untitled"
@@ -215,8 +215,8 @@ public struct MoveTool: MCPTool {
             return ResolvedMoveTarget(
                 location: location,
                 description: summary,
-                targetApp: session.applicationName,
-                windowTitle: session.windowTitle,
+                targetApp: snapshot.applicationName,
+                windowTitle: snapshot.windowTitle,
                 elementRole: element.summaryRole,
                 elementLabel: element.summaryLabel)
         }
@@ -306,14 +306,8 @@ public struct MoveTool: MCPTool {
             meta: metaValue)
     }
 
-    private func getSession(id: String?) async -> UISession? {
-        if let sessionId = id {
-            return await UISessionManager.shared.getSession(id: sessionId)
-        }
-
-        // Get most recent session
-        // For now, return nil - in a real implementation we'd track the most recent session
-        return nil
+    private func getSnapshot(id: String?) async -> UISnapshot? {
+        await UISnapshotManager.shared.getSnapshot(id: id)
     }
 
     private func resolveMovementParameters(for request: MoveRequest, distance: CGFloat) -> MovementParameters {
@@ -335,7 +329,7 @@ private enum MoveTarget {
 
 private struct MoveRequest {
     let target: MoveTarget
-    let sessionId: String?
+    let snapshotId: String?
     let smooth: Bool
     let durationOverride: Int?
     let stepsOverride: Int?

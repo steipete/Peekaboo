@@ -96,7 +96,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     struct ClickCall: Sendable {
         let target: ClickTarget
         let clickType: ClickType
-        let sessionId: String?
+        let snapshotId: String?
     }
 
     struct TypeTextCall: Sendable {
@@ -104,13 +104,13 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         let target: String?
         let clearExisting: Bool
         let typingDelay: Int
-        let sessionId: String?
+        let snapshotId: String?
     }
 
     struct TypeActionsCall: Sendable {
         let actions: [TypeAction]
         let cadence: TypingCadence
-        let sessionId: String?
+        let snapshotId: String?
     }
 
     struct ScrollCall: Sendable {
@@ -149,7 +149,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     struct WaitForElementCall: Sendable {
         let target: ClickTarget
         let timeout: TimeInterval
-        let sessionId: String?
+        let snapshotId: String?
     }
 
     private enum WaitTargetKey: Hashable {
@@ -167,7 +167,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     var moveMouseCalls: [MoveMouseCall] = []
     var hotkeyCalls: [HotkeyCall] = []
     var waitForElementCalls: [WaitForElementCall] = []
-    var detectElementsCalls: [(imageData: Data, sessionId: String?, windowContext: WindowContext?)] = []
+    var detectElementsCalls: [(imageData: Data, snapshotId: String?, windowContext: WindowContext?)] = []
 
     var nextTypeActionsResult: TypeResult?
     var typeActionsResultProvider: (([TypeAction], TypingCadence, String?) -> TypeResult)?
@@ -182,13 +182,13 @@ final class StubAutomationService: UIAutomationServiceProtocol {
 
     func detectElements(
         in imageData: Data,
-        sessionId: String?,
+        snapshotId: String?,
         windowContext: WindowContext?
     ) async throws -> ElementDetectionResult {
-        self.detectElementsCalls.append((imageData, sessionId, windowContext))
+        self.detectElementsCalls.append((imageData, snapshotId, windowContext))
 
         if let handler = self.detectElementsHandler {
-            return try await handler(imageData, sessionId, windowContext)
+            return try await handler(imageData, snapshotId, windowContext)
         }
 
         if let nextDetectionResult {
@@ -198,8 +198,8 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         throw TestStubError.unimplemented(#function)
     }
 
-    func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
-        self.clickCalls.append(ClickCall(target: target, clickType: clickType, sessionId: sessionId))
+    func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
+        self.clickCalls.append(ClickCall(target: target, clickType: clickType, snapshotId: snapshotId))
     }
 
     func type(
@@ -207,7 +207,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         target: String?,
         clearExisting: Bool,
         typingDelay: Int,
-        sessionId: String?
+        snapshotId: String?
     ) async throws {
         self.typeTextCalls.append(
             TypeTextCall(
@@ -215,21 +215,21 @@ final class StubAutomationService: UIAutomationServiceProtocol {
                 target: target,
                 clearExisting: clearExisting,
                 typingDelay: typingDelay,
-                sessionId: sessionId
+                snapshotId: snapshotId
             ))
     }
 
     func typeActions(
         _ actions: [TypeAction],
         cadence: TypingCadence,
-        sessionId: String?
+        snapshotId: String?
     ) async throws -> TypeResult {
         self.typeActionsCalls.append(
-            TypeActionsCall(actions: actions, cadence: cadence, sessionId: sessionId)
+            TypeActionsCall(actions: actions, cadence: cadence, snapshotId: snapshotId)
         )
 
         if let provider = self.typeActionsResultProvider {
-            return provider(actions, cadence, sessionId)
+            return provider(actions, cadence, snapshotId)
         }
 
         if let nextResult = self.nextTypeActionsResult {
@@ -276,14 +276,14 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     func waitForElement(
         target: ClickTarget,
         timeout: TimeInterval,
-        sessionId: String?
+        snapshotId: String?
     ) async throws -> WaitForElementResult {
         self.waitForElementCalls.append(
-            WaitForElementCall(target: target, timeout: timeout, sessionId: sessionId)
+            WaitForElementCall(target: target, timeout: timeout, snapshotId: snapshotId)
         )
 
         if let provider = self.waitForElementProvider {
-            return provider(target, timeout, sessionId)
+            return provider(target, timeout, snapshotId)
         }
 
         if let stored = self.waitForElementResults[self.key(for: target)] {
@@ -449,11 +449,12 @@ final class StubApplicationService: ApplicationServiceProtocol {
     }
 }
 
-final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
+final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
     private(set) var detectionResults: [String: ElementDetectionResult] = [:]
-    private(set) var sessionInfos: [String: SessionInfo] = [:]
+    private(set) var snapshotInfos: [String: SnapshotInfo] = [:]
     private(set) var storedElements: [String: [String: PeekabooCore.UIElement]] = [:]
-    var mostRecentSessionId: String?
+    private(set) var storedAnnotatedScreenshots: [String: [String]] = [:]
+    var mostRecentSnapshotId: String?
     struct ScreenshotRecord: Sendable {
         let path: String
         let applicationName: String?
@@ -463,11 +464,11 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
 
     private(set) var storedScreenshots: [String: [ScreenshotRecord]] = [:]
 
-    func createSession() async throws -> String {
-        let sessionId = UUID().uuidString
+    func createSnapshot() async throws -> String {
+        let snapshotId = UUID().uuidString
         let now = Date()
-        self.sessionInfos[sessionId] = SessionInfo(
-            id: sessionId,
+        self.snapshotInfos[snapshotId] = SnapshotInfo(
+            id: snapshotId,
             processId: 0,
             createdAt: now,
             lastAccessedAt: now,
@@ -475,18 +476,18 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
             screenshotCount: 0,
             isActive: true
         )
-        self.mostRecentSessionId = sessionId
-        return sessionId
+        self.mostRecentSnapshotId = snapshotId
+        return snapshotId
     }
 
-    func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
-        self.detectionResults[sessionId] = result
-        self.mostRecentSessionId = sessionId
+    func storeDetectionResult(snapshotId: String, result: ElementDetectionResult) async throws {
+        self.detectionResults[snapshotId] = result
+        self.mostRecentSnapshotId = snapshotId
 
-        let existingInfo = self.sessionInfos[sessionId]
+        let existingInfo = self.snapshotInfos[snapshotId]
         let createdAt = existingInfo?.createdAt ?? Date()
-        self.sessionInfos[sessionId] = SessionInfo(
-            id: sessionId,
+        self.snapshotInfos[snapshotId] = SnapshotInfo(
+            id: snapshotId,
             processId: existingInfo?.processId ?? 0,
             createdAt: createdAt,
             lastAccessedAt: Date(),
@@ -495,7 +496,7 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
             isActive: true
         )
 
-        self.storedElements[sessionId] = result.elements.all
+        self.storedElements[snapshotId] = result.elements.all
             .reduce(into: [String: PeekabooCore.UIElement]()) { partial, element in
                 partial[element.id] = PeekabooCore.UIElement(
                     id: element.id,
@@ -517,65 +518,65 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
             }
     }
 
-    func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult? {
-        self.detectionResults[sessionId]
+    func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult? {
+        self.detectionResults[snapshotId]
     }
 
-    func getMostRecentSession() async -> String? {
-        self.mostRecentSessionId
+    func getMostRecentSnapshot() async -> String? {
+        self.mostRecentSnapshotId
     }
 
-    func listSessions() async throws -> [SessionInfo] {
-        Array(self.sessionInfos.values)
+    func listSnapshots() async throws -> [SnapshotInfo] {
+        Array(self.snapshotInfos.values)
     }
 
-    func cleanSession(sessionId: String) async throws {
-        self.detectionResults.removeValue(forKey: sessionId)
-        self.sessionInfos.removeValue(forKey: sessionId)
-        self.storedElements.removeValue(forKey: sessionId)
-        if self.mostRecentSessionId == sessionId {
-            self.mostRecentSessionId = nil
+    func cleanSnapshot(snapshotId: String) async throws {
+        self.detectionResults.removeValue(forKey: snapshotId)
+        self.snapshotInfos.removeValue(forKey: snapshotId)
+        self.storedElements.removeValue(forKey: snapshotId)
+        if self.mostRecentSnapshotId == snapshotId {
+            self.mostRecentSnapshotId = nil
         }
     }
 
-    func cleanSessionsOlderThan(days: Int) async throws -> Int {
+    func cleanSnapshotsOlderThan(days: Int) async throws -> Int {
         let threshold = Date().addingTimeInterval(TimeInterval(-days * 24 * 60 * 60))
-        let ids: [String] = self.sessionInfos.values
+        let ids: [String] = self.snapshotInfos.values
             .filter { $0.lastAccessedAt < threshold }
             .reduce(into: []) { partialResult, info in
                 partialResult.append(info.id)
             }
         for id in ids {
-            try await self.cleanSession(sessionId: id)
+            try await self.cleanSnapshot(snapshotId: id)
         }
         return ids.count
     }
 
-    func cleanAllSessions() async throws -> Int {
-        let count = self.sessionInfos.count
+    func cleanAllSnapshots() async throws -> Int {
+        let count = self.snapshotInfos.count
         self.detectionResults.removeAll()
-        self.sessionInfos.removeAll()
+        self.snapshotInfos.removeAll()
         self.storedElements.removeAll()
-        self.mostRecentSessionId = nil
+        self.mostRecentSnapshotId = nil
         return count
     }
 
-    func getSessionStoragePath() -> String {
-        "/tmp/peekaboo-sessions"
+    func getSnapshotStoragePath() -> String {
+        "/tmp/peekaboo-snapshots"
     }
 
     func storeScreenshot(
-        sessionId: String,
+        snapshotId: String,
         screenshotPath: String,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?
     ) async throws {
-        let existingInfo = self.sessionInfos[sessionId]
+        let existingInfo = self.snapshotInfos[snapshotId]
         let createdAt = existingInfo?.createdAt ?? Date()
         let screenshotCount = (existingInfo?.screenshotCount ?? 0) + 1
-        self.sessionInfos[sessionId] = SessionInfo(
-            id: sessionId,
+        self.snapshotInfos[snapshotId] = SnapshotInfo(
+            id: snapshotId,
             processId: existingInfo?.processId ?? 0,
             createdAt: createdAt,
             lastAccessedAt: Date(),
@@ -583,7 +584,7 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
             screenshotCount: screenshotCount,
             isActive: existingInfo?.isActive ?? true
         )
-        var records = self.storedScreenshots[sessionId] ?? []
+        var records = self.storedScreenshots[snapshotId] ?? []
         records.append(
             ScreenshotRecord(
                 path: screenshotPath,
@@ -592,47 +593,53 @@ final class StubSessionManager: SessionManagerProtocol, @unchecked Sendable {
                 windowBounds: windowBounds
             )
         )
-        self.storedScreenshots[sessionId] = records
+        self.storedScreenshots[snapshotId] = records
     }
 
-    func getElement(sessionId: String, elementId: String) async throws -> PeekabooCore.UIElement? {
-        self.storedElements[sessionId]?[elementId]
+    func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
+        var records = self.storedAnnotatedScreenshots[snapshotId] ?? []
+        records.append(annotatedScreenshotPath)
+        self.storedAnnotatedScreenshots[snapshotId] = records
     }
 
-    func findElements(sessionId: String, matching query: String) async throws -> [PeekabooCore.UIElement] {
-        self.storedElements[sessionId]?.values.filter {
+    func getElement(snapshotId: String, elementId: String) async throws -> PeekabooCore.UIElement? {
+        self.storedElements[snapshotId]?[elementId]
+    }
+
+    func findElements(snapshotId: String, matching query: String) async throws -> [PeekabooCore.UIElement] {
+        self.storedElements[snapshotId]?.values.filter {
             $0.label?.localizedCaseInsensitiveContains(query) == true ||
                 $0.title?.localizedCaseInsensitiveContains(query) == true
         } ?? []
     }
 
-    func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
+    func getUIAutomationSnapshot(snapshotId _: String) async throws -> UIAutomationSnapshot? {
         nil
     }
 }
 
 final class StubFileService: FileServiceProtocol {
-    func cleanAllSessions(dryRun: Bool) async throws -> CleanResult {
-        CleanResult(sessionsRemoved: 0, bytesFreed: 0, sessionDetails: [], dryRun: dryRun)
+    func cleanAllSnapshots(dryRun: Bool) async throws -> SnapshotCleanResult {
+        SnapshotCleanResult(snapshotsRemoved: 0, bytesFreed: 0, snapshotDetails: [], dryRun: dryRun)
     }
 
-    func cleanOldSessions(hours: Int, dryRun: Bool) async throws -> CleanResult {
-        CleanResult(sessionsRemoved: 0, bytesFreed: 0, sessionDetails: [], dryRun: dryRun)
+    func cleanOldSnapshots(hours _: Int, dryRun: Bool) async throws -> SnapshotCleanResult {
+        SnapshotCleanResult(snapshotsRemoved: 0, bytesFreed: 0, snapshotDetails: [], dryRun: dryRun)
     }
 
-    func cleanSpecificSession(sessionId: String, dryRun: Bool) async throws -> CleanResult {
-        CleanResult(sessionsRemoved: 0, bytesFreed: 0, sessionDetails: [], dryRun: dryRun)
+    func cleanSpecificSnapshot(snapshotId _: String, dryRun: Bool) async throws -> SnapshotCleanResult {
+        SnapshotCleanResult(snapshotsRemoved: 0, bytesFreed: 0, snapshotDetails: [], dryRun: dryRun)
     }
 
-    func getSessionCacheDirectory() -> URL {
-        URL(fileURLWithPath: "/tmp/peekaboo-sessions")
+    func getSnapshotCacheDirectory() -> URL {
+        URL(fileURLWithPath: "/tmp/peekaboo-snapshots")
     }
 
     func calculateDirectorySize(_ directory: URL) async throws -> Int64 {
         0
     }
 
-    func listSessions() async throws -> [FileSessionInfo] {
+    func listSnapshots() async throws -> [FileSnapshotInfo] {
         []
     }
 }
@@ -651,7 +658,7 @@ final class StubProcessService: ProcessServiceProtocol, @unchecked Sendable {
 
     struct ExecuteStepCall {
         let step: ScriptStep
-        let sessionId: String?
+        let snapshotId: String?
     }
 
     var loadScriptCalls: [LoadScriptCall] = []
@@ -705,12 +712,12 @@ final class StubProcessService: ProcessServiceProtocol, @unchecked Sendable {
 
     func executeStep(
         _ step: ScriptStep,
-        sessionId: String?
+        snapshotId: String?
     ) async throws -> StepExecutionResult {
-        self.executeStepCalls.append(ExecuteStepCall(step: step, sessionId: sessionId))
+        self.executeStepCalls.append(ExecuteStepCall(step: step, snapshotId: snapshotId))
 
         if let provider = self.executeStepProvider {
-            return try await provider(step, sessionId)
+            return try await provider(step, snapshotId)
         }
 
         if let result = self.nextStepResult {
@@ -1175,7 +1182,7 @@ enum TestServicesFactory {
         menu: any MenuServiceProtocol = StubMenuService(menusByApp: [:]),
         dialogs: any DialogServiceProtocol = StubDialogService(),
         dock: any DockServiceProtocol = StubDockService(),
-        sessions: any SessionManagerProtocol = StubSessionManager(),
+        snapshots: any SnapshotManagerProtocol = StubSnapshotManager(),
         files: any FileServiceProtocol = StubFileService(),
         clipboard: any ClipboardServiceProtocol = StubClipboardService(),
         process: any ProcessServiceProtocol = StubProcessService(),
@@ -1193,7 +1200,7 @@ enum TestServicesFactory {
             menu: menu,
             dock: dock,
             dialogs: dialogs,
-            sessions: sessions,
+            snapshots: snapshots,
             files: files,
             clipboard: clipboard,
             process: process,
@@ -1211,12 +1218,12 @@ enum TestServicesFactory {
     struct AutomationTestContext {
         let services: PeekabooServices
         let automation: StubAutomationService
-        let sessions: StubSessionManager
+        let snapshots: StubSnapshotManager
     }
 
     static func makeAutomationTestContext(
         automation: StubAutomationService = StubAutomationService(),
-        sessions: StubSessionManager = StubSessionManager(),
+        snapshots: StubSnapshotManager = StubSnapshotManager(),
         applications: any ApplicationServiceProtocol = StubApplicationService(applications: []),
         windows: any WindowManagementServiceProtocol = StubWindowService(windowsByApp: [:]),
         menu: any MenuServiceProtocol = StubMenuService(menusByApp: [:]),
@@ -1234,7 +1241,7 @@ enum TestServicesFactory {
             menu: menu,
             dialogs: dialogs,
             dock: dock,
-            sessions: sessions,
+            snapshots: snapshots,
             files: files,
             clipboard: clipboard,
             process: process,
@@ -1243,6 +1250,6 @@ enum TestServicesFactory {
             screenCapture: screenCapture
         )
 
-        return AutomationTestContext(services: services, automation: automation, sessions: sessions)
+        return AutomationTestContext(services: services, automation: automation, snapshots: snapshots)
     }
 }

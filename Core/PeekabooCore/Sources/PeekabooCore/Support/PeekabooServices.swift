@@ -89,8 +89,8 @@ public final class PeekabooServices {
     /// System dialog interaction service for handling alerts, file dialogs, etc.
     public let dialogs: any DialogServiceProtocol
 
-    /// Session and state management for automation workflows and history
-    public let sessions: any SessionManagerProtocol
+    /// Snapshot and state management for automation workflows and history
+    public let snapshots: any SnapshotManagerProtocol
 
     /// File system operations service for reading, writing, and manipulating files
     public let files: any FileServiceProtocol
@@ -132,13 +132,13 @@ public final class PeekabooServices {
         let apps = ApplicationService()
         self.logger.debug("\(AgentDisplayTokens.Status.success) ApplicationService initialized")
 
-        let sess = SessionManager()
-        self.logger.debug("\(AgentDisplayTokens.Status.success) SessionManager initialized")
+        let snapshots = SnapshotManager()
+        self.logger.debug("\(AgentDisplayTokens.Status.success) SnapshotManager initialized")
 
         let screenCap = ScreenCaptureService(loggingService: logging)
         self.logger.debug("\(AgentDisplayTokens.Status.success) ScreenCaptureService initialized")
 
-        let auto = UIAutomationService(sessionManager: sess, loggingService: logging, searchPolicy: .balanced)
+        let auto = UIAutomationService(snapshotManager: snapshots, loggingService: logging, searchPolicy: .balanced)
         self.logger.debug("\(AgentDisplayTokens.Status.success) UIAutomationService initialized")
 
         let windows = WindowManagementService(applicationService: apps)
@@ -165,7 +165,7 @@ public final class PeekabooServices {
         self.dialogs = DialogService()
         self.logger.debug("\(AgentDisplayTokens.Status.success) DialogService initialized")
 
-        self.sessions = sess
+        self.snapshots = snapshots
 
         self.files = FileService()
         self.logger.debug("\(AgentDisplayTokens.Status.success) FileService initialized")
@@ -179,7 +179,7 @@ public final class PeekabooServices {
         self.process = ProcessService(
             applicationService: apps,
             screenCaptureService: screenCap,
-            sessionManager: sess,
+            snapshotManager: snapshots,
             uiAutomationService: auto,
             windowManagementService: windows,
             menuService: menuSvc,
@@ -214,7 +214,7 @@ public final class PeekabooServices {
         menu: any MenuServiceProtocol,
         dock: any DockServiceProtocol,
         dialogs: any DialogServiceProtocol,
-        sessions: any SessionManagerProtocol,
+        snapshots: any SnapshotManagerProtocol,
         files: any FileServiceProtocol,
         clipboard: any ClipboardServiceProtocol,
         process: any ProcessServiceProtocol,
@@ -233,7 +233,7 @@ public final class PeekabooServices {
         self.menu = menu
         self.dock = dock
         self.dialogs = dialogs
-        self.sessions = sessions
+        self.snapshots = snapshots
         self.files = files
         self.clipboard = clipboard
         self.process = process
@@ -257,7 +257,7 @@ public final class PeekabooServices {
         menu: any MenuServiceProtocol,
         dock: any DockServiceProtocol,
         dialogs: any DialogServiceProtocol,
-        sessions: any SessionManagerProtocol,
+        snapshots: any SnapshotManagerProtocol,
         files: any FileServiceProtocol,
         clipboard: any ClipboardServiceProtocol,
         process: any ProcessServiceProtocol,
@@ -275,7 +275,7 @@ public final class PeekabooServices {
         self.menu = menu
         self.dock = dock
         self.dialogs = dialogs
-        self.sessions = sessions
+        self.snapshots = snapshots
         self.files = files
         self.clipboard = clipboard
         self.process = process
@@ -372,7 +372,7 @@ private enum EnvironmentVariables {
 extension PeekabooServices {
     // REMOVED: captureAndAnalyze method - AI analysis should be done through the agent service
 
-    /// Perform UI automation with automatic session management
+    /// Perform UI automation with automatic snapshot management
     /// - Parameters:
     ///   - appIdentifier: Target application
     ///   - actions: Automation actions to perform
@@ -384,8 +384,8 @@ extension PeekabooServices {
         self.logger.info("\(AgentDisplayTokens.Status.running) Starting automation for app: \(appIdentifier)")
         self.logger.debug("Number of actions: \(actions.count)")
 
-        let preparation = try await prepareAutomationSession(appIdentifier: appIdentifier)
-        let executedActions = try await executeAutomationActions(actions, sessionId: preparation.sessionId)
+        let preparation = try await prepareAutomationSnapshot(appIdentifier: appIdentifier)
+        let executedActions = try await executeAutomationActions(actions, snapshotId: preparation.snapshotId)
 
         let successCount = executedActions.count(where: { $0.success })
         let summary = "\(AgentDisplayTokens.Status.success) Automation complete: "
@@ -393,14 +393,14 @@ extension PeekabooServices {
         self.logger.info("\(summary)")
 
         return AutomationResult(
-            sessionId: preparation.sessionId,
+            snapshotId: preparation.snapshotId,
             actions: executedActions,
             initialScreenshot: preparation.initialScreenshot)
     }
 
-    private func prepareAutomationSession(appIdentifier: String) async throws -> AutomationPreparation {
-        let sessionId = try await sessions.createSession()
-        self.logger.debug("Created session: \(sessionId)")
+    private func prepareAutomationSnapshot(appIdentifier: String) async throws -> AutomationPreparation {
+        let snapshotId = try await snapshots.createSnapshot()
+        self.logger.debug("Created snapshot: \(snapshotId)")
 
         self.logger.debug("Capturing initial window state")
         let captureResult = try await screenCapture.captureWindow(appIdentifier: appIdentifier, windowIndex: nil)
@@ -413,17 +413,17 @@ extension PeekabooServices {
 
         let detectionResult = try await automation.detectElements(
             in: captureResult.imageData,
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             windowContext: windowContext)
         self.logger.info("Detected \(detectionResult.elements.all.count) elements")
-        try await self.sessions.storeDetectionResult(sessionId: sessionId, result: detectionResult)
+        try await self.snapshots.storeDetectionResult(snapshotId: snapshotId, result: detectionResult)
 
-        return AutomationPreparation(sessionId: sessionId, initialScreenshot: captureResult.savedPath)
+        return AutomationPreparation(snapshotId: snapshotId, initialScreenshot: captureResult.savedPath)
     }
 
     private func executeAutomationActions(
         _ actions: [AutomationAction],
-        sessionId: String) async throws -> [ExecutedAction]
+        snapshotId: String) async throws -> [ExecutedAction]
     {
         var executedActions: [ExecutedAction] = []
 
@@ -432,7 +432,7 @@ extension PeekabooServices {
                 .info("Executing action \(index + 1)/\(actions.count): \(String(describing: action), privacy: .public)")
             let startTime = Date()
             do {
-                try await self.performAutomationAction(action, sessionId: sessionId)
+                try await self.performAutomationAction(action, snapshotId: snapshotId)
                 let duration = Date().timeIntervalSince(startTime)
                 let successMessage =
                     "\(AgentDisplayTokens.Status.success) Action completed in " +
@@ -464,17 +464,17 @@ extension PeekabooServices {
         return executedActions
     }
 
-    private func performAutomationAction(_ action: AutomationAction, sessionId: String) async throws {
+    private func performAutomationAction(_ action: AutomationAction, snapshotId: String) async throws {
         switch action {
         case let .click(target, clickType):
-            try await self.automation.click(target: target, clickType: clickType, sessionId: sessionId)
+            try await self.automation.click(target: target, clickType: clickType, snapshotId: snapshotId)
         case let .type(text, target, clear):
             try await self.automation.type(
                 text: text,
                 target: target,
                 clearExisting: clear,
                 typingDelay: 50,
-                sessionId: sessionId)
+                snapshotId: snapshotId)
         case let .scroll(direction, amount, target):
             let request = ScrollRequest(
                 direction: direction,
@@ -482,7 +482,7 @@ extension PeekabooServices {
                 target: target,
                 smooth: false,
                 delay: 10,
-                sessionId: sessionId)
+                snapshotId: snapshotId)
             try await automation.scroll(request)
         case let .hotkey(keys):
             try await self.automation.hotkey(keys: keys, holdDuration: 100)
@@ -553,7 +553,7 @@ private struct ModelSources {
 }
 
 private struct AutomationPreparation {
-    let sessionId: String
+    let snapshotId: String
     let initialScreenshot: String?
 }
 

@@ -87,11 +87,11 @@ struct PressCommandIntegrationTests {
         }
     }
 
-    @Test("Press command with session parameter")
-    func pressCommandWithSession() throws {
-        let sessionId = "test-session-123"
-        let command = try PressCommand.parse(["return", "--session", sessionId])
-        #expect(command.session == sessionId)
+    @Test("Press command with snapshot parameter")
+    func pressCommandWithSnapshot() throws {
+        let snapshotId = "test-snapshot-123"
+        let command = try PressCommand.parse(["return", "--snapshot", snapshotId])
+        #expect(command.snapshot == snapshotId)
     }
 
     @Test("Press command with focus options")

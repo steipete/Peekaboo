@@ -5,15 +5,15 @@ import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
-/// Click on UI elements identified in the current session using intelligent element finding and smart waiting.
+/// Click on UI elements identified in the current snapshot using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
 @MainActor
 struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
     @Argument(help: "Element text or query to click")
     var query: String?
 
-    @Option(help: "Session ID (uses latest if not specified)")
-    var session: String?
+    @Option(help: "Snapshot ID (uses latest if not specified)")
+    var snapshot: String?
 
     @Option(help: "Element ID to click (e.g., B1, T2)")
     var on: String?
@@ -81,33 +81,33 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
         let startTime = Date()
 
         do {
-            // Determine click target first to check if we need a session
+            // Determine click target first to check if we need a snapshot
             let clickTarget: ClickTarget
             let waitResult: WaitForElementResult
-            let activeSessionId: String
+            let activeSnapshotId: String
 
-            // Check if we're clicking by coordinates (doesn't need session)
+            // Check if we're clicking by coordinates (doesn't need snapshot)
             if let coordString = coords {
-                // Click by coordinates (no session needed)
+                // Click by coordinates (no snapshot needed)
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                 let x = Double(parts[0])!
                 let y = Double(parts[1])!
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
                 waitResult = WaitForElementResult(found: true, element: nil, waitTime: 0)
-                activeSessionId = "" // Not needed for coordinate clicks
-                try await self.focusApplicationIfNeeded(sessionId: nil)
+                activeSnapshotId = "" // Not needed for coordinate clicks
+                try await self.focusApplicationIfNeeded(snapshotId: nil)
 
             } else {
-                // For element-based clicks, try to get a session but allow fallback
-                let sessionId: String? = if let providedSession = session {
-                    providedSession
+                // For element-based clicks, try to get a snapshot but allow fallback
+                let snapshotId: String? = if let providedSnapshot = snapshot {
+                    providedSnapshot
                 } else {
-                    await self.services.sessions.getMostRecentSession()
+                    await self.services.snapshots.getMostRecentSnapshot()
                 }
-                // Use session if available, otherwise use empty string to indicate no session
-                activeSessionId = sessionId ?? ""
+                // Use snapshot if available, otherwise use empty string to indicate no snapshot
+                activeSnapshotId = snapshotId ?? ""
 
-                try await self.focusApplicationIfNeeded(sessionId: activeSessionId.isEmpty ? nil : activeSessionId)
+                try await self.focusApplicationIfNeeded(snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId)
 
                 // Use whichever element ID parameter was provided
                 let elementId = self.on ?? self.id
@@ -119,7 +119,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                         automation: self.services.automation,
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
-                        sessionId: activeSessionId.isEmpty ? nil : activeSessionId
+                        snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId
                     )
 
                     if !waitResult.found {
@@ -138,7 +138,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                         automation: self.services.automation,
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
-                        sessionId: activeSessionId.isEmpty ? nil : activeSessionId
+                        snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId
                     )
 
                     if !waitResult.found {
@@ -163,20 +163,20 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
             // Perform the click
             if case .coordinates = clickTarget {
-                // For coordinate clicks, pass nil session ID
+                // For coordinate clicks, pass nil snapshot ID
                 try await AutomationServiceBridge.click(
                     automation: self.services.automation,
                     target: clickTarget,
                     clickType: clickType,
-                    sessionId: nil
+                    snapshotId: nil
                 )
             } else {
-                // For element-based clicks, pass the session ID
+                // For element-based clicks, pass the snapshot ID
                 try await AutomationServiceBridge.click(
                     automation: self.services.automation,
                     target: clickTarget,
                     clickType: clickType,
-                    sessionId: activeSessionId.isEmpty ? nil : activeSessionId
+                    snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId
                 )
             }
 
@@ -252,17 +252,17 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
         return "\(roleDescription): \(label)"
     }
 
-    private func focusApplicationIfNeeded(sessionId: String?) async throws {
+    private func focusApplicationIfNeeded(snapshotId: String?) async throws {
         guard self.focusOptions.autoFocus else {
             return
         }
 
-        if sessionId == nil, self.app == nil {
+        if snapshotId == nil, self.app == nil {
             return
         }
 
         try await ensureFocused(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             applicationName: self.app,
             options: self.focusOptions,
             services: self.services
@@ -279,7 +279,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 extension ClickCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.query = try values.decodeOptionalPositional(0, label: "query")
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
         self.on = values.singleOption("on")
         self.id = values.singleOption("id")
         self.app = values.singleOption("app")

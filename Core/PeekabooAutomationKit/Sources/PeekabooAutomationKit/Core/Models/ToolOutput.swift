@@ -138,20 +138,20 @@ public nonisolated struct ServiceWindowListData: Codable, Sendable {
 
 /// Data structure for UI analysis results
 public struct UIAnalysisData: Codable, Sendable {
-    public let sessionId: String
+    public let snapshotId: String
     public let screenshot: ScreenshotInfo?
     public let elements: [DetectedUIElement]
     public let elementsByType: ElementsByType?
     public let metadata: DetectionMetadata?
 
     public init(
-        sessionId: String,
+        snapshotId: String,
         screenshot: ScreenshotInfo? = nil,
         elements: [DetectedUIElement],
         elementsByType: ElementsByType? = nil,
         metadata: DetectionMetadata? = nil)
     {
-        self.sessionId = sessionId
+        self.snapshotId = snapshotId
         self.screenshot = screenshot
         self.elements = elements
         self.elementsByType = elementsByType
@@ -160,7 +160,7 @@ public struct UIAnalysisData: Codable, Sendable {
 
     /// Convenience initializer from ElementDetectionResult
     public init(from detectionResult: ElementDetectionResult) {
-        self.sessionId = detectionResult.sessionId
+        self.snapshotId = detectionResult.snapshotId
         self.screenshot = ScreenshotInfo(
             path: detectionResult.screenshotPath,
             size: CGSize(width: 0, height: 0), // Size not available from ElementDetectionResult

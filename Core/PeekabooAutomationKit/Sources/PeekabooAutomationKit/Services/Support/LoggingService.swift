@@ -126,7 +126,7 @@ extension LoggingService {
         static let menu = "Menu"
         static let dock = "Dock"
         static let dialogs = "Dialogs"
-        static let sessions = "Sessions"
+        static let snapshots = "Snapshots"
         static let files = "Files"
         static let commandDescription = "Configuration"
         static let process = "Process"

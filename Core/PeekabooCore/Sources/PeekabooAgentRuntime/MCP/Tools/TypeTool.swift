@@ -30,8 +30,8 @@ public struct TypeTool: MCPTool {
                 "on": SchemaBuilder.string(
                     description: "Optional. Element ID to type into (from see command). " +
                         "If not specified, types at current focus."),
-                "session": SchemaBuilder.string(
-                    description: "Optional. Session ID from see command. Uses latest session if not specified."),
+                "snapshot": SchemaBuilder.string(
+                    description: "Optional. Snapshot ID from see command. Uses latest snapshot if not specified."),
                 "delay": SchemaBuilder.number(
                     description: "Optional. Delay between keystrokes in milliseconds (linear profile). Default: 5.",
                     default: 5),
@@ -76,14 +76,8 @@ public struct TypeTool: MCPTool {
 
     // MARK: - Private Helpers
 
-    private func getSession(id: String?) async -> UISession? {
-        if let sessionId = id {
-            return await UISessionManager.shared.getSession(id: sessionId)
-        }
-
-        // Get most recent session
-        // For now, return nil - in a real implementation we'd track the most recent session
-        return nil
+    private func getSnapshot(id: String?) async -> UISnapshot? {
+        await UISnapshotManager.shared.getSnapshot(id: id)
     }
 
     private func parseRequest(arguments: ToolArguments) throws -> TypeRequest {
@@ -91,7 +85,7 @@ public struct TypeTool: MCPTool {
         let request = TypeRequest(
             text: arguments.getString("text"),
             elementId: arguments.getString("on"),
-            sessionId: arguments.getString("session"),
+            snapshotId: arguments.getString("snapshot"),
             delay: Int(arguments.getNumber("delay") ?? 5),
             profile: profile,
             wordsPerMinute: arguments.getNumber("wpm").map { Int($0) },
@@ -136,7 +130,7 @@ public struct TypeTool: MCPTool {
         let typeResult = try await automation.typeActions(
             actions,
             cadence: request.cadence,
-            sessionId: request.sessionId)
+            snapshotId: request.snapshotId)
 
         let executionTime = Date().timeIntervalSince(startTime)
         let message = self.buildSummary(
@@ -171,23 +165,23 @@ public struct TypeTool: MCPTool {
         try await automation.click(
             target: .coordinates(clickLocation),
             clickType: .single,
-            sessionId: request.sessionId)
+            snapshotId: request.snapshotId)
         try await Task.sleep(nanoseconds: 100_000_000)
     }
 
     @MainActor
     private func resolveTargetContext(for request: TypeRequest) async throws -> TargetElementContext? {
         guard let elementId = request.elementId else { return nil }
-        guard let session = await self.getSession(id: request.sessionId) else {
-            throw TypeToolValidationError("No active session. Run 'see' command first to capture UI state.")
+        guard let snapshot = await self.getSnapshot(id: request.snapshotId) else {
+            throw TypeToolValidationError("No active snapshot. Run 'see' command first to capture UI state.")
         }
 
-        guard let element = await session.getElement(byId: elementId) else {
+        guard let element = await snapshot.getElement(byId: elementId) else {
             throw TypeToolValidationError(
-                "Element '\(elementId)' not found in current session. Run 'see' command to update UI state.")
+                "Element '\(elementId)' not found in current snapshot. Run 'see' command to update UI state.")
         }
 
-        return TargetElementContext(session: session, element: element)
+        return TargetElementContext(snapshot: snapshot, element: element)
     }
 
     private func buildEventSummary(
@@ -197,8 +191,8 @@ public struct TypeTool: MCPTool {
     {
         let truncatedInput = self.truncatedText(request.text)
         return ToolEventSummary(
-            targetApp: targetContext?.session.applicationName,
-            windowTitle: targetContext?.session.windowTitle,
+            targetApp: targetContext?.snapshot.applicationName,
+            windowTitle: targetContext?.snapshot.windowTitle,
             elementRole: targetContext?.element.summaryRole,
             elementLabel: targetContext?.element.summaryLabel,
             elementValue: truncatedInput,
@@ -321,7 +315,7 @@ public struct TypeTool: MCPTool {
 private struct TypeRequest {
     let text: String?
     let elementId: String?
-    let sessionId: String?
+    let snapshotId: String?
     let delay: Int
     let profile: TypingProfile
     let wordsPerMinute: Int?
@@ -359,6 +353,6 @@ private struct TypeToolValidationError: Error {
 }
 
 private struct TargetElementContext {
-    let session: UISession
+    let snapshot: UISnapshot
     let element: UIElement
 }

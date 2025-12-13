@@ -9,12 +9,12 @@ struct CleanCommandTests {
     func commandValidation() throws {
         // Test that specifying multiple options fails
         var command = try CleanCommand.parse([])
-        command.allSessions = true
+        command.allSnapshots = true
         command.olderThan = 24
 
         // This should throw a validation error when run
         // (We can't actually run it in tests due to async requirements)
-        #expect(command.allSessions == true)
+        #expect(command.allSnapshots == true)
         #expect(command.olderThan == 24)
     }
 
@@ -28,22 +28,22 @@ struct CleanCommandTests {
 
     @Test("Clean command parsing")
     func cleanCommandParsing() throws {
-        // Test parsing with --all-sessions
-        let command1 = try CleanCommand.parse(["--all-sessions"])
-        #expect(command1.allSessions == true)
+        // Test parsing with --all-snapshots
+        let command1 = try CleanCommand.parse(["--all-snapshots"])
+        #expect(command1.allSnapshots == true)
         #expect(command1.olderThan == nil)
-        #expect(command1.session == nil)
+        #expect(command1.snapshot == nil)
 
         // Test parsing with --older-than
         let command2 = try CleanCommand.parse(["--older-than", "48"])
-        #expect(command2.allSessions == false)
+        #expect(command2.allSnapshots == false)
         #expect(command2.olderThan == 48)
-        #expect(command2.session == nil)
+        #expect(command2.snapshot == nil)
 
-        // Test parsing with --session
-        let command3 = try CleanCommand.parse(["--session", "abc123"])
-        #expect(command3.allSessions == false)
+        // Test parsing with --snapshot
+        let command3 = try CleanCommand.parse(["--snapshot", "abc123"])
+        #expect(command3.allSnapshots == false)
         #expect(command3.olderThan == nil)
-        #expect(command3.session == "abc123")
+        #expect(command3.snapshot == "abc123")
     }
 }

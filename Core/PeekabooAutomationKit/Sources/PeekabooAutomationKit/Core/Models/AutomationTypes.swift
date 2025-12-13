@@ -21,12 +21,12 @@ public enum AutomationAction: Sendable {
 
 /// Result of automation
 public struct AutomationResult: Sendable {
-    public let sessionId: String
+    public let snapshotId: String
     public let actions: [ExecutedAction]
     public let initialScreenshot: String?
 
-    public init(sessionId: String, actions: [ExecutedAction], initialScreenshot: String?) {
-        self.sessionId = sessionId
+    public init(snapshotId: String, actions: [ExecutedAction], initialScreenshot: String?) {
+        self.snapshotId = snapshotId
         self.actions = actions
         self.initialScreenshot = initialScreenshot
     }

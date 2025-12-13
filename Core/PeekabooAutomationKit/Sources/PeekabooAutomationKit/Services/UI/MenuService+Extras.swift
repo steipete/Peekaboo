@@ -135,7 +135,7 @@ extension MenuService {
         try await clickService.click(
             target: .coordinates(extra.position),
             clickType: .single,
-            sessionId: nil)
+            snapshotId: nil)
 
         return ClickResult(
             elementDescription: "Menu bar item [\(index)]: \(extra.title)",

@@ -25,12 +25,12 @@ public protocol ProcessServiceProtocol: Sendable {
     /// Execute a single step from a script
     /// - Parameters:
     ///   - step: The step to execute
-    ///   - sessionId: Optional session ID to use for the step
+    ///   - snapshotId: Optional snapshot ID to use for the step
     /// - Returns: The result of the step execution
     /// - Throws: ProcessServiceError if the step fails
     func executeStep(
         _ step: ScriptStep,
-        sessionId: String?) async throws -> StepExecutionResult
+        snapshotId: String?) async throws -> StepExecutionResult
 }
 
 /// Script structure for Peekaboo automation
@@ -97,10 +97,10 @@ public struct StepResult: Codable, Sendable {
 /// Detailed result from step execution
 public struct StepExecutionResult: Sendable {
     public let output: ProcessCommandOutput?
-    public let sessionId: String?
+    public let snapshotId: String?
 
-    public init(output: ProcessCommandOutput?, sessionId: String?) {
+    public init(output: ProcessCommandOutput?, snapshotId: String?) {
         self.output = output
-        self.sessionId = sessionId
+        self.snapshotId = snapshotId
     }
 }

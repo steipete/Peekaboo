@@ -33,8 +33,8 @@ public struct DragTool: MCPTool {
                     description: "Optional. End coordinates in format 'x,y' (e.g., '300,400')"),
                 "to_app": SchemaBuilder.string(
                     description: "Optional. Target application name when dragging between apps"),
-                "session": SchemaBuilder.string(
-                    description: "Optional. Session ID from see command. Uses latest session if not specified"),
+                "snapshot": SchemaBuilder.string(
+                    description: "Optional. Snapshot ID from see command. Uses latest snapshot if not specified"),
                 "duration": SchemaBuilder.number(
                     description: "Optional. Duration in milliseconds (default: 500)",
                     default: 500),
@@ -77,11 +77,11 @@ public struct DragTool: MCPTool {
             let startTime = Date()
             let fromPoint = try await self.resolveLocation(
                 target: request.fromTarget,
-                sessionId: request.sessionId,
+                snapshotId: request.snapshotId,
                 parameterName: "from")
             let toPoint = try await self.resolveLocation(
                 target: request.toTarget,
-                sessionId: request.sessionId,
+                snapshotId: request.snapshotId,
                 parameterName: "to")
 
             guard fromPoint.point != toPoint.point else {
@@ -129,7 +129,7 @@ public struct DragTool: MCPTool {
 
     private func resolveLocation(
         target: DragLocationInput,
-        sessionId: String?,
+        snapshotId: String?,
         parameterName: String) async throws -> DragPointDescription
     {
         switch target {
@@ -137,20 +137,20 @@ public struct DragTool: MCPTool {
             let point = try self.parseCoordinates(raw, parameterName: parameterName)
             return DragPointDescription(point: point, description: "(\(Int(point.x)), \(Int(point.y)))")
         case let .element(query):
-            guard let session = await self.getSession(id: sessionId) else {
-                throw CoordinateParseError(message: "No active session. Run 'see' command first to capture UI state.")
+            guard let snapshot = await self.getSnapshot(id: snapshotId) else {
+                throw CoordinateParseError(message: "No active snapshot. Run 'see' command first to capture UI state.")
             }
-            if let element = await session.getElement(byId: query) {
+            if let element = await snapshot.getElement(byId: query) {
                 return DragPointDescription(
                     point: element.centerPoint,
                     description: "element \(query) (\(element.humanDescription))",
-                    targetApp: session.applicationName,
-                    windowTitle: session.windowTitle,
+                    targetApp: snapshot.applicationName,
+                    windowTitle: snapshot.windowTitle,
                     elementRole: element.summaryRole,
                     elementLabel: element.summaryLabel)
             }
 
-            let elements = await session.uiElements
+            let elements = await snapshot.uiElements
             let matches = elements.filter { element in
                 let searchText = query.lowercased()
                 return element.title?.lowercased().contains(searchText) ?? false ||
@@ -166,8 +166,8 @@ public struct DragTool: MCPTool {
             return DragPointDescription(
                 point: element.centerPoint,
                 description: element.humanDescription,
-                targetApp: session.applicationName,
-                windowTitle: session.windowTitle,
+                targetApp: snapshot.applicationName,
+                windowTitle: snapshot.windowTitle,
                 elementRole: element.summaryRole,
                 elementLabel: element.summaryLabel)
         }
@@ -200,14 +200,8 @@ public struct DragTool: MCPTool {
         return CGPoint(x: x, y: y)
     }
 
-    private func getSession(id: String?) async -> UISession? {
-        if let sessionId = id {
-            return await UISessionManager.shared.getSession(id: sessionId)
-        }
-
-        // Get most recent session
-        // For now, return nil - in a real implementation we'd track the most recent session
-        return nil
+    private func getSnapshot(id: String?) async -> UISnapshot? {
+        await UISnapshotManager.shared.getSnapshot(id: id)
     }
 
     private func focusTargetAppIfNeeded(request: DragRequest) async throws {
@@ -307,7 +301,7 @@ public struct DragTool: MCPTool {
 private struct DragRequest {
     let fromTarget: DragLocationInput
     let toTarget: DragLocationInput
-    let sessionId: String?
+    let snapshotId: String?
     let targetApp: String?
     let durationOverride: Int?
     let stepsOverride: Int?
@@ -360,7 +354,7 @@ private struct DragRequest {
 
         self.fromTarget = fromTarget
         self.toTarget = toTarget
-        self.sessionId = arguments.getString("session")
+        self.snapshotId = arguments.getString("snapshot")
         self.targetApp = arguments.getString("to_app")
         self.durationOverride = durationOverride
         self.stepsOverride = stepsOverride

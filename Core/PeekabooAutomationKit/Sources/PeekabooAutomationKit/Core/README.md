@@ -25,7 +25,7 @@ Domain models representing core concepts in Peekaboo.
 
 - **Application.swift** - `ApplicationInfo`, `RunningApplication`
 - **Capture.swift** - `CaptureResult`, `DetectedElements`, screen capture data
-- **Session.swift** - `SessionInfo`, conversation and automation sessions
+- **Snapshot.swift** - `SnapshotInfo`, UI automation snapshots
 - **Window.swift** - `WindowInfo`, `FocusedElementInfo`, UI element data
 
 #### Model Design Principles

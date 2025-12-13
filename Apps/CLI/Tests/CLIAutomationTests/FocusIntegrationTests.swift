@@ -22,11 +22,11 @@ struct FocusIntegrationTests {
         return result.combinedOutput
     }
 
-    // MARK: - Session-based Focus Tests
+    // MARK: - Snapshot-based Focus Tests
 
-    @Test("click with session auto-focuses window")
-    func clickWithSessionAutoFocus() async throws {
-        // Create a session with Finder
+    @Test("click with snapshot auto-focuses window")
+    func clickWithSnapshotAutoFocus() async throws {
+        // Create a snapshot with Finder
         let seeOutput = try await runPeekabooCommand([
             "see",
             "--app", "Finder",
@@ -35,15 +35,15 @@ struct FocusIntegrationTests {
 
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
         guard seeData.success,
-              let sessionId = seeData.data?.session_id else {
-            Issue.record("Failed to create session")
-            throw ProcessError.message("Failed to create session")
+              let snapshotId = seeData.data?.snapshot_id else {
+            Issue.record("Failed to create snapshot")
+            throw ProcessError.message("Failed to create snapshot")
         }
 
         // Click should auto-focus the Finder window
         let clickOutput = try await runPeekabooCommand([
             "click", "button",
-            "--session", sessionId,
+            "--snapshot", snapshotId,
             "--json-output"
         ])
 
@@ -52,11 +52,11 @@ struct FocusIntegrationTests {
         #expect(clickData.success == true || clickData.error != nil)
     }
 
-    @Test("type with session auto-focuses window")
-    func typeWithSessionAutoFocus() async throws {
-        // Create a session with a text editor if available
+    @Test("type with snapshot auto-focuses window")
+    func typeWithSnapshotAutoFocus() async throws {
+        // Create a snapshot with a text editor if available
         let apps = ["TextEdit", "Notes", "Stickies"]
-        var sessionId: String?
+        var snapshotId: String?
 
         for app in apps {
             let seeOutput = try await runPeekabooCommand([
@@ -66,13 +66,13 @@ struct FocusIntegrationTests {
             ])
 
             let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
-            if seeData.success, let id = seeData.data?.session_id {
-                sessionId = id
+            if seeData.success, let id = seeData.data?.snapshot_id {
+                snapshotId = id
                 break
             }
         }
 
-        guard let session = sessionId else {
+        guard let snapshot = snapshotId else {
             // Skip test if no text editor is available
             return
         }
@@ -80,7 +80,7 @@ struct FocusIntegrationTests {
         // Type should auto-focus the window
         let typeOutput = try await runPeekabooCommand([
             "type", "test",
-            "--session", session,
+            "--snapshot", snapshot,
             "--json-output"
         ])
 
@@ -108,7 +108,7 @@ struct FocusIntegrationTests {
 
     @Test("click respects no-auto-focus flag")
     func clickNoAutoFocus() async throws {
-        // Create session
+        // Create snapshot
         let seeOutput = try await runPeekabooCommand([
             "see",
             "--app", "Finder",
@@ -117,15 +117,15 @@ struct FocusIntegrationTests {
 
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
         guard seeData.success,
-              let sessionId = seeData.data?.session_id else {
-            Issue.record("Failed to create session")
-            throw ProcessError.message("Failed to create session")
+              let snapshotId = seeData.data?.snapshot_id else {
+            Issue.record("Failed to create snapshot")
+            throw ProcessError.message("Failed to create snapshot")
         }
 
         // Click with auto-focus disabled
         let clickOutput = try await runPeekabooCommand([
             "click", "button",
-            "--session", sessionId,
+            "--snapshot", snapshotId,
             "--no-auto-focus",
             "--json-output"
         ])
@@ -235,7 +235,7 @@ private struct SeeResponse: Codable {
 }
 
 private struct SeeData: Codable {
-    let session_id: String
+    let snapshot_id: String
 }
 
 private struct ClickResponse: Codable {

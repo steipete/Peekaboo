@@ -9,7 +9,7 @@ import PeekabooFoundation
 public final class ProcessService: ProcessServiceProtocol {
     private let applicationService: any ApplicationServiceProtocol
     private let screenCaptureService: any ScreenCaptureServiceProtocol
-    private let sessionManager: any SessionManagerProtocol
+    private let snapshotManager: any SnapshotManagerProtocol
     private let uiAutomationService: any UIAutomationServiceProtocol
     private let windowManagementService: any WindowManagementServiceProtocol
     private let menuService: any MenuServiceProtocol
@@ -18,7 +18,7 @@ public final class ProcessService: ProcessServiceProtocol {
     public init(
         applicationService: any ApplicationServiceProtocol,
         screenCaptureService: any ScreenCaptureServiceProtocol,
-        sessionManager: any SessionManagerProtocol,
+        snapshotManager: any SnapshotManagerProtocol,
         uiAutomationService: any UIAutomationServiceProtocol,
         windowManagementService: any WindowManagementServiceProtocol,
         menuService: any MenuServiceProtocol,
@@ -26,7 +26,7 @@ public final class ProcessService: ProcessServiceProtocol {
     {
         self.applicationService = applicationService
         self.screenCaptureService = screenCaptureService
-        self.sessionManager = sessionManager
+        self.snapshotManager = snapshotManager
         self.uiAutomationService = uiAutomationService
         self.windowManagementService = windowManagementService
         self.menuService = menuService
@@ -36,7 +36,7 @@ public final class ProcessService: ProcessServiceProtocol {
     public convenience init(
         feedbackClient: any AutomationFeedbackClient = NoopAutomationFeedbackClient())
     {
-        let sessionManager = SessionManager()
+        let snapshotManager = SnapshotManager()
         let loggingService = LoggingService()
         let applicationService = ApplicationService(feedbackClient: feedbackClient)
         let windowManagementService = WindowManagementService(
@@ -45,7 +45,7 @@ public final class ProcessService: ProcessServiceProtocol {
         let menuService = MenuService(feedbackClient: feedbackClient)
         let dockService = DockService(feedbackClient: feedbackClient)
         let uiAutomationService = UIAutomationService(
-            sessionManager: sessionManager,
+            snapshotManager: snapshotManager,
             loggingService: loggingService,
             feedbackClient: feedbackClient)
 
@@ -64,7 +64,7 @@ public final class ProcessService: ProcessServiceProtocol {
         self.init(
             applicationService: applicationService,
             screenCaptureService: screenCaptureService,
-            sessionManager: sessionManager,
+            snapshotManager: snapshotManager,
             uiAutomationService: uiAutomationService,
             windowManagementService: windowManagementService,
             menuService: menuService,
@@ -91,7 +91,7 @@ public final class ProcessService: ProcessServiceProtocol {
         verbose: Bool) async throws -> [StepResult]
     {
         var results: [StepResult] = []
-        var currentSessionId: String?
+        var currentSnapshotId: String?
 
         for (index, step) in script.steps.indexed() {
             let stepNumber = index + 1
@@ -99,11 +99,11 @@ public final class ProcessService: ProcessServiceProtocol {
 
             do {
                 // Execute the step
-                let executionResult = try await executeStep(step, sessionId: currentSessionId)
+                let executionResult = try await executeStep(step, snapshotId: currentSnapshotId)
 
-                // Update session ID if a new one was created
-                if let newSessionId = executionResult.sessionId {
-                    currentSessionId = newSessionId
+                // Update snapshot ID if a new one was created
+                if let newSnapshotId = executionResult.snapshotId {
+                    currentSnapshotId = newSnapshotId
                 }
 
                 let result = StepResult(
@@ -143,31 +143,31 @@ public final class ProcessService: ProcessServiceProtocol {
 extension ProcessService {
     public func executeStep(
         _ step: ScriptStep,
-        sessionId: String?) async throws -> StepExecutionResult
+        snapshotId: String?) async throws -> StepExecutionResult
     {
         let normalizedStep = self.normalizeStepParameters(step)
 
         switch normalizedStep.command.lowercased() {
         case "see":
-            return try await self.executeSeeCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeSeeCommand(normalizedStep, snapshotId: snapshotId)
         case "click":
-            return try await self.executeClickCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeClickCommand(normalizedStep, snapshotId: snapshotId)
         case "type":
-            return try await self.executeTypeCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeTypeCommand(normalizedStep, snapshotId: snapshotId)
         case "scroll":
-            return try await self.executeScrollCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeScrollCommand(normalizedStep, snapshotId: snapshotId)
         case "swipe":
-            return try await self.executeSwipeCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeSwipeCommand(normalizedStep, snapshotId: snapshotId)
         case "drag":
-            return try await self.executeDragCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeDragCommand(normalizedStep, snapshotId: snapshotId)
         case "hotkey":
-            return try await self.executeHotkeyCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeHotkeyCommand(normalizedStep, snapshotId: snapshotId)
         case "sleep":
             return try await self.executeSleepCommand(normalizedStep)
         case "window":
-            return try await self.executeWindowCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeWindowCommand(normalizedStep, snapshotId: snapshotId)
         case "menu":
-            return try await self.executeMenuCommand(normalizedStep, sessionId: sessionId)
+            return try await self.executeMenuCommand(normalizedStep, snapshotId: snapshotId)
         case "dock":
             return try await self.executeDockCommand(normalizedStep)
         case "app":
@@ -182,47 +182,47 @@ extension ProcessService {
 extension ProcessService {
     // MARK: - Command Implementations
 
-    private func executeSeeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeSeeCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         let params = self.screenshotParameters(from: step)
         let captureResult = try await self.captureScreenshot(using: params)
         let screenshotPath = try self.saveScreenshot(
             captureResult,
             to: params.path)
-        let resolvedSessionId = try await self.storeScreenshot(
+        let resolvedSnapshotId = try await self.storeScreenshot(
             captureResult: captureResult,
             path: screenshotPath,
-            existingSessionId: sessionId)
+            existingSnapshotId: snapshotId)
 
         try await self.annotateIfNeeded(
             shouldAnnotate: params.annotate ?? true,
             captureResult: captureResult,
-            sessionId: resolvedSessionId)
+            snapshotId: resolvedSnapshotId)
 
         return StepExecutionResult(
             output: .data([
-                "session_id": .success(resolvedSessionId),
+                "snapshot_id": .success(resolvedSnapshotId),
                 "screenshot_path": .success(screenshotPath),
             ]),
-            sessionId: resolvedSessionId)
+            snapshotId: resolvedSnapshotId)
     }
 
-    private func executeClickCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeClickCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         // Extract click parameters - should already be normalized
         guard case let .click(clickParams) = step.params else {
             throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for click command")
         }
 
-        guard let effectiveSessionId = sessionId else {
-            throw PeekabooError.invalidInput(field: "session", reason: "Session ID is required for click command")
+        guard let effectiveSnapshotId = snapshotId else {
+            throw PeekabooError.invalidInput(field: "snapshot", reason: "Snapshot ID is required for click command")
         }
 
         // Determine click type
         let rightClick = clickParams.button == "right"
         let doubleClick = clickParams.button == "double"
 
-        // Get session detection result
-        guard try await self.sessionManager.getDetectionResult(sessionId: effectiveSessionId) != nil else {
-            throw PeekabooError.sessionNotFound(effectiveSessionId)
+        // Get snapshot detection result
+        guard try await self.snapshotManager.getDetectionResult(snapshotId: effectiveSnapshotId) != nil else {
+            throw PeekabooError.snapshotNotFound(effectiveSnapshotId)
         }
 
         // Determine click target
@@ -242,14 +242,14 @@ extension ProcessService {
         try await uiAutomationService.click(
             target: clickTarget,
             clickType: clickType,
-            sessionId: effectiveSessionId)
+            snapshotId: effectiveSnapshotId)
 
         return StepExecutionResult(
             output: .success("Clicked successfully"),
-            sessionId: effectiveSessionId)
+            snapshotId: effectiveSnapshotId)
     }
 
-    private func executeTypeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeTypeCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         // Extract type parameters - should already be normalized
         guard case let .type(typeParams) = step.params else {
             throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for type command")
@@ -264,7 +264,7 @@ extension ProcessService {
             target: typeParams.field,
             clearExisting: clearFirst,
             typingDelay: 50,
-            sessionId: sessionId)
+            snapshotId: snapshotId)
 
         // Press Enter if requested
         if pressEnter {
@@ -272,7 +272,7 @@ extension ProcessService {
             _ = try await self.uiAutomationService.typeActions(
                 [.key(.return)],
                 cadence: .fixed(milliseconds: 50),
-                sessionId: sessionId)
+                snapshotId: snapshotId)
         }
 
         return StepExecutionResult(
@@ -281,10 +281,10 @@ extension ProcessService {
                 "cleared": .success(String(clearFirst)),
                 "enter_pressed": .success(String(pressEnter)),
             ]),
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
-    private func executeScrollCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeScrollCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         // Extract scroll parameters - should already be normalized
         guard case let .scroll(scrollParams) = step.params else {
             throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for scroll command")
@@ -308,7 +308,7 @@ extension ProcessService {
             target: scrollParams.target,
             smooth: smooth,
             delay: delay,
-            sessionId: sessionId)
+            snapshotId: snapshotId)
         try await self.uiAutomationService.scroll(request)
 
         return StepExecutionResult(
@@ -317,10 +317,10 @@ extension ProcessService {
                 "amount": .success(String(amount)),
                 "smooth": .success(String(smooth)),
             ]),
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
-    private func executeSwipeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeSwipeCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         guard case let .swipe(swipeParams) = step.params else {
             throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for swipe command")
         }
@@ -346,10 +346,10 @@ extension ProcessService {
                 "distance": .success(String(distance)),
                 "duration": .success(String(duration)),
             ]),
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
-    private func executeDragCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeDragCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         // Extract drag parameters - should already be normalized
         guard case let .drag(dragParams) = step.params else {
             throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for drag command")
@@ -376,10 +376,10 @@ extension ProcessService {
                 "to_x": .success(String(dragParams.toX)),
                 "to_y": .success(String(dragParams.toY)),
             ]),
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
-    private func executeHotkeyCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeHotkeyCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         // Extract hotkey parameters - should already be normalized
         guard case let .hotkey(hotkeyParams) = step.params else {
             throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for hotkey command")
@@ -406,7 +406,7 @@ extension ProcessService {
                 "hotkey": .success(hotkeyParams.key),
                 "modifiers": .success(modifiers.map(\.rawValue).joined(separator: ",")),
             ]),
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
     private func executeSleepCommand(_ step: ScriptStep) async throws -> StepExecutionResult {
@@ -419,10 +419,10 @@ extension ProcessService {
 
         return StepExecutionResult(
             output: .success("Slept for \(sleepParams.duration) seconds"),
-            sessionId: nil)
+            snapshotId: nil)
     }
 
-    private func executeWindowCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeWindowCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         let context = try self.windowCommandContext(from: step)
         let windows = try await self.fetchWindows(for: context.app)
         let window = try self.selectWindow(
@@ -440,10 +440,10 @@ extension ProcessService {
                 "window": .success(window.title),
                 "action": .success(context.action),
             ]),
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
-    private func executeMenuCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
+    private func executeMenuCommand(_ step: ScriptStep, snapshotId: String?) async throws -> StepExecutionResult {
         // Extract menu parameters - should already be normalized
         guard case let .menuClick(menuParams) = step.params else {
             throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for menu command")
@@ -465,7 +465,7 @@ extension ProcessService {
 
         return StepExecutionResult(
             output: .success("Clicked menu: \(menuPath) in \(appName)"),
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
     private func executeDockCommand(_ step: ScriptStep) async throws -> StepExecutionResult {
@@ -479,7 +479,7 @@ extension ProcessService {
             let items = try await dockService.listDockItems(includeAll: false)
             return StepExecutionResult(
                 output: .list(items.map { "\($0.title) (\($0.itemType.rawValue))" }),
-                sessionId: nil)
+                snapshotId: nil)
 
         case "click":
             guard let itemName = dockParams.item else {
@@ -490,7 +490,7 @@ extension ProcessService {
             try await self.dockService.launchFromDock(appName: itemName)
             return StepExecutionResult(
                 output: .success("Clicked dock item: \(itemName)"),
-                sessionId: nil)
+                snapshotId: nil)
 
         case "add":
             guard let path = dockParams.path else {
@@ -501,7 +501,7 @@ extension ProcessService {
             try await self.dockService.addToDock(path: path, persistent: true)
             return StepExecutionResult(
                 output: .success("Added to Dock: \(path)"),
-                sessionId: nil)
+                snapshotId: nil)
 
         case "remove":
             guard let item = dockParams.item else {
@@ -512,7 +512,7 @@ extension ProcessService {
             try await self.dockService.removeFromDock(appName: item)
             return StepExecutionResult(
                 output: .success("Removed from Dock: \(item)"),
-                sessionId: nil)
+                snapshotId: nil)
 
         default:
             throw PeekabooError.invalidInput(
@@ -536,31 +536,31 @@ extension ProcessService {
             _ = try await self.applicationService.launchApplication(identifier: appName)
             return StepExecutionResult(
                 output: .success("Launched application: \(appName)"),
-                sessionId: nil)
+                snapshotId: nil)
 
         case "quit":
             _ = try await self.applicationService.quitApplication(identifier: appName, force: appParams.force ?? false)
             return StepExecutionResult(
                 output: .success("Quit application: \(appName)"),
-                sessionId: nil)
+                snapshotId: nil)
 
         case "hide":
             try await self.applicationService.hideApplication(identifier: appName)
             return StepExecutionResult(
                 output: .success("Hidden application: \(appName)"),
-                sessionId: nil)
+                snapshotId: nil)
 
         case "show":
             try await self.applicationService.unhideApplication(identifier: appName)
             return StepExecutionResult(
                 output: .success("Shown application: \(appName)"),
-                sessionId: nil)
+                snapshotId: nil)
 
         case "focus":
             try await self.applicationService.activateApplication(identifier: appName)
             return StepExecutionResult(
                 output: .success("Focused application: \(appName)"),
-                sessionId: nil)
+                snapshotId: nil)
 
         default:
             throw PeekabooError.invalidInput(field: "action", reason: "Invalid action '\(action)' for app command")
@@ -814,29 +814,29 @@ extension ProcessService {
     private func storeScreenshot(
         captureResult: CaptureResult,
         path: String,
-        existingSessionId: String?) async throws -> String
+        existingSnapshotId: String?) async throws -> String
     {
-        let sessionIdentifier: String = if let existingSessionId {
-            existingSessionId
+        let snapshotIdentifier: String = if let existingSnapshotId {
+            existingSnapshotId
         } else {
-            try await self.sessionManager.createSession()
+            try await self.snapshotManager.createSnapshot()
         }
         try await self.persistScreenshot(
             captureResult: captureResult,
             path: path,
-            sessionId: sessionIdentifier)
-        return sessionIdentifier
+            snapshotId: snapshotIdentifier)
+        return snapshotIdentifier
     }
 
     private func persistScreenshot(
         captureResult: CaptureResult,
         path: String,
-        sessionId: String) async throws
+        snapshotId: String) async throws
     {
         let appInfo = captureResult.metadata.applicationInfo
         let windowInfo = captureResult.metadata.windowInfo
-        try await self.sessionManager.storeScreenshot(
-            sessionId: sessionId,
+        try await self.snapshotManager.storeScreenshot(
+            snapshotId: snapshotId,
             screenshotPath: path,
             applicationName: appInfo?.name,
             windowTitle: windowInfo?.title,
@@ -846,15 +846,15 @@ extension ProcessService {
     private func annotateIfNeeded(
         shouldAnnotate: Bool,
         captureResult: CaptureResult,
-        sessionId: String) async throws
+        snapshotId: String) async throws
     {
         guard shouldAnnotate else { return }
         let detectionResult = try await uiAutomationService.detectElements(
             in: captureResult.imageData,
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             windowContext: nil)
-        try await self.sessionManager.storeDetectionResult(
-            sessionId: sessionId,
+        try await self.snapshotManager.storeDetectionResult(
+            snapshotId: snapshotId,
             result: detectionResult)
     }
 

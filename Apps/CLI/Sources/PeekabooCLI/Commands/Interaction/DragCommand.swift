@@ -10,13 +10,13 @@ import PeekabooFoundation
 @available(macOS 14.0, *)
 @MainActor
 struct DragCommand: ErrorHandlingCommand, OutputFormattable {
-    @Option(help: "Starting element ID from session")
+    @Option(help: "Starting element ID from snapshot")
     var from: String?
 
     @Option(help: "Starting coordinates as 'x,y'")
     var fromCoords: String?
 
-    @Option(help: "Target element ID from session")
+    @Option(help: "Target element ID from snapshot")
     var to: String?
 
     @Option(help: "Target coordinates as 'x,y'")
@@ -25,8 +25,8 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(help: "Target application (e.g., 'Trash', 'Finder')")
     var toApp: String?
 
-    @Option(help: "Session ID for element resolution")
-    var session: String?
+    @Option(help: "Snapshot ID for element resolution")
+    var snapshot: String?
 
     @Option(help: "Duration of drag in milliseconds (default: 500)")
     var duration: Int?
@@ -63,10 +63,10 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         do {
             try self.validateInputs()
 
-            let sessionId = try await self.resolveSession()
-            if let sessionId {
+            let snapshotId = try await self.resolveSnapshot()
+            if let snapshotId {
                 try await ensureFocused(
-                    sessionId: sessionId,
+                    snapshotId: snapshotId,
                     options: self.focusOptions,
                     services: self.services
                 )
@@ -75,7 +75,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             let startPoint = try await self.resolvePoint(
                 elementId: self.from,
                 coords: self.fromCoords,
-                sessionId: sessionId,
+                snapshotId: snapshotId,
                 description: "from"
             )
 
@@ -85,7 +85,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 try await self.resolvePoint(
                     elementId: self.to,
                     coords: self.toCoords,
-                    sessionId: sessionId,
+                    snapshotId: snapshotId,
                     description: "to"
                 )
             }
@@ -116,7 +116,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             AutomationEventLogger.log(
                 .drag,
                 "drag from=(\(Int(startPoint.x)),\(Int(startPoint.y))) to=(\(Int(endPoint.x)),\(Int(endPoint.y))) "
-                    + "modifiers=\(self.modifiers ?? "none") session=\(sessionId ?? "latest") "
+                    + "modifiers=\(self.modifiers ?? "none") snapshot=\(snapshotId ?? "latest") "
                     + "profile=\(movement.profileName)"
             )
 
@@ -176,17 +176,17 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         }
     }
 
-    private func resolveSession() async throws -> String? {
-        if let provided = self.session {
+    private func resolveSnapshot() async throws -> String? {
+        if let provided = self.snapshot {
             return provided
         }
-        return await self.services.sessions.getMostRecentSession()
+        return await self.services.snapshots.getMostRecentSnapshot()
     }
 
     private func resolvePoint(
         elementId: String?,
         coords: String?,
-        sessionId: String?,
+        snapshotId: String?,
         description: String
     ) async throws -> CGPoint {
         if let coordinateString = coords {
@@ -204,8 +204,8 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             throw ValidationError("No \(description) point specified")
         }
 
-        guard let sessionId else {
-            throw ValidationError("Session ID required when using element IDs")
+        guard let snapshotId else {
+            throw ValidationError("Snapshot ID required when using element IDs")
         }
 
         let target = ClickTarget.elementId(element)
@@ -213,7 +213,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             automation: self.services.automation,
             target: target,
             timeout: 5.0,
-            sessionId: sessionId
+            snapshotId: snapshotId
         )
 
         guard waitResult.found, let foundElement = waitResult.element else {
@@ -332,7 +332,7 @@ extension DragCommand: CommanderBindableCommand {
         self.to = values.singleOption("to")
         self.toCoords = values.singleOption("toCoords")
         self.toApp = values.singleOption("toApp")
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
         if let duration: Int = try values.decodeOption("duration", as: Int.self) {
             self.duration = duration
         }

@@ -85,6 +85,7 @@ enum ErrorCode: String, Codable {
     case NO_ACTIVE_DIALOG
     case ELEMENT_NOT_FOUND
     case SESSION_NOT_FOUND
+    case SNAPSHOT_NOT_FOUND
     case APPLICATION_NOT_FOUND
     case NO_POINT_SPECIFIED
     case INVALID_COORDINATES

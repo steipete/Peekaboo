@@ -28,8 +28,8 @@ public struct NotFoundError {
         .elementNotFound(description)
     }
 
-    public static func session(_ id: String) -> PeekabooError {
-        .sessionNotFound(id)
+    public static func snapshot(_ id: String) -> PeekabooError {
+        .snapshotNotFound(id)
     }
 }
 
@@ -47,6 +47,11 @@ extension NotFoundError: Error {
         case .elementNotFound:
             if let element = context["element"] {
                 return .elementNotFound(element)
+            }
+            return .operationError(message: self.userMessage)
+        case .snapshotNotFound:
+            if let id = context["snapshot_id"] {
+                return .snapshotNotFound(id)
             }
             return .operationError(message: self.userMessage)
         case .sessionNotFound:

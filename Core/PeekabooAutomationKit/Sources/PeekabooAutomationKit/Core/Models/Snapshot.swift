@@ -1,9 +1,9 @@
 import CoreGraphics
 import Foundation
 
-/// UI automation session data for storing screen state and element information
-public nonisolated struct UIAutomationSession: Codable, Sendable {
-    public static let currentVersion = 6
+/// UI automation snapshot data for storing captured screen state and element information.
+public nonisolated struct UIAutomationSnapshot: Codable, Sendable {
+    public static let currentVersion = 1
 
     public let version: Int
     public var screenshotPath: String?
@@ -19,7 +19,7 @@ public nonisolated struct UIAutomationSession: Codable, Sendable {
     public var lastFocusTime: Date?
 
     public init(
-        version: Int = UIAutomationSession.currentVersion,
+        version: Int = UIAutomationSnapshot.currentVersion,
         screenshotPath: String? = nil,
         annotatedPath: String? = nil,
         uiMap: [String: UIElement] = [:],
@@ -47,7 +47,7 @@ public nonisolated struct UIAutomationSession: Codable, Sendable {
     }
 }
 
-/// UI element information stored in session
+/// UI element information stored in snapshot
 public nonisolated struct UIElement: Codable, Sendable {
     public let id: String
     public let elementId: String
@@ -143,24 +143,24 @@ public nonisolated struct MenuBarData: Codable, Sendable {
     }
 }
 
-/// Session storage error types
-public enum SessionError: LocalizedError, Sendable {
-    case sessionNotFound
-    case noValidSessionFound
+/// Snapshot storage error types
+public enum SnapshotError: LocalizedError, Sendable {
+    case snapshotNotFound
+    case noValidSnapshotFound
     case versionMismatch(found: Int, expected: Int)
     case corruptedData
     case storageError(String)
 
     public var errorDescription: String? {
         switch self {
-        case .sessionNotFound:
-            "Session not found or expired"
-        case .noValidSessionFound:
-            "No valid session found. Create a new session first."
+        case .snapshotNotFound:
+            "Snapshot not found or expired"
+        case .noValidSnapshotFound:
+            "No valid snapshot found. Create a new snapshot first."
         case let .versionMismatch(found, expected):
-            "Session version mismatch (found: \(found), expected: \(expected))"
+            "Snapshot version mismatch (found: \(found), expected: \(expected))"
         case .corruptedData:
-            "Session data is corrupted"
+            "Snapshot data is corrupted"
         case let .storageError(reason):
             "Storage error: \(reason)"
         }

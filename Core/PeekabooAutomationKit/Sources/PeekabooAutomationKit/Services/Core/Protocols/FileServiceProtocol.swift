@@ -1,97 +1,97 @@
 import Foundation
 
-/// Protocol defining file system operations for session management
+/// Protocol defining file system operations for snapshot management.
 public protocol FileServiceProtocol: Sendable {
-    /// Clean all session data
-    /// - Parameter dryRun: If true, only preview what would be deleted without actually deleting
-    /// - Returns: Result containing information about cleaned sessions
-    func cleanAllSessions(dryRun: Bool) async throws -> CleanResult
+    /// Clean all snapshot data.
+    /// - Parameter dryRun: If true, only preview what would be deleted without actually deleting.
+    /// - Returns: Result containing information about cleaned snapshots.
+    func cleanAllSnapshots(dryRun: Bool) async throws -> SnapshotCleanResult
 
-    /// Clean sessions older than specified hours
+    /// Clean snapshots older than specified hours.
     /// - Parameters:
-    ///   - hours: Remove sessions older than this many hours
-    ///   - dryRun: If true, only preview what would be deleted without actually deleting
-    /// - Returns: Result containing information about cleaned sessions
-    func cleanOldSessions(hours: Int, dryRun: Bool) async throws -> CleanResult
+    ///   - hours: Remove snapshots older than this many hours.
+    ///   - dryRun: If true, only preview what would be deleted without actually deleting.
+    /// - Returns: Result containing information about cleaned snapshots.
+    func cleanOldSnapshots(hours: Int, dryRun: Bool) async throws -> SnapshotCleanResult
 
-    /// Clean a specific session by ID
+    /// Clean a specific snapshot by ID.
     /// - Parameters:
-    ///   - sessionId: The session ID to remove
-    ///   - dryRun: If true, only preview what would be deleted without actually deleting
-    /// - Returns: Result containing information about the cleaned session
-    func cleanSpecificSession(sessionId: String, dryRun: Bool) async throws -> CleanResult
+    ///   - snapshotId: The snapshot ID to remove.
+    ///   - dryRun: If true, only preview what would be deleted without actually deleting.
+    /// - Returns: Result containing information about the cleaned snapshot.
+    func cleanSpecificSnapshot(snapshotId: String, dryRun: Bool) async throws -> SnapshotCleanResult
 
-    /// Get the session cache directory path
-    /// - Returns: URL to the session cache directory
-    func getSessionCacheDirectory() -> URL
+    /// Get the snapshot cache directory path.
+    /// - Returns: URL to the snapshot cache directory.
+    func getSnapshotCacheDirectory() -> URL
 
-    /// Calculate the total size of a directory and its contents
-    /// - Parameter directory: The directory to calculate size for
-    /// - Returns: Total size in bytes
+    /// Calculate the total size of a directory and its contents.
+    /// - Parameter directory: The directory to calculate size for.
+    /// - Returns: Total size in bytes.
     func calculateDirectorySize(_ directory: URL) async throws -> Int64
 
-    /// List all sessions with their metadata
-    /// - Returns: Array of session information
-    func listSessions() async throws -> [FileSessionInfo]
+    /// List all snapshots with their metadata.
+    /// - Returns: Array of snapshot information.
+    func listSnapshots() async throws -> [FileSnapshotInfo]
 }
 
-/// Result of cleaning operations
-public struct CleanResult: Sendable, Codable {
-    /// Number of sessions removed
-    public let sessionsRemoved: Int
+/// Result of cleaning operations.
+public struct SnapshotCleanResult: Sendable, Codable {
+    /// Number of snapshots removed.
+    public let snapshotsRemoved: Int
 
-    /// Total bytes freed
+    /// Total bytes freed.
     public let bytesFreed: Int64
 
-    /// Details about each cleaned session
-    public let sessionDetails: [SessionDetail]
+    /// Details about each cleaned snapshot.
+    public let snapshotDetails: [SnapshotDetail]
 
-    /// Whether this was a dry run
+    /// Whether this was a dry run.
     public let dryRun: Bool
 
-    /// Execution time in seconds
+    /// Execution time in seconds.
     public var executionTime: TimeInterval?
 
     public init(
-        sessionsRemoved: Int,
+        snapshotsRemoved: Int,
         bytesFreed: Int64,
-        sessionDetails: [SessionDetail],
+        snapshotDetails: [SnapshotDetail],
         dryRun: Bool,
         executionTime: TimeInterval? = nil)
     {
-        self.sessionsRemoved = sessionsRemoved
+        self.snapshotsRemoved = snapshotsRemoved
         self.bytesFreed = bytesFreed
-        self.sessionDetails = sessionDetails
+        self.snapshotDetails = snapshotDetails
         self.dryRun = dryRun
         self.executionTime = executionTime
     }
 }
 
-/// Details about a specific session
-public struct SessionDetail: Sendable, Codable {
-    /// Session identifier
-    public let sessionId: String
+/// Details about a specific snapshot.
+public struct SnapshotDetail: Sendable, Codable {
+    /// Snapshot identifier.
+    public let snapshotId: String
 
-    /// Full path to the session directory
+    /// Full path to the snapshot directory.
     public let path: String
 
-    /// Size of the session in bytes
+    /// Size of the snapshot in bytes.
     public let size: Int64
 
-    /// Creation date of the session
+    /// Creation date of the snapshot.
     public let creationDate: Date?
 
-    /// Last modification date
+    /// Last modification date.
     public let modificationDate: Date?
 
     public init(
-        sessionId: String,
+        snapshotId: String,
         path: String,
         size: Int64,
         creationDate: Date? = nil,
         modificationDate: Date? = nil)
     {
-        self.sessionId = sessionId
+        self.snapshotId = snapshotId
         self.path = path
         self.size = size
         self.creationDate = creationDate
@@ -99,35 +99,35 @@ public struct SessionDetail: Sendable, Codable {
     }
 }
 
-/// Information about a session from file system perspective
-public struct FileSessionInfo: Sendable, Codable {
-    /// Session identifier
-    public let sessionId: String
+/// Information about a snapshot from file system perspective.
+public struct FileSnapshotInfo: Sendable, Codable {
+    /// Snapshot identifier.
+    public let snapshotId: String
 
-    /// Path to the session directory
+    /// Path to the snapshot directory.
     public let path: URL
 
-    /// Size in bytes
+    /// Size in bytes.
     public let size: Int64
 
-    /// Creation date
+    /// Creation date.
     public let creationDate: Date
 
-    /// Last modification date
+    /// Last modification date.
     public let modificationDate: Date
 
-    /// Files contained in the session
+    /// Files contained in the snapshot.
     public let files: [String]
 
     public init(
-        sessionId: String,
+        snapshotId: String,
         path: URL,
         size: Int64,
         creationDate: Date,
         modificationDate: Date,
         files: [String])
     {
-        self.sessionId = sessionId
+        self.snapshotId = snapshotId
         self.path = path
         self.size = size
         self.creationDate = creationDate
@@ -136,17 +136,17 @@ public struct FileSessionInfo: Sendable, Codable {
     }
 }
 
-/// Errors that can occur during file operations
+/// Errors that can occur during file operations.
 public enum FileServiceError: LocalizedError, Sendable {
-    case sessionNotFound(String)
+    case snapshotNotFound(String)
     case directoryNotFound(URL)
     case insufficientPermissions(URL)
     case fileSystemError(String)
 
     public var errorDescription: String? {
         switch self {
-        case let .sessionNotFound(sessionId):
-            "Session '\(sessionId)' not found"
+        case let .snapshotNotFound(snapshotId):
+            "Snapshot '\(snapshotId)' not found"
         case let .directoryNotFound(url):
             "Directory not found: \(url.path)"
         case let .insufficientPermissions(url):

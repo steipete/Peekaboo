@@ -44,7 +44,7 @@ struct ScrollCommandTests {
                 "--amount", "5",
                 "--delay", "10",
                 "--smooth",
-                "--session", "session-42",
+                "--snapshot", "snapshot-42",
                 "--on", "B1",
                 "--json-output",
             ],
@@ -60,7 +60,7 @@ struct ScrollCommandTests {
         #expect(call.request.delay == 10)
         #expect(call.request.smooth == true)
         #expect(call.request.target == "B1")
-        #expect(call.request.sessionId == "session-42")
+        #expect(call.request.snapshotId == "snapshot-42")
 
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
         let payload = try JSONDecoder().decode(ScrollResult.self, from: payloadData)
@@ -69,8 +69,8 @@ struct ScrollCommandTests {
         #expect(payload.amount == 5)
     }
 
-    @Test("Scroll without session still executes")
-    func executesWithoutSession() async throws {
+    @Test("Scroll without snapshot still executes")
+    func executesWithoutSnapshot() async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(
             arguments: ["--direction", "up", "--amount", "2"],
@@ -81,7 +81,7 @@ struct ScrollCommandTests {
         let scrollCalls = await self.automationState(context) { $0.scrollCalls }
         #expect(scrollCalls.count == 1)
         let call = try #require(scrollCalls.first)
-        #expect(call.request.sessionId == nil)
+        #expect(call.request.snapshotId == nil)
         #expect(call.request.amount == 2)
     }
 
@@ -122,11 +122,11 @@ struct ScrollCommandTests {
     }
 
     private func makeContext(
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSnapshotManager) -> Void)? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()
-            configure?(context.automation, context.sessions)
+            configure?(context.automation, context.snapshots)
             return context
         }
     }

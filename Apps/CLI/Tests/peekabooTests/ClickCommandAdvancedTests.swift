@@ -42,10 +42,10 @@ struct ClickCommandAdvancedTests {
         #expect(command.waitFor == 3000)
     }
 
-    @Test("Parse session option")
-    func sessionParsing() async throws {
-        let command = try ClickCommand.parse(["--on", "C1", "--session", "12345"])
-        #expect(command.session == "12345")
+    @Test("Parse snapshot option")
+    func snapshotParsing() async throws {
+        let command = try ClickCommand.parse(["--on", "C1", "--snapshot", "12345"])
+        #expect(command.snapshot == "12345")
     }
 
     @Test("Coordinate string parsing")
@@ -185,7 +185,7 @@ struct ClickCommandAdvancedTests {
             metadata: metadata
         )
 
-        // The actual element finding would be done through SessionCache
+        // The actual element finding would be done through SnapshotManager
         // This test just verifies the data structure
         let element = testData.elements.buttons.first
         #expect(element?.id == "C1")

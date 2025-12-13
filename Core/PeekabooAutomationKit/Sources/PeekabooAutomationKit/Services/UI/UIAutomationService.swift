@@ -42,13 +42,13 @@ private struct AXSearchOutcome {
  * Primary UI automation service orchestrating specialized automation components.
  *
  * Provides unified interface for UI interactions including element detection, clicking, typing,
- * scrolling, and gestures. Delegates to specialized services while managing sessions and
+ * scrolling, and gestures. Delegates to specialized services while managing snapshots and
  * providing visual feedback integration.
  *
  * ## Core Operations
  * - Element detection using AI-powered recognition
  * - Click, type, scroll, hotkey, and gesture operations
- * - Session management for stateful automation workflows
+ * - Snapshot management for stateful automation workflows
  * - Visual feedback via PeekabooVisualizer integration
  *
  * ## Usage Example
@@ -58,13 +58,13 @@ private struct AXSearchOutcome {
  * // Detect elements in screenshot
  * let elements = try await automation.detectElements(
  *     in: imageData,
- *     sessionId: "session_123",
+ *     snapshotId: "snapshot_123",
  *     windowContext: windowContext
  * )
  *
  * // Perform automation
- * try await automation.click(target: .elementId("B1"), clickType: .single, sessionId: "session_123")
- * try await automation.type(text: "Hello World", target: "T1", clearExisting: true, sessionId: "session_123")
+ * try await automation.click(target: .elementId("B1"), clickType: .single, snapshotId: "snapshot_123")
+ * try await automation.type(text: "Hello World", target: "T1", clearExisting: true, snapshotId: "snapshot_123")
  * ```
  *
  * - Important: Requires Screen Recording and Accessibility permissions
@@ -74,7 +74,7 @@ private struct AXSearchOutcome {
 @MainActor
 public final class UIAutomationService: UIAutomationServiceProtocol {
     let logger = Logger(subsystem: "boo.peekaboo.core", category: "UIAutomationService")
-    let sessionManager: any SessionManagerProtocol
+    let snapshotManager: any SnapshotManagerProtocol
 
     // Specialized services
     let elementDetectionService: ElementDetectionService
@@ -99,12 +99,12 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
      * appropriately (disabled when running inside the Mac app, enabled for CLI tools).
      *
      * - Parameters:
-     *   - sessionManager: Session manager for state tracking (creates default if nil)
+     *   - snapshotManager: Snapshot manager for state tracking (creates default if nil)
      *   - loggingService: Logging service for debug output (creates default if nil)
      *
      * ## Service Initialization
      * The constructor initializes these specialized services:
-     * - `ElementDetectionService` with session management integration
+     * - `ElementDetectionService` with snapshot management integration
      * - `ClickService` for precise mouse interactions
      * - `TypeService` for intelligent text input (note: clickService parameter is nil to avoid circular dependency)
      * - `ScrollService` for smooth scrolling operations
@@ -122,22 +122,22 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
      * // Default initialization
      * let automation = UIAutomationService()
      *
-     * // With custom session manager
-     * let customSession = SessionManager()
-     * let automation = UIAutomationService(sessionManager: customSession)
+     * // With custom snapshot manager
+     * let customSnapshot = SnapshotManager()
+     * let automation = UIAutomationService(snapshotManager: customSnapshot)
      * ```
      *
      * - Important: All services are initialized on the main thread due to UI automation requirements
      * - Note: The visualizer connection is established asynchronously and failures are logged but not thrown
      */
     public init(
-        sessionManager: (any SessionManagerProtocol)? = nil,
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
         loggingService: (any LoggingServiceProtocol)? = nil,
         searchPolicy: SearchPolicy = .balanced,
         feedbackClient: any AutomationFeedbackClient = NoopAutomationFeedbackClient())
     {
-        let manager = sessionManager ?? SessionManager()
-        self.sessionManager = manager
+        let manager = snapshotManager ?? SnapshotManager()
+        self.snapshotManager = manager
 
         let logger = loggingService ?? LoggingService()
 
@@ -146,10 +146,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         self.feedbackClient = feedbackClient
 
         // Initialize specialized services
-        self.elementDetectionService = ElementDetectionService(sessionManager: manager)
-        self.clickService = ClickService(sessionManager: manager)
-        self.typeService = TypeService(sessionManager: manager, clickService: nil)
-        self.scrollService = ScrollService(sessionManager: manager, clickService: nil)
+        self.elementDetectionService = ElementDetectionService(snapshotManager: manager)
+        self.clickService = ClickService(snapshotManager: manager)
+        self.typeService = TypeService(snapshotManager: manager, clickService: nil)
+        self.scrollService = ScrollService(snapshotManager: manager, clickService: nil)
         self.hotkeyService = HotkeyService()
         self.gestureService = GestureService()
         let baseCaptureDeps = ScreenCaptureService.Dependencies.live()
@@ -185,7 +185,7 @@ extension UIAutomationService {
      *
      * - Parameters:
      *   - imageData: PNG or JPEG image data containing the screen capture
-     *   - sessionId: Optional session identifier for element caching and state management
+     *   - snapshotId: Optional snapshot identifier for element caching and state management
      *   - windowContext: Optional context about the captured window for improved accuracy
      * - Returns: `ElementDetectionResult` containing detected elements and metadata
      * - Throws: `PeekabooError` if detection fails or image data is invalid
@@ -207,7 +207,7 @@ extension UIAutomationService {
      *
      * ## Performance
      * - **Typical Duration**: 200-800ms depending on screen complexity
-     * - **Caching**: Results are cached per session to avoid re-detection
+     * - **Caching**: Results are cached per snapshot to avoid re-detection
      * - **Batch Processing**: Multiple elements detected in single pass
      *
      * ## Example
@@ -221,7 +221,7 @@ extension UIAutomationService {
      *
      * let elements = try await automation.detectElements(
      *     in: captureResult.imageData,
-     *     sessionId: "session_123",
+     *     snapshotId: "snapshot_123",
      *     windowContext: windowContext
      * )
      *
@@ -236,13 +236,13 @@ extension UIAutomationService {
      */
     public func detectElements(
         in imageData: Data,
-        sessionId: String?,
+        snapshotId: String?,
         windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
         self.logger.debug("Delegating element detection to ElementDetectionService")
         return try await self.elementDetectionService.detectElements(
             in: imageData,
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             windowContext: windowContext)
     }
 
@@ -258,7 +258,7 @@ extension UIAutomationService {
      * - Parameters:
      *   - target: The click target (element ID, query, or coordinates)
      *   - clickType: Type of click to perform (single, double, right-click, etc.)
-     *   - sessionId: Optional session ID for element resolution and state tracking
+     *   - snapshotId: Optional snapshot ID for element resolution and state tracking
      * - Throws: `PeekabooError` if the target cannot be found or click fails
      *
      * ## Click Targeting
@@ -290,44 +290,44 @@ extension UIAutomationService {
      * try await automation.click(
      *     target: .elementId("B1"),
      *     clickType: .single,
-     *     sessionId: "session_123"
+     *     snapshotId: "snapshot_123"
      * )
      *
      * // Click by searching for text
      * try await automation.click(
      *     target: .query("Submit"),
      *     clickType: .single,
-     *     sessionId: "session_123"
+     *     snapshotId: "snapshot_123"
      * )
      *
      * // Click at specific coordinates
      * try await automation.click(
      *     target: .coordinates(CGPoint(x: 100, y: 200)),
      *     clickType: .right,
-     *     sessionId: nil
+     *     snapshotId: nil
      * )
      * ```
      *
      * - Important: Requires Accessibility permission for element-based clicking
      * - Note: Visual feedback is automatically shown if visualizer is connected
      */
-    public func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
+    public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
         self.logger.debug("Delegating click to ClickService")
-        try await self.clickService.click(target: target, clickType: clickType, sessionId: sessionId)
+        try await self.clickService.click(target: target, clickType: clickType, snapshotId: snapshotId)
 
         // Show visual feedback if available
-        if let clickPoint = try await getClickPoint(for: target, sessionId: sessionId) {
+        if let clickPoint = try await getClickPoint(for: target, snapshotId: snapshotId) {
             _ = await self.feedbackClient.showClickFeedback(at: clickPoint, type: clickType)
         }
     }
 
-    private func getClickPoint(for target: ClickTarget, sessionId: String?) async throws -> CGPoint? {
+    private func getClickPoint(for target: ClickTarget, snapshotId: String?) async throws -> CGPoint? {
         switch target {
         case let .coordinates(point):
             return point
         case let .elementId(id):
-            if let sessionId,
-               let result = try? await sessionManager.getDetectionResult(sessionId: sessionId),
+            if let snapshotId,
+               let result = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId),
                let element = result.elements.findById(id)
             {
                 return CGPoint(x: element.bounds.midX, y: element.bounds.midY)
@@ -354,7 +354,7 @@ extension UIAutomationService {
      *   - target: Optional element ID to type into (types to focused element if nil)
      *   - clearExisting: Whether to clear existing text before typing
      *   - typingDelay: Delay between keystrokes in milliseconds (for realistic typing)
-     *   - sessionId: Optional session ID for element resolution
+     *   - snapshotId: Optional snapshot ID for element resolution
      * - Throws: `PeekabooError` if target element cannot be found or typing fails
      *
      * ## Focus Management
@@ -388,7 +388,7 @@ extension UIAutomationService {
      *     target: "T1",
      *     clearExisting: true,
      *     typingDelay: 50,
-     *     sessionId: "session_123"
+     *     snapshotId: "snapshot_123"
      * )
      *
      * // Type into currently focused element
@@ -397,7 +397,7 @@ extension UIAutomationService {
      *     target: nil,
      *     clearExisting: false,
      *     typingDelay: 0,
-     *     sessionId: nil
+     *     snapshotId: nil
      * )
      *
      * // Type with realistic human-like speed
@@ -406,7 +406,7 @@ extension UIAutomationService {
      *     target: "searchField",
      *     clearExisting: true,
      *     typingDelay: 100,
-     *     sessionId: "session_123"
+     *     snapshotId: "snapshot_123"
      * )
      * ```
      *
@@ -418,7 +418,7 @@ extension UIAutomationService {
         target: String?,
         clearExisting: Bool,
         typingDelay: Int,
-        sessionId: String?) async throws
+        snapshotId: String?) async throws
     {
         self.logger.debug("Delegating type to TypeService")
         try await self.typeService.type(
@@ -426,7 +426,7 @@ extension UIAutomationService {
             target: target,
             clearExisting: clearExisting,
             typingDelay: typingDelay,
-            sessionId: sessionId)
+            snapshotId: snapshotId)
 
         // Show visual feedback if available
         await self.visualizeTyping(keys: Array(text).map { String($0) }, cadence: .fixed(milliseconds: typingDelay))
@@ -435,10 +435,10 @@ extension UIAutomationService {
     public func typeActions(
         _ actions: [TypeAction],
         cadence: TypingCadence,
-        sessionId: String?) async throws -> TypeResult
+        snapshotId: String?) async throws -> TypeResult
     {
         self.logger.debug("Delegating typeActions to TypeService")
-        let result = try await self.typeService.typeActions(actions, cadence: cadence, sessionId: sessionId)
+        let result = try await self.typeService.typeActions(actions, cadence: cadence, snapshotId: snapshotId)
         await self.visualizeTypeActions(actions, cadence: cadence)
         return result
     }
@@ -477,7 +477,7 @@ extension UIAutomationService {
     /**
      * Perform smooth scrolling operations with visual feedback.
      *
-     * - Parameter request: Scroll configuration including direction, amount, target, style, and session context.
+     * - Parameter request: Scroll configuration including direction, amount, target, style, and snapshot context.
      * - Throws: `PeekabooError` if target element cannot be found.
      *
      * ## Example
@@ -653,7 +653,7 @@ extension UIAutomationService {
     public func waitForElement(
         target: ClickTarget,
         timeout: TimeInterval,
-        sessionId: String?) async throws -> WaitForElementResult
+        snapshotId: String?) async throws -> WaitForElementResult
     {
         self.logger.debug("Waiting for element - target: \(String(describing: target)), timeout: \(timeout)s")
 
@@ -668,7 +668,7 @@ extension UIAutomationService {
         let retryInterval: UInt64 = 100_000_000 // 100ms
 
         while Date() < deadline {
-            let result = await self.locateElementForWait(target: target, sessionId: sessionId)
+            let result = await self.locateElementForWait(target: target, snapshotId: snapshotId)
             accumulatedWarnings.append(contentsOf: result.warnings)
             if let element = result.element {
                 let waitTime = Date().timeIntervalSince(startTime)
@@ -707,7 +707,7 @@ extension UIAutomationService {
 
         let detectionResult = try await detectElements(
             in: captureResult.imageData,
-            sessionId: nil,
+            snapshotId: nil,
             windowContext: nil)
 
         let allElements = detectionResult.elements.all
@@ -751,19 +751,19 @@ extension UIAutomationService {
 
     private func locateElementForWait(
         target: ClickTarget,
-        sessionId: String?) async -> (element: DetectedElement?, warnings: [String])
+        snapshotId: String?) async -> (element: DetectedElement?, warnings: [String])
     {
         switch target {
         case let .elementId(id):
-            guard let sessionId,
-                  let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+            guard let snapshotId,
+                  let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId)
             else {
                 return (nil, [])
             }
             return (detectionResult.elements.findById(id), [])
 
         case let .query(query):
-            if let element = await self.findElementInSession(query: query, sessionId: sessionId) {
+            if let element = await self.findElementInSession(query: query, snapshotId: snapshotId) {
                 return (element, [])
             }
             guard let info = self.findElementByAccessibility(matching: query) else {
@@ -784,9 +784,9 @@ extension UIAutomationService {
         }
     }
 
-    private func findElementInSession(query: String, sessionId: String?) async -> DetectedElement? {
-        guard let sessionId,
-              let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+    private func findElementInSession(query: String, snapshotId: String?) async -> DetectedElement? {
+        guard let snapshotId,
+              let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId)
         else {
             return nil
         }

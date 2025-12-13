@@ -22,8 +22,8 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
     @Option(help: "Destination coordinates (x,y)")
     var toCoords: String?
 
-    @Option(help: "Session ID (uses latest if not specified)")
-    var session: String?
+    @Option(help: "Snapshot ID (uses latest if not specified)")
+    var snapshot: String?
 
     @Option(help: "Duration of the swipe in milliseconds")
     var duration: Int?
@@ -78,18 +78,18 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
             }
 
-            // Determine session ID - use provided or get most recent
-            let sessionId: String? = if let providedSession = session {
-                providedSession
+            // Determine snapshot ID - use provided or get most recent
+            let snapshotId: String? = if let providedSnapshot = snapshot {
+                providedSnapshot
             } else {
-                await self.services.sessions.getMostRecentSession()
+                await self.services.snapshots.getMostRecentSnapshot()
             }
 
             // Get source and destination points
             let sourcePoint = try await resolvePoint(
                 elementId: from,
                 coords: fromCoords,
-                sessionId: sessionId,
+                snapshotId: snapshotId,
                 description: "from",
                 waitTimeout: 5.0
             )
@@ -97,7 +97,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             let destPoint = try await resolvePoint(
                 elementId: to,
                 coords: toCoords,
-                sessionId: sessionId,
+                snapshotId: snapshotId,
                 description: "to",
                 waitTimeout: 5.0
             )
@@ -128,7 +128,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             AutomationEventLogger.log(
                 .gesture,
                 "swipe from=(\(Int(sourcePoint.x)),\(Int(sourcePoint.y))) to=(\(Int(destPoint.x)),\(Int(destPoint.y))) "
-                    + "profile=\(movement.profileName) steps=\(movement.steps) session=\(sessionId ?? "latest")"
+                    + "profile=\(movement.profileName) steps=\(movement.steps) snapshot=\(snapshotId ?? "latest")"
             )
 
             // Small delay to ensure swipe is processed
@@ -163,7 +163,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
     private func resolvePoint(
         elementId: String?,
         coords: String?,
-        sessionId: String?,
+        snapshotId: String?,
         description: String,
         waitTimeout: TimeInterval
     ) async throws -> CGPoint {
@@ -177,14 +177,14 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 throw ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
             }
             return CGPoint(x: x, y: y)
-        } else if let element = elementId, let activeSessionId = sessionId {
-            // Resolve from session using waitForElement
+        } else if let element = elementId, let activeSnapshotId = snapshotId {
+            // Resolve from snapshot using waitForElement
             let target = ClickTarget.elementId(element)
             let waitResult = try await AutomationServiceBridge.waitForElement(
                 automation: self.services.automation,
                 target: target,
                 timeout: waitTimeout,
-                sessionId: activeSessionId
+                snapshotId: activeSnapshotId
             )
 
             if !waitResult.found {
@@ -201,7 +201,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
             )
         } else if elementId != nil {
-            throw ValidationError("Session ID required when using element IDs")
+            throw ValidationError("Snapshot ID required when using element IDs")
         } else {
             throw ValidationError("No \(description) point specified")
         }
@@ -236,7 +236,7 @@ extension SwipeCommand: ParsableCommand {
 
                 EXAMPLES:
                   # Swipe between UI elements
-                  peekaboo swipe --from B1 --to B5 --session-id 12345
+                  peekaboo swipe --from B1 --to B5 --snapshot 12345
 
                   # Swipe with coordinates
                   peekaboo swipe --from-coords 100,200 --to-coords 300,400
@@ -272,7 +272,7 @@ extension SwipeCommand: CommanderBindableCommand {
         self.fromCoords = values.singleOption("fromCoords")
         self.to = values.singleOption("to")
         self.toCoords = values.singleOption("toCoords")
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
         if let duration: Int = try values.decodeOption("duration", as: Int.self) {
             self.duration = duration
         }

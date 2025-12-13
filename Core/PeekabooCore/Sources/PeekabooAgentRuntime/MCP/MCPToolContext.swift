@@ -13,7 +13,7 @@ public struct MCPToolContext: @unchecked Sendable {
     public let dialogs: any DialogServiceProtocol
     public let dock: any DockServiceProtocol
     public let screenCapture: any ScreenCaptureServiceProtocol
-    public let sessions: any SessionManagerProtocol
+    public let snapshots: any SnapshotManagerProtocol
     public let screens: any ScreenServiceProtocol
     public let agent: (any AgentServiceProtocol)?
     public let permissions: PermissionsService
@@ -70,7 +70,7 @@ public struct MCPToolContext: @unchecked Sendable {
         dialogs: any DialogServiceProtocol,
         dock: any DockServiceProtocol,
         screenCapture: any ScreenCaptureServiceProtocol,
-        sessions: any SessionManagerProtocol,
+        snapshots: any SnapshotManagerProtocol,
         screens: any ScreenServiceProtocol,
         agent: (any AgentServiceProtocol)?,
         permissions: PermissionsService,
@@ -83,7 +83,7 @@ public struct MCPToolContext: @unchecked Sendable {
         self.dialogs = dialogs
         self.dock = dock
         self.screenCapture = screenCapture
-        self.sessions = sessions
+        self.snapshots = snapshots
         self.screens = screens
         self.agent = agent
         self.permissions = permissions
@@ -100,7 +100,7 @@ public struct MCPToolContext: @unchecked Sendable {
             dialogs: services.dialogs,
             dock: services.dock,
             screenCapture: services.screenCapture,
-            sessions: services.sessions,
+            snapshots: services.snapshots,
             screens: services.screens,
             agent: services.agent,
             permissions: services.permissions,

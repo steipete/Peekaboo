@@ -189,7 +189,7 @@ struct PeekabooXPCTests {
         guard let endpoint else { Issue.record("Missing listener endpoint"); return }
         let client = PeekabooXPCClient(endpoint: endpoint)
 
-        try await client.click(target: .elementId("B1"), clickType: .single, sessionId: nil)
+        try await client.click(target: .elementId("B1"), clickType: .single, snapshotId: nil)
 
         let lastClick = await stub.automationStub.lastClick
         if case let .elementId(id)? = lastClick?.target {
@@ -214,7 +214,7 @@ private final class StubServices: PeekabooServiceProviding {
     let menu: any MenuServiceProtocol = UnimplementedMenuService()
     let dock: any DockServiceProtocol = UnimplementedDockService()
     let dialogs: any DialogServiceProtocol = UnimplementedDialogService()
-    let sessions: any SessionManagerProtocol = SessionManager()
+    let snapshots: any SnapshotManagerProtocol = SnapshotManager()
     let files: any FileServiceProtocol = FileService()
     let clipboard: any ClipboardServiceProtocol = ClipboardService()
     let configuration: ConfigurationManager = .shared
@@ -286,11 +286,11 @@ private final class StubAutomationService: UIAutomationServiceProtocol {
     struct Click { let target: ClickTarget; let type: ClickType }
     private(set) var lastClick: Click?
 
-    func detectElements(in _: Data, sessionId _: String?, windowContext _: WindowContext?) async throws
+    func detectElements(in _: Data, snapshotId _: String?, windowContext _: WindowContext?) async throws
         -> ElementDetectionResult
     {
         ElementDetectionResult(
-            sessionId: "s",
+            snapshotId: "s",
             screenshotPath: "/tmp/s.png",
             elements: DetectedElements(),
             metadata: DetectionMetadata(
@@ -302,14 +302,14 @@ private final class StubAutomationService: UIAutomationServiceProtocol {
                 isDialog: false))
     }
 
-    func click(target: ClickTarget, clickType: ClickType, sessionId _: String?) async throws {
+    func click(target: ClickTarget, clickType: ClickType, snapshotId _: String?) async throws {
         self.lastClick = Click(target: target, type: clickType)
     }
 
-    func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, sessionId _: String?) async
+    func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?) async
     throws {}
 
-    func typeActions(_ actions: [TypeAction], cadence _: TypingCadence, sessionId _: String?) async throws
+    func typeActions(_ actions: [TypeAction], cadence _: TypingCadence, snapshotId _: String?) async throws
         -> TypeResult
     {
         TypeResult(totalCharacters: actions.count, keyPresses: actions.count)
@@ -326,7 +326,7 @@ private final class StubAutomationService: UIAutomationServiceProtocol {
 
     func hasAccessibilityPermission() async -> Bool { true }
 
-    func waitForElement(target _: ClickTarget, timeout _: TimeInterval, sessionId _: String?) async throws
+    func waitForElement(target _: ClickTarget, timeout _: TimeInterval, snapshotId _: String?) async throws
         -> WaitForElementResult
     {
         WaitForElementResult(found: true, element: nil, waitTime: 0)

@@ -15,8 +15,8 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(help: "Delay between key press and release in milliseconds")
     var holdDuration: Int = 50
 
-    @Option(help: "Session ID (uses latest if not specified)")
-    var session: String?
+    @Option(help: "Snapshot ID (uses latest if not specified)")
+    var snapshot: String?
 
     @OptionGroup var focusOptions: FocusCommandOptions
     @RuntimeStorage private var runtime: CommandRuntime?
@@ -68,17 +68,17 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             // Convert key names to comma-separated format for the service
             let keysCsv = keyNames.joined(separator: ",")
 
-            // Get session if available
-            let sessionId: String? = if let providedSession = session {
-                providedSession
+            // Get snapshot if available
+            let snapshotId: String? = if let providedSnapshot = snapshot {
+                providedSnapshot
             } else {
-                await self.services.sessions.getMostRecentSession()
+                await self.services.snapshots.getMostRecentSnapshot()
             }
 
-            // Ensure window is focused before pressing hotkey (if we have a session and auto-focus is enabled)
-            if let sessionId {
+            // Ensure window is focused before pressing hotkey (if we have a snapshot and auto-focus is enabled)
+            if let snapshotId {
                 try await ensureFocused(
-                    sessionId: sessionId,
+                    snapshotId: snapshotId,
                     options: self.focusOptions,
                     services: self.services
                 )
@@ -175,7 +175,7 @@ extension HotkeyCommand: CommanderBindableCommand {
         if let hold: Int = try values.decodeOption("holdDuration", as: Int.self) {
             self.holdDuration = hold
         }
-        self.session = values.singleOption("session")
+        self.snapshot = values.singleOption("snapshot")
         self.focusOptions = try values.makeFocusOptions()
     }
 }

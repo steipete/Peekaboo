@@ -133,12 +133,12 @@ public actor PeekabooXPCClient {
 
     public func detectElements(
         in imageData: Data,
-        sessionId: String?,
+        snapshotId: String?,
         windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
         let payload = PeekabooXPCDetectElementsRequest(
             imageData: imageData,
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             windowContext: windowContext)
         let response = try await self.send(.detectElements(payload))
         switch response {
@@ -151,8 +151,8 @@ public actor PeekabooXPCClient {
         }
     }
 
-    public func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
-        let payload = PeekabooXPCClickRequest(target: target, clickType: clickType, sessionId: sessionId)
+    public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
+        let payload = PeekabooXPCClickRequest(target: target, clickType: clickType, snapshotId: snapshotId)
         try await self.sendExpectOK(.click(payload))
     }
 
@@ -161,23 +161,23 @@ public actor PeekabooXPCClient {
         target: String?,
         clearExisting: Bool,
         typingDelay: Int,
-        sessionId: String?) async throws
+        snapshotId: String?) async throws
     {
         let payload = PeekabooXPCTypeRequest(
             text: text,
             target: target,
             clearExisting: clearExisting,
             typingDelay: typingDelay,
-            sessionId: sessionId)
+            snapshotId: snapshotId)
         try await self.sendExpectOK(.type(payload))
     }
 
     public func typeActions(
         _ actions: [TypeAction],
         cadence: TypingCadence,
-        sessionId: String?) async throws -> TypeResult
+        snapshotId: String?) async throws -> TypeResult
     {
-        let payload = PeekabooXPCTypeActionsRequest(actions: actions, cadence: cadence, sessionId: sessionId)
+        let payload = PeekabooXPCTypeActionsRequest(actions: actions, cadence: cadence, snapshotId: snapshotId)
         let response = try await self.send(.typeActions(payload))
         switch response {
         case let .typeResult(result):
@@ -239,10 +239,10 @@ public actor PeekabooXPCClient {
         try await self.sendExpectOK(.moveMouse(payload))
     }
 
-    public func waitForElement(target: ClickTarget, timeout: TimeInterval, sessionId: String?) async throws
+    public func waitForElement(target: ClickTarget, timeout: TimeInterval, snapshotId: String?) async throws
         -> WaitForElementResult
     {
-        let payload = PeekabooXPCWaitRequest(target: target, timeout: timeout, sessionId: sessionId)
+        let payload = PeekabooXPCWaitRequest(target: target, timeout: timeout, snapshotId: snapshotId)
         let response = try await self.send(.waitForElement(payload))
         switch response {
         case let .waitResult(result):
@@ -605,23 +605,23 @@ public actor PeekabooXPCClient {
         }
     }
 
-    // MARK: - Sessions
+    // MARK: - Snapshots
 
-    public func createSession() async throws -> String {
-        let response = try await self.send(.createSession(.init()))
+    public func createSnapshot() async throws -> String {
+        let response = try await self.send(.createSnapshot(.init()))
         switch response {
-        case let .sessionId(id): return id
+        case let .snapshotId(id): return id
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected createSession response")
+        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected createSnapshot response")
         }
     }
 
-    public func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
-        try await self.sendExpectOK(.storeDetectionResult(.init(sessionId: sessionId, result: result)))
+    public func storeDetectionResult(snapshotId: String, result: ElementDetectionResult) async throws {
+        try await self.sendExpectOK(.storeDetectionResult(.init(snapshotId: snapshotId, result: result)))
     }
 
-    public func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult {
-        let response = try await self.send(.getDetectionResult(.init(sessionId: sessionId)))
+    public func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult {
+        let response = try await self.send(.getDetectionResult(.init(snapshotId: snapshotId)))
         switch response {
         case let .detection(result): return result
         case let .error(envelope): throw envelope
@@ -631,7 +631,7 @@ public actor PeekabooXPCClient {
     }
 
     public func storeScreenshot(
-        sessionId: String,
+        snapshotId: String,
         screenshotPath: String,
         applicationName: String?,
         windowTitle: String?,
@@ -640,55 +640,63 @@ public actor PeekabooXPCClient {
         try await self.sendExpectOK(
             .storeScreenshot(
                 .init(
-                    sessionId: sessionId,
+                    snapshotId: snapshotId,
                     screenshotPath: screenshotPath,
                     applicationName: applicationName,
                     windowTitle: windowTitle,
                     windowBounds: windowBounds)))
     }
 
-    public func listSessions() async throws -> [SessionInfo] {
-        let response = try await self.send(.listSessions)
+    public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
+        try await self.sendExpectOK(
+            .storeAnnotatedScreenshot(
+                .init(
+                    snapshotId: snapshotId,
+                    annotatedScreenshotPath: annotatedScreenshotPath)))
+    }
+
+    public func listSnapshots() async throws -> [SnapshotInfo] {
+        let response = try await self.send(.listSnapshots)
         switch response {
-        case let .sessions(list): return list
+        case let .snapshots(list): return list
         case let .error(envelope): throw envelope
-        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected listSessions response")
+        default: throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected listSnapshots response")
         }
     }
 
-    public func getMostRecentSession() async throws -> String {
-        let response = try await self.send(.getMostRecentSession)
+    public func getMostRecentSnapshot() async throws -> String {
+        let response = try await self.send(.getMostRecentSnapshot)
         switch response {
-        case let .sessionId(id): return id
+        case let .snapshotId(id): return id
         case let .error(envelope): throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected getMostRecentSession response")
+            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected getMostRecentSnapshot response")
         }
     }
 
-    public func cleanSession(sessionId: String) async throws {
-        try await self.sendExpectOK(.cleanSession(.init(sessionId: sessionId)))
+    public func cleanSnapshot(snapshotId: String) async throws {
+        try await self.sendExpectOK(.cleanSnapshot(.init(snapshotId: snapshotId)))
     }
 
-    public func cleanSessionsOlderThan(days: Int) async throws -> Int {
-        let response = try await self.send(.cleanSessionsOlderThan(.init(days: days)))
+    public func cleanSnapshotsOlderThan(days: Int) async throws -> Int {
+        let response = try await self.send(.cleanSnapshotsOlderThan(.init(days: days)))
         switch response {
         case let .int(count): return count
         case let .error(envelope): throw envelope
         default:
             throw PeekabooXPCErrorEnvelope(
                 code: .invalidRequest,
-                message: "Unexpected cleanSessionsOlderThan response")
+                message: "Unexpected cleanSnapshotsOlderThan response")
         }
     }
 
-    public func cleanAllSessions() async throws -> Int {
-        let response = try await self.send(.cleanAllSessions)
+    public func cleanAllSnapshots() async throws -> Int {
+        let response = try await self.send(.cleanAllSnapshots)
         switch response {
         case let .int(count): return count
         case let .error(envelope): throw envelope
         default:
-            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected cleanAllSessions response")
+            throw PeekabooXPCErrorEnvelope(code: .invalidRequest, message: "Unexpected cleanAllSnapshots response")
         }
     }
 

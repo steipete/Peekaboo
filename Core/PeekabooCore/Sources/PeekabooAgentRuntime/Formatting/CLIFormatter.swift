@@ -144,7 +144,7 @@ public enum CLIFormatter {
             result += "\n\nScreenshot: \(screenshot.path)"
         }
 
-        result += "\nSession: \(data.sessionId)"
+        result += "\nSnapshot: \(data.snapshotId)"
         result += "\nElements: \(data.elements.count)"
 
         // Group elements by role

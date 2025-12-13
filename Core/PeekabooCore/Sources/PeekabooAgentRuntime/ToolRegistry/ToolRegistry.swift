@@ -21,31 +21,31 @@ public enum ToolRegistry {
     private static let toolOverrides: [String: ToolOverride] = [
         "see": ToolOverride(
             category: .vision,
-            abstract: "Capture and analyze UI contexts, returning session-aware element maps.",
+            abstract: "Capture and analyze UI contexts, returning snapshot-aware element maps.",
             discussion: """
-            Capture a screenshot, analyze every visible UI element, and write the results to the session cache
+            Capture a screenshot, analyze every visible UI element, and write the results to the snapshot cache
             so later tools can reference the same IDs. The command automatically handles full screen,
             frontmost window, or app-specific captures.
 
             EXAMPLE
             peekaboo see --app Safari --path ~/Desktop/safari.png --annotate
 
-            SESSION MANAGEMENT
-            - Each capture stores a session id (returned in CLI output)
-            - Pass --session <id> to reuse the same map
+            SNAPSHOT MANAGEMENT
+            - Each capture stores a snapshot id (returned in CLI output)
+            - Pass --snapshot <id> to reuse the same map in follow-up interaction commands
 
             TROUBLESHOOTING
             If a window is missing, try `--mode screen` so Peekaboo can discover all windows before filtering.
             """,
             examples: [
                 "peekaboo see --app Safari --path ~/Shots/safari.png --annotate",
-                "peekaboo see --mode screen --session FOCUS",
+                "peekaboo see --mode screen --json-output",
             ],
             agentGuidance: "Run `see` whenever you need fresh element IDs; the response " +
-                "contains session ids and absolute coordinates."),
+                "contains snapshot ids and absolute coordinates."),
         "click": ToolOverride(
             category: .automation,
-            abstract: "High-precision UI clicking with fuzzy matching and session-aware targeting.",
+            abstract: "High-precision UI clicking with fuzzy matching and snapshot-aware targeting.",
             discussion: """
             Clicks on UI elements or coordinates. Supports IDs from the `see` command,
             fuzzy text queries, or raw coordinates.
@@ -53,14 +53,14 @@ public enum ToolRegistry {
             ELEMENT MATCHING
             - Fuzzy matching on element titles and labels
             - Smart waiting keeps checking until the element is reachable
-            - Session-aware IDs (like T1, B2) avoid ambiguity when multiple matches exist
+            - Snapshot-aware IDs avoid ambiguity when multiple matches exist
 
             EXAMPLE
             peekaboo click --wait-for 1500 --double \"Submit\"
             peekaboo click --on B2 --space-switch
 
             TROUBLESHOOTING
-            If the element isn't found, re-run `peekaboo see` to refresh the session,
+            If the element isn't found, re-run `peekaboo see` to refresh the snapshot,
             or provide a more precise query (like an ID or coordinates).
             """,
             examples: [

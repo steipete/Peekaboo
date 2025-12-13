@@ -4,7 +4,7 @@ import PeekabooCore
 
 /// Ensure the target window is focused before executing a command.
 func ensureFocused(
-    sessionId: String? = nil,
+    snapshotId: String? = nil,
     windowID: CGWindowID? = nil,
     applicationName: String? = nil,
     windowTitle: String? = nil,
@@ -18,9 +18,9 @@ func ensureFocused(
     let focusService = FocusManagementActor.shared
     let targetWindow: CGWindowID? = if let windowID {
         windowID
-    } else if let sessionId,
-              let session = try await services.sessions.getUIAutomationSession(sessionId: sessionId) {
-        session.windowID
+    } else if let snapshotId,
+              let snapshot = try await services.snapshots.getUIAutomationSnapshot(snapshotId: snapshotId) {
+        snapshot.windowID
     } else if let appName = applicationName {
         try await focusService.findBestWindow(
             applicationName: appName,

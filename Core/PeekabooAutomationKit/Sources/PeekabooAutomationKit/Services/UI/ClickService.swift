@@ -8,8 +8,8 @@ import PeekabooFoundation
 /**
  * Specialized click service providing precise mouse interaction capabilities.
  *
- * Handles all types of click operations with intelligent targeting, session integration,
- * and multiple targeting modes. Supports element-based clicking via session cache,
+ * Handles all types of click operations with intelligent targeting, snapshot integration,
+ * and multiple targeting modes. Supports element-based clicking via snapshot cache,
  * coordinate-based clicking, and query-based element discovery.
  *
  * ## Click Types
@@ -19,20 +19,20 @@ import PeekabooFoundation
  *
  * ## Usage Example
  * ```swift
- * let clickService = ClickService(sessionManager: sessionManager)
+ * let clickService = ClickService(snapshotManager: snapshotManager)
  *
  * // Click by element ID
  * try await clickService.click(
  *     target: .elementId("B1"),
  *     clickType: .single,
- *     sessionId: "session_123"
+ *     snapshotId: "snapshot_123"
  * )
  *
  * // Click by coordinates
  * try await clickService.click(
  *     target: .coordinates(CGPoint(x: 100, y: 200)),
  *     clickType: .right,
- *     sessionId: nil
+ *     snapshotId: nil
  * )
  * ```
  *
@@ -42,27 +42,27 @@ import PeekabooFoundation
 @MainActor
 public final class ClickService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ClickService")
-    private let sessionManager: any SessionManagerProtocol
+    private let snapshotManager: any SnapshotManagerProtocol
 
-    public init(sessionManager: (any SessionManagerProtocol)? = nil) {
-        self.sessionManager = sessionManager ?? SessionManager()
+    public init(snapshotManager: (any SnapshotManagerProtocol)? = nil) {
+        self.snapshotManager = snapshotManager ?? SnapshotManager()
     }
 
     /// Perform a click operation
     @MainActor
-    public func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
+    public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
         self.logger.debug("Click requested - target: \(String(describing: target)), type: \(clickType)")
 
         do {
             switch target {
             case let .elementId(id):
-                try await self.clickElementById(id: id, clickType: clickType, sessionId: sessionId)
+                try await self.clickElementById(id: id, clickType: clickType, snapshotId: snapshotId)
 
             case let .coordinates(point):
                 try await self.performClick(at: point, clickType: clickType)
 
             case let .query(query):
-                try await self.clickElementByQuery(query: query, clickType: clickType, sessionId: sessionId)
+                try await self.clickElementByQuery(query: query, clickType: clickType, snapshotId: snapshotId)
             }
         } catch {
             self.logger.error("Click failed: \(error.localizedDescription)")
@@ -72,10 +72,10 @@ public final class ClickService {
 
     // MARK: - Private Methods
 
-    private func clickElementById(id: String, clickType: ClickType, sessionId: String?) async throws {
-        // Get element from session
-        if let sessionId,
-           let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId),
+    private func clickElementById(id: String, clickType: ClickType, snapshotId: String?) async throws {
+        // Get element from snapshot
+        if let snapshotId,
+           let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId),
            let element = detectionResult.elements.findById(id)
         {
             // Click at element center
@@ -88,15 +88,15 @@ public final class ClickService {
     }
 
     @MainActor
-    private func clickElementByQuery(query: String, clickType: ClickType, sessionId: String?) async throws {
-        // First try to find in session data if available (much faster)
+    private func clickElementByQuery(query: String, clickType: ClickType, snapshotId: String?) async throws {
+        // First try to find in snapshot data if available (much faster)
         var found = false
         var clickFrame: CGRect?
 
-        if let sessionId,
-           let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId)
+        if let snapshotId,
+           let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId)
         {
-            // Search through session elements
+            // Search through snapshot elements
             let queryLower = query.lowercased()
             for element in detectionResult.elements.all {
                 let matches = element.label?.lowercased().contains(queryLower) ?? false ||
@@ -106,13 +106,13 @@ public final class ClickService {
                 if matches, element.isEnabled {
                     found = true
                     clickFrame = element.bounds
-                    self.logger.debug("Found element in session matching query: \(query)")
+                    self.logger.debug("Found element in snapshot matching query: \(query)")
                     break
                 }
             }
         }
 
-        // Fall back to searching through all applications if not found in session
+        // Fall back to searching through all applications if not found in snapshot
         if !found {
             let elementInfo = self.findElementByQuery(query)
             if let element = elementInfo {

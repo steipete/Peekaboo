@@ -9,20 +9,20 @@ struct UIAutomationServiceWaitTests {
     @Test("Coordinates return immediately")
     @MainActor
     func coordinatesReturnImmediately() async throws {
-        let service = UIAutomationService(sessionManager: InMemorySessionManager())
+        let service = UIAutomationService(snapshotManager: InMemorySnapshotManager())
 
         let result = try await service.waitForElement(
             target: .coordinates(CGPoint(x: 10, y: 20)),
             timeout: 1.0,
-            sessionId: nil)
+            snapshotId: nil)
 
         #expect(result.found)
         #expect(result.waitTime == 0)
     }
 
-    @Test("Element ID resolves from session cache")
+    @Test("Element ID resolves from snapshot cache")
     @MainActor
-    func elementIdResolvesFromSessionCache() async throws {
+    func elementIdResolvesFromSnapshotCache() async throws {
         let elements = DetectedElements(
             buttons: [DetectedElement(
                 id: "B42",
@@ -32,21 +32,21 @@ struct UIAutomationServiceWaitTests {
                 bounds: CGRect(x: 100, y: 200, width: 50, height: 20))])
         let detection = Self.makeDetectionResult(elements: elements)
 
-        let service = UIAutomationService(sessionManager: InMemorySessionManager(detectionResult: detection))
+        let service = UIAutomationService(snapshotManager: InMemorySnapshotManager(detectionResult: detection))
 
         let result = try await service.waitForElement(
             target: .elementId("B42"),
             timeout: 1.0,
-            sessionId: detection.sessionId)
+            snapshotId: detection.snapshotId)
 
         #expect(result.found)
         #expect(result.element?.id == "B42")
         #expect(result.waitTime < 0.1)
     }
 
-    @Test("Query resolves using session detection cache")
+    @Test("Query resolves using snapshot detection cache")
     @MainActor
-    func queryResolvesFromSessionDetection() async throws {
+    func queryResolvesFromSnapshotDetection() async throws {
         let elements = DetectedElements(
             buttons: [DetectedElement(
                 id: "B1",
@@ -56,12 +56,12 @@ struct UIAutomationServiceWaitTests {
                 bounds: CGRect(x: 10, y: 10, width: 80, height: 30))])
         let detection = Self.makeDetectionResult(elements: elements)
 
-        let service = UIAutomationService(sessionManager: InMemorySessionManager(detectionResult: detection))
+        let service = UIAutomationService(snapshotManager: InMemorySnapshotManager(detectionResult: detection))
 
         let result = try await service.waitForElement(
             target: .query("submit"),
             timeout: 1.0,
-            sessionId: detection.sessionId)
+            snapshotId: detection.snapshotId)
 
         #expect(result.found)
         #expect(result.element?.label?.lowercased() == "submit")
@@ -70,7 +70,7 @@ struct UIAutomationServiceWaitTests {
     // MARK: - Helpers
 
     private static func makeDetectionResult(
-        sessionId: String = "session-test",
+        snapshotId: String = "snapshot-test",
         elements: DetectedElements) -> ElementDetectionResult
     {
         let metadata = DetectionMetadata(
@@ -79,7 +79,7 @@ struct UIAutomationServiceWaitTests {
             method: "test")
 
         return ElementDetectionResult(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             screenshotPath: "/tmp/test.png",
             elements: elements,
             metadata: metadata)

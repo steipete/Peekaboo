@@ -103,6 +103,8 @@ extension ErrorHandlingCommand {
             .ELEMENT_NOT_FOUND
         case .sessionNotFound:
             .SESSION_NOT_FOUND
+        case .snapshotNotFound:
+            .SNAPSHOT_NOT_FOUND
         case .menuNotFound:
             .MENU_BAR_NOT_FOUND
         case .menuItemNotFound:
@@ -287,10 +289,10 @@ enum AutomationServiceBridge {
         automation: any UIAutomationServiceProtocol,
         target: ClickTarget,
         timeout: TimeInterval,
-        sessionId: String?
+        snapshotId: String?
     ) async throws -> WaitForElementResult {
         let result = try await Task { @MainActor in
-            try await automation.waitForElement(target: target, timeout: timeout, sessionId: sessionId)
+            try await automation.waitForElement(target: target, timeout: timeout, snapshotId: snapshotId)
         }.value
 
         if !result.warnings.isEmpty {
@@ -307,10 +309,10 @@ enum AutomationServiceBridge {
         automation: any UIAutomationServiceProtocol,
         target: ClickTarget,
         clickType: ClickType,
-        sessionId: String?
+        snapshotId: String?
     ) async throws {
         try await Task { @MainActor in
-            try await automation.click(target: target, clickType: clickType, sessionId: sessionId)
+            try await automation.click(target: target, clickType: clickType, snapshotId: snapshotId)
         }.value
     }
 
@@ -322,7 +324,7 @@ enum AutomationServiceBridge {
             try await automation.typeActions(
                 request.actions,
                 cadence: request.cadence,
-                sessionId: request.sessionId
+                snapshotId: request.snapshotId
             )
         }.value
     }
@@ -387,13 +389,13 @@ enum AutomationServiceBridge {
     static func detectElements(
         automation: any UIAutomationServiceProtocol,
         imageData: Data,
-        sessionId: String?,
+        snapshotId: String?,
         windowContext: WindowContext?
     ) async throws -> ElementDetectionResult {
         try await Task { @MainActor in
             try await automation.detectElements(
                 in: imageData,
-                sessionId: sessionId,
+                snapshotId: snapshotId,
                 windowContext: windowContext
             )
         }.value
@@ -409,7 +411,7 @@ enum AutomationServiceBridge {
 struct TypeActionsRequest: Sendable {
     let actions: [TypeAction]
     let cadence: TypingCadence
-    let sessionId: String?
+    let snapshotId: String?
 }
 
 struct DragRequest: Sendable {

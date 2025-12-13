@@ -67,14 +67,14 @@ public final class RemoteUIAutomationService: UIAutomationServiceProtocol {
 
     public func detectElements(
         in imageData: Data,
-        sessionId: String?,
+        snapshotId: String?,
         windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
-        try await self.client.detectElements(in: imageData, sessionId: sessionId, windowContext: windowContext)
+        try await self.client.detectElements(in: imageData, snapshotId: snapshotId, windowContext: windowContext)
     }
 
-    public func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
-        try await self.client.click(target: target, clickType: clickType, sessionId: sessionId)
+    public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
+        try await self.client.click(target: target, clickType: clickType, snapshotId: snapshotId)
     }
 
     public func type(
@@ -82,22 +82,22 @@ public final class RemoteUIAutomationService: UIAutomationServiceProtocol {
         target: String?,
         clearExisting: Bool,
         typingDelay: Int,
-        sessionId: String?) async throws
+        snapshotId: String?) async throws
     {
         try await self.client.type(
             text: text,
             target: target,
             clearExisting: clearExisting,
             typingDelay: typingDelay,
-            sessionId: sessionId)
+            snapshotId: snapshotId)
     }
 
     public func typeActions(
         _ actions: [TypeAction],
         cadence: TypingCadence,
-        sessionId: String?) async throws -> TypeResult
+        snapshotId: String?) async throws -> TypeResult
     {
-        try await self.client.typeActions(actions, cadence: cadence, sessionId: sessionId)
+        try await self.client.typeActions(actions, cadence: cadence, snapshotId: snapshotId)
     }
 
     public func scroll(_ request: ScrollRequest) async throws {
@@ -130,9 +130,9 @@ public final class RemoteUIAutomationService: UIAutomationServiceProtocol {
     public func waitForElement(
         target: ClickTarget,
         timeout: TimeInterval,
-        sessionId: String?) async throws -> WaitForElementResult
+        snapshotId: String?) async throws -> WaitForElementResult
     {
-        try await self.client.waitForElement(target: target, timeout: timeout, sessionId: sessionId)
+        try await self.client.waitForElement(target: target, timeout: timeout, snapshotId: snapshotId)
     }
 
     // swiftlint:disable function_parameter_count
@@ -356,86 +356,92 @@ public final class RemoteDialogService: DialogServiceProtocol {
 }
 
 @MainActor
-public final class RemoteSessionManager: SessionManagerProtocol {
+public final class RemoteSnapshotManager: SnapshotManagerProtocol {
     private let client: PeekabooXPCClient
 
     public init(client: PeekabooXPCClient) {
         self.client = client
     }
 
-    public func createSession() async throws -> String {
-        try await self.client.createSession()
+    public func createSnapshot() async throws -> String {
+        try await self.client.createSnapshot()
     }
 
-    public func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
-        try await self.client.storeDetectionResult(sessionId: sessionId, result: result)
+    public func storeDetectionResult(snapshotId: String, result: ElementDetectionResult) async throws {
+        try await self.client.storeDetectionResult(snapshotId: snapshotId, result: result)
     }
 
-    public func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult? {
+    public func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult? {
         do {
-            return try await self.client.getDetectionResult(sessionId: sessionId)
+            return try await self.client.getDetectionResult(snapshotId: snapshotId)
         } catch let envelope as PeekabooXPCErrorEnvelope where envelope.code == .notFound {
             return nil
         }
     }
 
-    public func getMostRecentSession() async -> String? {
-        await (try? self.client.getMostRecentSession())
+    public func getMostRecentSnapshot() async -> String? {
+        await (try? self.client.getMostRecentSnapshot())
     }
 
-    public func listSessions() async throws -> [SessionInfo] {
-        try await self.client.listSessions()
+    public func listSnapshots() async throws -> [SnapshotInfo] {
+        try await self.client.listSnapshots()
     }
 
-    public func cleanSession(sessionId: String) async throws {
-        try await self.client.cleanSession(sessionId: sessionId)
+    public func cleanSnapshot(snapshotId: String) async throws {
+        try await self.client.cleanSnapshot(snapshotId: snapshotId)
     }
 
-    public func cleanSessionsOlderThan(days: Int) async throws -> Int {
-        try await self.client.cleanSessionsOlderThan(days: days)
+    public func cleanSnapshotsOlderThan(days: Int) async throws -> Int {
+        try await self.client.cleanSnapshotsOlderThan(days: days)
     }
 
-    public func cleanAllSessions() async throws -> Int {
-        try await self.client.cleanAllSessions()
+    public func cleanAllSnapshots() async throws -> Int {
+        try await self.client.cleanAllSnapshots()
     }
 
-    public func getSessionStoragePath() -> String {
+    public func getSnapshotStoragePath() -> String {
         // Remote side owns the storage; expose helper-visible path to callers when needed.
-        SessionManager().getSessionStoragePath()
+        SnapshotManager().getSnapshotStoragePath()
     }
 
     public func storeScreenshot(
-        sessionId: String,
+        snapshotId: String,
         screenshotPath: String,
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?) async throws
     {
         try await self.client.storeScreenshot(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             screenshotPath: screenshotPath,
             applicationName: applicationName,
             windowTitle: windowTitle,
             windowBounds: windowBounds)
     }
 
-    public func getElement(sessionId: String, elementId: String) async throws -> UIElement? {
+    public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
+        try await self.client.storeAnnotatedScreenshot(
+            snapshotId: snapshotId,
+            annotatedScreenshotPath: annotatedScreenshotPath)
+    }
+
+    public func getElement(snapshotId: String, elementId: String) async throws -> UIElement? {
         // Not exposed over XPC; rely on detection results.
-        _ = sessionId
+        _ = snapshotId
         _ = elementId
         return nil
     }
 
-    public func findElements(sessionId: String, matching query: String) async throws -> [UIElement] {
+    public func findElements(snapshotId: String, matching query: String) async throws -> [UIElement] {
         // Not exposed over XPC yet.
-        _ = sessionId
+        _ = snapshotId
         _ = query
         return []
     }
 
-    public func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
+    public func getUIAutomationSnapshot(snapshotId: String) async throws -> UIAutomationSnapshot? {
         // Not exposed over XPC; could be added later.
-        _ = sessionId
+        _ = snapshotId
         return nil
     }
 }
@@ -522,7 +528,7 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
     public let menu: any MenuServiceProtocol
     public let dock: any DockServiceProtocol
     public let dialogs: any DialogServiceProtocol
-    public let sessions: any SessionManagerProtocol
+    public let snapshots: any SnapshotManagerProtocol
     public let files: any FileServiceProtocol
     public let clipboard: any ClipboardServiceProtocol
     public let configuration: ConfigurationManager
@@ -542,19 +548,19 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         self.applications = RemoteApplicationService(client: client)
         self.automation = RemoteUIAutomationService(client: client)
         self.windows = RemoteWindowManagementService(client: client)
-        let sessionManager = RemoteSessionManager(client: client)
+        let snapshotManager = RemoteSnapshotManager(client: client)
 
         self.menu = RemoteMenuService(client: client)
         self.dock = RemoteDockService(client: client)
         self.dialogs = RemoteDialogService(client: client)
-        self.sessions = sessionManager
+        self.snapshots = snapshotManager
         self.files = FileService()
         self.clipboard = ClipboardService()
         self.configuration = ConfigurationManager.shared
         self.process = ProcessService(
             applicationService: self.applications,
             screenCaptureService: self.screenCapture,
-            sessionManager: sessionManager,
+            snapshotManager: snapshotManager,
             uiAutomationService: self.automation,
             windowManagementService: self.windows,
             menuService: self.menu,

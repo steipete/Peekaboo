@@ -4,147 +4,150 @@ import ImageIO
 import PeekabooFoundation
 import UniformTypeIdentifiers
 
-/// Default implementation of file system operations for session management
+/// Default implementation of file system operations for snapshot management
 public final class FileService: FileServiceProtocol {
     public init() {}
 
-    public func cleanAllSessions(dryRun: Bool) async throws -> CleanResult {
-        let cacheDir = self.getSessionCacheDirectory()
-        var sessionDetails: [SessionDetail] = []
+    public func cleanAllSnapshots(dryRun: Bool) async throws -> SnapshotCleanResult {
+        let cacheDir = self.getSnapshotCacheDirectory()
+        var snapshotDetails: [SnapshotDetail] = []
         var totalBytesFreed: Int64 = 0
 
         guard FileManager.default.fileExists(atPath: cacheDir.path) else {
-            return CleanResult(
-                sessionsRemoved: 0,
+            return SnapshotCleanResult(
+                snapshotsRemoved: 0,
                 bytesFreed: 0,
-                sessionDetails: [],
+                snapshotDetails: [],
                 dryRun: dryRun)
         }
 
-        let sessionDirs = try FileManager.default.contentsOfDirectory(
+        let snapshotDirs = try FileManager.default.contentsOfDirectory(
             at: cacheDir,
             includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey],
             options: .skipsHiddenFiles)
 
-        for sessionDir in sessionDirs {
-            guard sessionDir.hasDirectoryPath else { continue }
+        for snapshotDir in snapshotDirs {
+            guard snapshotDir.hasDirectoryPath else { continue }
 
-            let sessionSize = try await calculateDirectorySize(sessionDir)
-            let sessionId = sessionDir.lastPathComponent
-            let resourceValues = try sessionDir.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+            let snapshotSize = try await calculateDirectorySize(snapshotDir)
+            let snapshotId = snapshotDir.lastPathComponent
+            let resourceValues = try snapshotDir.resourceValues(forKeys: [
+                .creationDateKey,
+                .contentModificationDateKey,
+            ])
 
-            let detail = SessionDetail(
-                sessionId: sessionId,
-                path: sessionDir.path,
-                size: sessionSize,
+            let detail = SnapshotDetail(
+                snapshotId: snapshotId,
+                path: snapshotDir.path,
+                size: snapshotSize,
                 creationDate: resourceValues.creationDate,
                 modificationDate: resourceValues.contentModificationDate)
 
-            sessionDetails.append(detail)
-            totalBytesFreed += sessionSize
+            snapshotDetails.append(detail)
+            totalBytesFreed += snapshotSize
 
             if !dryRun {
-                try FileManager.default.removeItem(at: sessionDir)
+                try FileManager.default.removeItem(at: snapshotDir)
             }
         }
 
-        return CleanResult(
-            sessionsRemoved: sessionDetails.count,
+        return SnapshotCleanResult(
+            snapshotsRemoved: snapshotDetails.count,
             bytesFreed: totalBytesFreed,
-            sessionDetails: sessionDetails,
+            snapshotDetails: snapshotDetails,
             dryRun: dryRun)
     }
 
-    public func cleanOldSessions(hours: Int, dryRun: Bool) async throws -> CleanResult {
-        let cacheDir = self.getSessionCacheDirectory()
-        var sessionDetails: [SessionDetail] = []
+    public func cleanOldSnapshots(hours: Int, dryRun: Bool) async throws -> SnapshotCleanResult {
+        let cacheDir = self.getSnapshotCacheDirectory()
+        var snapshotDetails: [SnapshotDetail] = []
         var totalBytesFreed: Int64 = 0
 
         guard FileManager.default.fileExists(atPath: cacheDir.path) else {
-            return CleanResult(
-                sessionsRemoved: 0,
+            return SnapshotCleanResult(
+                snapshotsRemoved: 0,
                 bytesFreed: 0,
-                sessionDetails: [],
+                snapshotDetails: [],
                 dryRun: dryRun)
         }
 
         let cutoffDate = Date().addingTimeInterval(-Double(hours) * 3600)
 
-        let sessionDirs = try FileManager.default.contentsOfDirectory(
+        let snapshotDirs = try FileManager.default.contentsOfDirectory(
             at: cacheDir,
             includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey],
             options: .skipsHiddenFiles)
 
-        for sessionDir in sessionDirs {
-            guard sessionDir.hasDirectoryPath else { continue }
+        for snapshotDir in snapshotDirs {
+            guard snapshotDir.hasDirectoryPath else { continue }
 
-            let resourceValues = try sessionDir.resourceValues(forKeys: [.contentModificationDateKey])
+            let resourceValues = try snapshotDir.resourceValues(forKeys: [.contentModificationDateKey])
             let modificationDate = resourceValues.contentModificationDate
 
             if let modDate = modificationDate, modDate < cutoffDate {
-                let sessionSize = try await calculateDirectorySize(sessionDir)
-                let sessionId = sessionDir.lastPathComponent
+                let snapshotSize = try await calculateDirectorySize(snapshotDir)
+                let snapshotId = snapshotDir.lastPathComponent
 
-                let detail = SessionDetail(
-                    sessionId: sessionId,
-                    path: sessionDir.path,
-                    size: sessionSize,
+                let detail = SnapshotDetail(
+                    snapshotId: snapshotId,
+                    path: snapshotDir.path,
+                    size: snapshotSize,
                     creationDate: nil,
                     modificationDate: modDate)
 
-                sessionDetails.append(detail)
-                totalBytesFreed += sessionSize
+                snapshotDetails.append(detail)
+                totalBytesFreed += snapshotSize
 
                 if !dryRun {
-                    try FileManager.default.removeItem(at: sessionDir)
+                    try FileManager.default.removeItem(at: snapshotDir)
                 }
             }
         }
 
-        return CleanResult(
-            sessionsRemoved: sessionDetails.count,
+        return SnapshotCleanResult(
+            snapshotsRemoved: snapshotDetails.count,
             bytesFreed: totalBytesFreed,
-            sessionDetails: sessionDetails,
+            snapshotDetails: snapshotDetails,
             dryRun: dryRun)
     }
 
-    public func cleanSpecificSession(sessionId: String, dryRun: Bool) async throws -> CleanResult {
-        let cacheDir = self.getSessionCacheDirectory()
-        let sessionDir = cacheDir.appendingPathComponent(sessionId)
+    public func cleanSpecificSnapshot(snapshotId: String, dryRun: Bool) async throws -> SnapshotCleanResult {
+        let cacheDir = self.getSnapshotCacheDirectory()
+        let snapshotDir = cacheDir.appendingPathComponent(snapshotId)
 
-        guard FileManager.default.fileExists(atPath: sessionDir.path) else {
+        guard FileManager.default.fileExists(atPath: snapshotDir.path) else {
             // Return empty result instead of throwing error for consistency with original behavior
-            return CleanResult(
-                sessionsRemoved: 0,
+            return SnapshotCleanResult(
+                snapshotsRemoved: 0,
                 bytesFreed: 0,
-                sessionDetails: [],
+                snapshotDetails: [],
                 dryRun: dryRun)
         }
 
-        let sessionSize = try await calculateDirectorySize(sessionDir)
-        let resourceValues = try sessionDir.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+        let snapshotSize = try await calculateDirectorySize(snapshotDir)
+        let resourceValues = try snapshotDir.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
 
-        let detail = SessionDetail(
-            sessionId: sessionId,
-            path: sessionDir.path,
-            size: sessionSize,
+        let detail = SnapshotDetail(
+            snapshotId: snapshotId,
+            path: snapshotDir.path,
+            size: snapshotSize,
             creationDate: resourceValues.creationDate,
             modificationDate: resourceValues.contentModificationDate)
 
         if !dryRun {
-            try FileManager.default.removeItem(at: sessionDir)
+            try FileManager.default.removeItem(at: snapshotDir)
         }
 
-        return CleanResult(
-            sessionsRemoved: 1,
-            bytesFreed: sessionSize,
-            sessionDetails: [detail],
+        return SnapshotCleanResult(
+            snapshotsRemoved: 1,
+            bytesFreed: snapshotSize,
+            snapshotDetails: [detail],
             dryRun: dryRun)
     }
 
-    public func getSessionCacheDirectory() -> URL {
+    public func getSnapshotCacheDirectory() -> URL {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        return homeDir.appendingPathComponent(".peekaboo/session")
+        return homeDir.appendingPathComponent(".peekaboo/snapshots")
     }
 
     public func calculateDirectorySize(_ directory: URL) async throws -> Int64 {
@@ -163,45 +166,48 @@ public final class FileService: FileServiceProtocol {
         return totalSize
     }
 
-    public func listSessions() async throws -> [FileSessionInfo] {
-        let cacheDir = self.getSessionCacheDirectory()
-        var sessions: [FileSessionInfo] = []
+    public func listSnapshots() async throws -> [FileSnapshotInfo] {
+        let cacheDir = self.getSnapshotCacheDirectory()
+        var snapshots: [FileSnapshotInfo] = []
 
         guard FileManager.default.fileExists(atPath: cacheDir.path) else {
-            return sessions
+            return snapshots
         }
 
-        let sessionDirs = try FileManager.default.contentsOfDirectory(
+        let snapshotDirs = try FileManager.default.contentsOfDirectory(
             at: cacheDir,
             includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey],
             options: .skipsHiddenFiles)
 
-        for sessionDir in sessionDirs {
-            guard sessionDir.hasDirectoryPath else { continue }
+        for snapshotDir in snapshotDirs {
+            guard snapshotDir.hasDirectoryPath else { continue }
 
-            let sessionId = sessionDir.lastPathComponent
-            let sessionSize = try await calculateDirectorySize(sessionDir)
-            let resourceValues = try sessionDir.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+            let snapshotId = snapshotDir.lastPathComponent
+            let snapshotSize = try await calculateDirectorySize(snapshotDir)
+            let resourceValues = try snapshotDir.resourceValues(forKeys: [
+                .creationDateKey,
+                .contentModificationDateKey,
+            ])
 
-            // Get files in the session directory
-            let files = try FileManager.default.contentsOfDirectory(atPath: sessionDir.path)
+            // Get files in the snapshot directory
+            let files = try FileManager.default.contentsOfDirectory(atPath: snapshotDir.path)
                 .filter { !$0.hasPrefix(".") } // Skip hidden files
 
-            let sessionInfo = FileSessionInfo(
-                sessionId: sessionId,
-                path: sessionDir,
-                size: sessionSize,
+            let snapshotInfo = FileSnapshotInfo(
+                snapshotId: snapshotId,
+                path: snapshotDir,
+                size: snapshotSize,
                 creationDate: resourceValues.creationDate ?? Date(),
                 modificationDate: resourceValues.contentModificationDate ?? Date(),
                 files: files)
 
-            sessions.append(sessionInfo)
+            snapshots.append(snapshotInfo)
         }
 
         // Sort by modification date, newest first
-        sessions.sort { $0.modificationDate > $1.modificationDate }
+        snapshots.sort { $0.modificationDate > $1.modificationDate }
 
-        return sessions
+        return snapshots
     }
 
     // MARK: - Image Saving

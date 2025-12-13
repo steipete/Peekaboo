@@ -70,7 +70,7 @@ struct CommanderBinderProgramResolutionTests {
             "peekaboo",
             "click",
             "\"Submit\"",
-            "--session", "abc",
+            "--snapshot", "abc",
             "--on", "B1",
             "--app", "Safari",
             "--wait-for", "2500",
@@ -79,7 +79,7 @@ struct CommanderBinderProgramResolutionTests {
         ])
         let values = invocation.parsedValues
         #expect(values.positional == ["\"Submit\""])
-        #expect(values.options["session"] == ["abc"])
+        #expect(values.options["snapshot"] == ["abc"])
         #expect(values.options["on"] == ["B1"])
         #expect(values.options["app"] == ["Safari"])
         #expect(values.options["waitFor"] == ["2500"])
@@ -96,7 +96,7 @@ struct CommanderBinderProgramResolutionTests {
             "peekaboo",
             "type",
             "Hello",
-            "--session", "xyz",
+            "--snapshot", "xyz",
             "--delay", "10",
             "--tab", "2",
             "--return",
@@ -109,7 +109,7 @@ struct CommanderBinderProgramResolutionTests {
         ])
         let values = invocation.parsedValues
         #expect(values.positional == ["Hello"])
-        #expect(values.options["session"] == ["xyz"])
+        #expect(values.options["snapshot"] == ["xyz"])
         #expect(values.options["delay"] == ["10"])
         #expect(values.options["tab"] == ["2"])
         #expect(values.options["app"] == ["Notes"])
@@ -134,7 +134,7 @@ struct CommanderBinderProgramResolutionTests {
             "--count", "3",
             "--delay", "25",
             "--hold", "75",
-            "--session", "sess-1",
+            "--snapshot", "sess-1",
             "--no-auto-focus"
         ])
         let values = invocation.parsedValues
@@ -142,7 +142,7 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.options["count"] == ["3"])
         #expect(values.options["delay"] == ["25"])
         #expect(values.options["hold"] == ["75"])
-        #expect(values.options["session"] == ["sess-1"])
+        #expect(values.options["snapshot"] == ["sess-1"])
         #expect(values.flags.contains("noAutoFocus"))
     }
 
@@ -214,7 +214,7 @@ struct CommanderBinderProgramResolutionTests {
             "--direction", "down",
             "--amount", "7",
             "--on", "B4",
-            "--session", "sess-5",
+            "--snapshot", "sess-5",
             "--delay", "5",
             "--smooth",
             "--app", "Mail",
@@ -224,7 +224,7 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.options["direction"] == ["down"])
         #expect(values.options["amount"] == ["7"])
         #expect(values.options["on"] == ["B4"])
-        #expect(values.options["session"] == ["sess-5"])
+        #expect(values.options["snapshot"] == ["sess-5"])
         #expect(values.options["delay"] == ["5"])
         #expect(values.flags.contains("smooth"))
         #expect(values.options["app"] == ["Mail"])
@@ -241,13 +241,13 @@ struct CommanderBinderProgramResolutionTests {
             "hotkey",
             "--keys", "cmd,c",
             "--hold-duration", "120",
-            "--session", "sess-11",
+            "--snapshot", "sess-11",
             "--no-auto-focus"
         ])
         let values = invocation.parsedValues
         #expect(values.options["keys"] == ["cmd,c"])
         #expect(values.options["holdDuration"] == ["120"])
-        #expect(values.options["session"] == ["sess-11"])
+        #expect(values.options["snapshot"] == ["sess-11"])
         #expect(values.flags.contains("noAutoFocus"))
     }
 
@@ -264,7 +264,7 @@ struct CommanderBinderProgramResolutionTests {
             "--id", "B2",
             "--duration", "750",
             "--steps", "30",
-            "--session", "sess-20",
+            "--snapshot", "sess-20",
             "--center",
             "--smooth"
         ])
@@ -274,7 +274,7 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.options["id"] == ["B2"])
         #expect(values.options["duration"] == ["750"])
         #expect(values.options["steps"] == ["30"])
-        #expect(values.options["session"] == ["sess-20"])
+        #expect(values.options["snapshot"] == ["sess-20"])
         #expect(values.flags.contains("center"))
         #expect(values.flags.contains("smooth"))
     }
@@ -289,7 +289,7 @@ struct CommanderBinderProgramResolutionTests {
             "drag",
             "--from", "A1",
             "--to-coords", "300,400",
-            "--session", "sess-9",
+            "--snapshot", "sess-9",
             "--duration", "900",
             "--steps", "15",
             "--modifiers", "cmd,shift",
@@ -298,7 +298,7 @@ struct CommanderBinderProgramResolutionTests {
         let values = invocation.parsedValues
         #expect(values.options["from"] == ["A1"])
         #expect(values.options["toCoords"] == ["300,400"])
-        #expect(values.options["session"] == ["sess-9"])
+        #expect(values.options["snapshot"] == ["sess-9"])
         #expect(values.options["duration"] == ["900"])
         #expect(values.options["steps"] == ["15"])
         #expect(values.options["modifiers"] == ["cmd,shift"])
@@ -315,7 +315,7 @@ struct CommanderBinderProgramResolutionTests {
             "swipe",
             "--from-coords", "10,20",
             "--to", "B1",
-            "--session", "sess-8",
+            "--snapshot", "sess-8",
             "--duration", "600",
             "--steps", "12",
             "--right-button"
@@ -323,7 +323,7 @@ struct CommanderBinderProgramResolutionTests {
         let values = invocation.parsedValues
         #expect(values.options["fromCoords"] == ["10,20"])
         #expect(values.options["to"] == ["B1"])
-        #expect(values.options["session"] == ["sess-8"])
+        #expect(values.options["snapshot"] == ["sess-8"])
         #expect(values.options["duration"] == ["600"])
         #expect(values.options["steps"] == ["12"])
         #expect(values.flags.contains("rightButton"))

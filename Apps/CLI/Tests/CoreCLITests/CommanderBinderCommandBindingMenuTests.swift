@@ -12,7 +12,7 @@ struct CommanderBinderMenuDockTests {
                 "direction": ["down"],
                 "amount": ["7"],
                 "on": ["B4"],
-                "session": ["sess-5"],
+                "snapshot": ["sess-5"],
                 "delay": ["5"],
                 "app": ["Mail"]
             ],
@@ -25,7 +25,7 @@ struct CommanderBinderMenuDockTests {
         #expect(command.direction == "down")
         #expect(command.amount == 7)
         #expect(command.on == "B4")
-        #expect(command.session == "sess-5")
+        #expect(command.snapshot == "sess-5")
         #expect(command.delay == 5)
         #expect(command.app == "Mail")
         #expect(command.smooth == true)

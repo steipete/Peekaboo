@@ -14,15 +14,15 @@ import Testing
 struct ElementDetectionServiceTests {
     @Test("Initialize ElementDetectionService")
     func initializeService() async throws {
-        let sessionManager = MockSessionManager()
-        let service: ElementDetectionService? = ElementDetectionService(sessionManager: sessionManager)
+        let snapshotManager = MockSnapshotManager()
+        let service: ElementDetectionService? = ElementDetectionService(snapshotManager: snapshotManager)
         #expect(service != nil)
     }
 
     @Test("Detect elements from screenshot")
     func detectElementsFromScreenshot() async throws {
-        let sessionManager = MockSessionManager()
-        let service = ElementDetectionService(sessionManager: sessionManager)
+        let snapshotManager = MockSnapshotManager()
+        let service = ElementDetectionService(snapshotManager: snapshotManager)
 
         // Create mock image data
         let mockImageData = Data()
@@ -31,10 +31,10 @@ struct ElementDetectionServiceTests {
         do {
             let result = try await service.detectElements(
                 in: mockImageData,
-                sessionId: "test-session",
+                snapshotId: "test-snapshot",
                 windowContext: nil)
 
-            #expect(result.sessionId == "test-session")
+            #expect(result.snapshotId == "test-snapshot")
             #expect(result.metadata.elementCount >= 0)
         } catch {
             // In test environment without a focused window, this might fail
@@ -44,8 +44,8 @@ struct ElementDetectionServiceTests {
 
     @Test("Window detection works for non-active apps")
     func detectWindowsForNonActiveApp() async throws {
-        let sessionManager = MockSessionManager()
-        _ = ElementDetectionService(sessionManager: sessionManager)
+        let snapshotManager = MockSnapshotManager()
+        _ = ElementDetectionService(snapshotManager: snapshotManager)
 
         // This test verifies that window detection doesn't require the app to be active
         // Previously, the service would throw an error if !targetApp.isActive
@@ -63,8 +63,8 @@ struct ElementDetectionServiceTests {
 
     @Test("Map element types correctly")
     func elementTypeMapping() async throws {
-        let sessionManager = MockSessionManager()
-        _ = ElementDetectionService(sessionManager: sessionManager)
+        let snapshotManager = MockSnapshotManager()
+        _ = ElementDetectionService(snapshotManager: snapshotManager)
 
         // Test various AX roles map to correct ElementType
         let roleMappings: [(String, ElementType)] = [
@@ -89,7 +89,7 @@ struct ElementDetectionServiceTests {
 
     @Test("Find element by ID")
     func findElementById() async throws {
-        let sessionManager = MockSessionManager()
+        let snapshotManager = MockSnapshotManager()
 
         // Create mock detection result
         let mockElements = [
@@ -118,7 +118,7 @@ struct ElementDetectionServiceTests {
             textFields: mockElements.filter { $0.type == .textField })
 
         let detectionResult = ElementDetectionResult(
-            sessionId: "test-session",
+            snapshotId: "test-snapshot",
             screenshotPath: "/tmp/test.png",
             elements: detectedElements,
             metadata: DetectionMetadata(
@@ -126,12 +126,12 @@ struct ElementDetectionServiceTests {
                 elementCount: mockElements.count,
                 method: "AXorcist"))
 
-        await sessionManager.primeDetectionResult(detectionResult)
+        await snapshotManager.primeDetectionResult(detectionResult)
 
-        _ = ElementDetectionService(sessionManager: sessionManager)
+        _ = ElementDetectionService(snapshotManager: snapshotManager)
 
         // Test getting detection result
-        let result = try await sessionManager.getDetectionResult(sessionId: "test-session")
+        let result = try await snapshotManager.getDetectionResult(snapshotId: "test-snapshot")
         #expect(result != nil)
 
         // Test finding elements in the stored result
@@ -306,10 +306,10 @@ extension ElementDetectionServiceTests {
     }
 }
 
-// MARK: - Mock Session Manager
+// MARK: - Mock Snapshot Manager
 
 @MainActor
-private final class MockSessionManager: SessionManagerProtocol {
+private final class MockSnapshotManager: SnapshotManagerProtocol {
     private var mockDetectionResult: ElementDetectionResult?
     private var storedResults: [String: ElementDetectionResult] = [:]
 
@@ -317,48 +317,48 @@ private final class MockSessionManager: SessionManagerProtocol {
         self.mockDetectionResult = result
     }
 
-    func createSession() async throws -> String {
-        "test-session-\(UUID().uuidString)"
+    func createSnapshot() async throws -> String {
+        "test-snapshot-\(UUID().uuidString)"
     }
 
-    func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
-        self.storedResults[sessionId] = result
+    func storeDetectionResult(snapshotId: String, result: ElementDetectionResult) async throws {
+        self.storedResults[snapshotId] = result
     }
 
-    func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult? {
-        self.mockDetectionResult ?? self.storedResults[sessionId]
+    func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult? {
+        self.mockDetectionResult ?? self.storedResults[snapshotId]
     }
 
-    func getMostRecentSession() async -> String? {
+    func getMostRecentSnapshot() async -> String? {
         self.storedResults.keys.first
     }
 
-    func listSessions() async throws -> [SessionInfo] {
+    func listSnapshots() async throws -> [SnapshotInfo] {
         []
     }
 
-    func cleanSession(sessionId: String) async throws {
-        self.storedResults.removeValue(forKey: sessionId)
+    func cleanSnapshot(snapshotId: String) async throws {
+        self.storedResults.removeValue(forKey: snapshotId)
     }
 
-    func cleanSessionsOlderThan(days: Int) async throws -> Int {
+    func cleanSnapshotsOlderThan(days: Int) async throws -> Int {
         let count = self.storedResults.count
         self.storedResults.removeAll()
         return count
     }
 
-    func cleanAllSessions() async throws -> Int {
+    func cleanAllSnapshots() async throws -> Int {
         let count = self.storedResults.count
         self.storedResults.removeAll()
         return count
     }
 
-    nonisolated func getSessionStoragePath() -> String {
-        "/tmp/test-sessions"
+    nonisolated func getSnapshotStoragePath() -> String {
+        "/tmp/test-snapshots"
     }
 
     func storeScreenshot(
-        sessionId: String,
+        snapshotId: String,
         screenshotPath: String,
         applicationName: String?,
         windowTitle: String?,
@@ -367,22 +367,27 @@ private final class MockSessionManager: SessionManagerProtocol {
         // No-op for tests
     }
 
-    func getElement(sessionId: String, elementId: String) async throws -> UIElement? {
+    func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
+        _ = snapshotId
+        _ = annotatedScreenshotPath
+    }
+
+    func getElement(snapshotId: String, elementId: String) async throws -> UIElement? {
         nil
     }
 
-    func findElements(sessionId: String, matching query: String) async throws -> [UIElement] {
+    func findElements(snapshotId: String, matching query: String) async throws -> [UIElement] {
         []
     }
 
-    func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
+    func getUIAutomationSnapshot(snapshotId: String) async throws -> UIAutomationSnapshot? {
         nil
     }
 }
 
 private func createDetectionResult(elements: DetectedElements, total: Int) -> ElementDetectionResult {
     ElementDetectionResult(
-        sessionId: "test-session",
+        snapshotId: "test-snapshot",
         screenshotPath: "/tmp/test.png",
         elements: elements,
         metadata: DetectionMetadata(

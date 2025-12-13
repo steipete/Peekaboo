@@ -8,18 +8,18 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// Detect UI elements in a screenshot
     /// - Parameters:
     ///   - imageData: The screenshot image data
-    ///   - sessionId: Optional session ID to use for caching
+    ///   - snapshotId: Optional snapshot ID to use for caching
     ///   - windowContext: Optional window context for coordinate mapping
     /// - Returns: Detection result with identified elements
-    func detectElements(in imageData: Data, sessionId: String?, windowContext: WindowContext?) async throws
+    func detectElements(in imageData: Data, snapshotId: String?, windowContext: WindowContext?) async throws
         -> ElementDetectionResult
 
     /// Click at a specific point or element
     /// - Parameters:
     ///   - target: Click target (element ID, coordinates, or query)
     ///   - clickType: Type of click (single, double, right)
-    ///   - sessionId: Session ID for element resolution
-    func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws
+    ///   - snapshotId: Snapshot ID for element resolution
+    func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws
 
     /// Type text at current focus or specific element
     /// - Parameters:
@@ -27,18 +27,18 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - target: Optional target element
     ///   - clearExisting: Whether to clear existing text first
     ///   - typingDelay: Delay between keystrokes in milliseconds
-    ///   - sessionId: Session ID for element resolution
-    func type(text: String, target: String?, clearExisting: Bool, typingDelay: Int, sessionId: String?) async throws
+    ///   - snapshotId: Snapshot ID for element resolution
+    func type(text: String, target: String?, clearExisting: Bool, typingDelay: Int, snapshotId: String?) async throws
 
     /// Type using advanced typing actions (text, special keys, key sequences)
     /// - Parameters:
     ///   - actions: Array of typing actions to perform
     ///   - cadence: Typing cadence (fixed delay or human WPM)
-    ///   - sessionId: Session ID for element resolution
-    func typeActions(_ actions: [TypeAction], cadence: TypingCadence, sessionId: String?) async throws -> TypeResult
+    ///   - snapshotId: Snapshot ID for element resolution
+    func typeActions(_ actions: [TypeAction], cadence: TypingCadence, snapshotId: String?) async throws -> TypeResult
 
     /// Scroll in a specific direction with the supplied configuration.
-    /// - Parameter request: Scroll configuration including direction, amount, options, and session context.
+    /// - Parameter request: Scroll configuration including direction, amount, options, and snapshot context.
     func scroll(_ request: ScrollRequest) async throws
 
     /// Press a hotkey combination
@@ -64,9 +64,9 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// - Parameters:
     ///   - target: The element target to wait for
     ///   - timeout: Maximum time to wait in seconds
-    ///   - sessionId: Session ID for element resolution
+    ///   - snapshotId: Snapshot ID for element resolution
     /// - Returns: Result indicating if element was found with timing info
-    func waitForElement(target: ClickTarget, timeout: TimeInterval, sessionId: String?) async throws
+    func waitForElement(target: ClickTarget, timeout: TimeInterval, snapshotId: String?) async throws
         -> WaitForElementResult
 
     // swiftlint:disable function_parameter_count
@@ -174,8 +174,8 @@ public struct HumanMouseProfileConfiguration: Sendable, Equatable, Codable {
 
 /// Result of element detection
 public struct ElementDetectionResult: Sendable, Codable {
-    /// Unique session identifier
-    public let sessionId: String
+    /// Unique snapshot identifier
+    public let snapshotId: String
 
     /// Path to the annotated screenshot
     public let screenshotPath: String
@@ -187,12 +187,12 @@ public struct ElementDetectionResult: Sendable, Codable {
     public let metadata: DetectionMetadata
 
     public init(
-        sessionId: String,
+        snapshotId: String,
         screenshotPath: String,
         elements: DetectedElements,
         metadata: DetectionMetadata)
     {
-        self.sessionId = sessionId
+        self.snapshotId = snapshotId
         self.screenshotPath = screenshotPath
         self.elements = elements
         self.metadata = metadata
@@ -423,7 +423,7 @@ public struct ScrollRequest: Sendable, Codable {
     public var target: String?
     public var smooth: Bool
     public var delay: Int
-    public var sessionId: String?
+    public var snapshotId: String?
 
     public init(
         direction: PeekabooFoundation.ScrollDirection,
@@ -431,14 +431,14 @@ public struct ScrollRequest: Sendable, Codable {
         target: String? = nil,
         smooth: Bool = false,
         delay: Int = 10,
-        sessionId: String? = nil)
+        snapshotId: String? = nil)
     {
         self.direction = direction
         self.amount = amount
         self.target = target
         self.smooth = smooth
         self.delay = delay
-        self.sessionId = sessionId
+        self.snapshotId = snapshotId
     }
 }
 

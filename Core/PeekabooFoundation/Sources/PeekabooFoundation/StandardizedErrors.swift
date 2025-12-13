@@ -13,6 +13,7 @@ public enum StandardErrorCode: String, Sendable {
     case windowNotFound = "WINDOW_NOT_FOUND"
     case elementNotFound = "ELEMENT_NOT_FOUND"
     case sessionNotFound = "SESSION_NOT_FOUND"
+    case snapshotNotFound = "SNAPSHOT_NOT_FOUND"
     case fileNotFound = "FILE_NOT_FOUND"
     case menuNotFound = "MENU_NOT_FOUND"
 

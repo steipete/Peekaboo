@@ -64,15 +64,15 @@ struct PressCommandTests {
         })
     }
 
-    @Test("Session argument is forwarded")
-    func forwardsSession() async throws {
+    @Test("Snapshot argument is forwarded")
+    func forwardsSnapshot() async throws {
         let context = await self.makeContext()
-        let result = try await self.runPress(arguments: ["escape", "--session", "session-42"], context: context)
+        let result = try await self.runPress(arguments: ["escape", "--snapshot", "snapshot-42"], context: context)
 
         #expect(result.exitStatus == 0)
         let calls = await self.automationState(context) { $0.typeActionsCalls }
         let call = try #require(calls.first)
-        #expect(call.sessionId == "session-42")
+        #expect(call.snapshotId == "snapshot-42")
     }
 
     @Test("Invalid key results in failure")
@@ -99,11 +99,11 @@ struct PressCommandTests {
     }
 
     private func makeContext(
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSnapshotManager) -> Void)? = nil
     ) async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             let context = TestServicesFactory.makeAutomationTestContext()
-            configure?(context.automation, context.sessions)
+            configure?(context.automation, context.snapshots)
             return context
         }
     }

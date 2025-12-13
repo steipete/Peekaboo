@@ -144,7 +144,7 @@ public struct SeeTool: MCPTool {
         Captures a screenshot of the active UI and generates an element map.
 
         Returns Peekaboo element IDs (B1 for buttons, T1 for text fields, etc.) that can be
-        used with interaction commands and creates/updates a session that tracks UI state.
+        used with interaction commands and creates/updates a snapshot that tracks UI state.
         Peekaboo MCP 3.0.0-beta1 using openai/gpt-5.1
         and anthropic/claude-sonnet-4.5.
         """
@@ -167,9 +167,9 @@ public struct SeeTool: MCPTool {
                     description: """
                     Optional. Path to save the screenshot. If omitted, a temporary file is used.
                     """),
-                "session": SchemaBuilder.string(
+                "snapshot": SchemaBuilder.string(
                     description: """
-                    Optional. Session ID for UI automation tracking. A new session is created when absent.
+                    Optional. Snapshot ID for UI automation tracking. A new snapshot is created when absent.
                     """),
                 "annotate": SchemaBuilder.boolean(
                     description: """
@@ -189,19 +189,22 @@ public struct SeeTool: MCPTool {
         let request = SeeRequest(arguments: arguments)
 
         do {
-            let session = try await self.getOrCreateSession(sessionId: request.sessionId)
+            let snapshot = try await self.getOrCreateSnapshot(snapshotId: request.snapshotId)
             let target = try self.parseCaptureTarget(request.appTarget)
-            let screenshotPath = try await self.captureScreenshot(target: target, path: request.path, session: session)
-            let (elements, detectedElements) = try await self.detectUIElements(target: target, session: session)
+            let screenshotPath = try await self.captureScreenshot(
+                target: target,
+                path: request.path,
+                snapshot: snapshot)
+            let (elements, detectedElements) = try await self.detectUIElements(target: target, snapshot: snapshot)
             let annotatedPath = try await self.generateAnnotationIfNeeded(
                 annotate: request.annotate,
                 screenshotPath: screenshotPath,
                 elements: elements,
                 detectedElements: detectedElements,
-                session: session)
+                snapshot: snapshot)
 
             return try await self.buildToolResponse(
-                session: session,
+                snapshot: snapshot,
                 elements: elements,
                 output: ScreenshotOutput(
                     screenshotPath: screenshotPath,
@@ -216,16 +219,16 @@ public struct SeeTool: MCPTool {
 
     // MARK: - Private Helpers
 
-    private func getOrCreateSession(sessionId: String?) async throws -> UISession {
-        if let sessionId {
-            // Try to get existing session
-            if let existingSession = await UISessionManager.shared.getSession(id: sessionId) {
-                return existingSession
+    private func getOrCreateSnapshot(snapshotId: String?) async throws -> UISnapshot {
+        if let snapshotId {
+            // Try to get existing snapshot
+            if let existingSnapshot = await UISnapshotManager.shared.getSnapshot(id: snapshotId) {
+                return existingSnapshot
             }
         }
 
-        // Create new session
-        return await UISessionManager.shared.createSession()
+        // Create new snapshot
+        return await UISnapshotManager.shared.createSnapshot()
     }
 
     private func parseCaptureTarget(_ appTarget: String?) throws -> CaptureTarget {
@@ -263,11 +266,11 @@ public struct SeeTool: MCPTool {
         }
     }
 
-    private func captureScreenshot(target: CaptureTarget, path: String?, session: UISession) async throws -> String {
+    private func captureScreenshot(target: CaptureTarget, path: String?, snapshot: UISnapshot) async throws -> String {
         let screenshotPath = self.makeScreenshotPath(from: path)
         let captureResult = try await self.captureResult(for: target)
         try self.saveCaptureResult(captureResult, to: screenshotPath)
-        await session.setScreenshot(path: screenshotPath, metadata: captureResult.metadata)
+        await snapshot.setScreenshot(path: screenshotPath, metadata: captureResult.metadata)
         return screenshotPath
     }
 
@@ -276,14 +279,14 @@ public struct SeeTool: MCPTool {
         screenshotPath: String,
         elements: [UIElement],
         detectedElements: [AutomationDetectedElement],
-        session: UISession) async throws -> String?
+        snapshot: UISnapshot) async throws -> String?
     {
         guard annotate else { return nil }
         let annotated = try self.generateAnnotatedScreenshot(originalPath: screenshotPath, elements: elements)
         await self.emitAnnotatedScreenshotVisualizer(
             annotatedPath: annotated,
             detectedElements: detectedElements,
-            session: session)
+            snapshot: snapshot)
         return annotated
     }
 
@@ -327,9 +330,9 @@ public struct SeeTool: MCPTool {
 
     private func detectUIElements(
         target: CaptureTarget,
-        session: UISession) async throws -> ([UIElement], [AutomationDetectedElement])
+        snapshot: UISnapshot) async throws -> ([UIElement], [AutomationDetectedElement])
     {
-        guard let screenshotPath = await session.screenshotPath else {
+        guard let screenshotPath = await snapshot.screenshotPath else {
             self.logger.warning("No screenshot available for element detection")
             return ([], [])
         }
@@ -339,14 +342,14 @@ public struct SeeTool: MCPTool {
 
         let detectionResult = try await self.context.automation.detectElements(
             in: imageData,
-            sessionId: session.id,
+            snapshotId: snapshot.id,
             windowContext: windowContext)
 
         let detectedElements = await MainActor.run { detectionResult.elements.all }
         await self.emitElementDetectionVisualizer(from: detectedElements)
         let elements = self.convertElements(detectedElements)
         self.logger.info("Detected \(elements.count) UI elements")
-        await session.setUIElements(elements)
+        await snapshot.setUIElements(elements)
         return (elements, detectedElements)
     }
 
@@ -391,14 +394,14 @@ public struct SeeTool: MCPTool {
     }
 
     private func buildToolResponse(
-        session: UISession,
+        snapshot: UISnapshot,
         elements: [UIElement],
         output: ScreenshotOutput,
         target: CaptureTarget) async throws -> ToolResponse
     {
         let finalScreenshot = output.annotatedPath ?? output.screenshotPath
         let summaryText = await buildSummary(
-            session: session,
+            snapshot: snapshot,
             elements: elements,
             screenshotPath: finalScreenshot,
             target: target)
@@ -409,22 +412,22 @@ public struct SeeTool: MCPTool {
             content.append(.image(data: imageData.base64EncodedString(), mimeType: "image/png", metadata: nil))
         }
 
-        let baseMeta = self.makeMetadata(session: session, elements: elements)
+        let baseMeta = self.makeMetadata(snapshot: snapshot, elements: elements)
         var summary = ToolEventSummary(
-            targetApp: session.applicationName,
-            windowTitle: session.windowTitle,
+            targetApp: snapshot.applicationName,
+            windowTitle: snapshot.windowTitle,
             actionDescription: "See",
             notes: String(describing: target))
-        summary.captureApp = session.applicationName
-        summary.captureWindow = session.windowTitle
+        summary.captureApp = snapshot.applicationName
+        summary.captureWindow = snapshot.windowTitle
 
         let mergedMeta = ToolEventSummary.merge(summary: summary, into: baseMeta)
         return ToolResponse(content: content, meta: mergedMeta)
     }
 
-    private func makeMetadata(session: UISession, elements: [UIElement]) -> Value {
+    private func makeMetadata(snapshot: UISnapshot, elements: [UIElement]) -> Value {
         .object([
-            "session_id": .string(session.id),
+            "snapshot_id": .string(snapshot.id),
             "element_count": .double(Double(elements.count)),
             "actionable_count": .double(Double(elements.count(where: { $0.isActionable }))),
         ])
@@ -451,11 +454,11 @@ public struct SeeTool: MCPTool {
     private func emitAnnotatedScreenshotVisualizer(
         annotatedPath: String,
         detectedElements: [AutomationDetectedElement],
-        session: UISession) async
+        snapshot: UISnapshot) async
     {
         guard !detectedElements.isEmpty else { return }
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: annotatedPath)) else { return }
-        let metadata = await session.screenshotMetadata
+        let metadata = await snapshot.screenshotMetadata
         let windowBounds = metadata?.windowInfo?.bounds
             ?? metadata?.displayInfo?.bounds
             ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
@@ -473,13 +476,13 @@ public struct SeeTool: MCPTool {
 
     @MainActor
     private func buildSummary(
-        session: UISession,
+        snapshot: UISnapshot,
         elements: [UIElement],
         screenshotPath: String,
         target: CaptureTarget) async -> String
     {
         await SeeSummaryBuilder(
-            session: session,
+            snapshot: snapshot,
             elements: elements,
             screenshotPath: screenshotPath)
             .build()
@@ -491,20 +494,20 @@ public struct SeeTool: MCPTool {
 // Using CaptureTarget from PeekabooServices - no need to redefine
 // Note: menubar case is not available in the main CaptureTarget enum
 
-// Using the main UIElement from Session.swift - no need to redefine
+// Using the main UIElement model type - no need to redefine
 
-// MARK: - UI Session Management
+// MARK: - UI Snapshot Management
 
 private struct SeeRequest {
     let appTarget: String?
     let path: String?
-    let sessionId: String?
+    let snapshotId: String?
     let annotate: Bool
 
     init(arguments: ToolArguments) {
         self.appTarget = arguments.getString("app_target")
         self.path = arguments.getString("path")
-        self.sessionId = arguments.getString("session")
+        self.snapshotId = arguments.getString("snapshot")
         self.annotate = arguments.getBool("annotate") ?? false
     }
 }
@@ -517,7 +520,7 @@ private struct ScreenshotOutput {
 
 @MainActor
 private struct SeeSummaryBuilder {
-    let session: UISession
+    let snapshot: UISnapshot
     let elements: [UIElement]
     let screenshotPath: String
 
@@ -536,12 +539,12 @@ private struct SeeSummaryBuilder {
     private func headerLines() -> [String] {
         [
             "📸 UI State Captured",
-            "Session ID: \(self.session.id)",
+            "Snapshot ID: \(self.snapshot.id)",
         ]
     }
 
     private func metadataLines() async -> [String] {
-        guard let metadata = await self.session.screenshotMetadata else { return [] }
+        guard let metadata = await self.snapshot.screenshotMetadata else { return [] }
         var lines: [String] = []
         if let appInfo = metadata.applicationInfo {
             lines.append("Application: \(appInfo.name)")
@@ -588,7 +591,7 @@ private struct SeeSummaryBuilder {
     }
 }
 
-actor UISession {
+actor UISnapshot {
     let id: String
     private(set) var screenshotPath: String?
     private(set) var screenshotMetadata: CaptureMetadata?
@@ -630,35 +633,44 @@ actor UISession {
     }
 }
 
-actor UISessionManager {
-    static let shared = UISessionManager()
+actor UISnapshotManager {
+    static let shared = UISnapshotManager()
 
-    private var sessions: [String: UISession] = [:]
+    private var snapshots: [String: UISnapshot] = [:]
+    private var orderedSnapshotIds: [String] = []
 
     private init() {}
 
-    func createSession() -> UISession {
-        let session = UISession()
-        self.sessions[session.id] = session
-        return session
+    func createSnapshot() -> UISnapshot {
+        let snapshot = UISnapshot()
+        self.snapshots[snapshot.id] = snapshot
+        self.orderedSnapshotIds.append(snapshot.id)
+        return snapshot
     }
 
-    func getSession(id: String) -> UISession? {
-        self.sessions[id]
-    }
-
-    func removeSession(id: String) {
-        self.sessions.removeValue(forKey: id)
-    }
-
-    func cleanupOldSessions(olderThan timeInterval: TimeInterval = 3600) async {
-        let cutoffDate = Date().addingTimeInterval(-timeInterval)
-        var newSessions: [String: UISession] = [:]
-        for (id, session) in self.sessions {
-            let lastAccessed = await session.lastAccessedAt
-            guard lastAccessed > cutoffDate else { continue }
-            newSessions[id] = session
+    func getSnapshot(id: String?) -> UISnapshot? {
+        if let id {
+            return self.snapshots[id]
         }
-        self.sessions = newSessions
+        if let mostRecentSnapshotId = self.orderedSnapshotIds.last {
+            return self.snapshots[mostRecentSnapshotId]
+        }
+        return nil
+    }
+
+    func removeSnapshot(id: String) {
+        self.snapshots.removeValue(forKey: id)
+        self.orderedSnapshotIds.removeAll(where: { $0 == id })
+    }
+
+    func cleanupOldSnapshots(olderThan timeInterval: TimeInterval = 3600) async {
+        let cutoffDate = Date().addingTimeInterval(-timeInterval)
+        var newSnapshots: [String: UISnapshot] = [:]
+        for (id, snapshot) in self.snapshots {
+            let lastAccessed = await snapshot.lastAccessedAt
+            guard lastAccessed > cutoffDate else { continue }
+            newSnapshots[id] = snapshot
+        }
+        self.snapshots = newSnapshots
     }
 }

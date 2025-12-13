@@ -3,29 +3,29 @@ import Foundation
 import os.log
 import PeekabooFoundation
 
-/// In-memory implementation of `SessionManagerProtocol`.
+/// In-memory implementation of `SnapshotManagerProtocol`.
 ///
-/// Unlike `SessionManager`, this manager does not persist session state to disk and is ideal for long-lived host apps
+/// Unlike `SnapshotManager`, this manager does not persist snapshot state to disk and is ideal for long-lived host apps
 /// (e.g. a macOS menubar app) where automation state can be kept in-process for speed and fidelity.
 @MainActor
-public final class InMemorySessionManager: SessionManagerProtocol {
+public final class InMemorySnapshotManager: SnapshotManagerProtocol {
     public struct Options: Sendable {
-        /// How long sessions are considered valid for `getMostRecentSession()` and pruning.
-        public var sessionValidityWindow: TimeInterval
+        /// How long snapshots are considered valid for `getMostRecentSnapshot()` and pruning.
+        public var snapshotValidityWindow: TimeInterval
 
-        /// Maximum number of sessions kept in memory (LRU eviction).
-        public var maxSessions: Int
+        /// Maximum number of snapshots kept in memory (LRU eviction).
+        public var maxSnapshots: Int
 
-        /// If enabled, attempts to delete any referenced screenshot artifacts on session cleanup.
+        /// If enabled, attempts to delete any referenced screenshot artifacts on snapshot cleanup.
         public var deleteArtifactsOnCleanup: Bool
 
         public init(
-            sessionValidityWindow: TimeInterval = 600,
-            maxSessions: Int = 25,
+            snapshotValidityWindow: TimeInterval = 600,
+            maxSnapshots: Int = 25,
             deleteArtifactsOnCleanup: Bool = false)
         {
-            self.sessionValidityWindow = sessionValidityWindow
-            self.maxSessions = max(1, maxSessions)
+            self.snapshotValidityWindow = snapshotValidityWindow
+            self.maxSnapshots = max(1, maxSnapshots)
             self.deleteArtifactsOnCleanup = deleteArtifactsOnCleanup
         }
     }
@@ -35,10 +35,10 @@ public final class InMemorySessionManager: SessionManagerProtocol {
         var lastAccessedAt: Date
         var processId: Int32
         var detectionResult: ElementDetectionResult?
-        var sessionData: UIAutomationSession
+        var snapshotData: UIAutomationSnapshot
     }
 
-    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "InMemorySessionManager")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "InMemorySnapshotManager")
     private let options: Options
     private var entries: [String: Entry] = [:]
 
@@ -47,126 +47,126 @@ public final class InMemorySessionManager: SessionManagerProtocol {
 
         if let detectionResult {
             let now = Date()
-            let sessionId = detectionResult.sessionId
+            let snapshotId = detectionResult.snapshotId
             var entry = Entry(
                 createdAt: now,
                 lastAccessedAt: now,
                 processId: getpid(),
                 detectionResult: detectionResult,
-                sessionData: UIAutomationSession())
-            self.applyDetectionResult(detectionResult, to: &entry.sessionData)
-            self.entries[sessionId] = entry
+                snapshotData: UIAutomationSnapshot())
+            self.applyDetectionResult(detectionResult, to: &entry.snapshotData)
+            self.entries[snapshotId] = entry
         }
     }
 
-    // MARK: - Session lifecycle
+    // MARK: - Snapshot lifecycle
 
-    public func createSession() async throws -> String {
+    public func createSnapshot() async throws -> String {
         self.pruneIfNeeded()
 
         let timestamp = Int(Date().timeIntervalSince1970 * 1000) // milliseconds
         let randomSuffix = Int.random(in: 1000...9999)
-        let sessionId = "\(timestamp)-\(randomSuffix)"
+        let snapshotId = "\(timestamp)-\(randomSuffix)"
 
         let now = Date()
-        self.entries[sessionId] = Entry(
+        self.entries[snapshotId] = Entry(
             createdAt: now,
             lastAccessedAt: now,
             processId: getpid(),
             detectionResult: nil,
-            sessionData: UIAutomationSession())
+            snapshotData: UIAutomationSnapshot())
 
-        return sessionId
+        return snapshotId
     }
 
-    public func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
+    public func storeDetectionResult(snapshotId: String, result: ElementDetectionResult) async throws {
         self.pruneIfNeeded()
 
-        var entry = self.entries[sessionId] ?? Entry(
+        var entry = self.entries[snapshotId] ?? Entry(
             createdAt: Date(),
             lastAccessedAt: Date(),
             processId: getpid(),
             detectionResult: nil,
-            sessionData: UIAutomationSession())
+            snapshotData: UIAutomationSnapshot())
 
         entry.lastAccessedAt = Date()
         entry.detectionResult = result
-        self.applyDetectionResult(result, to: &entry.sessionData)
-        self.entries[sessionId] = entry
+        self.applyDetectionResult(result, to: &entry.snapshotData)
+        self.entries[snapshotId] = entry
     }
 
-    public func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult? {
-        guard var entry = self.entries[sessionId] else { return nil }
+    public func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult? {
+        guard var entry = self.entries[snapshotId] else { return nil }
         entry.lastAccessedAt = Date()
-        self.entries[sessionId] = entry
+        self.entries[snapshotId] = entry
 
         if let detection = entry.detectionResult {
             return detection
         }
 
-        // Best-effort fallback for sessions that were created via `storeScreenshot` without a stored detection result.
-        return self.detectionResult(from: entry.sessionData, sessionId: sessionId)
+        // Best-effort fallback for snapshots that were created via `storeScreenshot` without a stored detection result.
+        return self.detectionResult(from: entry.snapshotData, snapshotId: snapshotId)
     }
 
-    public func getMostRecentSession() async -> String? {
+    public func getMostRecentSnapshot() async -> String? {
         self.pruneIfNeeded()
 
-        let cutoff = Date().addingTimeInterval(-self.options.sessionValidityWindow)
+        let cutoff = Date().addingTimeInterval(-self.options.snapshotValidityWindow)
         return self.entries
             .filter { $0.value.createdAt >= cutoff }
             .max(by: { $0.value.lastAccessedAt < $1.value.lastAccessedAt })?
             .key
     }
 
-    public func listSessions() async throws -> [SessionInfo] {
+    public func listSnapshots() async throws -> [SnapshotInfo] {
         let values = self.entries.map { id, entry in
-            SessionInfo(
+            SnapshotInfo(
                 id: id,
                 processId: entry.processId,
                 createdAt: entry.createdAt,
                 lastAccessedAt: entry.lastAccessedAt,
                 sizeInBytes: 0,
-                screenshotCount: self.screenshotCount(for: entry.sessionData),
+                screenshotCount: self.screenshotCount(for: entry.snapshotData),
                 isActive: true)
         }
         return values.sorted { $0.createdAt > $1.createdAt }
     }
 
-    public func cleanSession(sessionId: String) async throws {
-        guard let entry = self.entries.removeValue(forKey: sessionId) else { return }
+    public func cleanSnapshot(snapshotId: String) async throws {
+        guard let entry = self.entries.removeValue(forKey: snapshotId) else { return }
         if self.options.deleteArtifactsOnCleanup {
-            self.deleteArtifacts(for: entry.sessionData)
+            self.deleteArtifacts(for: entry.snapshotData)
         }
     }
 
-    public func cleanSessionsOlderThan(days: Int) async throws -> Int {
+    public func cleanSnapshotsOlderThan(days: Int) async throws -> Int {
         let cutoff = Date().addingTimeInterval(-Double(days) * 24 * 3600)
         let toRemove = self.entries.filter { $0.value.createdAt < cutoff }.map(\.key)
         for id in toRemove {
-            try await self.cleanSession(sessionId: id)
+            try await self.cleanSnapshot(snapshotId: id)
         }
         return toRemove.count
     }
 
-    public func cleanAllSessions() async throws -> Int {
+    public func cleanAllSnapshots() async throws -> Int {
         let count = self.entries.count
         if self.options.deleteArtifactsOnCleanup {
             for entry in self.entries.values {
-                self.deleteArtifacts(for: entry.sessionData)
+                self.deleteArtifacts(for: entry.snapshotData)
             }
         }
         self.entries.removeAll()
         return count
     }
 
-    public func getSessionStoragePath() -> String {
+    public func getSnapshotStoragePath() -> String {
         "memory"
     }
 
     // MARK: - Screenshot + UI map helpers
 
     public func storeScreenshot(
-        sessionId: String,
+        snapshotId: String,
         screenshotPath: String,
         applicationName: String?,
         windowTitle: String?,
@@ -174,41 +174,56 @@ public final class InMemorySessionManager: SessionManagerProtocol {
     {
         self.pruneIfNeeded()
 
-        var entry = self.entries[sessionId] ?? Entry(
+        var entry = self.entries[snapshotId] ?? Entry(
             createdAt: Date(),
             lastAccessedAt: Date(),
             processId: getpid(),
             detectionResult: nil,
-            sessionData: UIAutomationSession())
+            snapshotData: UIAutomationSnapshot())
 
         entry.lastAccessedAt = Date()
-        entry.sessionData.screenshotPath = screenshotPath
-        entry.sessionData.annotatedPath = entry.sessionData.annotatedPath ?? screenshotPath
-        entry.sessionData.applicationName = applicationName
-        entry.sessionData.windowTitle = windowTitle
-        entry.sessionData.windowBounds = windowBounds
-        entry.sessionData.lastUpdateTime = Date()
-        self.entries[sessionId] = entry
+        entry.snapshotData.screenshotPath = screenshotPath
+        entry.snapshotData.applicationName = applicationName
+        entry.snapshotData.windowTitle = windowTitle
+        entry.snapshotData.windowBounds = windowBounds
+        entry.snapshotData.lastUpdateTime = Date()
+        self.entries[snapshotId] = entry
     }
 
-    public func getElement(sessionId: String, elementId: String) async throws -> UIElement? {
-        guard var entry = self.entries[sessionId] else {
-            throw SessionError.sessionNotFound
-        }
+    public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
+        self.pruneIfNeeded()
+
+        var entry = self.entries[snapshotId] ?? Entry(
+            createdAt: Date(),
+            lastAccessedAt: Date(),
+            processId: getpid(),
+            detectionResult: nil,
+            snapshotData: UIAutomationSnapshot())
+
         entry.lastAccessedAt = Date()
-        self.entries[sessionId] = entry
-        return entry.sessionData.uiMap[elementId]
+        entry.snapshotData.annotatedPath = annotatedScreenshotPath
+        entry.snapshotData.lastUpdateTime = Date()
+        self.entries[snapshotId] = entry
     }
 
-    public func findElements(sessionId: String, matching query: String) async throws -> [UIElement] {
-        guard var entry = self.entries[sessionId] else {
-            throw SessionError.sessionNotFound
+    public func getElement(snapshotId: String, elementId: String) async throws -> UIElement? {
+        guard var entry = self.entries[snapshotId] else {
+            throw SnapshotError.snapshotNotFound
         }
         entry.lastAccessedAt = Date()
-        self.entries[sessionId] = entry
+        self.entries[snapshotId] = entry
+        return entry.snapshotData.uiMap[elementId]
+    }
+
+    public func findElements(snapshotId: String, matching query: String) async throws -> [UIElement] {
+        guard var entry = self.entries[snapshotId] else {
+            throw SnapshotError.snapshotNotFound
+        }
+        entry.lastAccessedAt = Date()
+        self.entries[snapshotId] = entry
 
         let lowercaseQuery = query.lowercased()
-        return entry.sessionData.uiMap.values.filter { element in
+        return entry.snapshotData.uiMap.values.filter { element in
             let searchableText = [
                 element.title,
                 element.label,
@@ -225,42 +240,43 @@ public final class InMemorySessionManager: SessionManagerProtocol {
         }
     }
 
-    public func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
-        guard var entry = self.entries[sessionId] else { return nil }
+    public func getUIAutomationSnapshot(snapshotId: String) async throws -> UIAutomationSnapshot? {
+        guard var entry = self.entries[snapshotId] else { return nil }
         entry.lastAccessedAt = Date()
-        self.entries[sessionId] = entry
-        return entry.sessionData
+        self.entries[snapshotId] = entry
+        return entry.snapshotData
     }
 
     // MARK: - Internals
 
     private func pruneIfNeeded() {
-        let cutoff = Date().addingTimeInterval(-self.options.sessionValidityWindow)
+        let cutoff = Date().addingTimeInterval(-self.options.snapshotValidityWindow)
         let expired = self.entries.filter { $0.value.lastAccessedAt < cutoff }.map(\.key)
         for id in expired {
             self.entries.removeValue(forKey: id)
         }
 
-        if self.entries.count <= self.options.maxSessions { return }
+        if self.entries.count <= self.options.maxSnapshots { return }
 
         let ordered = self.entries.sorted { $0.value.lastAccessedAt < $1.value.lastAccessedAt }
-        let overflow = self.entries.count - self.options.maxSessions
+        let overflow = self.entries.count - self.options.maxSnapshots
         for pair in ordered.prefix(overflow) {
             self.entries.removeValue(forKey: pair.key)
         }
     }
 
-    private func applyDetectionResult(_ result: ElementDetectionResult, to sessionData: inout UIAutomationSession) {
-        sessionData.screenshotPath = result.screenshotPath.isEmpty ? sessionData.screenshotPath : result.screenshotPath
-        sessionData.annotatedPath = self.annotatedPath(from: result.screenshotPath) ?? sessionData.annotatedPath
-        sessionData.lastUpdateTime = Date()
+    private func applyDetectionResult(_ result: ElementDetectionResult, to snapshotData: inout UIAutomationSnapshot) {
+        if (snapshotData.screenshotPath ?? "").isEmpty, !result.screenshotPath.isEmpty {
+            snapshotData.screenshotPath = result.screenshotPath
+        }
+        snapshotData.lastUpdateTime = Date()
 
         if let context = result.metadata.windowContext {
-            sessionData.applicationName = context.applicationName ?? sessionData.applicationName
-            sessionData.windowTitle = context.windowTitle ?? sessionData.windowTitle
-            sessionData.windowBounds = context.windowBounds ?? sessionData.windowBounds
+            snapshotData.applicationName = context.applicationName ?? snapshotData.applicationName
+            snapshotData.windowTitle = context.windowTitle ?? snapshotData.windowTitle
+            snapshotData.windowBounds = context.windowBounds ?? snapshotData.windowBounds
         } else {
-            self.applyLegacyWarnings(result.metadata.warnings, to: &sessionData)
+            self.applyLegacyWarnings(result.metadata.warnings, to: &snapshotData)
         }
 
         var uiMap: [String: UIElement] = [:]
@@ -279,49 +295,44 @@ public final class InMemorySessionManager: SessionManagerProtocol {
                 keyboardShortcut: element.attributes["keyboardShortcut"])
             uiMap[element.id] = uiElement
         }
-        sessionData.uiMap = uiMap
+        snapshotData.uiMap = uiMap
     }
 
-    private func applyLegacyWarnings(_ warnings: [String], to sessionData: inout UIAutomationSession) {
+    private func applyLegacyWarnings(_ warnings: [String], to snapshotData: inout UIAutomationSnapshot) {
         for warning in warnings {
             if warning.hasPrefix("APP:") || warning.hasPrefix("app:") {
-                sessionData.applicationName = String(warning.dropFirst(4))
+                snapshotData.applicationName = String(warning.dropFirst(4))
             } else if warning.hasPrefix("WINDOW:") || warning.hasPrefix("window:") {
-                sessionData.windowTitle = String(warning.dropFirst(7))
+                snapshotData.windowTitle = String(warning.dropFirst(7))
             } else if warning.hasPrefix("BOUNDS:"),
                       let boundsData = String(warning.dropFirst(7)).data(using: .utf8),
                       let bounds = try? JSONDecoder().decode(CGRect.self, from: boundsData)
             {
-                sessionData.windowBounds = bounds
+                snapshotData.windowBounds = bounds
             } else if warning.hasPrefix("WINDOW_ID:"),
                       let windowID = CGWindowID(String(warning.dropFirst(10)))
             {
-                sessionData.windowID = windowID
+                snapshotData.windowID = windowID
             } else if warning.hasPrefix("AX_IDENTIFIER:") {
-                sessionData.windowAXIdentifier = String(warning.dropFirst(14))
+                snapshotData.windowAXIdentifier = String(warning.dropFirst(14))
             }
         }
     }
 
-    private func annotatedPath(from screenshotPath: String) -> String? {
-        guard !screenshotPath.isEmpty else { return nil }
-        if screenshotPath.hasSuffix("raw.png") {
-            return screenshotPath.replacingOccurrences(of: "raw.png", with: "annotated.png")
-        }
-        return screenshotPath
-    }
-
-    private func detectionResult(from sessionData: UIAutomationSession, sessionId: String) -> ElementDetectionResult? {
-        guard let screenshotPath = sessionData.annotatedPath ?? sessionData.screenshotPath,
+    private func detectionResult(
+        from snapshotData: UIAutomationSnapshot,
+        snapshotId: String) -> ElementDetectionResult?
+    {
+        guard let screenshotPath = snapshotData.annotatedPath ?? snapshotData.screenshotPath,
               !screenshotPath.isEmpty
         else {
             return nil
         }
 
         var allElements: [DetectedElement] = []
-        allElements.reserveCapacity(sessionData.uiMap.count)
+        allElements.reserveCapacity(snapshotData.uiMap.count)
 
-        for uiElement in sessionData.uiMap.values {
+        for uiElement in snapshotData.uiMap.values {
             var attributes: [String: String] = [:]
             if let identifier = uiElement.identifier {
                 attributes["identifier"] = identifier
@@ -342,31 +353,31 @@ public final class InMemorySessionManager: SessionManagerProtocol {
 
         let elements = self.organizeElementsByType(allElements)
         let metadata = DetectionMetadata(
-            detectionTime: Date().timeIntervalSince(sessionData.lastUpdateTime),
-            elementCount: sessionData.uiMap.count,
+            detectionTime: Date().timeIntervalSince(snapshotData.lastUpdateTime),
+            elementCount: snapshotData.uiMap.count,
             method: "memory-cache",
-            warnings: self.buildWarnings(from: sessionData))
+            warnings: self.buildWarnings(from: snapshotData))
 
         return ElementDetectionResult(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             screenshotPath: screenshotPath,
             elements: elements,
             metadata: metadata)
     }
 
-    private func screenshotCount(for sessionData: UIAutomationSession) -> Int {
+    private func screenshotCount(for snapshotData: UIAutomationSnapshot) -> Int {
         var count = 0
-        if sessionData.screenshotPath != nil { count += 1 }
-        if let annotated = sessionData.annotatedPath, annotated != sessionData.screenshotPath { count += 1 }
+        if snapshotData.screenshotPath != nil { count += 1 }
+        if let annotated = snapshotData.annotatedPath, annotated != snapshotData.screenshotPath { count += 1 }
         return count
     }
 
-    private func deleteArtifacts(for sessionData: UIAutomationSession) {
+    private func deleteArtifacts(for snapshotData: UIAutomationSnapshot) {
         let fm = FileManager.default
-        if let screenshotPath = sessionData.screenshotPath {
+        if let screenshotPath = snapshotData.screenshotPath {
             try? fm.removeItem(atPath: screenshotPath)
         }
-        if let annotatedPath = sessionData.annotatedPath, annotatedPath != sessionData.screenshotPath {
+        if let annotatedPath = snapshotData.annotatedPath, annotatedPath != snapshotData.screenshotPath {
             try? fm.removeItem(atPath: annotatedPath)
         }
     }
@@ -450,24 +461,24 @@ public final class InMemorySessionManager: SessionManagerProtocol {
             other: other)
     }
 
-    private func buildWarnings(from sessionData: UIAutomationSession) -> [String] {
+    private func buildWarnings(from snapshotData: UIAutomationSnapshot) -> [String] {
         var warnings: [String] = []
-        if let appName = sessionData.applicationName {
+        if let appName = snapshotData.applicationName {
             warnings.append("APP:\(appName)")
         }
-        if let windowTitle = sessionData.windowTitle {
+        if let windowTitle = snapshotData.windowTitle {
             warnings.append("WINDOW:\(windowTitle)")
         }
-        if let windowBounds = sessionData.windowBounds,
+        if let windowBounds = snapshotData.windowBounds,
            let boundsData = try? JSONEncoder().encode(windowBounds),
            let boundsString = String(data: boundsData, encoding: .utf8)
         {
             warnings.append("BOUNDS:\(boundsString)")
         }
-        if let windowID = sessionData.windowID {
+        if let windowID = snapshotData.windowID {
             warnings.append("WINDOW_ID:\(windowID)")
         }
-        if let axIdentifier = sessionData.windowAXIdentifier {
+        if let axIdentifier = snapshotData.windowAXIdentifier {
             warnings.append("AX_IDENTIFIER:\(axIdentifier)")
         }
         return warnings

@@ -36,7 +36,7 @@ struct ClickCommandFocusTests {
         ]
 
         // Create a basic click command with all options
-        var args = ["click", "100", "100", "--json-output"]
+        var args = ["click", "--coords", "100,100", "--json-output"]
         args.append(contentsOf: focusOptions.flatMap { [$0] }.compactMap { arg in
             // Add values for options that need them
             if arg == "--focus-timeout" { return ["--focus-timeout", "3.0"] }
@@ -51,9 +51,9 @@ struct ClickCommandFocusTests {
         #expect(data.success == true || data.error != nil)
     }
 
-    @Test("click with session uses window focus")
-    func clickWithSessionFocus() async throws {
-        // Create session
+    @Test("click with snapshot uses window focus")
+    func clickWithSnapshotFocus() async throws {
+        // Create snapshot
         let seeOutput = try await runPeekabooCommand([
             "see",
             "--app", "Finder",
@@ -62,24 +62,23 @@ struct ClickCommandFocusTests {
 
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
         guard seeData.success,
-              let sessionId = seeData.data?.session_id,
-              let elements = seeData.data?.elements,
+              let snapshotId = seeData.data?.snapshot_id,
+              let elements = seeData.data?.ui_elements,
               !elements.isEmpty else {
             // Skip test if no Finder windows
             return
         }
 
-        // Find a clickable element
-        let clickableRoles = ["AXButton", "AXCheckBox", "AXRadioButton"]
-        guard let clickable = elements.first(where: { clickableRoles.contains($0.role) }) else {
+        // Find an actionable element
+        guard let clickable = elements.first(where: { $0.is_actionable }) else {
             // No clickable elements found
             return
         }
 
-        // Click with session should auto-focus
+        // Click with snapshot should auto-focus
         let clickOutput = try await runPeekabooCommand([
-            "click", clickable.role.lowercased().replacingOccurrences(of: "ax", with: ""),
-            "--session", sessionId,
+            "click", "--on", clickable.id,
+            "--snapshot", snapshotId,
             "--json-output"
         ])
 
@@ -105,7 +104,7 @@ struct ClickCommandFocusTests {
     func clickBringToCurrentSpace() async throws {
         // Test click with bring-to-current-space option
         let output = try await runPeekabooCommand([
-            "click", "100", "200",
+            "click", "--coords", "100,200",
             "--bring-to-current-space",
             "--json-output"
         ])
@@ -117,9 +116,9 @@ struct ClickCommandFocusTests {
 
     // MARK: - Performance Tests
 
-    @Test("click with session is faster than without")
-    func clickSessionPerformance() async throws {
-        // Create session
+    @Test("click with snapshot is faster than without")
+    func clickSnapshotPerformance() async throws {
+        // Create snapshot
         let seeOutput = try await runPeekabooCommand([
             "see",
             "--app", "Finder",
@@ -128,45 +127,45 @@ struct ClickCommandFocusTests {
 
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: Data(seeOutput.utf8))
         guard seeData.success,
-              let sessionId = seeData.data?.session_id else {
+              let snapshotId = seeData.data?.snapshot_id else {
             return
         }
 
-        // Time click with session
-        let sessionStart = Date()
+        // Time click with snapshot
+        let snapshotStart = Date()
         _ = try await self.runPeekabooCommand([
-            "click", "100", "100",
-            "--session", sessionId,
+            "click", "--coords", "100,100",
+            "--snapshot", snapshotId,
             "--json-output"
         ])
-        let sessionDuration = Date().timeIntervalSince(sessionStart)
+        let snapshotDuration = Date().timeIntervalSince(snapshotStart)
 
-        // Time click without session
-        let noSessionStart = Date()
+        // Time click without snapshot
+        let noSnapshotStart = Date()
         _ = try await self.runPeekabooCommand([
-            "click", "100", "100",
+            "click", "--coords", "100,100",
             "--json-output"
         ])
-        let noSessionDuration = Date().timeIntervalSince(noSessionStart)
+        let noSnapshotDuration = Date().timeIntervalSince(noSnapshotStart)
 
-        // Session-based click should generally be faster
+        // Snapshot-based click should generally be faster
         // But we can't guarantee this in all test environments
-        print("Click with session: \(sessionDuration)s, without: \(noSessionDuration)s")
+        print("Click with snapshot: \(snapshotDuration)s, without: \(noSnapshotDuration)s")
     }
 
     // MARK: - Error Cases
 
-    @Test("click with invalid session ID")
-    func clickInvalidSession() async throws {
+    @Test("click with invalid snapshot ID")
+    func clickInvalidSnapshot() async throws {
         let output = try await runPeekabooCommand([
             "click", "button",
-            "--session", "invalid-session-id",
+            "--snapshot", "invalid-snapshot-id",
             "--json-output"
         ])
 
         let data = try JSONDecoder().decode(ClickResponse.self, from: Data(output.utf8))
         #expect(data.success == false)
-        #expect(data.error?.contains("session") == true ||
+        #expect(data.error?.contains("snapshot") == true ||
             data.error?.contains("not found") == true
         )
     }
@@ -201,14 +200,16 @@ private struct SeeResponse: Codable {
 }
 
 private struct SeeData: Codable {
-    let session_id: String
-    let elements: [ElementData]?
+    let snapshot_id: String
+    let ui_elements: [ElementData]?
 }
 
 private struct ElementData: Codable {
+    let id: String
     let role: String
     let title: String?
     let label: String?
+    let is_actionable: Bool
 }
 
 private struct ClickResponse: Codable {

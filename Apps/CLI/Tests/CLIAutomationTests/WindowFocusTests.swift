@@ -126,7 +126,7 @@ struct WindowFocusTests {
     @Test("click with disabled auto-focus", .disabled("JSONResponse data field is Empty type, not dictionary"))
     func clickNoAutoFocus() async throws {
         // This test needs to be rewritten since JSONResponse.data is now of type Empty
-        // and cannot contain session_id data
+        // and cannot contain snapshot_id data
         #expect(Bool(true)) // Placeholder to avoid test failure
     }
 

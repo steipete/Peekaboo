@@ -15,9 +15,9 @@ extension HotkeyCommand: CommanderSignatureProviding {
                     long: "hold-duration"
                 ),
                 .commandOption(
-                    "session",
-                    help: "Session ID (uses latest if not specified)",
-                    long: "session"
+                    "snapshot",
+                    help: "Snapshot ID (uses latest if not specified)",
+                    long: "snapshot"
                 ),
             ],
             optionGroups: [

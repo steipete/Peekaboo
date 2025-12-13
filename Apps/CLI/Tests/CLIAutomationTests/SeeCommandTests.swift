@@ -82,7 +82,7 @@ struct SeeCommandTests {
     func seeResultStructure() {
         let element = UIElementSummary(
             id: "B1",
-            role: "AXButton",
+            role: "button",
             title: "Save",
             label: nil,
             description: nil,
@@ -94,10 +94,10 @@ struct SeeCommandTests {
         )
 
         let result = SeeResult(
-            session_id: "test-123",
+            snapshot_id: "test-123",
             screenshot_raw: "/tmp/screenshot.png",
             screenshot_annotated: "/tmp/screenshot_annotated.png",
-            ui_map: "/tmp/map.json",
+            ui_map: "/tmp/snapshot.json",
             application_name: "TestApp",
             window_title: "Test Window",
             is_dialog: false,
@@ -110,10 +110,10 @@ struct SeeCommandTests {
             menu_bar: nil
         )
 
-        #expect(result.session_id == "test-123")
+        #expect(result.snapshot_id == "test-123")
         #expect(result.screenshot_raw == "/tmp/screenshot.png")
         #expect(result.screenshot_annotated == "/tmp/screenshot_annotated.png")
-        #expect(result.ui_map == "/tmp/map.json")
+        #expect(result.ui_map == "/tmp/snapshot.json")
         #expect(result.ui_elements.count == 1)
         #expect(result.ui_elements.first?.id == "B1")
         #expect(result.application_name == "TestApp")
@@ -179,7 +179,7 @@ struct SeeCommandRuntimeTests {
 
             #expect(result.exitStatus == 0)
 
-            let storedScreenshots = context.sessions.storedScreenshots[fixture.sessionId] ?? []
+            let storedScreenshots = context.snapshots.storedScreenshots[fixture.snapshotId] ?? []
             #expect(storedScreenshots.count == 1)
             #expect(storedScreenshots.first?.path == outputURL.path)
             #expect(storedScreenshots.first?.applicationName == fixture.applicationInfo.name)
@@ -209,7 +209,7 @@ struct SeeCommandRuntimeTests {
         )
 
         let detectionResult = ElementDetectionResult(
-            sessionId: fixture.sessionId,
+            snapshotId: fixture.snapshotId,
             screenshotPath: fixture.detectionResult.screenshotPath,
             elements: DetectedElements(buttons: [enrichedElement]),
             metadata: fixture.detectionResult.metadata
@@ -280,7 +280,7 @@ struct SeeCommandRuntimeTests {
 
 extension SeeCommandRuntimeTests {
     fileprivate struct RuntimeFixture {
-        let sessionId: String
+        let snapshotId: String
         let applicationInfo: ServiceApplicationInfo
         let windowInfo: ServiceWindowInfo
         let screenCapture: StubScreenCaptureService
@@ -288,7 +288,7 @@ extension SeeCommandRuntimeTests {
     }
 
     fileprivate static func makeSeeCommandRuntimeFixture() -> RuntimeFixture {
-        let sessionId = UUID().uuidString
+        let snapshotId = UUID().uuidString
         let windowBounds = CGRect(x: 10, y: 20, width: 800, height: 600)
         let applicationInfo = Self.makeSeeFixtureApplicationInfo()
         let windowInfo = Self.makeSeeFixtureWindowInfo(windowBounds: windowBounds)
@@ -298,14 +298,14 @@ extension SeeCommandRuntimeTests {
         )
         let screenCapture = Self.makeSeeFixtureScreenCapture(captureResult: captureResult)
         let detectionResult = Self.makeSeeFixtureDetectionResult(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             applicationInfo: applicationInfo,
             windowInfo: windowInfo,
             windowBounds: windowBounds
         )
 
         return RuntimeFixture(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             applicationInfo: applicationInfo,
             windowInfo: windowInfo,
             screenCapture: screenCapture,
@@ -366,7 +366,7 @@ extension SeeCommandRuntimeTests {
     }
 
     fileprivate static func makeSeeFixtureDetectionResult(
-        sessionId: String,
+        snapshotId: String,
         applicationInfo: ServiceApplicationInfo,
         windowInfo: ServiceWindowInfo,
         windowBounds: CGRect
@@ -388,7 +388,7 @@ extension SeeCommandRuntimeTests {
             )
         )
         return ElementDetectionResult(
-            sessionId: sessionId,
+            snapshotId: snapshotId,
             screenshotPath: "/tmp/ignored.png",
             elements: DetectedElements(buttons: [detectedElement]),
             metadata: detectionMetadata

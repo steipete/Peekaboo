@@ -15,10 +15,10 @@ struct ClickServiceTests {
     @Suite("Initialization")
     @MainActor
     struct InitializationTests {
-        @Test("ClickService initializes with session manager dependency")
+        @Test("ClickService initializes with snapshot manager dependency")
         func initializeService() async throws {
-            let sessionManager = MockSessionManager()
-            let service: ClickService? = ClickService(sessionManager: sessionManager)
+            let snapshotManager = MockSnapshotManager()
+            let service: ClickService? = ClickService(snapshotManager: snapshotManager)
             #expect(service != nil)
         }
     }
@@ -28,8 +28,8 @@ struct ClickServiceTests {
     struct CoordinateClickingTests {
         @Test("Click performs at specified screen coordinates without errors")
         func clickAtCoordinates() async throws {
-            let sessionManager = MockSessionManager()
-            let service = ClickService(sessionManager: sessionManager)
+            let snapshotManager = MockSnapshotManager()
+            let service = ClickService(snapshotManager: snapshotManager)
 
             let point = CGPoint(x: 100, y: 100)
 
@@ -39,16 +39,16 @@ struct ClickServiceTests {
             try await service.click(
                 target: .coordinates(point),
                 clickType: .single,
-                sessionId: nil)
+                snapshotId: nil)
         }
     }
 
     @Suite("Element Clicking")
     @MainActor
     struct ElementClickingTests {
-        @Test("Click finds and clicks element by ID using session detection results")
+        @Test("Click finds and clicks element by ID using snapshot detection results")
         func clickElementById() async throws {
-            let sessionManager = MockSessionManager()
+            let snapshotManager = MockSnapshotManager()
 
             // Create mock detection result
             let mockElement = DetectedElement(
@@ -65,7 +65,7 @@ struct ClickServiceTests {
                 buttons: [mockElement])
 
             let detectionResult = ElementDetectionResult(
-                sessionId: "test-session",
+                snapshotId: "test-snapshot",
                 screenshotPath: "/tmp/test.png",
                 elements: detectedElements,
                 metadata: DetectionMetadata(
@@ -73,21 +73,21 @@ struct ClickServiceTests {
                     elementCount: 1,
                     method: "AXorcist"))
 
-            await sessionManager.primeDetectionResult(detectionResult)
+            await snapshotManager.primeDetectionResult(detectionResult)
 
-            let service = ClickService(sessionManager: sessionManager)
+            let service = ClickService(snapshotManager: snapshotManager)
 
             // Should find element in session and click at its center
             try await service.click(
                 target: .elementId("test-button"),
                 clickType: .single,
-                sessionId: "test-session")
+                snapshotId: "test-snapshot")
         }
 
         @Test("Click element by ID not found throws specific error")
         func clickElementByIdNotFound() async throws {
-            let sessionManager = MockSessionManager()
-            let service = ClickService(sessionManager: sessionManager)
+            let snapshotManager = MockSnapshotManager()
+            let service = ClickService(snapshotManager: snapshotManager)
             let nonExistentId = "non-existent-button"
 
             // Should throw NotFoundError with specific element ID
@@ -95,7 +95,7 @@ struct ClickServiceTests {
                 try await service.click(
                     target: .elementId(nonExistentId),
                     clickType: .single,
-                    sessionId: nil)
+                    snapshotId: nil)
             }
         }
     }
@@ -105,8 +105,8 @@ struct ClickServiceTests {
     struct ClickTypeTests {
         @Test("Click supports single, double, and right-click types")
         func differentClickTypes() async throws {
-            let sessionManager = MockSessionManager()
-            let service = ClickService(sessionManager: sessionManager)
+            let snapshotManager = MockSnapshotManager()
+            let service = ClickService(snapshotManager: snapshotManager)
 
             let point = CGPoint(x: 100, y: 100)
 
@@ -114,25 +114,25 @@ struct ClickServiceTests {
             try await service.click(
                 target: .coordinates(point),
                 clickType: .single,
-                sessionId: nil)
+                snapshotId: nil)
 
             // Test right click
             try await service.click(
                 target: .coordinates(point),
                 clickType: .right,
-                sessionId: nil)
+                snapshotId: nil)
 
             // Test double click
             try await service.click(
                 target: .coordinates(point),
                 clickType: .double,
-                sessionId: nil)
+                snapshotId: nil)
         }
     }
 
     @Test("Click element by query matches partial text")
     func clickElementByQuery() async throws {
-        let sessionManager = MockSessionManager()
+        let snapshotManager = MockSnapshotManager()
 
         // Create mock detection result with searchable element
         let mockElement = DetectedElement(
@@ -149,7 +149,7 @@ struct ClickServiceTests {
             buttons: [mockElement])
 
         let detectionResult = ElementDetectionResult(
-            sessionId: "test-session",
+            snapshotId: "test-snapshot",
             screenshotPath: "/tmp/test.png",
             elements: detectedElements,
             metadata: DetectionMetadata(
@@ -157,66 +157,66 @@ struct ClickServiceTests {
                 elementCount: 1,
                 method: "AXorcist"))
 
-        await sessionManager.primeDetectionResult(detectionResult)
+        await snapshotManager.primeDetectionResult(detectionResult)
 
-        let service = ClickService(sessionManager: sessionManager)
+        let service = ClickService(snapshotManager: snapshotManager)
 
         // Should find element by query and click it
         try await service.click(
             target: .query("submit"),
             clickType: .single,
-            sessionId: "test-session")
+            snapshotId: "test-snapshot")
     }
 }
 
-// MARK: - Mock Session Manager
+// MARK: - Mock Snapshot Manager
 
 @MainActor
-private final class MockSessionManager: SessionManagerProtocol {
+private final class MockSnapshotManager: SnapshotManagerProtocol {
     private var mockDetectionResult: ElementDetectionResult?
 
     func primeDetectionResult(_ result: ElementDetectionResult?) {
         self.mockDetectionResult = result
     }
 
-    func createSession() async throws -> String {
-        "test-session-\(UUID().uuidString)"
+    func createSnapshot() async throws -> String {
+        "test-snapshot-\(UUID().uuidString)"
     }
 
-    func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
+    func storeDetectionResult(snapshotId: String, result: ElementDetectionResult) async throws {
         // No-op for tests
     }
 
-    func getDetectionResult(sessionId: String) async throws -> ElementDetectionResult? {
+    func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult? {
         self.mockDetectionResult
     }
 
-    func getMostRecentSession() async -> String? {
+    func getMostRecentSnapshot() async -> String? {
         nil
     }
 
-    func listSessions() async throws -> [SessionInfo] {
+    func listSnapshots() async throws -> [SnapshotInfo] {
         []
     }
 
-    func cleanSession(sessionId: String) async throws {
+    func cleanSnapshot(snapshotId: String) async throws {
         // No-op for tests
     }
 
-    func cleanSessionsOlderThan(days: Int) async throws -> Int {
+    func cleanSnapshotsOlderThan(days: Int) async throws -> Int {
         0
     }
 
-    func cleanAllSessions() async throws -> Int {
+    func cleanAllSnapshots() async throws -> Int {
         0
     }
 
-    nonisolated func getSessionStoragePath() -> String {
-        "/tmp/test-sessions"
+    nonisolated func getSnapshotStoragePath() -> String {
+        "/tmp/test-snapshots"
     }
 
     func storeScreenshot(
-        sessionId: String,
+        snapshotId: String,
         screenshotPath: String,
         applicationName: String?,
         windowTitle: String?,
@@ -225,15 +225,20 @@ private final class MockSessionManager: SessionManagerProtocol {
         // No-op for tests
     }
 
-    func getElement(sessionId: String, elementId: String) async throws -> UIElement? {
+    func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
+        _ = snapshotId
+        _ = annotatedScreenshotPath
+    }
+
+    func getElement(snapshotId: String, elementId: String) async throws -> UIElement? {
         nil
     }
 
-    func findElements(sessionId: String, matching query: String) async throws -> [UIElement] {
+    func findElements(snapshotId: String, matching query: String) async throws -> [UIElement] {
         []
     }
 
-    func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
+    func getUIAutomationSnapshot(snapshotId: String) async throws -> UIAutomationSnapshot? {
         nil
     }
 }

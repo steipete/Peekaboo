@@ -15,7 +15,7 @@ Core types, models, and shared utilities used throughout the codebase.
 - **Models/** - Domain models
   - `Application.swift` - Application and window information
   - `Capture.swift` - Screen capture results and metadata
-  - `Session.swift` - UI automation session data
+  - `Snapshot.swift` - UI automation snapshot data
   - `Window.swift` - Window focus and element information
   
 - **Utilities/** - Shared utilities and helpers
@@ -68,7 +68,7 @@ Service layer providing high-level functionality.
   
 - **Support/** - Supporting services
   - `LoggingService.swift` - Centralized logging
-  - `SessionManager.swift` - Session persistence
+  - `SnapshotManager.swift` - Snapshot persistence
   - `PeekabooServices.swift` - Service container
 
 ### 📁 Configuration/

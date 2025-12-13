@@ -101,6 +101,8 @@ extension StandardErrorCode {
             "UI Element Not Found"
         case .sessionNotFound:
             "Session Not Found"
+        case .snapshotNotFound:
+            "Snapshot Not Found"
         case .fileNotFound:
             "File Not Found"
         case .menuNotFound:
@@ -141,7 +143,9 @@ extension StandardErrorCode {
         switch self {
         case .screenRecordingPermissionDenied, .accessibilityPermissionDenied:
             "Permission"
-        case .applicationNotFound, .windowNotFound, .elementNotFound, .sessionNotFound, .fileNotFound, .menuNotFound:
+        case .applicationNotFound, .windowNotFound, .elementNotFound, .sessionNotFound, .snapshotNotFound,
+             .fileNotFound,
+             .menuNotFound:
             "Not Found"
         case .captureFailed, .interactionFailed, .timeout, .cancelled:
             "Operation"

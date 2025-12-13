@@ -16,15 +16,15 @@ import PeekabooFoundation
  * - Button, text field, image, and static text recognition
  * - Element bounds and coordinate mapping
  * - Accessibility attribute extraction
- * - Session-based element caching
+ * - Snapshot-based element caching
  *
  * ## Usage Example
  * ```swift
- * let detectionService = ElementDetectionService(sessionManager: sessionManager)
+ * let detectionService = ElementDetectionService(snapshotManager: snapshotManager)
  *
  * let result = try await detectionService.detectElements(
  *     in: screenshotData,
- *     sessionId: "session_123",
+ *     snapshotId: "snapshot_123",
  *     windowContext: WindowContext(applicationName: "Safari")
  * )
  *
@@ -37,26 +37,28 @@ import PeekabooFoundation
 @MainActor
 public final class ElementDetectionService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ElementDetectionService")
-    private let sessionManager: any SessionManagerProtocol
+    private let snapshotManager: any SnapshotManagerProtocol
     private let applicationService: ApplicationService
     private let windowIdentityService = WindowIdentityService()
     private let windowManagementService = WindowManagementService()
 
     public init(
-        sessionManager: (any SessionManagerProtocol)? = nil,
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
         applicationService: ApplicationService? = nil)
     {
-        self.sessionManager = sessionManager ?? SessionManager()
+        self.snapshotManager = snapshotManager ?? SnapshotManager()
         self.applicationService = applicationService ?? ApplicationService()
     }
 
     /// Detect UI elements in a screenshot
     public func detectElements(
         in imageData: Data,
-        sessionId: String?,
+        snapshotId: String?,
         windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
         self.logger.info("Starting element detection")
+
+        let effectiveSnapshotId = snapshotId ?? UUID().uuidString
 
         let targetApp = try await self.resolveApplication(windowContext: windowContext)
         let windowResolution = try await self.resolveWindow(for: targetApp, context: windowContext)
@@ -100,14 +102,13 @@ public final class ElementDetectionService {
             isDialog: windowResolution.isDialog)
 
         let result = ElementDetectionResult(
-            sessionId: sessionId ?? UUID().uuidString,
+            snapshotId: effectiveSnapshotId,
             screenshotPath: "", // Would need to save screenshot
             elements: detectedElementsCollection,
             metadata: metadata)
 
-        // Store in session if provided
-        if let sessionId {
-            try await self.sessionManager.storeDetectionResult(sessionId: sessionId, result: result)
+        if snapshotId != nil {
+            try await self.snapshotManager.storeDetectionResult(snapshotId: effectiveSnapshotId, result: result)
         }
 
         return result

@@ -82,7 +82,7 @@ struct DragCommandTests {
     func dragErrorCodes() {
         #expect(ErrorCode.NO_POINT_SPECIFIED.rawValue == "NO_POINT_SPECIFIED")
         #expect(ErrorCode.INVALID_COORDINATES.rawValue == "INVALID_COORDINATES")
-        #expect(ErrorCode.SESSION_NOT_FOUND.rawValue == "SESSION_NOT_FOUND")
+        #expect(ErrorCode.SNAPSHOT_NOT_FOUND.rawValue == "SNAPSHOT_NOT_FOUND")
     }
 
     @Test("Drag duration validation")
@@ -159,7 +159,7 @@ struct DragCommandTests {
             "drag",
             "--from", "B1",
             "--to-coords", "500,500",
-            "--session", "test-session",
+            "--snapshot", "test-snapshot",
             "--json-output",
             "--no-auto-focus",
         ]
@@ -277,7 +277,7 @@ struct DragCommandTests {
 extension DragCommandTests {
     fileprivate func runDragCommand(
         _ args: [String],
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSnapshotManager) -> Void)? = nil
     ) async throws -> CommandRunResult {
         let (result, _) = try await self.runDragCommandWithContext(args, configure: configure)
         return result
@@ -287,12 +287,12 @@ extension DragCommandTests {
         _ args: [String],
         applications: (any ApplicationServiceProtocol)? = nil,
         windows: (any WindowManagementServiceProtocol)? = nil,
-        configure: (@MainActor (StubAutomationService, StubSessionManager) -> Void)? = nil
+        configure: (@MainActor (StubAutomationService, StubSnapshotManager) -> Void)? = nil
     ) async throws -> (CommandRunResult, TestServicesFactory.AutomationTestContext) {
         let context = await self.makeAutomationContext(applications: applications, windows: windows)
         if let configure {
             await MainActor.run {
-                configure(context.automation, context.sessions)
+                configure(context.automation, context.snapshots)
             }
         }
         let result = try await InProcessCommandRunner.run(args, services: context.services)

@@ -159,7 +159,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             logger.verbose("Starting capture and detection phase", category: "Capture")
             let captureResult = try await performCaptureWithDetection()
             logger.verbose("Capture completed successfully", category: "Capture", metadata: [
-                "sessionId": captureResult.sessionId,
+                "snapshotId": captureResult.snapshotId,
                 "elementCount": captureResult.elements.all.count,
                 "screenshotSize": self.getFileSize(captureResult.screenshotPath) ?? 0,
             ])
@@ -169,9 +169,16 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             if self.annotate {
                 logger.operationStart("generate_annotations")
                 annotatedPath = try await self.generateAnnotatedScreenshot(
-                    sessionId: captureResult.sessionId,
+                    snapshotId: captureResult.snapshotId,
                     originalPath: captureResult.screenshotPath
                 )
+                if let annotatedPath,
+                   annotatedPath != captureResult.screenshotPath {
+                    try await self.services.snapshots.storeAnnotatedScreenshot(
+                        snapshotId: captureResult.snapshotId,
+                        annotatedScreenshotPath: annotatedPath
+                    )
+                }
                 logger.operationComplete("generate_annotations", metadata: [
                     "annotatedPath": annotatedPath ?? "none",
                 ])
@@ -217,7 +224,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             ])
 
             let context = SeeCommandRenderContext(
-                sessionId: captureResult.sessionId,
+                snapshotId: captureResult.snapshotId,
                 screenshotPath: captureResult.screenshotPath,
                 annotatedPath: annotatedPath,
                 metadata: captureResult.metadata,
@@ -290,7 +297,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 try await AutomationServiceBridge.detectElements(
                     automation: self.services.automation,
                     imageData: captureResult.imageData,
-                    sessionId: nil,
+                    snapshotId: nil,
                     windowContext: windowContext
                 )
             }
@@ -301,28 +308,28 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
         // Update the result with the correct screenshot path
         let resultWithPath = ElementDetectionResult(
-            sessionId: detectionResult.sessionId,
+            snapshotId: detectionResult.snapshotId,
             screenshotPath: outputPath,
             elements: detectionResult.elements,
             metadata: detectionResult.metadata
         )
 
-        try await self.services.sessions.storeScreenshot(
-            sessionId: detectionResult.sessionId,
+        try await self.services.snapshots.storeScreenshot(
+            snapshotId: detectionResult.snapshotId,
             screenshotPath: outputPath,
             applicationName: windowContext.applicationName,
             windowTitle: windowContext.windowTitle,
             windowBounds: windowContext.windowBounds
         )
 
-        // Store the result in session
-        try await self.services.sessions.storeDetectionResult(
-            sessionId: detectionResult.sessionId,
+        // Store the result in snapshot
+        try await self.services.snapshots.storeDetectionResult(
+            snapshotId: detectionResult.snapshotId,
             result: resultWithPath
         )
 
         return CaptureAndDetectionResult(
-            sessionId: detectionResult.sessionId,
+            snapshotId: detectionResult.snapshotId,
             screenshotPath: outputPath,
             elements: detectionResult.elements,
             metadata: detectionResult.metadata
@@ -483,13 +490,13 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     // swiftlint:disable function_body_length
     private func generateAnnotatedScreenshot(
-        sessionId: String,
+        snapshotId: String,
         originalPath: String
     ) async throws -> String {
-        // Get detection result from session
-        guard let detectionResult = try await self.services.sessions.getDetectionResult(sessionId: sessionId)
+        // Get detection result from snapshot
+        guard let detectionResult = try await self.services.snapshots.getDetectionResult(snapshotId: snapshotId)
         else {
-            self.logger.info("No detection result found for session")
+            self.logger.info("No detection result found for snapshot")
             return originalPath
         }
 
@@ -714,20 +721,20 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 // MARK: - Supporting Types
 
 private struct CaptureAndDetectionResult {
-    let sessionId: String
+    let snapshotId: String
     let screenshotPath: String
     let elements: DetectedElements
     let metadata: DetectionMetadata
 }
 
-private struct SessionPaths {
+private struct SnapshotPaths {
     let raw: String
     let annotated: String
     let map: String
 }
 
 private struct SeeCommandRenderContext {
-    let sessionId: String
+    let snapshotId: String
     let screenshotPath: String
     let annotatedPath: String?
     let metadata: DetectionMetadata
@@ -758,7 +765,7 @@ struct SeeAnalysisData: Codable {
 }
 
 struct SeeResult: Codable {
-    let session_id: String
+    let snapshot_id: String
     let screenshot_raw: String
     let screenshot_annotated: String
     let ui_map: String
@@ -879,17 +886,17 @@ extension SeeCommand {
             )
         }
 
-        let sessionPaths = self.sessionPaths(for: context)
+        let snapshotPaths = self.snapshotPaths(for: context)
 
         // Menu bar enumeration can be slow or hang on some setups. Only attempt it in verbose
         // mode and bound it with a short timeout so JSON output is responsive by default.
         let menuSummary = await self.fetchMenuBarSummaryIfEnabled()
 
         let output = SeeResult(
-            session_id: context.sessionId,
-            screenshot_raw: sessionPaths.raw,
-            screenshot_annotated: sessionPaths.annotated,
-            ui_map: sessionPaths.map,
+            snapshot_id: context.snapshotId,
+            screenshot_raw: snapshotPaths.raw,
+            screenshot_annotated: snapshotPaths.annotated,
+            ui_map: snapshotPaths.map,
             application_name: context.metadata.windowContext?.applicationName,
             window_title: context.metadata.windowContext?.windowTitle,
             is_dialog: context.metadata.isDialog,
@@ -987,7 +994,7 @@ extension SeeCommand {
             }
         }
 
-        print("\nSession ID: \(context.sessionId)")
+        print("\nSnapshot ID: \(context.snapshotId)")
 
         let terminalCapabilities = TerminalDetector.detectCapabilities()
         if terminalCapabilities.recommendedOutputMode == .minimal {
@@ -995,11 +1002,11 @@ extension SeeCommand {
         }
     }
 
-    private func sessionPaths(for context: SeeCommandRenderContext) -> SessionPaths {
-        SessionPaths(
+    private func snapshotPaths(for context: SeeCommandRenderContext) -> SnapshotPaths {
+        SnapshotPaths(
             raw: context.screenshotPath,
             annotated: context.annotatedPath ?? context.screenshotPath,
-            map: self.services.sessions.getSessionStoragePath() + "/\(context.sessionId)/map.json"
+            map: self.services.snapshots.getSnapshotStoragePath() + "/\(context.snapshotId)/snapshot.json"
         )
     }
 }

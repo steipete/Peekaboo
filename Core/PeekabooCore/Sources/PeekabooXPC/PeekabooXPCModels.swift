@@ -97,16 +97,17 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable, Hasha
     case dialogHandleFile
     case dialogDismiss
     case dialogListElements
-    // Sessions/cache
-    case createSession
+    // Snapshots/cache
+    case createSnapshot
     case storeDetectionResult
     case getDetectionResult
     case storeScreenshot
-    case listSessions
-    case getMostRecentSession
-    case cleanSession
-    case cleanSessionsOlderThan
-    case cleanAllSessions
+    case storeAnnotatedScreenshot
+    case listSnapshots
+    case getMostRecentSnapshot
+    case cleanSnapshot
+    case cleanSnapshotsOlderThan
+    case cleanAllSnapshots
     case _appleScriptProbe
 
     /// TCC permissions an operation relies on. Used to gate advertisement/handling.
@@ -127,15 +128,16 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable, Hasha
             [.appleScript]
         case ._appleScriptProbe,
              .permissionsStatus,
-             .createSession,
+             .createSnapshot,
              .storeDetectionResult,
              .getDetectionResult,
              .storeScreenshot,
-             .listSessions,
-             .getMostRecentSession,
-             .cleanSession,
-             .cleanSessionsOlderThan,
-             .cleanAllSessions,
+             .storeAnnotatedScreenshot,
+             .listSnapshots,
+             .getMostRecentSnapshot,
+             .cleanSnapshot,
+             .cleanSnapshotsOlderThan,
+             .cleanAllSnapshots,
              .listApplications,
              .findApplication,
              .getFrontmostApplication,
@@ -203,15 +205,16 @@ public enum PeekabooXPCOperation: String, Codable, Sendable, CaseIterable, Hasha
         .dialogHandleFile,
         .dialogDismiss,
         .dialogListElements,
-        .createSession,
+        .createSnapshot,
         .storeDetectionResult,
         .getDetectionResult,
         .storeScreenshot,
-        .listSessions,
-        .getMostRecentSession,
-        .cleanSession,
-        .cleanSessionsOlderThan,
-        .cleanAllSessions,
+        .storeAnnotatedScreenshot,
+        .listSnapshots,
+        .getMostRecentSnapshot,
+        .cleanSnapshot,
+        .cleanSnapshotsOlderThan,
+        .cleanAllSnapshots,
         ._appleScriptProbe,
     ]
 }
@@ -332,14 +335,14 @@ public struct PeekabooXPCCaptureAreaRequest: Codable, Sendable {
 
 public struct PeekabooXPCDetectElementsRequest: Codable, Sendable {
     public let imageData: Data
-    public let sessionId: String?
+    public let snapshotId: String?
     public let windowContext: WindowContext?
 }
 
 public struct PeekabooXPCClickRequest: Codable, Sendable {
     public let target: ClickTarget
     public let clickType: ClickType
-    public let sessionId: String?
+    public let snapshotId: String?
 }
 
 public struct PeekabooXPCTypeRequest: Codable, Sendable {
@@ -347,13 +350,13 @@ public struct PeekabooXPCTypeRequest: Codable, Sendable {
     public let target: String?
     public let clearExisting: Bool
     public let typingDelay: Int
-    public let sessionId: String?
+    public let snapshotId: String?
 }
 
 public struct PeekabooXPCTypeActionsRequest: Codable, Sendable {
     public let actions: [TypeAction]
     public let cadence: TypingCadence
-    public let sessionId: String?
+    public let snapshotId: String?
 }
 
 public struct PeekabooXPCScrollRequest: Codable, Sendable {
@@ -392,7 +395,7 @@ public struct PeekabooXPCMoveMouseRequest: Codable, Sendable {
 public struct PeekabooXPCWaitRequest: Codable, Sendable {
     public let target: ClickTarget
     public let timeout: TimeInterval
-    public let sessionId: String?
+    public let snapshotId: String?
 }
 
 public struct PeekabooXPCWindowTargetRequest: Codable, Sendable {
@@ -494,30 +497,35 @@ public struct PeekabooXPCDialogDismissRequest: Codable, Sendable {
     public let appName: String?
 }
 
-public struct PeekabooXPCCreateSessionRequest: Codable, Sendable {}
+public struct PeekabooXPCCreateSnapshotRequest: Codable, Sendable {}
 
 public struct PeekabooXPCStoreDetectionRequest: Codable, Sendable {
-    public let sessionId: String
+    public let snapshotId: String
     public let result: ElementDetectionResult
 }
 
 public struct PeekabooXPCGetDetectionRequest: Codable, Sendable {
-    public let sessionId: String
+    public let snapshotId: String
 }
 
 public struct PeekabooXPCStoreScreenshotRequest: Codable, Sendable {
-    public let sessionId: String
+    public let snapshotId: String
     public let screenshotPath: String
     public let applicationName: String?
     public let windowTitle: String?
     public let windowBounds: CGRect?
 }
 
-public struct PeekabooXPCCleanSessionRequest: Codable, Sendable {
-    public let sessionId: String
+public struct PeekabooXPCStoreAnnotatedScreenshotRequest: Codable, Sendable {
+    public let snapshotId: String
+    public let annotatedScreenshotPath: String
 }
 
-public struct PeekabooXPCCleanSessionsOlderRequest: Codable, Sendable {
+public struct PeekabooXPCCleanSnapshotRequest: Codable, Sendable {
+    public let snapshotId: String
+}
+
+public struct PeekabooXPCCleanSnapshotsOlderRequest: Codable, Sendable {
     public let days: Int
 }
 
@@ -580,15 +588,16 @@ public enum PeekabooXPCRequest: Codable, Sendable {
     case dialogHandleFile(PeekabooXPCDialogHandleFileRequest)
     case dialogDismiss(PeekabooXPCDialogDismissRequest)
     case dialogListElements(PeekabooXPCDialogFindRequest)
-    case createSession(PeekabooXPCCreateSessionRequest)
+    case createSnapshot(PeekabooXPCCreateSnapshotRequest)
     case storeDetectionResult(PeekabooXPCStoreDetectionRequest)
     case getDetectionResult(PeekabooXPCGetDetectionRequest)
     case storeScreenshot(PeekabooXPCStoreScreenshotRequest)
-    case listSessions
-    case getMostRecentSession
-    case cleanSession(PeekabooXPCCleanSessionRequest)
-    case cleanSessionsOlderThan(PeekabooXPCCleanSessionsOlderRequest)
-    case cleanAllSessions
+    case storeAnnotatedScreenshot(PeekabooXPCStoreAnnotatedScreenshotRequest)
+    case listSnapshots
+    case getMostRecentSnapshot
+    case cleanSnapshot(PeekabooXPCCleanSnapshotRequest)
+    case cleanSnapshotsOlderThan(PeekabooXPCCleanSnapshotsOlderRequest)
+    case cleanAllSnapshots
     case appleScriptProbe
 }
 
@@ -653,15 +662,16 @@ extension PeekabooXPCRequest {
         case .dialogHandleFile: .dialogHandleFile
         case .dialogDismiss: .dialogDismiss
         case .dialogListElements: .dialogListElements
-        case .createSession: .createSession
+        case .createSnapshot: .createSnapshot
         case .storeDetectionResult: .storeDetectionResult
         case .getDetectionResult: .getDetectionResult
         case .storeScreenshot: .storeScreenshot
-        case .listSessions: .listSessions
-        case .getMostRecentSession: .getMostRecentSession
-        case .cleanSession: .cleanSession
-        case .cleanSessionsOlderThan: .cleanSessionsOlderThan
-        case .cleanAllSessions: .cleanAllSessions
+        case .storeAnnotatedScreenshot: .storeAnnotatedScreenshot
+        case .listSnapshots: .listSnapshots
+        case .getMostRecentSnapshot: .getMostRecentSnapshot
+        case .cleanSnapshot: .cleanSnapshot
+        case .cleanSnapshotsOlderThan: .cleanSnapshotsOlderThan
+        case .cleanAllSnapshots: .cleanAllSnapshots
         case .appleScriptProbe: ._appleScriptProbe
         }
     }
@@ -689,8 +699,8 @@ public enum PeekabooXPCResponse: Codable, Sendable {
     case dialogInfo(DialogInfo)
     case dialogElements(DialogElements)
     case dialogResult(DialogActionResult)
-    case sessionId(String)
-    case sessions([SessionInfo])
+    case snapshotId(String)
+    case snapshots([SnapshotInfo])
     case detection(ElementDetectionResult)
     case int(Int)
     case error(PeekabooXPCErrorEnvelope)
