@@ -75,8 +75,16 @@ public final class PermissionsService {
         // This checks permission for sending events to System Events
         let targetBundleID = "com.apple.systemevents"
 
-        guard var addressDesc = NSAppleEventDescriptor(bundleIdentifier: targetBundleID).aeDesc?.pointee else {
-            self.logger.warning("Failed to create AppleEvent descriptor")
+        let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: targetBundleID)
+        guard let targetDescPointer = targetDescriptor.aeDesc else {
+            self.logger.warning("Failed to create AppleEvent target descriptor")
+            return false
+        }
+
+        var addressDesc = AEDesc()
+        let copyStatus = AEDuplicateDesc(targetDescPointer, &addressDesc)
+        guard copyStatus == noErr else {
+            self.logger.warning("Failed to duplicate AppleEvent target descriptor: \(copyStatus)")
             return false
         }
 
@@ -109,8 +117,16 @@ public final class PermissionsService {
 
         let targetBundleID = "com.apple.systemevents"
 
-        guard var addressDesc = NSAppleEventDescriptor(bundleIdentifier: targetBundleID).aeDesc?.pointee else {
-            self.logger.warning("Failed to create AppleEvent descriptor")
+        let targetDescriptor = NSAppleEventDescriptor(bundleIdentifier: targetBundleID)
+        guard let targetDescPointer = targetDescriptor.aeDesc else {
+            self.logger.warning("Failed to create AppleEvent target descriptor")
+            return false
+        }
+
+        var addressDesc = AEDesc()
+        let copyStatus = AEDuplicateDesc(targetDescPointer, &addressDesc)
+        guard copyStatus == noErr else {
+            self.logger.warning("Failed to duplicate AppleEvent target descriptor: \(copyStatus)")
             return false
         }
 
