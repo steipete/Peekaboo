@@ -32,9 +32,6 @@ let package = Package(
             name: "PeekabooAutomation",
             targets: ["PeekabooAutomation"]),
         .library(
-            name: "PeekabooVisualizer",
-            targets: ["PeekabooVisualizer"]),
-        .library(
             name: "PeekabooAgentRuntime",
             targets: ["PeekabooAgentRuntime"]),
         .library(
@@ -52,6 +49,7 @@ let package = Package(
         .package(path: "../PeekabooFoundation"),
         .package(path: "../PeekabooProtocols"),
         .package(path: "../PeekabooExternalDependencies"),
+        .package(path: "../PeekabooVisualizer"),
         .package(path: "../../Tachikoma"),
         .package(url: "https://github.com/ChimeHQ/AsyncXPCConnection", from: "1.3.0"),
         // Use main for Swift 6.x compatibility; 0.2.0 trips key-path restrictions in Swift 6.
@@ -61,7 +59,7 @@ let package = Package(
         .target(
             name: "PeekabooAutomation",
             dependencies: [
-                .target(name: "PeekabooVisualizer"),
+                .product(name: "PeekabooVisualizer", package: "PeekabooVisualizer"),
                 .product(name: "PeekabooAutomationKit", package: "PeekabooAutomationKit"),
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
                 .product(name: "PeekabooProtocols", package: "PeekabooProtocols"),
@@ -87,23 +85,6 @@ let package = Package(
             path: "Tests/PeekabooAutomationTests",
             swiftSettings: testTargetSettings),
         .target(
-            name: "PeekabooVisualizer",
-            dependencies: [
-                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
-                .product(name: "PeekabooProtocols", package: "PeekabooProtocols"),
-                .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
-            ],
-            path: "Sources/PeekabooVisualizer",
-            swiftSettings: coreTargetSettings),
-        .testTarget(
-            name: "PeekabooVisualizerTests",
-            dependencies: [
-                "PeekabooVisualizer",
-                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
-            ],
-            path: "Tests/PeekabooVisualizerTests",
-            swiftSettings: testTargetSettings),
-        .target(
             name: "PeekabooXPC",
             dependencies: [
                 .target(name: "PeekabooAutomation"),
@@ -118,7 +99,7 @@ let package = Package(
             name: "PeekabooAgentRuntime",
             dependencies: [
                 .target(name: "PeekabooAutomation"),
-                .target(name: "PeekabooVisualizer"),
+                .product(name: "PeekabooVisualizer", package: "PeekabooVisualizer"),
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
                 .product(name: "PeekabooProtocols", package: "PeekabooProtocols"),
                 .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
@@ -145,7 +126,7 @@ let package = Package(
             dependencies: [
                 .target(name: "PeekabooAutomation"),
                 .target(name: "PeekabooAgentRuntime"),
-                .target(name: "PeekabooVisualizer"),
+                .product(name: "PeekabooVisualizer", package: "PeekabooVisualizer"),
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
                 .product(name: "PeekabooProtocols", package: "PeekabooProtocols"),
                 .product(name: "PeekabooExternalDependencies", package: "PeekabooExternalDependencies"),
@@ -166,6 +147,7 @@ let package = Package(
                 "PeekabooAgentRuntime",
                 "PeekabooXPC",
                 .product(name: "PeekabooAutomationKit", package: "PeekabooAutomationKit"),
+                .product(name: "PeekabooVisualizer", package: "PeekabooVisualizer"),
                 "PeekabooFoundation",
                 "PeekabooProtocols",
             ],
