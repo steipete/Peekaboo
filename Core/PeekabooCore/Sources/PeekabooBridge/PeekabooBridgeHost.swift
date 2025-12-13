@@ -275,7 +275,8 @@ public final actor PeekabooBridgeHost {
         else { return nil }
 
         var infoCF: CFDictionary?
-        guard SecCodeCopySigningInformation(sCode, SecCSFlags(), &infoCF) == errSecSuccess,
+        let flags = SecCSFlags(rawValue: UInt32(kSecCSSigningInformation))
+        guard SecCodeCopySigningInformation(sCode, flags, &infoCF) == errSecSuccess,
               let info = infoCF as? [String: Any]
         else { return nil }
 
@@ -295,7 +296,9 @@ public final actor PeekabooBridgeHost {
         else { return nil }
 
         var infoCF: CFDictionary?
-        guard SecCodeCopySigningInformation(sCode, SecCSFlags(), &infoCF) == errSecSuccess,
+        // `kSecCodeInfoTeamIdentifier` is only included when requesting signing information.
+        let flags = SecCSFlags(rawValue: UInt32(kSecCSSigningInformation))
+        guard SecCodeCopySigningInformation(sCode, flags, &infoCF) == errSecSuccess,
               let info = infoCF as? [String: Any]
         else { return nil }
 
