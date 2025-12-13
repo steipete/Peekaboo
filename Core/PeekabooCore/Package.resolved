@@ -1,15 +1,6 @@
 {
-  "originHash" : "a50a3d5ebb42ad7b3a247d4de7b169dade9c822a752c4111f02363cc1b79a410",
+  "originHash" : "5806db56c5c07871c2e8553e776afbd02600c8848a7f6523a1abef68ec175c5f",
   "pins" : [
-    {
-      "identity" : "asyncxpcconnection",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ChimeHQ/AsyncXPCConnection",
-      "state" : {
-        "revision" : "da31dbcaa1b57949e46dcc19360b17d1a8de06bd",
-        "version" : "1.3.0"
-      }
-    },
     {
       "identity" : "eventsource",
       "kind" : "remoteSourceControl",
@@ -33,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-asn1.git",
       "state" : {
-        "revision" : "40d25bbb2fc5b557a9aa8512210bded327c0f60d",
-        "version" : "1.5.0"
+        "revision" : "810496cf121e525d660cd0ea89a758740476b85f",
+        "version" : "1.5.1"
       }
     },
     {
@@ -61,7 +52,7 @@
       "location" : "https://github.com/apple/swift-configuration",
       "state" : {
         "branch" : "main",
-        "revision" : "af88704cd9e9f092038ecb02fc5d2e4c4b250259"
+        "revision" : "3528deb75256d7dcbb0d71fa75077caae0a8c749"
       }
     },
     {
@@ -78,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log.git",
       "state" : {
-        "revision" : "ce592ae52f982c847a4efc0dd881cc9eb32d29f2",
-        "version" : "1.6.4"
+        "revision" : "bc386b95f2a16ccd0150a8235e7c69eab2b866ca",
+        "version" : "1.8.0"
       }
     },
     {
@@ -112,7 +103,7 @@
     {
       "identity" : "swift-system",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-system.git",
+      "location" : "https://github.com/apple/swift-system",
       "state" : {
         "revision" : "395a77f0aa927f0ff73941d7ac35f2b46d47c9db",
         "version" : "1.6.3"
