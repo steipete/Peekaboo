@@ -135,6 +135,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private func showContextMenu() {
         let menu = NSMenu()
         menu.delegate = self
+        menu.showsStateColumn = false
 
         // macOS may inject a “standard” gear icon for a Settings… item in AppKit menus.
         // That icon causes the whole menu to reserve an (empty) image column.
@@ -204,10 +205,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let quitItem = NSMenuItem(
-            title: "Quit",
-            action: #selector(self.quit),
-            keyEquivalent: "q")
+        // Same for Quit: macOS may inject a standard icon based on the title.
+        let quitItem = NSMenuItem(title: "Quit\u{200B}", action: #selector(self.quit), keyEquivalent: "q")
+        quitItem.attributedTitle = NSAttributedString(string: "Quit")
         quitItem.keyEquivalentModifierMask = .command
         menu.addItem(quitItem)
 
