@@ -17,6 +17,7 @@ BUILT_APP_BUNDLE="${BUILT_APP_BUNDLE:-$DERIVED_DATA_PATH/Build/Products/${CONFIG
 DIST_DIR="${DIST_DIR:-$ROOT_DIR/dist}"
 DIST_APP_BUNDLE="${DIST_APP_BUNDLE:-$DIST_DIR/${APP_NAME}.app}"
 APP_BUNDLE="${PEEKABOO_APP_BUNDLE:-}"
+DESTINATION="${DESTINATION:-platform=macOS,arch=arm64}"
 
 APP_PROCESS_PATTERN="${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
 DERIVED_PROCESS_PATTERN="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}/${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
@@ -62,7 +63,7 @@ build_app() {
     -scheme "${SCHEME}" \
     -configuration "${CONFIGURATION}" \
     -derivedDataPath "${DERIVED_DATA_PATH}" \
-    -destination "platform=macOS" \
+    -destination "${DESTINATION}" \
     build \
     | xc_pipe
 }

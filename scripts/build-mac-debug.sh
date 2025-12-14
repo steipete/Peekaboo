@@ -49,6 +49,7 @@ SCHEME="${SCHEME:-Peekaboo}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 APP_NAME="${APP_NAME:-$SCHEME}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$PROJECT_ROOT/.build/DerivedData}"
+DESTINATION="${DESTINATION:-platform=macOS,arch=arm64}"
 
 # Check if workspace exists
 if [ ! -d "$WORKSPACE" ]; then
@@ -64,7 +65,7 @@ xcodebuild \
     -scheme "$SCHEME" \
     -configuration "$CONFIGURATION" \
     -derivedDataPath "$DERIVED_DATA_PATH" \
-    -destination "platform=macOS" \
+    -destination "$DESTINATION" \
     build \
     ONLY_ACTIVE_ARCH=YES \
     CODE_SIGN_IDENTITY="" \
