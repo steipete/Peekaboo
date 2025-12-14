@@ -341,6 +341,11 @@ public struct PeekabooBridgeCaptureWindowRequest: Codable, Sendable {
 public struct PeekabooBridgeCaptureFrontmostRequest: Codable, Sendable {
     public let visualizerMode: CaptureVisualizerMode
     public let scale: CaptureScalePreference
+
+    public init(visualizerMode: CaptureVisualizerMode, scale: CaptureScalePreference) {
+        self.visualizerMode = visualizerMode
+        self.scale = scale
+    }
 }
 
 public struct PeekabooBridgeCaptureAreaRequest: Codable, Sendable {
@@ -359,6 +364,12 @@ public struct PeekabooBridgeClickRequest: Codable, Sendable {
     public let target: ClickTarget
     public let clickType: ClickType
     public let snapshotId: String?
+
+    public init(target: ClickTarget, clickType: ClickType, snapshotId: String? = nil) {
+        self.target = target
+        self.clickType = clickType
+        self.snapshotId = snapshotId
+    }
 }
 
 public struct PeekabooBridgeTypeRequest: Codable, Sendable {
@@ -444,6 +455,10 @@ public struct PeekabooBridgeQuitAppRequest: Codable, Sendable {
 
 public struct PeekabooBridgeMenuListRequest: Codable, Sendable {
     public let appIdentifier: String
+
+    public init(appIdentifier: String) {
+        self.appIdentifier = appIdentifier
+    }
 }
 
 public struct PeekabooBridgeMenuClickRequest: Codable, Sendable {

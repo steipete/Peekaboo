@@ -1,5 +1,6 @@
 import Foundation
 import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooBridge
 import PeekabooCore
 import PeekabooFoundation
@@ -33,9 +34,8 @@ struct PeekabooBridgeTests {
                 client: identity,
                 requestedHostKind: .gui))
 
-        let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
-        }
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
         let response = try self.decode(responseData)
 
         guard case let .handshake(handshake) = response else {
@@ -44,10 +44,10 @@ struct PeekabooBridgeTests {
         }
 
         #expect(handshake.negotiatedVersion == PeekabooBridgeConstants.protocolVersion)
-        #expect(handshake.supportedOperations.contains(.permissionsStatus))
-        #expect(handshake.enabledOperations?.contains(.permissionsStatus) != false)
+        #expect(handshake.supportedOperations.contains(PeekabooBridgeOperation.permissionsStatus))
+        #expect(handshake.enabledOperations?.contains(PeekabooBridgeOperation.permissionsStatus) != false)
         #expect(handshake.permissions != nil)
-        #expect(handshake.hostKind == .gui)
+        #expect(handshake.hostKind == PeekabooBridgeHostKind.gui)
     }
 
     @Test("handshake rejects unauthorized team")
@@ -78,16 +78,15 @@ struct PeekabooBridgeTests {
                 client: identity,
                 requestedHostKind: .gui))
 
-        let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: peer)
-        }
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: peer)
         let response = try self.decode(responseData)
 
         guard case let .error(envelope) = response else {
             Issue.record("Expected error response, got \(response)")
             return
         }
-        #expect(envelope.code == .unauthorizedClient)
+        #expect(envelope.code == PeekabooBridgeErrorCode.unauthorizedClient)
     }
 
     @Test("handshake rejects unauthorized bundle")
@@ -118,16 +117,15 @@ struct PeekabooBridgeTests {
                 client: identity,
                 requestedHostKind: .gui))
 
-        let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: peer)
-        }
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: peer)
         let response = try self.decode(responseData)
 
         guard case let .error(envelope) = response else {
             Issue.record("Expected error response, got \(response)")
             return
         }
-        #expect(envelope.code == .unauthorizedClient)
+        #expect(envelope.code == PeekabooBridgeErrorCode.unauthorizedClient)
     }
 
     @Test("handshake rejects incompatible protocol version")
@@ -152,16 +150,15 @@ struct PeekabooBridgeTests {
                 client: identity,
                 requestedHostKind: .gui))
 
-        let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
-        }
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
         let response = try self.decode(responseData)
 
         guard case let .error(envelope) = response else {
             Issue.record("Expected error response, got \(response)")
             return
         }
-        #expect(envelope.code == .versionMismatch)
+        #expect(envelope.code == PeekabooBridgeErrorCode.versionMismatch)
     }
 
     @Test("unsupported operations are rejected when not allowlisted")
@@ -172,20 +169,19 @@ struct PeekabooBridgeTests {
                 hostKind: .gui,
                 allowlistedTeams: [],
                 allowlistedBundles: [],
-                allowedOperations: [.permissionsStatus])
+                allowedOperations: [PeekabooBridgeOperation.permissionsStatus])
         }
 
-        let request = PeekabooBridgeRequest.listMenus(.init(appIdentifier: "com.apple.TextEdit"))
-        let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
-        }
+        let request = PeekabooBridgeRequest.listMenus(PeekabooBridgeMenuListRequest(appIdentifier: "com.apple.TextEdit"))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
         let response = try self.decode(responseData)
 
         guard case let .error(envelope) = response else {
             Issue.record("Expected error response, got \(response)")
             return
         }
-        #expect(envelope.code == .operationNotSupported)
+        #expect(envelope.code == PeekabooBridgeErrorCode.operationNotSupported)
     }
 
     @Test("permissions status round trips")
@@ -199,9 +195,8 @@ struct PeekabooBridgeTests {
         }
 
         let request = PeekabooBridgeRequest.permissionsStatus
-        let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
-        }
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
         let response = try self.decode(responseData)
 
         guard case let .permissionsStatus(status) = response else {
@@ -224,10 +219,12 @@ struct PeekabooBridgeTests {
                 allowlistedBundles: [])
         }
 
-        let request = PeekabooBridgeRequest.captureFrontmost(.init(visualizerMode: .screenshotFlash, scale: .logical1x))
-        let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
-        }
+        let request = PeekabooBridgeRequest.captureFrontmost(
+            PeekabooBridgeCaptureFrontmostRequest(
+                visualizerMode: CaptureVisualizerMode.screenshotFlash,
+                scale: CaptureScalePreference.logical1x))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
         let response = try self.decode(responseData)
 
         guard case let .capture(result) = response else {
@@ -236,7 +233,7 @@ struct PeekabooBridgeTests {
         }
 
         #expect(result.imageData == Data("stub-capture".utf8))
-        #expect(result.metadata.mode == .frontmost)
+        #expect(result.metadata.mode == CaptureMode.frontmost)
     }
 
     @Test("automation click is forwarded")
@@ -251,10 +248,9 @@ struct PeekabooBridgeTests {
         }
 
         let request = PeekabooBridgeRequest.click(
-            .init(target: .elementId("B1"), clickType: .single, snapshotId: nil))
-        let responseData = await MainActor.run {
-            try await server.decodeAndHandle(JSONEncoder.peekabooBridgeEncoder().encode(request), peer: nil)
-        }
+            PeekabooBridgeClickRequest(target: .elementId("B1"), clickType: .single, snapshotId: nil))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
         let response = try self.decode(responseData)
 
         guard case .ok = response else {
@@ -275,8 +271,7 @@ struct PeekabooBridgeTests {
 // MARK: - Test stubs
 
 @MainActor
-private final class StubServices: PeekabooServiceProviding {
-    let logging: any LoggingServiceProtocol = LoggingService()
+private final class StubServices: PeekabooBridgeServiceProviding {
     let screenCapture: any ScreenCaptureServiceProtocol = StubScreenCaptureService()
     let automationStub = StubAutomationService()
     let automation: any UIAutomationServiceProtocol
@@ -286,20 +281,11 @@ private final class StubServices: PeekabooServiceProviding {
     let dock: any DockServiceProtocol = UnimplementedDockService()
     let dialogs: any DialogServiceProtocol = UnimplementedDialogService()
     let snapshots: any SnapshotManagerProtocol = SnapshotManager()
-    let files: any FileServiceProtocol = FileService()
-    let clipboard: any ClipboardServiceProtocol = ClipboardService()
-    let configuration: ConfigurationManager = .shared
-    let process: any ProcessServiceProtocol = ProcessService()
     let permissions: PermissionsService = .init()
-    let audioInput: AudioInputService = .init(aiService: PeekabooAIService(configuration: .shared))
-    let screens: any ScreenServiceProtocol = ScreenService()
-    let agent: (any AgentServiceProtocol)? = nil
 
     init() {
         self.automation = self.automationStub
     }
-
-    func ensureVisualizerConnection() {}
 }
 
 private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
