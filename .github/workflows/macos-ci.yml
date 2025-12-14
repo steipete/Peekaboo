@@ -348,7 +348,6 @@ jobs:
     name: Build macOS apps (Peekaboo + Inspector)
     runs-on: macos-latest
     needs: [peekaboo-cli, tachikoma]
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
