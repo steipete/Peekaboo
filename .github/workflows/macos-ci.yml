@@ -90,6 +90,12 @@ jobs:
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
+          if [ -d ~/.cache/org.swift.swiftpm ]; then
+            find ~/.cache/org.swift.swiftpm -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
+          fi
+          if [ -d Core/PeekabooCore/.swiftpm ]; then
+            find Core/PeekabooCore/.swiftpm -type f -name traits.json -print -delete || true
+          fi
           if [ -d Core/PeekabooCore/.build/checkouts ]; then
             find Core/PeekabooCore/.build/checkouts -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
           fi
@@ -181,6 +187,12 @@ jobs:
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
+          if [ -d ~/.cache/org.swift.swiftpm ]; then
+            find ~/.cache/org.swift.swiftpm -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
+          fi
+          if [ -d Apps/CLI/.swiftpm ]; then
+            find Apps/CLI/.swiftpm -type f -name traits.json -print -delete || true
+          fi
           if [ -d Apps/CLI/.build/checkouts ]; then
             find Apps/CLI/.build/checkouts -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
           fi
@@ -277,6 +289,12 @@ jobs:
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
+          if [ -d ~/.cache/org.swift.swiftpm ]; then
+            find ~/.cache/org.swift.swiftpm -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
+          fi
+          if [ -d Tachikoma/.swiftpm ]; then
+            find Tachikoma/.swiftpm -type f -name traits.json -print -delete || true
+          fi
           if [ -d Tachikoma/.build/checkouts ]; then
             find Tachikoma/.build/checkouts -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
           fi
