@@ -13,16 +13,16 @@ importers:
   .:
     devDependencies:
       chrome-devtools-mcp:
-        specifier: 0.10.1
-        version: 0.10.1
+        specifier: 0.12.1
+        version: 0.12.1
 
 packages:
 
-  chrome-devtools-mcp@0.10.1:
-    resolution: {integrity: sha512-jyDAbaf2zyl4HVa8vfRqwkCCqT+QpuiRgrEQ6iodqOb5BaqATQb9zZARqYGIDNlwEpmAhKvhkQ0w+0R9dvCc2A==}
+  chrome-devtools-mcp@0.12.1:
+    resolution: {integrity: sha512-QREfGxJVVlBrjKdyis9px6UHyXix+Rre9nCkqX7CY7GsU8c6azOwwV8inQB8E3h2/QGqi4sCSF8fmjfAvmE07Q==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=23}
     hasBin: true
 
 snapshots:
 
-  chrome-devtools-mcp@0.10.1: {}
+  chrome-devtools-mcp@0.12.1: {}

@@ -71,10 +71,14 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "os": ["darwin"],
-  "cpu": ["x64", "arm64"],
-  "dependencies": {},
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "devDependencies": {
-    "chrome-devtools-mcp": "0.10.1"
+    "chrome-devtools-mcp": "0.12.1"
   }
 }
