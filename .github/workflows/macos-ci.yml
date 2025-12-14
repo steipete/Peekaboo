@@ -32,10 +32,10 @@ jobs:
       - name: Docs lint
         run: ./runner node scripts/docs-lint.mjs
 
-      - name: Select Xcode 26.1 (if present) or fallback to default
+      - name: Select Xcode 26.2 (if present) or fallback to default
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
+          for candidate in /Applications/Xcode_26.2.app /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
             if [[ -d "$candidate" ]]; then
               sudo xcode-select -s "$candidate"
               echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
@@ -129,10 +129,10 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Select Xcode 26.1 (if present) or fallback to default
+      - name: Select Xcode 26.2 (if present) or fallback to default
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
+          for candidate in /Applications/Xcode_26.2.app /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
             if [[ -d "$candidate" ]]; then
               sudo xcode-select -s "$candidate"
               echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
@@ -226,10 +226,10 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Select Xcode 26.1 (if present) or fallback to default
+      - name: Select Xcode 26.2 (if present) or fallback to default
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
+          for candidate in /Applications/Xcode_26.2.app /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
             if [[ -d "$candidate" ]]; then
               sudo xcode-select -s "$candidate"
               echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
@@ -326,10 +326,10 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Select Xcode 26.1 (if present) or fallback to default
+      - name: Select Xcode 26.2 (if present) or fallback to default
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
+          for candidate in /Applications/Xcode_26.2.app /Applications/Xcode_26.1.app /Applications/Xcode_26.0.app /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode.app; do
             if [[ -d "$candidate" ]]; then
               sudo xcode-select -s "$candidate"
               echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
