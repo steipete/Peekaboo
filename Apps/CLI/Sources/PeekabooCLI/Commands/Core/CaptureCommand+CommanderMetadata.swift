@@ -47,6 +47,9 @@ extension CaptureLiveCommand: CommanderSignatureProviding {
 extension CaptureVideoCommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
+            arguments: [
+                .make(label: "input", help: "Input video file", isOptional: false)
+            ],
             options: [
                 .commandOption("sampleFps", help: "Sample FPS (default 2)", long: "sample-fps"),
                 .commandOption("everyMs", help: "Sample every N ms", long: "every-ms"),

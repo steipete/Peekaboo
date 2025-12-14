@@ -532,6 +532,7 @@ extension CaptureVideoCommand: AsyncRuntimeCommand {}
 @MainActor
 extension CaptureVideoCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.input = try values.requiredPositional(0, label: "input")
         self.sampleFps = try values.decodeOption("sampleFps", as: Double.self)
         self.everyMs = try values.decodeOption("everyMs", as: Int.self)
         self.startMs = try values.decodeOption("startMs", as: Int.self)
