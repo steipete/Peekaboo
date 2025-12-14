@@ -48,6 +48,7 @@ public protocol SnapshotManagerProtocol: Sendable {
     /// - Returns: Path to snapshot storage directory
     func getSnapshotStoragePath() -> String
 
+    // swiftlint:disable function_parameter_count
     /// Store raw screenshot and build UI map
     /// - Parameters:
     ///   - snapshotId: Snapshot identifier
@@ -63,6 +64,7 @@ public protocol SnapshotManagerProtocol: Sendable {
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?) async throws
+    // swiftlint:enable function_parameter_count
 
     /// Store an annotated screenshot for a snapshot (optional companion to `raw.png`).
     /// - Parameters:

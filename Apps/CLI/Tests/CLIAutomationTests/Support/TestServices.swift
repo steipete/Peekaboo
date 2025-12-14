@@ -571,6 +571,7 @@ final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
         "/tmp/peekaboo-snapshots"
     }
 
+    // swiftlint:disable:next function_parameter_count
     func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,

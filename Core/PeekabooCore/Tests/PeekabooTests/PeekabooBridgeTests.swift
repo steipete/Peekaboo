@@ -172,7 +172,8 @@ struct PeekabooBridgeTests {
                 allowedOperations: [PeekabooBridgeOperation.permissionsStatus])
         }
 
-        let request = PeekabooBridgeRequest.listMenus(PeekabooBridgeMenuListRequest(appIdentifier: "com.apple.TextEdit"))
+        let request = PeekabooBridgeRequest
+            .listMenus(PeekabooBridgeMenuListRequest(appIdentifier: "com.apple.TextEdit"))
         let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
         let responseData = await server.decodeAndHandle(requestData, peer: nil)
         let response = try self.decode(responseData)

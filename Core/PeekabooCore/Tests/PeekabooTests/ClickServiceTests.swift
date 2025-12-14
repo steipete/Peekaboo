@@ -219,6 +219,7 @@ private final class MockSnapshotManager: SnapshotManagerProtocol {
         "/tmp/test-snapshots"
     }
 
+    // swiftlint:disable:next function_parameter_count
     func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,

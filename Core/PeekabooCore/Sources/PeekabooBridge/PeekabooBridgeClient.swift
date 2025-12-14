@@ -615,6 +615,7 @@ public actor PeekabooBridgeClient {
         }
     }
 
+    // swiftlint:disable:next function_parameter_count
     public func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,

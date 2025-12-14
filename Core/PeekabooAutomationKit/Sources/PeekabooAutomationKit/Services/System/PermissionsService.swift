@@ -165,7 +165,10 @@ public final class PermissionsService {
         } catch {
             logger
                 .debug(
-                    "Failed to launch app \(bundleIdentifier, privacy: .public): \(String(describing: error), privacy: .public)")
+                    """
+                    Failed to launch app \(bundleIdentifier, privacy: .public): \
+                    \(String(describing: error), privacy: .public)
+                    """)
         }
     }
 

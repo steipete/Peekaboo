@@ -409,6 +409,7 @@ public final class RemoteSnapshotManager: SnapshotManagerProtocol {
         SnapshotManager().getSnapshotStoragePath()
     }
 
+    // swiftlint:disable:next function_parameter_count
     public func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,

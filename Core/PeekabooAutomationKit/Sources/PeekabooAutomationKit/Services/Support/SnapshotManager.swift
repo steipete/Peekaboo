@@ -243,6 +243,7 @@ public final class SnapshotManager: SnapshotManagerProtocol {
 
     // MARK: - Additional Public Methods
 
+    // swiftlint:disable function_parameter_count
     /// Store raw screenshot and build UI map
     public func storeScreenshot(
         snapshotId: String,
@@ -290,6 +291,8 @@ public final class SnapshotManager: SnapshotManagerProtocol {
 
         try await self.snapshotActor.saveSnapshot(snapshotId: snapshotId, data: snapshotData, at: snapshotPath)
     }
+
+    // swiftlint:enable function_parameter_count
 
     public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
         let snapshotPath = self.getSnapshotPath(for: snapshotId)

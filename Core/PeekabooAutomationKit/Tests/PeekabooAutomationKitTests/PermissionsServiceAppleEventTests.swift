@@ -31,8 +31,12 @@ import Testing
             "Expected second duplicated AEDesc")
         defer { AEDisposeDesc(&secondDesc) }
 
-        let firstHandle = try #require(firstDesc.dataHandle, "Expected duplicated AEDesc instances to have data handles")
-        let secondHandle = try #require(secondDesc.dataHandle, "Expected duplicated AEDesc instances to have data handles")
+        let firstHandle = try #require(
+            firstDesc.dataHandle,
+            "Expected duplicated AEDesc instances to have data handles")
+        let secondHandle = try #require(
+            secondDesc.dataHandle,
+            "Expected duplicated AEDesc instances to have data handles")
 
         #expect(
             UInt(bitPattern: firstHandle) != UInt(bitPattern: secondHandle),

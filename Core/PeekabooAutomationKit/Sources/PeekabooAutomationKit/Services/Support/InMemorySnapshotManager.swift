@@ -177,6 +177,7 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
 
     // MARK: - Screenshot + UI map helpers
 
+    // swiftlint:disable:next function_parameter_count
     public func storeScreenshot(
         snapshotId: String,
         screenshotPath: String,
