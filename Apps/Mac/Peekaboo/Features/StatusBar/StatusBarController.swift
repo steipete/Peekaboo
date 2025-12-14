@@ -140,8 +140,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         // macOS may inject a “standard” gear icon for a Settings… item in AppKit menus.
         // That icon causes the whole menu to reserve an (empty) image column.
         // We keep the *visible* title as “Settings…”, but tweak the internal title so the heuristic won’t match.
-        let settingsItem = NSMenuItem(title: "Settings…\u{200B}", action: #selector(self.openSettings), keyEquivalent: ",")
-        settingsItem.attributedTitle = NSAttributedString(string: "Settings…")
+        let displayedSettingsTitle = "Settings…\u{200B}"
+        let settingsItem = NSMenuItem(title: displayedSettingsTitle, action: #selector(self.openSettings), keyEquivalent: ",")
+        settingsItem.attributedTitle = NSAttributedString(string: displayedSettingsTitle)
         settingsItem.keyEquivalentModifierMask = .command
         menu.addItem(settingsItem)
 
@@ -206,8 +207,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         // Same for Quit: macOS may inject a standard icon based on the title.
-        let quitItem = NSMenuItem(title: "Quit\u{200B}", action: #selector(self.quit), keyEquivalent: "q")
-        quitItem.attributedTitle = NSAttributedString(string: "Quit")
+        let displayedQuitTitle = "Quit\u{200B}"
+        let quitItem = NSMenuItem(title: displayedQuitTitle, action: #selector(self.quit), keyEquivalent: "q")
+        quitItem.attributedTitle = NSAttributedString(string: displayedQuitTitle)
         quitItem.keyEquivalentModifierMask = .command
         menu.addItem(quitItem)
 
@@ -219,6 +221,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         // macOS may apply “standard” images for common items (Settings/Quit).
         // Ensure we strip any images right before display.
         Self.stripMenuItemImages(menu)
+        for item in menu.items {
+            item.state = .off
+        }
 
         // Show menu
         self.statusItem.menu = menu
