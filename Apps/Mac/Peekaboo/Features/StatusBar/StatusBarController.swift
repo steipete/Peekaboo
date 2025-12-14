@@ -54,6 +54,12 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             return
         }
 
+        button.toolTip = "Peekaboo"
+        button.title = "Peekaboo"
+        button.imagePosition = .imageOnly
+        button.setAccessibilityLabel("Peekaboo")
+        button.setAccessibilityIdentifier("boo.peekaboo.statusItem")
+
         // Use the MenuIcon asset
         let menuIcon = NSImage(named: "MenuIcon")
         if let menuIcon {
@@ -139,13 +145,13 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         // macOS may inject a “standard” gear icon for a Settings… item in AppKit menus.
         // That icon causes the whole menu to reserve an (empty) image column.
-        // We keep the *visible* title as “Settings…”, but tweak the internal title so the heuristic won’t match.
-        let displayedSettingsTitle = "Settings…\u{200B}"
+        // Keep the visible title as “Settings…”, but tweak the internal title so the heuristic won’t match.
         let settingsItem = NSMenuItem(
-            title: displayedSettingsTitle,
+            title: "Settings…\u{200B}",
             action: #selector(self.openSettings),
             keyEquivalent: ",")
-        settingsItem.attributedTitle = NSAttributedString(string: displayedSettingsTitle)
+        // Some macOS releases appear to key off `attributedTitle` too, so keep the same invisible marker.
+        settingsItem.attributedTitle = NSAttributedString(string: "Settings…\u{200B}")
         settingsItem.keyEquivalentModifierMask = .command
         menu.addItem(settingsItem)
 
@@ -209,10 +215,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        // Same for Quit: macOS may inject a standard icon based on the title.
-        let displayedQuitTitle = "Quit\u{200B}"
-        let quitItem = NSMenuItem(title: displayedQuitTitle, action: #selector(self.quit), keyEquivalent: "q")
-        quitItem.attributedTitle = NSAttributedString(string: displayedQuitTitle)
+        let quitItem = NSMenuItem(title: "Quit", action: #selector(self.quit), keyEquivalent: "q")
         quitItem.keyEquivalentModifierMask = .command
         menu.addItem(quitItem)
 
@@ -221,17 +224,13 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             item.target = self
         }
 
-        // macOS may apply “standard” images for common items (Settings/Quit),
-        // which would re-introduce the icon column. Strip any images right before display.
+        // macOS may apply “standard” images for common items (Settings/Quit).
+        // Strip any images right before display.
         Self.stripMenuItemImages(menu)
-        for item in menu.items {
-            item.state = .off
-        }
 
-        // Show menu without assigning `statusItem.menu` (that assignment is where AppKit tends to
-        // apply “standard” images, even if the items are later stripped).
-        guard let button = self.statusItem.button else { return }
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height), in: button)
+        self.statusItem.menu = menu
+        self.statusItem.button?.performClick(nil)
+        self.statusItem.menu = nil
     }
 
     nonisolated func menuWillOpen(_ menu: NSMenu) {
