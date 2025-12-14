@@ -22,6 +22,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     // Icon animation
     private let animationController = MenuBarAnimationController()
 
+    nonisolated private static func blankMenuItemImage() -> NSImage {
+        NSImage(size: .zero)
+    }
+
     init(
         agent: PeekabooAgent,
         sessionStore: SessionStore,
@@ -142,7 +146,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             keyEquivalent: ",")
             .with { item in
                 item.keyEquivalentModifierMask = .command
-                item.image = nil
+                item.image = Self.blankMenuItemImage()
             }
         menu.addItem(settingsItem)
 
@@ -212,7 +216,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             title: "Quit",
             action: #selector(self.quit),
             keyEquivalent: "q")
-            .with { item in item.image = nil }
+            .with { item in item.image = Self.blankMenuItemImage() }
         quitItem.keyEquivalentModifierMask = .command
         menu.addItem(quitItem)
 
@@ -237,7 +241,15 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     nonisolated private static func stripMenuItemImages(_ menu: NSMenu) {
         for item in menu.items {
-            item.image = nil
+            // macOS may inject a “standard” icon for certain menu items (notably Settings…).
+            // A zero-size image prevents that while still collapsing the image column.
+            if item.keyEquivalent == "," && item.keyEquivalentModifierMask == .command {
+                item.image = Self.blankMenuItemImage()
+            } else if item.keyEquivalent.lowercased() == "q" && item.keyEquivalentModifierMask == .command {
+                item.image = Self.blankMenuItemImage()
+            } else {
+                item.image = nil
+            }
             item.onStateImage = nil
             item.offStateImage = nil
             item.mixedStateImage = nil
