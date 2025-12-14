@@ -133,10 +133,17 @@ public final class PermissionsService {
         }
         defer { AEDisposeDesc(&addressDesc) }
 
-        // Probe with a common Apple Event that is safe and broadly supported.
-        let eventClass = AEEventClass(0x6165_7674) // aevt
-        let eventID = AEEventID(0x6F61_7070) // oapp
-        return AEDeterminePermissionToAutomateTarget(&addressDesc, eventClass, eventID, askUser)
+        // IMPORTANT:
+        // Use an Apple Event that reflects *automation* (not just launching an app). `oapp` (open app)
+        // can succeed even when automation is not authorized, and will not reliably trigger the TCC prompt.
+        //
+        // `core/getd` (get data) is a common, benign automation event that maps well to "tell app ... return ...".
+        let eventClass = AEEventClass(0x636F_7265) // 'core'
+        let eventID = AEEventID(0x6765_7464) // 'getd'
+
+        return autoreleasepool {
+            AEDeterminePermissionToAutomateTarget(&addressDesc, eventClass, eventID, askUser)
+        }
     }
 
     static func makeAppleEventTargetAddressDesc(bundleIdentifier: String) -> AEDesc? {

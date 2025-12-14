@@ -187,7 +187,7 @@ struct PermissionsView: View {
             VStack(spacing: 10) {
                 Button("Check Permissions") {
                     Task {
-                        await self.permissions.check()
+                        await self.permissions.refresh()
                     }
                 }
                 .buttonStyle(.borderedProminent)

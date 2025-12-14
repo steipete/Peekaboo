@@ -10,11 +10,13 @@ struct PermissionsTests {
         var screenRecordingStatus: ObservablePermissionsService.PermissionState = .notDetermined
         var accessibilityStatus: ObservablePermissionsService.PermissionState = .notDetermined
         var appleScriptStatus: ObservablePermissionsService.PermissionState = .notDetermined
+
+        private(set) var checkPermissionsCallCount = 0
         var hasAllPermissions: Bool {
             self.screenRecordingStatus == .authorized && self.accessibilityStatus == .authorized
         }
 
-        func checkPermissions() {}
+        func checkPermissions() { self.checkPermissionsCallCount += 1 }
         func requestScreenRecording() throws {}
         func requestAccessibility() throws {}
         func requestAppleScript() throws {}
@@ -40,24 +42,20 @@ struct PermissionsTests {
 
     @Test("Has all permissions when both are authorized")
     func testHasAllPermissions() {
-        // This is a unit test, so we're testing the logic, not actual permissions
-        // In a real scenario, these would be set by checkPermissions()
-
-        // Simulate both permissions granted
-        self.mockPermissionsService.screenRecordingStatus = .authorized
-        self.mockPermissionsService.accessibilityStatus = .authorized
+        self.permissions.screenRecordingStatus = .authorized
+        self.permissions.accessibilityStatus = .authorized
         #expect(self.permissions.hasAllPermissions == true)
 
         // Test various combinations
-        self.mockPermissionsService.screenRecordingStatus = .denied
+        self.permissions.screenRecordingStatus = .denied
         #expect(self.permissions.hasAllPermissions == false)
 
-        self.mockPermissionsService.screenRecordingStatus = .authorized
-        self.mockPermissionsService.accessibilityStatus = .denied
+        self.permissions.screenRecordingStatus = .authorized
+        self.permissions.accessibilityStatus = .denied
         #expect(self.permissions.hasAllPermissions == false)
 
-        self.mockPermissionsService.screenRecordingStatus = .notDetermined
-        self.mockPermissionsService.accessibilityStatus = .authorized
+        self.permissions.screenRecordingStatus = .notDetermined
+        self.permissions.accessibilityStatus = .authorized
         #expect(self.permissions.hasAllPermissions == false)
     }
 
@@ -96,21 +94,38 @@ struct PermissionsTests {
         accessibility: ObservablePermissionsService.PermissionState,
         expectedHasAll: Bool)
     {
-        self.mockPermissionsService.screenRecordingStatus = screenRecording
-        self.mockPermissionsService.accessibilityStatus = accessibility
+        self.permissions.screenRecordingStatus = screenRecording
+        self.permissions.accessibilityStatus = accessibility
         #expect(self.permissions.hasAllPermissions == expectedHasAll)
     }
 
     @Test("Permission checking updates status")
     @MainActor
     func checkPermissions() async {
-        // This test verifies the checkPermissions method runs without crashing
-        // Actual permission status depends on system state
+        // This test verifies the check method runs without crashing.
         await self.permissions.check()
 
-        // After checking, statuses should no longer be .notDetermined
+        // The app-level wrapper always refreshes required permissions directly.
         #expect(self.permissions.screenRecordingStatus != .notDetermined)
         #expect(self.permissions.accessibilityStatus != .notDetermined)
+    }
+
+    @Test("Optional permission checks are throttled")
+    @MainActor
+    func optionalChecksThrottled() async {
+        #expect(self.mockPermissionsService.checkPermissionsCallCount == 0)
+
+        self.permissions.setIncludeOptionalPermissions(true)
+        await self.permissions.check()
+        #expect(self.mockPermissionsService.checkPermissionsCallCount == 1)
+
+        // Subsequent checks within the optional interval should not call through again.
+        await self.permissions.check()
+        #expect(self.mockPermissionsService.checkPermissionsCallCount == 1)
+
+        self.permissions.setIncludeOptionalPermissions(false)
+        await self.permissions.check()
+        #expect(self.mockPermissionsService.checkPermissionsCallCount == 1)
     }
 }
 

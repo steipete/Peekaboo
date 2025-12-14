@@ -1,4 +1,6 @@
 import AppKit
+import ApplicationServices
+import CoreGraphics
 import Foundation
 import Observation
 import os.log
@@ -27,7 +29,11 @@ final class Permissions {
     private var isChecking = false
     private var registrations = 0
     private var lastCheck: Date?
+    private var lastOptionalCheck: Date?
     private let minimumCheckInterval: TimeInterval = 0.5
+    private let optionalCheckInterval: TimeInterval = 10.0
+
+    private var includeOptionalPermissions = false
 
     init(permissionsService: (any ObservablePermissionsServiceProtocol)? = nil) {
         self.permissionsService = permissionsService ?? ObservablePermissionsService()
@@ -35,7 +41,17 @@ final class Permissions {
     }
 
     func check() async {
+        self.check(force: false)
+    }
+
+    func refresh() async {
         self.check(force: true)
+    }
+
+    func setIncludeOptionalPermissions(_ enabled: Bool) {
+        if self.includeOptionalPermissions == enabled { return }
+        self.includeOptionalPermissions = enabled
+        self.lastOptionalCheck = nil
     }
 
     func requestScreenRecording() {
@@ -103,6 +119,7 @@ final class Permissions {
         self.monitorTimer?.invalidate()
         self.monitorTimer = nil
         self.lastCheck = nil
+        self.lastOptionalCheck = nil
     }
 
     private func syncFromService() {
@@ -122,9 +139,39 @@ final class Permissions {
         self.isChecking = true
         defer { self.isChecking = false }
 
-        self.logger.info("Checking all permissions...")
-        self.permissionsService.checkPermissions()
-        self.syncFromService()
+        self.logger.info("Checking permissions...")
+
+        self.checkRequiredPermissions()
+
+        if self.includeOptionalPermissions {
+            if force || self.shouldCheckOptionalPermissions(now: now) {
+                self.permissionsService.checkPermissions()
+                self.syncFromService()
+                self.lastOptionalCheck = now
+            }
+        }
+
         self.lastCheck = Date()
+    }
+
+    private func shouldCheckOptionalPermissions(now: Date) -> Bool {
+        guard let lastOptionalCheck else { return true }
+        return now.timeIntervalSince(lastOptionalCheck) >= self.optionalCheckInterval
+    }
+
+    private func checkRequiredPermissions() {
+        self.screenRecordingStatus = Self.screenRecordingPermissionState()
+        self.accessibilityStatus = Self.accessibilityPermissionState()
+    }
+
+    private static func screenRecordingPermissionState() -> ObservablePermissionsService.PermissionState {
+        if #available(macOS 10.15, *) {
+            return CGPreflightScreenCaptureAccess() ? .authorized : .denied
+        }
+        return .authorized
+    }
+
+    private static func accessibilityPermissionState() -> ObservablePermissionsService.PermissionState {
+        AXIsProcessTrusted() ? .authorized : .denied
     }
 }

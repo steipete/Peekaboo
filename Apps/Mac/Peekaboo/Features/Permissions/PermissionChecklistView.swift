@@ -83,7 +83,7 @@ enum PermissionCapability: String, CaseIterable, Hashable {
             permissions.requestAppleScript()
         }
 
-        await permissions.check()
+        await permissions.refresh()
 
         if self.status(in: permissions) != .authorized {
             self.openSettings()
@@ -136,7 +136,7 @@ struct PermissionChecklistView: View {
 
             HStack(spacing: 12) {
                 Button {
-                    Task { await self.permissions.check() }
+                    Task { await self.permissions.refresh() }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
@@ -153,6 +153,12 @@ struct PermissionChecklistView: View {
         }
         .task {
             await self.permissions.check()
+        }
+        .onAppear {
+            self.permissions.setIncludeOptionalPermissions(self.showOptional)
+        }
+        .onDisappear {
+            self.permissions.setIncludeOptionalPermissions(false)
         }
     }
 }
