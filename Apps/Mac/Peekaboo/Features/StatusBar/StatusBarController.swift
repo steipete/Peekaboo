@@ -112,14 +112,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         guard let event = NSApp.currentEvent else { return }
 
         if event.type == .rightMouseUp {
-            self.showContextMenu()
+            self.showContextMenu(anchorEvent: event)
             return
         }
 
         if self.settings.agentModeEnabled {
             self.togglePopover()
         } else {
-            self.showContextMenu()
+            self.showContextMenu(anchorEvent: event)
         }
     }
 
@@ -132,7 +132,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         }
     }
 
-    private func showContextMenu() {
+    private func showContextMenu(anchorEvent _: NSEvent) {
         let menu = NSMenu()
         menu.delegate = self
         menu.showsStateColumn = false
@@ -141,7 +141,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         // That icon causes the whole menu to reserve an (empty) image column.
         // We keep the *visible* title as “Settings…”, but tweak the internal title so the heuristic won’t match.
         let displayedSettingsTitle = "Settings…\u{200B}"
-        let settingsItem = NSMenuItem(title: displayedSettingsTitle, action: #selector(self.openSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(
+            title: displayedSettingsTitle,
+            action: #selector(self.openSettings),
+            keyEquivalent: ",")
         settingsItem.attributedTitle = NSAttributedString(string: displayedSettingsTitle)
         settingsItem.keyEquivalentModifierMask = .command
         menu.addItem(settingsItem)
@@ -218,17 +221,17 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             item.target = self
         }
 
-        // macOS may apply “standard” images for common items (Settings/Quit).
-        // Ensure we strip any images right before display.
+        // macOS may apply “standard” images for common items (Settings/Quit),
+        // which would re-introduce the icon column. Strip any images right before display.
         Self.stripMenuItemImages(menu)
         for item in menu.items {
             item.state = .off
         }
 
-        // Show menu
-        self.statusItem.menu = menu
-        self.statusItem.button?.performClick(nil)
-        self.statusItem.menu = nil
+        // Show menu without assigning `statusItem.menu` (that assignment is where AppKit tends to
+        // apply “standard” images, even if the items are later stripped).
+        guard let button = self.statusItem.button else { return }
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height), in: button)
     }
 
     nonisolated func menuWillOpen(_ menu: NSMenu) {
