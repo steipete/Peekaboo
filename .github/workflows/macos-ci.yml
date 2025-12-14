@@ -89,10 +89,13 @@ jobs:
           set -euo pipefail
           # SwiftPM caches evaluated manifests in an sqlite DB. We've seen this get stale across
           # `swift-configuration` trait renames (e.g. `JSONSupport` -> `JSON`) and break resolution.
-          rm -f "$HOME/Library/Caches/org.swift.swiftpm/manifests/manifest.db"* || true
-          rm -f "$HOME/Library/Caches/org.swift.swiftpm/package-collection.db"* || true
-          rm -f "$HOME/.cache/org.swift.swiftpm/manifests/manifest.db"* || true
-          rm -f "$HOME/.cache/org.swift.swiftpm/package-collection.db"* || true
+          for root in "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/.cache/org.swift.swiftpm"; do
+            if [ -d "$root" ]; then
+              find "$root" -type f -name "manifest.db*" -print -delete || true
+              find "$root" -type f -name "manifests.db*" -print -delete || true
+              find "$root" -type f -name "package-collection.db*" -print -delete || true
+            fi
+          done
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
@@ -192,10 +195,13 @@ jobs:
           set -euo pipefail
           # SwiftPM caches evaluated manifests in an sqlite DB. We've seen this get stale across
           # `swift-configuration` trait renames (e.g. `JSONSupport` -> `JSON`) and break resolution.
-          rm -f "$HOME/Library/Caches/org.swift.swiftpm/manifests/manifest.db"* || true
-          rm -f "$HOME/Library/Caches/org.swift.swiftpm/package-collection.db"* || true
-          rm -f "$HOME/.cache/org.swift.swiftpm/manifests/manifest.db"* || true
-          rm -f "$HOME/.cache/org.swift.swiftpm/package-collection.db"* || true
+          for root in "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/.cache/org.swift.swiftpm"; do
+            if [ -d "$root" ]; then
+              find "$root" -type f -name "manifest.db*" -print -delete || true
+              find "$root" -type f -name "manifests.db*" -print -delete || true
+              find "$root" -type f -name "package-collection.db*" -print -delete || true
+            fi
+          done
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
@@ -208,6 +214,8 @@ jobs:
           if [ -d Apps/CLI/.build/checkouts ]; then
             find Apps/CLI/.build/checkouts -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
           fi
+          # Avoid caching any package-local state that might remember old trait selections.
+          rm -rf Apps/CLI/.build || true
 
       - name: Show Swift toolchain version
         run: swift --version
@@ -300,10 +308,13 @@ jobs:
           set -euo pipefail
           # SwiftPM caches evaluated manifests in an sqlite DB. We've seen this get stale across
           # `swift-configuration` trait renames (e.g. `JSONSupport` -> `JSON`) and break resolution.
-          rm -f "$HOME/Library/Caches/org.swift.swiftpm/manifests/manifest.db"* || true
-          rm -f "$HOME/Library/Caches/org.swift.swiftpm/package-collection.db"* || true
-          rm -f "$HOME/.cache/org.swift.swiftpm/manifests/manifest.db"* || true
-          rm -f "$HOME/.cache/org.swift.swiftpm/package-collection.db"* || true
+          for root in "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/.cache/org.swift.swiftpm"; do
+            if [ -d "$root" ]; then
+              find "$root" -type f -name "manifest.db*" -print -delete || true
+              find "$root" -type f -name "manifests.db*" -print -delete || true
+              find "$root" -type f -name "package-collection.db*" -print -delete || true
+            fi
+          done
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
