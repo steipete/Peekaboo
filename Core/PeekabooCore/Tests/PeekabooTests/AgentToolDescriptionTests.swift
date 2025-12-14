@@ -112,8 +112,8 @@ struct AgentToolDescriptionTests {
         #expect(discussion.contains("screenshot") || discussion.contains("capture"))
         #expect(discussion.contains("app") || discussion.contains("window"))
 
-        // Check for session management info
-        #expect(discussion.contains("session"))
+        // Check for snapshot management info
+        #expect(discussion.contains("snapshot"))
     }
 
     @Test("Shell tool has quoting examples")

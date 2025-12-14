@@ -73,7 +73,7 @@ struct ClickServiceTests {
                     elementCount: 1,
                     method: "AXorcist"))
 
-            await snapshotManager.primeDetectionResult(detectionResult)
+            snapshotManager.primeDetectionResult(detectionResult)
 
             let service = ClickService(snapshotManager: snapshotManager)
 
@@ -157,7 +157,7 @@ struct ClickServiceTests {
                 elementCount: 1,
                 method: "AXorcist"))
 
-        await snapshotManager.primeDetectionResult(detectionResult)
+        snapshotManager.primeDetectionResult(detectionResult)
 
         let service = ClickService(snapshotManager: snapshotManager)
 

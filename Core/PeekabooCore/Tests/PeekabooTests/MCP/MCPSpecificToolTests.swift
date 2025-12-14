@@ -36,7 +36,7 @@ struct MCPSpecificToolTests {
 
         // Verify see tool properties
         #expect(props["annotate"] != nil)
-        #expect(props["session"] != nil)
+        #expect(props["snapshot"] != nil)
         #expect(props["app_target"] != nil)
         #expect(props["path"] != nil)
 

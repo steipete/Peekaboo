@@ -126,7 +126,7 @@ struct ElementDetectionServiceTests {
                 elementCount: mockElements.count,
                 method: "AXorcist"))
 
-        await snapshotManager.primeDetectionResult(detectionResult)
+        snapshotManager.primeDetectionResult(detectionResult)
 
         _ = ElementDetectionService(snapshotManager: snapshotManager)
 
