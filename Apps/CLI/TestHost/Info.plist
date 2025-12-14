@@ -11,9 +11,9 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0.0</string>
+    <string>3.0.0-beta2</string>
     <key>CFBundleVersion</key>
-    <string>2.0.0</string>
+    <string>3.0.0-beta2</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSMainStoryboardFile</key>
