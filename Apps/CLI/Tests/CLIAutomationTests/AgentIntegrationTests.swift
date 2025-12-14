@@ -19,7 +19,7 @@ struct AgentIntegrationTests {
         .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
     )
     func agentTextEditTask() async throws {
-        guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
+        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
             throw TestError.missingAPIKey
         }
 

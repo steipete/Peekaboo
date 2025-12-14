@@ -41,7 +41,7 @@ struct DockCommandTests {
     }
 
     private func runCommand(_ arguments: [String]) async throws -> CommandResult {
-        let services = await self.makeTestServices()
+        let services = await MainActor.run { self.makeTestServices() }
         let result = try await InProcessCommandRunner.run(arguments, services: services)
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         return CommandResult(output: output, status: result.exitStatus)

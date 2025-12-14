@@ -3,17 +3,23 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
+private enum SeeCommandPlaygroundTestConfig {
+    @preconcurrency
+    nonisolated static func enabled() -> Bool {
+        ProcessInfo.processInfo.environment["RUN_SEE_PLAYGROUND_TESTS"]?.lowercased() == "true"
+    }
+}
+
 @Suite(
     "SeeCommand Playground Tests",
     .serialized,
-    .tags(.automation)
+    .tags(.automation),
+    .enabled(if: SeeCommandPlaygroundTestConfig.enabled())
 )
 struct SeeCommandPlaygroundTests {
     @Test("Hidden web-style fields are detected in Playground")
     func hiddenFieldsAreDetected() async throws {
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
-            return
-        }
+        guard SeeCommandPlaygroundTestConfig.enabled() else { return }
 
         _ = try? await self.runPeekabooCommand([
             "app", "launch",

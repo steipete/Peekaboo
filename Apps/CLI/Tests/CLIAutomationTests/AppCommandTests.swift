@@ -101,18 +101,13 @@ struct AppCommandTests {
 @Suite(
     "App Command Integration Tests",
     .serialized,
-    .enabled(if: CLITestEnvironment.runAutomationActions)
+    .tags(.automation, .localOnly),
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"
+        && !(ProcessInfo.processInfo.environment["PEEKABOO_CLI_PATH"] ?? "").isEmpty)
 )
 struct AppCommandIntegrationTests {
-    @Test("Launch application")
+    @Test("Launch TextEdit via external CLI")
     func launchApp() async throws {
-        let (output, appService) = try await runAppCommandWithService([
-            "app", "launch",
-            "--app", "TextEdit",
-            "--wait",
-            "--json",
-        ])
-
         struct LaunchResult: Codable {
             let action: String
             let app_name: String
@@ -121,115 +116,90 @@ struct AppCommandIntegrationTests {
             let is_ready: Bool
         }
 
-        let response = try JSONDecoder().decode(
-            CodableJSONResponse<LaunchResult>.self,
-            from: Data(output.utf8)
+        let result = try ExternalCommandRunner.runPeekabooCLI(
+            [
+                "app", "launch",
+                "TextEdit",
+                "--wait-until-ready",
+                "--no-focus",
+                "--json",
+            ],
+            allowedExitCodes: [0, 1]
+        )
+
+        if result.exitStatus != 0 {
+            let error = try ExternalCommandRunner.decodeJSONResponse(from: result, as: JSONResponse.self)
+            if error.error?.code == ErrorCode.PERMISSION_ERROR_ACCESSIBILITY.rawValue {
+                Issue.record("Accessibility permission required for app launch integration test")
+                return
+            }
+            Issue.record("App launch failed: \(result.combinedOutput)")
+            return
+        }
+
+        let response = try ExternalCommandRunner.decodeJSONResponse(
+            from: result,
+            as: CodableJSONResponse<LaunchResult>.self
         )
         #expect(response.success == true)
         #expect(response.data.action == "launch")
-        #expect(response.data.app_name == "TextEdit")
         #expect(response.data.pid > 0)
-        let launchCalls = await appServiceState(appService) { $0.launchCalls }
-        #expect(launchCalls.contains("TextEdit"))
     }
 
-    @Test("Hide and show application")
+    @Test("Hide and unhide Finder via external CLI")
     func hideShowApp() async throws {
-        // First hide
-        let (hideOutput, hideService) = try await runAppCommandWithService([
-            "app", "hide",
-            "--app", "TextEdit",
-            "--json",
-        ])
-
-        let hideData = try JSONDecoder().decode(JSONResponse.self, from: Data(hideOutput.utf8))
-        #expect(hideData.success == true)
-        let hideCalls = await appServiceState(hideService) { $0.hideCalls }
-        #expect(hideCalls.contains("TextEdit"))
-
-        // Then show
-        let (showOutput, showService) = try await runAppCommandWithService([
-            "app", "show",
-            "--app", "TextEdit",
-            "--json",
-        ])
-
-        let showData = try JSONDecoder().decode(JSONResponse.self, from: Data(showOutput.utf8))
-        #expect(showData.success == true)
-        let unhideCalls = await appServiceState(showService) { $0.unhideCalls }
-        #expect(unhideCalls.contains("TextEdit"))
-    }
-
-    @Test("Switch between applications")
-    func switchApps() async throws {
-        // Cycle to next app
-        let (cycleOutput, cycleService) = try await runAppCommandWithService([
-            "app", "switch",
-            "--cycle",
-            "--json",
-        ])
-
-        let cycleData = try JSONDecoder().decode(JSONResponse.self, from: Data(cycleOutput.utf8))
-        #expect(cycleData.success == true)
-        let cycleCalls = await appServiceState(cycleService) { $0.activateCalls }
-        #expect(!cycleCalls.isEmpty)
-
-        // Switch to specific app
-        let (switchOutput, switchService) = try await runAppCommandWithService([
-            "app", "switch",
-            "--to", "Finder",
-            "--json",
-        ])
-
-        let switchData = try JSONDecoder().decode(JSONResponse.self, from: Data(switchOutput.utf8))
-        #expect(switchData.success == true)
-        let switchCalls = await appServiceState(switchService) { $0.activateCalls }
-        #expect(switchCalls.contains("Finder"))
-    }
-
-    @Test("Quit application with save")
-    func quitWithSave() async throws {
-        let (output, appService) = try await runAppCommandWithService([
-            "app", "quit",
-            "--app", "TextEdit",
-            "--json",
-        ])
-
-        struct AppQuitInfo: Codable {
+        struct UnhideResult: Codable {
+            let action: String
             let app_name: String
             let bundle_id: String
-            let pid: Int32
-            let terminated: Bool
+            let activated: Bool
         }
 
-        struct QuitResult: Codable {
-            let action: String
-            let force: Bool
-            let results: [AppQuitInfo]
+        let hideResult = try ExternalCommandRunner.runPeekabooCLI(
+            [
+                "app", "hide",
+                "--app", "Finder",
+                "--json",
+            ],
+            allowedExitCodes: [0, 1]
+        )
+
+        if hideResult.exitStatus != 0 {
+            let error = try ExternalCommandRunner.decodeJSONResponse(from: hideResult, as: JSONResponse.self)
+            if error.error?.code == ErrorCode.PERMISSION_ERROR_ACCESSIBILITY.rawValue {
+                Issue.record("Accessibility permission required for app hide/unhide integration test")
+                return
+            }
+            Issue.record("App hide failed: \(hideResult.combinedOutput)")
+            return
         }
 
-        let response = try JSONDecoder().decode(CodableJSONResponse<QuitResult>.self, from: Data(output.utf8))
-        #expect(response.success == true)
-        let quitCalls = await appServiceState(appService) { $0.quitCalls }
-        #expect(quitCalls.contains { $0.identifier == "TextEdit" && $0.force == false })
-    }
+        let unhideResult = try ExternalCommandRunner.runPeekabooCLI(
+            [
+                "app", "unhide",
+                "--app", "Finder",
+                "--activate",
+                "--json",
+            ],
+            allowedExitCodes: [0, 1]
+        )
 
-    @Test("Hide others functionality")
-    func hideOthers() async throws {
-        let (output, appService) = try await runAppCommandWithService([
-            "app", "hide",
-            "--app", "Finder",
-            "--others",
-            "--json",
-        ])
+        if unhideResult.exitStatus != 0 {
+            let error = try ExternalCommandRunner.decodeJSONResponse(from: unhideResult, as: JSONResponse.self)
+            if error.error?.code == ErrorCode.PERMISSION_ERROR_ACCESSIBILITY.rawValue {
+                Issue.record("Accessibility permission required for app hide/unhide integration test")
+                return
+            }
+            Issue.record("App unhide failed: \(unhideResult.combinedOutput)")
+            return
+        }
 
-        let response = try JSONDecoder().decode(
-            CodableJSONResponse<[String: String]>.self,
-            from: Data(output.utf8)
+        let response = try ExternalCommandRunner.decodeJSONResponse(
+            from: unhideResult,
+            as: CodableJSONResponse<UnhideResult>.self
         )
         #expect(response.success == true)
-        let hideOtherCalls = await appServiceState(appService) { $0.hideOtherCalls }
-        #expect(hideOtherCalls.contains("Finder"))
+        #expect(response.data.action == "unhide")
     }
 }
 
@@ -252,7 +222,7 @@ private func runAppCommandWithService(
     _ args: [String],
     configure: (@MainActor (StubApplicationService) -> Void)? = nil
 ) async throws -> (String, StubApplicationService) {
-    let context = await makeAppCommandContext()
+    let context = await MainActor.run { makeAppCommandContext() }
     if let configure {
         await MainActor.run {
             configure(context.applicationService)

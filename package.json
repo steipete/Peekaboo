@@ -26,7 +26,7 @@
     "test:safe": "./runner swift test --package-path Apps/CLI -Xswiftc -DPEEKABOO_SKIP_AUTOMATION --no-parallel",
     "test:automation": "PEEKABOO_INCLUDE_AUTOMATION_TESTS=true ./runner swift test --package-path Apps/CLI --no-parallel",
     "test:automation:read": "RUN_AUTOMATION_READ=true PEEKABOO_INCLUDE_AUTOMATION_TESTS=true ./runner swift test --package-path Apps/CLI --no-parallel",
-    "test:automation:local": "./runner bash -lc 'cd Apps/CLI && BIN_PATH=$(swift build --show-bin-path) && RUN_LOCAL_TESTS=true PEEKABOO_INCLUDE_AUTOMATION_TESTS=true PEEKABOO_CLI_PATH=\"$BIN_PATH/peekaboo\" swift test --no-parallel'",
+    "test:automation:local": "./runner bash -lc 'BIN_PATH=$(swift build --package-path Apps/CLI --show-bin-path) && RUN_LOCAL_TESTS=true PEEKABOO_INCLUDE_AUTOMATION_TESTS=true PEEKABOO_CLI_PATH=\"$BIN_PATH/peekaboo\" swift test --package-path Apps/CLI --no-parallel'",
     "test:all": "./runner bash -lc 'set -euo pipefail; cd Apps/CLI && swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION --no-parallel && PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift test --no-parallel'",
     "test": "pnpm run test:safe",
     "tachikoma:test:integration": "./runner bash -lc 'cd Tachikoma && source ~/.profile && INTEGRATION_TESTS=1 swift test --parallel -Xswiftc -DLIVE_PROVIDER_TESTS'",

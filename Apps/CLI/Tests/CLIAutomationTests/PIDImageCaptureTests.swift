@@ -28,7 +28,7 @@ struct PIDImageCaptureTests {
         let pid = appWithWindows.processIdentifier
 
         // Create image command with PID
-        var command = try ImageCommand.parse([
+        let command = try ImageCommand.parse([
             "--app", "PID:\(pid)",
             "--mode", "multi",
             "--format", "png",
@@ -41,7 +41,7 @@ struct PIDImageCaptureTests {
             let result = try await captureWithPID(command: command, targetPID: pid)
 
             #expect(result.success == true)
-            #expect(result.data != nil)
+            #expect(result.data.saved_files.isEmpty == false)
         } catch {
             Issue.record("Failed to capture windows by PID: \(error)")
         }
@@ -81,7 +81,7 @@ struct PIDImageCaptureTests {
             let result = try await captureWithPID(command: command, targetPID: pid)
 
             #expect(result.success == true)
-            #expect(result.data != nil)
+            #expect(result.data.saved_files.isEmpty == false)
         } catch {
             Issue.record("Failed to capture specific instance by PID: \(error)")
         }
@@ -159,7 +159,10 @@ struct PIDImageCaptureTests {
     }
 
     // Helper function to simulate capture with PID
-    private func captureWithPID(command: ImageCommand, targetPID: pid_t) async throws -> JSONResponse {
+    private func captureWithPID(
+        command: ImageCommand,
+        targetPID: pid_t
+    ) async throws -> CodableJSONResponse<ImageCaptureData> {
         // In real execution, this would use WindowCapture.captureWindows
         // For testing, we simulate the response
 
@@ -178,12 +181,11 @@ struct PIDImageCaptureTests {
 
         let captureData = ImageCaptureData(saved_files: [savedFile])
 
-        return JSONResponse(
+        return CodableJSONResponse(
             success: true,
-            data: Empty(),
+            data: captureData,
             messages: ["Captured windows for PID: \(targetPID)"],
-            debugLogs: [],
-            error: nil
+            debug_logs: []
         )
     }
 }

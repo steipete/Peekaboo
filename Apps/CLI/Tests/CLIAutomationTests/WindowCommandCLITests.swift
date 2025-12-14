@@ -4,6 +4,13 @@ import Testing
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
+private enum WindowCommandIntegrationTestConfig {
+    @preconcurrency
+    nonisolated static func enabled() -> Bool {
+        ProcessInfo.processInfo.environment["RUN_WINDOW_INTEGRATION_TESTS"]?.lowercased() == "true"
+    }
+}
+
 @Suite("Window Command CLI Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct WindowCommandCLITests {
     @Test("Window help output")
@@ -119,13 +126,12 @@ struct WindowCommandCLITests {
     }
 
     private func runCommand(_ arguments: [String]) async throws -> CommandResult {
-        let services = await self.makeTestServices()
+        let services = self.makeTestServices()
         let result = try await InProcessCommandRunner.run(arguments, services: services)
         let output = result.stdout.isEmpty ? result.stderr : result.stdout
         return CommandResult(output: output, status: result.exitStatus)
     }
 
-    @MainActor
     private func makeTestServices() -> PeekabooServices {
         let applications: [ServiceApplicationInfo] = [
             ServiceApplicationInfo(
@@ -179,7 +185,7 @@ struct WindowCommandCLITests {
 @Suite(
     "Window Command Integration Tests",
     .serialized,
-    .enabled(if: CLITestEnvironment.runAutomationActions)
+    .enabled(if: CLITestEnvironment.runAutomationActions && WindowCommandIntegrationTestConfig.enabled())
 )
 struct WindowCommandLocalTests {
     @Test("Window operations with TextEdit")
@@ -206,13 +212,14 @@ struct WindowCommandLocalTests {
                 "--json",
             ])
 
-            let moveResponse = try JSONDecoder().decode(JSONResponse.self, from: Data(moveOutput.utf8))
-
-            if moveResponse.success,
-               let data = moveResponse.data as? [String: Any],
-               let bounds = data["new_bounds"] as? [String: Any] {
-                #expect(bounds["x"] as? Int == 200)
-                #expect(bounds["y"] as? Int == 200)
+            if let typedResponse = try? JSONDecoder().decode(
+                CodableJSONResponse<WindowActionResult>.self,
+                from: Data(moveOutput.utf8)
+            ),
+                typedResponse.success,
+                let bounds = typedResponse.data.new_bounds {
+                #expect(bounds.x == 200)
+                #expect(bounds.y == 200)
             }
         }
     }

@@ -480,6 +480,7 @@ struct ListCommandTests {
                 window_count: 0
             ),
         ]
+        _ = applications
 
         // Get formatted output using the testable method
         // TODO: formatApplicationList method needs to be added to AppsSubcommand
@@ -529,6 +530,7 @@ struct ListCommandTests {
                 window_count: 10
             ),
         ]
+        _ = applications
 
         // TODO: formatApplicationList method needs to be added to AppsSubcommand
         // let command = AppsSubcommand()
@@ -556,6 +558,7 @@ struct ListCommandTests {
                 window_count: 1
             ),
         ]
+        _ = applications
 
         // TODO: formatApplicationList method needs to be added to AppsSubcommand
         // let command = AppsSubcommand()
@@ -591,6 +594,7 @@ struct ListCommandTests {
                 window_count: 1
             ),
         ]
+        _ = applications
 
         // TODO: formatApplicationList method needs to be added to AppsSubcommand
         // let command = AppsSubcommand()
@@ -615,6 +619,7 @@ struct ListCommandTests {
             ApplicationInfo(app_name: "App C", bundle_id: "com.c", pid: 3, is_active: false, window_count: 2),
             ApplicationInfo(app_name: "App D", bundle_id: "com.d", pid: 4, is_active: false, window_count: 3),
         ]
+        _ = applications
 
         // TODO: formatApplicationList method needs to be added to AppsSubcommand
         // let command = AppsSubcommand()

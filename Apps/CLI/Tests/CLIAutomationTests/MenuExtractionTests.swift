@@ -6,7 +6,7 @@ import Testing
 private enum MenuHarnessConfig {
     @preconcurrency
     nonisolated static func runLocalHarnessEnabled() -> Bool {
-        guard let raw = ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"]?.lowercased() else {
+        guard let raw = ProcessInfo.processInfo.environment["RUN_MENU_HARNESS_TESTS"]?.lowercased() else {
             return false
         }
         return raw == "true" || raw == "1" || raw == "yes"

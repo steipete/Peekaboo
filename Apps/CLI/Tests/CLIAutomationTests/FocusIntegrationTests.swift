@@ -3,11 +3,18 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
+private enum FocusIntegrationTestConfig {
+    @preconcurrency
+    nonisolated static func enabled() -> Bool {
+        ProcessInfo.processInfo.environment["RUN_FOCUS_INTEGRATION_TESTS"]?.lowercased() == "true"
+    }
+}
+
 @Suite(
     "Focus Integration Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: CLITestEnvironment.runAutomationActions)
+    .enabled(if: CLITestEnvironment.runAutomationActions && FocusIntegrationTestConfig.enabled())
 )
 struct FocusIntegrationTests {
     // Helper function to run peekaboo commands

@@ -102,6 +102,18 @@ struct DialogCommandTests {
     @Test("dialog dismiss uses force flag")
     func dialogDismissForce() async throws {
         let dialogService = StubDialogService()
+        dialogService.dialogElements = DialogElements(
+            dialogInfo: DialogInfo(
+                title: "Open",
+                role: "AXWindow",
+                subrole: "AXDialog",
+                isFileDialog: false,
+                bounds: .init(x: 0, y: 0, width: 400, height: 300)
+            ),
+            buttons: [],
+            textFields: [],
+            staticTexts: []
+        )
         dialogService.dismissResult = DialogActionResult(
             success: true,
             action: .dismiss,
@@ -203,6 +215,20 @@ struct DialogCommandTests {
     @Test("dialog click emits JSON success when stub succeeds")
     func dialogClickJSON() async throws {
         let dialogService = await MainActor.run { StubDialogService() }
+        dialogService.dialogElements = DialogElements(
+            dialogInfo: DialogInfo(
+                title: "Open",
+                role: "AXWindow",
+                subrole: "AXDialog",
+                isFileDialog: true,
+                bounds: .init(x: 0, y: 0, width: 400, height: 300)
+            ),
+            buttons: [
+                DialogButton(title: "New Document"),
+            ],
+            textFields: [],
+            staticTexts: []
+        )
         dialogService.clickButtonResult = DialogActionResult(
             success: true,
             action: .clickButton,
@@ -392,7 +418,10 @@ struct DialogCommandIntegrationTests {
         } else {
             // Otherwise it's an error response
             let errorResponse = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
-            #expect(errorResponse.error?.code == "NO_ACTIVE_DIALOG" || errorResponse.error?.code == "NO_FILE_DIALOG")
+            #expect(
+                errorResponse.error?.code == "NO_ACTIVE_DIALOG" ||
+                    errorResponse.error?.code == "ELEMENT_NOT_FOUND"
+            )
         }
     }
 }

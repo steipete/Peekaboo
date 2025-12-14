@@ -8,7 +8,7 @@ import Testing
 struct MenuCommandIntegrationTests {
     @Test("menu list returns JSON even when no windows exist")
     func menuListNoWindows() async throws {
-        let context = await self.makeMenuContext(hasWindows: false)
+        let context = self.makeMenuContext(hasWindows: false)
         let result = try await self.runMenuCommand(
             [
                 "menu", "list",
@@ -33,7 +33,7 @@ struct MenuCommandIntegrationTests {
 
     @Test("menu click succeeds after list when auto focus is disabled")
     func menuClickAfterList() async throws {
-        let context = await self.makeMenuContext(hasWindows: false)
+        let context = self.makeMenuContext(hasWindows: false)
 
         _ = try await self.runMenuCommand(
             [
@@ -111,7 +111,6 @@ struct MenuCommandIntegrationTests {
         return result
     }
 
-    @MainActor
     private func makeMenuContext(hasWindows: Bool) -> MenuTestContext {
         let appName = "Finder"
         let bundleID = "com.apple.finder"
@@ -196,6 +195,11 @@ struct MenuCommandIntegrationTests {
 // MARK: - JSON Helpers
 
 extension MenuCommandIntegrationTests {
+    private enum JSONDecodeError: Error {
+        case emptyOutput
+        case noJSONFound
+    }
+
     /// Trim any progress/preamble characters emitted by the test runner and decode from the first JSON token.
     private func decodeJSON<T: Decodable>(
         _ type: T.Type,
@@ -206,8 +210,11 @@ extension MenuCommandIntegrationTests {
         let decoder = JSONDecoder()
 
         if filtered.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if let fallback { return fallback() }
-            throw TestSkipped("Menu command output was empty; likely swallowed by concurrent test logs")
+            if let fallback {
+                Issue.record("Menu command output was empty; returning fallback response")
+                return fallback()
+            }
+            throw JSONDecodeError.emptyOutput
         }
 
         var searchStart = filtered.startIndex
@@ -221,8 +228,11 @@ extension MenuCommandIntegrationTests {
             searchStart = filtered.index(after: start)
         }
 
-        if let fallback { return fallback() }
-        throw TestSkipped("Menu command output did not contain decodable JSON")
+        if let fallback {
+            Issue.record("Menu command output did not contain decodable JSON; returning fallback response")
+            return fallback()
+        }
+        throw JSONDecodeError.noJSONFound
     }
 
     /// Returns the first balanced JSON object/array substring beginning at `start` if it can be delimited.

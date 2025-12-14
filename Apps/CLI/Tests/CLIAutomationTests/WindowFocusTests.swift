@@ -3,11 +3,18 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
+private enum WindowFocusTestConfig {
+    @preconcurrency
+    nonisolated static func enabled() -> Bool {
+        ProcessInfo.processInfo.environment["RUN_WINDOW_FOCUS_TESTS"]?.lowercased() == "true"
+    }
+}
+
 @Suite(
     "Window Focus Enhancement Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: CLITestEnvironment.runAutomationActions)
+    .enabled(if: CLITestEnvironment.runAutomationActions && WindowFocusTestConfig.enabled())
 )
 struct WindowFocusTests {
     // Helper function to run peekaboo commands

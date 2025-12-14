@@ -10,7 +10,7 @@ private func runCommand(
     _ args: [String],
     allowedExitStatuses: Set<Int32> = [0]
 ) async throws -> String {
-    let result = try await InProcessCommandRunner.runShared(args, allowedExitCodes: allowedExitStatuses)
+    let result = try ExternalCommandRunner.runPeekabooCLI(args, allowedExitCodes: allowedExitStatuses)
     return result.combinedOutput
 }
 
@@ -21,15 +21,19 @@ private func runCommand(
     .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct AgentMenuTests {
-    @Test("Agent can discover menus using list subcommand")
+    @Test(
+        "Agent can discover menus using list subcommand",
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
+    )
     func agentMenuDiscovery() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else { return }
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["OPENAI_API_KEY"] != nil || environment["ANTHROPIC_API_KEY"] != nil else { return }
 
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
+        guard environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Ensure Calculator is running
-        _ = try await runCommand(["app", "--action", "launch", "--name", "Calculator"])
+        _ = try await runCommand(["app", "launch", "Calculator", "--wait-until-ready"])
         try await Task.sleep(for: .seconds(2))
 
         // Test agent discovering menus
@@ -40,35 +44,35 @@ struct AgentMenuTests {
         ])
 
         let data = try #require(output.data(using: String.Encoding.utf8))
-        let json = try JSONDecoder().decode(AgentJSONResponse.self, from: data)
+        let json = try JSONDecoder().decode(AgentCLIResponse.self, from: data)
 
         #expect(json.success == true)
 
         // Check that agent used menu command
-        if let steps = json.data?.steps {
-            let menuStepFound = steps.contains { step in
-                step.tool == "menu" || step.description.lowercased().contains("menu")
-            }
-            #expect(menuStepFound, "Agent should use menu command for menu discovery")
-        }
+        let menuToolCallFound = json.result?.toolCalls?.contains(where: { $0.name == "menu" }) ?? false
+        #expect(menuToolCallFound, "Agent should use menu tool for menu discovery")
 
         // Check summary mentions menus
-        if let summary = json.data?.summary {
-            #expect(summary.lowercased().contains("menu"), "Summary should mention menus")
-            #expect(summary.contains("View") || summary.contains("Edit"), "Summary should list actual menu names")
+        if let content = json.result?.content {
+            #expect(content.lowercased().contains("menu"), "Summary should mention menus")
+            #expect(content.contains("View") || content.contains("Edit"), "Summary should list actual menu names")
         }
         #endif
     }
 
-    @Test("Agent can navigate menus to perform actions")
+    @Test(
+        "Agent can navigate menus to perform actions",
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
+    )
     func agentMenuNavigation() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else { return }
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["OPENAI_API_KEY"] != nil || environment["ANTHROPIC_API_KEY"] != nil else { return }
 
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
+        guard environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Ensure Calculator is running
-        _ = try await runCommand(["app", "--action", "launch", "--name", "Calculator"])
+        _ = try await runCommand(["app", "launch", "Calculator", "--wait-until-ready"])
         try await Task.sleep(for: .seconds(2))
 
         // Test agent using menu to switch Calculator mode
@@ -79,42 +83,33 @@ struct AgentMenuTests {
         ])
 
         let data = try #require(output.data(using: String.Encoding.utf8))
-        let json = try JSONDecoder().decode(AgentJSONResponse.self, from: data)
+        let json = try JSONDecoder().decode(AgentCLIResponse.self, from: data)
 
         #expect(json.success == true)
 
-        if let steps = json.data?.steps {
-            // Should have menu discovery and menu click steps
-            let menuSteps = steps.filter { $0.tool == "menu" }
-            #expect(menuSteps.count >= 1, "Should use menu command at least once")
+        let toolCalls = json.result?.toolCalls ?? []
+        let menuToolCallFound = toolCalls.contains(where: { $0.name == "menu" })
+        #expect(menuToolCallFound, "Should use the menu tool at least once")
 
-            // Check for menu click with correct path
-            let hasMenuClick = steps.contains { step in
-                if step.tool == "menu",
-                   let args = step.arguments,
-                   let jsonData = try? JSONSerialization.data(withJSONObject: args),
-                   let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                    return parsed["subcommand"] as? String == "click" ||
-                        parsed["path"] as? String == "View > Scientific" ||
-                        parsed["item"] as? String == "Scientific"
-                }
-                return false
-            }
-
-            #expect(hasMenuClick || !steps.isEmpty, "Should perform menu click or have steps")
+        if let content = json.result?.content {
+            #expect(content.localizedCaseInsensitiveContains("scientific"), "Agent summary should mention Scientific")
         }
         #endif
     }
 
-    @Test("Agent uses menu discovery before clicking")
+    @Test(
+        "Agent uses menu discovery before clicking",
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
+    )
     func agentMenuDiscoveryBeforeAction() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else { return }
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["OPENAI_API_KEY"] != nil || environment["ANTHROPIC_API_KEY"] != nil else { return }
 
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
+        guard environment["RUN_LOCAL_TESTS"] != nil else { return }
 
         // Test with TextEdit
-        _ = try await runCommand(["app", "--action", "launch", "--name", "TextEdit"])
+        _ = try await runCommand(["app", "launch", "TextEdit", "--wait-until-ready"])
         try await Task.sleep(for: .seconds(2))
 
         let output = try await runCommand([
@@ -124,37 +119,39 @@ struct AgentMenuTests {
         ])
 
         let data = try #require(output.data(using: String.Encoding.utf8))
-        let json = try JSONDecoder().decode(AgentJSONResponse.self, from: data)
+        let json = try JSONDecoder().decode(AgentCLIResponse.self, from: data)
 
         #expect(json.success == true)
 
-        if let steps = json.data?.steps {
-            // Find menu discovery steps
-            var foundDiscovery = false
+        let toolCalls = json.result?.toolCalls ?? []
+        let menuToolCalls = toolCalls.filter { $0.name == "menu" }
+        #expect(menuToolCalls.isEmpty == false, "Should use the menu tool at least once")
 
-            for step in steps where step.tool == "menu" {
-                if let args = step.arguments,
-                   let jsonData = try? JSONSerialization.data(withJSONObject: args),
-                   let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                    if parsed["subcommand"] as? String == "list" {
-                        foundDiscovery = true
-                    } else if parsed["subcommand"] as? String == "click", foundDiscovery {
-                        // Found the action
-                    }
-                }
-            }
+        let menuArgumentStrings = menuToolCalls.compactMap { $0.arguments?.lowercased() }
+        let listIndex = menuArgumentStrings.firstIndex(where: { $0.contains("list") })
+        let clickIndex = menuArgumentStrings.firstIndex(where: { $0.contains("click") })
 
-            #expect(foundDiscovery || !steps.isEmpty, "Should discover menus or have steps")
+        if let listIndex, let clickIndex {
+            #expect(listIndex <= clickIndex, "Agent should list menus before clicking items")
+        } else {
+            #expect(!menuToolCalls.isEmpty, "Should discover menus or have menu tool calls")
         }
         #endif
     }
 
-    @Test("Agent handles menu errors gracefully")
+    @Test(
+        "Agent handles menu errors gracefully",
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
+    )
     func agentMenuErrorHandling() async throws {
         #if !os(Linux)
-        guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else { return }
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["OPENAI_API_KEY"] != nil || environment["ANTHROPIC_API_KEY"] != nil else { return }
 
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
+        guard environment["RUN_LOCAL_TESTS"] != nil else { return }
+
+        _ = try await runCommand(["app", "launch", "Calculator", "--wait-until-ready"])
+        try await Task.sleep(for: .seconds(2))
 
         // Test with non-existent menu item
         let output = try await runCommand([
@@ -164,12 +161,12 @@ struct AgentMenuTests {
         ])
 
         let data = try #require(output.data(using: String.Encoding.utf8))
-        let json = try JSONDecoder().decode(AgentJSONResponse.self, from: data)
+        let json = try JSONDecoder().decode(AgentCLIResponse.self, from: data)
 
         // Agent should handle this gracefully
         #expect(json.success == true || json.error != nil)
 
-        if let summary = json.data?.summary {
+        if let summary = json.result?.content {
             // Should mention the item wasn't found or similar
             let handledGracefully = summary.lowercased().contains("not found") ||
                 summary.lowercased().contains("doesn't exist") ||
@@ -183,27 +180,41 @@ struct AgentMenuTests {
 
 // MARK: - Agent Response Types for Testing
 
-struct AgentJSONResponse: Decodable {
+struct AgentCLIResponse: Decodable {
     let success: Bool
-    let data: AgentResultData?
+    let result: AgentCLIResult?
     let error: AgentErrorData?
 }
 
-struct AgentResultData: Decodable {
-    let steps: [AgentStep]
-    let summary: String?
-    let success: Bool
+struct AgentCLIResult: Decodable {
+    let content: String?
+    let toolCalls: [AgentToolCall]?
 }
 
-struct AgentStep: Decodable {
-    let tool: String
-    let arguments: [String: String]?
-    let description: String
-    let output: String?
+struct AgentToolCall: Decodable {
+    let arguments: String?
+    let name: String
 }
 
 struct AgentErrorData: Decodable {
     let message: String
-    let code: String
+    let code: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case message
+        case code
+    }
+
+    init(from decoder: any Decoder) throws {
+        if let string = try? decoder.singleValueContainer().decode(String.self) {
+            self.message = string
+            self.code = nil
+            return
+        }
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.message = try container.decode(String.self, forKey: .message)
+        self.code = try container.decodeIfPresent(String.self, forKey: .code)
+    }
 }
 #endif

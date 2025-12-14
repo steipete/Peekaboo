@@ -5,6 +5,13 @@ import Testing
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
+private enum WindowCommandLocalIntegrationTestConfig {
+    @preconcurrency
+    nonisolated static func enabled() -> Bool {
+        ProcessInfo.processInfo.environment["RUN_WINDOW_LOCAL_INTEGRATION_TESTS"]?.lowercased() == "true"
+    }
+}
+
 @Suite("WindowCommand Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct WindowCommandTests {
     @Test
@@ -36,7 +43,7 @@ struct WindowCommandTests {
             title: "HUD",
             bounds: CGRect(x: 0, y: 0, width: 200, height: 120),
             layer: 8,
-            sharingState: .none
+            sharingState: WindowSharingState.none
         )
         let mainWindow = ServiceWindowInfo(
             windowID: 11,
@@ -46,10 +53,12 @@ struct WindowCommandTests {
             sharingState: .readWrite
         )
 
-        let context = await self.makeWindowContext(
-            appInfo: appInfo,
-            windows: [appName: [overlay, mainWindow]]
-        )
+        let context = await MainActor.run {
+            self.makeWindowContext(
+                appInfo: appInfo,
+                windows: [appName: [overlay, mainWindow]]
+            )
+        }
 
         let result = try await self.runWindowCommand([
             "window", "list",
@@ -84,24 +93,26 @@ struct WindowCommandTests {
     func windowListCommand() async throws {
         // Test that window list delegates to list windows command (via stubbed services)
         let appName = "Finder"
-        let context = await self.makeWindowContext(
-            appInfo: ServiceApplicationInfo(
-                processIdentifier: 1234,
-                bundleIdentifier: "com.apple.finder",
-                name: appName
-            ),
-            windows: [
-                appName: [
-                    ServiceWindowInfo(
-                        windowID: 1,
-                        title: "Finder Window",
-                        bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
-                        isMainWindow: true,
-                        index: 0
-                    ),
-                ],
-            ]
-        )
+        let context = await MainActor.run {
+            self.makeWindowContext(
+                appInfo: ServiceApplicationInfo(
+                    processIdentifier: 1234,
+                    bundleIdentifier: "com.apple.finder",
+                    name: appName
+                ),
+                windows: [
+                    appName: [
+                        ServiceWindowInfo(
+                            windowID: 1,
+                            title: "Finder Window",
+                            bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
+                            isMainWindow: true,
+                            index: 0
+                        ),
+                    ],
+                ]
+            )
+        }
 
         let result = try await self.runWindowCommand([
             "window", "list",
@@ -168,27 +179,29 @@ struct WindowCommandTests {
         let initialBounds = CGRect(x: 10, y: 20, width: 320, height: 240)
         let updatedBounds = CGRect(x: 400, y: 500, width: 640, height: 480)
 
-        let context = await self.makeWindowContext(
-            appInfo: ServiceApplicationInfo(
-                processIdentifier: 42,
-                bundleIdentifier: bundleID,
-                name: appName
-            ),
-            windows: [
-                appName: [
-                    ServiceWindowInfo(
-                        windowID: 101,
-                        title: "Untitled",
-                        bounds: initialBounds,
-                        isMinimized: false,
-                        isMainWindow: true,
-                        windowLevel: 0,
-                        alpha: 1.0,
-                        index: 0
-                    ),
-                ],
-            ]
-        )
+        let context = await MainActor.run {
+            self.makeWindowContext(
+                appInfo: ServiceApplicationInfo(
+                    processIdentifier: 42,
+                    bundleIdentifier: bundleID,
+                    name: appName
+                ),
+                windows: [
+                    appName: [
+                        ServiceWindowInfo(
+                            windowID: 101,
+                            title: "Untitled",
+                            bounds: initialBounds,
+                            isMinimized: false,
+                            isMainWindow: true,
+                            windowLevel: 0,
+                            alpha: 1.0,
+                            index: 0
+                        ),
+                    ],
+                ]
+            )
+        }
 
         let args = [
             "window", "set-bounds",
@@ -232,27 +245,29 @@ struct WindowCommandTests {
         let initialBounds = CGRect(x: 50, y: 60, width: 200, height: 150)
         let updatedSize = CGSize(width: 880, height: 540)
 
-        let context = await self.makeWindowContext(
-            appInfo: ServiceApplicationInfo(
-                processIdentifier: 99,
-                bundleIdentifier: bundleID,
-                name: appName
-            ),
-            windows: [
-                appName: [
-                    ServiceWindowInfo(
-                        windowID: 202,
-                        title: "Draft",
-                        bounds: initialBounds,
-                        isMinimized: false,
-                        isMainWindow: true,
-                        windowLevel: 0,
-                        alpha: 1.0,
-                        index: 0
-                    ),
-                ],
-            ]
-        )
+        let context = await MainActor.run {
+            self.makeWindowContext(
+                appInfo: ServiceApplicationInfo(
+                    processIdentifier: 99,
+                    bundleIdentifier: bundleID,
+                    name: appName
+                ),
+                windows: [
+                    appName: [
+                        ServiceWindowInfo(
+                            windowID: 202,
+                            title: "Draft",
+                            bounds: initialBounds,
+                            isMinimized: false,
+                            isMainWindow: true,
+                            windowLevel: 0,
+                            alpha: 1.0,
+                            index: 0
+                        ),
+                    ],
+                ]
+            )
+        }
 
         let args = [
             "window", "resize",
@@ -350,10 +365,10 @@ struct WindowCommandTests {
     "Window Command Local Integration Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: CLITestEnvironment.runAutomationActions)
+    .enabled(if: CLITestEnvironment.runAutomationActions && WindowCommandLocalIntegrationTestConfig.enabled())
 )
 struct WindowCommandLocalIntegrationTests {
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+    @Test
     func windowMinimizeTextEdit() async throws {
         // This test requires TextEdit to be running and local permissions
 
@@ -383,7 +398,7 @@ struct WindowCommandLocalIntegrationTests {
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
     }
 
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+    @Test
     func windowMoveTextEdit() async throws {
         // This test requires TextEdit to be running and local permissions
 
@@ -396,25 +411,27 @@ struct WindowCommandLocalIntegrationTests {
             "--json",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: Data(result.utf8))
+        let jsonResponse = try JSONDecoder().decode(JSONResponse.self, from: Data(result.utf8))
 
-        if let error = data.error {
+        if let error = jsonResponse.error {
             if error.code == "PERMISSION_ERROR_ACCESSIBILITY" {
                 Issue.record("Accessibility permission required for window manipulation")
                 return
             }
         }
 
-        #expect(data.success == true)
+        #expect(jsonResponse.success == true)
 
-        if let responseData = data.data as? [String: Any],
-           let newBounds = responseData["new_bounds"] as? [String: Any] {
-            #expect(newBounds["x"] as? Int == 200)
-            #expect(newBounds["y"] as? Int == 200)
-        }
+        let typedResponse = try JSONDecoder().decode(
+            CodableJSONResponse<WindowActionResult>.self,
+            from: Data(result.utf8)
+        )
+        let newBounds = try #require(typedResponse.data.new_bounds)
+        #expect(newBounds.x == 200)
+        #expect(newBounds.y == 200)
     }
 
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+    @Test
     func windowFocusTextEdit() async throws {
         // This test requires TextEdit to be running
 
@@ -460,7 +477,7 @@ struct WindowCommandLocalIntegrationTests {
 
         var errorDescription: String? {
             switch self {
-            case let .commandFailed(status, output):
+            case let .commandFailed(status, _):
                 "Exit status: \(status)"
             case .binaryMissing:
                 "Peekaboo binary missing"

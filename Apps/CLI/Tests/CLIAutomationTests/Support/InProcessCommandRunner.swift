@@ -191,12 +191,15 @@ enum InProcessCommandRunner {
 enum ExternalCommandRunner {
     enum Error: Swift.Error, LocalizedError {
         case executableNotFound(String)
+        case peekabooCLIPathMissing
         case jsonPayloadMissing(output: String)
 
         var errorDescription: String? {
             switch self {
             case let .executableNotFound(path):
                 "Unable to find executable at \(path)"
+            case .peekabooCLIPathMissing:
+                "PEEKABOO_CLI_PATH was not set (unable to run Peekaboo CLI as an external process)."
             case let .jsonPayloadMissing(output):
                 "Expected JSON payload was not found in command output:\n\(output)"
             }
@@ -241,6 +244,50 @@ enum ExternalCommandRunner {
         try result.validateExitStatus(
             allowedExitCodes: allowedExitCodes,
             arguments: ["polter", "peekaboo"] + arguments
+        )
+        return result
+    }
+
+    @discardableResult
+    static func runPeekabooCLI(
+        _ arguments: [String],
+        allowedExitCodes: Set<Int32> = [0],
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) throws -> CommandRunResult {
+        guard let executablePath = environment["PEEKABOO_CLI_PATH"], !executablePath.isEmpty else {
+            throw Error.peekabooCLIPathMissing
+        }
+        guard FileManager.default.isExecutableFile(atPath: executablePath) else {
+            throw Error.executableNotFound(executablePath)
+        }
+
+        let process = Process()
+        process.currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+        process.environment = environment
+
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+        let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
+        let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+
+        let result = CommandRunResult(
+            stdout: stdout,
+            stderr: stderr,
+            exitStatus: process.terminationStatus
+        )
+        try result.validateExitStatus(
+            allowedExitCodes: allowedExitCodes,
+            arguments: ["peekaboo"] + arguments
         )
         return result
     }

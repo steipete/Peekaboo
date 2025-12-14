@@ -8,24 +8,23 @@ import Testing
     "Annotation Drawing Integration Tests",
     .serialized,
     .tags(.automation),
-    .enabled(if: CLITestEnvironment.runAutomationActions)
+    .enabled(if: CLITestEnvironment.runAutomationActions
+        && ProcessInfo.processInfo.environment["RUN_ANNOTATION_INTEGRATION_TESTS"] == "true")
 )
 struct AnnotationIntegrationTests {
     // These tests require actual window capture capabilities
-    // Run with: RUN_LOCAL_TESTS=true swift test
+    // Opt-in with: RUN_ANNOTATION_INTEGRATION_TESTS=true RUN_LOCAL_TESTS=true swift test
 
-    @Test("Annotated screenshot generation with window bounds")
+    @Test(
+        "Annotated screenshot generation with window bounds",
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+    )
+    @MainActor
     func annotatedScreenshotGeneration() async throws {
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
-            throw TestSkipped("Local test - set RUN_LOCAL_TESTS=true to run")
-        }
-
         // Create a test window at a known position
-        let testWindow = await createTestWindow(at: CGPoint(x: 200, y: 300))
+        let testWindow = self.createTestWindow(at: CGPoint(x: 200, y: 300))
         defer {
-            Task { @MainActor in
-                testWindow.close()
-            }
+            testWindow.close()
         }
 
         // Allow window to appear
@@ -55,31 +54,30 @@ struct AnnotationIntegrationTests {
         try? FileManager.default.removeItem(atPath: annotatedPath)
     }
 
-    @Test("Coordinate transformation in real window")
+    @Test(
+        "Coordinate transformation in real window",
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"
+            && ProcessInfo.processInfo.environment["RUN_WINDOW_COORDINATE_TESTS"] == "true")
+    )
+    @MainActor
     func realWindowCoordinateTransformation() async throws {
-        guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
-            throw TestSkipped("Local test - set RUN_LOCAL_TESTS=true to run")
-        }
-
         // Create window with button at known position
-        let window = await createTestWindowWithButton()
+        let window = self.createTestWindowWithButton()
         defer {
-            Task { @MainActor in
-                window.close()
-            }
+            window.close()
         }
 
         try await Task.sleep(nanoseconds: 500_000_000)
 
         // Get window bounds
-        let windowBounds = await window.frame
+        let windowBounds = window.frame
 
         // Get button frame (in window coordinates)
-        let button = await window.contentView?.subviews.first
-        let buttonFrame = await button?.frame ?? .zero
+        let button = window.contentView?.subviews.first
+        let buttonFrame = button?.frame ?? .zero
 
         // Convert to screen coordinates (what accessibility API returns)
-        let screenFrame = await window.convertToScreen(buttonFrame)
+        let screenFrame = window.convertToScreen(buttonFrame)
 
         // Test transformation back to window coordinates
         let transformedX = screenFrame.origin.x - windowBounds.origin.x
@@ -134,15 +132,6 @@ struct AnnotationIntegrationTests {
 
         image.unlockFocus()
         return image
-    }
-}
-
-// Test skip error for local-only tests
-struct TestSkipped: Error {
-    let reason: String
-
-    init(_ reason: String) {
-        self.reason = reason
     }
 }
 
