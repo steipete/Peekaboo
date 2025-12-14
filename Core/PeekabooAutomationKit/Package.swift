@@ -4,6 +4,7 @@ import PackageDescription
 
 let approachableConcurrencySettings: [SwiftSetting] = [
     .enableExperimentalFeature("StrictConcurrency"),
+    .enableExperimentalFeature("SwiftTesting"),
     .enableUpcomingFeature("ExistentialAny"),
     .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
 ]

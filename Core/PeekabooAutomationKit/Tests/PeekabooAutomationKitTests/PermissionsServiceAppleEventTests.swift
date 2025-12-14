@@ -1,58 +1,41 @@
 import ApplicationServices
-import XCTest
+import Testing
 @testable import PeekabooAutomationKit
 
-@MainActor
-final class PermissionsServiceAppleEventTests: XCTestCase {
-    func testAppleEventTargetDescriptorUsesBundleIdentifierType() {
+@Suite(.serialized) @MainActor struct PermissionsServiceAppleEventTests {
+    @Test func appleEventTargetDescriptorUsesBundleIdentifierType() throws {
         let bundleIdentifier = "com.apple.systemevents"
 
-        guard var duplicatedDesc = PermissionsService
-            .makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier)
-        else {
-            XCTFail("Expected PermissionsService to create a target address AEDesc")
-            return
-        }
+        var duplicatedDesc = try #require(
+            PermissionsService.makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier),
+            "Expected PermissionsService to create a target address AEDesc")
         defer { AEDisposeDesc(&duplicatedDesc) }
 
-        XCTAssertEqual(
-            duplicatedDesc.descriptorType,
-            DescType(typeApplicationBundleID),
+        #expect(
+            duplicatedDesc.descriptorType == DescType(typeApplicationBundleID),
             "Expected AppleEvent target descriptor to be a bundle identifier address descriptor")
 
-        guard duplicatedDesc.dataHandle != nil else {
-            XCTFail("Expected duplicated AEDesc to have a data handle")
-            return
-        }
+        _ = try #require(duplicatedDesc.dataHandle, "Expected duplicated AEDesc to have a data handle")
     }
 
-    func testAppleEventTargetDescriptorDuplicationReturnsUniqueHandlesPerCall() {
+    @Test func appleEventTargetDescriptorDuplicationReturnsUniqueHandlesPerCall() throws {
         let bundleIdentifier = "com.apple.systemevents"
 
-        guard var firstDesc = PermissionsService
-            .makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier)
-        else {
-            XCTFail("Expected first duplicated AEDesc")
-            return
-        }
+        var firstDesc = try #require(
+            PermissionsService.makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier),
+            "Expected first duplicated AEDesc")
         defer { AEDisposeDesc(&firstDesc) }
 
-        guard var secondDesc = PermissionsService
-            .makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier)
-        else {
-            XCTFail("Expected second duplicated AEDesc")
-            return
-        }
+        var secondDesc = try #require(
+            PermissionsService.makeAppleEventTargetAddressDesc(bundleIdentifier: bundleIdentifier),
+            "Expected second duplicated AEDesc")
         defer { AEDisposeDesc(&secondDesc) }
 
-        guard let firstHandle = firstDesc.dataHandle, let secondHandle = secondDesc.dataHandle else {
-            XCTFail("Expected duplicated AEDesc instances to have data handles")
-            return
-        }
+        let firstHandle = try #require(firstDesc.dataHandle, "Expected duplicated AEDesc instances to have data handles")
+        let secondHandle = try #require(secondDesc.dataHandle, "Expected duplicated AEDesc instances to have data handles")
 
-        XCTAssertNotEqual(
-            UInt(bitPattern: firstHandle),
-            UInt(bitPattern: secondHandle),
+        #expect(
+            UInt(bitPattern: firstHandle) != UInt(bitPattern: secondHandle),
             "Expected each call to return a fresh duplicated AEDesc handle")
     }
 }

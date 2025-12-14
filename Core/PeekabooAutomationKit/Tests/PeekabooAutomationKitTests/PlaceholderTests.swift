@@ -1,5 +1,5 @@
-import XCTest
+import Testing
 
-final class PlaceholderTests: XCTestCase {
-    func testPlaceholder() {}
+@Suite struct PlaceholderTests {
+    @Test func placeholder() {}
 }
