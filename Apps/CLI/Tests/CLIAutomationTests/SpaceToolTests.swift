@@ -15,7 +15,7 @@ import Testing
 struct SpaceToolMoveWindowTests {
     @Test("move-window --to_current refreshes metadata and issues move call")
     func moveWindowToCurrentSpace() async throws {
-        let context = await self.makeTestContext()
+        let context = self.makeTestContext()
         await MainActor.run {
             MCPToolContext.configureDefaultContext {
                 MCPToolContext(services: context.services)

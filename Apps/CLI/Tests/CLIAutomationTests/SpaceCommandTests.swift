@@ -106,7 +106,7 @@ struct SpaceCommandReadTests {
     }
 
     private func runPeekaboo(_ arguments: [String]) async throws -> String {
-        let context = await self.makeTestContext()
+        let context = self.makeTestContext()
         let result = try await InProcessCommandRunner.run(
             arguments,
             services: context.services,

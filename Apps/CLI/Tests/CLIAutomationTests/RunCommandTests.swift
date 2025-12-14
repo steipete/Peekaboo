@@ -47,7 +47,7 @@ struct RunCommandCLIHarnessTests {
         process.scriptsByPath[scriptPath] = script
         process.nextExecuteScriptResults = stepResults
 
-        let services = await self.makeServices(process: process)
+        let services = self.makeServices(process: process)
         let result = try await InProcessCommandRunner.run([
             "run",
             scriptPath,
@@ -76,7 +76,7 @@ struct RunCommandCLIHarnessTests {
 
         defer { try? FileManager.default.removeItem(at: outputURL) }
 
-        let services = await self.makeServices(process: process)
+        let services = self.makeServices(process: process)
         let result = try await InProcessCommandRunner.run([
             "run",
             scriptPath,
@@ -111,7 +111,7 @@ struct RunCommandCLIHarnessTests {
         process.scriptsByPath[scriptPath] = script
         process.nextExecuteScriptResults = [failingStep]
 
-        let services = await self.makeServices(process: process)
+        let services = self.makeServices(process: process)
         let result = try await InProcessCommandRunner.run(["run", scriptPath], services: services)
 
         #expect(result.exitStatus != 0)

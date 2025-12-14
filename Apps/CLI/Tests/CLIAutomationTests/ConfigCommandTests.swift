@@ -133,7 +133,7 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Init command creates config file at overridden path", .serialized)
+    @Test("Init command creates config file at overridden path")
     func initCreatesConfig() async throws {
         try await self.withTempConfigDir { dir in
             var command = ConfigCommand.InitCommand()
@@ -144,7 +144,7 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Add provider dry-run does not write", .serialized)
+    @Test("Add provider dry-run does not write")
     func addProviderDryRun() async throws {
         try await self.withTempConfigDir { dir in
             var command = ConfigCommand.AddProviderCommand()
@@ -162,7 +162,7 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Add provider rejects invalid URL", .serialized)
+    @Test("Add provider rejects invalid URL")
     func addProviderInvalidURL() async throws {
         try await self.withTempConfigDir { _ in
             var command = ConfigCommand.AddProviderCommand()
@@ -178,7 +178,7 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Remove provider dry-run leaves config intact", .serialized)
+    @Test("Remove provider dry-run leaves config intact")
     func removeProviderDryRun() async throws {
         try await self.withTempConfigDir { _ in
             var add = ConfigCommand.AddProviderCommand()
@@ -199,7 +199,7 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Validate command fails on malformed config", .serialized)
+    @Test("Validate command fails on malformed config")
     func validateMalformedConfig() async throws {
         try await self.withTempConfigDir { dir in
             let badConfig = dir.appendingPathComponent("config.json")
@@ -212,7 +212,7 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Add/remove provider persists to config", .serialized)
+    @Test("Add/remove provider persists to config")
     func addAndRemoveProvider() async throws {
         try await self.withTempConfigDir { _ in
             var add = ConfigCommand.AddProviderCommand()
@@ -237,7 +237,7 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Edit print-path leaves filesystem untouched", .serialized)
+    @Test("Edit print-path leaves filesystem untouched")
     func editPrintPath() async throws {
         try await self.withTempConfigDir { dir in
             let configPath = dir.appendingPathComponent("config.json").path
