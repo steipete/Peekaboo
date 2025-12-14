@@ -228,9 +228,13 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         // Strip any images right before display.
         Self.stripMenuItemImages(menu)
 
-        self.statusItem.menu = menu
-        self.statusItem.button?.performClick(nil)
-        self.statusItem.menu = nil
+        // Avoid temporarily attaching `statusItem.menu` (which can cause AppKit to inject standard item images,
+        // notably for “Settings…”). Instead, pop up the menu directly anchored to the status item button.
+        guard let button = self.statusItem.button else { return }
+        button.highlight(true)
+        defer { button.highlight(false) }
+
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height), in: button)
     }
 
     nonisolated func menuWillOpen(_ menu: NSMenu) {
