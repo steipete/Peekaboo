@@ -1,6 +1,8 @@
 ---
-title: Menubar Timeouts (AXorcist)
-read_when: debugging menubar listing hangs or timeouts
+summary: 'Troubleshoot menubar listing hangs/timeouts (AXorcist + MenuService fast path).'
+read_when:
+  - 'peekaboo list menubar hangs or times out'
+  - 'debugging Accessibility traversal performance'
 ---
 
 # Menubar listing hangs / timeouts
@@ -21,4 +23,3 @@ If `peekaboo list menubar` (or `peekaboo menubar list`) appears to hang, the mos
 2. If you suspect AX calls are blocking, capture a stack sample:
    - `sample <pid> 5 -file /tmp/peekaboo.sample.txt`
 3. Avoid enabling AXorcist verbose logging unless needed; it can dramatically increase AX traffic.
-
