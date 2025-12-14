@@ -22,10 +22,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     // Icon animation
     private let animationController = MenuBarAnimationController()
 
-    private nonisolated static func blankMenuItemImage() -> NSImage {
-        NSImage(size: .zero)
-    }
-
     init(
         agent: PeekabooAgent,
         sessionStore: SessionStore,
@@ -140,39 +136,35 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        let settingsItem = NSMenuItem(
-            title: "Settings…",
-            action: #selector(self.openSettings),
-            keyEquivalent: ",")
-            .with { item in
-                item.keyEquivalentModifierMask = .command
-                item.image = Self.blankMenuItemImage()
-            }
+        // macOS may inject a “standard” gear icon for a Settings… item in AppKit menus.
+        // That icon causes the whole menu to reserve an (empty) image column.
+        // We keep the *visible* title as “Settings…”, but tweak the internal title so the heuristic won’t match.
+        let settingsItem = NSMenuItem(title: "Settings…\u{200B}", action: #selector(self.openSettings), keyEquivalent: ",")
+        settingsItem.attributedTitle = NSAttributedString(string: "Settings…")
+        settingsItem.keyEquivalentModifierMask = .command
         menu.addItem(settingsItem)
 
         let aboutItem = NSMenuItem(
             title: "About Peekaboo",
             action: #selector(self.showAbout),
             keyEquivalent: "")
-            .with { item in item.image = nil }
         menu.addItem(aboutItem)
 
         let updatesItem = NSMenuItem(
             title: "Check for Updates…",
             action: #selector(self.checkForUpdates),
             keyEquivalent: "")
-            .with { item in item.image = nil }
         menu.addItem(updatesItem)
 
         menu.addItem(NSMenuItem(
             title: "Permissions…",
             action: #selector(self.openPermissions),
-            keyEquivalent: "").with { item in item.image = nil })
+            keyEquivalent: ""))
 
         menu.addItem(NSMenuItem(
             title: "Permissions Onboarding…",
             action: #selector(self.showPermissionsOnboarding),
-            keyEquivalent: "").with { item in item.image = nil })
+            keyEquivalent: ""))
 
         if self.settings.agentModeEnabled {
             let agentMenu = NSMenu()
@@ -216,7 +208,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             title: "Quit",
             action: #selector(self.quit),
             keyEquivalent: "q")
-            .with { item in item.image = Self.blankMenuItemImage() }
         quitItem.keyEquivalentModifierMask = .command
         menu.addItem(quitItem)
 
@@ -241,15 +232,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private nonisolated static func stripMenuItemImages(_ menu: NSMenu) {
         for item in menu.items {
-            // macOS may inject a “standard” icon for certain menu items (notably Settings…).
-            // A zero-size image prevents that while still collapsing the image column.
-            if item.keyEquivalent == ",", item.keyEquivalentModifierMask == .command {
-                item.image = self.blankMenuItemImage()
-            } else if item.keyEquivalent.lowercased() == "q", item.keyEquivalentModifierMask == .command {
-                item.image = self.blankMenuItemImage()
-            } else {
-                item.image = nil
-            }
+            item.image = nil
             item.onStateImage = nil
             item.offStateImage = nil
             item.mixedStateImage = nil
