@@ -84,6 +84,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-core-
 
+      - name: Clean SwiftPM trait state (PeekabooCore)
+        run: |
+          set -euo pipefail
+          # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
+          # When upstream packages rename/remove traits, stale state can break builds.
+          find ~/.swiftpm -type f -name traits.json -print -delete || true
+          if [ -d Core/PeekabooCore/.build/checkouts ]; then
+            find Core/PeekabooCore/.build/checkouts -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
+          fi
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -164,6 +174,16 @@ jobs:
           key: ${{ steps.cache-key-cli.outputs.key }}
           restore-keys: |
             ${{ runner.os }}-spm-cli-
+
+      - name: Clean SwiftPM trait state (CLI)
+        run: |
+          set -euo pipefail
+          # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
+          # When upstream packages rename/remove traits, stale state can break builds.
+          find ~/.swiftpm -type f -name traits.json -print -delete || true
+          if [ -d Apps/CLI/.build/checkouts ]; then
+            find Apps/CLI/.build/checkouts -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
+          fi
 
       - name: Show Swift toolchain version
         run: swift --version
@@ -250,6 +270,16 @@ jobs:
           key: ${{ steps.cache-key-tachikoma.outputs.key }}
           restore-keys: |
             ${{ runner.os }}-spm-tachikoma-
+
+      - name: Clean SwiftPM trait state (Tachikoma)
+        run: |
+          set -euo pipefail
+          # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
+          # When upstream packages rename/remove traits, stale state can break builds.
+          find ~/.swiftpm -type f -name traits.json -print -delete || true
+          if [ -d Tachikoma/.build/checkouts ]; then
+            find Tachikoma/.build/checkouts -type d -name .swiftpm -prune -print -exec rm -rf {} + || true
+          fi
 
       - name: Show Swift toolchain version
         run: swift --version
