@@ -51,6 +51,11 @@ extension SeeCommand: CommanderSignatureProviding {
                     help: "Generate annotated screenshot with interaction markers",
                     long: "annotate"
                 ),
+                .commandFlag(
+                    "noWebFocus",
+                    help: "Skip web-content focus fallback when no text fields are detected",
+                    long: "no-web-focus"
+                ),
             ]
         )
     }

@@ -87,7 +87,7 @@ struct AppCommand: ParsableCommand {
         @Flag(help: "Wait for the application to be ready")
         var waitUntilReady = false
 
-        @Flag(name: .customLong("no-focus"), help: "Do not bring the app to the foreground after launching")
+        @Flag(help: "Do not bring the app to the foreground after launching")
         var noFocus = false
 
         @Option(

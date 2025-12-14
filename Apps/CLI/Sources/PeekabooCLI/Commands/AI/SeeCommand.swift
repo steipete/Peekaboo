@@ -84,7 +84,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     )
     var captureEngine: String?
 
-    @Flag(name: .customLong("no-web-focus"), help: "Skip web-content focus fallback when no text fields are detected")
+    @Flag(help: "Skip web-content focus fallback when no text fields are detected")
     var noWebFocus = false
     @RuntimeStorage private var runtime: CommandRuntime?
     var runtimeOptions = CommandRuntimeOptions()
@@ -1223,6 +1223,7 @@ extension SeeCommand: CommanderBindableCommand {
         self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
         self.annotate = values.flag("annotate")
         self.analyze = values.singleOption("analyze")
+        self.noWebFocus = values.flag("noWebFocus")
     }
 }
 

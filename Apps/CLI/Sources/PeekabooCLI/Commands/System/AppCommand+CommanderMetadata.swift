@@ -16,12 +16,23 @@ extension AppCommand.LaunchSubcommand: CommanderSignatureProviding {
                     help: "Launch by bundle identifier instead of name",
                     long: "bundle-id"
                 ),
+                .commandOption(
+                    "open",
+                    help: "Document or URL to open immediately after launch",
+                    long: "open",
+                    parsing: .upToNextOption
+                ),
             ],
             flags: [
                 .commandFlag(
                     "waitUntilReady",
                     help: "Wait for the application to be ready",
                     long: "wait-until-ready"
+                ),
+                .commandFlag(
+                    "noFocus",
+                    help: "Do not bring the app to the foreground after launching",
+                    long: "no-focus"
                 ),
             ]
         )
