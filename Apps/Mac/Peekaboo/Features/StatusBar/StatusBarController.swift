@@ -7,7 +7,7 @@ import SwiftUI
 ///
 /// Manages the macOS status bar integration with animated icon states and popover UI.
 @MainActor
-final class StatusBarController: NSObject {
+final class StatusBarController: NSObject, NSMenuDelegate {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "StatusBar")
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
@@ -134,6 +134,7 @@ final class StatusBarController: NSObject {
 
     private func showContextMenu() {
         let menu = NSMenu()
+        menu.delegate = self
 
         let settingsItem = NSMenuItem(
             title: "Settings…",
@@ -205,19 +206,24 @@ final class StatusBarController: NSObject {
             menu.addItem(agentItem)
         }
 
+        menu.addItem(.separator())
+
         let quitItem = NSMenuItem(
             title: "Quit",
-            action: #selector(NSApplication.terminate(_:)),
+            action: #selector(self.quit),
             keyEquivalent: "q")
             .with { item in item.image = nil }
         quitItem.keyEquivalentModifierMask = .command
-        quitItem.target = NSApp
         menu.addItem(quitItem)
 
         // Configure menu items (except quit which needs NSApp as target)
-        for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) {
+        for item in menu.items where item.action != nil {
             item.target = self
         }
+
+        // macOS may apply “standard” images for common items (Settings/Quit).
+        // Ensure we strip any images right before display.
+        Self.stripMenuItemImages(menu)
 
         // Show menu
         self.statusItem.menu = menu
@@ -225,7 +231,24 @@ final class StatusBarController: NSObject {
         self.statusItem.menu = nil
     }
 
+    nonisolated func menuWillOpen(_ menu: NSMenu) {
+        Self.stripMenuItemImages(menu)
+    }
+
+    nonisolated private static func stripMenuItemImages(_ menu: NSMenu) {
+        for item in menu.items {
+            item.image = nil
+            item.onStateImage = nil
+            item.offStateImage = nil
+            item.mixedStateImage = nil
+        }
+    }
+
     // MARK: - Menu Actions
+
+    @objc private func quit() {
+        NSApp.terminate(nil)
+    }
 
     @objc private func openSession(_ sender: NSMenuItem) {
         guard let sessionId = sender.representedObject as? String,
