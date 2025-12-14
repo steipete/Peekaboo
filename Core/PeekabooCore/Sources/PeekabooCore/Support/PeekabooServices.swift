@@ -171,7 +171,8 @@ public final class PeekabooServices {
         self.files = FileService()
         self.logger.debug("\(AgentDisplayTokens.Status.success) FileService initialized")
 
-        self.clipboard = ClipboardService()
+        let clipboard = ClipboardService()
+        self.clipboard = clipboard
         self.logger.debug("\(AgentDisplayTokens.Status.success) ClipboardService initialized")
 
         self.configuration = ConfigurationManager.shared
@@ -184,7 +185,8 @@ public final class PeekabooServices {
             uiAutomationService: auto,
             windowManagementService: windows,
             menuService: menuSvc,
-            dockService: dockSvc)
+            dockService: dockSvc,
+            clipboardService: clipboard)
         self.logger.debug("\(AgentDisplayTokens.Status.success) ProcessService initialized")
 
         self.permissions = PermissionsService()
@@ -253,7 +255,8 @@ public final class PeekabooServices {
             uiAutomationService: auto,
             windowManagementService: windows,
             menuService: menuSvc,
-            dockService: dockSvc)
+            dockService: dockSvc,
+            clipboardService: clipboard)
         logger.debug("\(AgentDisplayTokens.Status.success) ProcessService initialized")
 
         let permissions = PermissionsService()

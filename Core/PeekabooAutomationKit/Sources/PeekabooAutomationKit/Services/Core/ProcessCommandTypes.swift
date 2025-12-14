@@ -34,6 +34,8 @@ public enum ProcessCommandParameters: Codable, Sendable {
     case sleep(SleepParameters)
     /// Dock command parameters
     case dock(DockParameters)
+    /// Clipboard command parameters
+    case clipboard(ClipboardParameters)
     /// Generic parameters (for backward compatibility during migration)
     case generic([String: String])
 
@@ -301,6 +303,43 @@ public enum ProcessCommandParameters: Codable, Sendable {
             self.action = action
             self.item = item
             self.path = path
+        }
+    }
+
+    public struct ClipboardParameters: Codable, Sendable {
+        public let action: String
+        public let text: String?
+        public let filePath: String?
+        public let dataBase64: String?
+        public let uti: String?
+        public let prefer: String?
+        public let output: String?
+        public let slot: String?
+        public let alsoText: String?
+        public let allowLarge: Bool?
+
+        public init(
+            action: String,
+            text: String? = nil,
+            filePath: String? = nil,
+            dataBase64: String? = nil,
+            uti: String? = nil,
+            prefer: String? = nil,
+            output: String? = nil,
+            slot: String? = nil,
+            alsoText: String? = nil,
+            allowLarge: Bool? = nil)
+        {
+            self.action = action
+            self.text = text
+            self.filePath = filePath
+            self.dataBase64 = dataBase64
+            self.uti = uti
+            self.prefer = prefer
+            self.output = output
+            self.slot = slot
+            self.alsoText = alsoText
+            self.allowLarge = allowLarge
         }
     }
 }

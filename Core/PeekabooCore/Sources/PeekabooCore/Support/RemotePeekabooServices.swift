@@ -574,7 +574,8 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
             uiAutomationService: self.automation,
             windowManagementService: self.windows,
             menuService: self.menu,
-            dockService: self.dock)
+            dockService: self.dock,
+            clipboardService: self.clipboard)
         self.permissions = PermissionsService()
         self.audioInput = AudioInputService(aiService: PeekabooAIService())
         self.screens = ScreenService()

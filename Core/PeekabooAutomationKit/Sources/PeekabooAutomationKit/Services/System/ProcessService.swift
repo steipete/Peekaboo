@@ -2,6 +2,7 @@ import AppKit
 import AXorcist
 import Foundation
 import PeekabooFoundation
+import UniformTypeIdentifiers
 
 /// Implementation of ProcessServiceProtocol for executing Peekaboo scripts
 @available(macOS 14.0, *)
@@ -14,6 +15,7 @@ public final class ProcessService: ProcessServiceProtocol {
     private let windowManagementService: any WindowManagementServiceProtocol
     private let menuService: any MenuServiceProtocol
     private let dockService: any DockServiceProtocol
+    private let clipboardService: any ClipboardServiceProtocol
 
     public init(
         applicationService: any ApplicationServiceProtocol,
@@ -22,7 +24,8 @@ public final class ProcessService: ProcessServiceProtocol {
         uiAutomationService: any UIAutomationServiceProtocol,
         windowManagementService: any WindowManagementServiceProtocol,
         menuService: any MenuServiceProtocol,
-        dockService: any DockServiceProtocol)
+        dockService: any DockServiceProtocol,
+        clipboardService: any ClipboardServiceProtocol)
     {
         self.applicationService = applicationService
         self.screenCaptureService = screenCaptureService
@@ -31,6 +34,7 @@ public final class ProcessService: ProcessServiceProtocol {
         self.windowManagementService = windowManagementService
         self.menuService = menuService
         self.dockService = dockService
+        self.clipboardService = clipboardService
     }
 
     public convenience init(
@@ -44,6 +48,7 @@ public final class ProcessService: ProcessServiceProtocol {
             feedbackClient: feedbackClient)
         let menuService = MenuService(feedbackClient: feedbackClient)
         let dockService = DockService(feedbackClient: feedbackClient)
+        let clipboardService = ClipboardService()
         let uiAutomationService = UIAutomationService(
             snapshotManager: snapshotManager,
             loggingService: loggingService,
@@ -68,7 +73,8 @@ public final class ProcessService: ProcessServiceProtocol {
             uiAutomationService: uiAutomationService,
             windowManagementService: windowManagementService,
             menuService: menuService,
-            dockService: dockService)
+            dockService: dockService,
+            clipboardService: clipboardService)
     }
 
     public func loadScript(from path: String) async throws -> PeekabooScript {
@@ -172,6 +178,8 @@ extension ProcessService {
             return try await self.executeDockCommand(normalizedStep)
         case "app":
             return try await self.executeAppCommand(normalizedStep)
+        case "clipboard":
+            return try await self.executeClipboardCommand(normalizedStep)
         default:
             throw PeekabooError.invalidInput(field: "command", reason: "Unknown command: \(step.command)")
         }
@@ -567,6 +575,129 @@ extension ProcessService {
         }
     }
 
+    private func executeClipboardCommand(_ step: ScriptStep) async throws -> StepExecutionResult {
+        guard case let .clipboard(clipboardParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for clipboard command")
+        }
+
+        let action = clipboardParams.action.lowercased()
+        let slot = clipboardParams.slot ?? "0"
+
+        switch action {
+        case "clear":
+            self.clipboardService.clear()
+            return StepExecutionResult(output: .success("Cleared clipboard."), snapshotId: nil)
+
+        case "save":
+            try self.clipboardService.save(slot: slot)
+            return StepExecutionResult(output: .success("Saved clipboard to slot \"\(slot)\"."), snapshotId: nil)
+
+        case "restore":
+            let result = try self.clipboardService.restore(slot: slot)
+            return StepExecutionResult(
+                output: .data([
+                    "slot": .success(slot),
+                    "uti": .success(result.utiIdentifier),
+                    "bytes": .success("\(result.data.count)"),
+                    "textPreview": .success(result.textPreview),
+                ]),
+                snapshotId: nil)
+
+        case "get":
+            let preferUTI: UTType? = clipboardParams.prefer.flatMap { UTType($0) }
+            guard let result = try self.clipboardService.get(prefer: preferUTI) else {
+                return StepExecutionResult(output: .success("Clipboard is empty."), snapshotId: nil)
+            }
+
+            if let outputPath = clipboardParams.output {
+                try result.data.write(to: URL(fileURLWithPath: outputPath))
+                return StepExecutionResult(
+                    output: .data([
+                        "output": .success(outputPath),
+                        "uti": .success(result.utiIdentifier),
+                        "bytes": .success("\(result.data.count)"),
+                        "textPreview": .success(result.textPreview),
+                    ]),
+                    snapshotId: nil)
+            }
+
+            return StepExecutionResult(
+                output: .data([
+                    "uti": .success(result.utiIdentifier),
+                    "bytes": .success("\(result.data.count)"),
+                    "textPreview": .success(result.textPreview),
+                ]),
+                snapshotId: nil)
+
+        case "set", "load":
+            let allowLarge = clipboardParams.allowLarge ?? false
+            let alsoText = clipboardParams.alsoText
+
+            if let text = clipboardParams.text {
+                guard let data = text.data(using: .utf8) else {
+                    throw ClipboardServiceError.writeFailed("Unable to encode text as UTF-8.")
+                }
+                let request = ClipboardWriteRequest(
+                    representations: [ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: data)],
+                    alsoText: alsoText,
+                    allowLarge: allowLarge)
+                let result = try self.clipboardService.set(request)
+                return StepExecutionResult(
+                    output: .data([
+                        "uti": .success(result.utiIdentifier),
+                        "bytes": .success("\(result.data.count)"),
+                        "textPreview": .success(result.textPreview),
+                    ]),
+                    snapshotId: nil)
+            }
+
+            if let filePath = clipboardParams.filePath {
+                let url = URL(fileURLWithPath: filePath)
+                let data = try Data(contentsOf: url)
+                let uti = clipboardParams.uti
+                    ?? UTType(filenameExtension: url.pathExtension)?.identifier
+                    ?? UTType.data.identifier
+                let request = ClipboardWriteRequest(
+                    representations: [ClipboardRepresentation(utiIdentifier: uti, data: data)],
+                    alsoText: alsoText,
+                    allowLarge: allowLarge)
+                let result = try self.clipboardService.set(request)
+                return StepExecutionResult(
+                    output: .data([
+                        "filePath": .success(filePath),
+                        "uti": .success(result.utiIdentifier),
+                        "bytes": .success("\(result.data.count)"),
+                        "textPreview": .success(result.textPreview),
+                    ]),
+                    snapshotId: nil)
+            }
+
+            if let dataBase64 = clipboardParams.dataBase64, let uti = clipboardParams.uti {
+                guard let data = Data(base64Encoded: dataBase64) else {
+                    throw ClipboardServiceError.writeFailed("Invalid base64 payload.")
+                }
+                let request = ClipboardWriteRequest(
+                    representations: [ClipboardRepresentation(utiIdentifier: uti, data: data)],
+                    alsoText: alsoText,
+                    allowLarge: allowLarge)
+                let result = try self.clipboardService.set(request)
+                return StepExecutionResult(
+                    output: .data([
+                        "uti": .success(result.utiIdentifier),
+                        "bytes": .success("\(result.data.count)"),
+                        "textPreview": .success(result.textPreview),
+                    ]),
+                    snapshotId: nil)
+            }
+
+            throw ClipboardServiceError.writeFailed(
+                "Provide text, file-path/image-path, or data-base64+uti to set the clipboard.")
+
+        default:
+            throw PeekabooError.invalidInput(field: "action", reason: "Unknown clipboard action: \(action)")
+        }
+    }
+
     // MARK: - Helper Methods
 
     private func parseModifiers(from modifierStrings: [String]?) -> [ModifierKey] {
@@ -639,6 +770,8 @@ extension ProcessService {
             .sleep(self.typedSleepParameters(from: dict))
         case "dock":
             .dock(self.typedDockParameters(from: dict))
+        case "clipboard":
+            self.typedClipboardParameters(from: dict)
         default:
             nil
         }
@@ -769,6 +902,22 @@ extension ProcessService {
             action: dict["action"] ?? "list",
             item: dict["item"],
             path: dict["path"])
+    }
+
+    private func typedClipboardParameters(from dict: [String: String]) -> ProcessCommandParameters? {
+        guard let action = dict["action"] else { return nil }
+
+        return .clipboard(ProcessCommandParameters.ClipboardParameters(
+            action: action,
+            text: dict["text"],
+            filePath: dict["file-path"] ?? dict["filePath"] ?? dict["image-path"] ?? dict["imagePath"],
+            dataBase64: dict["data-base64"] ?? dict["dataBase64"],
+            uti: dict["uti"],
+            prefer: dict["prefer"],
+            output: dict["output"],
+            slot: dict["slot"],
+            alsoText: dict["also-text"] ?? dict["alsoText"],
+            allowLarge: dict["allow-large"].flatMap { Bool($0) } ?? dict["allowLarge"].flatMap { Bool($0) }))
     }
 
     private func screenshotParameters(from step: ScriptStep) -> ProcessCommandParameters.ScreenshotParameters {
