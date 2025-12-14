@@ -87,6 +87,11 @@ jobs:
       - name: Clean SwiftPM trait state (PeekabooCore)
         run: |
           set -euo pipefail
+          # SwiftPM caches evaluated manifests in an sqlite DB. We've seen this get stale across
+          # `swift-configuration` trait renames (e.g. `JSONSupport` -> `JSON`) and break resolution.
+          rm -f "$HOME/Library/Caches/org.swift.swiftpm/manifests/manifest.db" || true
+          rm -f "$HOME/Library/Caches/org.swift.swiftpm/package-collection.db" || true
+          rm -f "$HOME/.cache/org.swift.swiftpm/manifests/manifest.db" || true
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
@@ -184,6 +189,11 @@ jobs:
       - name: Clean SwiftPM trait state (CLI)
         run: |
           set -euo pipefail
+          # SwiftPM caches evaluated manifests in an sqlite DB. We've seen this get stale across
+          # `swift-configuration` trait renames (e.g. `JSONSupport` -> `JSON`) and break resolution.
+          rm -f "$HOME/Library/Caches/org.swift.swiftpm/manifests/manifest.db" || true
+          rm -f "$HOME/Library/Caches/org.swift.swiftpm/package-collection.db" || true
+          rm -f "$HOME/.cache/org.swift.swiftpm/manifests/manifest.db" || true
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
@@ -286,6 +296,11 @@ jobs:
       - name: Clean SwiftPM trait state (Tachikoma)
         run: |
           set -euo pipefail
+          # SwiftPM caches evaluated manifests in an sqlite DB. We've seen this get stale across
+          # `swift-configuration` trait renames (e.g. `JSONSupport` -> `JSON`) and break resolution.
+          rm -f "$HOME/Library/Caches/org.swift.swiftpm/manifests/manifest.db" || true
+          rm -f "$HOME/Library/Caches/org.swift.swiftpm/package-collection.db" || true
+          rm -f "$HOME/.cache/org.swift.swiftpm/manifests/manifest.db" || true
           # SwiftPM traits can be persisted into `.swiftpm/configuration/traits.json` (and can get stuck in caches).
           # When upstream packages rename/remove traits, stale state can break builds.
           find ~/.swiftpm -type f -name traits.json -print -delete || true
