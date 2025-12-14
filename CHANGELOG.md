@@ -2,22 +2,45 @@
 
 ## [Unreleased] (3.0.0-beta2)
 
-### Fixed
-- Visualizer previews now respect their full duration before fading out; overlays no longer disappear in ~0.3s regardless of the requested timing.
-- App resolution now correctly prioritizes exact name matches over bundleID-contains matches, fixing issues where `--app Safari` would incorrectly match helper processes like "AutoFill (Obsidian)" whose bundleID contains "Safari". Refactored `ElementDetectionService` to delegate to `ApplicationService.findApplication()` for a single source of truth.
-- `peekaboo see --json-output` now skips menubar enumeration unless `--verbose` is set and wraps the remaining work in hard wall-clock timeouts, preventing the command from hanging for minutes when target apps are minimized or AX traversal stalls. Timeouts surface as `TIMEOUT` exit codes instead of silent hangs.
-- UI element detection now enforces conservative limits (max depth 12, max 400 nodes, max 50 children per node) and a 20s detection deadline, making runaway AX trees safe; detection timeouts are mapped to CLI exit codes and tested.
-- Screen capture waiting no longer leaves a continuation dangling after completion, eliminating rare leaks and stalled capture streams.
+### Highlights
+- **Peekaboo Bridge is now socket-based**: privileged automation runs in a long-lived **bridge host** (Peekaboo.app, or another signed host like Clawdis.app) and the CLI connects over a UNIX socket instead of using the v3.0.0-beta1 XPC helper model.
+- **Automation “sessions” are now “snapshots”**: snapshots live in memory by default, are scoped **per target bundle ID**, and are reused automatically for follow-up actions (agent-friendly, fewer IDs to plumb around).
+- **CLI reliability improvements**: hard wall-clock timeouts and bounded AX traversal to prevent hangs and make “single action” automation dependable.
+- **Visualizer extracted + stabilized**: overlay UI lives in `PeekabooVisualizer`, with better preview timings and less clipping.
+
+### Breaking
+- Removed the v3.0.0-beta1 XPC helper pathway; remote execution now uses the **Peekaboo Bridge** socket host model.
+- Renamed automation “sessions” → “snapshots” across CLI output, cache/paths, and APIs.
+- CLI builds now target **macOS 15+** (project baseline + Swiftdansi minimum).
+- Swiftdansi is now vendored as a **git submodule** (no sibling checkout path required).
 
 ### Added
-- `peekaboo hotkey` now accepts the key combo as a positional argument (in addition to `--keys`), covering quick one-liners like `peekaboo hotkey "cmd,shift,t"` or `peekaboo hotkey "cmd space"` without forcing a flag; docs updated with precedence, error cases, and fresh examples.
-- `peekaboo learn` renders its full guide as ANSI-styled markdown via Swiftdansi on rich terminals (contrast theme, dotted bullets, indented lists), while continuing to emit plain markdown when piped or in quiet mode.
+- `peekaboo bridge status` diagnostics for host selection/handshake/security; plus runtime controls `--bridge-socket` and `--no-remote`.
+- Bridge security: caller validation via **code signature TeamID allowlist** (and optional bundle allowlist), with a **debug-only** same-UID escape hatch (`PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1`).
+- `peekaboo hotkey` accepts the key combo as a positional argument (in addition to `--keys`) for quick one-liners like `peekaboo hotkey "cmd,shift,t"`; docs + tests cover precedence and errors.
+- `peekaboo learn` renders its guide as ANSI-styled markdown via Swiftdansi on rich terminals, while still emitting plain markdown when piped.
 
 ### Changed
-- Menu bar helper now returns a lightweight list of window IDs, and menu extras enrich metadata locally; keeps menubar discovery working after the helper refactor.
-- `scripts/poltergeist-wrapper.sh` now always allocates a PTY for `peekaboo` targets so Swiftdansi and other ANSI-aware flows see an interactive TTY even in CI or scripted runs.
-- CLI builds target macOS 15+ in line with the project baseline and Swiftdansi’s minimum, dropping legacy macOS 14 support.
-- Swiftdansi is now vendored as a git submodule alongside AXorcist/Commander/Tachikoma/TauTUI, simplifying local builds (no more sibling checkout path).
+- Bridge host discovery order is now: **Peekaboo.app → Clawdis.app → local in-process** (no auto-launch).
+- Capture defaults favor the classic engine for speed/reliability, with explicit capture-engine flags when you need SCKit behavior.
+- Menu bar helper now returns a lightweight list of window IDs and menu extras enrich metadata locally (keeps menubar discovery robust after helper refactors).
+- `scripts/poltergeist-wrapper.sh` always allocates a PTY for `peekaboo` targets so ANSI rendering stays enabled in CI and scripted runs.
+
+### Fixed
+- Visualizer previews now respect their full duration before fading out; overlays no longer disappear in ~0.3s regardless of requested timing.
+- App resolution now prioritizes exact name matches over bundleID-contains matches, preventing `--app Safari` from accidentally matching helper processes with “Safari” in their bundle ID.
+- `peekaboo see` is now bounded for “single action” use:
+  - Without `--analyze`, the overall wall-clock timeout is **10 seconds**.
+  - `--json` output skips menubar enumeration unless `--verbose` is set, and timeouts surface as `TIMEOUT` exit codes instead of silent hangs.
+- UI element detection enforces conservative traversal limits (depth/node/child caps) plus a detection deadline, making runaway AX trees safe.
+- Listing apps via a bridge no longer risks timing out: window counts now use CGWindowList instead of per-app AX enumeration.
+- Screen capture waiting no longer leaves a continuation dangling after completion, eliminating rare leaks and stalled capture streams.
+- AppleScript Automation permission probing is more stable (fixes descriptor lifetime/double-free issues) and less flaky under load.
+- Video capture/ingest timestamps now come from the video timeline (not wall clock), and frame seeking is more accurate.
+
+### Developer Workflow
+- Release build scripts now sign the CLI with `Identifier=boo.peekaboo.peekaboo` (aligns with bridge allowlists used by Peekaboo.app/hosts).
+- Added/updated local restart helpers and tightened CI reliability (Xcode pinning, SwiftPM trait cache cleanup, docs lint stability).
 
 ## [3.0.0-beta1] - 2025-11-25
 
