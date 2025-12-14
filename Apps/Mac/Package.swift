@@ -39,10 +39,9 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Peekaboo",
-            exclude: ["PeekabooApp.swift", "Info.plist", "Features/StatusBar/README.md"],
+            exclude: ["PeekabooApp.swift", "Info.plist", "Features/StatusBar/README.md", "AppIcon.icon-source"],
             resources: [
                 .process("Assets.xcassets"),
-                .process("AppIcon.icon"),
             ],
             swiftSettings: approachableConcurrencySettings),
         .testTarget(

@@ -30,10 +30,9 @@ let package = Package(
                 .product(name: "PeekabooUICore", package: "PeekabooUICore"),
             ],
             path: "Inspector",
-            exclude: ["Info.plist", "PeekabooInspector.entitlements"],
+            exclude: ["Info.plist", "PeekabooInspector.entitlements", "AppIcon.icon-source"],
             resources: [
                 .process("Assets.xcassets"),
-                .process("AppIcon.icon"),
             ],
             swiftSettings: approachableConcurrencySettings),
         .testTarget(

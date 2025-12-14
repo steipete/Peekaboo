@@ -30,10 +30,9 @@ let package = Package(
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
             ],
             path: "Playground",
-            exclude: ["PlaygroundApp.swift", "Info.plist"],
+            exclude: ["PlaygroundApp.swift", "Info.plist", "AppIcon.icon-source"],
             resources: [
                 .process("Assets.xcassets"),
-                .process("AppIcon.icon"),
             ],
             swiftSettings: approachableConcurrencySettings),
         .testTarget(
