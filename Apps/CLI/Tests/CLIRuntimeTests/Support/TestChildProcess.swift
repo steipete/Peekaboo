@@ -23,8 +23,7 @@ enum TestChildProcess {
         // Keep CLI runtime smoke tests deterministic: avoid opportunistically switching to
         // a remote GUI runtime when a bridge socket happens to exist on the machine.
         if extraEnvironment["PEEKABOO_NO_REMOTE"] == nil,
-           let envKey = Environment.Key(rawValue: "PEEKABOO_NO_REMOTE")
-        {
+           let envKey = Environment.Key(rawValue: "PEEKABOO_NO_REMOTE") {
             environmentOverrides[envKey] = "1"
         }
 

@@ -108,7 +108,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         self.runtime = runtime
         let startTime = Date()
         let logger = self.logger
-        let overallTimeout: TimeInterval = 30.0
+        let overallTimeout: TimeInterval = (self.analyze == nil) ? 10.0 : 30.0
 
         logger.operationStart("see_command", metadata: [
             "app": self.app ?? "none",
@@ -118,23 +118,24 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         ])
 
         let commandCopy = self
-        let operationTask = Task {
-            try await commandCopy.runImpl(startTime: startTime, logger: logger)
-        }
-
-        let timeoutTask = Task {
-            try await Task.sleep(nanoseconds: UInt64(overallTimeout * 1_000_000_000))
-            operationTask.cancel()
-            throw CaptureError.detectionTimedOut(overallTimeout)
-        }
 
         do {
-            _ = try await withThrowingTaskGroup(of: Void.self) { group in
-                group.addTask { try await operationTask.value }
-                group.addTask { try await timeoutTask.value }
-                guard let value = try await group.next() else { return }
-                group.cancelAll()
-                return value
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    try await commandCopy.runImpl(startTime: startTime, logger: logger)
+                }
+                group.addTask {
+                    try await Task.sleep(nanoseconds: UInt64(overallTimeout * 1_000_000_000))
+                    throw CaptureError.detectionTimedOut(overallTimeout)
+                }
+
+                do {
+                    _ = try await group.next()
+                    group.cancelAll()
+                } catch {
+                    group.cancelAll()
+                    throw error
+                }
             }
         } catch {
             logger.operationComplete(

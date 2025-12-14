@@ -128,14 +128,14 @@ public final class PermissionsService {
         targetBundleIdentifier: String,
         askUser: Bool) -> OSStatus
     {
-        guard var addressDesc = Self.makeAppleEventTargetAddressDesc(bundleIdentifier: targetBundleIdentifier) else {
+        guard var addressDesc = makeAppleEventTargetAddressDesc(bundleIdentifier: targetBundleIdentifier) else {
             return OSStatus(paramErr)
         }
         defer { AEDisposeDesc(&addressDesc) }
 
         // Probe with a common Apple Event that is safe and broadly supported.
-        let eventClass = AEEventClass(0x61657674) // aevt
-        let eventID = AEEventID(0x6F617070) // oapp
+        let eventClass = AEEventClass(0x6165_7674) // aevt
+        let eventID = AEEventID(0x6F61_7070) // oapp
         return AEDeterminePermissionToAutomateTarget(&addressDesc, eventClass, eventID, askUser)
     }
 
@@ -154,7 +154,7 @@ public final class PermissionsService {
     }
 
     private static func launchApplication(bundleIdentifier: String, logger: Logger) {
-        guard !Self.isRunningUnderTests else { return }
+        guard !self.isRunningUnderTests else { return }
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
@@ -163,7 +163,9 @@ public final class PermissionsService {
         do {
             try process.run()
         } catch {
-            logger.debug("Failed to launch app \(bundleIdentifier, privacy: .public): \(String(describing: error), privacy: .public)")
+            logger
+                .debug(
+                    "Failed to launch app \(bundleIdentifier, privacy: .public): \(String(describing: error), privacy: .public)")
         }
     }
 

@@ -22,7 +22,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     // Icon animation
     private let animationController = MenuBarAnimationController()
 
-    nonisolated private static func blankMenuItemImage() -> NSImage {
+    private nonisolated static func blankMenuItemImage() -> NSImage {
         NSImage(size: .zero)
     }
 
@@ -239,14 +239,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         Self.stripMenuItemImages(menu)
     }
 
-    nonisolated private static func stripMenuItemImages(_ menu: NSMenu) {
+    private nonisolated static func stripMenuItemImages(_ menu: NSMenu) {
         for item in menu.items {
             // macOS may inject a “standard” icon for certain menu items (notably Settings…).
             // A zero-size image prevents that while still collapsing the image column.
-            if item.keyEquivalent == "," && item.keyEquivalentModifierMask == .command {
-                item.image = Self.blankMenuItemImage()
-            } else if item.keyEquivalent.lowercased() == "q" && item.keyEquivalentModifierMask == .command {
-                item.image = Self.blankMenuItemImage()
+            if item.keyEquivalent == ",", item.keyEquivalentModifierMask == .command {
+                item.image = self.blankMenuItemImage()
+            } else if item.keyEquivalent.lowercased() == "q", item.keyEquivalentModifierMask == .command {
+                item.image = self.blankMenuItemImage()
             } else {
                 item.image = nil
             }
