@@ -23,7 +23,7 @@ struct CLIRuntimeSmokeTests {
     @Test("peekaboo list apps emits JSON via Commander")
     func commanderListApps() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo(["list", "apps", "--json"])
+        let result = try await TestChildProcess.runPeekaboo(["list", "apps", "--json", "--no-remote"])
         #expect(result.status == .exited(0))
         #expect(result.standardOutput.contains("\"applications\""))
     }
@@ -31,7 +31,7 @@ struct CLIRuntimeSmokeTests {
     @Test("peekaboo list windows requires --app")
     func listWindowsWithoutAppFails() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo(["list", "windows", "--json"])
+        let result = try await TestChildProcess.runPeekaboo(["list", "windows", "--json", "--no-remote"])
         #expect(result.status != .exited(0))
         #expect(result.standardError.contains("Missing argument: app"))
     }
@@ -39,7 +39,7 @@ struct CLIRuntimeSmokeTests {
     @Test("peekaboo sleep executes via Commander")
     func commanderSleep() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo(["sleep", "1"])
+        let result = try await TestChildProcess.runPeekaboo(["sleep", "1", "--no-remote"])
         #expect(result.status == .exited(0))
         #expect(result.standardOutput.contains("Paused"))
     }
@@ -47,7 +47,7 @@ struct CLIRuntimeSmokeTests {
     @Test("peekaboo mcp without subcommand errors via Commander")
     func commanderMcpMissingSubcommand() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo(["mcp"])
+        let result = try await TestChildProcess.runPeekaboo(["mcp", "--no-remote"])
         #expect(result.status != .exited(0))
         #expect(result.standardError.contains("requires a subcommand"))
     }
@@ -60,7 +60,8 @@ struct CLIRuntimeSmokeTests {
             "add",
             "demo",
             "--transport",
-            "stdio"
+            "stdio",
+            "--no-remote",
         ])
         #expect(result.status != .exited(0))
         let errorOutput = result.standardError + result.standardOutput
@@ -74,7 +75,7 @@ struct CLIRuntimeSmokeTests {
             "agent",
             "list files",
             "--dry-run"
-        ], environment: ["PEEKABOO_DISABLE_AGENT": "1"])
+        ], environment: ["PEEKABOO_DISABLE_AGENT": "1", "PEEKABOO_NO_REMOTE": "1"])
         #expect(result.status == .exited(0))
         #expect(result.standardOutput.contains("Agent service not available"))
     }
@@ -82,7 +83,7 @@ struct CLIRuntimeSmokeTests {
     @Test("peekaboo learn prints comprehensive guide")
     func commanderLearnGuide() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo(["learn"])
+        let result = try await TestChildProcess.runPeekaboo(["learn", "--no-remote"])
         #expect(result.status == .exited(0))
         #expect(result.standardOutput.contains("# Peekaboo Comprehensive Guide"))
         #expect(result.standardOutput.contains("## Commander Command Signatures"))

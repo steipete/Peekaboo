@@ -644,24 +644,6 @@ extension ApplicationService {
 
     @MainActor
     private func getWindowCount(for app: NSRunningApplication) -> Int {
-        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
-            return 0
-        }
-        let appElement = AXApp(runningApp).element
-
-        if let windows = appElement.windows(), !windows.isEmpty {
-            let renderable = windows.filter { window -> Bool in
-                guard let frame = window.frame() else { return false }
-                return frame.width >= 50 && frame.height >= 50
-            }
-
-            if !renderable.isEmpty {
-                return renderable.count
-            }
-
-            return windows.count
-        }
-
         let cgWindows = self.windowIdentityService.getWindows(for: app)
         if cgWindows.isEmpty { return 0 }
 
