@@ -12,6 +12,11 @@ extension MoveCommand: CommanderSignatureProviding {
             ],
             options: [
                 .commandOption(
+                    "coords",
+                    help: "Coordinates as x,y (alias for positional argument)",
+                    long: "coords"
+                ),
+                .commandOption(
                     "to",
                     help: "Move to element by text/label",
                     long: "to"

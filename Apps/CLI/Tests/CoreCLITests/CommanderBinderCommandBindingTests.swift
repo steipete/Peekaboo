@@ -525,9 +525,41 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.smooth == true)
     }
 
+    @Test("Move command binding with --coords")
+    func bindMoveCommandCoordsOption() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "coords": ["100,200"],
+                "duration": ["750"],
+                "steps": ["30"],
+                "profile": ["human"],
+                "snapshot": ["sess-1"]
+            ],
+            flags: ["smooth"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
+        #expect(command.coords == "100,200")
+        #expect(command.coordinates == nil)
+        #expect(command.duration == 750)
+        #expect(command.steps == 30)
+        #expect(command.profile == "human")
+        #expect(command.snapshot == "sess-1")
+        #expect(command.smooth == true)
+    }
+
     @Test("Move command requires a target (validation)")
     func bindMoveCommandMissingTarget() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        var command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
+        #expect(throws: ValidationError.self) {
+            try command.validate()
+        }
+    }
+
+    @Test("Move command rejects conflicting targets")
+    func bindMoveCommandConflictingTargets() throws {
+        let parsed = ParsedValues(positional: ["100,200"], options: [:], flags: ["center"])
         var command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
         #expect(throws: ValidationError.self) {
             try command.validate()

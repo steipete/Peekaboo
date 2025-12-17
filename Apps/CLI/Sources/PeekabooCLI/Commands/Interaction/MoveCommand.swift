@@ -12,6 +12,9 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     @Argument(help: "Coordinates as x,y (e.g., 100,200)")
     var coordinates: String?
 
+    @Option(name: .customLong("coords"), help: "Coordinates as x,y (alias for the positional argument)")
+    var coords: String?
+
     @Option(help: "Move to element by text/label")
     var to: String?
 
@@ -49,14 +52,28 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     var outputLogger: Logger { self.logger }
     var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
 
+    private var resolvedCoordinates: String? {
+        self.coordinates ?? self.coords
+    }
+
     mutating func validate() throws {
-        // Ensure at least one target is specified
-        guard self.center || self.coordinates != nil || self.to != nil || self.id != nil else {
-            throw ValidationError("Specify coordinates, --to, --id, or --center")
+        let targetCount = [
+            self.center ? 1 : 0,
+            self.resolvedCoordinates == nil ? 0 : 1,
+            self.to == nil ? 0 : 1,
+            self.id == nil ? 0 : 1,
+        ].reduce(0, +)
+
+        guard targetCount >= 1 else {
+            throw ValidationError("Specify coordinates, --coords, --to, --id, or --center")
+        }
+
+        guard targetCount == 1 else {
+            throw ValidationError("Specify exactly one target: coordinates, --coords, --to, --id, or --center")
         }
 
         // Validate coordinates format if provided
-        if let coordString = coordinates {
+        if let coordString = self.resolvedCoordinates {
             let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             guard parts.count == 2,
                   Double(parts[0]) != nil,
@@ -78,6 +95,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
+            try self.validate()
             // Determine target location
             let targetLocation: CGPoint
             let targetDescription: String
@@ -91,7 +109,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 targetLocation = CGPoint(x: screenFrame.midX, y: screenFrame.midY)
                 targetDescription = "Screen center"
 
-            } else if let coordString = coordinates {
+            } else if let coordString = self.resolvedCoordinates {
                 // Parse coordinates
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                 let x = Double(parts[0])!
@@ -149,7 +167,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 targetDescription = self.formatElementInfo(element)
 
             } else {
-                throw ValidationError("Specify coordinates, --to, --id, or --center")
+                throw ValidationError("Specify coordinates, --coords, --to, --id, or --center")
             }
 
             // Get current mouse location for distance calculation
@@ -346,6 +364,7 @@ extension MoveCommand: AsyncRuntimeCommand {}
 extension MoveCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.coordinates = try values.decodeOptionalPositional(0, label: "coordinates")
+        self.coords = values.singleOption("coords")
         self.to = values.singleOption("to")
         self.id = values.singleOption("id")
         self.center = values.flag("center")
