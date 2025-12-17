@@ -102,7 +102,7 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     @Option(name: .long, help: "Queue mode for queued prompts: one-at-a-time (default) or all")
     var queueMode: String?
 
-    @Option(name: .long, help: "AI model to use (allowed: gpt-5.1 or claude-sonnet-4.5)")
+    @Option(name: .long, help: "AI model to use (allowed: gpt-5.1, claude-sonnet-4.5, or gemini-3-flash)")
     var model: String?
     @Flag(name: .long, help: "Resume the most recent session (use with task argument)")
     var resume = false
@@ -910,14 +910,15 @@ extension AgentCommand {
     private func hasConfiguredAIProvider(configuration: PeekabooCore.ConfigurationManager) -> Bool {
         let hasOpenAI = configuration.getOpenAIAPIKey()?.isEmpty == false
         let hasAnthropic = configuration.getAnthropicAPIKey()?.isEmpty == false
-        return hasOpenAI || hasAnthropic
+        let hasGemini = configuration.getGeminiAPIKey()?.isEmpty == false
+        return hasOpenAI || hasAnthropic || hasGemini
     }
 
     private func emitAgentUnavailableMessage() {
         if self.jsonOutput {
             let error = [
                 "success": false,
-                "error": "Agent service not available. Please set OPENAI_API_KEY environment variable."
+                "error": "Agent service not available. Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY."
             ] as [String: Any]
             if let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted),
                let jsonString = String(data: jsonData, encoding: .utf8) {
@@ -928,7 +929,7 @@ extension AgentCommand {
         } else {
             let errorPrefix = [
                 "\(TerminalColor.red)Error: Agent service not available.",
-                " Please set OPENAI_API_KEY environment variable."
+                " Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY."
             ].joined()
             let errorMessageLine = [errorPrefix, "\(TerminalColor.reset)"].joined()
             print(errorMessageLine)
@@ -953,6 +954,10 @@ extension AgentCommand {
         case let .anthropic(model):
             if Self.supportedAnthropicInputs.contains(model) {
                 return .anthropic(.opus4)
+            }
+        case let .google(model):
+            if Self.supportedGoogleInputs.contains(model) {
+                return .google(.gemini3Flash)
             }
         default:
             break
@@ -997,10 +1002,15 @@ extension AgentCommand {
         .opus4Thinking,
     ]
 
+    private static let supportedGoogleInputs: Set<LanguageModel.Google> = [
+        .gemini3Flash,
+    ]
+
     private static var allowedModelList: String {
         let openAIModels = Self.supportedOpenAIInputs.map(\.modelId)
         let anthropicModels = Self.supportedAnthropicInputs.map(\.modelId)
-        return (openAIModels + anthropicModels).sorted().joined(separator: ", ")
+        let googleModels = Self.supportedGoogleInputs.map(\.userFacingModelId)
+        return (openAIModels + anthropicModels + googleModels).sorted().joined(separator: ", ")
     }
 
     @MainActor
@@ -1011,6 +1021,8 @@ extension AgentCommand {
             return configuration.getOpenAIAPIKey()?.isEmpty == false
         case .anthropic:
             return configuration.getAnthropicAPIKey()?.isEmpty == false
+        case .google:
+            return configuration.getGeminiAPIKey()?.isEmpty == false
         default:
             return false
         }
@@ -1022,6 +1034,8 @@ extension AgentCommand {
             "OpenAI"
         case .anthropic:
             "Anthropic"
+        case .google:
+            "Google"
         default:
             "the selected provider"
         }
@@ -1033,6 +1047,8 @@ extension AgentCommand {
             "OPENAI_API_KEY"
         case .anthropic:
             "ANTHROPIC_API_KEY"
+        case .google:
+            "GEMINI_API_KEY"
         default:
             "provider API key"
         }

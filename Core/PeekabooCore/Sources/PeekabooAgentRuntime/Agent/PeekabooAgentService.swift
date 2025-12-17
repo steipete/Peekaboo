@@ -333,6 +333,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             return .openai(.gpt51)
         case .anthropic:
             return .anthropic(.opus4)
+        case .google:
+            return .google(.gemini3Flash)
         default:
             return .openai(.gpt51)
         }
@@ -354,6 +356,8 @@ extension PeekabooAgentService {
             GenerationSettings(
                 maxTokens: 4096,
                 providerOptions: .init(anthropic: .init(thinking: .enabled(budgetTokens: 12000))))
+        case .google:
+            GenerationSettings(maxTokens: 4096)
         default:
             GenerationSettings(maxTokens: 4096)
         }

@@ -40,6 +40,15 @@ struct AgentCommandTests {
         #expect(command.parseModelString("ollama/llava") == nil)
     }
 
+    @Test("Google Gemini 3 Flash is accepted")
+    func googleModelParsing() async throws {
+        let command = try AgentCommand.parse([])
+
+        #expect(command.parseModelString("gemini-3-flash") == .google(.gemini3Flash))
+        #expect(command.parseModelString("gemini") == .google(.gemini3Flash))
+        #expect(command.parseModelString("gemini-2.5-pro") == nil)
+    }
+
     @Test("Model string normalization trims whitespace")
     func modelStringNormalization() async throws {
         let command = try AgentCommand.parse([])
@@ -47,6 +56,7 @@ struct AgentCommandTests {
         #expect(command.parseModelString("  gpt-5  ") == .openai(.gpt51))
         #expect(command.parseModelString("\tgpt-5\n") == .openai(.gpt51))
         #expect(command.parseModelString(" claude-sonnet-4.5 ") == .anthropic(.opus4))
+        #expect(command.parseModelString(" gemini-3-flash ") == .google(.gemini3Flash))
     }
 }
 
@@ -68,6 +78,10 @@ struct ModelSelectionIntegrationTests {
         command.model = "gpt-4o"
         let remapped = command.model.flatMap { command.parseModelString($0) }
         #expect(remapped == .openai(.gpt51))
+
+        command.model = "gemini-3-flash"
+        let parsedGemini = command.model.flatMap { command.parseModelString($0) }
+        #expect(parsedGemini == .google(.gemini3Flash))
     }
 
     @Test("Model description consistency")
@@ -77,6 +91,7 @@ struct ModelSelectionIntegrationTests {
         let testCases: [(String, LanguageModel)] = [
             ("gpt-5.1", .openai(.gpt51)),
             ("claude-sonnet-4.5", .anthropic(.opus4)),
+            ("gemini-3-flash", .google(.gemini3Flash)),
         ]
 
         for (input, expected) in testCases {

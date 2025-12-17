@@ -447,6 +447,21 @@ public final class ConfigurationManager: @unchecked Sendable {
         return nil
     }
 
+    /// Get Gemini API key with proper precedence
+    public func getGeminiAPIKey() -> String? {
+        // 1. Environment variable (highest priority)
+        if let envValue = self.environmentValue(for: "GEMINI_API_KEY") {
+            return envValue
+        }
+
+        // 2. Credentials file
+        if let credValue = credentials["GEMINI_API_KEY"] {
+            return credValue
+        }
+
+        return nil
+    }
+
     /// Get Ollama base URL with proper precedence
     public func getOllamaBaseURL() -> String {
         // Get Ollama base URL with proper precedence
