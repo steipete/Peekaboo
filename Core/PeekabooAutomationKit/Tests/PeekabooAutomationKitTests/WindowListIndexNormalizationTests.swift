@@ -3,6 +3,7 @@ import Testing
 @testable import PeekabooAutomationKit
 
 @Suite("Window List Index Normalization")
+@MainActor
 struct WindowListIndexNormalizationTests {
     @Test("normalizeWindowIndices keeps order and makes indices contiguous")
     func normalizeWindowIndices() {
