@@ -44,6 +44,11 @@ extension SeeCommand: CommanderSignatureProviding {
                     help: "Analyze captured content with AI",
                     long: "analyze"
                 ),
+                .commandOption(
+                    "timeoutSeconds",
+                    help: "Overall timeout in seconds (default: 20, or 60 when --analyze is set)",
+                    long: "timeout-seconds"
+                ),
             ],
             flags: [
                 .commandFlag(

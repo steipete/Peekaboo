@@ -127,8 +127,8 @@ public enum CaptureError: Error, LocalizedError, Sendable {
             return "Failed to convert captured image to desired format."
         case let .detectionTimedOut(seconds):
             return """
-            Element detection timed out after \(Int(seconds))s. Try narrowing the capture or targeting a specific \
-            window.
+            Element detection timed out after \(Int(seconds))s. Try narrowing the capture, targeting a specific \
+            window, or increasing the timeout (e.g. `peekaboo see --timeout-seconds 30 ...`).
             """
         }
     }

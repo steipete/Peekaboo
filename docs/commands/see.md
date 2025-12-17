@@ -27,11 +27,12 @@ polter peekaboo -- see --app "Google Chrome" --window-title "Login"
 
 | Flag | Description |
 | --- | --- |
-| `--app`, `--window-title`, `--window-id`, `--pid` | Limit capture to a known app/window/process. |
+| `--app`, `--window-title`, `--pid` | Limit capture to a known app/window/process. |
 | `--mode screen` | Capture the entire display instead of a single window. |
 | `--annotate` | Overlay element bounds/IDs on the output image. |
 | `--path <file>` | Save the screenshot/annotation to disk. |
 | `--json-output` | Emit structured metadata (recommended for scripting). |
+| `--timeout-seconds <seconds>` | Increase overall timeout for large/complex windows (defaults to 20s, or 60s with `--analyze`). |
 | `--no-web-focus` | Skip the automatic web-content focus retry (useful if the page reacts badly to synthetic clicks). |
 
 ## Automatic web focus fallback (Nov 2025)

@@ -65,6 +65,9 @@ public final class ElementDetectionService {
         let windowName = windowResolution.window.title() ?? "Untitled"
         self.logger.debug("Found \(windowResolution.windowTypeDescription): \(windowName)")
 
+        let resolvedWindowID = self.windowIdentityService.getWindowID(from: windowResolution.window).map { Int($0) } ??
+            windowContext?.windowID
+
         var elementIdMap: [String: DetectedElement] = [:]
         let allowWebFocus = windowContext?.shouldFocusWebContent ?? true
         let detectedElements = try await self.collectElementsWithTimeout(
@@ -77,6 +80,15 @@ public final class ElementDetectionService {
         // Note: Parent-child relationships are not directly supported in the protocol's DetectedElement struct
 
         self.logger.info("Detected \(detectedElements.count) elements")
+
+        let resolvedWindowContext = WindowContext(
+            applicationName: windowContext?.applicationName ?? targetApp.localizedName,
+            applicationBundleId: windowContext?.applicationBundleId ?? targetApp.bundleIdentifier,
+            applicationProcessId: windowContext?.applicationProcessId ?? targetApp.processIdentifier,
+            windowTitle: windowName,
+            windowID: resolvedWindowID,
+            windowBounds: windowContext?.windowBounds,
+            shouldFocusWebContent: windowContext?.shouldFocusWebContent)
 
         // Create result
         let detectedElementsCollection = DetectedElements(
@@ -98,7 +110,7 @@ public final class ElementDetectionService {
             elementCount: detectedElements.count,
             method: "AXorcist",
             warnings: [],
-            windowContext: windowContext,
+            windowContext: resolvedWindowContext,
             isDialog: windowResolution.isDialog)
 
         let result = ElementDetectionResult(
@@ -214,6 +226,29 @@ extension ElementDetectionService {
     }
 
     private func resolveApplication(windowContext: WindowContext?) async throws -> NSRunningApplication {
+        if let pid = windowContext?.applicationProcessId {
+            if let runningApp = NSRunningApplication(processIdentifier: pid) {
+                self.logger.debug("Resolved application via PID: \(pid)")
+                return runningApp
+            }
+            self.logger.error("Could not resolve NSRunningApplication for PID: \(pid)")
+            throw PeekabooError.appNotFound("PID:\(pid)")
+        }
+
+        if let bundleId = windowContext?.applicationBundleId {
+            self.logger.debug("Looking for application via bundle ID: \(bundleId)")
+
+            let appInfo = try await self.applicationService.findApplication(identifier: bundleId)
+
+            guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
+                self.logger.error("Could not get NSRunningApplication for PID: \(appInfo.processIdentifier)")
+                throw PeekabooError.appNotFound(bundleId)
+            }
+
+            self.logger.debug("Resolved application: \(runningApp.localizedName ?? "unknown")")
+            return runningApp
+        }
+
         if let appName = windowContext?.applicationName {
             self.logger.debug("Looking for application via ApplicationService: \(appName)")
 
@@ -242,6 +277,31 @@ extension ElementDetectionService {
         context: WindowContext?) async throws -> WindowResolution
     {
         let appElement = AXApp(app).element
+
+        if let windowID = context?.windowID {
+            let cgWindowID = CGWindowID(windowID)
+            if let handle = self.windowIdentityService.findWindow(byID: cgWindowID, in: app) ??
+                self.windowIdentityService.findWindow(byID: cgWindowID)
+            {
+                let title = handle.element.title() ?? "Untitled"
+                let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
+                self.logger.notice("Resolved window via CGWindowID \(windowID): '\(title)' for \(identifier)")
+
+                await self.focusWindow(withID: windowID, appName: identifier)
+                let window = self.focusedWindowIfMatches(app: app) ?? handle.element
+
+                let subrole = window.subrole() ?? ""
+                let isDialogRole = ["AXDialog", "AXSystemDialog", "AXSheet"].contains(subrole)
+                let isFileDialog = self.isFileDialogTitle(window.title() ?? "")
+                let isDialog = isDialogRole || isFileDialog
+
+                return WindowResolution(appElement: appElement, window: window, isDialog: isDialog)
+            }
+
+            self.logger.warning(
+                "Could not resolve window via CGWindowID \(windowID); falling back to title-based selection")
+        }
+
         // Chrome and other multi-process apps occasionally return an empty window list unless we set
         // an explicit AX messaging timeout, so prefer the guarded helper.
         let axWindows = appElement.windowsWithTimeout() ?? []

@@ -300,8 +300,17 @@ public nonisolated struct WindowContext: Sendable, Codable {
     /// Application name
     public let applicationName: String?
 
+    /// Bundle identifier (preferred for disambiguating same-named apps)
+    public let applicationBundleId: String?
+
+    /// Process identifier (most precise when available)
+    public let applicationProcessId: Int32?
+
     /// Window title
     public let windowTitle: String?
+
+    /// CGWindowID for the target window (most precise window selection when available)
+    public let windowID: Int?
 
     /// Window bounds in screen coordinates
     public let windowBounds: CGRect?
@@ -311,12 +320,18 @@ public nonisolated struct WindowContext: Sendable, Codable {
 
     public init(
         applicationName: String? = nil,
+        applicationBundleId: String? = nil,
+        applicationProcessId: Int32? = nil,
         windowTitle: String? = nil,
+        windowID: Int? = nil,
         windowBounds: CGRect? = nil,
         shouldFocusWebContent: Bool? = nil)
     {
         self.applicationName = applicationName
+        self.applicationBundleId = applicationBundleId
+        self.applicationProcessId = applicationProcessId
         self.windowTitle = windowTitle
+        self.windowID = windowID
         self.windowBounds = windowBounds
         self.shouldFocusWebContent = shouldFocusWebContent
     }

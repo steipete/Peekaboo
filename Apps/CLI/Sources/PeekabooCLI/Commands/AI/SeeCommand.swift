@@ -77,6 +77,15 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     @Option(
         name: .long,
         help: """
+        Overall timeout in seconds (default: 20, or 60 when --analyze is set).
+        Increase this if element detection regularly times out for large/complex windows.
+        """
+    )
+    var timeoutSeconds: Int?
+
+    @Option(
+        name: .long,
+        help: """
         Capture engine: auto|modern|sckit|classic|cg (default: auto).
         modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList;
         auto tries SC then falls back when allowed.
@@ -108,7 +117,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         self.runtime = runtime
         let startTime = Date()
         let logger = self.logger
-        let overallTimeout: TimeInterval = (self.analyze == nil) ? 10.0 : 30.0
+        let overallTimeout = TimeInterval(self.timeoutSeconds ?? ((self.analyze == nil) ? 20 : 60))
 
         logger.operationStart("see_command", metadata: [
             "app": self.app ?? "none",
@@ -285,7 +294,10 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         // Create window context from capture metadata
         let windowContext = WindowContext(
             applicationName: captureResult.metadata.applicationInfo?.name,
+            applicationBundleId: captureResult.metadata.applicationInfo?.bundleIdentifier,
+            applicationProcessId: captureResult.metadata.applicationInfo?.processIdentifier,
             windowTitle: captureResult.metadata.windowInfo?.title,
+            windowID: captureResult.metadata.windowInfo?.windowID,
             windowBounds: captureResult.metadata.windowInfo?.bounds,
             shouldFocusWebContent: self.noWebFocus ? false : true
         )
@@ -444,51 +456,66 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     }
 
     private func resolveSeeWindowIndex(appIdentifier: String, titleFragment: String?) async throws -> Int? {
-        do {
-            let windows = try await WindowServiceBridge.listWindows(
-                windows: self.services.windows,
-                target: .application(appIdentifier)
-            )
-
-            let filtered = WindowFilterHelper.filter(
-                windows: windows,
-                appIdentifier: appIdentifier,
-                mode: .capture,
-                logger: self.logger
-            )
-
-            guard !filtered.isEmpty else {
-                throw CaptureError.windowNotFound
-            }
-
-            if let fragment = titleFragment {
-                guard let match = filtered.first(where: { window in
-                    window.title.localizedCaseInsensitiveContains(fragment)
-                }) else {
-                    throw CaptureError.windowNotFound
-                }
-                return match.index
-            }
-
-            return filtered.first?.index
-        } catch let error as PeekabooError {
-            switch error {
-            case .permissionDeniedAccessibility, .windowNotFound:
-                self.logger.debug(
-                    "Window enumeration unavailable; falling back",
-                    metadata: ["app": appIdentifier, "reason": error.localizedDescription]
-                )
-                return nil
-            default:
-                throw error
-            }
-        } catch {
-            self.logger.debug(
-                "Window enumeration failed; falling back",
-                metadata: ["app": appIdentifier, "reason": error.localizedDescription]
-            )
+        // IMPORTANT: ScreenCaptureService's modern path interprets `windowIndex` as an index into the
+        // ScreenCaptureKit window list (SCShareableContent.windows filtered by PID), not the
+        // Accessibility/WindowManagementService ordering. Resolve indices against SC first to avoid
+        // capturing the wrong window when apps have hidden/auxiliary windows (e.g. Playground).
+        //
+        // When no title is provided, prefer `nil` so the capture service can auto-pick a renderable window.
+        guard let fragment = titleFragment, !fragment.isEmpty else {
             return nil
         }
+
+        let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
+
+        let content = try await AXTimeoutHelper.withTimeout(seconds: 5.0) {
+            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+        }
+
+        let appWindows = content.windows.filter { window in
+            window.owningApplication?.processID == appInfo.processIdentifier
+        }
+
+        guard !appWindows.isEmpty else {
+            throw CaptureError.windowNotFound
+        }
+
+        // Prefer matching via CGWindowList title -> windowID, then map to SCWindow.windowID.
+        if let targetWindowID = self.resolveCGWindowID(
+            forPID: appInfo.processIdentifier,
+            titleFragment: fragment
+        ) {
+            if let index = appWindows.firstIndex(where: { Int($0.windowID) == Int(targetWindowID) }) {
+                return index
+            }
+        }
+
+        // Fallback: some windows may not expose a CG title; try SCWindow.title directly.
+        if let index = appWindows.firstIndex(where: { window in
+            (window.title ?? "").localizedCaseInsensitiveContains(fragment)
+        }) {
+            return index
+        }
+
+        throw CaptureError.windowNotFound
+    }
+
+    private func resolveCGWindowID(forPID pid: Int32, titleFragment: String) -> CGWindowID? {
+        let windowList = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] ?? []
+
+        for info in windowList {
+            guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int32, ownerPID == pid else { continue }
+            let title = info[kCGWindowName as String] as? String ?? ""
+            guard title.localizedCaseInsensitiveContains(titleFragment) else { continue }
+            if let windowID = info[kCGWindowNumber as String] as? CGWindowID {
+                return windowID
+            }
+        }
+
+        return nil
     }
 
     // swiftlint:disable function_body_length
