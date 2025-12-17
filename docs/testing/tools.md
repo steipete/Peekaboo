@@ -44,6 +44,15 @@ read_when:
 6. File and fix bugs immediately; rerun the plan for the affected tool to prove the fix.
 7. Update the status column and include the log artifact path so the next person knows what already passed.
 
+## Performance Checks
+- Capture performance summaries whenever a tool feels “slow” (or after fixing perf regressions) so we have a hard baseline.
+- Use `Apps/Playground/scripts/peekaboo-perf.sh` to run a command repeatedly and write a `*-summary.json` alongside the per-run JSON payloads:
+  ```bash
+  ./Apps/Playground/scripts/peekaboo-perf.sh --name see-click-fixture --runs 10 -- \
+    see --app boo.peekaboo.playground.debug --mode window --window-title "Click Fixture" --json-output
+  ```
+- Current reference baseline (2025-12-17, Click Fixture): `see` p95 ≈ 0.97s, `click` p95 ≈ 0.18s (`.artifacts/playground-tools/20251217-174822-perf-see-click-clickfixture-summary.json`).
+
 ## Tool Matrix
 
 ### Vision & Capture
