@@ -77,9 +77,7 @@ struct AppCommand: ParsableCommand {
         )
 
         @Argument(help: "Application name or path")
-        var app: String
-
-        var positionalAppIdentifier: String { self.app }
+        var app: String?
 
         @Option(help: "Launch by bundle identifier instead of name")
         var bundleId: String?
@@ -123,6 +121,7 @@ struct AppCommand: ParsableCommand {
         mutating func run(using runtime: CommandRuntime) async throws {
             self.prepare(using: runtime)
             do {
+                try self.validateInputs()
                 let url = try self.resolveApplicationURL()
                 let launchedApp = try await self.launchApplication(at: url, name: self.displayName(for: url))
                 try await self.waitIfNeeded(for: launchedApp)
@@ -137,15 +136,25 @@ struct AppCommand: ParsableCommand {
         private mutating func prepare(using runtime: CommandRuntime) {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
-            self.logger.verbose("Launching application: \(self.app)")
+            self.logger.verbose("Launching application: \(self.requestedAppIdentifier)")
+        }
+
+        private func validateInputs() throws {
+            guard self.app?.isEmpty == false || self.bundleId?.isEmpty == false else {
+                throw PeekabooError.invalidInput("Provide an application name/path or --bundle-id")
+            }
         }
 
         private func resolveApplicationURL() throws -> URL {
-            try Self.resolver.resolveApplication(appIdentifier: self.app, bundleId: self.bundleId)
+            try Self.resolver.resolveApplication(appIdentifier: self.requestedAppIdentifier, bundleId: self.bundleId)
         }
 
         private func displayName(for url: URL) -> String {
-            (try? url.resourceValues(forKeys: [.localizedNameKey]).localizedName) ?? self.app
+            (try? url.resourceValues(forKeys: [.localizedNameKey]).localizedName) ?? self.requestedAppIdentifier
+        }
+
+        private var requestedAppIdentifier: String {
+            self.app ?? self.bundleId ?? "unknown"
         }
 
         private func waitIfNeeded(for app: any RunningApplicationHandle) async throws {
@@ -156,7 +165,8 @@ struct AppCommand: ParsableCommand {
         private func activateIfNeeded(_ app: any RunningApplicationHandle) {
             guard self.shouldFocusAfterLaunch else { return }
             if !app.activate(options: []) {
-                self.logger.error("Launch succeeded but failed to focus \(app.localizedName ?? self.app)")
+                self.logger
+                    .error("Launch succeeded but failed to focus \(app.localizedName ?? self.requestedAppIdentifier)")
             }
         }
 
@@ -171,7 +181,7 @@ struct AppCommand: ParsableCommand {
 
             let data = LaunchResult(
                 action: "launch",
-                app_name: app.localizedName ?? self.app,
+                app_name: app.localizedName ?? self.requestedAppIdentifier,
                 bundle_id: app.bundleIdentifier ?? "unknown",
                 pid: app.processIdentifier,
                 is_ready: app.isFinishedLaunching
@@ -182,7 +192,7 @@ struct AppCommand: ParsableCommand {
             )
 
             output(data) {
-                print("✓ Launched \(app.localizedName ?? self.app) (PID: \(app.processIdentifier))")
+                print("✓ Launched \(app.localizedName ?? self.requestedAppIdentifier) (PID: \(app.processIdentifier))")
             }
         }
 
@@ -975,7 +985,7 @@ extension AppCommand.LaunchSubcommand: AsyncRuntimeCommand, ErrorHandlingCommand
 @MainActor
 extension AppCommand.LaunchSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.app = try values.decodePositional(0, label: "app")
+        self.app = try values.decodeOptionalPositional(0, label: "app")
         self.bundleId = values.singleOption("bundleId")
         self.waitUntilReady = values.flag("waitUntilReady")
         self.noFocus = values.flag("noFocus")

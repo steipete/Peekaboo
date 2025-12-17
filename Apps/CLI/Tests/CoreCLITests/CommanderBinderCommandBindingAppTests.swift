@@ -55,6 +55,26 @@ struct CommanderBinderAppConfigTests {
         #expect(command.openTargets == ["https://example.com", "~/Documents/report.pdf"])
     }
 
+    @Test("App launch binding with --bundle-id only")
+    func bindAppLaunchBundleIdOnly() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "bundleId": ["com.apple.Notes"]
+            ],
+            flags: ["noFocus"]
+        )
+
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: AppCommand.LaunchSubcommand.self,
+            parsedValues: parsed
+        )
+
+        #expect(command.app == nil)
+        #expect(command.bundleId == "com.apple.Notes")
+        #expect(command.noFocus == true)
+    }
+
     @Test("Open command binding with overrides")
     func bindOpenCommandWithOverrides() throws {
         let parsed = ParsedValues(
