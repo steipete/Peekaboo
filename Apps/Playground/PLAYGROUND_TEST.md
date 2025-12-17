@@ -247,6 +247,32 @@
   - Static sample (diff on): `.artifacts/playground-tools/20251217-181430-capture-video-static.json`
 - **Result**: Static sample exits 0 with `framesKept=1` and warning `noMotion` (“No motion detected; only key frames captured”).
 
+### ✅ `capture` – MP4 output via `--video-out`
+- **Commands**:
+  1. `peekaboo capture live --mode window --app boo.peekaboo.playground.debug --window-title "Click Fixture" --duration 3 --active-fps 8 --threshold 0 --video-out /tmp/peekaboo-capture-live.mp4 --json-output`
+  2. `peekaboo capture video /tmp/peekaboo-capture-src.mp4 --sample-fps 6 --no-diff --video-out /tmp/peekaboo-capture-video.mp4 --json-output`
+- **Artifacts**:
+  - Live: `.artifacts/playground-tools/20251217-184010-capture-live-videoout.json`
+  - Video ingest: `.artifacts/playground-tools/20251217-184010-capture-video-videoout.json`
+- **Result**: Both runs write non-empty MP4 files and the JSON payload includes `videoOut`.
+
+### ✅ `run --no-fail-fast` – continues after a failing step (single JSON payload)
+- **Command**: `peekaboo run docs/testing/fixtures/playground-no-fail-fast.peekaboo.json --no-fail-fast --json-output`
+- **Artifacts**:
+  - Run output: `.artifacts/playground-tools/20251217-184554-run-no-fail-fast.json`
+  - Click log: `.artifacts/playground-tools/20251217-184554-run-no-fail-fast-click.log`
+- **Result**: The run exits non-zero with `success=false`, but still executes the final `click_single` step (Click log contains `Single click`).
+
+### ✅ `window` – minimize + maximize on Window Fixture
+- **Setup**: Open Window Fixture (`⌘⌃5`).
+- **Commands**:
+  1. `peekaboo window minimize --app boo.peekaboo.playground.debug --window-title "Window Fixture" --json-output`
+  2. `peekaboo window focus --app boo.peekaboo.playground.debug --window-title "Window Fixture" --json-output` (restore)
+  3. `peekaboo window maximize --app boo.peekaboo.playground.debug --window-title "Window Fixture" --json-output`
+- **Artifacts**:
+  - `.artifacts/playground-tools/20251217-183242-window.log`
+  - `.artifacts/playground-tools/20251217-183242-window-minimize.json`, `.artifacts/playground-tools/20251217-183242-window-focus-unminimize.json`, `.artifacts/playground-tools/20251217-183242-window-maximize.json`
+
 ### ✅ `window` command – Playground window coverage
 - **Logs**: `.artifacts/playground-tools/20251116-194900-window.log`
 - **Artifacts**:
