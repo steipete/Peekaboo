@@ -88,4 +88,28 @@ struct CLIRuntimeSmokeTests {
         #expect(result.standardOutput.contains("# Peekaboo Comprehensive Guide"))
         #expect(result.standardOutput.contains("## Commander Command Signatures"))
     }
+
+    @Test("peekaboo visualizer emits JSON (success or error)")
+    func commanderVisualizerJSONOutput() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let result = try await TestChildProcess.runPeekaboo(["visualizer", "--json", "--no-remote"])
+
+        let payload = !result.standardOutput.isEmpty ? result.standardOutput : result.standardError
+        #expect(!payload.isEmpty)
+
+        let data = Data(payload.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any] else {
+            Issue.record("Expected JSON object output from visualizer command.")
+            return
+        }
+
+        guard let success = json["success"] as? Bool else {
+            Issue.record("Visualizer JSON output missing 'success' field.")
+            return
+        }
+
+        let exitedSuccessfully = result.status == .exited(0)
+        #expect(exitedSuccessfully == success)
+    }
 }
