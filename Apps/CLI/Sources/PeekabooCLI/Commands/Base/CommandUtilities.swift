@@ -690,7 +690,7 @@ extension WindowIdentificationOptions {
             if let index = windowIndex {
                 return .index(app: app, index: index)
             } else if let title = windowTitle {
-                return .title(title)
+                return .applicationAndTitle(app: app, title: title)
             } else {
                 return .application(app)
             }
