@@ -59,6 +59,96 @@ struct SnapshotNotFoundRegressionTests {
         #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
     }
 
+    @Test("drag --from/--to --snapshot errors when snapshot was cleaned")
+    func dragSnapshotNotFound() async throws {
+        let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
+
+        let snapshotId = try await self.makeSnapshot(with: context.snapshots)
+        try await context.snapshots.cleanSnapshot(snapshotId: snapshotId)
+
+        let result = try await InProcessCommandRunner.run(
+            ["drag", "--from", "B1", "--to", "B1", "--snapshot", snapshotId, "--json", "--no-auto-focus"],
+            services: context.services
+        )
+
+        #expect(result.exitStatus != 0)
+        let response = try ExternalCommandRunner.decodeJSONResponse(from: result, as: JSONResponse.self)
+        #expect(response.success == false)
+        #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
+    }
+
+    @Test("swipe --from/--to --snapshot errors when snapshot was cleaned")
+    func swipeSnapshotNotFound() async throws {
+        let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
+
+        let snapshotId = try await self.makeSnapshot(with: context.snapshots)
+        try await context.snapshots.cleanSnapshot(snapshotId: snapshotId)
+
+        let result = try await InProcessCommandRunner.run(
+            ["swipe", "--from", "B1", "--to", "B1", "--snapshot", snapshotId, "--json"],
+            services: context.services
+        )
+
+        #expect(result.exitStatus != 0)
+        let response = try ExternalCommandRunner.decodeJSONResponse(from: result, as: JSONResponse.self)
+        #expect(response.success == false)
+        #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
+    }
+
+    @Test("type --snapshot errors when snapshot was cleaned")
+    func typeSnapshotNotFound() async throws {
+        let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
+
+        let snapshotId = try await self.makeSnapshot(with: context.snapshots)
+        try await context.snapshots.cleanSnapshot(snapshotId: snapshotId)
+
+        let result = try await InProcessCommandRunner.run(
+            ["type", "Hello", "--snapshot", snapshotId, "--json", "--no-auto-focus"],
+            services: context.services
+        )
+
+        #expect(result.exitStatus != 0)
+        let response = try ExternalCommandRunner.decodeJSONResponse(from: result, as: JSONResponse.self)
+        #expect(response.success == false)
+        #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
+    }
+
+    @Test("hotkey --snapshot errors when snapshot was cleaned")
+    func hotkeySnapshotNotFound() async throws {
+        let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
+
+        let snapshotId = try await self.makeSnapshot(with: context.snapshots)
+        try await context.snapshots.cleanSnapshot(snapshotId: snapshotId)
+
+        let result = try await InProcessCommandRunner.run(
+            ["hotkey", "cmd,c", "--snapshot", snapshotId, "--json", "--no-auto-focus"],
+            services: context.services
+        )
+
+        #expect(result.exitStatus != 0)
+        let response = try ExternalCommandRunner.decodeJSONResponse(from: result, as: JSONResponse.self)
+        #expect(response.success == false)
+        #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
+    }
+
+    @Test("press --snapshot errors when snapshot was cleaned")
+    func pressSnapshotNotFound() async throws {
+        let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
+
+        let snapshotId = try await self.makeSnapshot(with: context.snapshots)
+        try await context.snapshots.cleanSnapshot(snapshotId: snapshotId)
+
+        let result = try await InProcessCommandRunner.run(
+            ["press", "tab", "--snapshot", snapshotId, "--json", "--no-auto-focus"],
+            services: context.services
+        )
+
+        #expect(result.exitStatus != 0)
+        let response = try ExternalCommandRunner.decodeJSONResponse(from: result, as: JSONResponse.self)
+        #expect(response.success == false)
+        #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
+    }
+
     private func makeSnapshot(with snapshots: StubSnapshotManager) async throws -> String {
         let snapshotId = try await snapshots.createSnapshot()
 
