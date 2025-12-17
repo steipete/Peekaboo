@@ -256,6 +256,132 @@ struct DialogCommandTests {
         #expect(dialogService.recordedButtonClicks.first?.button == "New Document")
     }
 
+    @Test("dialog input maps noActiveDialog to NO_ACTIVE_DIALOG")
+    func dialogInputMapsNoActiveDialog() async throws {
+        let services = self.makeTestServices(dialogs: StubDialogService(elements: nil))
+        let result = try await InProcessCommandRunner.run(
+            ["dialog", "input", "--text", "Hello", "--json"],
+            services: services
+        )
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+
+        let data = try #require(output.data(using: .utf8))
+        let response = try JSONDecoder().decode(JSONResponse.self, from: data)
+        #expect(response.success == false)
+        #expect(response.error?.code == "NO_ACTIVE_DIALOG")
+    }
+
+    @Test("dialog input maps fieldNotFound to ELEMENT_NOT_FOUND")
+    func dialogInputMapsFieldNotFound() async throws {
+        let elements = DialogElements(
+            dialogInfo: DialogInfo(
+                title: "Save",
+                role: "AXWindow",
+                subrole: "AXDialog",
+                isFileDialog: true,
+                bounds: .init(x: 0, y: 0, width: 400, height: 300)
+            ),
+            buttons: [],
+            textFields: [],
+            staticTexts: []
+        )
+        let dialogService = StubDialogService(elements: elements)
+        let services = self.makeTestServices(dialogs: dialogService)
+
+        let result = try await InProcessCommandRunner.run(
+            ["dialog", "input", "--text", "Hello", "--field", "Filename", "--json"],
+            services: services
+        )
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+
+        let data = try #require(output.data(using: .utf8))
+        let response = try JSONDecoder().decode(JSONResponse.self, from: data)
+        #expect(response.success == false)
+        #expect(response.error?.code == "ELEMENT_NOT_FOUND")
+    }
+
+    @Test("dialog file maps noFileDialog to ELEMENT_NOT_FOUND")
+    func dialogFileMapsNoFileDialog() async throws {
+        let elements = DialogElements(
+            dialogInfo: DialogInfo(
+                title: "Preferences",
+                role: "AXWindow",
+                subrole: "AXDialog",
+                isFileDialog: false,
+                bounds: .init(x: 0, y: 0, width: 400, height: 300)
+            ),
+            buttons: [],
+            textFields: [],
+            staticTexts: []
+        )
+        let dialogService = StubDialogService(elements: elements)
+        let services = self.makeTestServices(dialogs: dialogService)
+
+        let result = try await InProcessCommandRunner.run(
+            ["dialog", "file", "--path", "/tmp", "--name", "test.txt", "--select", "Save", "--json"],
+            services: services
+        )
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+
+        let data = try #require(output.data(using: .utf8))
+        let response = try JSONDecoder().decode(JSONResponse.self, from: data)
+        #expect(response.success == false)
+        #expect(response.error?.code == "ELEMENT_NOT_FOUND")
+    }
+
+    @Test("dialog maps invalidFieldIndex to INVALID_INPUT")
+    func dialogMapsInvalidFieldIndex() async throws {
+        @MainActor
+        struct InvalidIndexDialogService: DialogServiceProtocol {
+            func findActiveDialog(
+                windowTitle: String?,
+                appName: String?
+            ) async throws -> DialogInfo { throw DialogError.noActiveDialog }
+            func clickButton(
+                buttonText: String,
+                windowTitle: String?,
+                appName: String?
+            ) async throws -> DialogActionResult { throw DialogError.noActiveDialog }
+            func enterText(
+                text: String,
+                fieldIdentifier: String?,
+                clearExisting: Bool,
+                windowTitle: String?,
+                appName: String?
+            ) async throws -> DialogActionResult {
+                throw DialogError.invalidFieldIndex
+            }
+
+            func handleFileDialog(
+                path: String?,
+                filename: String?,
+                actionButton: String,
+                appName: String?
+            ) async throws -> DialogActionResult { throw DialogError.noActiveDialog }
+            func dismissDialog(
+                force: Bool,
+                windowTitle: String?,
+                appName: String?
+            ) async throws -> DialogActionResult { throw DialogError.noActiveDialog }
+            func listDialogElements(
+                windowTitle: String?,
+                appName: String?
+            ) async throws -> DialogElements { throw DialogError.noActiveDialog }
+        }
+
+        let services = self.makeTestServices(dialogs: InvalidIndexDialogService())
+        let result = try await InProcessCommandRunner.run(
+            ["dialog", "input", "--text", "Hello", "--index", "5", "--json"],
+            services: services
+        )
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+
+        let data = try #require(output.data(using: .utf8))
+        let response = try JSONDecoder().decode(JSONResponse.self, from: data)
+        #expect(response.success == false)
+        #expect(response.error?.code == "INVALID_INPUT")
+    }
+
     private struct CommandFailure: Error {
         let status: Int32
         let stderr: String
