@@ -9,6 +9,8 @@ struct ScrollTestingView: View {
     @State private var rotation: Angle = .zero
     @State private var lastVerticalOffset: CGFloat?
     @State private var lastHorizontalOffset: CGFloat?
+    @State private var lastNestedInnerOffset: CGFloat?
+    @State private var lastNestedOuterOffset: CGFloat?
 
     var body: some View {
         VStack(spacing: 20) {
@@ -250,6 +252,9 @@ struct ScrollTestingView: View {
                                 }
                             }
                             .padding()
+                            .background(ScrollOffsetReader(coordinateSpace: "nested-inner-scroll-area") { offset in
+                                self.logNestedInnerScrollChange(offset: offset.y)
+                            })
                             .background(Color.gray.opacity(0.1))
                             .background(
                                 ScrollAccessibilityConfigurator(
@@ -263,6 +268,7 @@ struct ScrollTestingView: View {
                         .frame(height: 150)
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(8)
+                        .coordinateSpace(name: "nested-inner-scroll-area")
 
                         ForEach(1..<6) { index in
                             Text("Outer item \(index)")
@@ -273,6 +279,9 @@ struct ScrollTestingView: View {
                         }
                     }
                     .padding()
+                    .background(ScrollOffsetReader(coordinateSpace: "nested-outer-scroll-area") { offset in
+                        self.logNestedOuterScrollChange(offset: offset.y)
+                    })
                     .background(
                         ScrollAccessibilityConfigurator(
                             identifier: "nested-outer-scroll",
@@ -284,6 +293,7 @@ struct ScrollTestingView: View {
                         label: "Nested Outer Scroll"))
                 .frame(height: 200)
                 .background(Color(NSColor.controlBackgroundColor))
+                .coordinateSpace(name: "nested-outer-scroll-area")
             }
 
             Spacer()
@@ -313,6 +323,30 @@ struct ScrollTestingView: View {
             .scroll,
             "Horizontal scroll offset",
             details: "x=\(Int(rounded))")
+    }
+
+    private func logNestedInnerScrollChange(offset: CGFloat) {
+        let rounded = (offset * 100).rounded() / 100
+        if let lastOffset = self.lastNestedInnerOffset, abs(lastOffset - rounded) < 5 {
+            return
+        }
+        self.lastNestedInnerOffset = rounded
+        self.actionLogger.log(
+            .scroll,
+            "Nested inner scroll offset",
+            details: "y=\(Int(rounded))")
+    }
+
+    private func logNestedOuterScrollChange(offset: CGFloat) {
+        let rounded = (offset * 100).rounded() / 100
+        if let lastOffset = self.lastNestedOuterOffset, abs(lastOffset - rounded) < 5 {
+            return
+        }
+        self.lastNestedOuterOffset = rounded
+        self.actionLogger.log(
+            .scroll,
+            "Nested outer scroll offset",
+            details: "y=\(Int(rounded))")
     }
 }
 
