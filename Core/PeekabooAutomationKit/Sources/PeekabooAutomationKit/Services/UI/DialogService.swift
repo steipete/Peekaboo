@@ -16,6 +16,29 @@ public enum DialogError: Error {
     case noDismissButton
 }
 
+extension DialogError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .noActiveDialog:
+            "No active dialog window found."
+        case .dialogNotFound:
+            "Dialog not found."
+        case .noFileDialog:
+            "No file dialog (Save/Open) found."
+        case let .buttonNotFound(name):
+            "Button not found: \(name)"
+        case .fieldNotFound:
+            "Field not found."
+        case .invalidFieldIndex:
+            "Invalid field index."
+        case .noTextFields:
+            "No text fields found in dialog."
+        case .noDismissButton:
+            "No dismiss button found in dialog."
+        }
+    }
+}
+
 /// Default implementation of dialog management operations
 @MainActor
 public final class DialogService: DialogServiceProtocol {
@@ -59,8 +82,7 @@ extension DialogService {
         let subrole = element.subrole()
 
         // Check if it's a file dialog
-        let isFileDialog = title.contains("Save") || title.contains("Open") ||
-            title.contains("Export") || title.contains("Import")
+        let isFileDialog = self.isFileDialogElement(element)
 
         let position = element.position() ?? .zero
         let size = element.size() ?? .zero
@@ -97,7 +119,7 @@ extension DialogService {
         guard let targetButton = buttons.first(where: { btn in
             btn.title() == buttonText || btn.title()?.contains(buttonText) == true
         }) else {
-            throw PeekabooError.elementNotFound("\(buttonText)")
+            throw DialogError.buttonNotFound(buttonText)
         }
 
         let resolvedButtonTitle = targetButton.title() ?? buttonText
@@ -154,7 +176,7 @@ extension DialogService {
 
         guard !textFields.isEmpty else {
             self.logger.error("No text fields found in dialog")
-            throw PeekabooError.operationError(message: "No text fields found in dialog.")
+            throw DialogError.noTextFields
         }
 
         let targetField = try self.selectTextField(
@@ -166,7 +188,7 @@ extension DialogService {
             bounds: self.elementBounds(for: targetField),
             action: .enterText)
 
-        try self.focusTextField(targetField)
+        self.focusTextField(targetField)
         try self.clearFieldIfNeeded(targetField, shouldClear: clearExisting)
         try self.typeTextValue(text, delay: 10000)
 
@@ -199,7 +221,10 @@ extension DialogService {
         self.logger.debug("Action button: \(actionButton)")
 
         await self.ensureDialogVisibility(windowTitle: nil, appName: appName)
-        let dialog = try findFileDialogElement()
+        let dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
+        guard self.isFileDialogElement(dialog) else {
+            throw DialogError.noFileDialog
+        }
         var details: [String: String] = [:]
 
         if let filePath = path {
@@ -212,9 +237,8 @@ extension DialogService {
             details["filename"] = fileName
         }
 
-        if try self.clickActionButton(named: actionButton, in: dialog) {
-            details["button_clicked"] = actionButton
-        }
+        let clickResult = try await self.clickButton(buttonText: actionButton, windowTitle: nil, appName: appName)
+        details["button_clicked"] = clickResult.details["button"] ?? actionButton
 
         let result = DialogActionResult(
             success: true,
@@ -268,7 +292,7 @@ extension DialogService {
             }
 
             self.logger.error("No dismiss button found in dialog")
-            throw PeekabooError.operationError(message: "No dismiss button found in dialog.")
+            throw DialogError.noDismissButton
         }
     }
 
@@ -361,7 +385,7 @@ extension DialogService {
 
         guard let focusedApp = focusedAppElement else {
             self.logger.error("No focused application found")
-            throw PeekabooError.operationError(message: "No active dialog window found.")
+            throw DialogError.noActiveDialog
         }
 
         let windows = focusedApp.windowsWithTimeout() ?? []
@@ -518,32 +542,6 @@ extension DialogService {
     }
 
     @MainActor
-    private func findFileDialogElement() throws -> Element {
-        let systemWide = Element.systemWide()
-        guard let focusedApp = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) else {
-            throw PeekabooError.operationError(message: "No active dialog window found.")
-        }
-
-        let windows = focusedApp.windows() ?? []
-
-        for window in windows {
-            if let candidate = self.resolveDialogCandidate(in: window, matching: nil),
-               self.isFileDialogElement(candidate)
-            {
-                return candidate
-            }
-        }
-
-        if let focusedWindow = systemWide.attribute(Attribute<Element>("AXFocusedWindow")),
-           self.isFileDialogElement(focusedWindow)
-        {
-            return focusedWindow
-        }
-
-        throw PeekabooError.operationError(message: "No file dialog (Save/Open) found.")
-    }
-
-    @MainActor
     private func collectTextFields(from element: Element) -> [Element] {
         var fields: [Element] = []
 
@@ -570,8 +568,7 @@ extension DialogService {
 
         if let index = Int(identifier) {
             guard textFields.indices.contains(index) else {
-                throw PeekabooError
-                    .invalidInput("Invalid field index: \(index). Dialog has \(textFields.count) fields.")
+                throw DialogError.invalidFieldIndex
             }
             return textFields[index]
         }
@@ -581,7 +578,7 @@ extension DialogService {
                 field.attribute(Attribute<String>("AXPlaceholderValue")) == identifier ||
                 field.descriptionText()?.contains(identifier) == true
         }) else {
-            throw PeekabooError.elementNotFound("\(identifier)")
+            throw DialogError.fieldNotFound
         }
 
         return field
@@ -606,9 +603,26 @@ extension DialogService {
             action: action)
     }
 
-    private func focusTextField(_ field: Element) throws {
-        self.logger.debug("Focusing text field")
-        try field.performAction(.press)
+    private func focusTextField(_ field: Element) {
+        let elementDescription = field.briefDescription(option: ValueFormatOption.smart)
+        self.logger.debug("Focusing text field: \(elementDescription)")
+
+        if field.isAttributeSettable(named: AXAttributeNames.kAXFocusedAttribute),
+           field.setValue(true, forAttribute: AXAttributeNames.kAXFocusedAttribute)
+        {
+            return
+        }
+
+        guard field.isActionSupported(AXActionNames.kAXPressAction) else {
+            self.logger.debug("Text field is not focusable (focused attribute not settable; press not supported).")
+            return
+        }
+
+        do {
+            try field.performAction(.press)
+        } catch {
+            self.logger.debug("Failed to focus text field via press: \(String(describing: error))")
+        }
     }
 
     private func clearFieldIfNeeded(_ field: Element, shouldClear: Bool) throws {
@@ -754,26 +768,13 @@ extension DialogService {
         let textFields = self.collectTextFields(from: dialog)
         guard let field = textFields.first else {
             self.logger.error("No text fields found in file dialog")
-            throw PeekabooError.operationError(message: "No text fields found in dialog.")
+            throw DialogError.noTextFields
         }
 
-        try field.performAction(.press)
+        self.focusTextField(field)
         self.pressKey(0x00, modifiers: .maskCommand)
         usleep(50000)
         try self.typeTextValue(fileName, delay: 5000)
-    }
-
-    private func clickActionButton(named actionButton: String, in dialog: Element) throws -> Bool {
-        let buttons = self.collectButtons(from: dialog)
-        self.logger.debug("Found \(buttons.count) buttons, looking for: \(actionButton)")
-
-        guard let button = buttons.first(where: { $0.title() == actionButton }) else {
-            return false
-        }
-
-        self.logger.debug("Clicking action button: \(actionButton)")
-        try button.performAction(.press)
-        return true
     }
 
     private func matchesDialogWindowTitle(_ title: String, expectedTitle: String?) -> Bool {
@@ -921,9 +922,16 @@ extension DialogService {
             return true
         }
 
-        return self.dialogTitleHints.contains {
-            windowTitle.localizedCaseInsensitiveContains($0)
+        if self.dialogTitleHints.contains(where: { windowTitle.localizedCaseInsensitiveContains($0) }) {
+            return true
         }
+
+        // Some sheets (e.g. TextEdit's Save sheet) expose no useful title/identifier but do expose canonical buttons.
+        let buttonTitles = Set(self.collectButtons(from: element).compactMap { $0.title()?.lowercased() })
+        let hasCancel = buttonTitles.contains("cancel")
+        let hasPrimary = ["save", "open", "choose", "replace", "export", "import"]
+            .contains { buttonTitles.contains($0) }
+        return hasCancel && hasPrimary
     }
 
     @MainActor
