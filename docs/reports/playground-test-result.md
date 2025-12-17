@@ -104,7 +104,7 @@ USAGE: peekaboo click [<query>] [--snapshot <snapshot>] [--on <on>] [--coords <c
   - Successfully clicked the View Logs button
   - Opened log viewer window as expected
   - Log showed: "Left click at window: (914, 742), screen: (1634, 148)"
-- ⚠️ Performance issue: Took 36.2s to find element + 70.74s total execution time
+- ✅ Performance (rechecked 2025-12-17): Click on Click Fixture is now fast (mean ~0.17s, p95 ~0.18s) and `see` on Click Fixture averages ~0.95s (p95 ~0.97s). See `.artifacts/playground-tools/20251217-174822-perf-see-click-clickfixture-summary.json`. The earlier 70s run was likely due to focus/window targeting flakiness before fixture windows + window scoping fixes.
 
 **Parameter Observations**:
 - The `<query>` is a positional argument for text search
