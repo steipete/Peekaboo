@@ -3,78 +3,86 @@ import Combine
 import Foundation
 
 @MainActor
-final class WindowEventObserver: ObservableObject {
+final class WindowEventObserver: NSObject, ObservableObject {
     private let actionLogger: ActionLogger
-    private var observers: [NSObjectProtocol] = []
     private var lastResizeLogAt: [ObjectIdentifier: CFAbsoluteTime] = [:]
     private var lastMoveLogAt: [ObjectIdentifier: CFAbsoluteTime] = [:]
 
     init(actionLogger: ActionLogger) {
         self.actionLogger = actionLogger
+        super.init()
         self.install()
     }
 
     deinit {
-        for observer in self.observers {
-            NotificationCenter.default.removeObserver(observer)
-        }
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func install() {
         let center = NotificationCenter.default
 
-        func on(_ name: NSNotification.Name, handler: @escaping (NSWindow) -> Void) {
-            let observer = center.addObserver(forName: name, object: nil, queue: .main) { notification in
-                guard let window = notification.object as? NSWindow else { return }
-                handler(window)
-            }
-            self.observers.append(observer)
-        }
+        let notifications: [NSNotification.Name] = [
+            NSWindow.didBecomeKeyNotification,
+            NSWindow.didResignKeyNotification,
+            NSWindow.didMiniaturizeNotification,
+            NSWindow.didDeminiaturizeNotification,
+            NSWindow.didEnterFullScreenNotification,
+            NSWindow.didExitFullScreenNotification,
+            NSWindow.willCloseNotification,
+            NSWindow.didMoveNotification,
+            NSWindow.didResizeNotification,
+        ]
 
-        on(NSWindow.didBecomeKeyNotification) { window in
+        for name in notifications {
+            center.addObserver(self, selector: #selector(self.handleWindowNotification(_:)), name: name, object: nil)
+        }
+    }
+
+    @objc private func handleWindowNotification(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+
+        switch notification.name {
+        case NSWindow.didBecomeKeyNotification:
             self.actionLogger.log(.window, "Window became key", details: self.windowDetails(window))
-        }
-
-        on(NSWindow.didResignKeyNotification) { window in
+        case NSWindow.didResignKeyNotification:
             self.actionLogger.log(.window, "Window resigned key", details: self.windowDetails(window))
-        }
-
-        on(NSWindow.didMiniaturizeNotification) { window in
+        case NSWindow.didMiniaturizeNotification:
             self.actionLogger.log(.window, "Window minimized", details: self.windowDetails(window))
-        }
-
-        on(NSWindow.didDeminiaturizeNotification) { window in
+        case NSWindow.didDeminiaturizeNotification:
             self.actionLogger.log(.window, "Window restored", details: self.windowDetails(window))
-        }
-
-        on(NSWindow.didEnterFullScreenNotification) { window in
+        case NSWindow.didEnterFullScreenNotification:
             self.actionLogger.log(.window, "Window entered full screen", details: self.windowDetails(window))
-        }
-
-        on(NSWindow.didExitFullScreenNotification) { window in
+        case NSWindow.didExitFullScreenNotification:
             self.actionLogger.log(.window, "Window exited full screen", details: self.windowDetails(window))
-        }
-
-        on(NSWindow.willCloseNotification) { window in
+        case NSWindow.willCloseNotification:
             self.actionLogger.log(.window, "Window will close", details: self.windowDetails(window))
+        case NSWindow.didMoveNotification:
+            self.logThrottledWindowEvent(
+                key: ObjectIdentifier(window),
+                cache: &self.lastMoveLogAt,
+                message: "Window moved",
+                window: window)
+        case NSWindow.didResizeNotification:
+            self.logThrottledWindowEvent(
+                key: ObjectIdentifier(window),
+                cache: &self.lastResizeLogAt,
+                message: "Window resized",
+                window: window)
+        default:
+            break
         }
+    }
 
-        // Move/resize are noisy; throttle per window.
-        on(NSWindow.didMoveNotification) { window in
-            let key = ObjectIdentifier(window)
-            let now = CFAbsoluteTimeGetCurrent()
-            if let last = self.lastMoveLogAt[key], now - last < 0.5 { return }
-            self.lastMoveLogAt[key] = now
-            self.actionLogger.log(.window, "Window moved", details: self.windowDetails(window))
-        }
-
-        on(NSWindow.didResizeNotification) { window in
-            let key = ObjectIdentifier(window)
-            let now = CFAbsoluteTimeGetCurrent()
-            if let last = self.lastResizeLogAt[key], now - last < 0.5 { return }
-            self.lastResizeLogAt[key] = now
-            self.actionLogger.log(.window, "Window resized", details: self.windowDetails(window))
-        }
+    private func logThrottledWindowEvent(
+        key: ObjectIdentifier,
+        cache: inout [ObjectIdentifier: CFAbsoluteTime],
+        message: String,
+        window: NSWindow)
+    {
+        let now = CFAbsoluteTimeGetCurrent()
+        if let last = cache[key], now - last < 0.5 { return }
+        cache[key] = now
+        self.actionLogger.log(.window, message, details: self.windowDetails(window))
     }
 
     private func windowDetails(_ window: NSWindow) -> String {
