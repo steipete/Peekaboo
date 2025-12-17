@@ -175,6 +175,11 @@ The following subsections spell out the concrete steps, required Playground surf
   3. Attempt to interact using purged snapshot ID and assert command fails with helpful error.
 - **Artifacts**: Directory listing before/after.
 - **2025-11-16 run**: Created snapshots `5408D893-…` and `129101F5-…` via back-to-back `see` captures (artifacts saved under `.artifacts/playground-tools/*clean-see*.png`). Ran `polter peekaboo -- clean --snapshot 5408D893-…` (freed 453 KB), verified folder removal (`ls ~/.peekaboo/snapshots`). Re-running the same clean command returned “No snapshots to clean”, confirming deletion. Attempting `clean --snapshot 5408D893-…` again yields 0 removals; `click --snapshot 5408D893-…` surfaces a generic “element not found” error—worth improving to mention missing snapshot.
+- **2025-12-17 rerun**: Using a cleaned snapshot now yields `SNAPSHOT_NOT_FOUND` for snapshot-scoped commands (instead of `ELEMENT_NOT_FOUND`), which is much clearer for end-to-end scripts.
+  - Snapshot + clean: `.artifacts/playground-tools/20251217-201134-see-for-snapshot-missing.json`, `.artifacts/playground-tools/20251217-201134-clean-snapshot.json`
+  - Click failure: `.artifacts/playground-tools/20251217-201134-click-snapshot-missing.json`
+  - Move failure: `.artifacts/playground-tools/20251217-201134-move-snapshot-missing.json`
+  - Scroll failure: `.artifacts/playground-tools/20251217-201134-scroll-snapshot-missing.json`
 
 #### `clipboard`
 - **Steps**:
