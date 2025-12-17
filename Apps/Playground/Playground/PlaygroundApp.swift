@@ -12,9 +12,12 @@ private let keyLogger = Logger(subsystem: "boo.peekaboo.playground", category: "
 struct PlaygroundApp: App {
     @StateObject private var actionLogger = ActionLogger.shared
     @StateObject private var tabRouter = PlaygroundTabRouter()
+    @StateObject private var windowObserver: WindowEventObserver
     @State private var eventMonitor: Any?
 
     init() {
+        let actionLogger = ActionLogger.shared
+        self._windowObserver = StateObject(wrappedValue: WindowEventObserver(actionLogger: actionLogger))
         self.setupGlobalMouseClickMonitor()
         self.setupGlobalKeyMonitor()
     }
