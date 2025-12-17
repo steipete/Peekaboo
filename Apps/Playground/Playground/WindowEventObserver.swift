@@ -80,6 +80,7 @@ final class WindowEventObserver: ObservableObject {
     private func windowDetails(_ window: NSWindow) -> String {
         let title = window.title.isEmpty ? "[Untitled]" : window.title
         let frame = window.frame.integral
-        return "title='\(title)' x=\(Int(frame.origin.x)) y=\(Int(frame.origin.y)) w=\(Int(frame.width)) h=\(Int(frame.height))"
+        return "title='\(title)' x=\(Int(frame.origin.x)) y=\(Int(frame.origin.y)) " +
+            "w=\(Int(frame.width)) h=\(Int(frame.height))"
     }
 }
