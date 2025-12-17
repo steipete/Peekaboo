@@ -105,7 +105,6 @@
   2. `polter peekaboo -- see --app Playground --path .artifacts/playground-tools/20251116-0506-clean-see2.png --annotate --json-output` → snapshot `129101F5-26C9-4A25-A6CB-AE84039CAB04`
   3. `polter peekaboo -- clean --snapshot 5408D893-E9CF-4A79-9B9B-D025BF9C80BE`
   4. `polter peekaboo -- clean --snapshot 5408D893-E9CF-4A79-9B9B-D025BF9C80BE` (expect 0 removals)
-- **Verification**: First clean freed 453 KB and removed the snapshot directory; second clean confirmed nothing left to delete. Attempting `click --snapshot 5408D893-…` afterward yields a generic element-not-found error rather than “snapshot missing” (possible UX improvement noted in docs).
 - **Verification**: First clean freed 453 KB and removed the snapshot directory; second clean confirmed nothing left to delete. As of 2025-12-17, snapshot-scoped commands now return `SNAPSHOT_NOT_FOUND` after cleanup (instead of a misleading `ELEMENT_NOT_FOUND`).
 - **Artifacts**: `.artifacts/playground-tools/20251116-050631-clean-see1{,_annotated}.png`, `.artifacts/playground-tools/20251116-050649-clean-see2{,_annotated}.png`, and CLI outputs in shell history.
   - Regression artifacts: `.artifacts/playground-tools/20251217-201134-click-snapshot-missing.json`, `.artifacts/playground-tools/20251217-201134-move-snapshot-missing.json`, `.artifacts/playground-tools/20251217-201134-scroll-snapshot-missing.json`
