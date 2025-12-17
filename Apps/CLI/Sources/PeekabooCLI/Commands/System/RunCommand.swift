@@ -43,6 +43,7 @@ struct RunCommand: OutputFormattable {
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
         let startTime = Date()
+        var didEmitJSONResponse = false
 
         do {
             let script = try await ProcessServiceBridge.loadScript(services: self.services, path: self.scriptPath)
@@ -71,7 +72,14 @@ struct RunCommand: OutputFormattable {
                     print("✅ Script completed. Results saved to: \(outputPath)")
                 }
             } else if self.jsonOutput {
-                outputSuccessCodable(data: output, logger: self.outputLogger)
+                let response = CodableJSONResponse(
+                    success: output.success,
+                    data: output,
+                    messages: nil,
+                    debug_logs: self.outputLogger.getDebugLogs()
+                )
+                outputJSONCodable(response, logger: self.outputLogger)
+                didEmitJSONResponse = true
             } else {
                 self.printSummary(output)
             }
@@ -79,6 +87,13 @@ struct RunCommand: OutputFormattable {
             if !output.success {
                 throw ExitCode.failure
             }
+        } catch let error as ExitCode {
+            // RunCommand intentionally exits non-zero when a step fails. In JSON mode we already emitted
+            // a structured payload, so don't print a second JSON error wrapper.
+            if didEmitJSONResponse {
+                throw error
+            }
+            throw ExitCode.failure
         } catch {
             if self.jsonOutput {
                 outputError(message: error.localizedDescription, code: .INVALID_ARGUMENT, logger: self.outputLogger)
