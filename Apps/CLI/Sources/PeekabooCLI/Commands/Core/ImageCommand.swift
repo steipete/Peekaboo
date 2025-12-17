@@ -419,21 +419,32 @@ extension ImageCommand {
         case .background:
             return
         case .auto:
+            let focusIdentifier = await self.resolveFocusIdentifier(appIdentifier: appIdentifier)
             let options = FocusOptions(autoFocus: true, spaceSwitch: false, bringToCurrentSpace: false)
             try await ensureFocused(
-                applicationName: appIdentifier,
+                applicationName: focusIdentifier,
                 windowTitle: self.windowTitle,
                 options: options,
                 services: self.services
             )
         case .foreground:
+            let focusIdentifier = await self.resolveFocusIdentifier(appIdentifier: appIdentifier)
             let options = FocusOptions(autoFocus: true, spaceSwitch: true, bringToCurrentSpace: true)
             try await ensureFocused(
-                applicationName: appIdentifier,
+                applicationName: focusIdentifier,
                 windowTitle: self.windowTitle,
                 options: options,
                 services: self.services
             )
+        }
+    }
+
+    private func resolveFocusIdentifier(appIdentifier: String) async -> String {
+        do {
+            let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
+            return "PID:\(appInfo.processIdentifier)"
+        } catch {
+            return appIdentifier
         }
     }
 
@@ -707,7 +718,8 @@ extension ImageCommand: CommanderBindableCommand {
                 throw CommanderBindingError.invalidArgument(
                     label: "path",
                     value: path,
-                    reason: "Conflicts with --format \(parsedFormat.rawValue). Use a .\(parsedFormat.fileExtension) path (or omit --format)."
+                    reason: "Conflicts with --format \(parsedFormat.rawValue). " +
+                        "Use a .\(parsedFormat.fileExtension) path (or omit --format)."
                 )
             }
             if parsedFormat == nil, let inferred {
