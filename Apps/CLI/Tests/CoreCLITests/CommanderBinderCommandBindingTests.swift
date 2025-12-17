@@ -66,6 +66,27 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
+    @Test("Clipboard command binding with file-path and also-text")
+    func bindClipboardCommandSetFile() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "action": ["set"],
+                "filePath": ["/tmp/demo.txt"],
+                "alsoText": ["Peekaboo clipboard file smoke"]
+            ],
+            flags: ["allowLarge"]
+        )
+
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: ClipboardCommand.self, parsedValues: parsed)
+        #expect(command.action == "set")
+        #expect(command.filePath == "/tmp/demo.txt")
+        #expect(command.imagePath == nil)
+        #expect(command.text == nil)
+        #expect(command.alsoText == "Peekaboo clipboard file smoke")
+        #expect(command.allowLarge == true)
+    }
+
     @Test("Image command binding")
     func bindImageCommand() throws {
         let parsed = ParsedValues(
