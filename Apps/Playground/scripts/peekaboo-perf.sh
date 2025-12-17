@@ -121,8 +121,14 @@ import json
 from pathlib import Path
 
 path = Path("$OUT")
-data = json.loads(path.read_text())
-if "data" not in data:
+raw = path.read_text()
+try:
+  data = json.loads(raw)
+except Exception:
+  data = {"success": False, "data": {}, "raw_output": raw}
+if not isinstance(data, dict):
+  data = {"success": False, "data": {}, "raw_output": raw}
+if "data" not in data or not isinstance(data.get("data"), dict):
   data["data"] = {}
 data["data"]["wall_time"] = float("$WALL")
 data["data"]["exit_code"] = int("$EXIT_CODE")
