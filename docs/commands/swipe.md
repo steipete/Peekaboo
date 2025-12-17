@@ -46,4 +46,5 @@ polter peekaboo -- swipe --from-coords 400,400 --to drawer_toggle
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- If you see `SNAPSHOT_NOT_FOUND`, regenerate the snapshot with `peekaboo see` (or omit `--snapshot` to use the most recent one).
 - Re-run with `--json-output` or `--verbose` to surface detailed errors.

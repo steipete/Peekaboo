@@ -107,7 +107,15 @@
   4. `polter peekaboo -- clean --snapshot 5408D893-E9CF-4A79-9B9B-D025BF9C80BE` (expect 0 removals)
 - **Verification**: First clean freed 453 KB and removed the snapshot directory; second clean confirmed nothing left to delete. As of 2025-12-17, snapshot-scoped commands now return `SNAPSHOT_NOT_FOUND` after cleanup (instead of a misleading `ELEMENT_NOT_FOUND`).
 - **Artifacts**: `.artifacts/playground-tools/20251116-050631-clean-see1{,_annotated}.png`, `.artifacts/playground-tools/20251116-050649-clean-see2{,_annotated}.png`, and CLI outputs in shell history.
-  - Regression artifacts: `.artifacts/playground-tools/20251217-201134-click-snapshot-missing.json`, `.artifacts/playground-tools/20251217-201134-move-snapshot-missing.json`, `.artifacts/playground-tools/20251217-201134-scroll-snapshot-missing.json`
+  - Regression artifacts:
+    - `.artifacts/playground-tools/20251217-201134-click-snapshot-missing.json`
+    - `.artifacts/playground-tools/20251217-201134-move-snapshot-missing.json`
+    - `.artifacts/playground-tools/20251217-201134-scroll-snapshot-missing.json`
+    - `.artifacts/playground-tools/20251217-202239-snapshot-missing-drag.json`
+    - `.artifacts/playground-tools/20251217-202239-snapshot-missing-swipe.json`
+    - `.artifacts/playground-tools/20251217-202239-snapshot-missing-type.json`
+    - `.artifacts/playground-tools/20251217-202239-snapshot-missing-hotkey.json`
+    - `.artifacts/playground-tools/20251217-202239-snapshot-missing-press.json`
 
 ### ✅ `permissions` command – status snapshot
 - **Command**: `polter peekaboo -- permissions status --json-output > .artifacts/playground-tools/20251116-051000-permissions-status.json`
