@@ -12,11 +12,15 @@ read_when:
 - For each tool run, capture an OSLog transcript with `Apps/Playground/scripts/playground-log.sh --output <file>` so we have durable evidence that the action completed (e.g., `[Click]`, `[Scroll]` entries).
 - Update this document every time you start/finish a tool, and log deeper repro notes or bugs under `Apps/Playground/PLAYGROUND_TEST.md` so the next person can keep going.
 - Fix any issues you discover while executing the plan. If a fix is large, land it first, then rerun the affected tool plan and refresh the log artifacts.
-- Use `polter peekaboo -- <command>` for every CLI invocation so we always hit the freshest binary, and prefer tmux sessions (via `./runner tmux new-session -- <cmd>`) for any run expected to exceed ~1 minute.
+- Run the CLI via Poltergeist so you never test stale bits:
+  - Preferred (always works): `pnpm run peekaboo -- <command>`
+  - Optional (if your shell is wired for it): `polter peekaboo -- <command>`
+  - For long runs, use tmux.
 
 ## Environment & Logging Setup
-1. Ensure Poltergeist is healthy: `npm run poltergeist:status`; start it with `npm run poltergeist:haunt` if needed.
+1. Ensure Poltergeist is healthy: `pnpm run poltergeist:status`; start it with `pnpm run poltergeist:haunt` if needed.
 2. Launch Playground (`Apps/Playground/Playground.app` via Xcode or `open Apps/Playground/Playground.xcodeproj`). Keep it foregrounded on Space 1 to avoid focus surprises.
+   - Prefer the dedicated fixture windows (menu `Fixtures`, shortcuts `⌘⇧1…⌘⇧7`) so each tool targets a stable window title (“Click Fixture”, “Scroll Fixture”, etc.) instead of relying on TabView state.
 3. Prepare a log root once per session:
    ```bash
    LOG_ROOT=${LOG_ROOT:-$PWD/.artifacts/playground-tools}
@@ -28,7 +32,7 @@ read_when:
    LOG_FILE="$LOG_ROOT/$(date +%Y%m%d-%H%M%S)-${TOOL,,}.log"
    ./Apps/Playground/scripts/playground-log.sh -c "$TOOL" --last 10m --all -o "$LOG_FILE"
    ```
-5. Keep the Playground UI on the matching view (ClickTestingView, TextInputView, etc.) and run `polter peekaboo -- see --app Playground` anytime you need a fresh snapshot ID for element targeting. Record the snapshot ID in your notes.
+5. Keep the Playground UI on the matching view (ClickTestingView, TextInputView, etc.) and run `pnpm run peekaboo -- see --app Playground` anytime you need a fresh snapshot ID for element targeting. Record the snapshot ID in your notes.
 6. After executing the tool, append verification notes (log file path, snapshot ID, observed behavior) to the table below and add detailed findings to `Apps/Playground/PLAYGROUND_TEST.md`.
 
 ## Execution Loop
@@ -45,40 +49,44 @@ read_when:
 ### Vision & Capture
 | Tool | Playground coverage | Log focus | Sample CLI entry point | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
-| `see` | Entire Playground main window (any view) | Capture snapshot metadata via CLI output + optional `Click` logs for follow-on actions | `polter peekaboo -- see --app Playground --path /tmp/see-playground.png` | Verified – ScreenCaptureKit path restored and snapshot 5B5A2C09… captures ClickTestingView reliably | `.artifacts/playground-tools/20251116-082056-see-playground.json` |
+| `see` | Prefer fixture windows (“Click Fixture”, “Scroll Fixture”, etc.) | Capture snapshot metadata via CLI output + optional Playground logs for follow-on actions | `polter peekaboo -- see --app Playground --mode window --window-title "Click Fixture"` | Verified – `--window-title` now resolves against ScreenCaptureKit windows and element detection is pinned to the captured `CGWindowID` | `.artifacts/playground-tools/20251217-153107-see-click-for-move.json` |
 | `image` | Playground window (full or element-specific) | Use `Image` artifacts; note timestamp in `LOG_FILE` | `polter peekaboo -- image window --app Playground --output /tmp/playground-window.png` | Verified – window + screen captures succeed after capture fallback fix | `.artifacts/playground-tools/20251116-082109-image-window-playground.json`, `.artifacts/playground-tools/20251116-082125-image-screen0.json` |
+| `capture` | Short `capture live` against Playground (5–10s) | Verify artifacts (`metadata.json`, `contact.png`, frames) | `polter peekaboo -- capture live --mode window --app Playground --duration 5 --threshold 0 --json-output` | Verified – window capture writes contact sheet + metadata | `.artifacts/playground-tools/20251217-133751-capture-live.json` |
 | `list` | Validate `apps`, `windows`, `screens`, `menubar`, `permissions` while Playground is running | `playground-log` optional (`Window` for focus changes) | `polter peekaboo -- list windows --app Playground` etc. | Verified – apps/windows/screens/menubar/permissions captured 2025-11-16 | `.artifacts/playground-tools/20251116-142111-list-apps.json`, `.artifacts/playground-tools/20251116-142111-list-windows-playground.json`, `.artifacts/playground-tools/20251116-142122-list-screens.json`, `.artifacts/playground-tools/20251116-142122-list-menubar.json`, `.artifacts/playground-tools/20251116-142122-list-permissions.json` |
 | `tools` | Compare CLI output against ToolRegistry | No Playground log required; attach JSON to notes | `polter peekaboo -- tools --native-only --json-output` | Verified – native + MCP listings captured 2025-11-16 | `.artifacts/playground-tools/20251116-142009-tools-native.json`, `.artifacts/playground-tools/20251116-142009-tools-mcp.txt` |
 | `run` | Execute scripted multi-step flows against Playground fixtures | Logs depend on embedded commands | `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json` | Verified – playground-smoke script | `.artifacts/playground-tools/20251116-050504-run-playground.json` |
 | `sleep` | Inserted between Playground actions | Observe timestamps in log file | `polter peekaboo -- sleep 1500` | Verified – manual timing around CLI pause | `python wrapper measuring ./runner polter peekaboo -- sleep 2000` |
 | `clean` | Snapshot cache after `see` runs | Inspect `~/.peekaboo/snapshots` & ensure Playground unaffected | `polter peekaboo -- clean --snapshot <id>` | Verified – removed snapshot 5408D893… and confirmed re-run reports none | `.peekaboo/snapshots/5408D893-E9CF-4A79-9B9B-D025BF9C80BE (deleted)` |
+| `clipboard` | Clipboard smoke (save/set/get/restore) | Verify readback + restore user clipboard | `polter peekaboo -- run docs/testing/fixtures/clipboard-smoke.peekaboo.json --json-output` | Verified – readback + restore succeeded | `.artifacts/playground-tools/20251217-133751-clipboard-smoke.json` |
 | `config` | Validate config commands while Playground idle | N/A | `polter peekaboo -- config show` | Verified – show/validate outputs captured 2025-11-16 | `.artifacts/playground-tools/20251116-051200-config-show-effective.json` |
 | `permissions` | Ensure status/grant flow works with Playground | `playground-log` `App` category (should log when permissions toggled) | `polter peekaboo -- permissions status` | Verified – Screen Recording & Accessibility granted | `.artifacts/playground-tools/20251116-051000-permissions-status.json` |
 | `learn` | Dump agent guide | N/A | `polter peekaboo -- learn > $LOG_ROOT/learn.txt` | Verified – latest dump saved 2025-11-16 | `.artifacts/playground-tools/20251116-051300-learn.txt` |
+| `bridge` | Bridge host connectivity (local vs Peekaboo.app/Clawdis) | N/A | `polter peekaboo -- bridge status --json-output` | Verified – resolved to local execution | `.artifacts/playground-tools/20251217-133751-bridge-status.json` |
 
 ### Interaction Tools
 | Tool | Playground surface | Log category | Sample CLI | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
-| `click` | ClickTestingView buttons/areas | `Click` | `polter peekaboo -- click "Single Click"` | Verified – see snapshot 263F8CD6… w/ log capture | `.artifacts/playground-tools/20251116-051025-click.log` |
-| `type` | TextInputView fields | `Text` + `Focus` | `polter peekaboo -- type "Hello Playground" --clear --snapshot <id>` | Verified – basic + number field coverage 2025-11-16 | `.artifacts/playground-tools/20251116-051202-text.log` |
-| `press` | KeyboardView key detection field | `Keyboard` | `polter peekaboo -- press return --snapshot <id>` | Verified – return + repeated arrow presses logged, invalid key errors | `.artifacts/playground-tools/20251116-090141-see-keyboardtab.json`, `.artifacts/playground-tools/20251116-090455-keyboard.log` |
-| `hotkey` | KeyboardView hotkey text area / menu shortcuts | `Keyboard` & `Menu` | `polter peekaboo -- hotkey --keys "cmd,shift,l" --snapshot <id>` | Verified – logs captured 2025-11-16 | `.artifacts/playground-tools/20251116-051654-keyboard-hotkey.log` |
-| `scroll` | ScrollTestingView vertical/horizontal lists | `Scroll` | `polter peekaboo -- scroll --direction down --amount 5 --snapshot <id>` | Verified – CLI + Playground Scroll logs captured 2025-11-16 | `.artifacts/playground-tools/20251116-085714-see-scrolltab.json`, `.artifacts/playground-tools/20251116-085815-scroll.log` |
-| `swipe` | Gesture area inside ScrollTestingView | `Gesture` | `polter peekaboo -- swipe --from-coords 1100,520 --to-coords 700,520` | Verified – horizontal + vertical swipes logged (2025-11-16) | `.artifacts/playground-tools/20251116-085714-see-scrolltab.json`, `.artifacts/playground-tools/20251116-090041-gesture.log` |
-| `drag` | DragDropView items & drop zones | `Drag` | `polter peekaboo -- drag --snapshot <id> --from elem_15 --to elem_24` | Verified – toggle to Drag tab via `click --on elem_79`, then drag Item A → zone1 | `.artifacts/playground-tools/20251116-085142-see-afterclick-elem79.json`, `.artifacts/playground-tools/20251116-085233-drag.log`, `.artifacts/playground-tools/20251116-085346-drag-elem17.json` |
-| `move` | ClickTestingView coordinate targets (e.g., nested area) | `Focus` (cursor move) & `Click` follow-up | `polter peekaboo -- move 600,600` | Verified – coordinate, center, and snapshot-targeted moves succeeding | `.artifacts/playground-tools/20251116-085714-see-scrolltab.json`, `[CLI output only pending Focus logs]` |
+| `click` | Click Fixture window | `Click` | `polter peekaboo -- click "Single Click" --app boo.peekaboo.playground.debug --snapshot <id>` | Verified – Click Fixture E2E (2025-12-17) | `.artifacts/playground-tools/20251217-152024-click.log` |
+| `type` | Text Fixture window | `Text` + `Focus` | `polter peekaboo -- type "Hello Playground" --clear --snapshot <id>` | Verified – Text Fixture E2E (2025-12-17) | `.artifacts/playground-tools/20251217-152047-text.log` |
+| `press` | Keyboard Fixture window | `Keyboard` | `polter peekaboo -- press return --snapshot <id>` | Verified – keypresses + repeats logged (2025-12-17) | `.artifacts/playground-tools/20251217-152138-keyboard.log` |
+| `hotkey` | Playground menu shortcuts | `Keyboard` & `Menu` | `polter peekaboo -- hotkey --keys "cmd,1"` | Verified – digit hotkeys (2025-12-17) | `.artifacts/playground-tools/20251217-152100-menu.log` |
+| `scroll` | Scroll Fixture window | `Scroll` | `polter peekaboo -- scroll --direction down --amount 8 --on vertical-scroll --snapshot <id>` | Verified – scroll offsets logged (2025-12-17) | `.artifacts/playground-tools/20251217-153521-scroll.log` |
+| `swipe` | Scroll Fixture gesture area | `Gesture` | `polter peekaboo -- swipe --from <elem> --to <elem> --snapshot <id>` | Verified – swipe direction + distance logged (2025-12-17) | `.artifacts/playground-tools/20251217-152843-gesture.log` |
+| `drag` | Drag Fixture window | `Drag` | `polter peekaboo -- drag --from <elem> --to <elem> --snapshot <id>` | Verified – item dropped into zone (2025-12-17) | `.artifacts/playground-tools/20251217-152934-drag.log` |
+| `move` | Click Fixture mouse probe | `Control` | `polter peekaboo -- move --id <elem> --snapshot <id> --smooth` | Verified – cursor movement emits deterministic probe logs (2025-12-17) | `.artifacts/playground-tools/20251217-153107-control.log` |
 
 ### Windows, Menus, Apps
 | Tool | Playground validation target | Log category | Sample CLI | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
-| `window` | WindowTestingView controls + extra Playground windows | `Window` | `polter peekaboo -- window focus --app Playground` | Verified – Playground list/move/resize/set-bounds captured 2025-11-16 | `.artifacts/playground-tools/20251116-194900-window.log` |
+| `window` | Window Fixture window + `list windows` bounds | `Window` | `polter peekaboo -- window move --app boo.peekaboo.playground.debug --window-title "Window Fixture"` | Verified – focus/move/resize validated (2025-12-17) | `.artifacts/playground-tools/20251217-153552-windows.json` |
 | `space` | macOS Spaces while Playground anchored on Space 1 | `Space` | `polter peekaboo -- space list --detailed` | Verified – list/switch/move now emit `[Space]` logs (instr. added 2025-11-16) | `.artifacts/playground-tools/20251116-205548-space.log` |
-| `menu` | Playground “Test Menu” + context menus | `Menu` | `polter peekaboo -- menu click --path "Test Menu>Test Action 1" --app Playground` | Verified – menu click + disabled error cases logged 2025-11-16 | `.artifacts/playground-tools/20251116-195020-menu.log` |
+| `menu` | Playground “Test Menu” | `Menu` | `polter peekaboo -- menu click --app boo.peekaboo.playground.debug --path "Test Menu>Submenu>Nested Action A"` | Verified – nested menu click logged (2025-12-17) | `.artifacts/playground-tools/20251217-153302-menu.log` |
 | `menubar` | macOS menu extras (Wi-Fi, Clock) plus Playground status icons | `Menu` (system) | `polter peekaboo -- menubar list --json-output` | Verified – list + click captured; logs via Control Center predicate | `.artifacts/playground-tools/20251116-053932-menubar.log` |
 | `app` | Launch/quit/focus Playground + helper apps (TextEdit) | `App` + `Focus` | `polter peekaboo -- app list --include-hidden --json-output` | Verified – Playground app list/switch/hide/launch captured 2025-11-16 | `.artifacts/playground-tools/20251116-195420-app.log` |
 | `open` | Open Playground fixtures/documents | `App`/`Focus` | `polter peekaboo -- open Apps/Playground/README.md --app TextEdit --json-output` | Verified – TextEdit + browser + no-focus covered 2025-11-16 | `.artifacts/playground-tools/20251116-200220-open.log` |
 | `dock` | Dock item interactions w/ Playground icon | `App` + `Window` | `polter peekaboo -- dock list --json-output` | Verified – right-click + menu selection now captured with `[Dock]` logs | `.artifacts/playground-tools/20251116-205850-dock.log` |
 | `dialog` | System dialog triggered from Playground (e.g., File > Open) | `Menu` + `Dialog` logs | `polter peekaboo -- dialog list --app TextEdit` | Verified – spawn Save sheet to test | `.artifacts/playground-tools/20251116-054316-dialog.log` |
+| `visualizer` | Visual feedback overlays while Playground is visible | Visual confirmation (overlays render) | `polter peekaboo -- visualizer` | Verified – manual overlay check (no OSLog) |  |
 
 ### Automation & Integrations
 | Tool | Playground coverage | Log category | Sample CLI | Status | Latest log |
@@ -102,12 +110,22 @@ The following subsections spell out the concrete steps, required Playground surf
 - **Log capture**: Optional `Click` capture if you immediately chain interactions with the new snapshot; otherwise store the PNG + snapshot metadata path.
 - **Pass criteria**: Snapshot folder exists, UI map contains Playground identifiers, CLI exits 0.
 - **2025-11-16 verification**: Re-enabled the ScreenCaptureKit path inside `Core/PeekabooCore/Sources/PeekabooAutomation/Services/Capture/ScreenCaptureService.swift` so the modern API runs before falling back to CGWindowList. `polter peekaboo -- see --app Playground --json-output --path .artifacts/playground-tools/20251116-082056-see-playground.png` now succeeds (snapshot `5B5A2C09-4F4C-4893-B096-C7B4EB38E614`) and drops `.artifacts/playground-tools/20251116-082056-see-playground.{json,png}`.
+- **2025-12-17 rerun**: `pnpm run peekaboo -- see --app Playground --path .artifacts/playground-tools/20251217-132837-see-playground.png --json-output > .artifacts/playground-tools/20251217-132837-see-playground.json` succeeded (Peekaboo `main/842434be-dirty`).
 #### `image`
 - **View**: Keep Playground on ScrollTestingView to capture dynamic content.
 - **Steps**:
   1. `polter peekaboo -- image window --app Playground --output "$LOG_ROOT/image-playground.png"`.
   2. Repeat with `--screen main --bounds 100,100,800,600` to cover coordinate cropping.
 - **2025-11-16 verification**: After restoring the ScreenCaptureKit → CGWindowList fallback order, both window and screen captures succeed. Saved `.artifacts/playground-tools/20251116-082109-image-window-playground.{json,png}` and `.artifacts/playground-tools/20251116-082125-image-screen0.{json,png}`; CLI debug logs still note tiny background windows but the primary Playground window captures at 1200×852.
+
+#### `capture`
+- **View**: Any; keep Playground frontmost so the window is captureable.
+- **Steps**:
+  1. `polter peekaboo -- capture live --mode window --app Playground --duration 5 --threshold 0 --json-output > "$LOG_ROOT/capture-live.json"`.
+  2. Confirm the JSON points at the expected output directory (kept frames + `contact.png` + `metadata.json`).
+  3. Optional: repeat with `--highlight-changes` to ensure highlight rendering doesn’t crash.
+- **Pass criteria**: ≥2 kept frames, `metadata.json` exists, and the run exits 0.
+- **Schema check**: Cross-check MCP capture meta fields in `docs/commands/mcp-capture-meta.md` against the JSON payload.
 
 #### `list`
 - **Scenarios**: `list apps`, `list windows --app Playground`, `list screens`, `list menubar`, `list permissions`.
@@ -148,6 +166,13 @@ The following subsections spell out the concrete steps, required Playground surf
 - **Artifacts**: Directory listing before/after.
 - **2025-11-16 run**: Created snapshots `5408D893-…` and `129101F5-…` via back-to-back `see` captures (artifacts saved under `.artifacts/playground-tools/*clean-see*.png`). Ran `polter peekaboo -- clean --snapshot 5408D893-…` (freed 453 KB), verified folder removal (`ls ~/.peekaboo/snapshots`). Re-running the same clean command returned “No snapshots to clean”, confirming deletion. Attempting `clean --snapshot 5408D893-…` again yields 0 removals; `click --snapshot 5408D893-…` surfaces a generic “element not found” error—worth improving to mention missing snapshot.
 
+#### `clipboard`
+- **Steps**:
+  1. Run `polter peekaboo -- run docs/testing/fixtures/clipboard-smoke.peekaboo.json --json-output > "$LOG_ROOT/clipboard-smoke.json"`.
+  2. Confirm the `read_clipboard` step returns `"Peekaboo clipboard smoke"`.
+  3. Confirm the last step restores your original clipboard contents.
+- **Pass criteria**: Script succeeds and clipboard is restored.
+
 #### `config`
 - **Focus**: `config show`, `config validate`, `config models`.
 - **Steps**:
@@ -167,6 +192,13 @@ The following subsections spell out the concrete steps, required Playground surf
 #### `learn`
 - **Steps**: `polter peekaboo -- learn > "$LOG_ROOT/learn-latest.txt"`; record commit hash displayed at top.
 - **2025-11-16 run**: Saved `.artifacts/playground-tools/20251116-051300-learn.txt` for reference; includes commit metadata from peekaboo binary.
+
+#### `bridge`
+- **Steps**:
+  1. `polter peekaboo -- bridge status` and confirm it reports local execution vs. a remote host (Peekaboo.app / Clawdis).
+  2. `polter peekaboo -- bridge status --verbose --json-output > "$LOG_ROOT/bridge-status.json"` and sanity-check the selected host + probed sockets.
+  3. Repeat with `--no-remote` to confirm local-only mode is explicit and stable.
+- **Pass criteria**: Clear host selection output and no crashes.
 
 ### Interaction Tools
 
@@ -358,6 +390,13 @@ The following subsections spell out the concrete steps, required Playground surf
   - The list call enumerated the Save sheet (“Untitled Dialog”, two buttons, two text fields). The click call dismissed the dialog.
   - `.artifacts/playground-tools/20251116-091306-dialog.log` contains both automation events (`action=list`, `action=click button='Cancel'`), proving the logger instrumentation.
   - Repeat the `hotkey` step whenever you need to reopen the dialog for further testing.
+
+#### `visualizer`
+- **Setup**: Ensure `Peekaboo.app` is running (visual feedback host) and keep Playground visible so you can quickly spot overlays.
+- **Steps**:
+  1. `polter peekaboo -- visualizer`
+  2. Visually confirm you see (in order): screenshot flash, capture HUD, click ripple, typing overlay, scroll indicator, mouse trail, swipe path, hotkey HUD, window move overlay, app launch/quit animation, menu breadcrumb, dialog highlight, space switch indicator, and element detection overlay.
+- **Pass criteria**: No CLI errors and the full overlay sequence renders end-to-end.
 
 ### Automation & Integrations
 

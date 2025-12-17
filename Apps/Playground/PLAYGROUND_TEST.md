@@ -198,6 +198,44 @@
   1. `polter peekaboo -- move 600,600`
   2. `polter peekaboo -- move --to "Focus Basic Field" --snapshot B1F9128C-0007-4D14-930E-C9D70C1D779F --smooth`
   3. `polter peekaboo -- move --center --duration 300 --steps 15`
+
+## 2025-12-17
+
+### ✅ Repo sync
+- Pulled main + submodules to `origin/main` (all HTTPS). Resolved previous `project.pbxproj` conflict already landed.
+- AXorcist digit hotkeys fix was rebased onto submodule `main` (local commit `0f43484…`), so `peekaboo hotkey --keys "cmd,1"` works.
+
+### ✅ `see` window targeting + element detection scoping
+- **Problem**: `see --mode window --window-title …` could capture the correct window but still return elements from a different window (Playground fixtures all looked like TextInputView).
+- **Fix**: Propagate the captured `windowInfo.windowID` into `WindowContext`, and have element detection resolve the AX window by `CGWindowID` first.
+- **Artifacts**: `.artifacts/playground-tools/20251217-153107-see-click-for-move.json` (Click Fixture returns click controls like “Single Click”, not TextInputView elements).
+
+### ✅ Fixture windows (avoid TabView flakiness)
+- Added a `Fixtures` menu with `⌘⇧1…⌘⇧7` shortcuts opening dedicated windows (“Click Fixture”, “Text Fixture”, …).
+- This makes window-title targeting deterministic and keeps snapshots stable for tool tests.
+
+### ✅ `scroll` evidence logging (Playground)
+- **Bug**: ScrollTestingView’s offset logger was measuring the ScrollView container (always 0,0), so scroll actions looked like no-ops.
+- **Fix**: Measure the *content* offset inside the scroll view’s coordinate space.
+- **Artifacts**: `.artifacts/playground-tools/20251217-153521-scroll.log` shows `Vertical scroll offset … y=-…` after `peekaboo scroll`.
+
+### ✅ `move` evidence logging (Playground)
+- Added a “Mouse Movement” probe to Click Fixture that logs `Control` events when the cursor enters/moves over the probe.
+- **Artifacts**:
+  - Snapshot: `.artifacts/playground-tools/20251217-153107-see-click-for-move.json`
+  - Log: `.artifacts/playground-tools/20251217-153107-control.log` (contains `Mouse entered probe area` / `Mouse moved over probe area`).
+
+### ✅ E2E re-verifications (Playground)
+- `click`: `.artifacts/playground-tools/20251217-152024-click.log` contains `Single click on 'Single Click' button`.
+- `type`: `.artifacts/playground-tools/20251217-152047-text.log` contains `Basic text changed …`.
+- `press`: `.artifacts/playground-tools/20251217-152138-keyboard.log` contains `Key pressed … (Up Arrow)`.
+- `hotkey`: `.artifacts/playground-tools/20251217-152100-menu.log` contains `Test Action 1 clicked`.
+- `swipe`: `.artifacts/playground-tools/20251217-152843-gesture.log` contains `Swipe … Distance: …px`.
+- `drag`: `.artifacts/playground-tools/20251217-152934-drag.log` contains `Item dropped - Item A dropped in zone1`.
+- `menu`: `.artifacts/playground-tools/20251217-153302-menu.log` contains `Submenu > Nested Action A clicked`.
+
+### 📈 Quick perf notes
+- Recent `see` runs are ~0.8–1.4s for typical fixture windows (examples in `.artifacts/playground-tools/*-see-*.json` under `data.execution_time`).
 - **Findings**: Focus log now records entries (both from Playground UI and the CLI move command). The CLI entry still shows `<private>` in Console, so add more descriptive strings if we need richer auditing.
 
 ### ✅ `window` command – Playground window coverage
