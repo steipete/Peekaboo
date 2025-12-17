@@ -238,6 +238,8 @@
 ### ✅ E2E re-verifications (Playground)
 - `click`: `.artifacts/playground-tools/20251217-152024-click.log` contains `Single click on 'Single Click' button`.
 - `type`: `.artifacts/playground-tools/20251217-152047-text.log` contains `Basic text changed …`.
+- `controls` (Controls Fixture): `.artifacts/playground-tools/20251217-230454-control.log` contains `Checkbox … toggled`, `Segmented control changed …`, `Slider moved …`, and `Progress set to 75%`.
+  - Note: ControlsView is scrollable; after any `scroll`, re-run `see` before clicking elements further down (use `.artifacts/playground-tools/20251217-230454-see-controls-progress.json` as the post-scroll snapshot for progress buttons).
 - `press`: `.artifacts/playground-tools/20251217-152138-keyboard.log` contains `Key pressed … (Up Arrow)`.
 - `hotkey`: `.artifacts/playground-tools/20251217-152100-menu.log` contains `Test Action 1 clicked`.
 - `swipe`: `.artifacts/playground-tools/20251217-152843-gesture.log` contains `Swipe … Distance: …px`.

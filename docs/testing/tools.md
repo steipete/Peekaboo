@@ -253,6 +253,10 @@ The following subsections spell out the concrete steps, required Playground surf
   - `polter peekaboo -- app switch --to Playground` followed by `polter peekaboo -- click --on elem_6 --snapshot 263F8CD6-...` successfully hit the “View Logs” button (Playground log recorded the click).
   - Coordinate click `--coords 600,500` succeeded (see log); attempting `--on elem_disabled` produced expected `elementNotFound` error.
   - IDs like `B1` are not stable in this build; rely on `elem_*` IDs from the `see` output.
+- **2025-12-17 Controls Fixture add-on**:
+  - Open “Controls Fixture” via `⌘⌃3`, then drive checkboxes + segmented control by clicking snapshot IDs (`--on elem_…`) captured from `see`.
+  - **Important**: ControlsView is scrollable; after any `scroll`, re-run `see` before clicking elements further down (otherwise snapshot coordinates can be stale).
+  - Evidence: `.artifacts/playground-tools/20251217-230454-control.log` plus `.artifacts/playground-tools/20251217-230454-see-controls-top.json` and `.artifacts/playground-tools/20251217-230454-see-controls-progress.json`.
 
 #### `type`
 - **View**: TextInputView.
@@ -330,6 +334,9 @@ The following subsections spell out the concrete steps, required Playground surf
   - `polter peekaboo -- drag --snapshot BBF9D6B9-26CB-4370-8460-6C8188E7466C --from elem_15 --to elem_24 --duration 800 --steps 40` succeeded; Playground log `.artifacts/playground-tools/20251116-085233-drag.log` shows “Started dragging: Item A”, “Hovering over zone1”, and “Item dropped… zone1”, plus the CLI-side `[boo.peekaboo.playground:Drag] drag from=…` entry.
   - Captured a second run with JSON output (`.artifacts/playground-tools/20251116-085346-drag-elem17.json`) dragging Item B to zone2 so we have structured metadata (coords, duration, profile) for regression diffs.
   - We still keep the older coordinate-only recipe around as a fallback, but the default regression loop is now: **focus Playground → `see` → `click --on elem_79` → `drag --snapshot … --from elem_XX --to elem_YY` → archive the Drag log + CLI JSON.**
+- **2025-12-17 Controls Fixture add-on**:
+  - Slider adjustment works via `drag` when you compute a `--to-coords` inside the slider’s frame using the snapshot JSON.
+  - Evidence: `.artifacts/playground-tools/20251217-230454-drag-slider.json` and the corresponding `[Control] Slider moved …` lines in `.artifacts/playground-tools/20251217-230454-control.log`.
 
 #### `move`
 - **View**: ClickTestingView (target nested button) or ScrollTestingView.
