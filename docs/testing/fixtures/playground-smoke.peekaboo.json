@@ -15,12 +15,38 @@
       "comment": "Ensure Playground is foregrounded before we capture"
     },
     {
+      "stepId": "open_text_fixture",
+      "command": "hotkey",
+      "params": {
+        "generic": {
+          "_0": {
+            "key": "2",
+            "cmd": "true",
+            "ctrl": "true"
+          }
+        }
+      },
+      "comment": "Open the dedicated Text Fixture window (⌘⌃2) so element targeting is deterministic"
+    },
+    {
+      "stepId": "wait_for_fixture",
+      "command": "sleep",
+      "params": {
+        "generic": {
+          "_0": {
+            "duration": "0.3"
+          }
+        }
+      },
+      "comment": "Give the fixture window time to appear and become frontmost"
+    },
+    {
       "stepId": "capture_playground",
       "command": "see",
       "params": {
         "generic": {
           "_0": {
-            "app": "Playground",
+            "mode": "frontmost",
             "path": ".artifacts/playground-tools/run-script-see.png",
             "annotate": "true"
           }

@@ -54,10 +54,10 @@ read_when:
 | `capture` | Short `capture live` against Playground (5–10s) | Verify artifacts (`metadata.json`, `contact.png`, frames) | `polter peekaboo -- capture live --mode window --app Playground --duration 5 --threshold 0 --json-output` | Verified – window capture writes contact sheet + metadata | `.artifacts/playground-tools/20251217-133751-capture-live.json` |
 | `list` | Validate `apps`, `windows`, `screens`, `menubar`, `permissions` while Playground is running | `playground-log` optional (`Window` for focus changes) | `polter peekaboo -- list windows --app Playground` etc. | Verified – apps/windows/screens/menubar/permissions captured 2025-11-16 | `.artifacts/playground-tools/20251116-142111-list-apps.json`, `.artifacts/playground-tools/20251116-142111-list-windows-playground.json`, `.artifacts/playground-tools/20251116-142122-list-screens.json`, `.artifacts/playground-tools/20251116-142122-list-menubar.json`, `.artifacts/playground-tools/20251116-142122-list-permissions.json` |
 | `tools` | Compare CLI output against ToolRegistry | No Playground log required; attach JSON to notes | `polter peekaboo -- tools --native-only --json-output` | Verified – native + MCP listings captured 2025-11-16 | `.artifacts/playground-tools/20251116-142009-tools-native.json`, `.artifacts/playground-tools/20251116-142009-tools-mcp.txt` |
-| `run` | Execute scripted multi-step flows against Playground fixtures | Logs depend on embedded commands | `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json` | Verified – playground-smoke script | `.artifacts/playground-tools/20251116-050504-run-playground.json` |
+| `run` | Execute scripted multi-step flows against Playground fixtures | Logs depend on embedded commands | `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json` | Verified – playground-smoke script now opens the Text Fixture window via `⌘⌃2` (no TabView flakiness) | `.artifacts/playground-tools/20251217-173849-run-playground-smoke.json` |
 | `sleep` | Inserted between Playground actions | Observe timestamps in log file | `polter peekaboo -- sleep 1500` | Verified – manual timing around CLI pause | `python wrapper measuring ./runner polter peekaboo -- sleep 2000` |
 | `clean` | Snapshot cache after `see` runs | Inspect `~/.peekaboo/snapshots` & ensure Playground unaffected | `polter peekaboo -- clean --snapshot <id>` | Verified – removed snapshot 5408D893… and confirmed re-run reports none | `.peekaboo/snapshots/5408D893-E9CF-4A79-9B9B-D025BF9C80BE (deleted)` |
-| `clipboard` | Clipboard smoke (save/set/get/restore) | Verify readback + restore user clipboard | `polter peekaboo -- run docs/testing/fixtures/clipboard-smoke.peekaboo.json --json-output` | Verified – readback + restore succeeded | `.artifacts/playground-tools/20251217-133751-clipboard-smoke.json` |
+| `clipboard` | Clipboard smoke (save/set/get/restore) | Verify readback + restore user clipboard | `polter peekaboo -- run docs/testing/fixtures/clipboard-smoke.peekaboo.json --json-output` | Verified – readback + restore succeeded | `.artifacts/playground-tools/20251217-173849-run-clipboard-smoke.json` |
 | `config` | Validate config commands while Playground idle | N/A | `polter peekaboo -- config show` | Verified – show/validate outputs captured 2025-11-16 | `.artifacts/playground-tools/20251116-051200-config-show-effective.json` |
 | `permissions` | Ensure status/grant flow works with Playground | `playground-log` `App` category (should log when permissions toggled) | `polter peekaboo -- permissions status` | Verified – Screen Recording & Accessibility granted | `.artifacts/playground-tools/20251116-051000-permissions-status.json` |
 | `learn` | Dump agent guide | N/A | `polter peekaboo -- learn > $LOG_ROOT/learn.txt` | Verified – latest dump saved 2025-11-16 | `.artifacts/playground-tools/20251116-051300-learn.txt` |
@@ -144,12 +144,11 @@ The following subsections spell out the concrete steps, required Playground surf
 #### `run`
 - **Setup**: Create a sample `.peekaboo.json` (store under `docs/testing/fixtures/` once defined) that performs `see`, `click`, `type`, and `scroll`.
 - **Steps**:
-  1. Start Click + Text log captures.
-  2. Ensure Playground is showing TextInputView (e.g., `polter peekaboo -- app switch --to Playground` followed by `polter peekaboo -- click --snapshot <see-id> --on <Text Input tab id>`).
-  3. `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json --output "$LOG_ROOT/run-playground.json" --json-output`.
-  3. Confirm each embedded step produced matching log entries.
+  1. Start `Keyboard`, `Click`, and `Text` log captures.
+  2. `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json --output "$LOG_ROOT/run-playground.json" --json-output`.
+  3. Confirm each embedded step produced matching log entries (the script opens the Text Fixture window via `⌘⌃2` before running `see`/`click`/`type`).
 - **Notes**: Update fixture when tools change to keep coverage aligned.
-- **2025-11-16 run**: Created `docs/testing/fixtures/playground-smoke.peekaboo.json` (focus → see → click Focus Basic Field → type Basic Text Field). Execution succeeded with report `.artifacts/playground-tools/20251116-142711-run-playground.json` (snapshot `1763303232278-2419`) and screenshot artifact `.artifacts/playground-tools/run-script-see.png`. Script will fail if Playground isn’t on the Text Input tab, so click the “Text Input” tab first.
+- **2025-12-17 run**: Updated `docs/testing/fixtures/playground-smoke.peekaboo.json` to open the Text Fixture window (hotkey `⌘⌃2`) and reran successfully: `.artifacts/playground-tools/20251217-173849-run-playground-smoke.json` plus matching OSLog evidence in `.artifacts/playground-tools/20251217-173849-run-playground-smoke-{keyboard,click,text}.log`.
 
 #### `sleep`
 - **Steps**:

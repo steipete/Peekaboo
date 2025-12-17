@@ -2,11 +2,11 @@
 
 ## 2025-11-16
 
-### ⚠️ `see` command – Playground capture failing
+### ✅ `see` command – initial Playground capture failure (resolved)
 - **Command**: `polter peekaboo -- see --app Playground --path .artifacts/playground-tools/20251116-074900-see.png --json-output`
 - **Artifacts**: `.artifacts/playground-tools/20251116-074900-see.json`
-- **Result**: Fails with `INTERNAL_SWIFT_ERROR` (“Failed to start stream due to audio/video capture failure”) because the window enumerator only finds a 64×64 stub window for Playground (see `.artifacts/playground-tools/20251116-075220-window-list-playground.json`). Need to ensure Playground.app presents a capture-sized window (launch via Xcode and bring to front) before rerunning `see`.
-- **Attempts**: Tried launching `.derived-data/Playground/Build/Products/Debug/Playground.app` and resizing via AppleScript (`osascript` set window 1 size/position), but `window list` still reports a single 64×64 window, so `see` continues to fail. Follow-up required on the Playground app or capture service to make a full-size window available.
+- **Result**: This was failing on 2025-11-16 with `INTERNAL_SWIFT_ERROR` (“Failed to start stream due to audio/video capture failure”) when only a 64×64 stub window was visible (see `.artifacts/playground-tools/20251116-075220-window-list-playground.json`).
+- **Resolution**: The ScreenCaptureKit fallback fix below restored reliable captures; keep this section as historical context.
 
 ### ✅ `see` command – ScreenCaptureKit fallback restored
 - **Command**: `polter peekaboo -- see --app Playground --json-output --path .artifacts/playground-tools/20251116-082056-see-playground.png`
@@ -72,12 +72,14 @@
 - **Notes**: No Playground interaction needed; artifacts captured for comparison when new tools land.
 
 ### ✅ `run` command – playground-smoke script
-- **Script**: `docs/testing/fixtures/playground-smoke.peekaboo.json` (focus Playground, run `see`, click "Focus Basic Field", type "Playground smoke")
-- **Prep**: Make sure Playground is on TextInputView before running—use `see` and `click --on <text-input-tab-id>` if another tab is active.
-- **Command**: `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json --output .artifacts/playground-tools/20251116-142711-run-playground.json --json-output`
-- **Artifacts**: `.artifacts/playground-tools/20251116-142711-run-playground.json`, `.artifacts/playground-tools/run-script-see.png`
-- **Verification**: Execution report shows 4/4 steps succeeded in 2.3 s, `see` step produced snapshot `1763303232278-2419`; Playground UI updated (basic field text cleared + replaced).
-- **Notes**: Script parameters must use the enum coding format (`{"generic":{"_0":{...}}}`) so ProcessService can normalize them. If you forget to switch tabs, step 3 fails with “Element not found: Focus Basic Field”.
+- **Script**: `docs/testing/fixtures/playground-smoke.peekaboo.json` (focus Playground → open Text Fixture via `⌘⌃2` → `see` frontmost → click "Focus Basic Field" → type "Playground smoke")
+- **Command**: `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json --output .artifacts/playground-tools/20251217-173849-run-playground-smoke.json --json-output`
+- **Artifacts**:
+  - `.artifacts/playground-tools/20251217-173849-run-playground-smoke.json`
+  - `.artifacts/playground-tools/run-script-see.png`
+  - `.artifacts/playground-tools/20251217-173849-run-playground-smoke-{keyboard,click,text}.log`
+- **Verification**: Execution report shows 6/6 steps succeeded; the fixture hotkey removes TabView flakiness and the Playground logs confirm the click + text update.
+- **Notes**: Script parameters must use the enum coding format (`{"generic":{"_0":{...}}}`) so ProcessService can normalize them.
 
 ### ✅ `sleep` command – timing verification
 - **Command**: `python - <<'PY' … subprocess.run(["./runner","polter","peekaboo","--","sleep","2000"]) …` (see shell history)
@@ -164,40 +166,21 @@
   3. `polter peekaboo -- hotkey --keys "foo,bar"`
 - **Verification**: Keyboard logs show the expected characters (L/1) with timestamps matching the commands. Invalid combo correctly errors with `Unknown key: 'foo'`.
 
-### ⚠️ `scroll` command – logs now emitted
-- **Logs**: `.artifacts/playground-tools/20251116-073820-scroll.log`
-- **Commands**:
-  1. `polter peekaboo -- see --app Playground --json-output` → snapshot `263F8CD6-832E-4E1C-98CC-2A2F6D5C67C7`
-  2. `polter peekaboo -- scroll --direction down --amount 5 --snapshot 263F8CD6-…`
-- **Findings**:
-  - ScrollTestingView now logs offsets via the new ScrollOffsetReader helper, so the Scroll log category shows entries even when the CLI performs the scroll.
-  - Accessibility identifiers like `vertical-scroll` exist in the view hierarchy, but `see` output still doesn’t surface them—need to investigate AX export so `--on` works without coordinates.
+### ✅ `scroll` command – offsets + `--on` identifiers (resolved)
+- **Resolved on 2025-12-17**: Use the Scroll Fixture window + `scroll --on vertical-scroll|horizontal-scroll`; the Scroll log now records content offsets.
+- **Artifacts**: `.artifacts/playground-tools/20251217-153521-scroll.log`
 
-### ⚠️ `swipe` command – gesture log missing
-- **Logs**: `.artifacts/playground-tools/20251116-074000-gesture.log`
-- **Commands**:
-  1. `polter peekaboo -- swipe --from-coords 900,450 --to-coords 600,450 --duration 600`
-  2. `polter peekaboo -- swipe --from-coords 700,600 --to-coords 700,350 --profile human --duration 800 --snapshot 4644659E-B185-441D-8ED3-5D5FC8976833`
-  3. `polter peekaboo -- swipe --from-coords 600,600 --to-coords 600,400 --right-button` (expected error)
-- **Findings**: Gesture log now records synthetic swipes (albeit privacy-redacted in Console). Need follow-up to add more descriptive log messages (direction/distance) inside GestureArea to make analysis easier.
+### ✅ `swipe` command – gesture logs (resolved)
+- **Resolved on 2025-12-17**: GestureArea now logs swipe direction + distance for deterministic verification.
+- **Artifacts**: `.artifacts/playground-tools/20251217-152843-gesture.log`
 
-### ⚠️ `drag` command – cannot reach DragDropView via automation
-- **Logs**: `.artifacts/playground-tools/20251116-074430-drag.log`
-- **Commands**:
-  1. `polter peekaboo -- see --app Playground --json-output` (still fails with `Failed to start stream due to audio/video capture failure`; capture phase reports only “window too small” / `layer != 0` windows even after launching `.derived-data/.../Playground.app`)
-  2. `polter peekaboo -- click "Drag & Drop" --snapshot …` → `elementNotFound`
-  3. `polter peekaboo -- drag --from-coords 500,500 --to-coords 700,700 --duration 800`
-- **Findings**:
-  - DragDropView now exposes identifiers (`drag-drop-header`, `drag-drop-items`, `drop-zones`, `free-drag-area`, `draggable-1`, etc.), but we can’t surface them until `see` captures Playground’s window.
-  - Coordinate drags succeed and the Drag OSLog category records the action (`.artifacts/...074430-drag.log`).
-  - Next: debug the capture failure (likely a screen-recording fall-back bug) so `see` yields the Drag tab, then reattempt `--from/--to` ID drags.
+### ✅ `drag` command – element-based drag/drop (resolved)
+- **Resolved on 2025-12-17**: Drag Fixture exposes stable identifiers and logs drop outcomes.
+- **Artifacts**: `.artifacts/playground-tools/20251217-152934-drag.log`
 
-### ⚠️ `move` command – cursor logs missing
-- **Logs**: `.artifacts/playground-tools/20251116-074500-focus.log`
-- **Commands**:
-  1. `polter peekaboo -- move 600,600`
-  2. `polter peekaboo -- move --to "Focus Basic Field" --snapshot B1F9128C-0007-4D14-930E-C9D70C1D779F --smooth`
-  3. `polter peekaboo -- move --center --duration 300 --steps 15`
+### ✅ `move` command – cursor probe logs (resolved)
+- **Resolved on 2025-12-17**: Click Fixture includes a dedicated mouse probe so `move` can be verified via OSLog (not just CLI output).
+- **Artifacts**: `.artifacts/playground-tools/20251217-153107-control.log`
 
 ## 2025-12-17
 
@@ -409,15 +392,15 @@
 - **Result**: All commands succeeded; `.artifacts/playground-tools/20251116-090840-app.log` shows `list`, `switch`, `hide`, `unhide`, `launch`, and `quit` entries with bundle IDs and PIDs. No anomalies observed—`hide` does not auto-activate afterward (matching CLI messaging).
 - **Result**: All commands succeeded; `.artifacts/playground-tools/20251116-090840-app.log` shows `list`, `switch`, `hide`, `unhide`, `launch`, and `quit` entries with bundle IDs and PIDs. No anomalies observed—`hide` does not auto-activate afterward (matching CLI messaging).
 
-### ⚠️ `dock` command – right-click targeting Finder still fails
-- **Logs**: `.artifacts/playground-tools/20251116-200758-dock.log`
-- **Artifacts**: `.artifacts/playground-tools/20251116-200750-dock-list.json`, `.artifacts/playground-tools/20251116-200751-dock-launch.json`, `.artifacts/playground-tools/20251116-200751-dock-hide.json`, `.artifacts/playground-tools/20251116-200752-dock-show.json`, `.artifacts/playground-tools/20251116-200753-dock-right-click.json`
+### ✅ `dock` command – right-click + menu selection (resolved)
+- **Logs**: `.artifacts/playground-tools/20251116-205850-dock.log`
+- **Artifacts**: `.artifacts/playground-tools/20251116-200750-dock-list.json`, `.artifacts/playground-tools/20251116-200752-dock-launch.json`, `.artifacts/playground-tools/20251116-200753-dock-hide.json`, `.artifacts/playground-tools/20251116-200753-dock-show.json`, `.artifacts/playground-tools/20251116-205828-dock-right-click.json`
 - **Commands**:
   1. `polter peekaboo -- dock list --json-output`
   2. `polter peekaboo -- dock launch Playground`
   3. `polter peekaboo -- dock hide` / `dock show`
   4. `polter peekaboo -- dock right-click --app Finder --select "New Finder Window" --json-output`
-- **Findings**: List/launch/hide/show all succeed and log as expected. Right-click currently fails with `Dock application not found or not running.` even though Finder appears in `dock list` (it shows up under the QuickLook UI service). Need to adjust DockService’s lookup before marking this tool verified.
+- **Notes**: If right-click targeting flakes, move the cursor to the Dock first and retry; Finder must be present in the Dock for menu lookup to succeed.
 
 ### ✅ `open` command – TextEdit + browser targets
 - **Commands**:
@@ -432,7 +415,7 @@
   2. `polter peekaboo -- space switch --to 1`
   3. `polter peekaboo -- space switch --to 2 --json-output > .artifacts/playground-tools/20251116-091602-space-switch-2.json` (expected failure; only one space exists)
   4. `polter peekaboo -- space move-window --app Playground --to 1 --follow`
-- **Result**: All commands behaved as expected—Space enumerations still report a single desktop and the Space 2 attempt returns `VALIDATION_ERROR`. `playground-log.sh -c Space` continues to output empty logs (`.artifacts/playground-tools/20251116-091632-space.log`) because no dedicated Space logger exists yet.
+- **Result**: All commands behaved as expected—Space enumerations still report a single desktop and the Space 2 attempt returns `VALIDATION_ERROR`. A dedicated Space logger now emits `[Space]` entries; see `.artifacts/playground-tools/20251116-205548-space.log` for evidence.
 
 ### ✅ `agent` command – list + sample tasks
 - **Commands**:
