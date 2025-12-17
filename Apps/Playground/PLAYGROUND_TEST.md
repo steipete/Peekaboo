@@ -241,6 +241,11 @@
 - `drag`: `.artifacts/playground-tools/20251217-152934-drag.log` contains `Item dropped - Item A dropped in zone1`.
 - `menu`: `.artifacts/playground-tools/20251217-153302-menu.log` contains `Submenu > Nested Action A clicked`.
 
+### ✅ `visualizer` command – JSON dispatch report (new)
+- **Problem**: `peekaboo visualizer --json-output` previously exited 0 with no output.
+- **Fix**: Visualizer command now emits a JSON step report (and fails if any step wasn’t dispatched).
+- **Artifact**: `.artifacts/playground-tools/20251217-204548-visualizer.json` (15/15 steps `dispatched=true`).
+
 ### ✅ Context menu (right-click) – `click --right`
 - **Setup**: Open Click Fixture (`Fixtures → Open Click Fixture`, shortcut `⌘⌃1`).
 - **Commands**:

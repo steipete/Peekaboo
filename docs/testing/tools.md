@@ -95,7 +95,7 @@ read_when:
 | `open` | Open Playground fixtures/documents | `App`/`Focus` | `polter peekaboo -- open Apps/Playground/README.md --app TextEdit --json-output` | Verified – TextEdit + browser + no-focus covered 2025-11-16 | `.artifacts/playground-tools/20251116-200220-open.log` |
 | `dock` | Dock item interactions w/ Playground icon | `App` + `Window` | `polter peekaboo -- dock list --json-output` | Verified – right-click + menu selection now captured with `[Dock]` logs | `.artifacts/playground-tools/20251116-205850-dock.log` |
 | `dialog` | System dialog triggered from Playground (e.g., File > Open) | `Menu` + `Dialog` logs | `polter peekaboo -- dialog list --app TextEdit` | Verified – spawn Save sheet to test | `.artifacts/playground-tools/20251116-054316-dialog.log` |
-| `visualizer` | Visual feedback overlays while Playground is visible | Visual confirmation (overlays render) | `polter peekaboo -- visualizer` | Verified – manual overlay check (no OSLog) |  |
+| `visualizer` | Visual feedback overlays while Playground is visible | Visual confirmation (overlays render) + JSON dispatch report | `polter peekaboo -- visualizer --json-output` | Verified – dispatch report + manual overlay check | `.artifacts/playground-tools/20251217-204548-visualizer.json` |
 
 ### Automation & Integrations
 | Tool | Playground coverage | Log category | Sample CLI | Status | Latest log |
@@ -434,9 +434,9 @@ The following subsections spell out the concrete steps, required Playground surf
 #### `visualizer`
 - **Setup**: Ensure `Peekaboo.app` is running (visual feedback host) and keep Playground visible so you can quickly spot overlays.
 - **Steps**:
-  1. `polter peekaboo -- visualizer`
+  1. `polter peekaboo -- visualizer --json-output > .artifacts/playground-tools/<timestamp>-visualizer.json`
   2. Visually confirm you see (in order): screenshot flash, capture HUD, click ripple, typing overlay, scroll indicator, mouse trail, swipe path, hotkey HUD, window move overlay, app launch/quit animation, menu breadcrumb, dialog highlight, space switch indicator, and element detection overlay.
-- **Pass criteria**: No CLI errors and the full overlay sequence renders end-to-end.
+- **Pass criteria**: No CLI errors, the JSON report shows every step `dispatched=true`, and the full overlay sequence renders end-to-end.
 
 ### Automation & Integrations
 

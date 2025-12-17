@@ -16,12 +16,12 @@ Runs a lightweight smoke sequence that fires a representative set of visualizer 
 ## Usage
 ```bash
 polter peekaboo -- visualizer
+polter peekaboo -- visualizer --json-output > .artifacts/playground-tools/visualizer.json
 ```
 
 ## Notes
-- This is a manual visual check: success means the command exits 0 and you can see the overlay sequence render.
+- This is primarily a manual visual check: success means the command exits 0, dispatches all visualizer events, and you can see the overlay sequence render.
 - If nothing appears, verify:
   - `Peekaboo.app` is running and reachable
   - permissions are granted (`peekaboo permissions status`)
   - your screen isn’t being captured by another app that blocks overlays
-
