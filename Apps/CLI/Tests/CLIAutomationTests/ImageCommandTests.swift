@@ -86,6 +86,24 @@ struct ImageCommandTests {
         #expect(command.path == outputPath)
     }
 
+    @Test("Command infers format from output path extension", .tags(.fast))
+    func imageCommandInfersFormatFromOutputPathExtension() throws {
+        let command = try ImageCommand.parse([
+            "--path", "/tmp/test.jpg",
+        ])
+        #expect(command.format == .jpg)
+
+        let commandJPEG = try ImageCommand.parse([
+            "--path", "/tmp/test.jpeg",
+        ])
+        #expect(commandJPEG.format == .jpg)
+
+        let commandPNG = try ImageCommand.parse([
+            "--path", "/tmp/test.png",
+        ])
+        #expect(commandPNG.format == .png)
+    }
+
     @Test("Command with format option", .tags(.fast))
     func imageCommandWithFormat() throws {
         // Test format specification

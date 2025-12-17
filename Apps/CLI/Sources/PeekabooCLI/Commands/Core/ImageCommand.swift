@@ -688,8 +688,18 @@ extension ImageCommand: CommanderBindableCommand {
         self.windowTitle = values.singleOption("windowTitle")
         self.windowIndex = try values.decodeOption("windowIndex", as: Int.self)
         self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
-        if let parsedFormat: ImageFormat = try values.decodeOptionEnum("format") {
+        let parsedFormat: ImageFormat? = try values.decodeOptionEnum("format")
+        if let parsedFormat {
             self.format = parsedFormat
+        } else if let path = self.path?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !path.isEmpty {
+            let expanded = (path as NSString).expandingTildeInPath
+            let ext = URL(fileURLWithPath: expanded).pathExtension.lowercased()
+            if ext == "jpg" || ext == "jpeg" {
+                self.format = .jpg
+            } else if ext == "png" {
+                self.format = .png
+            }
         }
         if let parsedFocus: CaptureFocus = try values.decodeOptionEnum("captureFocus") {
             self.captureFocus = parsedFocus
