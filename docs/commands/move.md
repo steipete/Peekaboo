@@ -13,16 +13,17 @@ read_when:
 | Flag | Description |
 | --- | --- |
 | `[x,y]` | Optional positional coordinates (e.g., `540,320`). |
+| `--coords <x,y>` | Coordinate target as an option (alias for the positional argument). |
 | `--id <element-id>` | Jump to a Peekaboo element’s midpoint based on the latest snapshot. |
 | `--to <query>` | Resolve an element by text/query using `waitForElement` (5 s timeout). |
-| `--center` | Ignore other targets and move to the main screen’s center. |
+| `--center` | Move to the main screen’s center (exclusive with other targets). |
 | `--snapshot <id>` | Required when using `--id`/`--to`; defaults to the most recent snapshot. |
 | `--smooth` | Animate the move over multiple steps (defaults to 500 ms, 20 steps). |
 | `--duration <ms>` / `--steps <n>` | Override the smooth-move timing/step count; instant moves use duration `0` unless overridden. |
 | `--profile <linear\|human>` | Select a movement profile. `human` enables eased arcs and micro-jitter with no extra tuning required. |
 
 ## Implementation notes
-- Validation enforces “pick something”: coordinates, `--id`, `--to`, or `--center`. Mixed inputs (e.g., coordinates + `--center`) are rejected before any cursor movement.
+- Validation enforces exactly one target: coordinates (`[x,y]` or `--coords`), `--id`, `--to`, or `--center`.
 - Element-based moves reuse snapshot data via `services.snapshots.getDetectionResult`; query-based moves run `AutomationServiceBridge.waitForElement`, so they automatically wait up to 5 s for dynamic UIs.
 - Smooth moves compute intermediate steps client-side and track the previous cursor location so the result payload can include the travel distance.
 - `--profile human` automatically enables smooth movement, adapts duration/steps to travel distance, and adds natural jitter/overshoot. See `docs/human-mouse-move.md` for deeper guidance.
@@ -32,6 +33,7 @@ read_when:
 ```bash
 # Instantly move to a coordinate
 polter peekaboo -- move 1024,88
+polter peekaboo -- move --coords 1024,88
 
 # Human-style movement with one flag
 polter peekaboo -- move 520,360 --profile human

@@ -219,7 +219,9 @@
 - Added a “Mouse Movement” probe to Click Fixture that logs `Control` events when the cursor enters/moves over the probe.
 - **Artifacts**:
   - Snapshot: `.artifacts/playground-tools/20251217-153107-see-click-for-move.json`
-  - Log: `.artifacts/playground-tools/20251217-153107-control.log` (contains `Mouse entered probe area` / `Mouse moved over probe area`).
+  - Logs:
+    - `.artifacts/playground-tools/20251217-153107-control.log`
+    - `.artifacts/playground-tools/20251217-195012-move-out-control.log` (synthetic `peekaboo move` reliably triggers `Mouse entered probe area` / `Mouse exited probe area`; `Mouse moved over probe area` may require real mouse-moved events).
 
 ### ✅ E2E re-verifications (Playground)
 - `click`: `.artifacts/playground-tools/20251217-152024-click.log` contains `Single click on 'Single Click' button`.
@@ -477,8 +479,10 @@
   1. `polter peekaboo -- move 600,600`
   2. `polter peekaboo -- move --to "Focus Basic Field" --snapshot DBFDD053-4513-4603-B7C3-9170E7386BA7 --smooth`
   3. `polter peekaboo -- move --center --duration 300 --steps 15`
-- **Result**: All three moves succeeded (CLI output shows target info, distances, and timing). Attempting `move --to-coords ...` or `--coords ...` still errors with “Unknown option …” because the command expects positional coordinates or `--to`; leaving that TODO in the docs.
-- **Notes**: `playground-log -c Focus` remains empty during these runs, so CLI output is the primary evidence for now.
+  4. `polter peekaboo -- move --coords 600,600`
+  5. Negative test: `polter peekaboo -- move 1,2 --center` (should error: conflicting targets)
+- **Result**: Moves succeed and `--coords` is accepted as an alias for the positional coordinates; conflicting targets now fail with `VALIDATION_ERROR` (fixed in `MoveCommand` + Commander metadata).
+- **Notes**: `playground-log -c Focus` remains empty during these runs; prefer the Click Fixture probe + `playground-log -c Control` for durable move evidence.
 
 ### ✅ `mcp` command – list + chrome-devtools nav/eval
 - **Commands**:

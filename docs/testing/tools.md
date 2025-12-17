@@ -311,11 +311,19 @@ The following subsections spell out the concrete steps, required Playground surf
   1. `polter peekaboo -- move 600,600` for instant pointer relocation.
   2. Smooth query-based move: `polter peekaboo -- move --to "Focus Basic Field" --snapshot <id> --smooth`.
   3. `polter peekaboo -- move --center --duration 300 --steps 15`.
-  4. (Optional) Attempting invalid coordinates currently produces an “Unknown option” error because `move` expects positional coords; leave TODO for future validation messaging.
+  4. `polter peekaboo -- move --coords 600,600` (alias coverage).
+  5. Negative test: `polter peekaboo -- move 1,2 --center` should error (conflicting targets).
 - **2025-11-16 verification**:
   - Commands above rerun with snapshot `DBFDD053-4513-4603-B7C3-9170E7386BA7`; CLI outputs saved implicitly (no JSON mode). Pointer jumps succeeded (`move 600,600`, `move --center`).
   - `move --to "Focus Basic Field" --snapshot ... --smooth` works with snapshot-based targeting; repeated runs confirm the lookup is stable.
   - Focus logger still doesn’t capture these events (`playground-log -c Focus` remains empty), so we rely on CLI output for evidence until instrumentation is added.
+- **2025-12-17 re-verification**:
+  - `--coords` is now accepted (Commander metadata updated) and treated as an alias for the positional coordinates.
+  - Conflicting targets now fail at runtime (MoveCommand explicitly runs `validate()` before executing).
+  - Playground evidence loop using Click Fixture probe:
+    - Snapshot: `.artifacts/playground-tools/20251217-194922-see-click-fixture.json`
+    - CLI: `.artifacts/playground-tools/20251217-194947-move-coords-probe.json`
+    - Playground logs: `.artifacts/playground-tools/20251217-195012-move-out-control.log` (contains `Mouse entered probe area` / `Mouse exited probe area`).
 
 ### Windows, Menus, Apps
 
