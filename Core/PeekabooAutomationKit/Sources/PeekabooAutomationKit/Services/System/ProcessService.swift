@@ -87,8 +87,47 @@ public final class ProcessService: ProcessServiceProtocol {
         return try await performOperation({
             let data = try Data(contentsOf: url)
             let decoder = JSONCoding.makeDecoder()
-            return try decoder.decode(PeekabooScript.self, from: data)
+            do {
+                return try decoder.decode(PeekabooScript.self, from: data)
+            } catch let decodingError as DecodingError {
+                throw PeekabooError.invalidInput(Self.describeScriptDecodingError(decodingError, path: path))
+            }
         }, errorContext: "Failed to load script from \(path)")
+    }
+
+    private nonisolated static func describeScriptDecodingError(_ error: DecodingError, path: String) -> String {
+        let hint = "Tip: Peekaboo script params use Swift enum coding " +
+            "(e.g. `{\"params\":{\"generic\":{\"_0\":{...}}}}`)."
+
+        func formatContext(_ context: DecodingError.Context) -> String {
+            let codingPath = context.codingPath.map(\.stringValue).joined(separator: ".")
+            if codingPath.isEmpty {
+                return context.debugDescription
+            }
+            return "\(context.debugDescription) (at \(codingPath))"
+        }
+
+        let details: String
+        switch error {
+        case let .typeMismatch(_, context):
+            details = formatContext(context)
+        case let .valueNotFound(_, context):
+            details = formatContext(context)
+        case let .keyNotFound(key, context):
+            let base = formatContext(context)
+            let codingPath = (context.codingPath + [key]).map(\.stringValue).joined(separator: ".")
+            details = "\(base) (missing key \(codingPath))"
+        case let .dataCorrupted(context):
+            details = formatContext(context)
+        @unknown default:
+            details = String(describing: error)
+        }
+
+        return [
+            "Invalid script JSON in \(path).",
+            details,
+            hint,
+        ].joined(separator: " ")
     }
 
     public func executeScript(
