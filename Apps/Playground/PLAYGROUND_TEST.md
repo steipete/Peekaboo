@@ -189,8 +189,11 @@
 - **Verification**: Keyboard logs show the expected characters (L/1) with timestamps matching the commands. Invalid combo correctly errors with `Unknown key: 'foo'`.
 
 ### ✅ `scroll` command – offsets + `--on` identifiers (resolved)
-- **Resolved on 2025-12-17**: Use the Scroll Fixture window + `scroll --on vertical-scroll|horizontal-scroll`; the Scroll log now records content offsets.
-- **Artifacts**: `.artifacts/playground-tools/20251217-153521-scroll.log`
+- **Resolved on 2025-12-17**: Use the Scroll Fixture window + `scroll --on vertical-scroll|horizontal-scroll`; the Scroll log records content offsets.
+- **Notes**:
+  - Nested targets exist as `nested-inner-scroll` and `nested-outer-scroll`; the CLI logs show the `target=...` field when you exercise them.
+  - The Playground now logs nested inner/outer content offsets as well (rebuild Playground from latest sources to pick up the new `Nested … scroll offset` log lines).
+- **Artifacts**: `.artifacts/playground-tools/20251217-222958-scroll.log`
 
 ### ✅ `swipe` command – gesture logs (resolved)
 - **Resolved on 2025-12-17**: GestureArea now logs swipe direction + distance for deterministic verification.
@@ -222,7 +225,7 @@
 ### ✅ `scroll` evidence logging (Playground)
 - **Bug**: ScrollTestingView’s offset logger was measuring the ScrollView container (always 0,0), so scroll actions looked like no-ops.
 - **Fix**: Measure the *content* offset inside the scroll view’s coordinate space.
-- **Artifacts**: `.artifacts/playground-tools/20251217-153521-scroll.log` shows `Vertical scroll offset … y=-…` after `peekaboo scroll`.
+- **Artifacts**: `.artifacts/playground-tools/20251217-222958-scroll.log` shows `Vertical scroll offset … y=-…` after `peekaboo scroll`.
 
 ### ✅ `move` evidence logging (Playground)
 - Added a “Mouse Movement” probe to Click Fixture that logs `Control` events when the cursor enters/moves over the probe.

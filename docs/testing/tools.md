@@ -79,7 +79,7 @@ read_when:
 | `type` | Text Fixture window | `Text` + `Focus` | `polter peekaboo -- type "Hello Playground" --clear --snapshot <id>` | Verified – Text Fixture E2E (2025-12-17) | `.artifacts/playground-tools/20251217-152047-text.log` |
 | `press` | Keyboard Fixture window | `Keyboard` | `polter peekaboo -- press return --snapshot <id>` | Verified – keypresses + repeats logged (2025-12-17) | `.artifacts/playground-tools/20251217-152138-keyboard.log` |
 | `hotkey` | Playground menu shortcuts | `Keyboard` & `Menu` | `polter peekaboo -- hotkey --keys "cmd,1"` | Verified – digit hotkeys (2025-12-17) | `.artifacts/playground-tools/20251217-152100-menu.log` |
-| `scroll` | Scroll Fixture window | `Scroll` | `polter peekaboo -- scroll --direction down --amount 8 --on vertical-scroll --snapshot <id>` | Verified – scroll offsets logged (2025-12-17) | `.artifacts/playground-tools/20251217-153521-scroll.log` |
+| `scroll` | Scroll Fixture window | `Scroll` | `polter peekaboo -- scroll --direction down --amount 8 --on vertical-scroll --snapshot <id>` | Verified – scroll offsets logged (2025-12-17) | `.artifacts/playground-tools/20251217-222958-scroll.log` |
 | `swipe` | Scroll Fixture gesture area | `Gesture` | `polter peekaboo -- swipe --from <elem> --to <elem> --snapshot <id>` | Verified – swipe direction + distance logged (2025-12-17) | `.artifacts/playground-tools/20251217-152843-gesture.log` |
 | `drag` | Drag Fixture window | `Drag` | `polter peekaboo -- drag --from <elem> --to <elem> --snapshot <id>` | Verified – item dropped into zone (2025-12-17) | `.artifacts/playground-tools/20251217-152934-drag.log` |
 | `move` | Click Fixture mouse probe | `Control` | `polter peekaboo -- move --id <elem> --snapshot <id> --smooth` | Verified – cursor movement emits deterministic probe logs (2025-12-17) | `.artifacts/playground-tools/20251217-153107-control.log` |
@@ -113,7 +113,7 @@ The following subsections spell out the concrete steps, required Playground surf
 #### `see`
 - **View**: Any (start with ClickTestingView to guarantee clear elements).
 - **Steps**:
-  1. Bring Playground to front (`polter peekaboo -- app focus Playground`).
+  1. Bring Playground to front (`polter peekaboo -- app switch --to Playground`).
   2. `polter peekaboo -- see --app Playground --output "$LOG_ROOT/see-playground.png"`.
   3. Record snapshot ID printed to stdout, verify `~/.peekaboo/snapshots/<id>/map.json` references Playground elements (`single-click-button`, etc.).
 - **Log capture**: Optional `Click` capture if you immediately chain interactions with the new snapshot; otherwise store the PNG + snapshot metadata path.
@@ -149,7 +149,7 @@ The following subsections spell out the concrete steps, required Playground surf
   1. With Playground running, execute each subcommand and ensure Playground appears with expected bundle ID/window title.
   2. For `list windows`, compare returned bounds vs. WindowTestingView readout.
   3. For `list menubar`, capture the result and cross-check with actual status items.
-- **Logs**: Use `playground-log` `Window` category when forcing focus changes to validate `app focus` interplay.
+- **Logs**: Use `playground-log` `Window` category when forcing focus changes to validate `app switch` interplay.
 #### `tools`
 - **Steps**:
   1. `polter peekaboo -- tools --native-only --json-output > "$LOG_ROOT/tools-native.json"`.
@@ -298,9 +298,12 @@ The following subsections spell out the concrete steps, required Playground surf
   1. `polter peekaboo -- scroll --direction down --amount 6 --snapshot <id>` for vertical movement.
   2. `polter peekaboo -- scroll --direction right --amount 4 --smooth --snapshot <id>` for horizontal smooth scrolling.
   3. `polter peekaboo -- scroll --direction down --amount 6 --on vertical-scroll --snapshot <id>` and `... --direction right --amount 4 --on horizontal-scroll --snapshot <id>` to prove the new identifiers work end-to-end.
+  4. Nested scroll targeting: `--on nested-inner-scroll` and `--on nested-outer-scroll` (Scroll Fixture “Nested Scroll Views” section).
 - **2025-11-16 verification**:
   - Captured snapshot `.artifacts/playground-tools/20251116-194615-see-scrolltab.json` (snapshot `649EB632-ED4B-4935-9F1F-1866BB763804`) and re-ran both `scroll` commands with `--on vertical-scroll` and `--on horizontal-scroll`. The CLI outputs live at `.artifacts/playground-tools/20251116-194652-scroll-vertical.json` and `.artifacts/playground-tools/20251116-194708-scroll-horizontal.json` (both ✅ now that the Playground view exposes identifiers and the ScrollService snapshot cache preserves them).
   - Added `.artifacts/playground-tools/20251116-194730-scroll.log` via `./Apps/Playground/scripts/playground-log.sh -c Scroll --last 10m --all -o …`; it shows the `[Scroll] direction=down` and `[Scroll] direction=right` events emitted by AutomationEventLogger.
+- **2025-12-17 rerun**:
+  - Re-validated Scroll Fixture window-scoped scrolling (vertical/horizontal + nested target commands) with `.artifacts/playground-tools/20251217-222958-scroll.log`.
 
 #### `swipe`
 - **View**: Gesture Testing area.
