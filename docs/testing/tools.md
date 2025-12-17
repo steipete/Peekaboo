@@ -57,7 +57,7 @@ read_when:
 | `run` | Execute scripted multi-step flows against Playground fixtures | Logs depend on embedded commands | `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json` | Verified – smoke script opens Text Fixture via `⌘⌃2`; `--no-fail-fast` path covered (single JSON payload on failure) | `.artifacts/playground-tools/20251217-173849-run-playground-smoke.json`, `.artifacts/playground-tools/20251217-184554-run-no-fail-fast.json` |
 | `sleep` | Inserted between Playground actions | Observe timestamps in log file | `polter peekaboo -- sleep 1500` | Verified – manual timing around CLI pause | `python wrapper measuring ./runner polter peekaboo -- sleep 2000` |
 | `clean` | Snapshot cache after `see` runs | Inspect `~/.peekaboo/snapshots` & ensure Playground unaffected | `polter peekaboo -- clean --snapshot <id>` | Verified – removed snapshot 5408D893… and confirmed re-run reports none | `.peekaboo/snapshots/5408D893-E9CF-4A79-9B9B-D025BF9C80BE (deleted)` |
-| `clipboard` | Clipboard smoke (save/set/get/restore) | Verify readback + restore user clipboard | `polter peekaboo -- run docs/testing/fixtures/clipboard-smoke.peekaboo.json --json-output` | Verified – readback + restore succeeded | `.artifacts/playground-tools/20251217-173849-run-clipboard-smoke.json` |
+| `clipboard` | Clipboard smoke (text/file/image + save/restore) | Verify readback + binary export + restore user clipboard | `polter peekaboo -- clipboard --action set --image-path assets/peekaboo.png --json-output` | Verified – CLI set/get (file+image) and cross-invocation save/restore (2025-12-17) | `.artifacts/playground-tools/20251217-192349-clipboard-get-image.json` |
 | `config` | Validate config commands while Playground idle | N/A | `polter peekaboo -- config show` | Verified – show/validate outputs captured 2025-11-16 | `.artifacts/playground-tools/20251116-051200-config-show-effective.json` |
 | `permissions` | Ensure status/grant flow works with Playground | `playground-log` `App` category (should log when permissions toggled) | `polter peekaboo -- permissions status` | Verified – Screen Recording & Accessibility granted | `.artifacts/playground-tools/20251116-051000-permissions-status.json` |
 | `learn` | Dump agent guide | N/A | `polter peekaboo -- learn > $LOG_ROOT/learn.txt` | Verified – latest dump saved 2025-11-16 | `.artifacts/playground-tools/20251116-051300-learn.txt` |
@@ -178,10 +178,12 @@ The following subsections spell out the concrete steps, required Playground surf
 
 #### `clipboard`
 - **Steps**:
-  1. Run `polter peekaboo -- run docs/testing/fixtures/clipboard-smoke.peekaboo.json --json-output > "$LOG_ROOT/clipboard-smoke.json"`.
-  2. Confirm the `read_clipboard` step returns `"Peekaboo clipboard smoke"`.
-  3. Confirm the last step restores your original clipboard contents.
+  1. Scripted smoke: `polter peekaboo -- run docs/testing/fixtures/clipboard-smoke.peekaboo.json --json-output > "$LOG_ROOT/clipboard-smoke.json"`.
+  2. Cross-invocation save/restore: `polter peekaboo -- clipboard --action save --slot original`, then `--action clear`, then `--action restore --slot original`.
+  3. File payload: `polter peekaboo -- clipboard --action set --file-path /tmp/peekaboo-clipboard-smoke.txt --json-output`.
+  4. Image payload + export: `polter peekaboo -- clipboard --action set --image-path assets/peekaboo.png --also-text "Peekaboo clipboard image smoke" --json-output`, then `polter peekaboo -- clipboard --action get --prefer public.png --output /tmp/peekaboo-clipboard-out.png --json-output`.
 - **Pass criteria**: Script succeeds and clipboard is restored.
+- **2025-12-17 CLI evidence**: `.artifacts/playground-tools/20251217-192349-clipboard-{save-original,set-file,get-file-text,set-image,get-image,restore-original}.json` plus exported `/tmp/peekaboo-clipboard-out.png`.
 
 #### `config`
 - **Focus**: `config show`, `config validate`, `config models`.

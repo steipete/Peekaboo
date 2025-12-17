@@ -47,7 +47,8 @@ peekaboo clipboard --action restore --slot original
 
 ## Notes
 - Binary reads without `--output` return a summary; use `--output -` to pipe data.
-- Slot saves are in-memory only and reset when Peekaboo quits.
+- Slot saves are stored in a dedicated named pasteboard so they work across separate `peekaboo clipboard` invocations.
+- `restore` removes the saved slot after applying it to avoid leaving clipboard snapshots around indefinitely.
 - Size guard: writes larger than 10 MB require `--allow-large`.
 
 ## Troubleshooting

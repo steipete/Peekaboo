@@ -86,6 +86,21 @@ public final class ClipboardService: ClipboardServiceProtocol {
         self.sizeLimit = sizeLimit
     }
 
+    // MARK: - Slot storage (cross-process)
+
+    private func slotPasteboardName(for slot: String) -> NSPasteboard.Name {
+        let sanitizedSlot = slot
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .unicodeScalars
+            .map { scalar -> String in
+                let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+                return allowed.contains(scalar) ? String(Character(scalar)) : "_"
+            }
+            .joined()
+
+        return NSPasteboard.Name("\(self.pasteboard.name.rawValue).boo.peekaboo.clipboard.slot.\(sanitizedSlot)")
+    }
+
     // MARK: - Public API
 
     public func get(prefer uti: UTType?) throws -> ClipboardReadResult? {
@@ -172,31 +187,84 @@ public final class ClipboardService: ClipboardServiceProtocol {
     }
 
     public func save(slot: String) throws {
+        let trimmedSlot = slot.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSlot.isEmpty else {
+            throw ClipboardServiceError.writeFailed("Slot name must not be empty.")
+        }
+
         let reps = self.snapshotCurrentRepresentations()
-        self.slots[slot] = reps
+        self.slots[trimmedSlot] = reps
+
+        let slotPasteboard = NSPasteboard(name: self.slotPasteboardName(for: trimmedSlot))
+        slotPasteboard.clearContents()
+        let types = reps.map { NSPasteboard.PasteboardType($0.utiIdentifier) }
+        slotPasteboard.declareTypes(types, owner: nil)
+
+        for rep in reps {
+            let pbType = NSPasteboard.PasteboardType(rep.utiIdentifier)
+            guard slotPasteboard.setData(rep.data, forType: pbType) else {
+                throw ClipboardServiceError
+                    .writeFailed("Unable to save type \(rep.utiIdentifier) to slot \(trimmedSlot)")
+            }
+        }
     }
 
     public func restore(slot: String) throws -> ClipboardReadResult {
-        guard let reps = self.slots[slot], !reps.isEmpty else {
+        let trimmedSlot = slot.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSlot.isEmpty else {
             throw ClipboardServiceError.slotNotFound(slot)
         }
+
+        let slotPasteboardName = self.slotPasteboardName(for: trimmedSlot)
+        let reps: [ClipboardRepresentation]
+        if let cached = self.slots[trimmedSlot], !cached.isEmpty {
+            reps = cached
+        } else {
+            let slotPasteboard = NSPasteboard(name: slotPasteboardName)
+            let loaded = self.snapshotRepresentations(from: slotPasteboard)
+            guard !loaded.isEmpty else {
+                throw ClipboardServiceError.slotNotFound(trimmedSlot)
+            }
+            reps = loaded
+        }
+
         let request = ClipboardWriteRequest(representations: reps)
-        return try self.set(request)
+        let result = try self.set(request)
+        self.slots.removeValue(forKey: trimmedSlot)
+        NSPasteboard(name: slotPasteboardName).clearContents()
+        return result
     }
 
     // MARK: - Helpers
 
     private func snapshotCurrentRepresentations() -> [ClipboardRepresentation] {
-        guard let items = self.pasteboard.pasteboardItems else { return [] }
+        self.snapshotRepresentations(from: self.pasteboard)
+    }
 
+    private func snapshotRepresentations(from pasteboard: NSPasteboard) -> [ClipboardRepresentation] {
         var reps: [ClipboardRepresentation] = []
-        for item in items {
-            for type in item.types {
-                if let data = item.data(forType: type) {
-                    reps.append(ClipboardRepresentation(utiIdentifier: type.rawValue, data: data))
+
+        if let items = pasteboard.pasteboardItems {
+            for item in items {
+                for type in item.types {
+                    if let data = item.data(forType: type) {
+                        reps.append(ClipboardRepresentation(utiIdentifier: type.rawValue, data: data))
+                    }
                 }
             }
         }
+
+        if !reps.isEmpty {
+            return reps
+        }
+
+        guard let types = pasteboard.types else { return [] }
+        for type in types {
+            if let data = pasteboard.data(forType: type) {
+                reps.append(ClipboardRepresentation(utiIdentifier: type.rawValue, data: data))
+            }
+        }
+
         return reps
     }
 

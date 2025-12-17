@@ -71,6 +71,19 @@
 - **Verification**: Native JSON enumerates all built-in tools referenced in docs; MCP output remains empty (no remote servers enabled), which matches CLI expectations.
 - **Notes**: No Playground interaction needed; artifacts captured for comparison when new tools land.
 
+### ✅ `clipboard` command – file/image set/get + cross-invocation save/restore
+- **Fixes validated (2025-12-17)**:
+  - Commander binder now maps `--file-path`/`--image-path`/`--data-base64`/`--also-text` correctly for `peekaboo clipboard`.
+  - `clipboard save/restore` now persists across separate CLI invocations in local mode by storing the slot in a dedicated named pasteboard; `restore` clears the slot afterward.
+- **Commands**:
+  1. `polter peekaboo -- clipboard --action save --slot original --json-output`
+  2. `polter peekaboo -- clipboard --action set --file-path /tmp/peekaboo-clipboard-smoke.txt --json-output`
+  3. `polter peekaboo -- clipboard --action set --image-path assets/peekaboo.png --also-text "Peekaboo clipboard image smoke" --json-output`
+  4. `polter peekaboo -- clipboard --action get --prefer public.png --output /tmp/peekaboo-clipboard-out.png --json-output`
+  5. `polter peekaboo -- clipboard --action restore --slot original --json-output`
+- **Artifacts**: `.artifacts/playground-tools/20251217-192349-clipboard-{save-original,set-file,get-file-text,set-image,get-image,restore-original}.json`
+- **Result**: Exported `/tmp/peekaboo-clipboard-out.png` is non-empty, and the final restore returns the user clipboard to its pre-test state.
+
 ### ✅ `run` command – playground-smoke script
 - **Script**: `docs/testing/fixtures/playground-smoke.peekaboo.json` (focus Playground → open Text Fixture via `⌘⌃2` → `see` frontmost → click "Focus Basic Field" → type "Playground smoke")
 - **Command**: `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json --output .artifacts/playground-tools/20251217-173849-run-playground-smoke.json --json-output`
