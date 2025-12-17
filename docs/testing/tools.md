@@ -51,7 +51,7 @@ read_when:
 | --- | --- | --- | --- | --- | --- |
 | `see` | Prefer fixture windows (“Click Fixture”, “Scroll Fixture”, etc.) | Capture snapshot metadata via CLI output + optional Playground logs for follow-on actions | `polter peekaboo -- see --app Playground --mode window --window-title "Click Fixture"` | Verified – `--window-title` now resolves against ScreenCaptureKit windows and element detection is pinned to the captured `CGWindowID` | `.artifacts/playground-tools/20251217-153107-see-click-for-move.json` |
 | `image` | Playground window (full or element-specific) | Use `Image` artifacts; note timestamp in `LOG_FILE` | `polter peekaboo -- image window --app Playground --output /tmp/playground-window.png` | Verified – window + screen captures succeed after capture fallback fix | `.artifacts/playground-tools/20251116-082109-image-window-playground.json`, `.artifacts/playground-tools/20251116-082125-image-screen0.json` |
-| `capture` | Short `capture live` against Playground (5–10s) | Verify artifacts (`metadata.json`, `contact.png`, frames) | `polter peekaboo -- capture live --mode window --app Playground --duration 5 --threshold 0 --json-output` | Verified – window capture writes contact sheet + metadata | `.artifacts/playground-tools/20251217-133751-capture-live.json` |
+| `capture` | `capture live` against Playground (5–10s) + `capture video` ingest smoke | Verify artifacts (`metadata.json`, `contact.png`, frames) | `polter peekaboo -- capture live --mode window --app Playground --duration 5 --threshold 0 --json-output` | Verified – live writes contact sheet + metadata; video ingest covered | `.artifacts/playground-tools/20251217-133751-capture-live.json`, `.artifacts/playground-tools/20251217-180155-capture-video.json` |
 | `list` | Validate `apps`, `windows`, `screens`, `menubar`, `permissions` while Playground is running | `playground-log` optional (`Window` for focus changes) | `polter peekaboo -- list windows --app Playground` etc. | Verified – apps/windows/screens/menubar/permissions captured 2025-11-16 | `.artifacts/playground-tools/20251116-142111-list-apps.json`, `.artifacts/playground-tools/20251116-142111-list-windows-playground.json`, `.artifacts/playground-tools/20251116-142122-list-screens.json`, `.artifacts/playground-tools/20251116-142122-list-menubar.json`, `.artifacts/playground-tools/20251116-142122-list-permissions.json` |
 | `tools` | Compare CLI output against ToolRegistry | No Playground log required; attach JSON to notes | `polter peekaboo -- tools --native-only --json-output` | Verified – native + MCP listings captured 2025-11-16 | `.artifacts/playground-tools/20251116-142009-tools-native.json`, `.artifacts/playground-tools/20251116-142009-tools-mcp.txt` |
 | `run` | Execute scripted multi-step flows against Playground fixtures | Logs depend on embedded commands | `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json` | Verified – playground-smoke script now opens the Text Fixture window via `⌘⌃2` (no TabView flakiness) | `.artifacts/playground-tools/20251217-173849-run-playground-smoke.json` |
@@ -124,7 +124,11 @@ The following subsections spell out the concrete steps, required Playground surf
   1. `polter peekaboo -- capture live --mode window --app Playground --duration 5 --threshold 0 --json-output > "$LOG_ROOT/capture-live.json"`.
   2. Confirm the JSON points at the expected output directory (kept frames + `contact.png` + `metadata.json`).
   3. Optional: repeat with `--highlight-changes` to ensure highlight rendering doesn’t crash.
-- **Pass criteria**: ≥2 kept frames, `metadata.json` exists, and the run exits 0.
+- **Video ingest add-on**:
+  1. Generate a deterministic motion video: `ffmpeg -hide_banner -loglevel error -y -f lavfi -i testsrc2=size=960x540:rate=30 -t 2 /tmp/peekaboo-capture-src.mp4`.
+  2. Run: `polter peekaboo -- capture video /tmp/peekaboo-capture-src.mp4 --sample-fps 4 --no-diff --json-output > "$LOG_ROOT/capture-video.json"`.
+  3. Confirm `framesKept` ≥ 2 and the output directory contains `keep-*.png`, `contact.png`, and `metadata.json`.
+- **Pass criteria**: ≥1 kept frame, `metadata.json` exists, and the run exits 0 (a `noMotion` warning is acceptable for static inputs).
 - **Schema check**: Cross-check MCP capture meta fields in `docs/commands/mcp-capture-meta.md` against the JSON payload.
 
 #### `list`

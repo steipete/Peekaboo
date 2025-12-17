@@ -238,6 +238,15 @@
 - Recent `see` runs are ~0.7–0.8s for Click Fixture on this machine (7-run sample: `.artifacts/playground-tools/20251217-165555-perf-see-click-fixture-summary.json`, mean `0.757s`, p95 `0.789s`).
 - **Findings**: Focus log now records entries (both from Playground UI and the CLI move command). The CLI entry still shows `<private>` in Console, so add more descriptive strings if we need richer auditing.
 
+### ✅ `capture video` – static inputs keep 1 frame (no longer fails)
+- **Commands**:
+  1. Generate a static sample: `ffmpeg -f lavfi -i color=c=black:s=640x360:d=2 -pix_fmt yuv420p /tmp/peekaboo-static.mp4`
+  2. `peekaboo capture video /tmp/peekaboo-static.mp4 --sample-fps 2 --json-output`
+- **Artifacts**:
+  - Motion sample (no diff): `.artifacts/playground-tools/20251217-180155-capture-video.json`
+  - Static sample (diff on): `.artifacts/playground-tools/20251217-181430-capture-video-static.json`
+- **Result**: Static sample exits 0 with `framesKept=1` and warning `noMotion` (“No motion detected; only key frames captured”).
+
 ### ✅ `window` command – Playground window coverage
 - **Logs**: `.artifacts/playground-tools/20251116-194900-window.log`
 - **Artifacts**:
