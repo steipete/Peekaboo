@@ -524,3 +524,11 @@
 - **Notes**: Re-run the `hotkey --keys "cmd,s"` step whenever the dialog is dismissed so future dialog tests have a live window to interact with.
  - **2025-12-17 follow-up**:
    - `dialog input` no longer fails with “Action is not supported” on Save-sheet text fields, and `dialog file --select Cancel` reliably dismisses Save sheets that expose neither a useful title nor `AXIdentifier` (detected via canonical buttons + re-resolving before click): `.artifacts/playground-tools/20251217-215657-dialog-input-then-file-cancel.json`.
+
+### ✅ `run` command – Playground smoke fixture (`see`/`click`/`type`)
+- **Command**: `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json --json-output > .artifacts/playground-tools/<timestamp>-run-playground-smoke.json`
+- **Artifacts (2025-12-17)**:
+  - `.artifacts/playground-tools/20251217-221643-run-playground-smoke.json`
+  - `.artifacts/playground-tools/20251217-221643-run-playground-smoke-click.log`
+  - `.artifacts/playground-tools/20251217-221643-run-playground-smoke-text.log`
+- **Verification**: The Text log includes `Basic text changed … To: 'Playground smoke'`, proving the script targeted `basic-text-field` (not the numeric-only field).
