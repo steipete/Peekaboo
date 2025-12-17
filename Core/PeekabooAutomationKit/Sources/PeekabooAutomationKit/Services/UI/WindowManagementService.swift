@@ -67,10 +67,23 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
 @MainActor
 extension WindowManagementService {
     public func closeWindow(target: WindowTarget) async throws {
+        let trackedWindowID = try? await self.listWindows(target: target).first?.windowID
+        let trackedAppIdentifier: String? = switch target {
+        case let .application(appIdentifier): appIdentifier
+        case let .applicationAndTitle(appIdentifier, _): appIdentifier
+        case let .index(appIdentifier, _): appIdentifier
+        default: nil
+        }
+
         // Get window bounds for animation
         var windowBounds: CGRect?
+        var closeButtonFrame: CGRect?
 
         let success = try await performWindowOperation(target: target) { window in
+            if let closeButton = window.closeButton() {
+                closeButtonFrame = closeButton.frame()
+            }
+
             // Get window bounds before closing
             if let position = window.position(), let size = window.size() {
                 windowBounds = CGRect(origin: position, size: size)
@@ -93,6 +106,61 @@ extension WindowManagementService {
                 action: "close window",
                 reason: "Window close operation failed")
         }
+
+        guard let trackedWindowID else { return }
+
+        if await self.waitForWindowToDisappear(
+            windowID: trackedWindowID,
+            appIdentifier: trackedAppIdentifier,
+            timeoutSeconds: 3.0)
+        {
+            return
+        }
+
+        self.logger
+            .warning("Close succeeded but window still exists; trying hotkey fallbacks. windowID=\(trackedWindowID)")
+
+        // Ensure the target window is key before sending hotkeys.
+        _ = try? await self.performWindowOperation(target: target) { window in
+            _ = window.focusWindow()
+            return ()
+        }
+
+        try? InputDriver.hotkey(keys: ["cmd", "w"], holdDuration: 0.05)
+        if await self.waitForWindowToDisappear(
+            windowID: trackedWindowID,
+            appIdentifier: trackedAppIdentifier,
+            timeoutSeconds: 3.0)
+        {
+            return
+        }
+
+        try? InputDriver.hotkey(keys: ["cmd", "shift", "w"], holdDuration: 0.05)
+        if await self.waitForWindowToDisappear(
+            windowID: trackedWindowID,
+            appIdentifier: trackedAppIdentifier,
+            timeoutSeconds: 3.0)
+        {
+            return
+        }
+
+        if let closeButtonFrame {
+            self.logger.warning(
+                "Hotkey fallbacks failed; clicking close button frame as final fallback. windowID=\(trackedWindowID)")
+            try? InputDriver.click(at: CGPoint(x: closeButtonFrame.midX, y: closeButtonFrame.midY))
+
+            if await self.waitForWindowToDisappear(
+                windowID: trackedWindowID,
+                appIdentifier: trackedAppIdentifier,
+                timeoutSeconds: 3.0)
+            {
+                return
+            }
+        }
+
+        throw OperationError.interactionFailed(
+            action: "close window",
+            reason: "Close action completed but window remained visible (windowID=\(trackedWindowID))")
     }
 
     public func minimizeWindow(target: WindowTarget) async throws {
@@ -566,6 +634,15 @@ extension WindowManagementService {
             return try self.findWindowByTitle(titleSubstring, in: appsOutput.data.applications)
         case let .applicationAndTitle(appIdentifier, titleSubstring):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
+
+            if let windowFromID = try await self.findWindowByTitleUsingWindowID(
+                titleSubstring: titleSubstring,
+                appIdentifier: appIdentifier,
+                app: app)
+            {
+                return windowFromID
+            }
+
             return try self.findWindowByTitleInApp(titleSubstring, app: app)
         case let .index(appIdentifier, index):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
@@ -574,6 +651,10 @@ extension WindowManagementService {
             let frontmostApp = try await applicationService.getFrontmostApplication()
             return try self.findFirstWindow(for: frontmostApp)
         case let .windowId(id):
+            if let handle = self.windowIdentityService.findWindow(byID: CGWindowID(id)) {
+                return handle.element
+            }
+
             let appsOutput = try await applicationService.listApplications()
             return try self.findWindowById(id, in: appsOutput.data.applications)
         }
@@ -583,6 +664,30 @@ extension WindowManagementService {
     private func windows(for appIdentifier: String) async throws -> [ServiceWindowInfo] {
         let output = try await applicationService.listWindows(for: appIdentifier, timeout: nil)
         return output.data.windows
+    }
+
+    @MainActor
+    private func findWindowByTitleUsingWindowID(
+        titleSubstring: String,
+        appIdentifier: String,
+        app: ServiceApplicationInfo) async throws -> Element?
+    {
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(app.name)
+        }
+
+        let windows = try await self.windows(for: appIdentifier)
+        guard let match = windows.first(where: { $0.title.localizedCaseInsensitiveContains(titleSubstring) }) else {
+            return nil
+        }
+
+        let windowID = CGWindowID(match.windowID)
+        if let handle = self.windowIdentityService.findWindow(byID: windowID, in: runningApp) {
+            return handle.element
+        }
+
+        // AXWindowResolver couldn't find it, fall back to scanning the app's AX windows by CGWindowID.
+        return try self.findWindowById(Int(windowID), in: [app])
     }
 
     @MainActor
@@ -643,6 +748,60 @@ extension WindowManagementService {
             "Found window '\(windowTitle)' in app '\(context.appName)'",
             "after searching \(context.searchedApps) apps and \(context.totalWindows) windows (\(elapsed)s)",
         ].joined(separator: " ")
+    }
+
+    @MainActor
+    private func waitForWindowToDisappear(
+        windowID: Int,
+        appIdentifier: String?,
+        timeoutSeconds: TimeInterval) async -> Bool
+    {
+        let deadline = Date().addingTimeInterval(max(0.0, timeoutSeconds))
+        let stabilitySeconds: TimeInterval = 0.8
+        var missingSince: Date?
+
+        while Date() < deadline {
+            if await self.isWindowPresent(windowID: windowID, appIdentifier: appIdentifier) == false {
+                let now = Date()
+                missingSince = missingSince ?? now
+                if let missingSince, now.timeIntervalSince(missingSince) >= stabilitySeconds {
+                    return true
+                }
+            } else {
+                missingSince = nil
+            }
+
+            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        }
+
+        return false
+    }
+
+    @MainActor
+    private func isWindowPresent(windowID: Int, appIdentifier: String?) async -> Bool {
+        if let appIdentifier {
+            do {
+                let windows = try await self.windows(for: appIdentifier)
+
+                if windows.contains(where: { $0.windowID == windowID }) {
+                    return true
+                }
+
+                // ScreenCaptureKit window listings can be temporarily stale; double-check via CGWindowList.
+                if self.windowIdentityService.windowExists(windowID: CGWindowID(windowID)) {
+                    return true
+                }
+
+                return false
+            } catch {
+                let message = "isWindowPresent: failed to list windows; assuming present. " +
+                    "app=\(appIdentifier) error=\(error.localizedDescription)"
+                self.logger.debug("\(message, privacy: .public)")
+                return true
+            }
+        }
+
+        return self.windowIdentityService.windowExists(windowID: CGWindowID(windowID))
     }
 }
 
