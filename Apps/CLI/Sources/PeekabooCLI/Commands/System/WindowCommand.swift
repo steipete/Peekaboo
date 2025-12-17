@@ -117,10 +117,8 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
 
         if let index = windowIndex {
             return .index(app: appIdentifier, index: index)
-        } else if self.windowTitle != nil {
-            // For title matching, we still need the app context
-            // The service will handle finding the right window
-            return .application(appIdentifier)
+        } else if let title = self.windowTitle {
+            return .applicationAndTitle(app: appIdentifier, title: title)
         } else {
             // Default to app's frontmost window
             return .application(appIdentifier)

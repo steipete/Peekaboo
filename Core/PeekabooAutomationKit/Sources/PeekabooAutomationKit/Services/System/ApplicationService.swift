@@ -528,6 +528,28 @@ extension ApplicationService {
 
 @MainActor
 extension ApplicationService {
+    static func normalizeWindowIndices(_ windows: [ServiceWindowInfo]) -> [ServiceWindowInfo] {
+        windows.enumerated().map { index, window in
+            ServiceWindowInfo(
+                windowID: window.windowID,
+                title: window.title,
+                bounds: window.bounds,
+                isMinimized: window.isMinimized,
+                isMainWindow: window.isMainWindow,
+                windowLevel: window.windowLevel,
+                alpha: window.alpha,
+                index: index,
+                spaceID: window.spaceID,
+                spaceName: window.spaceName,
+                screenIndex: window.screenIndex,
+                screenName: window.screenName,
+                layer: window.layer,
+                isOnScreen: window.isOnScreen,
+                sharingState: window.sharingState,
+                isExcludedFromWindowsMenu: window.isExcludedFromWindowsMenu)
+        }
+    }
+
     private func createApplicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {
         ServiceApplicationInfo(
             processIdentifier: app.processIdentifier,
@@ -717,12 +739,13 @@ extension ApplicationService {
         startTime: Date,
         warnings: [String]) -> UnifiedToolOutput<ServiceWindowListData>
     {
-        let processedCount = windows.count
+        let normalizedWindows = ApplicationService.normalizeWindowIndices(windows)
+        let processedCount = normalizedWindows.count
 
         // Build highlights
         var highlights: [UnifiedToolOutput<ServiceWindowListData>.Summary.Highlight] = []
-        let minimizedCount = windows.count(where: { $0.isMinimized })
-        let offScreenCount = windows.count(where: { $0.isOffScreen })
+        let minimizedCount = normalizedWindows.count(where: { $0.isMinimized })
+        let offScreenCount = normalizedWindows.count(where: { $0.isOffScreen })
 
         if minimizedCount > 0 {
             highlights.append(.init(
@@ -739,7 +762,7 @@ extension ApplicationService {
         }
 
         return UnifiedToolOutput(
-            data: ServiceWindowListData(windows: windows, targetApplication: app),
+            data: ServiceWindowListData(windows: normalizedWindows, targetApplication: app),
             summary: UnifiedToolOutput.Summary(
                 brief: "Found \(processedCount) window\(processedCount == 1 ? "" : "s") for \(app.name)",
                 status: .success,
