@@ -102,7 +102,7 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     @Option(name: .long, help: "Queue mode for queued prompts: one-at-a-time (default) or all")
     var queueMode: String?
 
-    @Option(name: .long, help: "AI model to use (allowed: gpt-5.1, claude-sonnet-4.5, or gemini-3-flash)")
+    @Option(name: .long, help: "AI model to use (allowed: gpt-5.1, claude-opus-4-5, or gemini-3-flash)")
     var model: String?
     @Flag(name: .long, help: "Resume the most recent session (use with task argument)")
     var resume = false
