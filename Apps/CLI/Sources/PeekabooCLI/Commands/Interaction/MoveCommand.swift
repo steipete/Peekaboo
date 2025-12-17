@@ -128,10 +128,11 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                     throw PeekabooError.snapshotNotFound("No snapshot found")
                 }
 
-                guard let detectionResult = try? await self.services.snapshots
-                    .getDetectionResult(snapshotId: activeSnapshotId),
-                    let element = detectionResult.elements.findById(elementId)
-                else {
+                let detectionResult = try await SnapshotValidation.requireDetectionResult(
+                    snapshotId: activeSnapshotId,
+                    snapshots: self.services.snapshots
+                )
+                guard let element = detectionResult.elements.findById(elementId) else {
                     throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
                 }
 
@@ -147,6 +148,13 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 }
                 guard let activeSnapshotId = snapshotId else {
                     throw PeekabooError.snapshotNotFound("No snapshot found")
+                }
+
+                if self.snapshot != nil {
+                    _ = try await SnapshotValidation.requireDetectionResult(
+                        snapshotId: activeSnapshotId,
+                        snapshots: self.services.snapshots
+                    )
                 }
 
                 // Wait for element to be available

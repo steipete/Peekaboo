@@ -107,6 +107,14 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 // Use snapshot if available, otherwise use empty string to indicate no snapshot
                 activeSnapshotId = snapshotId ?? ""
 
+                // If the user explicitly passed --snapshot, fail early if that snapshot doesn't exist anymore.
+                if let providedSnapshot = self.snapshot, !providedSnapshot.isEmpty {
+                    _ = try await SnapshotValidation.requireDetectionResult(
+                        snapshotId: providedSnapshot,
+                        snapshots: self.services.snapshots
+                    )
+                }
+
                 try await self.focusApplicationIfNeeded(snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId)
 
                 // Use whichever element ID parameter was provided

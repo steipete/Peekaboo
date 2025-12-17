@@ -69,6 +69,17 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 nil
             }
 
+            if self.on != nil {
+                guard let snapshotId else {
+                    throw PeekabooError.snapshotNotFound("No snapshot found")
+                }
+
+                _ = try await SnapshotValidation.requireDetectionResult(
+                    snapshotId: snapshotId,
+                    snapshots: self.services.snapshots
+                )
+            }
+
             // Ensure window is focused before scrolling
             try await ensureFocused(
                 snapshotId: snapshotId,
