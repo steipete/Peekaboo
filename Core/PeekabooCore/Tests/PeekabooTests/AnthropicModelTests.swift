@@ -11,29 +11,29 @@ struct AnthropicModelTests {
     @Test("Anthropic model selection and properties")
     func modelSelectionAndProperties() {
         // Test current Anthropic models
-        let opus4 = Model.anthropic(.opus4)
+        let opus45 = Model.anthropic(.opus45)
         let sonnet4 = Model.anthropic(.sonnet4)
         let haiku45 = Model.anthropic(.haiku45)
 
-        #expect(opus4.providerName == "Anthropic")
+        #expect(opus45.providerName == "Anthropic")
         #expect(sonnet4.providerName == "Anthropic")
         #expect(haiku45.providerName == "Anthropic")
 
         // Test model capabilities
-        #expect(opus4.supportsVision == true)
-        #expect(opus4.supportsTools == true)
-        #expect(opus4.supportsStreaming == true)
-        #expect(opus4.contextLength > 100_000) // All Claude models have large context
+        #expect(opus45.supportsVision == true)
+        #expect(opus45.supportsTools == true)
+        #expect(opus45.supportsStreaming == true)
+        #expect(opus45.contextLength > 100_000) // All Claude models have large context
 
         // Test model IDs
-        #expect(opus4.modelId.contains("opus"))
+        #expect(opus45.modelId.contains("opus"))
         #expect(sonnet4.modelId.contains("sonnet"))
         #expect(haiku45.modelId.contains("haiku"))
     }
 
     @Test("Anthropic default model selection")
     func defaultModelSelection() {
-        // Test that Claude Opus 4 is the default
+        // Test that Claude Opus 4.5 is the default
         let defaultModel = Model.default
         let claudeModel = Model.claude
 
@@ -42,7 +42,7 @@ struct AnthropicModelTests {
 
         // Test model shortcuts
         let anthropicModels = [
-            Model.anthropic(.opus4),
+            Model.anthropic(.opus45),
             Model.anthropic(.sonnet4),
             Model.anthropic(.haiku45),
         ]
@@ -81,7 +81,7 @@ struct AnthropicModelTests {
     @Test("Anthropic vision model capabilities")
     func visionModelCapabilities() {
         let visionCapableModels = [
-            Model.anthropic(.opus4),
+            Model.anthropic(.opus45),
             Model.anthropic(.sonnet4),
             Model.anthropic(.haiku45),
         ]
@@ -93,22 +93,22 @@ struct AnthropicModelTests {
 
     @Test("Anthropic model comparison")
     func modelComparison() {
-        let opus4 = Model.anthropic(.opus4)
+        let opus45 = Model.anthropic(.opus45)
         let sonnet4 = Model.anthropic(.sonnet4)
         let haiku45 = Model.anthropic(.haiku45)
 
         // Test model descriptions
-        #expect(opus4.description.contains("Anthropic"))
+        #expect(opus45.description.contains("Anthropic"))
         #expect(sonnet4.description.contains("Anthropic"))
         #expect(haiku45.description.contains("Anthropic"))
 
         // Test that they're different models
-        #expect(opus4.modelId != sonnet4.modelId)
+        #expect(opus45.modelId != sonnet4.modelId)
         #expect(sonnet4.modelId != haiku45.modelId)
-        #expect(opus4.modelId != haiku45.modelId)
+        #expect(opus45.modelId != haiku45.modelId)
 
         // Test model hierarchy (Opus > Sonnet > Haiku typically)
-        #expect(opus4.contextLength >= sonnet4.contextLength)
+        #expect(opus45.contextLength >= sonnet4.contextLength)
         #expect(sonnet4.contextLength >= haiku45.contextLength)
     }
 

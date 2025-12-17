@@ -27,7 +27,7 @@ struct PeekabooAIServiceTests {
         let models = service.availableModels()
 
         #expect(!models.isEmpty)
-        #expect(models == [.openai(.gpt51), .anthropic(.sonnet45)])
+        #expect(models == [.openai(.gpt51), .anthropic(.opus45)])
     }
 
     @Test("Respects configured provider default")
@@ -130,8 +130,8 @@ struct PeekabooAIServiceTests {
         _ = ConfigurationManager.shared.loadConfiguration()
 
         let service = PeekabooAIService()
-        #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
-        #expect(service.availableModels() == [.anthropic(.sonnet45)])
+        #expect(service.resolvedDefaultModel == .anthropic(.opus45))
+        #expect(service.availableModels() == [.anthropic(.opus45)])
     }
 
     @Test("Falls back to OpenAI when no config or keys present")

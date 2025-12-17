@@ -952,7 +952,7 @@ extension AgentCommand {
             }
         case let .anthropic(model):
             if Self.supportedAnthropicInputs.contains(model) {
-                return .anthropic(.sonnet45)
+                return .anthropic(.opus45)
             }
         default:
             break
@@ -993,6 +993,7 @@ extension AgentCommand {
         .sonnet45,
         .sonnet4,
         .sonnet4Thinking,
+        .opus45,
         .opus4,
         .opus4Thinking,
     ]

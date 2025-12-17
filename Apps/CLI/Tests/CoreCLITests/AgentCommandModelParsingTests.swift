@@ -20,14 +20,14 @@ struct AgentCommandTests {
         #expect(command.parseModelString("gpt-4o-mini") == .openai(.gpt51))
     }
 
-    @Test("Supported Anthropic aliases map to Claude Sonnet 4.5")
+    @Test("Supported Anthropic aliases map to Claude Opus 4.5")
     func anthropicModelParsing() async throws {
         let command = try AgentCommand.parse([])
 
-        #expect(command.parseModelString("claude-sonnet-4.5") == .anthropic(.sonnet45))
-        #expect(command.parseModelString("Claude-Sonnet-4.5") == .anthropic(.sonnet45))
-        #expect(command.parseModelString("claude") == .anthropic(.sonnet45))
-        #expect(command.parseModelString("claude-opus-4") == .anthropic(.sonnet45))
+        #expect(command.parseModelString("claude-sonnet-4.5") == .anthropic(.opus45))
+        #expect(command.parseModelString("Claude-Sonnet-4.5") == .anthropic(.opus45))
+        #expect(command.parseModelString("claude") == .anthropic(.opus45))
+        #expect(command.parseModelString("claude-opus-4") == .anthropic(.opus45))
         #expect(command.parseModelString("claude-3-sonnet") == nil)
     }
 
@@ -46,7 +46,7 @@ struct AgentCommandTests {
 
         #expect(command.parseModelString("  gpt-5  ") == .openai(.gpt51))
         #expect(command.parseModelString("\tgpt-5\n") == .openai(.gpt51))
-        #expect(command.parseModelString(" claude-sonnet-4.5 ") == .anthropic(.sonnet45))
+        #expect(command.parseModelString(" claude-sonnet-4.5 ") == .anthropic(.opus45))
     }
 }
 
@@ -63,7 +63,7 @@ struct ModelSelectionIntegrationTests {
 
         command.model = "claude-sonnet-4.5"
         let parsedClaude = command.model.flatMap { command.parseModelString($0) }
-        #expect(parsedClaude == .anthropic(.sonnet45))
+        #expect(parsedClaude == .anthropic(.opus45))
 
         command.model = "gpt-4o"
         let remapped = command.model.flatMap { command.parseModelString($0) }
@@ -76,7 +76,7 @@ struct ModelSelectionIntegrationTests {
 
         let testCases: [(String, LanguageModel)] = [
             ("gpt-5.1", .openai(.gpt51)),
-            ("claude-sonnet-4.5", .anthropic(.sonnet45)),
+            ("claude-sonnet-4.5", .anthropic(.opus45)),
         ]
 
         for (input, expected) in testCases {

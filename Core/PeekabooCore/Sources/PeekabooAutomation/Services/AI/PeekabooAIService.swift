@@ -142,8 +142,8 @@ public final class PeekabooAIService {
 
         // Fallback: prefer Anthropic if a key is present, else OpenAI
         if let key = configuration.getAnthropicAPIKey(), !key.isEmpty {
-            return [.anthropic(.sonnet45)]
+            return [.anthropic(.opus45)]
         }
-        return [.openai(.gpt51), .anthropic(.sonnet45)]
+        return [.openai(.gpt51), .anthropic(.opus45)]
     }
 }
