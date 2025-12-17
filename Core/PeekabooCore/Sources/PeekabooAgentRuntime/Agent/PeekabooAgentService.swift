@@ -117,7 +117,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     public init(
         services: any PeekabooServiceProviding,
-        defaultModel: LanguageModel = .anthropic(.opus45))
+        defaultModel: LanguageModel = .anthropic(.opus4))
         throws
     {
         self.services = services
@@ -332,7 +332,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         case .openai:
             return .openai(.gpt51)
         case .anthropic:
-            return .anthropic(.opus45)
+            return .anthropic(.opus4)
         default:
             return .openai(.gpt51)
         }
@@ -353,7 +353,7 @@ extension PeekabooAgentService {
         case .anthropic:
             GenerationSettings(
                 maxTokens: 4096,
-                providerOptions: .init(anthropic: .init(thinking: .enabled(budgetTokens: 12_000))))
+                providerOptions: .init(anthropic: .init(thinking: .enabled(budgetTokens: 12000))))
         default:
             GenerationSettings(maxTokens: 4096)
         }

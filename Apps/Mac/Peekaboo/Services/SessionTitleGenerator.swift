@@ -86,7 +86,7 @@ final class SessionTitleGenerator {
         hasAnthropic: Bool) -> LanguageModel
     {
         if providers.contains("anthropic"), hasAnthropic {
-            return .anthropic(.opus45)
+            return .anthropic(.opus4)
         }
         if providers.contains("openai"), hasOpenAI {
             return .openai(.gpt41)
@@ -94,7 +94,7 @@ final class SessionTitleGenerator {
         if providers.contains("ollama") {
             return .ollama(.llama33)
         }
-        return .anthropic(.opus45)
+        return .anthropic(.opus4)
     }
 
     private func buildPrompt(for task: String) -> String {
