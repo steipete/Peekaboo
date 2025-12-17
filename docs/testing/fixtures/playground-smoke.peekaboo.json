@@ -60,11 +60,11 @@
       "params": {
         "generic": {
           "_0": {
-            "query": "Focus Basic Field"
+            "query": "basic-text-field"
           }
         }
       },
-      "comment": "Focus the basic text field via helper button in TextInputView"
+      "comment": "Focus the basic text field directly (Focus Control section may be offscreen)"
     },
     {
       "stepId": "type_basic_field",
