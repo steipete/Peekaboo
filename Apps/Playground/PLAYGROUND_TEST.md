@@ -512,10 +512,15 @@
 - **Setup**:
   1. `polter peekaboo -- app launch TextEdit --wait-until-ready --json-output > .artifacts/playground-tools/20251116-091212-textedit-launch.json`
   2. `polter peekaboo -- menu click --path "File>New" --app TextEdit`
-  3. `polter peekaboo -- see --app TextEdit --json-output --path .artifacts/playground-tools/20251116-091229-see-textedit.png` (snapshot `0485162B-6D02-4A72-9818-48C79452AEAC`)
-  4. `polter peekaboo -- hotkey --keys "cmd,s" --snapshot 0485162B-…`
+  3. Type at least one character so TextEdit becomes “dirty” (otherwise `cmd+s` may no-op): `polter peekaboo -- type "Peekaboo" --app TextEdit`
+  4. `polter peekaboo -- see --app TextEdit --json-output --path .artifacts/playground-tools/20251116-091229-see-textedit.png` (snapshot `0485162B-6D02-4A72-9818-48C79452AEAC`)
+  5. `polter peekaboo -- hotkey --keys "cmd,s" --snapshot 0485162B-…`
 - **Commands**:
   1. `polter peekaboo -- dialog list --app TextEdit --json-output > .artifacts/playground-tools/20251116-091255-dialog-list.json`
   2. `polter peekaboo -- dialog click --button "Cancel" --app TextEdit --json-output > .artifacts/playground-tools/20251116-091259-dialog-click-cancel.json`
+  3. `polter peekaboo -- dialog input --app TextEdit --index 0 --text "NAME0" --clear --json-output`
+  4. `polter peekaboo -- dialog file --app TextEdit --select "Cancel" --json-output`
 - **Artifacts**: `.artifacts/playground-tools/20251116-091306-dialog.log` shows `[Dialog] action=list` and `action=click button='Cancel'` entries. JSON artifacts include the full dialog metadata and confirm the click result.
 - **Notes**: Re-run the `hotkey --keys "cmd,s"` step whenever the dialog is dismissed so future dialog tests have a live window to interact with.
+ - **2025-12-17 follow-up**:
+   - `dialog input` no longer fails with “Action is not supported” on Save-sheet text fields, and `dialog file --select Cancel` reliably dismisses Save sheets that expose neither a useful title nor `AXIdentifier` (detected via canonical buttons + re-resolving before click): `.artifacts/playground-tools/20251217-215657-dialog-input-then-file-cancel.json`.

@@ -421,15 +421,21 @@ The following subsections spell out the concrete steps, required Playground surf
 - **Steps to spawn dialog**:
   1. `polter peekaboo -- app launch TextEdit --wait-until-ready --json-output > .artifacts/playground-tools/20251116-091212-textedit-launch.json`.
   2. `polter peekaboo -- menu click --path "File>New" --app TextEdit` to create a blank document.
-  3. `polter peekaboo -- see --app TextEdit --json-output --path ...` to capture a snapshot ID (e.g., `0485162B-6D02-4A72-9818-48C79452AEAC`).
-  4. `polter peekaboo -- hotkey --keys "cmd,s" --snapshot <id>` to summon the Save dialog.
+  3. Type at least one character so TextEdit becomes “dirty” (otherwise `cmd+s` may no-op):
+     - `polter peekaboo -- type "Peekaboo" --app TextEdit`
+  4. `polter peekaboo -- see --app TextEdit --json-output --path ...` to capture a snapshot ID (e.g., `0485162B-6D02-4A72-9818-48C79452AEAC`).
+  5. `polter peekaboo -- hotkey --keys "cmd,s" --snapshot <id>` to summon the Save dialog.
 - **Tests**:
   1. `polter peekaboo -- dialog list --app TextEdit --json-output > .artifacts/playground-tools/20251116-091255-dialog-list.json`.
   2. `polter peekaboo -- dialog click --button "Cancel" --app TextEdit --json-output > .artifacts/playground-tools/20251116-091259-dialog-click-cancel.json`.
+  3. `polter peekaboo -- dialog input --app TextEdit --index 0 --text "NAME0" --clear --json-output > .artifacts/playground-tools/<timestamp>-dialog-input.json`.
+  4. `polter peekaboo -- dialog file --app TextEdit --select "Cancel" --json-output > .artifacts/playground-tools/<timestamp>-dialog-file-cancel.json`.
 - **2025-11-16 verification**:
   - The list call enumerated the Save sheet (“Untitled Dialog”, two buttons, two text fields). The click call dismissed the dialog.
   - `.artifacts/playground-tools/20251116-091306-dialog.log` contains both automation events (`action=list`, `action=click button='Cancel'`), proving the logger instrumentation.
-  - Repeat the `hotkey` step whenever you need to reopen the dialog for further testing.
+ - Repeat the `hotkey` step whenever you need to reopen the dialog for further testing.
+ - **2025-12-17 verification**:
+   - `dialog input` succeeds on TextEdit Save sheets without tripping “Action is not supported”, and `dialog file --select Cancel` reliably dismisses even when the sheet title is “Untitled Dialog”: `.artifacts/playground-tools/20251217-215657-dialog-input-then-file-cancel.json`.
 
 #### `visualizer`
 - **Setup**: Ensure `Peekaboo.app` is running (visual feedback host) and keep Playground visible so you can quickly spot overlays.
