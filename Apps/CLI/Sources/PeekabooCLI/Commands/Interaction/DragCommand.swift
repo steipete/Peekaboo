@@ -205,8 +205,13 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         }
 
         guard let snapshotId else {
-            throw ValidationError("Snapshot ID required when using element IDs")
+            throw PeekabooError.snapshotNotFound("No snapshot found")
         }
+
+        _ = try await SnapshotValidation.requireDetectionResult(
+            snapshotId: snapshotId,
+            snapshots: self.services.snapshots
+        )
 
         let target = ClickTarget.elementId(element)
         let waitResult = try await AutomationServiceBridge.waitForElement(

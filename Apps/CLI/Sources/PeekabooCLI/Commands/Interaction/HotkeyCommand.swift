@@ -1,6 +1,7 @@
 import Commander
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Presses key combinations like Cmd+C, Ctrl+A, etc. using the UIAutomationService.
 @available(macOS 14.0, *)
@@ -73,6 +74,13 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
                 providedSnapshot
             } else {
                 await self.services.snapshots.getMostRecentSnapshot()
+            }
+
+            if let providedSnapshot = self.snapshot, !providedSnapshot.isEmpty {
+                _ = try await SnapshotValidation.requireDetectionResult(
+                    snapshotId: providedSnapshot,
+                    snapshots: self.services.snapshots
+                )
             }
 
             // Ensure window is focused before pressing hotkey (if we have a snapshot and auto-focus is enabled)

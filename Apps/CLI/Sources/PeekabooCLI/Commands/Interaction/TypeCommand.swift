@@ -96,6 +96,12 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         do {
             let actions = try self.buildActions()
             let snapshotId = await self.resolveSnapshotId()
+            if let explicitSnapshot = self.snapshot, !explicitSnapshot.isEmpty {
+                _ = try await SnapshotValidation.requireDetectionResult(
+                    snapshotId: explicitSnapshot,
+                    snapshots: self.services.snapshots
+                )
+            }
             self.warnIfFocusUnknown(snapshotId: snapshotId)
             try await self.focusIfNeeded(snapshotId: snapshotId)
             let typeResult = try await self.executeTypeActions(actions: actions, snapshotId: snapshotId)

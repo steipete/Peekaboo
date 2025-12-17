@@ -178,6 +178,11 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             }
             return CGPoint(x: x, y: y)
         } else if let element = elementId, let activeSnapshotId = snapshotId {
+            _ = try await SnapshotValidation.requireDetectionResult(
+                snapshotId: activeSnapshotId,
+                snapshots: self.services.snapshots
+            )
+
             // Resolve from snapshot using waitForElement
             let target = ClickTarget.elementId(element)
             let waitResult = try await AutomationServiceBridge.waitForElement(
@@ -201,7 +206,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
             )
         } else if elementId != nil {
-            throw ValidationError("Snapshot ID required when using element IDs")
+            throw PeekabooError.snapshotNotFound("No snapshot found")
         } else {
             throw ValidationError("No \(description) point specified")
         }

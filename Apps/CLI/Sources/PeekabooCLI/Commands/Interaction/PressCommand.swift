@@ -62,6 +62,13 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 await self.services.snapshots.getMostRecentSnapshot()
             }
 
+            if let providedSnapshot = self.snapshot, !providedSnapshot.isEmpty {
+                _ = try await SnapshotValidation.requireDetectionResult(
+                    snapshotId: providedSnapshot,
+                    snapshots: self.services.snapshots
+                )
+            }
+
             // Ensure window is focused before pressing keys
             if let snapshotId {
                 try await ensureFocused(
