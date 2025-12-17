@@ -151,6 +151,20 @@ struct ClickTestingView: View {
                     }
                 }
 
+                // Mouse move probe (used to verify `peekaboo move` end-to-end)
+                GroupBox("Mouse Movement") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Move the cursor into this area to generate deterministic logs:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        MouseMoveProbeView()
+                            .frame(height: 140)
+                            .cornerRadius(12)
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 // Status display
                 if self.clickCount > 0 {
                     GroupBox("Click Statistics") {

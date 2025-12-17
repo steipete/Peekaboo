@@ -12,6 +12,7 @@ final class PlaygroundTabRouter: ObservableObject {
 struct ContentView: View {
     @EnvironmentObject var actionLogger: ActionLogger
     @EnvironmentObject var tabRouter: PlaygroundTabRouter
+    @State private var selectedTab: String = "text"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,10 +21,24 @@ struct ContentView: View {
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
 
+            #if DEBUG
+            HStack {
+                Text("Debug tab: router=\(self.tabRouter.selectedTab) selection=\(self.selectedTab)")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .accessibilityIdentifier("debug-selected-tab")
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+            .background(Color(NSColor.controlBackgroundColor))
+            Divider()
+            #endif
+
             Divider()
 
             // Main content area with tabs
-            TabView(selection: self.$tabRouter.selectedTab) {
+            TabView(selection: self.$selectedTab) {
                 ClickTestingView()
                     .tabItem { Label("Click Testing", systemImage: "cursorarrow.click") }
                     .tag("click")
@@ -53,6 +68,19 @@ struct ContentView: View {
                     .tag("keyboard")
             }
             .padding()
+            .onAppear {
+                self.selectedTab = self.tabRouter.selectedTab
+            }
+            .onChange(of: self.selectedTab) { _, newValue in
+                guard self.tabRouter.selectedTab != newValue else { return }
+                self.tabRouter.selectedTab = newValue
+                self.actionLogger.log(.menu, "Tab changed (selection): \(newValue)")
+            }
+            .onChange(of: self.tabRouter.selectedTab) { _, newValue in
+                guard self.selectedTab != newValue else { return }
+                self.selectedTab = newValue
+                self.actionLogger.log(.menu, "Tab changed (router): \(newValue)")
+            }
 
             Divider()
 
@@ -127,6 +155,7 @@ struct HeaderView: View {
 
 struct StatusBarView: View {
     @EnvironmentObject var actionLogger: ActionLogger
+    @EnvironmentObject var tabRouter: PlaygroundTabRouter
 
     var body: some View {
         HStack {
@@ -136,6 +165,10 @@ struct StatusBarView: View {
             Text(self.actionLogger.lastAction)
                 .font(.system(.body, design: .monospaced))
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("Tab: \(self.tabRouter.selectedTab)")
+                .font(.system(.caption, design: .monospaced))
+                .foregroundColor(.secondary)
 
             Text(Date(), style: .time)
                 .font(.system(.caption, design: .monospaced))

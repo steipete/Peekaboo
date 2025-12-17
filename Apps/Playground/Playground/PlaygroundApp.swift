@@ -213,6 +213,8 @@ struct PlaygroundApp: App {
         }
         .windowResizability(.contentSize)
         .commands {
+            FixtureCommands()
+
             CommandGroup(replacing: .appInfo) {
                 Button("About Peekaboo Playground") {
                     logger.info("About menu clicked")
@@ -307,6 +309,56 @@ struct PlaygroundApp: App {
                 .keyboardShortcut("l", modifiers: [.command, .shift])
             }
         }
+
+        WindowGroup("Click Fixture", id: "fixture-click") {
+            ClickTestingView()
+                .environmentObject(self.actionLogger)
+                .frame(minWidth: 1200, minHeight: 800)
+        }
+        .windowResizability(.contentSize)
+
+        WindowGroup("Text Fixture", id: "fixture-text") {
+            TextInputView()
+                .environmentObject(self.actionLogger)
+                .frame(minWidth: 1200, minHeight: 800)
+        }
+        .windowResizability(.contentSize)
+
+        WindowGroup("Controls Fixture", id: "fixture-controls") {
+            ControlsView()
+                .environmentObject(self.actionLogger)
+                .frame(minWidth: 1200, minHeight: 800)
+        }
+        .windowResizability(.contentSize)
+
+        WindowGroup("Scroll Fixture", id: "fixture-scroll") {
+            ScrollTestingView()
+                .environmentObject(self.actionLogger)
+                .frame(minWidth: 1200, minHeight: 800)
+        }
+        .windowResizability(.contentSize)
+
+        WindowGroup("Window Fixture", id: "fixture-window") {
+            WindowTestingView()
+                .environmentObject(self.actionLogger)
+                .environmentObject(self.tabRouter)
+                .frame(minWidth: 1200, minHeight: 800)
+        }
+        .windowResizability(.automatic)
+
+        WindowGroup("Drag Fixture", id: "fixture-drag") {
+            DragDropView()
+                .environmentObject(self.actionLogger)
+                .frame(minWidth: 1200, minHeight: 800)
+        }
+        .windowResizability(.contentSize)
+
+        WindowGroup("Keyboard Fixture", id: "fixture-keyboard") {
+            KeyboardView()
+                .environmentObject(self.actionLogger)
+                .frame(minWidth: 1200, minHeight: 800)
+        }
+        .windowResizability(.contentSize)
 
         WindowGroup("Log Viewer", id: "log-viewer") {
             LogViewerWindow()

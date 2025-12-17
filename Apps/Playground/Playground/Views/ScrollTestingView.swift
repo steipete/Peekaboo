@@ -38,6 +38,11 @@ struct ScrollTestingView: View {
                                     }
                                 }
                             }
+                            // Measure the *content* offset inside the scroll view's coordinate space.
+                            // (Measuring the ScrollView itself always reports 0,0.)
+                            .background(ScrollOffsetReader(coordinateSpace: "vertical-scroll-area") { offset in
+                                self.logVerticalScrollChange(offset: offset.y)
+                            })
                             .background(
                                 ScrollAccessibilityConfigurator(
                                     identifier: "vertical-scroll",
@@ -48,9 +53,6 @@ struct ScrollTestingView: View {
                                 identifier: "vertical-scroll",
                                 label: "Vertical Scroll Area"))
                         .padding()
-                        .background(ScrollOffsetReader(coordinateSpace: "vertical-scroll-area") { offset in
-                            self.logVerticalScrollChange(offset: offset.y)
-                        })
                         .frame(height: 300)
                         .background(Color(NSColor.controlBackgroundColor))
                         .coordinateSpace(name: "vertical-scroll-area")
@@ -107,6 +109,10 @@ struct ScrollTestingView: View {
                                     }
                                 }
                             }
+                            // Measure the *content* offset inside the scroll view's coordinate space.
+                            .background(ScrollOffsetReader(coordinateSpace: "horizontal-scroll-area") { offset in
+                                self.logHorizontalScrollChange(offset: offset.x)
+                            })
                             .background(
                                 ScrollAccessibilityConfigurator(
                                     identifier: "horizontal-scroll",
@@ -117,9 +123,6 @@ struct ScrollTestingView: View {
                                 identifier: "horizontal-scroll",
                                 label: "Horizontal Scroll Area"))
                         .padding()
-                        .background(ScrollOffsetReader(coordinateSpace: "horizontal-scroll-area") { offset in
-                            self.logHorizontalScrollChange(offset: offset.x)
-                        })
                         .frame(height: 150)
                         .background(Color(NSColor.controlBackgroundColor))
                         .coordinateSpace(name: "horizontal-scroll-area")
