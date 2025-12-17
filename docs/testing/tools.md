@@ -52,6 +52,9 @@ read_when:
     see --app boo.peekaboo.playground.debug --mode window --window-title "Click Fixture" --json-output
   ```
 - Current reference baseline (2025-12-17, Click Fixture): `see` p95 ≈ 0.97s, `click` p95 ≈ 0.18s (`.artifacts/playground-tools/20251217-174822-perf-see-click-clickfixture-summary.json`).
+- Additional baselines (2025-12-17):
+  - Scroll Fixture (`scroll --on vertical-scroll`, 15 runs): wall p95 ≈ 0.30s, exec p95 ≈ 0.12s (`.artifacts/playground-tools/20251217-224849-scroll-vertical-scroll-fixture-summary.json`).
+  - System menu list-all (3 runs): wall p95 ≈ 0.61s (`.artifacts/playground-tools/20251217-224944-menu-list-all-system-summary.json`).
 
 ## Tool Matrix
 
