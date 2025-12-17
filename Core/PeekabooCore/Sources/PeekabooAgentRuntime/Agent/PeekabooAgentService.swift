@@ -117,7 +117,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     public init(
         services: any PeekabooServiceProviding,
-        defaultModel: LanguageModel = .anthropic(.opus4))
+        defaultModel: LanguageModel = .anthropic(.opus45))
         throws
     {
         self.services = services
@@ -332,7 +332,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         case .openai:
             return .openai(.gpt51)
         case .anthropic:
-            return .anthropic(.opus4)
+            return .anthropic(.opus45)
         case .google:
             return .google(.gemini3Flash)
         default:

@@ -17,8 +17,25 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        // Should default to Claude Opus 4.x
-        #expect(agentService.defaultModel == LanguageModel.anthropic(.opus4).description)
+        // Should default to Claude Opus 4.5
+        #expect(agentService.defaultModel == LanguageModel.anthropic(.opus45).description)
+    }
+
+    @Test("Anthropic generation settings enable thinking")
+    @MainActor
+    func anthropicGenerationSettingsEnableThinking() async throws {
+        let mockServices = self.makeServices()
+        let agentService = try PeekabooAgentService(services: mockServices)
+
+        let settings = agentService.generationSettings(for: .anthropic(.opus45))
+        let thinking = settings.providerOptions.anthropic?.thinking
+
+        switch thinking {
+        case let .enabled(budgetTokens):
+            #expect(budgetTokens == 12000)
+        default:
+            Issue.record("Expected Anthropic thinking to be enabled with a budget")
+        }
     }
 
     @Test("Custom default model initialization")
@@ -37,7 +54,7 @@ struct PeekabooAgentServiceTests {
     @MainActor
     func modelParameterPrecedence() async throws {
         let mockServices = self.makeServices()
-        let defaultModel = LanguageModel.anthropic(.opus4)
+        let defaultModel = LanguageModel.anthropic(.opus45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -71,7 +88,7 @@ struct PeekabooAgentServiceTests {
     @MainActor
     func modelParameterFallback() async throws {
         let mockServices = self.makeServices()
-        let defaultModel = LanguageModel.anthropic(.opus4)
+        let defaultModel = LanguageModel.anthropic(.opus45)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -128,7 +145,7 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.anthropic(.opus4)
+        let customModel = LanguageModel.anthropic(.opus45)
 
         // Test resume session with custom model
         do {
@@ -150,7 +167,7 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(
             services: mockServices,
-            defaultModel: .anthropic(.opus4))
+            defaultModel: .anthropic(.opus45))
 
         let result = try await agentService.executeTask(
             "describe state",
@@ -215,7 +232,7 @@ struct ModelSelectionExecutionPathTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.anthropic(.opus4)
+        let customModel = LanguageModel.anthropic(.opus45)
 
         do {
             // No event delegate means non-streaming path
@@ -241,7 +258,7 @@ struct ModelSelectionExecutionPathTests {
 
         let models: [LanguageModel] = [
             .openai(.gpt51),
-            .anthropic(.opus4),
+            .anthropic(.opus45),
         ]
 
         for model in models {

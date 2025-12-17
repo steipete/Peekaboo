@@ -369,7 +369,12 @@ extension AgentCommand {
             break
         }
 
-        if try await self.handleSessionResumption(peekabooAgent, requestedModel: requestedModel) {
+        if try await self.handleSessionResumption(
+            peekabooAgent,
+            requestedModel: requestedModel,
+            maxSteps: self.maxSteps ?? 100,
+            queueMode: queueMode
+        ) {
             return
         }
 
@@ -442,7 +447,9 @@ extension AgentCommand {
 
     private func handleSessionResumption(
         _ agentService: PeekabooAgentService,
-        requestedModel: LanguageModel?
+        requestedModel: LanguageModel?,
+        maxSteps: Int,
+        queueMode: QueueMode
     ) async throws -> Bool {
         if let sessionId = self.resumeSession {
             guard let continuationTask = self.task else {
@@ -456,7 +463,9 @@ extension AgentCommand {
                 agentService,
                 sessionId: sessionId,
                 task: continuationTask,
-                requestedModel: requestedModel
+                requestedModel: requestedModel,
+                maxSteps: maxSteps,
+                queueMode: queueMode
             )
             return true
         }
@@ -477,7 +486,9 @@ extension AgentCommand {
                     agentService,
                     sessionId: mostRecent.id,
                     task: continuationTask,
-                    requestedModel: requestedModel
+                    requestedModel: requestedModel,
+                    maxSteps: maxSteps,
+                    queueMode: queueMode
                 )
             } else {
                 if self.jsonOutput {
@@ -662,7 +673,9 @@ extension AgentCommand {
         _ agentService: PeekabooAgentService,
         sessionId: String,
         task: String,
-        requestedModel: LanguageModel?
+        requestedModel: LanguageModel?,
+        maxSteps: Int,
+        queueMode: QueueMode
     ) async throws {
         if !self.jsonOutput {
             let resumingLine = [
@@ -678,9 +691,13 @@ extension AgentCommand {
         let outputDelegate = self.makeDisplayDelegate(for: task)
         let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)
         do {
-            let result = try await agentService.resumeSession(
+            let result = try await agentService.continueSession(
                 sessionId: sessionId,
+                userMessage: task,
                 model: requestedModel,
+                maxSteps: maxSteps,
+                dryRun: self.dryRun,
+                queueMode: queueMode,
                 eventDelegate: streamingDelegate
             )
             self.displayResult(result, delegate: outputDelegate)
@@ -953,7 +970,7 @@ extension AgentCommand {
             }
         case let .anthropic(model):
             if Self.supportedAnthropicInputs.contains(model) {
-                return .anthropic(.opus4)
+                return .anthropic(.opus45)
             }
         case let .google(model):
             if Self.supportedGoogleInputs.contains(model) {
@@ -998,6 +1015,7 @@ extension AgentCommand {
         .sonnet45,
         .sonnet4,
         .sonnet4Thinking,
+        .opus45,
         .opus4,
         .opus4Thinking,
     ]

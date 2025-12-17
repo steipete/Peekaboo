@@ -86,6 +86,19 @@ extension PeekabooAgentService {
                 state.usage = usage
             }
 
+            if case .anthropic = configuration.model {
+                for block in output.reasoningBlocks {
+                    state.messages.append(ModelMessage(
+                        role: .assistant,
+                        content: [.text(block.text)],
+                        channel: .thinking,
+                        metadata: .init(customData: [
+                            "anthropic.thinking.signature": block.signature,
+                            "anthropic.thinking.type": block.type,
+                        ])))
+                }
+            }
+
             if output.toolCalls.isEmpty {
                 self.appendFinalStep(
                     text: output.text,
@@ -125,6 +138,13 @@ extension PeekabooAgentService {
         let text: String
         let toolCalls: [AgentToolCall]
         let usage: Usage?
+        let reasoningBlocks: [ReasoningBlock]
+    }
+
+    private struct ReasoningBlock {
+        var text: String
+        let signature: String
+        let type: String
     }
 
     private func logStreamingStepStart(_ stepIndex: Int, tools: [AgentTool]) {
@@ -168,6 +188,9 @@ extension PeekabooAgentService {
         stepIndex: Int) async throws -> StreamProcessingOutput
     {
         var stepText = ""
+        var reasoningBlocks: [ReasoningBlock] = []
+        var activeReasoningIndex: Int?
+        var pendingReasoningText = ""
         var stepToolCalls: [AgentToolCall] = []
         var seenToolCallIds = Set<String>()
         var isThinking = false
@@ -201,7 +224,25 @@ extension PeekabooAgentService {
                 }
 
             case .reasoning:
-                await self.handleReasoningDelta(delta.content, eventHandler: eventHandler)
+                if let signature = delta.reasoningSignature {
+                    reasoningBlocks.append(ReasoningBlock(
+                        text: pendingReasoningText,
+                        signature: signature,
+                        type: delta.reasoningType ?? "thinking"))
+                    activeReasoningIndex = reasoningBlocks.count - 1
+                    pendingReasoningText = ""
+                }
+
+                if let content = delta.content {
+                    if let activeReasoningIndex {
+                        reasoningBlocks[activeReasoningIndex].text += content
+                    } else {
+                        pendingReasoningText += content
+                    }
+                }
+
+                let displayContent = delta.content.flatMap { $0.isEmpty ? nil : $0 }
+                await self.handleReasoningDelta(displayContent, eventHandler: eventHandler)
 
             case .done:
                 usage = delta.usage
@@ -211,7 +252,11 @@ extension PeekabooAgentService {
             }
         }
 
-        return StreamProcessingOutput(text: stepText, toolCalls: stepToolCalls, usage: usage)
+        return StreamProcessingOutput(
+            text: stepText,
+            toolCalls: stepToolCalls,
+            usage: usage,
+            reasoningBlocks: reasoningBlocks)
     }
 
     private func handleTextDelta(

@@ -175,7 +175,7 @@ public struct AnalyzeTool: MCPTool {
         if let providerType {
             switch providerType.lowercased() {
             case "anthropic":
-                languageModel = .anthropic(.opus4)
+                languageModel = .anthropic(.opus45)
             case "openai":
                 languageModel = .openai(.gpt51)
             case "grok":
@@ -212,7 +212,7 @@ public struct AnalyzeTool: MCPTool {
 
         // Claude models
         if lowercased.contains("claude") || lowercased.contains("sonnet") || lowercased.contains("opus") {
-            return .anthropic(.opus4)
+            return .anthropic(.opus45)
         }
 
         // OpenAI models
