@@ -627,10 +627,17 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 ],
                 correlationId: correlationId)
 
-            let targetDisplay = self.display(for: targetWindow, displays: content.displays)
-            let targetScale = targetDisplay.map { self.nativeScale(for: $0) } ?? 1.0
+            guard let targetDisplay = self.display(for: targetWindow, displays: content.displays) else {
+                throw OperationError.captureFailed(
+                    reason: "Window is not on any available display")
+            }
+            let targetScale = self.nativeScale(for: targetDisplay)
             let image = try await RetryHandler.withRetry(policy: .standard) {
-                try await self.createScreenshot(of: targetWindow, scale: scale, targetScale: targetScale)
+                try await self.createScreenshot(
+                    of: targetWindow,
+                    scale: scale,
+                    targetScale: targetScale,
+                    display: targetDisplay)
             }
 
             let imageData = try image.pngData()
@@ -664,14 +671,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     index: resolvedIndex,
                     layer: 0,
                     isOnScreen: targetWindow.isOnScreen),
-                displayInfo: targetDisplay.map { display in
-                    let displayScale = scale == .native ? self.nativeScale(for: display) : 1.0
-                    return DisplayInfo(
-                        index: content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0,
-                        name: display.displayID.description,
-                        bounds: display.frame,
-                        scaleFactor: displayScale)
-                })
+                displayInfo: DisplayInfo(
+                    index: content.displays.firstIndex(where: { $0.displayID == targetDisplay.displayID }) ?? 0,
+                    name: targetDisplay.displayID.description,
+                    bounds: targetDisplay.frame,
+                    scaleFactor: scale == .native ? self.nativeScale(for: targetDisplay) : 1.0
+                ))
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
@@ -764,16 +769,26 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             return try await self.captureWithStream(filter: filter, configuration: config)
         }
 
+        /// Capture a window screenshot using display-based capture.
+        /// This method uses SCContentFilter(display:including:) which works reliably
+        /// for all windows including GPU-rendered ones like iOS Simulator.
+        /// The desktopIndependentWindow approach fails for such windows because they
+        /// render through Metal/GPU compositing that bypasses the window backing store.
         private func createScreenshot(
             of window: SCWindow,
             scale: CaptureScalePreference,
-            targetScale: CGFloat) async throws -> CGImage
+            targetScale: CGFloat,
+            display: SCDisplay) async throws -> CGImage
         {
-            let filter = SCContentFilter(desktopIndependentWindow: window)
-            let config = SCStreamConfiguration()
             let scaleValue = scale == .native ? targetScale : 1.0
-            config.width = Int(window.frame.width * scaleValue)
-            config.height = Int(window.frame.height * scaleValue)
+            let width = Int(window.frame.width * scaleValue)
+            let height = Int(window.frame.height * scaleValue)
+
+            let filter = SCContentFilter(display: display, including: [window])
+            let config = SCStreamConfiguration()
+            config.sourceRect = window.frame
+            config.width = width
+            config.height = height
             config.captureResolution = .best
             config.showsCursor = false
 
