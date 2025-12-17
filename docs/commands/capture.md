@@ -36,7 +36,7 @@ A hidden alias `capture watch` maps to `capture live` for backwards compatibilit
 - Caps/output: `--max-frames`, `--max-mb`, `--resolution-cap` (default 1440), `--diff-strategy`, `--diff-budget-ms`, `--video-out`
 - Paths: `--path`, `--autoclean-minutes`
 
-Validation: video source rejects targeting/focus/cadence flags; live rejects sampling/trim/no-diff. Video runs require >=2 kept frames or return an error.
+Validation: video source rejects targeting/focus/cadence flags; live rejects sampling/trim/no-diff. Video runs may keep a single frame when no motion is detected (emits a `noMotion` warning) instead of failing.
 
 ## Examples
 ```bash
@@ -56,7 +56,7 @@ peekaboo capture video /path/to/demo.mov --every-ms 500 --no-diff
 ## Design notes
 - Hidden alias: `capture watch` maps to `capture live`; the old standalone `watch` tool was removed.
 - Live defaults: max duration 180s, `--max-frames` 800, resolution cap 1440, diff strategy `fast` unless `--diff-strategy quality` is set.
-- Video ingest uses the same diff/keep logic as live; `--no-diff` keeps every sampled frame. Requires at least 2 kept frames.
+- Video ingest uses the same diff/keep logic as live; `--no-diff` keeps every sampled frame. When no motion is detected, you may end up with a single kept frame plus a `noMotion` warning.
 - Core types: `CaptureScope/Options/Result` with a pluggable `CaptureFrameSource` (ScreenCapture for live, AVAssetReader for video). Optional MP4 is written by `VideoWriter` when `--video-out` is set.
 - Quick smokes:  
   - `peekaboo capture live --mode screen --duration 5 --active-fps 8 --threshold 0` → frames > 0, contact sheet exists.  

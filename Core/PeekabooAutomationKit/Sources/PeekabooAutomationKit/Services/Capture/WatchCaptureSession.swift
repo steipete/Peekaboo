@@ -127,11 +127,6 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
         self.finalizeActiveInterval(start: timing.start)
         try await self.ensureFallbackFrame(start: timing.start)
 
-        if self.sourceKind == .video, self.frames.count < 2 {
-            throw PeekabooError
-                .captureFailed(reason: "Video input yielded fewer than 2 frames; adjust sampling or trim")
-        }
-
         if let writer = self.videoWriter {
             try await writer.finish()
         }
