@@ -211,7 +211,7 @@
 - **Artifacts**: `.artifacts/playground-tools/20251217-153107-see-click-for-move.json` (Click Fixture returns click controls like “Single Click”, not TextInputView elements).
 
 ### ✅ Fixture windows (avoid TabView flakiness)
-- Added a `Fixtures` menu with `⌘⇧1…⌘⇧7` shortcuts opening dedicated windows (“Click Fixture”, “Text Fixture”, …).
+- Added a `Fixtures` menu with `⌘⌃1…⌘⌃7` shortcuts opening dedicated windows (“Click Fixture”, “Text Fixture”, …).
 - This makes window-title targeting deterministic and keeps snapshots stable for tool tests.
 
 ### ✅ `scroll` evidence logging (Playground)
@@ -234,8 +234,25 @@
 - `drag`: `.artifacts/playground-tools/20251217-152934-drag.log` contains `Item dropped - Item A dropped in zone1`.
 - `menu`: `.artifacts/playground-tools/20251217-153302-menu.log` contains `Submenu > Nested Action A clicked`.
 
+### ✅ Context menu (right-click) – `click --right`
+- **Setup**: Open Click Fixture (`Fixtures → Open Click Fixture`, shortcut `⌘⌃1`).
+- **Commands**:
+  1. `peekaboo click --right "Right Click Me" --snapshot <id>`
+  2. `peekaboo click "Context Action 1"` / `"Context Action 2"` / `"Delete"`
+- **Artifacts**:
+  - Snapshot: `.artifacts/playground-tools/20251217-165443-see-click-fixture.json`
+  - Log: `.artifacts/playground-tools/20251217-165443-context-menu.log`
+- **Result**: OSLog contains `Context menu: Action 1/2/Delete` entries under the `Menu` category.
+
+### ✅ `window close` – verified on Window Fixture
+- **Setup**: Open Window Fixture (`⌘⌃5`), then run `peekaboo window close --app boo.peekaboo.playground.debug --window-title "Window Fixture"`.
+- **Artifacts**:
+  - Before/after: `.artifacts/playground-tools/20251217-165256-windows-before.json`, `.artifacts/playground-tools/20251217-165256-windows-after.json`
+  - Close output: `.artifacts/playground-tools/20251217-165256-window-close.json`
+- **Result**: Window Fixture disappears from `peekaboo list windows` after the close action.
+
 ### 📈 Quick perf notes
-- Recent `see` runs are ~0.8–1.4s for typical fixture windows (examples in `.artifacts/playground-tools/*-see-*.json` under `data.execution_time`).
+- Recent `see` runs are ~0.7–0.8s for Click Fixture on this machine (7-run sample: `.artifacts/playground-tools/20251217-165555-perf-see-click-fixture-summary.json`, mean `0.757s`, p95 `0.789s`).
 - **Findings**: Focus log now records entries (both from Playground UI and the CLI move command). The CLI entry still shows `<private>` in Console, so add more descriptive strings if we need richer auditing.
 
 ### ✅ `window` command – Playground window coverage

@@ -20,7 +20,7 @@ read_when:
 ## Environment & Logging Setup
 1. Ensure Poltergeist is healthy: `pnpm run poltergeist:status`; start it with `pnpm run poltergeist:haunt` if needed.
 2. Launch Playground (`Apps/Playground/Playground.app` via Xcode or `open Apps/Playground/Playground.xcodeproj`). Keep it foregrounded on Space 1 to avoid focus surprises.
-   - Prefer the dedicated fixture windows (menu `Fixtures`, shortcuts `⌘⇧1…⌘⇧7`) so each tool targets a stable window title (“Click Fixture”, “Scroll Fixture”, etc.) instead of relying on TabView state.
+   - Prefer the dedicated fixture windows (menu `Fixtures`, shortcuts `⌘⌃1…⌘⌃7`) so each tool targets a stable window title (“Click Fixture”, “Scroll Fixture”, etc.) instead of relying on TabView state.
 3. Prepare a log root once per session:
    ```bash
    LOG_ROOT=${LOG_ROOT:-$PWD/.artifacts/playground-tools}
@@ -339,7 +339,7 @@ The following subsections spell out the concrete steps, required Playground surf
 - **2025-11-16 verification**:
   - Re-ran the command set; artifacts include `.artifacts/playground-tools/20251116-195020-menu-click-action.json`, `...195024-menu-click-submenu.json`, and `...195022-menu-click-disabled.json` (the last exits with `INTERACTION_FAILED` and message `Menu item is disabled: ...`).
   - Playground Menu log `.artifacts/playground-tools/20251116-195020-menu.log` now shows each click (`Test Action 1`, `Submenu > Nested Action A`, and the disabled error), proving `AutomationEventLogger` coverage.
-  - Context menu coverage remains TBD; `menu click` currently targets menu-bar entries only.
+  - Context menu coverage is verified via `click --right` on the Click Fixture: `.artifacts/playground-tools/20251217-165443-context-menu.log` contains `Context menu: Action 1/2/Delete` entries emitted by Playground.
 
 #### `menubar`
 - **Target**: macOS status items (Wi-Fi, Battery) or custom extras.
