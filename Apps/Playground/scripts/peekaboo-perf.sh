@@ -171,6 +171,12 @@ for p in paths:
   if exit_code != 0:
     failures.append({"path": p, "exit_code": exit_code})
   exec_t = data.get("execution_time")
+  if exec_t is None:
+    exec_t = data.get("executionTime")
+  if exec_t is None:
+    exec_t = data.get("execution_time_s")
+  if exec_t is None:
+    exec_t = data.get("executionTimeSeconds")
   wall_t = data.get("wall_time")
   if isinstance(exec_t, (int, float)):
     execution_times.append(float(exec_t))

@@ -46,7 +46,7 @@ read_when:
 
 ## Performance Checks
 - Capture performance summaries whenever a tool feels “slow” (or after fixing perf regressions) so we have a hard baseline.
-- Use `Apps/Playground/scripts/peekaboo-perf.sh` to run a command repeatedly and write a `*-summary.json` alongside the per-run JSON payloads:
+- Use `Apps/Playground/scripts/peekaboo-perf.sh` to run a command repeatedly and write a `*-summary.json` alongside the per-run JSON payloads (it reads `data.execution_time` or `data.executionTime` when available):
   ```bash
   ./Apps/Playground/scripts/peekaboo-perf.sh --name see-click-fixture --runs 10 -- \
     see --app boo.peekaboo.playground.debug --mode window --window-title "Click Fixture" --json-output
