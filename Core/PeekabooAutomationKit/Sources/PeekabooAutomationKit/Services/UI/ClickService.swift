@@ -96,19 +96,10 @@ public final class ClickService {
         if let snapshotId,
            let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId)
         {
-            // Search through snapshot elements
-            let queryLower = query.lowercased()
-            for element in detectionResult.elements.all {
-                let matches = element.label?.lowercased().contains(queryLower) ?? false ||
-                    element.value?.lowercased().contains(queryLower) ?? false ||
-                    element.type.rawValue.lowercased().contains(queryLower)
-
-                if matches, element.isEnabled {
-                    found = true
-                    clickFrame = element.bounds
-                    self.logger.debug("Found element in snapshot matching query: \(query)")
-                    break
-                }
+            if let match = Self.resolveTargetElement(query: query, in: detectionResult) {
+                found = true
+                clickFrame = match.bounds
+                self.logger.debug("Found element in snapshot matching query: \(query)")
             }
         }
 
@@ -130,6 +121,50 @@ public final class ClickService {
         } else {
             throw NotFoundError.element(query)
         }
+    }
+
+    @MainActor
+    static func resolveTargetElement(query: String, in detectionResult: ElementDetectionResult) -> DetectedElement? {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let queryLower = trimmed.lowercased()
+        guard !queryLower.isEmpty else { return nil }
+
+        var bestMatch: DetectedElement?
+        var bestScore = Int.min
+
+        for element in detectionResult.elements.all where element.isEnabled {
+            let label = element.label?.lowercased()
+            let value = element.value?.lowercased()
+            let identifier = element.attributes["identifier"]?.lowercased()
+            let title = element.attributes["title"]?.lowercased()
+            let description = element.attributes["description"]?.lowercased()
+            let role = element.attributes["role"]?.lowercased()
+
+            let candidates = [label, value, identifier, title, description, role].compactMap(\.self)
+            guard candidates.contains(where: { $0.contains(queryLower) }) else { continue }
+
+            var score = 0
+            if identifier == queryLower { score += 400 }
+            if label == queryLower { score += 350 }
+            if title == queryLower { score += 300 }
+            if value == queryLower { score += 200 }
+
+            if identifier?.contains(queryLower) == true { score += 200 }
+            if label?.contains(queryLower) == true { score += 160 }
+            if title?.contains(queryLower) == true { score += 120 }
+            if value?.contains(queryLower) == true { score += 80 }
+            if description?.contains(queryLower) == true { score += 50 }
+
+            if element.type.rawValue.lowercased() == queryLower { score += 40 }
+            if element.type == .button { score += 20 }
+
+            if score > bestScore {
+                bestScore = score
+                bestMatch = element
+            }
+        }
+
+        return bestMatch
     }
 
     /// Find element by query string
