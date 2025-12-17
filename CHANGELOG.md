@@ -38,6 +38,7 @@
 - AppleScript Automation permission probing is more stable (fixes descriptor lifetime/double-free issues) and less flaky under load.
 - Video capture/ingest timestamps now come from the video timeline (not wall clock), and frame seeking is more accurate.
 - `peekaboo image`: when `--format` is omitted, infer the output encoding from `--path` extension (`.jpg/.jpeg` → JPEG, `.png` → PNG) to prevent writing PNG data into `.jpg` files.
+- `peekaboo image`: reject conflicting `--format` and `--path` extension values (e.g. `--format jpg --path /tmp/x.png`) to prevent mislabeled captures.
 
 ### Developer Workflow
 - Release build scripts now sign the CLI with `Identifier=boo.peekaboo.peekaboo` (aligns with bridge allowlists used by Peekaboo.app/hosts).

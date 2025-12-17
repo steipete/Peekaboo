@@ -104,6 +104,26 @@ struct ImageCommandTests {
         #expect(commandPNG.format == .png)
     }
 
+    @Test("Command rejects conflicting format and output path extension", .tags(.fast))
+    func imageCommandRejectsConflictingFormatAndOutputPathExtension() {
+        #expect(throws: (any Error).self) {
+            try CLIOutputCapture.suppressStderr {
+                _ = try ImageCommand.parse([
+                    "--format", "jpg",
+                    "--path", "/tmp/test.png",
+                ])
+            }
+        }
+        #expect(throws: (any Error).self) {
+            try CLIOutputCapture.suppressStderr {
+                _ = try ImageCommand.parse([
+                    "--format", "png",
+                    "--path", "/tmp/test.jpg",
+                ])
+            }
+        }
+    }
+
     @Test("Command with format option", .tags(.fast))
     func imageCommandWithFormat() throws {
         // Test format specification

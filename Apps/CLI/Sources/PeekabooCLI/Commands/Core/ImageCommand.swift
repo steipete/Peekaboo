@@ -691,14 +691,27 @@ extension ImageCommand: CommanderBindableCommand {
         let parsedFormat: ImageFormat? = try values.decodeOptionEnum("format")
         if let parsedFormat {
             self.format = parsedFormat
-        } else if let path = self.path?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !path.isEmpty {
+        }
+        if let path = self.path?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !path.isEmpty {
             let expanded = (path as NSString).expandingTildeInPath
             let ext = URL(fileURLWithPath: expanded).pathExtension.lowercased()
-            if ext == "jpg" || ext == "jpeg" {
-                self.format = .jpg
+            let inferred: ImageFormat? = if ext == "jpg" || ext == "jpeg" {
+                .jpg
             } else if ext == "png" {
-                self.format = .png
+                .png
+            } else {
+                nil
+            }
+            if let parsedFormat, let inferred, parsedFormat != inferred {
+                throw CommanderBindingError.invalidArgument(
+                    label: "path",
+                    value: path,
+                    reason: "Conflicts with --format \(parsedFormat.rawValue). Use a .\(parsedFormat.fileExtension) path (or omit --format)."
+                )
+            }
+            if parsedFormat == nil, let inferred {
+                self.format = inferred
             }
         }
         if let parsedFocus: CaptureFocus = try values.decodeOptionEnum("captureFocus") {

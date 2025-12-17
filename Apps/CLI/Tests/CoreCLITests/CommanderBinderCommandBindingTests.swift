@@ -73,7 +73,7 @@ struct CommanderBinderCommandBindingTests {
             options: [
                 "app": ["Safari"],
                 "pid": ["123"],
-                "path": ["/tmp/out.png"],
+                "path": ["/tmp/out.jpg"],
                 "mode": ["screen"],
                 "windowTitle": ["Inbox"],
                 "windowIndex": ["2"],
@@ -87,7 +87,7 @@ struct CommanderBinderCommandBindingTests {
         let command = try CommanderCLIBinder.instantiateCommand(ofType: ImageCommand.self, parsedValues: parsed)
         #expect(command.app == "Safari")
         #expect(command.pid == 123)
-        #expect(command.path == "/tmp/out.png")
+        #expect(command.path == "/tmp/out.jpg")
         #expect(command.mode == .screen)
         #expect(command.windowTitle == "Inbox")
         #expect(command.windowIndex == 2)
