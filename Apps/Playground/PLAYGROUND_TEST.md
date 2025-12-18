@@ -224,6 +224,13 @@
 - **Verification**: Playground Window log shows a “Window became key” entry for “Window Fixture”.
 - **Artifacts**: `.artifacts/playground-tools/20251218-021541-menu-open-windowfixture.json`, `.artifacts/playground-tools/20251218-021541-window.log`.
 
+### ✅ `capture` command (live + video ingest)
+- **Live (window)**: `polter peekaboo -- capture live --mode window --app Playground --duration 1 --threshold 0 --path .artifacts/.../capture-live-window-fast --json-output`
+  - **Artifacts**: `.artifacts/playground-tools/20251218-024517-capture-live-window-fast.json`, `.artifacts/playground-tools/20251218-024517-capture-live-window-fast/` (kept frames + `contact.png` + `metadata.json`).
+  - **Notes**: Capturing by app/window no longer stalls ~10s; the run now respects short `--duration` values again.
+- **Video ingest**: Generated `/tmp/peekaboo-capture-src.mp4` (ffmpeg testsrc2), then ran `polter peekaboo -- capture video /tmp/peekaboo-capture-src.mp4 --sample-fps 4 --no-diff --path .artifacts/.../capture-video --json-output`.
+  - **Artifacts**: `.artifacts/playground-tools/20251218-022826-capture-video.json`, `.artifacts/playground-tools/20251218-022826-capture-video/` (9 frames + contact sheet).
+
 ### ✅ Controls Fixture – “bottom controls” recipes
 - **Discrete slider**: coordinate-click the left/right ends of the `discrete-slider` frame to jump `1…5` and verify `[Control] Discrete slider changed` logs.
 - **Stepper**: coordinate-click the top/bottom halves of the `stepper-control` frame to increment/decrement and verify `[Control] Stepper …` logs.

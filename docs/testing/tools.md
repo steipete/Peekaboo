@@ -146,6 +146,9 @@ The following subsections spell out the concrete steps, required Playground surf
   2. Confirm the JSON includes `videoOut` and the MP4 exists and is non-empty.
 - **Pass criteria**: ≥1 kept frame, `metadata.json` exists, and the run exits 0 (a `noMotion` warning is acceptable for static inputs).
 - **Schema check**: Cross-check MCP capture meta fields in `docs/commands/mcp-capture-meta.md` against the JSON payload.
+- **2025-12-18 run**:
+  - Live window capture (Playground) completed successfully and respects short durations again (no longer stalls ~10s on the ScreenCaptureKit→CG fallback path): `.artifacts/playground-tools/20251218-024517-capture-live-window-fast.json` and `.artifacts/playground-tools/20251218-024517-capture-live-window-fast/`.
+  - Video ingest (synthetic `ffmpeg testsrc2`, `--sample-fps 4 --no-diff`) produced 9 kept frames + contact sheet: `.artifacts/playground-tools/20251218-022826-capture-video.json` and `.artifacts/playground-tools/20251218-022826-capture-video/`.
 
 #### `list`
 - **Scenarios**: `list apps`, `list windows --app Playground`, `list screens`, `list menubar`, `list permissions`.
