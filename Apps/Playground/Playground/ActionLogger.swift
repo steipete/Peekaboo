@@ -13,6 +13,7 @@ enum ActionCategory: String, CaseIterable {
     case keyboard = "Keyboard"
     case focus = "Focus"
     case gesture = "Gesture"
+    case dialog = "Dialog"
     case control = "Control"
 
     var color: Color {
@@ -26,6 +27,7 @@ enum ActionCategory: String, CaseIterable {
         case .keyboard: .yellow
         case .focus: .indigo
         case .gesture: .red
+        case .dialog: .mint
         case .control: .gray
         }
     }
@@ -41,6 +43,7 @@ enum ActionCategory: String, CaseIterable {
         case .keyboard: "keyboard"
         case .focus: "scope"
         case .gesture: "hand.tap"
+        case .dialog: "questionmark.folder"
         case .control: "slider.horizontal.3"
         }
     }
@@ -85,6 +88,7 @@ final class ActionLogger: ObservableObject {
     private let keyboardLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Keyboard")
     private let focusLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Focus")
     private let gestureLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Gesture")
+    private let dialogLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Dialog")
     private let controlLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Control")
 
     private static let exportDateFormatter: ISO8601DateFormatter = {
@@ -168,6 +172,7 @@ final class ActionLogger: ObservableObject {
         case .keyboard: self.keyboardLogger
         case .focus: self.focusLogger
         case .gesture: self.gestureLogger
+        case .dialog: self.dialogLogger
         case .control: self.controlLogger
         }
     }

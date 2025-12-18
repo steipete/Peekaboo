@@ -98,7 +98,7 @@ read_when:
 | `app` | Launch/quit/focus Playground + helper apps (TextEdit) | `App` + `Focus` | `polter peekaboo -- app list --include-hidden --json-output` | Verified – Playground app list/switch/hide/launch captured 2025-11-16 | `.artifacts/playground-tools/20251116-195420-app.log` |
 | `open` | Open Playground fixtures/documents | `App`/`Focus` | `polter peekaboo -- open Apps/Playground/README.md --app TextEdit --json-output` | Verified – TextEdit + browser + no-focus covered 2025-11-16 | `.artifacts/playground-tools/20251116-200220-open.log` |
 | `dock` | Dock item interactions w/ Playground icon | `App` + `Window` | `polter peekaboo -- dock list --json-output` | Verified – right-click + menu selection now captured with `[Dock]` logs | `.artifacts/playground-tools/20251116-205850-dock.log` |
-| `dialog` | System dialog triggered from Playground (e.g., File > Open) | `Menu` + `Dialog` logs | `polter peekaboo -- dialog list --app TextEdit` | Verified – spawn Save sheet to test | `.artifacts/playground-tools/20251116-054316-dialog.log` |
+| `dialog` | Dialogs tab (Save/Open panels + alerts w/ text field) | `Dialog` | `polter peekaboo -- dialog list --app Playground` | Verified – use Playground’s built-in dialog fixtures (no TextEdit required) | `.artifacts/playground-tools/20251116-054316-dialog.log` |
 | `visualizer` | Visual feedback overlays while Playground is visible | Visual confirmation (overlays render) + JSON dispatch report | `polter peekaboo -- visualizer --json-output` | Verified – dispatch report + manual overlay check | `.artifacts/playground-tools/20251217-204548-visualizer.json` |
 
 ### Automation & Integrations
@@ -457,25 +457,19 @@ The following subsections spell out the concrete steps, required Playground surf
   - Context menu selection works once Finder is present in the Dock; if the menu doesn’t surface, re-run after focusing the Dock. No additional code changes required.
 
 #### `dialog`
-- **Scenario**: Trigger TextEdit’s Save panel so dialog tooling has something to attach to.
-- **Steps to spawn dialog**:
-  1. `polter peekaboo -- app launch TextEdit --wait-until-ready --json-output > .artifacts/playground-tools/20251116-091212-textedit-launch.json`.
-  2. `polter peekaboo -- menu click --path "File>New" --app TextEdit` to create a blank document.
-  3. Type at least one character so TextEdit becomes “dirty” (otherwise `cmd+s` may no-op):
-     - `polter peekaboo -- type "Peekaboo" --app TextEdit`
-  4. `polter peekaboo -- see --app TextEdit --json-output --path ...` to capture a snapshot ID (e.g., `0485162B-6D02-4A72-9818-48C79452AEAC`).
-  5. `polter peekaboo -- hotkey --keys "cmd,s" --snapshot <id>` to summon the Save dialog.
+- **Scenario**: Use Playground’s Dialogs tab to spawn deterministic Save/Open panels and alerts.
+- **Steps to spawn dialogs**:
+  1. Launch Playground and switch to the Dialogs tab (Header button “Go to Dialogs”).
+  2. Click “Show Save Panel” (or “Show Save Panel (Overwrite /tmp)” to exercise Replace flows).
+  3. Optional: Click “Show Alert (Text Field)” to exercise `dialog input` against a sheet-local text field.
 - **Tests**:
-  1. `polter peekaboo -- dialog list --app TextEdit --json-output > .artifacts/playground-tools/20251116-091255-dialog-list.json`.
-  2. `polter peekaboo -- dialog click --button "Cancel" --app TextEdit --json-output > .artifacts/playground-tools/20251116-091259-dialog-click-cancel.json`.
-  3. `polter peekaboo -- dialog input --app TextEdit --index 0 --text "NAME0" --clear --json-output > .artifacts/playground-tools/<timestamp>-dialog-input.json`.
-  4. `polter peekaboo -- dialog file --app TextEdit --select "Cancel" --json-output > .artifacts/playground-tools/<timestamp>-dialog-file-cancel.json`.
-- **2025-11-16 verification**:
-  - The list call enumerated the Save sheet (“Untitled Dialog”, two buttons, two text fields). The click call dismissed the dialog.
-  - `.artifacts/playground-tools/20251116-091306-dialog.log` contains both automation events (`action=list`, `action=click button='Cancel'`), proving the logger instrumentation.
- - Repeat the `hotkey` step whenever you need to reopen the dialog for further testing.
- - **2025-12-17 verification**:
-   - `dialog input` succeeds on TextEdit Save sheets without tripping “Action is not supported”, and `dialog file --select Cancel` reliably dismisses even when the sheet title is “Untitled Dialog”: `.artifacts/playground-tools/20251217-215657-dialog-input-then-file-cancel.json`.
+  1. `polter peekaboo -- dialog list --app Playground --json-output > .artifacts/playground-tools/<timestamp>-dialog-list.json`.
+  2. `polter peekaboo -- dialog click --button "Cancel" --app Playground --json-output > .artifacts/playground-tools/<timestamp>-dialog-click-cancel.json`.
+  3. (Alert w/ text field) `polter peekaboo -- dialog input --app Playground --index 0 --text "NAME0" --clear --json-output > .artifacts/playground-tools/<timestamp>-dialog-input.json`.
+  4. (Save panel) `polter peekaboo -- dialog file --app Playground --path /tmp --name playground-dialog-out.txt --ensure-expanded --select default --json-output > .artifacts/playground-tools/<timestamp>-dialog-file-save.json`.
+- **Verification notes**:
+  - Prefer Playground’s Dialogs tab over TextEdit for repeatable coverage (no “dirty document” preconditions).
+  - Capture a Playground log excerpt for each run (category `Dialog`) so the result is verifiable without screenshots.
 
 #### `visualizer`
 - **Setup**: Ensure `Peekaboo.app` is running (visual feedback host) and keep Playground visible so you can quickly spot overlays.
