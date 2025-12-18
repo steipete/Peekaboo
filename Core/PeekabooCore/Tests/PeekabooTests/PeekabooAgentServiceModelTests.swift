@@ -286,7 +286,10 @@ struct ModelSelectionEdgeCasesTests {
     @MainActor
     func dryRunExecutionRespectsModel() async throws {
         let mockServices = PeekabooServices()
-        let agentService = try PeekabooAgentService(services: mockServices)
+        let defaultModel = LanguageModel.openai(.gpt51)
+        let agentService = try PeekabooAgentService(
+            services: mockServices,
+            defaultModel: defaultModel)
 
         // Dry run should not make API calls but should still record the model
         let result = try await agentService.executeTask(
@@ -295,8 +298,8 @@ struct ModelSelectionEdgeCasesTests {
             dryRun: true,
             eventDelegate: nil)
 
-        // Dry run uses default model (GPT-5 for tests)
-        #expect(result.metadata.modelName == LanguageModel.openai(.gpt51).description)
+        // Dry run uses the service default model
+        #expect(result.metadata.modelName == defaultModel.description)
         #expect(result.content.contains("Dry run completed"))
     }
 
@@ -304,7 +307,10 @@ struct ModelSelectionEdgeCasesTests {
     @MainActor
     func audioTaskExecutionModelHandling() async throws {
         let mockServices = PeekabooServices()
-        let agentService = try PeekabooAgentService(services: mockServices)
+        let defaultModel = LanguageModel.openai(.gpt51)
+        let agentService = try PeekabooAgentService(
+            services: mockServices,
+            defaultModel: defaultModel)
 
         let audioContent = AudioContent(
             duration: 5.0,
@@ -317,7 +323,7 @@ struct ModelSelectionEdgeCasesTests {
             dryRun: true,
             eventDelegate: nil)
 
-        #expect(result.metadata.modelName == LanguageModel.openai(.gpt51).description)
+        #expect(result.metadata.modelName == defaultModel.description)
         #expect(result.content.contains("Dry run completed"))
     }
 }

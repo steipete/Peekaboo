@@ -326,18 +326,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     }
 
     private func resolveModel(_ requestedModel: LanguageModel?) -> LanguageModel {
-        let candidate = requestedModel ?? self.defaultLanguageModel
-
-        switch candidate {
-        case .openai:
-            return .openai(.gpt51)
-        case .anthropic:
-            return .anthropic(.opus45)
-        case .google:
-            return .google(.gemini3Flash)
-        default:
-            return .openai(.gpt51)
-        }
+        requestedModel ?? self.defaultLanguageModel
     }
 
     // MARK: - Tool Creation
