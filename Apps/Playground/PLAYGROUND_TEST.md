@@ -537,3 +537,34 @@
   - `.artifacts/playground-tools/20251217-221643-run-playground-smoke-click.log`
   - `.artifacts/playground-tools/20251217-221643-run-playground-smoke-text.log`
 - **Verification**: The Text log includes `Basic text changed … To: 'Playground smoke'`, proving the script targeted `basic-text-field` (not the numeric-only field).
+
+## 2025-12-18
+
+### ✅ Identifier-based query resolution (regression fix)
+- **Problem**: Internal `waitForElement(.query)` matching ignored accessibility identifiers, so commands that rely on identifier-based targeting could intermittently fail or hit the wrong element.
+- **Fix**: `UIAutomationService.findElementInSession` now resolves query targets via `ClickService.resolveTargetElement(query:in:)`, so identifiers participate in matching consistently.
+- **Playground verification** (Controls Fixture):
+  1. `polter peekaboo -- see --app boo.peekaboo.playground.debug --mode window --window-title "Controls Fixture" --json-output > .artifacts/playground-tools/20251217-234640-see-controls.json`
+  2. `polter peekaboo -- click "checkbox-1" --snapshot <id>`
+  3. `polter peekaboo -- click "checkbox-2" --snapshot <id>`
+  4. `./Apps/Playground/scripts/playground-log.sh -c Control --last 5m --all -o .artifacts/playground-tools/20251217-234640-controls-control.log`
+- **Result**: Control log contains `Checkbox 1 toggled` + `Checkbox 2 toggled` (identifier targeting).
+
+### ✅ `click` → `type` chain on SwiftUI text inputs (focus nudge)
+- **Problem**: `click` on SwiftUI text inputs could land slightly outside the editable region, so the FieldEditor never focused and subsequent `type` produced no UI change.
+- **Fix**: `ClickService` now detects when the expected element didn’t receive focus and retries a small set of deterministic y-offset clicks to “nudge” focus into the text field editor.
+- **Verification** (Text Fixture):
+  1. `polter peekaboo -- see --app boo.peekaboo.playground.debug --mode window --window-title "Text Fixture" --json-output > .artifacts/playground-tools/20251218-001923-see-text.json`
+  2. `polter peekaboo -- click "basic-text-field" --snapshot <id> --json-output > .artifacts/playground-tools/20251218-001923-click-basic-text-field.json`
+  3. `polter peekaboo -- type "Hello" --clear --snapshot <id> --json-output > .artifacts/playground-tools/20251218-001923-type-hello.json`
+  4. `./Apps/Playground/scripts/playground-log.sh -c Text --last 5m --all -o .artifacts/playground-tools/20251218-001923-text.log`
+- **Result**: Text log contains `Basic text changed - From: '' To: 'Hello'`.
+
+### ✅ `scroll` command – vertical/horizontal + nested scroll offsets (fixture rebuild)
+- **Update**: Rebuilt Playground so nested scroll views also emit offset logs (inner + outer).
+- **Verification**: `.artifacts/playground-tools/20251217-234921-scroll.log` contains `Vertical scroll offset …`, `Horizontal scroll offset …`, plus `Nested inner scroll offset …` and `Nested outer scroll offset …`.
+
+### ✅ Gesture + menu + drag re-verification (fresh artifacts)
+- **Swipe**: `.artifacts/playground-tools/20251218-002229-gesture.log` logs `Swipe … Distance: …px`.
+- **Menu**: `.artifacts/playground-tools/20251218-002308-menu.log` logs `Test Action 1 clicked` and `Submenu > Nested Action A clicked`.
+- **Drag**: `.artifacts/playground-tools/20251218-002005-drag.log` logs `Item dropped … zone1`.

@@ -79,12 +79,12 @@ read_when:
 | Tool | Playground surface | Log category | Sample CLI | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
 | `click` | Click Fixture window | `Click` | `polter peekaboo -- click "Single Click" --app boo.peekaboo.playground.debug --snapshot <id>` | Verified – Click Fixture E2E (2025-12-17) | `.artifacts/playground-tools/20251217-152024-click.log` |
-| `type` | Text Fixture window | `Text` + `Focus` | `polter peekaboo -- type "Hello Playground" --clear --snapshot <id>` | Verified – Text Fixture E2E (2025-12-17) | `.artifacts/playground-tools/20251217-152047-text.log` |
+| `type` | Text Fixture window | `Text` + `Focus` | `polter peekaboo -- type "Hello Playground" --clear --snapshot <id>` | Verified – Text Fixture E2E + text-field focusing (2025-12-18) | `.artifacts/playground-tools/20251218-001923-text.log` |
 | `press` | Keyboard Fixture window | `Keyboard` | `polter peekaboo -- press return --snapshot <id>` | Verified – keypresses + repeats logged (2025-12-17) | `.artifacts/playground-tools/20251217-152138-keyboard.log` |
 | `hotkey` | Playground menu shortcuts | `Keyboard` & `Menu` | `polter peekaboo -- hotkey --keys "cmd,1"` | Verified – digit hotkeys (2025-12-17) | `.artifacts/playground-tools/20251217-152100-menu.log` |
 | `scroll` | Scroll Fixture window | `Scroll` | `polter peekaboo -- scroll --direction down --amount 8 --on vertical-scroll --snapshot <id>` | Verified – scroll offsets logged (2025-12-17) | `.artifacts/playground-tools/20251217-222958-scroll.log` |
-| `swipe` | Scroll Fixture gesture area | `Gesture` | `polter peekaboo -- swipe --from <elem> --to <elem> --snapshot <id>` | Verified – swipe direction + distance logged (2025-12-17) | `.artifacts/playground-tools/20251217-152843-gesture.log` |
-| `drag` | Drag Fixture window | `Drag` | `polter peekaboo -- drag --from <elem> --to <elem> --snapshot <id>` | Verified – item dropped into zone (2025-12-17) | `.artifacts/playground-tools/20251217-152934-drag.log` |
+| `swipe` | Scroll Fixture gesture area | `Gesture` | `polter peekaboo -- swipe --from-coords <x,y> --to-coords <x,y>` | Verified – swipe direction + distance logged (2025-12-18) | `.artifacts/playground-tools/20251218-002229-gesture.log` |
+| `drag` | Drag Fixture window | `Drag` | `polter peekaboo -- drag --from <elem> --to <elem> --snapshot <id>` | Verified – item dropped into zone (2025-12-18) | `.artifacts/playground-tools/20251218-002005-drag.log` |
 | `move` | Click Fixture mouse probe | `Control` | `polter peekaboo -- move --id <elem> --snapshot <id> --smooth` | Verified – cursor movement emits deterministic probe logs (2025-12-17) | `.artifacts/playground-tools/20251217-153107-control.log` |
 
 ### Windows, Menus, Apps
@@ -92,7 +92,7 @@ read_when:
 | --- | --- | --- | --- | --- | --- |
 | `window` | Window Fixture window + `list windows` bounds | `Window` | `polter peekaboo -- window move --app boo.peekaboo.playground.debug --window-title "Window Fixture"` | Verified – focus/move/resize + minimize/maximize covered (2025-12-17) | `.artifacts/playground-tools/20251217-183242-window.log` |
 | `space` | macOS Spaces while Playground anchored on Space 1 | `Space` | `polter peekaboo -- space list --detailed` | Verified – list/switch/move now emit `[Space]` logs (instr. added 2025-11-16) | `.artifacts/playground-tools/20251116-205548-space.log` |
-| `menu` | Playground “Test Menu” | `Menu` | `polter peekaboo -- menu click --app boo.peekaboo.playground.debug --path "Test Menu>Submenu>Nested Action A"` | Verified – nested menu click logged (2025-12-17) | `.artifacts/playground-tools/20251217-153302-menu.log` |
+| `menu` | Playground “Test Menu” | `Menu` | `polter peekaboo -- menu click --app boo.peekaboo.playground.debug --path "Test Menu>Submenu>Nested Action A"` | Verified – nested menu click logged (2025-12-18) | `.artifacts/playground-tools/20251218-002308-menu.log` |
 | `menubar` | macOS menu extras (Wi-Fi, Clock) plus Playground status icons | `Menu` (system) | `polter peekaboo -- menubar list --json-output` | Verified – list + click captured; logs via Control Center predicate | `.artifacts/playground-tools/20251116-053932-menubar.log` |
 | `app` | Launch/quit/focus Playground + helper apps (TextEdit) | `App` + `Focus` | `polter peekaboo -- app list --include-hidden --json-output` | Verified – Playground app list/switch/hide/launch captured 2025-11-16 | `.artifacts/playground-tools/20251116-195420-app.log` |
 | `open` | Open Playground fixtures/documents | `App`/`Focus` | `polter peekaboo -- open Apps/Playground/README.md --app TextEdit --json-output` | Verified – TextEdit + browser + no-focus covered 2025-11-16 | `.artifacts/playground-tools/20251116-200220-open.log` |
