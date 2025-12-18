@@ -10,9 +10,9 @@ extension FocusCommandOptions {
                     long: "focus-timeout-seconds"
                 ),
                 .commandOption(
-                    "focusRetryCountValue",
+                    "focusRetryCount",
                     help: "Number of retries for focus operations",
-                    long: "focus-retry-count-value"
+                    long: "focus-retry-count"
                 ),
             ],
             flags: [

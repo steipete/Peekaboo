@@ -11,7 +11,7 @@ struct FocusCommandOptions: CommanderParsable, FocusOptionsProtocol {
     var focusTimeoutSeconds: TimeInterval?
 
     @Option(name: .long, help: "Number of retries for focus operations")
-    var focusRetryCountValue: Int?
+    var focusRetryCount: Int?
 
     @Flag(name: .long, help: "Switch to window's Space if on different Space")
     var spaceSwitch = false
@@ -25,7 +25,6 @@ struct FocusCommandOptions: CommanderParsable, FocusOptionsProtocol {
 
     var autoFocus: Bool { !self.noAutoFocus }
     var focusTimeout: TimeInterval? { self.focusTimeoutSeconds }
-    var focusRetryCount: Int? { self.focusRetryCountValue }
 
     // MARK: Bridging helper
 

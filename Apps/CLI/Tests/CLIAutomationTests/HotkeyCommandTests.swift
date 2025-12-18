@@ -23,6 +23,10 @@ import Testing
         // Test with snapshot ID
         let command4 = try HotkeyCommand.parse(["--keys", "cmd,z", "--snapshot", "test-snapshot"])
         #expect(command4.snapshot == "test-snapshot")
+
+        // Test with app
+        let command5 = try HotkeyCommand.parse(["--keys", "cmd,c", "--app", "TextEdit"])
+        #expect(command5.app == "TextEdit")
     }
 
     @Test func invalidInputHandling() async throws {

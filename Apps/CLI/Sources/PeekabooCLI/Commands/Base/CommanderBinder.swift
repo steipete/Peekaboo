@@ -192,8 +192,8 @@ extension CommanderBindableValues {
         if let timeout: TimeInterval = try decodeOption("focusTimeoutSeconds", as: TimeInterval.self) {
             options.focusTimeoutSeconds = timeout
         }
-        if let retries: Int = try decodeOption("focusRetryCountValue", as: Int.self) {
-            options.focusRetryCountValue = retries
+        if let retries: Int = try decodeOption("focusRetryCount", as: Int.self) {
+            options.focusRetryCount = retries
         }
     }
 }

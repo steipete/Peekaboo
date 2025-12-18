@@ -10,6 +10,11 @@ extension HotkeyCommand: CommanderSignatureProviding {
                     long: "keys"
                 ),
                 .commandOption(
+                    "app",
+                    help: "Target application to focus before pressing hotkey",
+                    long: "app"
+                ),
+                .commandOption(
                     "holdDuration",
                     help: "Delay between key press and release in milliseconds",
                     long: "hold-duration"

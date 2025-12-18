@@ -12,6 +12,11 @@ extension PressCommand: CommanderSignatureProviding {
             ],
             options: [
                 .commandOption(
+                    "app",
+                    help: "Target application to focus before pressing keys",
+                    long: "app"
+                ),
+                .commandOption(
                     "count",
                     help: "Repeat count for all keys",
                     long: "count"

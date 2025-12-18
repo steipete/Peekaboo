@@ -10,6 +10,9 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
     @Argument(help: "Key(s) to press")
     var keys: [String]
 
+    @Option(name: .long, help: "Target application to focus before pressing keys")
+    var app: String?
+
     @Option(help: "Repeat count for all keys")
     var count: Int = 1
 
@@ -69,14 +72,13 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 )
             }
 
-            // Ensure window is focused before pressing keys
-            if let snapshotId {
-                try await ensureFocused(
-                    snapshotId: snapshotId,
-                    options: self.focusOptions,
-                    services: self.services
-                )
-            }
+            // Ensure window is focused before pressing keys.
+            try await ensureFocused(
+                snapshotId: snapshotId,
+                applicationName: self.app,
+                options: self.focusOptions,
+                services: self.services
+            )
 
             // Build actions - repeat each key sequence 'count' times
             var actions: [TypeAction] = []
@@ -208,6 +210,7 @@ extension PressCommand: CommanderBindableCommand {
             throw CommanderBindingError.missingArgument(label: "keys")
         }
         self.keys = values.positional
+        self.app = values.singleOption("app")
         if let count: Int = try values.decodeOption("count", as: Int.self) {
             self.count = count
         }

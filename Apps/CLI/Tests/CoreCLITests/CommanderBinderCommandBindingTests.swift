@@ -291,7 +291,7 @@ struct CommanderBinderCommandBindingTests {
             options: [
                 "app": ["Terminal"],
                 "focusTimeoutSeconds": ["5.5"],
-                "focusRetryCountValue": ["3"]
+                "focusRetryCount": ["3"]
             ],
             flags: ["noAutoFocus", "spaceSwitch", "bringToCurrentSpace"]
         )
@@ -304,7 +304,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.focusOptions.spaceSwitch == true)
         #expect(command.focusOptions.bringToCurrentSpace == true)
         #expect(command.focusOptions.focusTimeoutSeconds == 5.5)
-        #expect(command.focusOptions.focusRetryCountValue == 3)
+        #expect(command.focusOptions.focusRetryCount == 3)
     }
 
     @Test("Window list binding")

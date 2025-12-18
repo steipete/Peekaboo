@@ -13,6 +13,9 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(name: .customLong("keys"), help: "Keys to press (comma-separated or space-separated)")
     var keysOption: String?
 
+    @Option(name: .long, help: "Target application to focus before pressing hotkey")
+    var app: String?
+
     @Option(help: "Delay between key press and release in milliseconds")
     var holdDuration: Int = 50
 
@@ -83,14 +86,13 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
                 )
             }
 
-            // Ensure window is focused before pressing hotkey (if we have a snapshot and auto-focus is enabled)
-            if let snapshotId {
-                try await ensureFocused(
-                    snapshotId: snapshotId,
-                    options: self.focusOptions,
-                    services: self.services
-                )
-            }
+            // Ensure window is focused before pressing hotkey.
+            try await ensureFocused(
+                snapshotId: snapshotId,
+                applicationName: self.app,
+                options: self.focusOptions,
+                services: self.services
+            )
 
             // Perform hotkey using the automation service
             try await AutomationServiceBridge.hotkey(
@@ -183,6 +185,7 @@ extension HotkeyCommand: CommanderBindableCommand {
         if let hold: Int = try values.decodeOption("holdDuration", as: Int.self) {
             self.holdDuration = hold
         }
+        self.app = values.singleOption("app")
         self.snapshot = values.singleOption("snapshot")
         self.focusOptions = try values.makeFocusOptions()
     }
