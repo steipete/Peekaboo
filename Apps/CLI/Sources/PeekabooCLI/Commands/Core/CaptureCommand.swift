@@ -197,6 +197,16 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
 
     private func resolveWindowIndex(for identifier: String) async throws -> Int? {
         if let explicitIndex = self.windowIndex { return explicitIndex }
+
+        // Default behavior: leave windowIndex unset so ScreenCaptureService can pick the best window for
+        // the selected capture engine (ScreenCaptureKit and CGWindowList don't share a stable index ordering).
+        //
+        // When the engine is explicitly forced to classic/CG, we resolve a stable window index from the
+        // window inventory so `--window-title` can map to the intended window.
+        guard self.shouldResolveWindowIndexForCaptureEngine() else {
+            return nil
+        }
+
         do {
             let windows = try await WindowServiceBridge.listWindows(
                 windows: self.services.windows,
@@ -215,6 +225,23 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
             if let preferred = ImageCommand.preferredWindow(from: renderable) { return preferred.index }
             return renderable.first?.index
         } catch { return nil }
+    }
+
+    private func shouldResolveWindowIndexForCaptureEngine() -> Bool {
+        guard let preference = self.resolvedRuntime.configuration.captureEnginePreference?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased(),
+            !preference.isEmpty
+        else {
+            return false
+        }
+
+        switch preference {
+        case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
+            return true
+        default:
+            return false
+        }
     }
 
     private func parseRegion() throws -> CGRect {
@@ -347,6 +374,7 @@ extension CaptureLiveCommand: CommanderBindableCommand {
         self.region = values.singleOption("region")
         if let parsedFocus: LiveCaptureFocus = try values
             .decodeOptionEnum("captureFocus") { self.captureFocus = parsedFocus }
+        self.captureEngine = values.singleOption("captureEngine")
         self.duration = try values.decodeOption("duration", as: Double.self)
         self.idleFps = try values.decodeOption("idleFps", as: Double.self)
         self.activeFps = try values.decodeOption("activeFps", as: Double.self)

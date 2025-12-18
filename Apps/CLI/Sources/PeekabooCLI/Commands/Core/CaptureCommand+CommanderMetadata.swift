@@ -18,6 +18,11 @@ extension CaptureLiveCommand: CommanderSignatureProviding {
                 .commandOption("screenIndex", help: "Screen index for screen captures", long: "screen-index"),
                 .commandOption("region", help: "Region to capture: x,y,width,height", long: "region"),
                 .commandOption("captureFocus", help: "Window focus behavior", long: "capture-focus"),
+                .commandOption(
+                    "captureEngine",
+                    help: "Capture engine: auto|classic|cg|modern|sckit (defaults to auto)",
+                    long: "capture-engine"
+                ),
                 .commandOption("duration", help: "Duration seconds (default 60, max 180)", long: "duration"),
                 .commandOption("idleFps", help: "Idle FPS (default 2)", long: "idle-fps"),
                 .commandOption("activeFps", help: "Active FPS (default 8, max 15)", long: "active-fps"),

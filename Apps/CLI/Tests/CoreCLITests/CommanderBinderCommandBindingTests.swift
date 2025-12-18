@@ -461,6 +461,14 @@ struct CommanderBinderCommandBindingTests {
         #expect(input?.help == "Input video file")
     }
 
+    @Test("Capture live commander signature includes capture-engine option")
+    func captureLiveCommanderSignatureHasCaptureEngineOption() {
+        let signature = CaptureLiveCommand.commanderSignature()
+        let captureEngineOption = signature.options.first { $0.label == "captureEngine" }
+        #expect(captureEngineOption != nil)
+        #expect(captureEngineOption?.names.contains(.long("capture-engine")) == true)
+    }
+
     @Test("Capture video command requires input")
     func bindCaptureVideoCommandRequiresInput() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
