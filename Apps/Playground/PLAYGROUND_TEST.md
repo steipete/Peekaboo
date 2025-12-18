@@ -198,6 +198,11 @@
   - After the fix, re-verified Scroll Fixture E2E by intentionally bringing Ghostty frontmost, then driving the fixture solely via snapshot IDs and scroll targets.
 - **Artifacts**:
   - `.artifacts/playground-tools/20251218-012323-scroll.log`
+
+### ✅ `bridge` command – unauthorized host responses are structured (no EOF)
+- **Problem**: When a Bridge host rejected the CLI (TeamID allowlist), the host could close the socket without replying; the CLI surfaced this as `internalError` / “Bridge host returned no response”.
+- **Fix (2025-12-18)**: `PeekabooBridgeHost` now reads the request and replies with a JSON `PeekabooBridgeResponse.error` (`unauthorizedClient`) before closing. This avoids EOF ambiguity and makes `peekaboo bridge status` errors actionable.
+- **Regression test**: `Apps/CLI/Tests/CoreCLITests/PeekabooBridgeHostUnauthorizedResponseTests.swift`.
   - `.artifacts/playground-tools/20251218-012323-click-scroll-bottom.json`, `.artifacts/playground-tools/20251218-012323-click-scroll-top.json`, `.artifacts/playground-tools/20251218-012323-click-scroll-middle.json`
   - `.artifacts/playground-tools/20251218-012323-scroll-vertical-down.json`, `.artifacts/playground-tools/20251218-012323-scroll-horizontal-right.json`
 

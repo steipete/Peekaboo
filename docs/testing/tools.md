@@ -74,7 +74,7 @@ read_when:
 | `config` | Validate config commands while Playground idle | N/A | `polter peekaboo -- config show` | Verified – show/validate outputs captured 2025-11-16 | `.artifacts/playground-tools/20251116-051200-config-show-effective.json` |
 | `permissions` | Ensure status/grant flow works with Playground | `playground-log` `App` category (should log when permissions toggled) | `polter peekaboo -- permissions status` | Verified – Screen Recording & Accessibility granted | `.artifacts/playground-tools/20251116-051000-permissions-status.json` |
 | `learn` | Dump agent guide | N/A | `polter peekaboo -- learn > $LOG_ROOT/learn.txt` | Verified – latest dump saved 2025-11-16 | `.artifacts/playground-tools/20251116-051300-learn.txt` |
-| `bridge` | Bridge host connectivity (local vs Peekaboo.app/Clawdis) | N/A | `polter peekaboo -- bridge status --json-output` | Verified – resolved to local execution | `.artifacts/playground-tools/20251217-133751-bridge-status.json` |
+| `bridge` | Bridge host connectivity (local vs Peekaboo.app/Clawdis) | N/A | `polter peekaboo -- bridge status --json-output` | Verified – local selection + unauthorized host responses are now structured (no EOF) | `.artifacts/playground-tools/20251217-133751-bridge-status.json` |
 
 ### Interaction Tools
 | Tool | Playground surface | Log category | Sample CLI | Status | Latest log |
@@ -237,9 +237,13 @@ The following subsections spell out the concrete steps, required Playground surf
   1. `polter peekaboo -- bridge status` and confirm it reports local execution vs. a remote host (Peekaboo.app / Clawdis).
   2. `polter peekaboo -- bridge status --verbose --json-output > "$LOG_ROOT/bridge-status.json"` and sanity-check the selected host + probed sockets.
   3. Repeat with `--no-remote` to confirm local-only mode is explicit and stable.
+- **Unauthorized host behavior**:
+  - If a remote host rejects the CLI due to TeamID allowlisting, the host should reply with `unauthorizedClient` (not close the socket/EOF).
+  - This is regression-covered by `Apps/CLI/Tests/CoreCLITests/PeekabooBridgeHostUnauthorizedResponseTests.swift` (landed 2025-12-18).
 - **Pass criteria**: Clear host selection output and no crashes.
 - **2025-12-18 run**:
   - Remote sockets were probed but both candidates returned `internalError` (“Bridge host returned no response”), so the CLI selected `source=local` as expected.
+  - Note: this typically indicates an older Peekaboo/Clawdis host build. Hosts built from `main` after 2025-12-18 should respond with a structured `unauthorizedClient` error instead.
   - Evidence: `.artifacts/playground-tools/20251218-022612-bridge-status.json`, `.artifacts/playground-tools/20251218-022612-bridge-status-verbose.json`, `.artifacts/playground-tools/20251218-022612-bridge-status-no-remote.json`.
 
 ### Interaction Tools
