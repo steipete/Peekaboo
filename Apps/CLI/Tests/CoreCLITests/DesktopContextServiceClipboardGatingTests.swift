@@ -79,7 +79,8 @@ private final class RecordingClipboardService: ClipboardServiceProtocol {
         return ClipboardReadResult(
             utiIdentifier: UTType.plainText.identifier,
             data: Data(self.textPreview.utf8),
-            textPreview: self.textPreview)
+            textPreview: self.textPreview
+        )
     }
 
     func set(_ request: ClipboardWriteRequest) throws -> ClipboardReadResult {

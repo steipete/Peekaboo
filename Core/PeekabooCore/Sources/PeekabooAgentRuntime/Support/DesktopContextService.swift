@@ -30,12 +30,12 @@ public final class DesktopContextService {
 
     /// Gather current desktop context as a formatted string for injection into agent prompts.
     public func gatherContext(includeClipboardPreview: Bool) async -> DesktopContext {
-        async let focusedWindow = gatherFocusedWindowInfo()
-        async let cursorPosition = gatherCursorPosition()
-        async let recentApps = gatherRecentApps()
+        async let focusedWindow = self.gatherFocusedWindowInfo()
+        async let cursorPosition = self.gatherCursorPosition()
+        async let recentApps = self.gatherRecentApps()
 
         let clipboardContent: String? = if includeClipboardPreview {
-            await gatherClipboardContent()
+            await self.gatherClipboardContent()
         } else {
             nil
         }
@@ -45,13 +45,12 @@ public final class DesktopContextService {
             cursorPosition: cursorPosition,
             clipboardPreview: clipboardContent,
             recentApps: recentApps,
-            timestamp: Date()
-        )
+            timestamp: Date())
     }
 
     /// Format the desktop context as a string suitable for injection into prompts.
     public func formatContextForPrompt(_ context: DesktopContext) -> String {
-        var lines: [String] = ["[Desktop State]"]
+        var lines = ["[Desktop State]"]
 
         // Focused window
         if let window = context.focusedWindow {
@@ -111,8 +110,7 @@ public final class DesktopContextService {
                 appName: appName,
                 title: "",
                 bounds: nil,
-                processId: Int(frontApp.processIdentifier)
-            )
+                processId: Int(frontApp.processIdentifier))
         }
 
         // Find windows belonging to the frontmost app
@@ -128,8 +126,7 @@ public final class DesktopContextService {
                 appName: appName,
                 title: "",
                 bounds: nil,
-                processId: Int(pid)
-            )
+                processId: Int(pid))
         }
 
         // Extract window properties
@@ -145,8 +142,7 @@ public final class DesktopContextService {
             appName: appName,
             title: title,
             bounds: bounds,
-            processId: Int(pid)
-        )
+            processId: Int(pid))
     }
 
     private func gatherCursorPosition() async -> CGPoint? {
@@ -169,7 +165,7 @@ public final class DesktopContextService {
             let result = try services.clipboard.get(prefer: .plainText)
             return result?.textPreview
         } catch {
-            logger.debug("Failed to read clipboard: \(error.localizedDescription)")
+            self.logger.debug("Failed to read clipboard: \(error.localizedDescription)")
             return nil
         }
     }
@@ -178,7 +174,7 @@ public final class DesktopContextService {
         // Get running applications, sorted by recent activation
         let runningApps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
-            .compactMap { $0.localizedName }
+            .compactMap(\.localizedName)
 
         return Array(runningApps.prefix(5))
     }
@@ -199,8 +195,8 @@ public struct DesktopContext: Sendable {
         cursorPosition: CGPoint?,
         clipboardPreview: String?,
         recentApps: [String],
-        timestamp: Date
-    ) {
+        timestamp: Date)
+    {
         self.focusedWindow = focusedWindow
         self.cursorPosition = cursorPosition
         self.clipboardPreview = clipboardPreview

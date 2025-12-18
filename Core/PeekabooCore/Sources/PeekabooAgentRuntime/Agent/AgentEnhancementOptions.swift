@@ -55,8 +55,8 @@ public struct AgentEnhancementOptions: Sendable {
         smartCapture: Bool = false,
         changeThreshold: Float = 0.05,
         regionFocusAfterAction: Bool = false,
-        regionCaptureRadius: CGFloat = 300
-    ) {
+        regionCaptureRadius: CGFloat = 300)
+    {
         self.contextAware = contextAware
         self.verifyActions = verifyActions
         self.maxVerificationRetries = maxVerificationRetries
@@ -76,8 +76,7 @@ public struct AgentEnhancementOptions: Sendable {
     public static let minimal = AgentEnhancementOptions(
         contextAware: false,
         verifyActions: false,
-        smartCapture: false
-    )
+        smartCapture: false)
 
     /// Full options: all enhancements enabled.
     public static let full = AgentEnhancementOptions(
@@ -85,15 +84,13 @@ public struct AgentEnhancementOptions: Sendable {
         verifyActions: true,
         maxVerificationRetries: 2,
         smartCapture: true,
-        regionFocusAfterAction: true
-    )
+        regionFocusAfterAction: true)
 
     /// Verification-focused: context + verification, no smart capture.
     public static let verified = AgentEnhancementOptions(
         contextAware: true,
         verifyActions: true,
-        maxVerificationRetries: 2
-    )
+        maxVerificationRetries: 2)
 }
 
 /// Action types that can be verified with screenshots.
@@ -111,7 +108,7 @@ public enum VerifiableActionType: String, Sendable, Hashable, CaseIterable {
     public var isMutating: Bool {
         switch self {
         case .click, .type, .scroll, .hotkey, .drag, .launchApp, .menu, .dialog:
-            return true
+            true
         }
     }
 }

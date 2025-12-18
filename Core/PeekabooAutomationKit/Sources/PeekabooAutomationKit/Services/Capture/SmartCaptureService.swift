@@ -36,23 +36,24 @@ public final class SmartCaptureService {
     /// Capture the screen only if it has changed significantly since the last capture.
     /// Returns nil image if screen is unchanged.
     public func captureIfChanged(
-        threshold: Float = 0.05
-    ) async throws -> SmartCaptureResult {
+        threshold: Float = 0.05) async throws -> SmartCaptureResult
+    {
         let now = Date()
 
         // Force capture if too much time has passed
         if let lastState = lastCaptureState,
            now.timeIntervalSince(lastState.timestamp) > forceRefreshInterval
         {
-            logger.debug("Force refresh: \(self.forceRefreshInterval)s elapsed since last capture")
-            return try await captureAndUpdateState()
+            self.logger.debug("Force refresh: \(self.forceRefreshInterval)s elapsed since last capture")
+            return try await self.captureAndUpdateState()
         }
 
         // Quick check: has focused app changed?
         let currentApp = NSWorkspace.shared.frontmostApplication?.localizedName
-        if currentApp != lastCaptureState?.focusedApp {
-            logger.debug("App changed from \(self.lastCaptureState?.focusedApp ?? "nil") to \(currentApp ?? "nil")")
-            return try await captureAndUpdateState()
+        if currentApp != self.lastCaptureState?.focusedApp {
+            self.logger
+                .debug("App changed from \(self.lastCaptureState?.focusedApp ?? "nil") to \(currentApp ?? "nil")")
+            return try await self.captureAndUpdateState()
         }
 
         // Capture current frame
@@ -63,23 +64,22 @@ public final class SmartCaptureService {
 
         // Compare with last capture using perceptual hash
         if let lastHash = lastCaptureState?.hash {
-            let currentHash = perceptualHash(currentImage)
-            let distance = hammingDistance(lastHash, currentHash)
+            let currentHash = self.perceptualHash(currentImage)
+            let distance = self.hammingDistance(lastHash, currentHash)
             let similarity = 1.0 - (Float(distance) / 64.0)
 
             if similarity > (1.0 - threshold) {
                 // Screen unchanged
-                logger.debug("Screen unchanged (similarity: \(similarity), threshold: \(1.0 - threshold))")
+                self.logger.debug("Screen unchanged (similarity: \(similarity), threshold: \(1.0 - threshold))")
                 return SmartCaptureResult(
                     image: nil,
                     changed: false,
-                    metadata: .unchanged(since: lastCaptureState!.timestamp)
-                )
+                    metadata: .unchanged(since: self.lastCaptureState!.timestamp))
             }
         }
 
         // Screen changed - update state and return
-        return try await captureAndUpdateState(image: currentImage)
+        return try await self.captureAndUpdateState(image: currentImage)
     }
 
     // MARK: - Region-Focused Capture
@@ -88,15 +88,14 @@ public final class SmartCaptureService {
     public func captureAroundPoint(
         _ center: CGPoint,
         radius: CGFloat = 300,
-        includeContextThumbnail: Bool = true
-    ) async throws -> SmartCaptureResult {
+        includeContextThumbnail: Bool = true) async throws -> SmartCaptureResult
+    {
         // Calculate capture rect
         var rect = CGRect(
             x: center.x - radius,
             y: center.y - radius,
             width: radius * 2,
-            height: radius * 2
-        )
+            height: radius * 2)
 
         // Clamp to screen bounds
         if let screenBounds = NSScreen.main?.frame {
@@ -114,7 +113,7 @@ public final class SmartCaptureService {
         if includeContextThumbnail {
             let fullScreenResult = try await captureService.captureScreen(displayIndex: nil)
             if let fullScreen = cgImage(from: fullScreenResult) {
-                contextThumbnail = resizeImage(fullScreen, to: CGSize(width: 400, height: 250))
+                contextThumbnail = self.resizeImage(fullScreen, to: CGSize(width: 400, height: 250))
             }
         }
 
@@ -125,19 +124,17 @@ public final class SmartCaptureService {
                 center: center,
                 radius: radius,
                 bounds: rect,
-                contextThumbnail: contextThumbnail
-            )
-        )
+                contextThumbnail: contextThumbnail))
     }
 
     /// Capture around an action target, inferring appropriate radius.
     public func captureAfterAction(
         toolName: String,
-        targetPoint: CGPoint?
-    ) async throws -> SmartCaptureResult {
+        targetPoint: CGPoint?) async throws -> SmartCaptureResult
+    {
         guard let point = targetPoint else {
             // No specific target - use diff-aware full capture
-            return try await captureIfChanged()
+            return try await self.captureIfChanged()
         }
 
         // Determine appropriate radius based on action type
@@ -154,14 +151,14 @@ public final class SmartCaptureService {
             250 // Default medium radius
         }
 
-        return try await captureAroundPoint(point, radius: radius)
+        return try await self.captureAroundPoint(point, radius: radius)
     }
 
     // MARK: - State Management
 
     /// Clear cached state, forcing next capture to be fresh.
     public func invalidateCache() {
-        lastCaptureState = nil
+        self.lastCaptureState = nil
     }
 
     // MARK: - Private Helpers
@@ -178,20 +175,18 @@ public final class SmartCaptureService {
             capturedImage = img
         }
 
-        let hash = perceptualHash(capturedImage)
+        let hash = self.perceptualHash(capturedImage)
         let focusedApp = NSWorkspace.shared.frontmostApplication?.localizedName
 
-        lastCaptureState = CaptureState(
+        self.lastCaptureState = CaptureState(
             hash: hash,
             timestamp: Date(),
-            focusedApp: focusedApp
-        )
+            focusedApp: focusedApp)
 
         return SmartCaptureResult(
             image: capturedImage,
             changed: true,
-            metadata: .fresh(capturedAt: Date())
-        )
+            metadata: .fresh(capturedAt: Date()))
     }
 
     /// Convert CaptureResult image data to CGImage.
@@ -201,8 +196,7 @@ public final class SmartCaptureService {
                   pngDataProviderSource: dataProvider,
                   decode: nil,
                   shouldInterpolate: true,
-                  intent: .defaultIntent
-              )
+                  intent: .defaultIntent)
         else {
             return nil
         }
@@ -238,7 +232,7 @@ public final class SmartCaptureService {
 
     /// Compute Hamming distance between two hashes.
     private func hammingDistance(_ a: UInt64, _ b: UInt64) -> Int {
-        return (a ^ b).nonzeroBitCount
+        (a ^ b).nonzeroBitCount
     }
 
     /// Resize an image to target size.
@@ -253,8 +247,8 @@ public final class SmartCaptureService {
             bitsPerComponent: 8,
             bytesPerRow: width * 4,
             space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
             return nil
         }
 
@@ -275,8 +269,8 @@ public final class SmartCaptureService {
             bitsPerComponent: 8,
             bytesPerRow: width * 4,
             space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
             return nil
         }
 
@@ -373,7 +367,7 @@ public enum SmartCaptureError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .imageConversionFailed:
-            return "Failed to convert capture result to CGImage"
+            "Failed to convert capture result to CGImage"
         }
     }
 }

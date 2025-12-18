@@ -26,8 +26,8 @@ public final class ActionVerifier {
 
     public init(
         smartCapture: SmartCaptureService,
-        verificationModel: LanguageModel = .openai(.gpt4oMini)
-    ) {
+        verificationModel: LanguageModel = .openai(.gpt4oMini))
+    {
         self.smartCapture = smartCapture
         self.verificationModel = verificationModel
     }
@@ -37,13 +37,12 @@ public final class ActionVerifier {
     /// Verify that an action completed successfully.
     public func verify(
         action: ActionDescriptor,
-        expectedOutcome: String? = nil
-    ) async throws -> VerificationResult {
+        expectedOutcome: String? = nil) async throws -> VerificationResult
+    {
         // Capture post-action state
         let captureResult = try await smartCapture.captureAfterAction(
             toolName: action.toolName,
-            targetPoint: action.targetPoint
-        )
+            targetPoint: action.targetPoint)
 
         guard let screenshot = captureResult.image else {
             // Screen unchanged - might be okay or might be a problem
@@ -51,36 +50,34 @@ public final class ActionVerifier {
                 success: false,
                 confidence: 0.3,
                 observation: "Screen appears unchanged after action",
-                suggestion: "The action may not have had any visible effect. Try clicking directly on the element."
-            )
+                suggestion: "The action may not have had any visible effect. Try clicking directly on the element.")
         }
 
         // Build expected outcome if not provided
-        let expected = expectedOutcome ?? inferExpectedOutcome(for: action)
+        let expected = expectedOutcome ?? self.inferExpectedOutcome(for: action)
 
         // Ask AI to verify
-        let prompt = buildVerificationPrompt(action: action, expected: expected)
+        let prompt = self.buildVerificationPrompt(action: action, expected: expected)
 
         do {
             let response = try await analyzeScreenshot(screenshot, prompt: prompt)
-            return parseVerificationResponse(response)
+            return self.parseVerificationResponse(response)
         } catch {
-            logger.warning("Verification AI call failed: \(error.localizedDescription)")
+            self.logger.warning("Verification AI call failed: \(error.localizedDescription)")
             // On AI failure, assume success (don't block on verification errors)
             return VerificationResult(
                 success: true,
                 confidence: 0.5,
                 observation: "Could not verify action (AI unavailable)",
-                suggestion: nil
-            )
+                suggestion: nil)
         }
     }
 
     /// Check if a tool should be verified based on options.
     public func shouldVerify(
         toolName: String,
-        options: AgentEnhancementOptions
-    ) -> Bool {
+        options: AgentEnhancementOptions) -> Bool
+    {
         guard options.verifyActions else { return false }
 
         // If specific action types are set, check against them
@@ -92,7 +89,7 @@ public final class ActionVerifier {
         }
 
         // Otherwise, verify all mutating actions
-        return !isReadOnlyTool(toolName)
+        return !self.isReadOnlyTool(toolName)
     }
 
     // MARK: - Private Helpers
@@ -141,7 +138,7 @@ public final class ActionVerifier {
         I just performed this action on macOS:
         - Tool: \(action.toolName)
         - Target: \(action.targetElement ?? "unspecified")
-        - Arguments: \(formatArguments(action.arguments))
+        - Arguments: \(self.formatArguments(action.arguments))
 
         Expected outcome: \(expected)
 
@@ -183,16 +180,15 @@ public final class ActionVerifier {
         let messages: [ModelMessage] = [
             ModelMessage(role: .user, content: [
                 .image(imageContent),
-                .text(prompt)
-            ])
+                .text(prompt),
+            ]),
         ]
 
         let response = try await generateText(
             model: verificationModel,
             messages: messages,
             tools: nil,
-            settings: GenerationSettings(maxTokens: 200)
-        )
+            settings: GenerationSettings(maxTokens: 200))
 
         return response.text
     }
@@ -203,7 +199,7 @@ public final class ActionVerifier {
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
             // Fallback: try to extract meaning from text response
-            return parseTextResponse(response)
+            return self.parseTextResponse(response)
         }
 
         let success = json["success"] as? Bool ?? false
@@ -215,8 +211,7 @@ public final class ActionVerifier {
             success: success,
             confidence: Float(confidence),
             observation: observation,
-            suggestion: suggestion
-        )
+            suggestion: suggestion)
     }
 
     private func parseTextResponse(_ response: String) -> VerificationResult {
@@ -224,19 +219,18 @@ public final class ActionVerifier {
 
         // Simple heuristics for non-JSON responses
         let success = lowercased.contains("yes") ||
-                      lowercased.contains("succeeded") ||
-                      lowercased.contains("successful")
+            lowercased.contains("succeeded") ||
+            lowercased.contains("successful")
 
         let failed = lowercased.contains("no") ||
-                     lowercased.contains("failed") ||
-                     lowercased.contains("didn't work")
+            lowercased.contains("failed") ||
+            lowercased.contains("didn't work")
 
         return VerificationResult(
             success: success && !failed,
             confidence: 0.6,
             observation: response,
-            suggestion: failed ? "The action may have failed. Consider retrying or trying a different approach." : nil
-        )
+            suggestion: failed ? "The action may have failed. Consider retrying or trying a different approach." : nil)
     }
 
     private func isReadOnlyTool(_ toolName: String) -> Bool {
@@ -244,7 +238,7 @@ public final class ActionVerifier {
             "see", "screenshot", "capture", "analyze", "image",
             "list", "list_apps", "list_windows", "list_menus", "list_dock",
             "focused", "find_element", "list_elements",
-            "permissions", "clipboard"  // Clipboard read is fine
+            "permissions", "clipboard", // Clipboard read is fine
         ]
         return readOnlyTools.contains(toolName)
     }
@@ -265,8 +259,8 @@ public struct ActionDescriptor: Sendable {
         arguments: [String: String],
         targetElement: String? = nil,
         targetPoint: CGPoint? = nil,
-        timestamp: Date = Date()
-    ) {
+        timestamp: Date = Date())
+    {
         self.toolName = toolName
         self.arguments = arguments
         self.targetElement = targetElement
@@ -298,7 +292,7 @@ public struct VerificationResult: Sendable {
 
     /// Whether we should retry based on the result.
     public var shouldRetry: Bool {
-        !success && confidence > 0.6
+        !self.success && self.confidence > 0.6
     }
 }
 
@@ -311,11 +305,11 @@ public enum VerificationError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .imageConversionFailed:
-            return "Failed to convert screenshot for verification"
-        case .aiCallFailed(let error):
-            return "AI verification call failed: \(error.localizedDescription)"
-        case .parseError(let response):
-            return "Could not parse verification response: \(response.prefix(100))"
+            "Failed to convert screenshot for verification"
+        case let .aiCallFailed(error):
+            "AI verification call failed: \(error.localizedDescription)"
+        case let .parseError(response):
+            "Could not parse verification response: \(response.prefix(100))"
         }
     }
 }
