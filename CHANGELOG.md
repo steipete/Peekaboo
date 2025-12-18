@@ -35,6 +35,7 @@
 ### Fixed
 - Visualizer previews now respect their full duration before fading out; overlays no longer disappear in ~0.3s regardless of requested timing.
 - App resolution now prioritizes exact name matches over bundleID-contains matches, preventing `--app Safari` from accidentally matching helper processes with “Safari” in their bundle ID.
+- ScreenCaptureKit window capture no longer returns black frames for GPU-rendered windows (notably iOS Simulator), and display-bound crops now use display-local `sourceRect` coordinates on secondary monitors (thanks @bheemreddy-samsara).
 - `peekaboo see` is now bounded for “single action” use:
   - Without `--analyze`, the overall wall-clock timeout is **10 seconds**.
   - `--json` output skips menubar enumeration unless `--verbose` is set, and timeouts surface as `TIMEOUT` exit codes instead of silent hangs.

@@ -62,6 +62,20 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
 @MainActor
 // swiftlint:disable type_body_length
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
+    /// Convert a global desktop-space rectangle to a display-local `sourceRect`.
+    ///
+    /// ScreenCaptureKit expects `SCStreamConfiguration.sourceRect` in **display-local logical coordinates**.
+    ///
+    /// `SCWindow.frame` and `SCDisplay.frame` returned from `SCShareableContent` are in **global desktop
+    /// coordinates** (same space as `NSScreen.frame`, including non-zero / negative origins for secondary
+    /// displays).
+    ///
+    /// When using a display-bound filter (`SCContentFilter(display:...)`), passing a global rect directly can
+    /// crop the wrong region or fail with an “invalid parameter” error on non-primary displays.
+    @_spi(Testing) public static func displayLocalSourceRect(globalRect: CGRect, displayFrame: CGRect) -> CGRect {
+        globalRect.offsetBy(dx: -displayFrame.origin.x, dy: -displayFrame.origin.y)
+    }
+
     @_spi(Testing) public struct Dependencies {
         let feedbackClient: any AutomationFeedbackClient
         let permissionEvaluator: any ScreenRecordingPermissionEvaluating
@@ -675,8 +689,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     index: content.displays.firstIndex(where: { $0.displayID == targetDisplay.displayID }) ?? 0,
                     name: targetDisplay.displayID.description,
                     bounds: targetDisplay.frame,
-                    scaleFactor: scale == .native ? self.nativeScale(for: targetDisplay) : 1.0
-                ))
+                    scaleFactor: scale == .native ? self.nativeScale(for: targetDisplay) : 1.0))
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
@@ -731,7 +744,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
             let config = SCStreamConfiguration()
             let scaleFactor = self.outputScale(for: display, preference: scale)
-            config.sourceRect = rect
+            // `rect` is in global desktop coordinates (often derived from `NSScreen.frame`).
+            // For display-bound capture, ScreenCaptureKit expects `sourceRect` in display-local coordinates.
+            config.sourceRect = ScreenCaptureService.displayLocalSourceRect(
+                globalRect: rect,
+                displayFrame: display.frame)
             config.width = Int(rect.width * scaleFactor)
             config.height = Int(rect.height * scaleFactor)
             config.showsCursor = false
@@ -786,7 +803,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
             let filter = SCContentFilter(display: display, including: [window])
             let config = SCStreamConfiguration()
-            config.sourceRect = window.frame
+            // `window.frame` is in global desktop coordinates. `sourceRect` must be display-local when the filter
+            // is display-bound, otherwise captures can fail on secondary displays (non-zero/negative origins).
+            config.sourceRect = ScreenCaptureService.displayLocalSourceRect(
+                globalRect: window.frame,
+                displayFrame: display.frame)
             config.width = width
             config.height = height
             config.captureResolution = .best
