@@ -131,12 +131,53 @@ public final class PeekabooAIService {
         self.resolvedModels
     }
 
+    private static func parseProviderEntry(_ entry: String) -> LanguageModel? {
+        if let parsed = AIProviderParser.parse(entry) {
+            let provider = parsed.provider.lowercased()
+            let modelString = parsed.model
+
+            let loose = LanguageModel.parse(from: modelString)
+
+            switch provider {
+            case "openai":
+                if case .openai = loose { return loose }
+                return .openai(.custom(modelString))
+            case "anthropic":
+                if case .anthropic = loose { return loose }
+                return .anthropic(.custom(modelString))
+            case "google", "gemini":
+                if case .google = loose { return loose }
+                return nil
+            case "mistral":
+                if case .mistral = loose { return loose }
+                return nil
+            case "groq":
+                if case .groq = loose { return loose }
+                return nil
+            case "grok", "xai":
+                if case .grok = loose { return loose }
+                return .grok(.custom(modelString))
+            case "ollama":
+                // For Ollama, prefer preserving the exact model id string.
+                // Heuristics for custom model capabilities live in Tachikoma (LanguageModel.Ollama).
+                return .ollama(.custom(modelString))
+            case "lmstudio":
+                return .lmstudio(.custom(modelString))
+            default:
+                return nil
+            }
+        }
+
+        // Back-compat: allow loose model strings without "provider/model"
+        return LanguageModel.parse(from: entry)
+    }
+
     private static func resolveAvailableModels(configuration: ConfigurationManager) -> [LanguageModel] {
         let providers = configuration.getAIProviders()
         let parsed = providers
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .compactMap { LanguageModel.parse(from: $0) }
+            .compactMap { self.parseProviderEntry($0) }
 
         if !parsed.isEmpty { return parsed }
 

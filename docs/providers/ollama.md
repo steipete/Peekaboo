@@ -52,13 +52,13 @@ peekaboo config set aiProviders.ollamaBaseUrl "http://localhost:11434"
 - ✅ `OllamaProvider.swift` with basic structure
 - ✅ Server availability checks
 - ✅ Model listing capability
-- ❌ Image analysis not implemented (throws error)
-- ❌ No agent/chat support
-- ❌ No streaming support
-- ❌ No tool calling support
+- ✅ Image analysis via `/api/chat` with `messages[].images` (used by `peekaboo image --analyze`)
+- ❌ No `peekaboo agent` support yet (agent runtime still assumes cloud providers)
+- ⚠️ Streaming is basic and may not truly stream token-by-token
+- ⚠️ Tool calling support is partial/experimental and model-dependent
 
 ### Model Support
-Currently supports models like `llava:latest` for image analysis (though not implemented). Need to add support for text-generation models like Ultrathink.
+Supports vision models like `llava:latest` and `qwen2.5vl:latest` for `peekaboo image --analyze`, plus text models like `llama3.3` for local text generation.
 
 ## Ollama API Overview
 

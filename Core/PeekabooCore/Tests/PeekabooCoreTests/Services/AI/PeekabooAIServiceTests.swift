@@ -87,6 +87,64 @@ struct PeekabooAIServiceTests {
         #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
     }
 
+    @Test("Parses Ollama provider/model entries without defaulting to Llama")
+    @MainActor
+    func parsesOllamaProviderModel() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let configPath = tempDir.appendingPathComponent("config.json")
+        try """
+        {
+          "aiProviders": { "providers": "ollama/qwen2.5vl:latest" }
+        }
+        """.write(to: configPath, atomically: true, encoding: .utf8)
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        defer {
+            unsetenv("PEEKABOO_CONFIG_DIR")
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        let service = PeekabooAIService()
+        #expect(service.resolvedDefaultModel == .ollama(.custom("qwen2.5vl:latest")))
+        #expect(service.availableModels() == [.ollama(.custom("qwen2.5vl:latest"))])
+    }
+
+    @Test("Environment provider list overrides config for Ollama models")
+    @MainActor
+    func environmentOverridesConfigForOllama() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let configPath = tempDir.appendingPathComponent("config.json")
+        try """
+        {
+          "aiProviders": { "providers": "anthropic/claude-sonnet-4.5" }
+        }
+        """.write(to: configPath, atomically: true, encoding: .utf8)
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("PEEKABOO_AI_PROVIDERS", "ollama/qwen2.5vl:latest", 1)
+        defer {
+            unsetenv("PEEKABOO_AI_PROVIDERS")
+            unsetenv("PEEKABOO_CONFIG_DIR")
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        let service = PeekabooAIService()
+        #expect(service.resolvedDefaultModel == .ollama(.custom("qwen2.5vl:latest")))
+        #expect(service.availableModels() == [.ollama(.custom("qwen2.5vl:latest"))])
+    }
+
     @Test("Automatically loads configuration when resolving providers")
     @MainActor
     func autoLoadsConfiguration() async throws {
