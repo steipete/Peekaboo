@@ -78,7 +78,7 @@ read_when:
 ### Interaction Tools
 | Tool | Playground surface | Log category | Sample CLI | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
-| `click` | Click Fixture window | `Click` | `polter peekaboo -- click "Single Click" --app boo.peekaboo.playground.debug --snapshot <id>` | Verified – Click Fixture E2E (2025-12-17) | `.artifacts/playground-tools/20251217-152024-click.log` |
+| `click` | Click Fixture window | `Click` | `polter peekaboo -- click "Single Click" --app boo.peekaboo.playground.debug --snapshot <id>` | Verified – Click Fixture E2E incl. double/right/context menu (2025-12-18) | `.artifacts/playground-tools/20251218-004335-click.log`, `.artifacts/playground-tools/20251218-004335-menu.log` |
 | `type` | Text Fixture window | `Text` + `Focus` | `polter peekaboo -- type "Hello Playground" --clear --snapshot <id>` | Verified – Text Fixture E2E + text-field focusing (2025-12-18) | `.artifacts/playground-tools/20251218-001923-text.log` |
 | `press` | Keyboard Fixture window | `Keyboard` | `polter peekaboo -- press return --snapshot <id>` | Verified – keypresses + repeats logged (2025-12-17) | `.artifacts/playground-tools/20251217-152138-keyboard.log` |
 | `hotkey` | Playground menu shortcuts | `Keyboard` & `Menu` | `polter peekaboo -- hotkey --keys "cmd,1"` | Verified – digit hotkeys (2025-12-17) | `.artifacts/playground-tools/20251217-152100-menu.log` |

@@ -568,3 +568,10 @@
 - **Swipe**: `.artifacts/playground-tools/20251218-002229-gesture.log` logs `Swipe … Distance: …px`.
 - **Menu**: `.artifacts/playground-tools/20251218-002308-menu.log` logs `Test Action 1 clicked` and `Submenu > Nested Action A clicked`.
 - **Drag**: `.artifacts/playground-tools/20251218-002005-drag.log` logs `Item dropped … zone1`.
+
+### ✅ `click --double` now triggers SwiftUI double-tap gestures (AXorcist fix)
+- **Problem**: `click --double` previously posted only one down/up pair with `clickState=2`, which registers as a single click in SwiftUI (and never triggers `onTapGesture(count: 2)`).
+- **Fix**: AXorcist `Element.clickAt(... clickCount: 2)` now emits two down/up pairs with sequential click states (1 then 2), within the system double-click interval.
+- **Verification** (Click Fixture “Double Click Me”):
+  - `.artifacts/playground-tools/20251218-004335-click.log` contains `Double-click detected on area`.
+  - `.artifacts/playground-tools/20251218-004335-menu.log` contains `Context menu: Action 1` (right-click + context menu still works after the multi-click change).
