@@ -82,8 +82,8 @@ read_when:
 | `type` | Text Fixture window | `Text` + `Focus` | `polter peekaboo -- type "Hello Playground" --clear --snapshot <id>` | Verified – Text Fixture E2E + text-field focusing (2025-12-18) | `.artifacts/playground-tools/20251218-001923-text.log` |
 | `press` | Keyboard Fixture window | `Keyboard` | `polter peekaboo -- press return --snapshot <id>` | Verified – keypresses + repeats logged (2025-12-17) | `.artifacts/playground-tools/20251217-152138-keyboard.log` |
 | `hotkey` | Playground menu shortcuts | `Keyboard` & `Menu` | `polter peekaboo -- hotkey --keys "cmd,1"` | Verified – digit hotkeys (2025-12-17) | `.artifacts/playground-tools/20251217-152100-menu.log` |
-| `scroll` | Scroll Fixture window | `Scroll` | `polter peekaboo -- scroll --direction down --amount 8 --on vertical-scroll --snapshot <id>` | Verified – scroll offsets logged (2025-12-17) | `.artifacts/playground-tools/20251217-222958-scroll.log` |
-| `swipe` | Scroll Fixture gesture area | `Gesture` | `polter peekaboo -- swipe --from-coords <x,y> --to-coords <x,y>` | Verified – swipe direction + distance logged (2025-12-18) | `.artifacts/playground-tools/20251218-002229-gesture.log` |
+| `scroll` | Scroll Fixture window | `Scroll` | `polter peekaboo -- scroll --direction down --amount 8 --on vertical-scroll --snapshot <id>` | Verified – scroll offsets logged (2025-12-18) | `.artifacts/playground-tools/20251218-012323-scroll.log` |
+| `swipe` | Scroll Fixture gesture area | `Gesture` | `polter peekaboo -- swipe --from-coords <x,y> --to-coords <x,y>` | Verified – swipe direction + distance logged (2025-12-18), plus long-press hold | `.artifacts/playground-tools/20251218-012323-gesture.log` |
 | `drag` | Drag Fixture window | `Drag` | `polter peekaboo -- drag --from <elem> --to <elem> --snapshot <id>` | Verified – item dropped into zone (2025-12-18) | `.artifacts/playground-tools/20251218-002005-drag.log` |
 | `move` | Click Fixture mouse probe | `Control` | `polter peekaboo -- move --id <elem> --snapshot <id> --smooth` | Verified – cursor movement emits deterministic probe logs (2025-12-17) | `.artifacts/playground-tools/20251217-153107-control.log` |
 
@@ -311,6 +311,12 @@ The following subsections spell out the concrete steps, required Playground surf
   - Added `.artifacts/playground-tools/20251116-194730-scroll.log` via `./Apps/Playground/scripts/playground-log.sh -c Scroll --last 10m --all -o …`; it shows the `[Scroll] direction=down` and `[Scroll] direction=right` events emitted by AutomationEventLogger.
 - **2025-12-17 rerun**:
   - Re-validated Scroll Fixture window-scoped scrolling (vertical/horizontal + nested target commands) with `.artifacts/playground-tools/20251217-222958-scroll.log`.
+- **2025-12-18 rerun**:
+  - Verified Scroll Fixture again, but this time with **another app frontmost** (Ghostty) to prove auto-focus uses snapshot metadata reliably even when `see` snapshots do **not** include `windowID`.
+  - Evidence:
+    - `.artifacts/playground-tools/20251218-012323-scroll.log` (Scroll offsets + nested inner/outer offsets logged by Playground).
+    - `.artifacts/playground-tools/20251218-012323-click-scroll-{top,middle,bottom}.json` (Clicking fixture buttons via snapshot IDs).
+    - `.artifacts/playground-tools/20251218-012323-scroll-{vertical-down,vertical-up,horizontal-right,horizontal-left,nested-outer-down,nested-inner-down}.json` (CLI evidence per scroll variant).
 
 #### `swipe`
 - **View**: Gesture Testing area.
@@ -322,6 +328,9 @@ The following subsections spell out the concrete steps, required Playground surf
   - Used snapshot `DBFDD053-4513-4603-B7C3-9170E7386BA7` (see `.artifacts/playground-tools/20251116-085714-see-scrolltab.{json,png}`) to keep the tab selection stable.
   - Horizontal and vertical commands above completed successfully; Playground log `.artifacts/playground-tools/20251116-090041-gesture.log` shows `[boo.peekaboo.playground:Gesture]` entries with exact coordinates, profiles, and step counts.
   - `polter peekaboo -- swipe --from-coords 900,520 --to-coords 700,520 --right-button` returns `Right-button swipe is not currently supported…`, matching expectations.
+- **2025-12-18 rerun**:
+  - Verified swipe-direction logging + long-press detection on the Scroll Fixture gesture tiles.
+  - Evidence: `.artifacts/playground-tools/20251218-012323-gesture.log` plus `.artifacts/playground-tools/20251218-012323-swipe-right.json` and `.artifacts/playground-tools/20251218-012323-long-press.json`.
 
 #### `drag`
 - **View**: DragDropView (tab is hidden on launch—run `polter peekaboo -- click --snapshot <id> --on elem_79` right after `see` to activate the “Drag & Drop” tab radio button).

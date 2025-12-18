@@ -193,11 +193,18 @@
 - **Notes**:
   - Nested targets exist as `nested-inner-scroll` and `nested-outer-scroll`; the CLI logs show the `target=...` field when you exercise them.
   - The Playground now logs nested inner/outer content offsets as well (rebuild Playground from latest sources to pick up the new `Nested … scroll offset` log lines).
-- **Artifacts**: `.artifacts/playground-tools/20251217-222958-scroll.log`
+- **2025-12-18 rerun**:
+  - Found + fixed a real-world focus failure: `see` snapshots can have `windowID=null`, which previously caused auto-focus to no-op (so scroll/click could land in other frontmost apps even when you passed `--app Playground`).
+  - After the fix, re-verified Scroll Fixture E2E by intentionally bringing Ghostty frontmost, then driving the fixture solely via snapshot IDs and scroll targets.
+- **Artifacts**:
+  - `.artifacts/playground-tools/20251218-012323-scroll.log`
+  - `.artifacts/playground-tools/20251218-012323-click-scroll-bottom.json`, `.artifacts/playground-tools/20251218-012323-click-scroll-top.json`, `.artifacts/playground-tools/20251218-012323-click-scroll-middle.json`
+  - `.artifacts/playground-tools/20251218-012323-scroll-vertical-down.json`, `.artifacts/playground-tools/20251218-012323-scroll-horizontal-right.json`
 
 ### ✅ `swipe` command – gesture logs (resolved)
 - **Resolved on 2025-12-17**: GestureArea now logs swipe direction + distance for deterministic verification.
-- **Artifacts**: `.artifacts/playground-tools/20251217-152843-gesture.log`
+- **2025-12-18 rerun**: Verified swipe-right plus long-press hold using the Scroll Fixture gesture tiles.
+- **Artifacts**: `.artifacts/playground-tools/20251218-012323-gesture.log`, `.artifacts/playground-tools/20251218-012323-swipe-right.json`, `.artifacts/playground-tools/20251218-012323-long-press.json`
 
 ### ✅ `drag` command – element-based drag/drop (resolved)
 - **Resolved on 2025-12-17**: Drag Fixture exposes stable identifiers and logs drop outcomes.
