@@ -382,6 +382,9 @@ The following subsections spell out the concrete steps, required Playground surf
 - **2025-11-16 verification**:
   - Commands rerun with Playground as the target: `.artifacts/playground-tools/20251116-194858-window-list-playground.json`, `...-window-move-playground.json`, `...-window-resize-playground.json`, `...-window-setbounds-playground.json`, and `...-window-focus-playground.json` capture each CLI invocation.
   - Window log `.artifacts/playground-tools/20251116-194900-window.log` shows `[Window] focus`, `move`, `resize`, and `set_bounds` entries with updated bounds, confirming instrumentation now covers the Playground window itself.
+- **2025-12-18 regression fix**:
+  - `window list` no longer returns duplicate entries for the same `window_id` (which previously happened for Playground’s fixture windows, confusing scripts that key off `window_id`).
+  - Evidence: `.artifacts/playground-tools/20251218-022217-window-list-playground-dedup.json` (no duplicate `window_id` values).
 
 #### `space`
 - **Scenario**: Single Space (current setup). Need additional Space to test multi-space behavior.
@@ -404,6 +407,9 @@ The following subsections spell out the concrete steps, required Playground surf
   - Re-ran the command set; artifacts include `.artifacts/playground-tools/20251116-195020-menu-click-action.json`, `...195024-menu-click-submenu.json`, and `...195022-menu-click-disabled.json` (the last exits with `INTERACTION_FAILED` and message `Menu item is disabled: ...`).
   - Playground Menu log `.artifacts/playground-tools/20251116-195020-menu.log` now shows each click (`Test Action 1`, `Submenu > Nested Action A`, and the disabled error), proving `AutomationEventLogger` coverage.
   - Context menu coverage is verified via `click --right` on the Click Fixture: `.artifacts/playground-tools/20251217-165443-context-menu.log` contains `Context menu: Action 1/2/Delete` entries emitted by Playground.
+- **2025-12-18 re-verification**:
+  - Confirmed a “real world” nested menu path with spaces (`Fixtures > Open Window Fixture`) opens the expected window.
+  - Evidence: `.artifacts/playground-tools/20251218-021541-menu-open-windowfixture.json` + `.artifacts/playground-tools/20251218-021541-window.log` (Window became key for “Window Fixture”).
 
 #### `menubar`
 - **Target**: macOS status items (Wi-Fi, Battery) or custom extras.

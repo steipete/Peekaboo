@@ -213,6 +213,17 @@
 - **Fix**: `ClickCommand.run(using:)` now calls `validate()` up front and uses `parseCoordinates` with a guarded error instead of force-unwrapping.
 - **Regression**: `Apps/CLI/Tests/CoreCLITests/ClickCommandCoordsCrashRegressionTests.swift` asserts the command returns `EXIT_FAILURE` (no crash).
 
+### ✅ `window list` duplicate window IDs (fixed)
+- **Issue**: `polter peekaboo -- window list --app Playground --json-output` could include duplicate entries for the same `window_id` (especially with multiple fixture windows open), which made scripts unstable.
+- **Fix**: `WindowFilterHelper` now deduplicates windows by `windowID` after applying standard renderability filters.
+- **Evidence**: `.artifacts/playground-tools/20251218-022217-window-list-playground-dedup.json` (no duplicate `window_id` values).
+
+### ✅ `menu click` (Fixtures window open)
+- **Goal**: Verify `peekaboo menu click` works against realistic nested menu paths with spaces, not just the synthetic “Test Menu”.
+- **Command**: `polter peekaboo -- menu click --app Playground --path "Fixtures > Open Window Fixture" --json-output`.
+- **Verification**: Playground Window log shows a “Window became key” entry for “Window Fixture”.
+- **Artifacts**: `.artifacts/playground-tools/20251218-021541-menu-open-windowfixture.json`, `.artifacts/playground-tools/20251218-021541-window.log`.
+
 ### ✅ Controls Fixture – “bottom controls” recipes
 - **Discrete slider**: coordinate-click the left/right ends of the `discrete-slider` frame to jump `1…5` and verify `[Control] Discrete slider changed` logs.
 - **Stepper**: coordinate-click the top/bottom halves of the `stepper-control` frame to increment/decrement and verify `[Control] Stepper …` logs.
