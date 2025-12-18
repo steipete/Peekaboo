@@ -288,13 +288,17 @@ struct DialogCommand: ParsableCommand {
                         let path: String?
                         let name: String?
                         let buttonClicked: String
+                        let savedPath: String?
+                        let savedPathVerified: Bool
                     }
 
                     let outputData = FileDialogResult(
                         action: "file_dialog",
                         path: result.details["path"],
                         name: result.details["filename"],
-                        buttonClicked: result.details["button_clicked"] ?? self.select
+                        buttonClicked: result.details["button_clicked"] ?? self.select,
+                        savedPath: result.details["saved_path"],
+                        savedPathVerified: result.details["saved_path_exists"] == "true"
                     )
                     outputSuccessCodable(data: outputData, logger: self.outputLogger)
                 } else {
@@ -302,14 +306,20 @@ struct DialogCommand: ParsableCommand {
                     if let p = result.details["path"] { print("  Path: \(p)") }
                     if let n = result.details["filename"] { print("  Name: \(n)") }
                     print("  Action: \(result.details["button_clicked"] ?? self.select)")
+                    if let savedPath = result.details["saved_path"], result.details["saved_path_exists"] == "true" {
+                        print("  Saved: \(savedPath)")
+                    }
                 }
                 let resolvedPath = result.details["path"] ?? self.path ?? "unknown"
                 let resolvedName = result.details["filename"] ?? self.name ?? "unknown"
                 let buttonClicked = result.details["button_clicked"] ?? self.select
+                let savedPath = result.details["saved_path"] ?? "unknown"
+                let savedPathVerified = result.details["saved_path_exists"] ?? "unknown"
                 AutomationEventLogger.log(
                     .dialog,
                     "action=file path='\(resolvedPath)' name='\(resolvedName)' "
-                        + "button='\(buttonClicked)' app='\(self.app ?? "unknown")'"
+                        + "button='\(buttonClicked)' saved_path='\(savedPath)' "
+                        + "saved_path_verified=\(savedPathVerified) app='\(self.app ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -663,6 +673,8 @@ private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool, lo
         .ELEMENT_NOT_FOUND
     case .noDismissButton:
         .ELEMENT_NOT_FOUND
+    case .fileVerificationFailed:
+        .FILE_IO_ERROR
     }
 
     if jsonOutput {

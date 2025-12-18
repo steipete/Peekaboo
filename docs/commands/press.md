@@ -16,12 +16,13 @@ read_when:
 | `--count <n>` | Repeat the entire key sequence `n` times (default `1`). |
 | `--delay <ms>` | Delay between key presses (default `100`). |
 | `--hold <ms>` | Planned hold duration per key (currently stored but not yet wired to the automation layer). |
-| `--snapshot <id>` | Use a specific snapshot; otherwise the last snapshot wins. |
+| `--snapshot <id>` | Optional snapshot ID used for validation/focus (no implicit “latest snapshot” lookup). |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before pressing keys. (`--window-*` requires `--app` or `--pid`.) |
 | Focus flags | Same `FocusCommandOptions` bundle as `click`/`type`. |
 
 ## Implementation notes
 - Keys are lowercased and mapped to `SpecialKey`; the command fails fast with a helpful message if a token isn’t recognized.
-- The focus helper only runs when a snapshot ID is available, so for “blind” global shortcuts you can omit `--snapshot` entirely.
+- Focus runs when `--snapshot` or the target flags are present; for “blind” global shortcuts you can omit both and let the current frontmost app receive the keys.
 - Repetition multiplies the sequence client-side—e.g., `press tab return --count 3` becomes six actions—so you get predictable ordering.
 - Results include the literal key list, total presses, repeat count, and elapsed time in both text and JSON modes.
 - The `--hold` flag is parsed and stored for future use but does not change behavior yet; include manual sleeps if you need long key holds.

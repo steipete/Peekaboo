@@ -29,11 +29,6 @@ extension ScrollCommand: CommanderSignatureProviding {
                     help: "Delay between scroll ticks in milliseconds",
                     long: "delay"
                 ),
-                .commandOption(
-                    "app",
-                    help: "Target application to focus before scrolling",
-                    long: "app"
-                ),
             ],
             flags: [
                 .commandFlag(
@@ -43,6 +38,7 @@ extension ScrollCommand: CommanderSignatureProviding {
                 ),
             ],
             optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
                 FocusCommandOptions.commanderSignature(),
             ]
         )

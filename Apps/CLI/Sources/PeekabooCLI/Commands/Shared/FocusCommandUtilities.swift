@@ -119,6 +119,25 @@ func ensureFocused(
     }
 }
 
+/// Ensure focus using shared interaction target flags (`--app/--pid/--window-title/--window-index`).
+func ensureFocused(
+    snapshotId: String? = nil,
+    target: InteractionTargetOptions,
+    options: any FocusOptionsProtocol,
+    services: any PeekabooServiceProviding
+) async throws {
+    let windowID = try await target.resolveWindowID(services: services)
+    let appIdentifier = try target.resolveApplicationIdentifierOptional()
+    try await ensureFocused(
+        snapshotId: snapshotId,
+        windowID: windowID,
+        applicationName: appIdentifier,
+        windowTitle: target.windowTitle,
+        options: options,
+        services: services
+    )
+}
+
 @MainActor
 final class FocusManagementActor {
     static let shared = FocusManagementActor()

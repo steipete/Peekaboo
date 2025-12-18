@@ -14,6 +14,7 @@ public enum DialogError: Error {
     case invalidFieldIndex
     case noTextFields
     case noDismissButton
+    case fileVerificationFailed(expectedPath: String)
 }
 
 extension DialogError: LocalizedError {
@@ -35,6 +36,8 @@ extension DialogError: LocalizedError {
             "No text fields found in dialog."
         case .noDismissButton:
             "No dismiss button found in dialog."
+        case let .fileVerificationFailed(expectedPath):
+            "Dialog reported success, but the saved file did not appear at: \(expectedPath)"
         }
     }
 }
@@ -220,6 +223,7 @@ extension DialogService {
         }
         self.logger.debug("Action button: \(actionButton)")
 
+        let saveStartTime = Date()
         await self.ensureDialogVisibility(windowTitle: nil, appName: appName)
         let dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
         guard self.isFileDialogElement(dialog) else {
@@ -239,6 +243,19 @@ extension DialogService {
 
         let clickResult = try await self.clickButton(buttonText: actionButton, windowTitle: nil, appName: appName)
         details["button_clicked"] = clickResult.details["button"] ?? actionButton
+
+        if self.isSaveLikeAction(actionButton) {
+            if let expectedPath = self.expectedSavedPath(path: path, filename: filename) {
+                let actualPath = try await self.waitForSavedFile(
+                    expectedPath: expectedPath,
+                    startedAt: saveStartTime,
+                    timeout: 5.0)
+                details["saved_path"] = actualPath
+                details["saved_path_exists"] = "true"
+            } else {
+                details["saved_path_exists"] = "unknown"
+            }
+        }
 
         let result = DialogActionResult(
             success: true,
@@ -351,6 +368,97 @@ extension DialogService {
 
 @MainActor
 extension DialogService {
+    private func isSaveLikeAction(_ actionButton: String) -> Bool {
+        let normalized = actionButton.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalized.contains("save") || normalized.contains("export")
+    }
+
+    private func expectedSavedPath(path: String?, filename: String?) -> String? {
+        guard let filename else { return nil }
+        guard let path else { return nil }
+
+        let expandedPath = (path as NSString).expandingTildeInPath
+        let baseURL = URL(fileURLWithPath: expandedPath).standardizedFileURL
+
+        if baseURL.lastPathComponent == filename {
+            return baseURL.path
+        }
+
+        return baseURL.appendingPathComponent(filename).path
+    }
+
+    private func waitForSavedFile(
+        expectedPath: String,
+        startedAt: Date,
+        timeout: TimeInterval) async throws -> String
+    {
+        let fileManager = FileManager.default
+        let deadline = startedAt.addingTimeInterval(timeout)
+
+        let expectedURL = URL(fileURLWithPath: expectedPath)
+        let expectedDirectory = expectedURL.deletingLastPathComponent()
+        let expectedBaseName = expectedURL.deletingPathExtension().lastPathComponent
+
+        var lastDirectoryScan: Date?
+
+        while Date() < deadline {
+            if fileManager.fileExists(atPath: expectedPath) {
+                return expectedPath
+            }
+
+            let shouldScanDirectory = lastDirectoryScan == nil ||
+                Date().timeIntervalSince(lastDirectoryScan ?? Date.distantPast) > 0.5
+
+            if shouldScanDirectory, let candidate = self.findRecentlyWrittenFile(
+                in: expectedDirectory,
+                fileNamePrefix: expectedBaseName,
+                startedAt: startedAt)
+            {
+                return candidate
+            }
+
+            if shouldScanDirectory {
+                lastDirectoryScan = Date()
+            }
+
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        throw DialogError.fileVerificationFailed(expectedPath: expectedPath)
+    }
+
+    private func findRecentlyWrittenFile(
+        in directory: URL,
+        fileNamePrefix: String,
+        startedAt: Date) -> String?
+    {
+        let fileManager = FileManager.default
+
+        guard let urls = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles])
+        else {
+            return nil
+        }
+
+        let earliest = startedAt.addingTimeInterval(-2.0)
+
+        let candidates: [(url: URL, modifiedAt: Date)] = urls.compactMap { url in
+            guard url.lastPathComponent.hasPrefix(fileNamePrefix) else { return nil }
+            let modifiedAt = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
+                ?? Date.distantPast
+            guard modifiedAt >= earliest else { return nil }
+            return (url: url, modifiedAt: modifiedAt)
+        }
+
+        guard let best = candidates.max(by: { $0.modifiedAt < $1.modifiedAt }) else {
+            return nil
+        }
+
+        return best.url.path
+    }
+
     private func findDialogElement(withTitle title: String?, appName: String?) throws -> Element {
         self.logger.debug("Finding dialog element")
 

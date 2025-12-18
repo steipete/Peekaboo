@@ -36,11 +36,6 @@ extension TypeCommand: CommanderSignatureProviding {
                     help: "Press tab N times",
                     long: "tab"
                 ),
-                .commandOption(
-                    "app",
-                    help: "Target application to focus before typing",
-                    long: "app"
-                ),
             ],
             flags: [
                 .commandFlag(
@@ -65,6 +60,7 @@ extension TypeCommand: CommanderSignatureProviding {
                 ),
             ],
             optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
                 FocusCommandOptions.commanderSignature(),
             ]
         )

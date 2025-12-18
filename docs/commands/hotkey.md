@@ -14,14 +14,15 @@ read_when:
 | --- | --- |
 | `keys` / `--keys "cmd,c"` | Required list of keys (positional or `--keys`). Use commas or spaces; modifiers (`cmd`, `alt`, `ctrl`, `shift`, `fn`) can be mixed with letters/numbers/special keys. |
 | `--hold-duration <ms>` | Milliseconds to hold the combo before releasing (default `50`). |
-| `--snapshot <id>` | Optional snapshot to determine which app should be focused beforehand. |
-| Focus flags | All `FocusCommandOptions` flags apply; focus only runs when a snapshot is available. |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before firing the hotkey. (`--window-*` requires `--app` or `--pid`.) |
+| `--snapshot <id>` | Optional snapshot ID used for validation/focus (no implicit “latest snapshot” lookup). |
+| Focus flags | All `FocusCommandOptions` flags apply; focus runs when `--snapshot` or a target flag is present. |
 
 ## Implementation notes
 - The command errors if no keys are provided (either positionally or via `--keys`).
 - When both forms are present, the positional value is used.
 - Keys are parsed into an ordered list (press order) and rejoined with commas before calling the automation service, which expects `cmd,shift,p` style input and releases keys in reverse order.
-- If you omit `--snapshot`, the command skips `ensureFocused` entirely; this is handy for OS-global shortcuts like Spotlight, but for app-specific shortcuts you should reuse the `see` snapshot.
+- If you omit both `--snapshot` and the target flags, the command skips focus entirely; this is handy for OS-global shortcuts like Spotlight, but for app-specific shortcuts you should provide a target or reuse the `see` snapshot.
 - JSON mode returns the normalized key list, total count, and elapsed time, which is useful when logging scripted shortcuts.
 
 ## Examples

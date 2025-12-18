@@ -27,8 +27,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
     @Flag(help: "Use smooth scrolling with smaller increments")
     var smooth = false
 
-    @Option(name: .long, help: "Target application to focus before scrolling")
-    var app: String?
+    @OptionGroup var target: InteractionTargetOptions
 
     @OptionGroup var focusOptions: FocusCommandOptions
     @RuntimeStorage private var runtime: CommandRuntime?
@@ -53,15 +52,19 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
+            try self.target.validate()
             // Parse direction
             guard let scrollDirection = ScrollDirection(rawValue: direction.lowercased()) else {
                 throw ValidationError("Invalid direction. Use: up, down, left, or right")
             }
 
-            // Determine snapshot ID if element target is specified
-            let snapshotId: String? = if self.on != nil {
-                if let providedSnapshot = snapshot {
-                    providedSnapshot
+            let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let providedSnapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
+
+            // Determine snapshot ID if element target is specified.
+            let snapshotIdForAutomation: String? = if self.on != nil {
+                if let providedSnapshotId {
+                    providedSnapshotId
                 } else {
                     await self.services.snapshots.getMostRecentSnapshot()
                 }
@@ -70,20 +73,26 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             }
 
             if self.on != nil {
-                guard let snapshotId else {
+                guard let snapshotIdForAutomation else {
                     throw PeekabooError.snapshotNotFound("No snapshot found")
                 }
 
                 _ = try await SnapshotValidation.requireDetectionResult(
-                    snapshotId: snapshotId,
+                    snapshotId: snapshotIdForAutomation,
                     snapshots: self.services.snapshots
                 )
             }
 
             // Ensure window is focused before scrolling
+            let focusSnapshotId: String? = if providedSnapshotId != nil || !self.target.hasAnyTarget {
+                snapshotIdForAutomation
+            } else {
+                nil
+            }
+
             try await ensureFocused(
-                snapshotId: snapshotId,
-                applicationName: self.app,
+                snapshotId: focusSnapshotId,
+                target: self.target,
                 options: self.focusOptions,
                 services: self.services
             )
@@ -95,7 +104,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 target: self.on,
                 smooth: self.smooth,
                 delay: self.delay,
-                snapshotId: snapshotId
+                snapshotId: snapshotIdForAutomation
             )
             try await AutomationServiceBridge.scroll(
                 automation: self.services.automation,
@@ -104,7 +113,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             AutomationEventLogger.log(
                 .scroll,
                 "direction=\(self.direction) amount=\(self.amount) smooth=\(self.smooth) "
-                    + "target=\(self.on ?? "pointer") snapshot=\(snapshotId ?? "latest")"
+                    + "target=\(self.on ?? "pointer") snapshot=\(snapshotIdForAutomation ?? "latest")"
             )
 
             // Calculate total ticks for output
@@ -113,7 +122,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             // Determine scroll location for output
             let scrollLocation: CGPoint = if let elementId = on {
                 // Try to get element location from snapshot
-                if let activeSnapshotId = snapshotId,
+                if let activeSnapshotId = snapshotIdForAutomation,
                    let detectionResult = try? await self.services.snapshots
                        .getDetectionResult(snapshotId: activeSnapshotId),
                        let element = detectionResult.elements.findById(elementId) {
@@ -219,7 +228,7 @@ extension ScrollCommand: CommanderBindableCommand {
             self.delay = delay
         }
         self.smooth = values.flag("smooth")
-        self.app = values.singleOption("app")
+        self.target = try values.makeInteractionTargetOptions()
         self.focusOptions = try values.makeFocusOptions()
     }
 }

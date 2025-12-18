@@ -341,7 +341,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.query == "Submit")
         #expect(command.snapshot == "abc")
         #expect(command.on == "B1")
-        #expect(command.app == "Safari")
+        #expect(command.target.app == "Safari")
         #expect(command.waitFor == 2500)
         #expect(command.double == true)
         #expect(command.focusOptions.noAutoFocus == true)
@@ -372,7 +372,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.escape == true)
         #expect(command.delete == true)
         #expect(command.clear == true)
-        #expect(command.app == "Notes")
+        #expect(command.target.app == "Notes")
         #expect(command.focusOptions.spaceSwitch == true)
         #expect(command.focusOptions.focusTimeoutSeconds == 3.5)
     }

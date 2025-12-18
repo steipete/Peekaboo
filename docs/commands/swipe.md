@@ -15,6 +15,8 @@ read_when:
 | `--from <id>` / `--from-coords x,y` | Source location (ID requires a valid snapshot). |
 | `--to <id>` / `--to-coords x,y` | Destination location (also supports IDs or literal coordinates). |
 | `--snapshot <id>` | Needed whenever you reference IDs so the command can look up bounds. Auto-resolves to the most recent snapshot if omitted. |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before swiping. (`--window-*` requires `--app` or `--pid`.) |
+| Focus flags | `FocusCommandOptions` control Space switching + retries. |
 | `--duration <ms>` | Default 500 ms; controls how long the swipe lasts. |
 | `--steps <count>` | Number of intermediate points for smoothing (default 20). |
 | `--right-button` | Currently rejected — the implementation throws a validation error because right-button drags are not yet wired up. |

@@ -13,8 +13,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(name: .customLong("keys"), help: "Keys to press (comma-separated or space-separated)")
     var keysOption: String?
 
-    @Option(name: .long, help: "Target application to focus before pressing hotkey")
-    var app: String?
+    @OptionGroup var target: InteractionTargetOptions
 
     @Option(help: "Delay between key press and release in milliseconds")
     var holdDuration: Int = 50
@@ -52,6 +51,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
+            try self.target.validate()
             // Parse key names - support both comma-separated and space-separated
             guard let keysString = self.resolvedKeys else {
                 throw ValidationError("No keys specified")
@@ -72,14 +72,10 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             // Convert key names to comma-separated format for the service
             let keysCsv = keyNames.joined(separator: ",")
 
-            // Get snapshot if available
-            let snapshotId: String? = if let providedSnapshot = snapshot {
-                providedSnapshot
-            } else {
-                await self.services.snapshots.getMostRecentSnapshot()
-            }
+            let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let snapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
 
-            if let providedSnapshot = self.snapshot, !providedSnapshot.isEmpty {
+            if let providedSnapshot = snapshotId {
                 _ = try await SnapshotValidation.requireDetectionResult(
                     snapshotId: providedSnapshot,
                     snapshots: self.services.snapshots
@@ -87,9 +83,15 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             }
 
             // Ensure window is focused before pressing hotkey.
+            let focusSnapshotId: String? = if snapshotId != nil || !self.target.hasAnyTarget {
+                snapshotId
+            } else {
+                nil
+            }
+
             try await ensureFocused(
-                snapshotId: snapshotId,
-                applicationName: self.app,
+                snapshotId: focusSnapshotId,
+                target: self.target,
                 options: self.focusOptions,
                 services: self.services
             )
@@ -185,7 +187,7 @@ extension HotkeyCommand: CommanderBindableCommand {
         if let hold: Int = try values.decodeOption("holdDuration", as: Int.self) {
             self.holdDuration = hold
         }
-        self.app = values.singleOption("app")
+        self.target = try values.makeInteractionTargetOptions()
         self.snapshot = values.singleOption("snapshot")
         self.focusOptions = try values.makeFocusOptions()
     }

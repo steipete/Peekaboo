@@ -27,11 +27,6 @@ extension ClickCommand: CommanderSignatureProviding {
                     long: "id"
                 ),
                 .commandOption(
-                    "app",
-                    help: "Application name to focus before clicking",
-                    long: "app"
-                ),
-                .commandOption(
                     "coords",
                     help: "Click at coordinates (x,y)",
                     long: "coords"
@@ -55,6 +50,7 @@ extension ClickCommand: CommanderSignatureProviding {
                 ),
             ],
             optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
                 FocusCommandOptions.commanderSignature(),
             ]
         )

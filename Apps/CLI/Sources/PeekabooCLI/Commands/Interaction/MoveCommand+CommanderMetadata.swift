@@ -58,6 +58,10 @@ extension MoveCommand: CommanderSignatureProviding {
                     help: "Use smooth movement animation",
                     long: "smooth"
                 ),
+            ],
+            optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(),
             ]
         )
     }

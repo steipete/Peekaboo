@@ -10,8 +10,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
     @Argument(help: "Key(s) to press")
     var keys: [String]
 
-    @Option(name: .long, help: "Target application to focus before pressing keys")
-    var app: String?
+    @OptionGroup var target: InteractionTargetOptions
 
     @Option(help: "Repeat count for all keys")
     var count: Int = 1
@@ -58,14 +57,11 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
         do {
             try self.validate()
-            // Get snapshot if available
-            let snapshotId: String? = if let providedSnapshot = snapshot {
-                providedSnapshot
-            } else {
-                await self.services.snapshots.getMostRecentSnapshot()
-            }
 
-            if let providedSnapshot = self.snapshot, !providedSnapshot.isEmpty {
+            let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let snapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
+
+            if let providedSnapshot = snapshotId {
                 _ = try await SnapshotValidation.requireDetectionResult(
                     snapshotId: providedSnapshot,
                     snapshots: self.services.snapshots
@@ -73,9 +69,15 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             }
 
             // Ensure window is focused before pressing keys.
+            let focusSnapshotId: String? = if snapshotId != nil || !self.target.hasAnyTarget {
+                snapshotId
+            } else {
+                nil
+            }
+
             try await ensureFocused(
-                snapshotId: snapshotId,
-                applicationName: self.app,
+                snapshotId: focusSnapshotId,
+                target: self.target,
                 options: self.focusOptions,
                 services: self.services
             )
@@ -136,6 +138,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
     // Error handling is provided by ErrorHandlingCommand protocol
 
     mutating func validate() throws {
+        try self.target.validate()
         for key in self.keys {
             guard SpecialKey(rawValue: key.lowercased()) != nil else {
                 throw ValidationError("Unknown key: '\(key)'. Run 'peekaboo press --help' for available keys.")
@@ -210,7 +213,7 @@ extension PressCommand: CommanderBindableCommand {
             throw CommanderBindingError.missingArgument(label: "keys")
         }
         self.keys = values.positional
-        self.app = values.singleOption("app")
+        self.target = try values.makeInteractionTargetOptions()
         if let count: Int = try values.decodeOption("count", as: Int.self) {
             self.count = count
         }

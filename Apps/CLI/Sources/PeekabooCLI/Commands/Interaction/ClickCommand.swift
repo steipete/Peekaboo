@@ -21,8 +21,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(name: .customLong("id"), help: "Element ID to click (alias for --on)")
     var id: String?
 
-    @Option(help: "Application name to focus before clicking")
-    var app: String?
+    @OptionGroup var target: InteractionTargetOptions
 
     @Option(help: "Click at coordinates (x,y)")
     var coords: String?
@@ -38,6 +37,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
     @OptionGroup var focusOptions: FocusCommandOptions
     mutating func validate() throws {
+        try self.target.validate()
         guard self.query != nil || self.on != nil || self.id != nil || self.coords != nil else {
             throw ValidationError("Specify an element query, --on/--id, or --coords.")
         }
@@ -101,23 +101,32 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
             } else {
                 // For element-based clicks, try to get a snapshot but allow fallback
-                let snapshotId: String? = if let providedSnapshot = snapshot {
-                    providedSnapshot
+                let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let providedSnapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
+                let snapshotIdForAutomation: String? = if let providedSnapshotId {
+                    providedSnapshotId
                 } else {
                     await self.services.snapshots.getMostRecentSnapshot()
                 }
-                // Use snapshot if available, otherwise use empty string to indicate no snapshot
-                activeSnapshotId = snapshotId ?? ""
+
+                // Use snapshot if available, otherwise use empty string to indicate no snapshot.
+                activeSnapshotId = snapshotIdForAutomation ?? ""
 
                 // If the user explicitly passed --snapshot, fail early if that snapshot doesn't exist anymore.
-                if let providedSnapshot = self.snapshot, !providedSnapshot.isEmpty {
+                if let providedSnapshot = providedSnapshotId {
                     _ = try await SnapshotValidation.requireDetectionResult(
                         snapshotId: providedSnapshot,
                         snapshots: self.services.snapshots
                     )
                 }
 
-                try await self.focusApplicationIfNeeded(snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId)
+                let focusSnapshotId: String? = if providedSnapshotId != nil || !self.target.hasAnyTarget {
+                    activeSnapshotId.isEmpty ? nil : activeSnapshotId
+                } else {
+                    nil
+                }
+
+                try await self.focusApplicationIfNeeded(snapshotId: focusSnapshotId)
 
                 // Use whichever element ID parameter was provided
                 let elementId = self.on ?? self.id
@@ -267,13 +276,13 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             return
         }
 
-        if snapshotId == nil, self.app == nil {
+        if snapshotId == nil, !self.target.hasAnyTarget {
             return
         }
 
         try await ensureFocused(
             snapshotId: snapshotId,
-            applicationName: self.app,
+            target: self.target,
             options: self.focusOptions,
             services: self.services
         )
@@ -292,7 +301,7 @@ extension ClickCommand: CommanderBindableCommand {
         self.snapshot = values.singleOption("snapshot")
         self.on = values.singleOption("on")
         self.id = values.singleOption("id")
-        self.app = values.singleOption("app")
+        self.target = try values.makeInteractionTargetOptions()
         self.coords = values.singleOption("coords")
         if let wait: Int = try values.decodeOption("waitFor", as: Int.self) {
             self.waitFor = wait

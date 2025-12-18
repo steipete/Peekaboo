@@ -179,6 +179,23 @@ extension CommanderBindableValues {
         }
     }
 
+    func makeInteractionTargetOptions() throws -> InteractionTargetOptions {
+        var options = InteractionTargetOptions()
+        try fillInteractionTargetOptions(into: &options)
+        return options
+    }
+
+    func fillInteractionTargetOptions(into options: inout InteractionTargetOptions) throws {
+        options.app = self.singleOption("app")
+        if let pid: Int32 = try decodeOption("pid", as: Int32.self) {
+            options.pid = pid
+        }
+        options.windowTitle = self.singleOption("windowTitle")
+        if let index: Int = try decodeOption("windowIndex", as: Int.self) {
+            options.windowIndex = index
+        }
+    }
+
     func makeFocusOptions() throws -> FocusCommandOptions {
         var options = FocusCommandOptions()
         try fillFocusOptions(into: &options)

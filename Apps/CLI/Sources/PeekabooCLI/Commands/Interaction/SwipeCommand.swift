@@ -34,6 +34,10 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
     @Option(help: "Movement profile (linear or human)")
     var profile: String?
 
+    @OptionGroup var target: InteractionTargetOptions
+
+    @OptionGroup var focusOptions: FocusCommandOptions
+
     @Flag(help: "Use right mouse button for drag")
     var rightButton = false
     @RuntimeStorage private var runtime: CommandRuntime?
@@ -58,6 +62,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         self.logger.setJsonOutputMode(self.jsonOutput)
 
         do {
+            try self.target.validate()
             // Validate inputs
             guard self.from != nil || self.fromCoords != nil, self.to != nil || self.toCoords != nil else {
                 throw ValidationError(
@@ -78,18 +83,45 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
             }
 
-            // Determine snapshot ID - use provided or get most recent
-            let snapshotId: String? = if let providedSnapshot = snapshot {
-                providedSnapshot
-            } else {
-                await self.services.snapshots.getMostRecentSnapshot()
+            let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let snapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
+
+            if let providedSnapshot = snapshotId {
+                _ = try await SnapshotValidation.requireDetectionResult(
+                    snapshotId: providedSnapshot,
+                    snapshots: self.services.snapshots
+                )
             }
+
+            let needsSnapshotForElements = self.from != nil || self.to != nil
+            let snapshotIdForElements: String? = if needsSnapshotForElements {
+                if let snapshotId {
+                    snapshotId
+                } else {
+                    await self.services.snapshots.getMostRecentSnapshot()
+                }
+            } else {
+                snapshotId
+            }
+
+            let focusSnapshotId: String? = if snapshotId != nil || !self.target.hasAnyTarget {
+                snapshotIdForElements
+            } else {
+                nil
+            }
+
+            try await ensureFocused(
+                snapshotId: focusSnapshotId,
+                target: self.target,
+                options: self.focusOptions,
+                services: self.services
+            )
 
             // Get source and destination points
             let sourcePoint = try await resolvePoint(
                 elementId: from,
                 coords: fromCoords,
-                snapshotId: snapshotId,
+                snapshotId: snapshotIdForElements,
                 description: "from",
                 waitTimeout: 5.0
             )
@@ -97,7 +129,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             let destPoint = try await resolvePoint(
                 elementId: to,
                 coords: toCoords,
-                snapshotId: snapshotId,
+                snapshotId: snapshotIdForElements,
                 description: "to",
                 waitTimeout: 5.0
             )
@@ -128,7 +160,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             AutomationEventLogger.log(
                 .gesture,
                 "swipe from=(\(Int(sourcePoint.x)),\(Int(sourcePoint.y))) to=(\(Int(destPoint.x)),\(Int(destPoint.y))) "
-                    + "profile=\(movement.profileName) steps=\(movement.steps) snapshot=\(snapshotId ?? "latest")"
+                    + "profile=\(movement.profileName) steps=\(movement.steps) snapshot=\(snapshotIdForElements ?? "latest")"
             )
 
             // Small delay to ensure swipe is processed
@@ -278,6 +310,8 @@ extension SwipeCommand: CommanderBindableCommand {
         self.to = values.singleOption("to")
         self.toCoords = values.singleOption("toCoords")
         self.snapshot = values.singleOption("snapshot")
+        self.target = try values.makeInteractionTargetOptions()
+        self.focusOptions = try values.makeFocusOptions()
         if let duration: Int = try values.decodeOption("duration", as: Int.self) {
             self.duration = duration
         }

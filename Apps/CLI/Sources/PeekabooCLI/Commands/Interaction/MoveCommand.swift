@@ -21,6 +21,9 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(help: "Move to element by ID (e.g., B1, T2)")
     var id: String?
 
+    @OptionGroup var target: InteractionTargetOptions
+    @OptionGroup var focusOptions: FocusCommandOptions
+
     @Flag(help: "Move to screen center")
     var center = false
 
@@ -57,6 +60,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     }
 
     mutating func validate() throws {
+        try self.target.validate()
         let targetCount = [
             self.center ? 1 : 0,
             self.resolvedCoordinates == nil ? 0 : 1,
@@ -101,6 +105,12 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
             let targetDescription: String
 
             if self.center {
+                try await ensureFocused(
+                    snapshotId: nil,
+                    target: self.target,
+                    options: self.focusOptions,
+                    services: self.services
+                )
                 // Move to screen center
                 guard let mainScreen = NSScreen.main else {
                     throw ValidationError("No main screen found")
@@ -110,6 +120,12 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 targetDescription = "Screen center"
 
             } else if let coordString = self.resolvedCoordinates {
+                try await ensureFocused(
+                    snapshotId: nil,
+                    target: self.target,
+                    options: self.focusOptions,
+                    services: self.services
+                )
                 // Parse coordinates
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                 let x = Double(parts[0])!
@@ -127,6 +143,18 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 guard let activeSnapshotId = snapshotId else {
                     throw PeekabooError.snapshotNotFound("No snapshot found")
                 }
+
+                let focusSnapshotId: String? = if self.snapshot != nil || !self.target.hasAnyTarget {
+                    activeSnapshotId
+                } else {
+                    nil
+                }
+                try await ensureFocused(
+                    snapshotId: focusSnapshotId,
+                    target: self.target,
+                    options: self.focusOptions,
+                    services: self.services
+                )
 
                 let detectionResult = try await SnapshotValidation.requireDetectionResult(
                     snapshotId: activeSnapshotId,
@@ -149,6 +177,18 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 guard let activeSnapshotId = snapshotId else {
                     throw PeekabooError.snapshotNotFound("No snapshot found")
                 }
+
+                let focusSnapshotId: String? = if self.snapshot != nil || !self.target.hasAnyTarget {
+                    activeSnapshotId
+                } else {
+                    nil
+                }
+                try await ensureFocused(
+                    snapshotId: focusSnapshotId,
+                    target: self.target,
+                    options: self.focusOptions,
+                    services: self.services
+                )
 
                 if self.snapshot != nil {
                     _ = try await SnapshotValidation.requireDetectionResult(
@@ -375,6 +415,7 @@ extension MoveCommand: CommanderBindableCommand {
         self.coords = values.singleOption("coords")
         self.to = values.singleOption("to")
         self.id = values.singleOption("id")
+        self.target = try values.makeInteractionTargetOptions()
         self.center = values.flag("center")
         self.smooth = values.flag("smooth")
         if let duration: Int = try values.decodeOption("duration", as: Int.self) {
@@ -385,6 +426,7 @@ extension MoveCommand: CommanderBindableCommand {
         }
         self.snapshot = values.singleOption("snapshot")
         self.profile = values.singleOption("profile")
+        self.focusOptions = try values.makeFocusOptions()
     }
 }
 

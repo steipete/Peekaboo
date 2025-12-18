@@ -10,6 +10,8 @@ import PeekabooFoundation
 @available(macOS 14.0, *)
 @MainActor
 struct DragCommand: ErrorHandlingCommand, OutputFormattable {
+    @OptionGroup var target: InteractionTargetOptions
+
     @Option(help: "Starting element ID from snapshot")
     var from: String?
 
@@ -63,14 +65,25 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         do {
             try self.validateInputs()
 
-            let snapshotId = try await self.resolveSnapshot()
-            if let snapshotId {
-                try await ensureFocused(
-                    snapshotId: snapshotId,
-                    options: self.focusOptions,
-                    services: self.services
-                )
+            let needsSnapshot = self.from != nil || self.to != nil
+            let snapshotId: String? = if needsSnapshot {
+                try await self.resolveSnapshot()
+            } else {
+                self.snapshot
             }
+
+            let focusSnapshotId: String? = if self.snapshot != nil || !self.target.hasAnyTarget {
+                snapshotId
+            } else {
+                nil
+            }
+
+            try await ensureFocused(
+                snapshotId: focusSnapshotId,
+                target: self.target,
+                options: self.focusOptions,
+                services: self.services
+            )
 
             let startPoint = try await self.resolvePoint(
                 elementId: self.from,
@@ -151,7 +164,8 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
     }
 
     // Validate user input combinations
-    private func validateInputs() throws {
+    private mutating func validateInputs() throws {
+        try self.target.validate()
         guard self.from != nil || self.fromCoords != nil else {
             throw ValidationError("Must specify either --from or --from-coords")
         }
@@ -344,6 +358,7 @@ extension DragCommand: AsyncRuntimeCommand {}
 @MainActor
 extension DragCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.target = try values.makeInteractionTargetOptions()
         self.from = values.singleOption("from")
         self.fromCoords = values.singleOption("fromCoords")
         self.to = values.singleOption("to")

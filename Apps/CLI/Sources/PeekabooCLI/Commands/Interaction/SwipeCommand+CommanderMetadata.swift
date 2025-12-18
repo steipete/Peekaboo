@@ -51,6 +51,10 @@ extension SwipeCommand: CommanderSignatureProviding {
                     help: "Use right mouse button for drag",
                     long: "right-button"
                 ),
+            ],
+            optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(),
             ]
         )
     }

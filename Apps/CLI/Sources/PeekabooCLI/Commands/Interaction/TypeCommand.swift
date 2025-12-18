@@ -40,8 +40,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     @Flag(help: "Clear the field before typing (Cmd+A, Delete)")
     var clear = false
 
-    @Option(name: .long, help: "Target application to focus before typing")
-    var app: String?
+    @OptionGroup var target: InteractionTargetOptions
 
     @OptionGroup var focusOptions: FocusCommandOptions
     @RuntimeStorage private var runtime: CommandRuntime?
@@ -154,12 +153,15 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     private func resolveSnapshotId() async -> String? {
         if let providedSnapshot = snapshot {
             providedSnapshot
+        } else if self.target.hasAnyTarget {
+            nil
         } else {
             await self.services.snapshots.getMostRecentSnapshot()
         }
     }
 
     mutating func validate() throws {
+        try self.target.validate()
         if let option = self.profileOption,
            TypingProfile(rawValue: option.lowercased()) == nil {
             throw ValidationError("--profile must be either 'human' or 'linear'")
@@ -176,11 +178,11 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     }
 
     private func warnIfFocusUnknown(snapshotId: String?) {
-        guard self.focusOptions.autoFocus, snapshotId == nil, self.app == nil else { return }
+        guard self.focusOptions.autoFocus, snapshotId == nil, !self.target.hasAnyTarget else { return }
         self.logger.warn(
             """
-            Typing without an associated --app or snapshot. \
-            We'll inject keys blindly; run 'peekaboo see' or provide --app if you need focus guarantees.
+            Typing without a target (--app/--pid/--window-title/--window-index) or snapshot. \
+            We'll inject keys blindly; run 'peekaboo see' or provide a target if you need focus guarantees.
             """
         )
     }
@@ -188,7 +190,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
     private func focusIfNeeded(snapshotId: String?) async throws {
         try await ensureFocused(
             snapshotId: snapshotId,
-            applicationName: self.app,
+            target: self.target,
             options: self.focusOptions,
             services: self.services
         )
@@ -341,7 +343,7 @@ extension TypeCommand: CommanderBindableCommand {
         self.escape = values.flag("escape")
         self.delete = values.flag("delete")
         self.clear = values.flag("clear")
-        self.app = values.singleOption("app")
+        self.target = try values.makeInteractionTargetOptions()
         self.focusOptions = try values.makeFocusOptions()
     }
 }

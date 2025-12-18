@@ -19,13 +19,13 @@ read_when:
 | `--profile <human|linear>` | Switch between human (default, honors `--wpm`) and linear (honors `--delay`). |
 | `--clear` | Issue Cmd+A, Delete before typing any new text. |
 | `--return`, `--tab <count>`, `--escape`, `--delete` | Append those keypresses after (or without) the text payload. |
-| `--app <name>` | Force focus to a particular application prior to typing. |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before typing. (`--window-*` requires `--app` or `--pid`.) |
 | Focus flags | Same as `click` (`--no-auto-focus`, `--space-switch`, etc.). |
 
 ## Implementation notes
 - You can omit the text entirely and rely on the key flags (e.g., just `--tab 2 --return`). Validation only requires *some* action to be specified.
 - Escape handling splits literal text and key presses: `"Hello\nWorld"` becomes `text("Hello"), key(.return), text("World")`, so newlines don’t require separate flags.
-- Without a snapshot or `--app`, the command logs a warning that typing will be “blind” because it cannot confirm focus.
+- Without a snapshot or target flags, the command logs a warning that typing will be “blind” because it cannot confirm focus.
 - Default profile is `human`, which uses `--wpm` (or 140 WPM if omitted). Switch to `--profile linear` when you need deterministic millisecond spacing via `--delay`.
 - Every run calls `ensureFocused` with the merged focus options before dispatching actions, so you automatically get Space switching / retries when needed.
 - JSON output reports `totalCharacters`, `keyPresses`, and elapsed time; this matches what the agent logs when executing scripted steps.

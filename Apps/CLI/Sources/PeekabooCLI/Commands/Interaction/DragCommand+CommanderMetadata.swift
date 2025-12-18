@@ -56,6 +56,7 @@ extension DragCommand: CommanderSignatureProviding {
                 ),
             ],
             optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
                 FocusCommandOptions.commanderSignature(),
             ]
         )

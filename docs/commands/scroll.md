@@ -18,11 +18,12 @@ read_when:
 | `--snapshot <id>` | Override the snapshot used to resolve `--on`. Omit when you want to scroll wherever the pointer is. |
 | `--delay <ms>` | Milliseconds between ticks (default `2`). |
 | `--smooth` | Use smaller increments (3 micro ticks per requested tick) for finer movement. |
-| `--app <name>` + focus flags | Force a specific app/window focus before scrolling, using `FocusCommandOptions`. |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before scrolling. (`--window-*` requires `--app` or `--pid`.) |
+| Focus flags | `FocusCommandOptions` control Space switching + retries. |
 
 ## Implementation notes
 - If you pass `--on` without a snapshot, the command automatically looks up `services.snapshots.getMostRecentSnapshot()` so you rarely need to wire IDs manually.
-- Focus is handled via `ensureFocused` even when `--on` is omitted; supplying `--app` helps the command recover when the scrollable view lives in a background Space.
+- Focus is handled via `ensureFocused`; supplying a target helps the command recover when the scrollable view lives in a background Space.
 - JSON output reports the actual point that was scrolled: for element targets it resolves the bounds midpoint, otherwise it samples the current cursor location via `CGEvent(source:nil)?.location`.
 - `ScrollRequest` is handed directly to `AutomationServiceBridge.scroll`, so the CLI benefits from the same smooth/step semantics the agent runtime sees.
 
