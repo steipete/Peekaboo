@@ -1,6 +1,8 @@
 # Changelog
 
-## [Unreleased] (3.0.0-beta2)
+## [Unreleased]
+
+## [3.0.0-beta2] - 2025-12-18
 
 ### Highlights
 - **Peekaboo Bridge is now socket-based**: privileged automation runs in a long-lived **bridge host** (Peekaboo.app, or another signed host like Clawdis.app) and the CLI connects over a UNIX socket instead of using the v3.0.0-beta1 XPC helper model.
@@ -19,6 +21,7 @@
 - Bridge security: caller validation via **code signature TeamID allowlist** (and optional bundle allowlist), with a **debug-only** same-UID escape hatch (`PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1`).
 - `peekaboo hotkey` accepts the key combo as a positional argument (in addition to `--keys`) for quick one-liners like `peekaboo hotkey "cmd,shift,t"`; docs + tests cover precedence and errors.
 - `peekaboo learn` renders its guide as ANSI-styled markdown via Swiftdansi on rich terminals, while still emitting plain markdown when piped.
+- Agent providers now include `gemini-3-flash`, expanding the out-of-the-box model catalog for `peekaboo agent`.
 
 ### Changed
 - Bridge host discovery order is now: **Peekaboo.app → Clawdis.app → local in-process** (no auto-launch).
@@ -39,6 +42,11 @@
 - Video capture/ingest timestamps now come from the video timeline (not wall clock), and frame seeking is more accurate.
 - `peekaboo image`: when `--format` is omitted, infer the output encoding from `--path` extension (`.jpg/.jpeg` → JPEG, `.png` → PNG) to prevent writing PNG data into `.jpg` files.
 - `peekaboo image`: reject conflicting `--format` and `--path` extension values (e.g. `--format jpg --path /tmp/x.png`) to prevent mislabeled captures.
+- `peekaboo click --coords` no longer crashes on invalid input; invalid coordinates now fail with a structured validation error.
+- Auto-focus no longer no-ops when a snapshot is missing a `windowID`, preventing follow-up actions from landing in the wrong frontmost app.
+- `peekaboo window list` no longer returns duplicate entries for the same window.
+- `peekaboo capture live` avoids window-index mismatches that could attach to the wrong window when multiple candidates are present.
+- Bridge hosts that reject the CLI now reply with a structured `unauthorizedClient` error response instead of closing the socket (EOF), and the CLI error message includes actionable guidance for older hosts.
 
 ### Developer Workflow
 - Release build scripts now sign the CLI with `Identifier=boo.peekaboo.peekaboo` (aligns with bridge allowlists used by Peekaboo.app/hosts).
