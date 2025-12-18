@@ -135,15 +135,26 @@ public final actor PeekabooBridgeHost {
         maxMessageBytes: Int,
         requestTimeoutSec: TimeInterval) async
     {
-        guard let peer = self.peerInfoIfAllowed(fd: fd, allowedTeamIDs: allowedTeamIDs) else {
-            return
-        }
+        let peer = self.peerInfoIfAllowed(fd: fd, allowedTeamIDs: allowedTeamIDs)
 
         do {
-            let requestData = try self.readAll(
-                fd: fd,
-                maxBytes: maxMessageBytes,
-                timeoutSec: requestTimeoutSec)
+            let requestData = try self.readAll(fd: fd, maxBytes: maxMessageBytes, timeoutSec: requestTimeoutSec)
+
+            guard let peer else {
+                let envelope = PeekabooBridgeErrorEnvelope(
+                    code: .unauthorizedClient,
+                    message: "Bridge client is not authorized",
+                    details: """
+                    The host rejected the client before processing the request. Ensure the client is signed by an \
+                    allowlisted TeamID (\(allowedTeamIDs.sorted().joined(separator: ", "))) or launch the host with \
+                    PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1 for local development.
+                    """)
+
+                let encoder = JSONEncoder.peekabooBridgeEncoder()
+                let responseData = (try? encoder.encode(PeekabooBridgeResponse.error(envelope))) ?? Data()
+                try self.writeAll(fd: fd, data: responseData)
+                return
+            }
 
             let responseData = await server.decodeAndHandle(requestData, peer: peer)
 
