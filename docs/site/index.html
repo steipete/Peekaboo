@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Peekaboo — macOS automation that sees the screen and does the clicks</title>
+    <meta
+      name="description"
+      content="Peekaboo brings high‑fidelity screen capture, AI analysis, and complete GUI automation to macOS. Give your agents eyes."
+    />
+    <link rel="canonical" href="https://www.peekaboo.boo/" />
+
+    <meta property="og:title" content="Peekaboo" />
+    <meta
+      property="og:description"
+      content="macOS automation that sees the screen and does the clicks. Give your agents eyes."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.peekaboo.boo/" />
+
+    <meta name="theme-color" content="#0b0c0f" />
+    <meta name="color-scheme" content="dark" />
+
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..800&family=Space+Grotesk:wght@300..700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="top">
+      <div class="wrap">
+        <div class="brand">
+          <a class="brandLink" href="./" aria-label="Peekaboo home">
+            <span class="mark" aria-hidden="true">
+              <span class="eye" aria-hidden="true"></span>
+            </span>
+            <span class="brandText">
+              <span class="brandName">Peekaboo</span>
+              <span class="brandTag">macOS automation for agents</span>
+            </span>
+          </a>
+        </div>
+
+        <nav class="nav" aria-label="Primary">
+          <a class="navLink" href="#install">Install</a>
+          <a class="navLink" href="#features">Features</a>
+          <a class="navLink" href="#how">How it works</a>
+          <a class="navLink" href="#docs">Docs</a>
+          <a class="navLink navLinkStrong" href="https://github.com/steipete/Peekaboo">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <div class="wrap heroGrid">
+          <div class="heroCopy">
+            <p class="kicker">
+              Give your agents <span class="kickerEm">eyes</span>.
+            </p>
+            <h1 class="h1">
+              macOS automation that <span class="h1Em">sees</span> the screen and <span class="h1Em">does</span> the clicks.
+            </h1>
+            <p class="lead">
+              Peekaboo brings high‑fidelity screen capture, AI analysis, and end‑to‑end GUI automation to macOS — as a native CLI
+              and an MCP server.
+            </p>
+
+            <div class="cta">
+              <a class="btn" href="#install">Install</a>
+              <a class="btn btnGhost" href="https://github.com/steipete/Peekaboo/releases/latest">Download</a>
+              <a class="btn btnGhost" href="https://www.npmjs.com/package/@steipete/peekaboo">npm</a>
+            </div>
+
+            <div class="metaRow" aria-label="Quick facts">
+              <span class="pill">macOS 15+</span>
+              <span class="pill">Swift 6.2</span>
+              <span class="pill">Node 22+ (MCP)</span>
+              <span class="pill">OpenAI · Claude · Grok · Gemini · Ollama</span>
+            </div>
+          </div>
+
+          <div class="heroViz" aria-hidden="true">
+            <div class="screen">
+              <div class="screenTop">
+                <span class="dot dotRed"></span>
+                <span class="dot dotYellow"></span>
+                <span class="dot dotGreen"></span>
+                <span class="screenTitle">peekaboo see —app Safari</span>
+              </div>
+              <div class="screenBody">
+                <div class="uiRow">
+                  <div class="uiChip">Window</div>
+                  <div class="uiChip">Menu bar</div>
+                  <div class="uiChip">Buttons</div>
+                  <div class="uiChip">Text fields</div>
+                </div>
+                <div class="uiGrid">
+                  <div class="uiPane uiPaneA"></div>
+                  <div class="uiPane uiPaneB"></div>
+                  <div class="uiPane uiPaneC"></div>
+                  <div class="uiPane uiPaneD"></div>
+                </div>
+                <div class="uiFooter">
+                  <span class="uiHint">snapshot_id: …</span>
+                  <span class="uiHint">elements: 142</span>
+                  <span class="uiHint uiHintStrong">clickable: yes</span>
+                </div>
+              </div>
+              <div class="beam"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install" class="section">
+        <div class="wrap">
+          <div class="sectionHead">
+            <h2 class="h2">Install</h2>
+            <p class="sub">
+              Two ways: native app/CLI via Homebrew, or MCP server via npm. Both expose the same toolset.
+            </p>
+          </div>
+
+          <div class="cmdCard" data-cmd>
+            <div class="cmdTabs" role="tablist" aria-label="Install options">
+              <button class="tab isActive" type="button" data-tab="brew" aria-selected="true">Homebrew</button>
+              <button class="tab" type="button" data-tab="npm" aria-selected="false">MCP (npm)</button>
+            </div>
+            <pre class="cmd" role="tabpanel" aria-label="Command"><code data-code>brew install steipete/tap/peekaboo</code></pre>
+            <div class="cmdActions">
+              <button class="copy" type="button" data-copy>Copy</button>
+              <a class="miniLink" href="https://github.com/steipete/homebrew-tap">Tap</a>
+              <a class="miniLink" href="https://github.com/steipete/Peekaboo#quick-start">Quick start</a>
+            </div>
+          </div>
+
+          <div class="note">
+            Requires macOS Screen Recording + Accessibility permissions.
+            <a href="https://github.com/steipete/Peekaboo/blob/main/docs/permissions.md">Grant guide</a>.
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="section sectionAlt">
+        <div class="wrap">
+          <div class="sectionHead">
+            <h2 class="h2">Features</h2>
+            <p class="sub">Tools you can trust: deterministic outputs, typed JSON, and composable automation.</p>
+          </div>
+
+          <div class="grid3">
+            <article class="card">
+              <h3 class="h3">Pixel‑accurate capture</h3>
+              <p class="p">Screens, windows, menu bar. Optional Retina 2× scaling. Fast enough for feedback loops.</p>
+              <p class="small">CLI: <span class="mono">peekaboo image</span>, <span class="mono">peekaboo see</span></p>
+            </article>
+
+            <article class="card">
+              <h3 class="h3">Click by intent</h3>
+              <p class="p">Resolve UI elements and act on them: click, type, scroll, drag, hotkeys, menus, Spaces.</p>
+              <p class="small">CLI: <span class="mono">peekaboo click</span>, <span class="mono">peekaboo type</span>, <span class="mono">peekaboo menu</span></p>
+            </article>
+
+            <article class="card">
+              <h3 class="h3">Agent‑native</h3>
+              <p class="p">Natural language that chains tools — plus an MCP server so Claude Desktop/Cursor can drive it.</p>
+              <p class="small">CLI: <span class="mono">peekaboo agent</span>, <span class="mono">peekaboo mcp serve</span></p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="how" class="section">
+        <div class="wrap">
+          <div class="sectionHead">
+            <h2 class="h2">How it works</h2>
+            <p class="sub">A tight loop: capture → interpret → act. Repeat until the task is done.</p>
+          </div>
+
+          <ol class="steps">
+            <li class="step">
+              <div class="stepNum">01</div>
+              <div class="stepBody">
+                <h3 class="h3">See</h3>
+                <p class="p">Capture a screen/window and get a structured UI map with stable IDs.</p>
+              </div>
+            </li>
+            <li class="step">
+              <div class="stepNum">02</div>
+              <div class="stepBody">
+                <h3 class="h3">Decide</h3>
+                <p class="p">Pick a target: a button label, a menu path, a specific window, a Space.</p>
+              </div>
+            </li>
+            <li class="step">
+              <div class="stepNum">03</div>
+              <div class="stepBody">
+                <h3 class="h3">Do</h3>
+                <p class="p">Click, type, scroll, drag, or run a full agent plan — with receipts you can log.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="docs" class="section sectionAlt">
+        <div class="wrap">
+          <div class="sectionHead">
+            <h2 class="h2">Docs</h2>
+            <p class="sub">Start here, then dive deep.</p>
+          </div>
+
+          <div class="links">
+            <a class="linkCard" href="https://github.com/steipete/Peekaboo">
+              <span class="linkTitle">Repository</span>
+              <span class="linkHint">source · releases · issues</span>
+            </a>
+            <a class="linkCard" href="https://github.com/steipete/Peekaboo/blob/main/docs/cli-command-reference.md">
+              <span class="linkTitle">Command reference</span>
+              <span class="linkHint">all CLI commands, grouped</span>
+            </a>
+            <a class="linkCard" href="https://github.com/steipete/Peekaboo/blob/main/docs/commands/mcp.md">
+              <span class="linkTitle">MCP setup</span>
+              <span class="linkHint">Claude Desktop · Cursor</span>
+            </a>
+            <a class="linkCard" href="https://github.com/steipete/Peekaboo/blob/main/docs/ARCHITECTURE.md">
+              <span class="linkTitle">Architecture</span>
+              <span class="linkHint">how the pieces fit</span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="wrap footGrid">
+        <div class="footLeft">
+          <div class="footBrand">
+            <span class="mark markSmall" aria-hidden="true"><span class="eye" aria-hidden="true"></span></span>
+            <span class="footName">Peekaboo</span>
+          </div>
+          <p class="footText">
+            Built for fast, reproducible macOS automation — from single clicks to full agent runs.
+          </p>
+        </div>
+
+        <div class="footRight">
+          <a class="footLink" href="https://github.com/steipete/Peekaboo/releases/latest">Latest release</a>
+          <a class="footLink" href="https://github.com/steipete/Peekaboo/blob/main/docs/permissions.md">Permissions</a>
+          <a class="footLink" href="https://www.npmjs.com/package/@steipete/peekaboo">npm</a>
+          <a class="footLink" href="https://github.com/steipete/homebrew-tap">Homebrew tap</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
+
