@@ -66,7 +66,7 @@ func ensureFocused(
     case let .windowId(windowID):
         windowID
     case let .bestWindow(applicationName, windowTitle):
-        try await focusService.findBestWindow(applicationName: applicationName, windowTitle: windowTitle)
+        try? await focusService.findBestWindow(applicationName: applicationName, windowTitle: windowTitle)
     case nil:
         nil
     }
