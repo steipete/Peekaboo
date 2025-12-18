@@ -67,6 +67,30 @@ struct UIAutomationServiceWaitTests {
         #expect(result.element?.label?.lowercased() == "submit")
     }
 
+    @Test("Query resolves via element identifier attribute")
+    @MainActor
+    func queryResolvesIdentifierAttribute() async throws {
+        let elements = DetectedElements(
+            sliders: [DetectedElement(
+                id: "S1",
+                type: .slider,
+                label: "Slider",
+                value: nil,
+                bounds: CGRect(x: 10, y: 10, width: 200, height: 24),
+                attributes: ["identifier": "continuous-slider"])])
+        let detection = Self.makeDetectionResult(elements: elements)
+
+        let service = UIAutomationService(snapshotManager: InMemorySnapshotManager(detectionResult: detection))
+
+        let result = try await service.waitForElement(
+            target: .query("continuous-slider"),
+            timeout: 1.0,
+            snapshotId: detection.snapshotId)
+
+        #expect(result.found)
+        #expect(result.element?.id == "S1")
+    }
+
     // MARK: - Helpers
 
     private static func makeDetectionResult(

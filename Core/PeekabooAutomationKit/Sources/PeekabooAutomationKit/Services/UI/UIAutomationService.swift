@@ -791,12 +791,7 @@ extension UIAutomationService {
             return nil
         }
 
-        let queryLower = query.lowercased()
-        return detectionResult.elements.all.first { element in
-            let matches = element.label?.lowercased().contains(queryLower) ?? false ||
-                element.value?.lowercased().contains(queryLower) ?? false
-            return matches && element.isEnabled
-        }
+        return ClickService.resolveTargetElement(query: query, in: detectionResult)
     }
 
     private func findElementByAccessibility(matching query: String) -> AXSearchOutcome? {
