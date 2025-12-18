@@ -54,7 +54,7 @@ private final class ServicesWithStubClipboard: PeekabooServiceProviding {
     var menu: any MenuServiceProtocol { self.base.menu }
     var dock: any DockServiceProtocol { self.base.dock }
     var dialogs: any DialogServiceProtocol { self.base.dialogs }
-    var sessions: any SessionManagerProtocol { self.base.sessions }
+    var snapshots: any SnapshotManagerProtocol { self.base.snapshots }
     var files: any FileServiceProtocol { self.base.files }
     var clipboard: any ClipboardServiceProtocol { self.stubClipboard }
     var configuration: PeekabooCore.ConfigurationManager { self.base.configuration }
@@ -96,4 +96,3 @@ private final class RecordingClipboardService: ClipboardServiceProtocol {
         throw ClipboardServiceError.writeFailed("Not implemented in test stub.")
     }
 }
-

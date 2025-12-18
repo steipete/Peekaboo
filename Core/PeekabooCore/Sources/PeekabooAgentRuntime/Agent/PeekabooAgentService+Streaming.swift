@@ -87,7 +87,7 @@ extension PeekabooAgentService {
                 .joined(separator: "\n")
 
             let dataMessage = ModelMessage(
-                role: .system,
+                role: .user,
                 content: [
                     .text("""
                     <DESKTOP_STATE \(injectionNonce)>
