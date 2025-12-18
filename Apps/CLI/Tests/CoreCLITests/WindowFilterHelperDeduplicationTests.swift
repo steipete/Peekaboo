@@ -15,7 +15,8 @@ struct WindowFilterHelperDeduplicationTests {
             index: 0,
             layer: 0,
             isOnScreen: true,
-            isExcludedFromWindowsMenu: false)
+            isExcludedFromWindowsMenu: false
+        )
 
         let window2 = ServiceWindowInfo(
             windowID: 42,
@@ -25,7 +26,8 @@ struct WindowFilterHelperDeduplicationTests {
             index: 1,
             layer: 0,
             isOnScreen: true,
-            isExcludedFromWindowsMenu: false)
+            isExcludedFromWindowsMenu: false
+        )
 
         let window3 = ServiceWindowInfo(
             windowID: 99,
@@ -35,13 +37,15 @@ struct WindowFilterHelperDeduplicationTests {
             index: 2,
             layer: 0,
             isOnScreen: true,
-            isExcludedFromWindowsMenu: false)
+            isExcludedFromWindowsMenu: false
+        )
 
         let filtered = WindowFilterHelper.filter(
             windows: [window1, window2, window3],
             appIdentifier: "Playground",
             mode: .list,
-            logger: nil)
+            logger: nil
+        )
 
         #expect(filtered.count == 2)
         #expect(filtered[0].windowID == 42)
@@ -49,4 +53,3 @@ struct WindowFilterHelperDeduplicationTests {
         #expect(filtered[1].windowID == 99)
     }
 }
-
