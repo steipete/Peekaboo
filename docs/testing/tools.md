@@ -235,6 +235,9 @@ The following subsections spell out the concrete steps, required Playground surf
   2. `polter peekaboo -- bridge status --verbose --json-output > "$LOG_ROOT/bridge-status.json"` and sanity-check the selected host + probed sockets.
   3. Repeat with `--no-remote` to confirm local-only mode is explicit and stable.
 - **Pass criteria**: Clear host selection output and no crashes.
+- **2025-12-18 run**:
+  - Remote sockets were probed but both candidates returned `internalError` (“Bridge host returned no response”), so the CLI selected `source=local` as expected.
+  - Evidence: `.artifacts/playground-tools/20251218-022612-bridge-status.json`, `.artifacts/playground-tools/20251218-022612-bridge-status-verbose.json`, `.artifacts/playground-tools/20251218-022612-bridge-status-no-remote.json`.
 
 ### Interaction Tools
 
@@ -473,6 +476,9 @@ The following subsections spell out the concrete steps, required Playground surf
   1. `polter peekaboo -- visualizer --json-output > .artifacts/playground-tools/<timestamp>-visualizer.json`
   2. Visually confirm you see (in order): screenshot flash, capture HUD, click ripple, typing overlay, scroll indicator, mouse trail, swipe path, hotkey HUD, window move overlay, app launch/quit animation, menu breadcrumb, dialog highlight, space switch indicator, and element detection overlay.
 - **Pass criteria**: No CLI errors, the JSON report shows every step `dispatched=true`, and the full overlay sequence renders end-to-end.
+- **2025-12-18 run**:
+  - JSON reports all 15 steps `dispatched=true` (manual “eyes on overlay” still required for full pass criteria).
+  - Evidence: `.artifacts/playground-tools/20251218-022612-visualizer.json`.
 
 ### Automation & Integrations
 
